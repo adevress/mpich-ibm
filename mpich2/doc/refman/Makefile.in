@@ -1,0 +1,44 @@
+ALL: mpiman.pdf
+SHELL = /bin/sh
+
+INSTALL         = @INSTALL@
+INSTALL_PROGRAM = @INSTALL_PROGRAM@
+INSTALL_DATA    = @INSTALL_DATA@
+prefix          = @prefix@
+docdir          = @docdir@
+srcdir = @srcdir@
+
+@VPATH@
+
+LATEX      = export TEXINPUTS=".:$(srcdir):" ; latex
+BIBTEX     = export BIBINPUTS=".:$(srcdir):" ; bibtex
+DVIPDFM    = export TEXINPUTS=".:$(srcdir):" ; dvipdfm
+LATEX2HTML = latex2html
+
+MPIMANAUXFILES = refman.sty tpage.sty refcmd.tex refmpi.tex
+mpiman.dvi: mpiman.tex MPI_Wtime.tex
+	-rm -f mpiman.log mpiman.msg
+# 	for file in $(MPIMANAUXFILES) ; do \
+# 	    if [ ! -s $$file ] ; then \
+# 	       if [ -s $(srcdir)/$$file ] ; then \
+# 	            cp $(srcdir)/$$file . ; \
+#                else \
+# 		    echo "Unable to find file $$file" ; \
+# 		    exit 1; \
+#                fi ;\
+# 	    fi ; \
+# 	done
+	-$(LATEX) $(srcdir)/mpiman < /dev/null 2>&1 >mpiman.msg
+	$(LATEX) $(srcdir)/mpiman < /dev/null 2>&1 >mpiman.msg
+
+mpiman.pdf: mpiman.dvi
+	$(DVIPDFM) mpiman
+
+clean:
+	rm -f *.dvi *.log *.toc *.aux *.out
+distclean: clean
+
+#
+# Install these into the various FTP and WWW locations
+install: mpiman.pdf
+	$(INSTALL_DATA) mpiman.pdf ${docdir}
