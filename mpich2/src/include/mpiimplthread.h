@@ -139,6 +139,7 @@ void MPIR_CleanupThreadStorage( void *a );
         MPIU_DBG_MSG(THREAD,TYPICAL,"Enter global critical section");\
 	MPID_Thread_mutex_lock(&MPIR_ThreadInfo.global_mutex);	\
     }								\
+    MPIR_Nest_incr();						\
 }
 #define MPID_CS_EXIT()						\
 {								\

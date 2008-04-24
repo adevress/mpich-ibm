@@ -27,8 +27,19 @@
 </xsl:template>
 
 <xsl:template match="MPITEST">
-    <tr bgcolor="white">
-    <td valign="top">	
+    <xsl:variable name="status">
+        <xsl:choose>
+            <xsl:when test="STATUS = 'pass'">
+                <xsl:value-of select="'#fff'"/>
+            </xsl:when>
+            <xsl:otherwise>
+                <xsl:value-of select="'#f99'"/>
+            </xsl:otherwise>
+        </xsl:choose>
+    </xsl:variable>
+
+    <tr bgcolor="{$status}">
+    <td valign="top">
     <xsl:value-of select="NAME"/><br/>
     <xsl:value-of select="NP"/> processes<br/>
     <xsl:value-of select="WORKDIR"/>
@@ -36,11 +47,6 @@
     <xsl:value-of select="STATUS"/>
     </td><td WIDTH="40%"><pre>
     <xsl:value-of select="TESTDIFF"/>
-    </pre>
-    </td>
-    <td valign="top">
-    <pre>
-    <xsl:value-of select="TRACEBACK"/>
     </pre>
     </td>
     </tr>

@@ -1,4 +1,4 @@
-/* $Header$ */
+/* $Header: /msrc/proj/hpctools/cvs/tcgmsg/ipcv5.0/mtime.c,v 1.5 2002/03/12 18:59:31 d3h325 Exp $ */
 
 #include <stdio.h>
 #include "srftoc.h"

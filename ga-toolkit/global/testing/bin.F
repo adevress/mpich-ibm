@@ -372,9 +372,6 @@ C
 C     CHANGE HISTORY -
 C
 C        $Log$
-C        Revision 1.1  2008/04/24 15:10:04  jratt
-C        Initial revision
-C
 C        Revision 1.1  2002/10/16 00:15:29  d3h325
 C        JN: missing tests
 C

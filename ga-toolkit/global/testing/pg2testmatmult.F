@@ -7,7 +7,7 @@
 #endif
 
       program ga_test
-c $Id$
+c $Id: pg2testmatmult.F,v 1.3 2005/01/07 23:32:01 manoj Exp $
 c
 c     test ga_dgemm
 c     compile with make FLD_REN="optimized blas" testmatmult.x

@@ -68,6 +68,7 @@ int ADIOI_cb_bcast_rank_map(ADIO_File fd)
     char *value;
 
     MPI_Bcast(&(fd->hints->cb_nodes), 1, MPI_INT, 0, fd->comm);
+/* printf( "\tHao, ADIOI_cb_bcast_rank_map, cb_nodes = %d\n", fd->hints->cb_nodes ); */
     if (fd->hints->cb_nodes > 0) {
 	MPI_Comm_rank(fd->comm, &my_rank);
 	if (my_rank != 0) {
@@ -685,13 +686,15 @@ static int cb_config_list_lex(void)
 
     if (*token_ptr == '\0') return AGG_EOS;
 
-    slen = (int)strcspn(token_ptr, ":,");
+    /* slen = (int)strcspn(token_ptr, ":,"); */
+    slen = (int)strcspn(token_ptr, ":;");
 
     if (*token_ptr == ':') {
 	token_ptr++;
 	return AGG_COLON;
     }
-    if (*token_ptr == ',') {
+    /* if (*token_ptr == ',') {	 */
+    if (*token_ptr == ';') {	
 	token_ptr++;
 	return AGG_COMMA;
     }

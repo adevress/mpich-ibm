@@ -6,6 +6,7 @@
 #include "armci.h"
 #include "message.h"
 
+
 #ifdef QUADRICS
 #include <elan/elan.h>
 #ifdef QSNETLIBS_VERSION_CODE
@@ -90,7 +91,7 @@ extern thread_id_t armci_usr_tid;
 #endif
 
 #if defined(LAPI) || defined(CLUSTER) || defined(CRAY) || defined(XT3)\
-        || defined(CRAY_SHMEM) || defined(BGML)
+        || defined(CRAY_SHMEM) || defined(BGML) || defined(DCMF)
 #  include "request.h"
 #endif
 
@@ -242,6 +243,8 @@ extern void armci_init_fence();
      ( ((p) <= armci_clus_last) && ((p) >= armci_clus_first) )
 #elif defined(__crayx1)
 #  define SAMECLUSNODE(p) 1
+#elif defined(ARMCIX)
+#  define SAMECLUSNODE(p) 0
 #else
 #  define SAMECLUSNODE(p) ((p)==armci_me) 
 #endif

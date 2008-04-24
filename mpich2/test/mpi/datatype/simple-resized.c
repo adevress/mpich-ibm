@@ -108,8 +108,8 @@ int derived_resized_test(void)
     if (extent != 2*sizeof(int) + 10) {
 	if (verbose) {
 	    fprintf(stderr,
-		    "error: invalid extent (%d) in derived_resized_test(); should be %d\n",
-		    (int) extent,
+		    "error: invalid extent (" MPI_AINT_FMT_DEC_SPEC ") in derived_resized_test(); should be %d\n",
+		    extent,
 		    (int) (2*sizeof(int) + 10));
 	}
 	errs++;

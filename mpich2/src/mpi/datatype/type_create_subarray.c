@@ -70,6 +70,11 @@ int MPI_Type_create_subarray(int ndims,
     int blklens[3];
     MPI_Datatype tmp1, tmp2, types[3];
 
+#   ifdef HAVE_ERROR_CHECKING
+    MPI_Aint   size_with_aint;
+    MPI_Offset size_with_offset;
+#   endif
+
     /* for saving contents */
     int *ints;
     MPID_Datatype *new_dtp;
@@ -140,7 +145,7 @@ int MPI_Type_create_subarray(int ndims,
 						 "order");
 	    }
 
-#if 0
+#if 1
 	    /* TODO: INTEGRATE THIS CHECK AS WELL */
 	    NMPI_Type_extent(oldtype, &extent);
 
@@ -152,9 +157,17 @@ int MPI_Type_create_subarray(int ndims,
 	    size_with_offset = extent;
 	    for (i=0; i<ndims; i++) size_with_offset *= array_of_sizes[i];
 	    if (size_with_aint != size_with_offset) {
-		FPRINTF(stderr, "MPI_Type_create_subarray: Can't use an array of this size unless the MPI implementation defines a 64-bit MPI_Aint\n");
-		MPI_Abort(MPI_COMM_WORLD, 1);
-    }
+		/* FPRINTF(stderr, "MPI_Type_create_subarray: Can't use an array of this size unless the MPI implementation defines a 64-bit MPI_Aint\n"); */
+		/* MPI_Abort(MPI_COMM_WORLD, 1); */
+		mpi_errno = MPIR_Err_create_code(MPI_SUCCESS,
+						 MPIR_ERR_FATAL,
+						 FCNAME,
+						 __LINE__,
+						 MPI_ERR_ARG,
+						 "**subarrayoflow",
+						 "**subarrayoflow %L",
+						 size_with_offset);
+            }
 #endif
 
             /* Validate datatype_ptr */
@@ -181,14 +194,14 @@ int MPI_Type_create_subarray(int ndims,
 	else {
 	    mpi_errno = MPID_Type_vector(array_of_subsizes[1],
 					 array_of_subsizes[0],
-					 array_of_sizes[0],
+					 (MPI_Aint)(array_of_sizes[0]),
 					 0, /* stride in types */
 					 oldtype,
 					 &tmp1);
 	    
-	    size = array_of_sizes[0]*extent;
+	    size = ((MPI_Aint)(array_of_sizes[0])) * extent;
 	    for (i=2; i<ndims; i++) {
-		size *= array_of_sizes[i-1];
+		size *= (MPI_Aint)(array_of_sizes[i-1]);
 		mpi_errno = MPID_Type_vector(array_of_subsizes[i],
 					     1,
 					     size,
@@ -202,11 +215,11 @@ int MPI_Type_create_subarray(int ndims,
 	
 	/* add displacement and UB */
 	
-	disps[1] = array_of_starts[0];
+	disps[1] = (MPI_Aint)(array_of_starts[0]);
 	size = 1;
 	for (i=1; i<ndims; i++) {
-	    size *= array_of_sizes[i-1];
-	    disps[1] += size*array_of_starts[i];
+	    size *= (MPI_Aint)(array_of_sizes[i-1]);
+	    disps[1] += size * (MPI_Aint)(array_of_starts[i]);
 	}  
         /* rest done below for both Fortran and C order */
     }
@@ -221,15 +234,15 @@ int MPI_Type_create_subarray(int ndims,
 	else {
 	    mpi_errno = MPID_Type_vector(array_of_subsizes[ndims-2],
 					 array_of_subsizes[ndims-1],
-					 array_of_sizes[ndims-1],
+					 (MPI_Aint)(array_of_sizes[ndims-1]),
 					 0, /* stride in types */
 					 oldtype,
 					 &tmp1);
 	    
 
-	    size = array_of_sizes[ndims-1]*extent;
+	    size = (MPI_Aint)(array_of_sizes[ndims-1]) * extent;
 	    for (i=ndims-3; i>=0; i--) {
-		size *= array_of_sizes[i+1];
+		size *= (MPI_Aint)(array_of_sizes[i+1]);
 		mpi_errno = MPID_Type_vector(array_of_subsizes[i],
 					     1,    /* blocklen */
 					     size, /* stride */
@@ -244,18 +257,18 @@ int MPI_Type_create_subarray(int ndims,
 	
 	/* add displacement and UB */
 	
-	disps[1] = array_of_starts[ndims-1];
+	disps[1] = (MPI_Aint)(array_of_starts[ndims-1]);
 	size = 1;
 	for (i=ndims-2; i>=0; i--) {
-	    size *= array_of_sizes[i+1];
-	    disps[1] += size*array_of_starts[i];
+	    size *= (MPI_Aint)(array_of_sizes[i+1]);
+	    disps[1] += size * (MPI_Aint)(array_of_starts[i]);
 	}
     }
 
     disps[1] *= extent;
     
     disps[2] = extent;
-    for (i=0; i<ndims; i++) disps[2] *= array_of_sizes[i];
+    for (i=0; i<ndims; i++) disps[2] *= (MPI_Aint)(array_of_sizes[i]);
     
     disps[0] = 0;
     blklens[0] = blklens[1] = blklens[2] = 1;

@@ -1,4 +1,4 @@
-/* $Header$ */
+/* $Header: /msrc/proj/hpctools/cvs/tcgmsg/ipcv4.0/pfilecopy.c,v 1.9 2004/05/07 20:45:10 pollack Exp $ */
 
 #include <stdio.h>
 #ifdef SEQUENT

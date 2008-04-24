@@ -57,15 +57,15 @@ int main(int argc, char **argv)
     }
     if (extent != sizeof(int)) {
 	if (verbose) {
-	    fprintf(stderr, "MPI_Type_get_extent of MPI_INT returned incorrect extent (%d); should be %d.\n",
-		    (int) extent, (int) sizeof(int));
+	    fprintf(stderr, "MPI_Type_get_extent of MPI_INT returned incorrect extent (" MPI_AINT_FMT_DEC_SPEC "); should be %d.\n",
+		    extent, (int) sizeof(int));
 	}
 	errs++;
     }
     if (lb != 0) {
 	if (verbose) {
-	    fprintf(stderr, "MPI_Type_get_extent of MPI_INT returned incorrect lb (%d); should be 0.\n",
-		    (int) lb);
+	    fprintf(stderr, "MPI_Type_get_extent of MPI_INT returned incorrect lb (" MPI_AINT_FMT_DEC_SPEC "); should be 0.\n",
+		    lb);
 	}
 	errs++;
     }
@@ -78,8 +78,8 @@ int main(int argc, char **argv)
     }
     if (ub != extent - lb) {
 	if (verbose) {
-	    fprintf(stderr, "MPI_Type_ub of MPI_INT returned incorrect ub (%d); should be %d.\n",
-		    (int) ub, (int) (extent - lb));
+	    fprintf(stderr, "MPI_Type_ub of MPI_INT returned incorrect ub (" MPI_AINT_FMT_DEC_SPEC "); should be " MPI_AINT_FMT_DEC_SPEC ".\n",
+		    ub, (extent - lb));
 	}
 	errs++;
     }
@@ -109,15 +109,15 @@ int main(int argc, char **argv)
     }
     if (extent != sizeof(foo)) {
 	if (verbose) {
-	    fprintf(stderr, "MPI_Type_get_extent of MPI_FLOAT_INT returned incorrect extent (%d); should be %d.\n",
-		    (int) extent, (int) sizeof(foo));
+	    fprintf(stderr, "MPI_Type_get_extent of MPI_FLOAT_INT returned incorrect extent (" MPI_AINT_FMT_DEC_SPEC "); should be %d.\n",
+		    extent, (int) sizeof(foo));
 	}
 	errs++;
     }
     if (lb != 0) {
 	if (verbose) {
-	    fprintf(stderr, "MPI_Type_get_extent of MPI_FLOAT_INT returned incorrect lb (%d); should be 0.\n",
-		    (int) lb);
+	    fprintf(stderr, "MPI_Type_get_extent of MPI_FLOAT_INT returned incorrect lb (" MPI_AINT_FMT_DEC_SPEC "); should be 0.\n",
+		    lb);
 	}
 	errs++;
     }
@@ -130,8 +130,8 @@ int main(int argc, char **argv)
     }
     if (ub != extent - lb) {
 	if (verbose) {
-	    fprintf(stderr, "MPI_Type_ub of MPI_FLOAT_INT returned incorrect ub (%d); should be %d.\n",
-		    (int) ub, (int) (extent - lb));
+	    fprintf(stderr, "MPI_Type_ub of MPI_FLOAT_INT returned incorrect ub (" MPI_AINT_FMT_DEC_SPEC "); should be %d.\n",
+		    ub, (extent - lb));
 	}
 	errs++;
     }

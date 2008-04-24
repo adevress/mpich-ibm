@@ -3,11 +3,29 @@
  *  (C) 2001 by Argonne National Laboratory.
  *      See COPYRIGHT in top-level directory.
  */
+
+/* Change for BG/L made by Hao Yu, yuh@us.ibm.com
+ */
+
 #include "mpi.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 
+#define ON_BGL 1
+#if ON_BGL
+#   define DFLT_CB_BUFFER_SIZE     16777216
+#   define DFLT_IND_RD_BUFFER_SIZE 4194304
+#   define DFLT_IND_WR_BUFFER_SIZE 4194304
+#   define DFLT_ROMIO_CB_READ      "enable"
+#   define DFLT_ROMIO_CB_WRITE     "enable"
+#else
+#   define DFLT_CB_BUFFER_SIZE     16777216
+#   define DFLT_IND_RD_BUFFER_SIZE 4194304
+#   define DFLT_IND_WR_BUFFER_SIZE 524288
+#   define DFLT_ROMIO_CB_READ      "automatic"
+#   define DFLT_ROMIO_CB_WRITE     "automatic"
+#endif
 /* #undef INFO_DEBUG */
 
 /* Set verbose to 0 only if you want no information about any failure */
@@ -74,24 +92,24 @@ int main(int argc, char **argv)
 	    /* no check */
 	}
 	else if (!strcmp("cb_buffer_size", key)) {
-	    if (atoi(value) != 16777216) {
+	    if (atoi(value) != DFLT_CB_BUFFER_SIZE) {
 		errs++;
 		if (verbose) fprintf(stderr, "cb_buffer_size is %d; should be %d\n",
-				     atoi(value), 16777216);
+				     atoi(value), DFLT_CB_BUFFER_SIZE);
 	    }
 	}
 	else if (!strcmp("romio_cb_read", key)) {
-	    if (strcmp("automatic", value)) {
+	    if (strcmp(DFLT_ROMIO_CB_READ, value)) {
 		errs++;
 		if (verbose) fprintf(stderr, "romio_cb_read is set to %s; should be %s\n",
-				     value, "automatic");
+				     value, DFLT_ROMIO_CB_READ);
 	    }
 	}
 	else if (!strcmp("romio_cb_write", key)) {
-	    if (strcmp("automatic", value)) {
+	    if (strcmp(DFLT_ROMIO_CB_WRITE, value)) {
 		errs++;
 		if (verbose) fprintf(stderr, "romio_cb_write is set to %s; should be %s\n",
-				     value, "automatic");
+				     value, DFLT_ROMIO_CB_WRITE);
 	    }
 	}
 	else if (!strcmp("cb_nodes", key)) {
@@ -112,17 +130,17 @@ int main(int argc, char **argv)
 	    }
 	}
 	else if (!strcmp("ind_rd_buffer_size", key)) {
-	    if (atoi(value) != 4194304) {
+	    if (atoi(value) != DFLT_IND_RD_BUFFER_SIZE) {
 		errs++;
 		if (verbose) fprintf(stderr, "ind_rd_buffer_size is %d; should be %d\n",
-				     atoi(value), 4194304);
+				     atoi(value), DFLT_IND_RD_BUFFER_SIZE);
 	    }
 	}
 	else if (!strcmp("ind_wr_buffer_size", key)) {
-	    if (atoi(value) != 524288) {
+	    if (atoi(value) != DFLT_IND_WR_BUFFER_SIZE) {
 		errs++;
 		if (verbose) fprintf(stderr, "ind_wr_buffer_size is %d; should be %d\n",
-				     atoi(value), 524288);
+				     atoi(value), DFLT_IND_WR_BUFFER_SIZE);
 	    }
 	}
 	else if (!strcmp("romio_ds_read", key)) {
@@ -143,11 +161,13 @@ int main(int argc, char **argv)
 #endif
 	}
 	else if (!strcmp("cb_config_list", key)) {
+#if !ON_BGL
 	    if (strcmp("*:1", value)) {
 		errs++;
 		if (verbose) fprintf(stderr, "cb_config_list is set to %s; should be %s\n",
 				     value, "*:1");
 	    }
+#endif
 	}
 	else {
 	    if (verbose) fprintf(stderr, "unexpected key %s (not counted as an error)\n", key);
@@ -202,8 +222,10 @@ int main(int argc, char **argv)
     /* the striping unit in bytes */
     MPI_Info_set(info, "striping_unit", "131072");
 
+#if !ON_BGL
     /* set the cb_config_list so we'll get deterministic cb_nodes output */
     MPI_Info_set(info, "cb_config_list", "*:*");
+#endif
 
     /* the I/O device number from which to start striping the file.
        accepted only if 0 <= value < default_striping_factor; 
@@ -251,17 +273,17 @@ int main(int argc, char **argv)
 	    }
 	}
 	else if (!strcmp("romio_cb_read", key)) {
-	    if (strcmp("automatic", value)) {
+	    if (strcmp(DFLT_ROMIO_CB_READ, value)) {
 		errs++;
 		if (verbose) fprintf(stderr, "romio_cb_read is set to %s; should be %s\n",
-				     value, "automatic");
+				     value, DFLT_ROMIO_CB_READ);
 	    }
 	}
 	else if (!strcmp("romio_cb_write", key)) {
-	    if (strcmp("automatic", value)) {
+	    if (strcmp(DFLT_ROMIO_CB_WRITE, value)) {
 		errs++;
 		if (verbose) fprintf(stderr, "romio_cb_write is set to %s; should be %s\n",
-				     value, "automatic");
+				     value, DFLT_ROMIO_CB_WRITE);
 	    }
 	}
 	else if (!strcmp("cb_nodes", key)) {
@@ -310,11 +332,14 @@ int main(int argc, char **argv)
 #endif
 	}
 	else if (!strcmp("cb_config_list", key)) {
+	    /* Unreliable test -- value is file system dependent.  Ignore. */
+#if !ON_BGL
 	    if (strcmp("*:*", value)) {
 		errs++;
 		if (verbose) fprintf(stderr, "cb_config_list is set to %s; should be %s\n",
 				     value, "*:*");
 	    }
+#endif
 	}
 	else {
 	    if (verbose) fprintf(stderr, "unexpected key %s (not counted as an error)\n", key);

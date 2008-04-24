@@ -1,4 +1,4 @@
-/* $Header$ */
+/* $Header: /msrc/proj/hpctools/cvs/tcgmsg/ipcv4.0/brdcst.c,v 1.6 2002/07/17 17:20:11 vinod Exp $ */
 
 #include "sndrcv.h"
 

@@ -63,7 +63,8 @@ int main(int argc, char **argv)
     MPI_Type_size(mem_dtype, &mem_dtype_sz);
     MPI_Type_extent(mem_dtype, &mem_dtype_ext);
 
-    mem_buf_sz    = 2 * mem_dtype_ext;
+    /* assert((unsigned)mem_dtype_ext < 0x80000000UL); */
+    mem_buf_sz    = 2 * (int)mem_dtype_ext;
     unpack_buf_sz = 2 * mem_dtype_sz;
 
     if ((mem_buf = (char *) malloc(mem_buf_sz)) == NULL)
@@ -83,18 +84,18 @@ int main(int argc, char **argv)
     for (i = 0; i < unpack_buf_sz; i++)
 	unpack_buf[i] = 'a' + i;
     
-    /* print_char_buf("mem_buf before unpack", mem_buf, 2 * mem_dtype_ext); */
+    /* print_char_buf("mem_buf before unpack", mem_buf, 2 * (int)mem_dtype_ext); */
 
     MPI_Unpack(unpack_buf, unpack_buf_sz, &buf_pos,
 	       mem_buf, 2, mem_dtype, MPI_COMM_SELF);
     /* Note: Unpack without a Pack is not technically correct, but should work
      * with MPICH2. */
 
-    /* print_char_buf("mem_buf after unpack", mem_buf, 2 * mem_dtype_ext);
+    /* print_char_buf("mem_buf after unpack", mem_buf, 2 * (int)mem_dtype_ext);
        print_char_buf("correct buffer should be", 
-                       correct_buf, 2 * mem_dtype_ext); */
+                       correct_buf, 2 * (int)mem_dtype_ext); */
 
-    if (memcmp(mem_buf, correct_buf, 2 * mem_dtype_ext)) {
+    if (memcmp(mem_buf, correct_buf, 2 * (int)mem_dtype_ext)) {
 	printf("Unpacked buffer does not match expected buffer\n");
 	errs++;
     }

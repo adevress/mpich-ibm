@@ -1,4 +1,4 @@
-/* $Header$ */
+/* $Header: /msrc/proj/hpctools/cvs/tcgmsg/ipcv4.0/strtok.c,v 1.5 2004/04/01 02:04:57 manoj Exp $ */
 
 /*
   Primitive version of strtok for alliant etc who don't have it.

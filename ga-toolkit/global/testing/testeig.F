@@ -1,4 +1,4 @@
-c $Id$
+c $Id: testeig.F,v 1.10 2004/11/13 02:49:18 edo Exp $
       program test
       implicit none
 #include "mafdecls.fh"

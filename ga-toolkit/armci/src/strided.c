@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: strided.c,v 1.112.2.6 2007/05/07 22:52:32 manoj Exp $ */
 #include "armcip.h"
 #include "copy.h"
 #include "acc.h"
@@ -6,9 +6,14 @@
 #include <stdio.h>
 #include <assert.h>
 
+#ifdef ARMCIX
+#include "x/armcix.h"
+#endif
+
 #ifdef GA_USE_VAMPIR
 #include "armci_vampir.h"
 #endif
+
 #ifdef ARMCI_PROFILE
 #include "armci_profile.h"
 #endif
@@ -31,7 +36,7 @@ else\
 #  endif
 #endif
 
-#ifdef BGML
+#if defined(BGML) || defined(ARMCIX)
 #define PREPROCESS_STRIDED(tmp_count)
 #define POSTPROCESS_STRIDED(tmp_count)
 #else
@@ -604,6 +609,8 @@ int ARMCI_PutS( void *src_ptr,        /* pointer to 1st segment at source*/
     ARMCI_NbPutS(src_ptr, src_stride_arr, dst_ptr, dst_stride_arr, count,
                  stride_levels, proc, &nb_handle);
     ARMCI_Wait(&nb_handle);
+#elif ARMCIX
+    ARMCIX_PutS (src_ptr, src_stride_arr, dst_ptr, dst_stride_arr, count, stride_levels, proc);
 #else
 
 
@@ -941,6 +948,8 @@ int ARMCI_GetS( void *src_ptr,  	/* pointer to 1st segment at source*/
    ARMCI_NbGetS(src_ptr, src_stride_arr, dst_ptr, dst_stride_arr, count,
                                 stride_levels, proc, &nb_handle);
    ARMCI_Wait(&nb_handle);
+#elif ARMCIX
+   ARMCIX_GetS (src_ptr, src_stride_arr, dst_ptr, dst_stride_arr, count, stride_levels, proc);
 #else
 
 #ifndef QUADRICS
@@ -1073,6 +1082,9 @@ int ARMCI_AccS( int  optype,            /* operation */
     ARMCI_NbAccS(optype, scale, src_ptr, src_stride_arr, dst_ptr,
                  dst_stride_arr, count, stride_levels, proc, &nb_handle);
     ARMCI_Wait(&nb_handle);
+#elif ARMCIX
+    ARMCIX_AccS (optype, scale, src_ptr, src_stride_arr, dst_ptr,
+                 dst_stride_arr, count, stride_levels, proc);
 #else
 
     direct=SAMECLUSNODE(proc);
@@ -1125,11 +1137,10 @@ int ARMCI_Put(void *src, void* dst, int bytes, int proc)
    unsigned count=1;
    BGML_Callback_t cb_wait={wait_callback, &count};
    BG1S_t request;
-   /* BGML_CriticalSection_enter(); */
    BG1S_Memput(&request, proc, src, 0, dst, bytes, &cb_wait, 1);
    BGML_Wait(&count);
-   /* while (count) BGML_Messager_advance();
-      BGML_CriticalSection_exit(); */
+#elif ARMCIX
+    rc = ARMCIX_Put(src, dst, bytes, proc);
 #else
 
        rc = ARMCI_PutS(src, NULL, dst, NULL, &bytes, 0, proc);
@@ -1169,6 +1180,8 @@ int ARMCI_Get(void *src, void* dst, int bytes, int proc)
    BGML_Callback_t cb_wait={wait_callback, &count};
    BG1S_Memget(&request, proc, dst, 0, src, bytes, &cb_wait, 1);
    BGML_Wait(&count);
+#elif ARMCIX
+    rc = ARMCIX_Get(src, dst, bytes, proc);
 #else
        rc = ARMCI_GetS(src, NULL, dst, NULL, &bytes, 0, proc);
 #endif
@@ -1429,7 +1442,9 @@ int ARMCI_NbPutS( void *src_ptr,        /* pointer to 1st segment at source*/
 	nb_handle->bufid=NB_NONE;
       }
       else
+      {
         nb_handle = armci_set_implicit_handle(PUT, proc);
+      }
     }
 #ifdef BGML
     nb_handle->count = 1;
@@ -1439,7 +1454,9 @@ int ARMCI_NbPutS( void *src_ptr,        /* pointer to 1st segment at source*/
                   dst_ptr, dst_stride_arr,
                   seg_count, stride_levels,
                   0, &cb_wait, 1);
-#endif
+#elif ARMCIX
+    ARMCIX_NbPutS (src_ptr, src_stride_arr, dst_ptr, dst_stride_arr, count, stride_levels, proc, nb_handle);
+#else
 
 #if defined(DOELAN4)
     if(!direct) switch(stride_levels) {
@@ -1503,6 +1520,7 @@ int ARMCI_NbPutS( void *src_ptr,        /* pointer to 1st segment at source*/
 		       dst_ptr,dst_stride_arr,count,stride_levels, 0,nb_handle);
       }
     
+#endif
     POSTPROCESS_STRIDED(tmp_count);
 #ifdef ARMCI_PROFILE
     armci_profile_stop_strided(ARMCI_PROF_NBPUTS);
@@ -1583,7 +1601,9 @@ int ARMCI_NbGetS( void *src_ptr,  	/* pointer to 1st segment at source*/
 	nb_handle->bufid=NB_NONE;
       }
       else
+      {
         nb_handle = armci_set_implicit_handle(GET, proc);
+        }
     }
 #ifdef DOELAN4
     if(stride_levels==0){
@@ -1644,9 +1664,13 @@ int ARMCI_NbGetS( void *src_ptr,  	/* pointer to 1st segment at source*/
        }else
                DefaultPath: /* standard buffered path */
 #endif
+#ifdef ARMCIX
+       rc = ARMCIX_NbGetS (src_ptr, src_stride_arr, dst_ptr, dst_stride_arr, count, stride_levels, proc, nb_handle);
+#else
           rc = armci_pack_strided(GET, NULL, proc, src_ptr, src_stride_arr,
                                  dst_ptr,dst_stride_arr,count,stride_levels,
                                  NULL,-1,-1,-1,nb_handle);
+#endif
     }else
 #else
        /* avoid LAPI_GetV */
@@ -1655,9 +1679,10 @@ int ARMCI_NbGetS( void *src_ptr,  	/* pointer to 1st segment at source*/
                                dst_stride_arr, count, stride_levels, nb_handle);
        else
 #endif
+{
        rc = armci_op_strided(GET, NULL, proc, src_ptr, src_stride_arr, dst_ptr,
                              dst_stride_arr,count, stride_levels,0,nb_handle);
-
+}
     POSTPROCESS_STRIDED(tmp_count);
 #endif /*bgml*/
 
@@ -1782,7 +1807,7 @@ int ARMCI_NbAccS( int  optype,            /* operation */
 }
 
 
-#if !defined(ACC_COPY)&&!defined(CRAY_YMP)&&!defined(CYGNUS)&&!defined(CYGWIN) &&!defined(BGML)
+#if !defined(ACC_COPY)&&!defined(CRAY_YMP)&&!defined(CYGNUS)&&!defined(CYGWIN) &&!defined(BGML)&&!defined(DCMF)
 #   define REMOTE_OP
 #endif
 
@@ -1843,6 +1868,9 @@ int ARMCI_NbPut(void *src, void* dst, int bytes, int proc,armci_hdl_t* uhandle)
       nb_handle->count = 1;
       BGML_Callback_t cb_wait={wait_callback, &nb_handle->count};
       BG1S_Memput(&nb_handle->cmpl_info, proc, src, 0, dst, bytes, &cb_wait, 1);
+#elif ARMCIX
+      INIT_NB_HANDLE(nb_handle,PUT,proc);
+      rc = ARMCIX_NbPut(src, dst, bytes, proc, nb_handle);
 #else
 #     ifdef ARMCI_NB_PUT
       /*set tag and op in the nb handle*/
@@ -1916,6 +1944,9 @@ int ARMCI_NbGet(void *src, void* dst, int bytes, int proc,armci_hdl_t* uhandle)
       nb_handle->count = 1;
       BGML_Callback_t cb_wait={wait_callback, &nb_handle->count};
       BG1S_Memget(&nb_handle->cmpl_info, proc, dst, 0, src, bytes, &cb_wait, 1);
+#elif ARMCIX
+      INIT_NB_HANDLE(nb_handle,GET,proc);
+      rc = ARMCIX_NbGet(src, dst, bytes, proc, nb_handle);
 #else
 
 #     ifdef ARMCI_NB_GET

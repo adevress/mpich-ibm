@@ -34,8 +34,8 @@
 
    Input Parameters:
 + oldtype - input datatype (handle) 
-. lb - new lower bound of datatype (integer) 
-- extent - new extent of datatype (integer) 
+. lb - new lower bound of datatype (address integer) 
+- extent - new extent of datatype (address integer) 
 
    Output Parameter:
 . newtype - output datatype (handle) 
@@ -120,7 +120,10 @@ int MPI_Type_create_resized(MPI_Datatype oldtype,
     {
 	mpi_errno = MPIR_Err_create_code(
 	    mpi_errno, MPIR_ERR_RECOVERABLE, FCNAME, __LINE__, MPI_ERR_OTHER, "**mpi_type_create_resized",
-	    "**mpi_type_create_resized %D %d %d %p", oldtype, lb, extent, newtype);
+	    "**mpi_type_create_resized %D %L %L %p", oldtype, 
+	    MPI_AINT_CAST_TO_LONG_LONG lb, 
+	    MPI_AINT_CAST_TO_LONG_LONG extent, 
+	    newtype);
     }
 #   endif
     mpi_errno = MPIR_Err_return_comm( NULL, FCNAME, mpi_errno );

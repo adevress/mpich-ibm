@@ -35,12 +35,12 @@
    Input Parameters:
 + datarep - data representation (string)  
 . inbuf - input buffer start (choice)  
-. insize - input buffer size, in bytes (integer)  
+. insize - input buffer size, in bytes (address integer)  
 . outcount - number of output data items (integer)  
 . datatype - datatype of output data item (handle)  
 
    Input/Output Parameter:
-. position - current position in buffer, in bytes (integer)  
+. position - current position in buffer, in bytes (address integer)  
 
    Output Parameter:
 . outbuf - output buffer start (choice)  
@@ -118,12 +118,15 @@ int MPI_Unpack_external(char *datarep,
     first = 0;
     last  = SEGMENT_IGNORE_LAST;
 
+    /* Ensure that pointer increment fits in a pointer */
+    MPID_Ensure_Aint_fits_in_pointer( (MPI_VOID_PTR_CAST_TO_MPI_AINT inbuf) + *position );
+
     MPID_Segment_unpack_external32(segp,
 				   first,
 				   &last,
 				   (void *) ((char *) inbuf + *position));
 
-    *position += (int) last;
+    *position += last;
 
     MPID_Segment_free(segp);
     if (mpi_errno != MPI_SUCCESS) goto fn_fail;
@@ -140,7 +143,9 @@ int MPI_Unpack_external(char *datarep,
     {
 	mpi_errno = MPIR_Err_create_code(
 	    mpi_errno, MPIR_ERR_RECOVERABLE, FCNAME, __LINE__, MPI_ERR_OTHER, "**mpi_unpack_external",
-	    "**mpi_unpack_external %s %p %d %p %p %d %D", datarep, inbuf, insize, position, outbuf, outcount, datatype);
+	    "**mpi_unpack_external %s %p %L %p %p %d %D", datarep, inbuf, 
+	    MPI_AINT_CAST_TO_LONG_LONG insize, 
+	    position, outbuf, outcount, datatype);
     }
 #   endif
     mpi_errno = MPIR_Err_return_comm( NULL, FCNAME, mpi_errno );

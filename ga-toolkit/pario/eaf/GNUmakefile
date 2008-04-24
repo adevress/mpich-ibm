@@ -1,4 +1,4 @@
-#$Id$
+#$Id: GNUmakefile,v 1.5 2003/07/09 20:10:20 d3h325 Exp $
 
           OBJ = eaf.o eaf_f2c.o
       LIBRARY = libpario.a

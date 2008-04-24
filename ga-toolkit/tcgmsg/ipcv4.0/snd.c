@@ -1,4 +1,4 @@
-/* $Header$ */
+/* $Header: /msrc/proj/hpctools/cvs/tcgmsg/ipcv4.0/snd.c,v 1.21 2004/04/01 02:04:57 manoj Exp $ */
 
 #include <stdio.h>
 #include <stdlib.h>

@@ -86,7 +86,7 @@ int MPID_Type_blockindexed(int count,
 
     if (is_builtin)
     {
-	el_sz   = MPID_Datatype_get_basic_size(oldtype);
+	el_sz   = (MPI_Aint)MPID_Datatype_get_basic_size(oldtype);
 	el_type = oldtype;
 
 	old_lb        = 0;
@@ -96,7 +96,8 @@ int MPID_Type_blockindexed(int count,
 	old_extent    = el_sz;
 	old_is_contig = 1;
 
-	new_dtp->size          = count * blocklength * el_sz;
+	new_dtp->size          = (MPI_Aint)count * 
+	                         (MPI_Aint)blocklength * el_sz;
 	new_dtp->has_sticky_lb = 0;
 	new_dtp->has_sticky_ub = 0;
 
@@ -123,7 +124,9 @@ int MPID_Type_blockindexed(int count,
 	old_extent    = old_dtp->extent;
 	old_is_contig = old_dtp->is_contig;
 
-	new_dtp->size           = count * blocklength * old_dtp->size;
+	new_dtp->size           = (MPI_Aint)count * 
+	                          (MPI_Aint)blocklength * 
+	                          (MPI_Aint)old_dtp->size;
 	new_dtp->has_sticky_lb  = old_dtp->has_sticky_lb;
 	new_dtp->has_sticky_ub  = old_dtp->has_sticky_ub;
 
@@ -138,7 +141,7 @@ int MPID_Type_blockindexed(int count,
     /* priming for loop */
     eff_disp = (dispinbytes) ? ((MPI_Aint *) displacement_array)[0] :
 	(((MPI_Aint) ((int *) displacement_array)[0]) * old_extent);
-    MPID_DATATYPE_BLOCK_LB_UB((MPI_Aint) blocklength,
+    MPID_DATATYPE_BLOCK_LB_UB((MPI_Aint)blocklength,
 			      eff_disp,
 			      old_lb,
 			      old_ub,
@@ -153,7 +156,7 @@ int MPID_Type_blockindexed(int count,
 
 	eff_disp = (dispinbytes) ? ((MPI_Aint *) displacement_array)[i] :
 	    (((MPI_Aint) ((int *) displacement_array)[i]) * old_extent);
-	MPID_DATATYPE_BLOCK_LB_UB((MPI_Aint) blocklength,
+	MPID_DATATYPE_BLOCK_LB_UB((MPI_Aint)blocklength,
 				  eff_disp,
 				  old_lb,
 				  old_ub,
@@ -175,7 +178,7 @@ int MPID_Type_blockindexed(int count,
      * its size and extent are the same, and the old type was also
      * contiguous.
      */
-    if (old_is_contig && (new_dtp->size == new_dtp->extent))
+    if (old_is_contig && ((MPI_Aint)new_dtp->size == new_dtp->extent))
     {
 	contig_count = MPIDI_Type_blockindexed_count_contig(count,
 							    blocklength,
@@ -216,11 +219,11 @@ int MPIDI_Type_blockindexed_count_contig(int count,
     }
     else
     {
-	int cur_bdisp = ((MPI_Aint *) disp_array)[0];
+	MPI_Aint cur_bdisp = ((MPI_Aint *) disp_array)[0];
 
 	for (i=1; i < count; i++)
 	{
-	    if (cur_bdisp + blklen * old_extent !=
+	    if (cur_bdisp + (MPI_Aint)blklen * old_extent !=
 		((MPI_Aint *) disp_array)[i])
 	    {
 		contig_count++;

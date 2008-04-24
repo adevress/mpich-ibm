@@ -298,19 +298,19 @@ print MPIBASEFD "
         END SUBROUTINE MPI_INIT_THREAD
 
         FUNCTION MPI_WTIME()
-            DOUBLE PRECISION MPI_WTIME
+            REAL*8 MPI_WTIME
         END FUNCTION MPI_WTIME
 !
         FUNCTION MPI_WTICK()
-            DOUBLE PRECISION MPI_WTICK
+            REAL*8 MPI_WTICK
         END FUNCTION MPI_WTICK
 
         FUNCTION PMPI_WTIME()
-            DOUBLE PRECISION PMPI_WTIME
+            REAL*8 PMPI_WTIME
         END FUNCTION PMPI_WTIME
 !
         FUNCTION PMPI_WTICK()
-            DOUBLE PRECISION PMPI_WTICK
+            REAL*8 PMPI_WTICK
         END FUNCTION PMPI_WTICK
 
         SUBROUTINE MPI_NULL_DELETE_FN(a,b,c,d,e)
@@ -681,7 +681,7 @@ print MAKEFD "\
 mpifnoext.h: ../f77/mpif.h
 	rm -f mpifnoext.h
 	sed -e 's/^C/\\!/g' -e '/EXTERNAL/d' \\
-		-e '/DOUBLE PRECISION/d' ../f77/mpif.h > mpifnoext.h
+		-e '/DOUBLE PRECISION/d' -e '/REAL\\*8/d' ../f77/mpif.h > mpifnoext.h
 ";
 print MAKEFD "
 # To ensure that f90 can be used before a make-install step, we copy

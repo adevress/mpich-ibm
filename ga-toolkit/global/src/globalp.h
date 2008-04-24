@@ -53,6 +53,8 @@
 #     define MAX_NPROC    2048
 #   elif defined(BGML)
 #     define MAX_NPROC    2048
+#   elif defined(DCMF)
+#     define MAX_NPROC     8192
 #   else
 #     define MAX_NPROC    2048     /* default for everything else */
 #   endif

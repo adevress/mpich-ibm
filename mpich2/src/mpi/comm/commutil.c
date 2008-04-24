@@ -186,10 +186,7 @@ int MPIR_Setup_intercomm_localcomm( MPID_Comm *intercomm_ptr )
  * These assume that int is 32 bits; they should use uint_32 instead, 
  * and an MPI_UINT32 type (should be able to use MPI_INTEGER4)
  */
-
-/* Both the threaded and non-threaded routines use the same mask of available
-   context id values. */
-#define MAX_CONTEXT_MASK 32
+#define MAX_CONTEXT_MASK 256
 static unsigned int context_mask[MAX_CONTEXT_MASK];
 static int initialize_context_mask = 1;
 

@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: semaphores.c,v 1.12 2005/03/10 19:11:23 vinodtipparaju Exp $ */
 #include "semaphores.h"
 #include <stdio.h>
 #include <unistd.h>

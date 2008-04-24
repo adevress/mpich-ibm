@@ -37,7 +37,7 @@ Input Parameter:
 . location - location in caller memory (choice) 
 
 Output Parameter:
-. address - address of location (address) 
+. address - address of location (address integer) 
 
    Notes:
     This routine is provided for both the Fortran and C programmers.
@@ -98,14 +98,14 @@ int MPI_Get_address(void *location, MPI_Aint *address)
        standard, I can't tell if this is a compiler bug or a language bug.
     */
 #ifdef CHAR_PTR_IS_ADDRESS
-    *address = (MPI_Aint) ((char *)location);
+    *address = MPI_VOID_PTR_CAST_TO_MPI_AINT ((char *)location);
 #else
     /* Note that this is the "portable" way to generate an address.
        The difference of two pointers is the number of elements
        between them, so this gives the number of chars between location
        and ptr.  As long as sizeof(char) represents one byte, 
        of bytes from 0 to location */
-    *address = (MPI_Aint) ((char *)location - (char *)MPI_BOTTOM);
+    *address = MPI_VOID_PTR_CAST_TO_MPI_AINT ((char *)location - (char *)MPI_BOTTOM);
 #endif
     /* The same code is used in MPI_Address */
     

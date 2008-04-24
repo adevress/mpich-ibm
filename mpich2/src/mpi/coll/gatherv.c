@@ -71,6 +71,10 @@ int MPIR_Gatherv (
         comm_size = comm_ptr->local_size;
         MPID_Datatype_get_extent_macro(recvtype, extent);
 
+         /* each node can make sure it is not going to overflow aint */
+        MPID_Ensure_Aint_fits_in_pointer((
+         MPI_VOID_PTR_CAST_TO_MPI_AINT recvbuf + displs[rank] * extent));
+
         for ( i=0; i<root; i++ ) {
             if (recvcnts[i]) {
                 mpi_errno = MPIC_Recv(((char *)recvbuf+displs[i]*extent), 
@@ -88,6 +92,8 @@ int MPIR_Gatherv (
         }
         if (sendbuf != MPI_IN_PLACE) {
             if (recvcnts[rank]) {
+               MPID_Ensure_Aint_fits_in_pointer((
+                  MPI_VOID_PTR_CAST_TO_MPI_AINT recvbuf + displs[rank]*extent));
                 mpi_errno = MPIR_Localcopy(sendbuf, sendcnt, sendtype,
                                            ((char *)recvbuf+displs[rank]*extent), 
                                            recvcnts[rank], recvtype);
@@ -100,6 +106,9 @@ int MPIR_Gatherv (
 		/* --END ERROR HANDLING-- */
             }
         }
+        MPID_Ensure_Aint_fits_in_pointer((
+         MPI_VOID_PTR_CAST_TO_MPI_AINT recvbuf + displs[rank] * extent));
+
         for ( i=root+1; i<comm_size; i++ ) {
             if (recvcnts[i]) {
                 mpi_errno = MPIC_Recv(((char *)recvbuf+displs[i]*extent), 
@@ -122,6 +131,8 @@ int MPIR_Gatherv (
         remote_comm_size = comm_ptr->remote_size;
         MPID_Datatype_get_extent_macro(recvtype, extent);
 
+         MPID_Ensure_Aint_fits_in_pointer((
+            MPI_VOID_PTR_CAST_TO_MPI_AINT recvbuf + displs[rank] * extent));
         for (i=0; i<remote_comm_size; i++) {
             if (recvcnts[i]) {
                 mpi_errno = MPIC_Recv(((char *)recvbuf+displs[i]*extent), 
@@ -254,7 +265,7 @@ int MPI_Gatherv(void *sendbuf, int sendcnt, MPI_Datatype sendtype,
                         MPID_Datatype_get_ptr(recvtype, recvtype_ptr);
                         MPID_Datatype_valid_ptr( recvtype_ptr, mpi_errno );
                         MPID_Datatype_committed_ptr( recvtype_ptr, mpi_errno );
-                    }
+                     }
 
                     for (i=0; i<comm_size; i++) {
                         if (recvcnts[i] > 0) {

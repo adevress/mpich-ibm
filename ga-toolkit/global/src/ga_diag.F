@@ -2,7 +2,7 @@
 #include "ga_vampir.fh"
 #endif
       subroutine ga_diag_std(g_a, g_v, eval)
-C$Id$
+C$Id: ga_diag.F,v 1.26 2004/10/19 22:39:20 edo Exp $
       implicit none
 #include "mafdecls.fh"
 #include "global.fh"

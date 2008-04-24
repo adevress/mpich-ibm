@@ -1,19 +1,12 @@
-/* $Id$ */
-
-/*******************************************************************/
-/* Product(s):                                                     */
-/* 5733-BG1                                                        */
-/*                                                                 */
-/* (C) Copyright IBM Corp. 2005, 2005                              */
-/* All rights reserved.                                            */
-/* US Government Users Restricted Rights -                         */
-/* Use, duplication or disclosure restricted                       */
-/* by GSA ADP Schedule Contract with IBM Corp.                     */
-/*                                                                 */
-/* Licensed Materials-Property of IBM                              */
-/*                                                                 */
-/*******************************************************************/
-
+/* begin_generated_IBM_copyright_prolog                             */
+/*                                                                  */
+/* ---------------------------------------------------------------- */
+/* (C)Copyright IBM Corp.  2007, 2008                               */
+/* IBM BSD License                                                  */
+/* ---------------------------------------------------------------- */
+/*                                                                  */
+/* end_generated_IBM_copyright_prolog                               */
+/* $Id: bgml.h,v 1.1.4.4 2007/05/07 22:52:31 manoj Exp $ */
 /*!
  * \file bgml.h
  * \brief Common external message layer interface.

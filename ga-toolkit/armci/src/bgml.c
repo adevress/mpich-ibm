@@ -1,31 +1,15 @@
-/* $Id$ */
 /* begin_generated_IBM_copyright_prolog                             */
 /*                                                                  */
-/* This is an automatically generated copyright prolog.             */
-/* After initializing,  DO NOT MODIFY OR MOVE                       */
 /* ---------------------------------------------------------------- */
-/* Product(s):                                                      */
-/* 5733-BG1                                                         */
+/* (C)Copyright IBM Corp.  2007, 2008                               */
+/* IBM BSD License                                                  */
+/* ---------------------------------------------------------------- */
 /*                                                                  */
-/* (C)Copyright IBM Corp. 2004, 2004                                */
-/* All rights reserved.                                             */
-/* US Government Users Restricted Rights -                          */
-/* Use, duplication or disclosure restricted                        */
-/* by GSA ADP Schedule Contract with IBM Corp.                      */
-/*                                                                  */
-/* Licensed Materials-Property of IBM                               */
-/* --------------------------------------------------------------   */
 /* end_generated_IBM_copyright_prolog                               */
-/********************************************************************/
+/* $Id: bgml.c,v 1.1.4.4 2007/05/07 22:52:31 manoj Exp $ */
 
 static char COPYRIGHT[] =
-"Licensed Materials - Property                                          \
- of IBM, 5733-BG1 (C) COPYRIGHT 2004, 2004                              \
- All Rights Reserved. US Government Users restricted Rights -           \
- Use, Duplication or Disclosure restricted by GSA ADP Schedule          \
- Contract with IBM Corp.";
-
-
+"(C)Copyright IBM Corp.  2007, 2008\nIBM BSD License.";
 
 #include <assert.h>
 #include "bgml.h"
@@ -33,6 +17,7 @@ static char COPYRIGHT[] =
 #include <unistd.h>
 #include "memlock.h"
 #include<stdio.h>
+
 
 void wait_callback(void *clientdata)
 {

@@ -38,8 +38,8 @@
 . datatype - datatype to get information on (handle) 
 
    Output Parameters:
-+ true_lb - true lower bound of datatype (integer) 
-- true_extent - true size of datatype (integer) 
++ true_lb - true lower bound of datatype (address integer) 
+- true_extent - true size of datatype (address integer) 
 
 .N SignalSafe
 

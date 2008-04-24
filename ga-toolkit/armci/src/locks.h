@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: locks.h,v 1.25.4.6 2007/08/03 19:38:22 manoj Exp $ */
 #ifndef _ARMCI_LOCKS_H_
 #define _ARMCI_LOCKS_H_
 #include <sys/types.h>
@@ -6,7 +6,11 @@
 #define NUM_LOCKS MAX_LOCKS 
 
 #ifndef EXTERN
+#ifdef ARMCIX
+#   define EXTERN
+#else
 #   define EXTERN extern
+#endif
 #endif
 #ifdef QUADRICS
 #include <elan/elan.h>
@@ -39,14 +43,14 @@
 #endif
 
 
-#if (defined(SPINLOCK) || defined(PMUTEXES) || defined(HITACHI)) && !defined(BGML)
+#if (defined(SPINLOCK) || defined(PMUTEXES) || defined(HITACHI)) && !(defined(BGML) || defined(DCMF))
 #  include "shmem.h"
    typedef struct {
      long off;
      long idlist[SHMIDLEN];
    }lockset_t;
    extern lockset_t lockid;
-#elif defined(BGML)
+#elif defined(BGML) || defined(DCMF)
    typedef int lockset_t;
 #endif
 

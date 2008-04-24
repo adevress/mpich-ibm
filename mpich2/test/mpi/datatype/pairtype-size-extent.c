@@ -25,9 +25,9 @@ pairtypes[] =
 
 int parse_args(int argc, char **argv);
 
-MPI_Aint pairtype_displacement(MPI_Datatype type, int *out_size_p);
+MPI_Aint pairtype_displacement(MPI_Datatype type, MPI_Aint *out_size_p);
 
-MPI_Aint pairtype_displacement(MPI_Datatype type, int *out_size_p)
+MPI_Aint pairtype_displacement(MPI_Datatype type, MPI_Aint *out_size_p)
 {
     MPI_Aint disp;
 
@@ -78,8 +78,8 @@ int main(int argc, char *argv[])
     parse_args(argc, argv);
 
     for (i=0; pairtypes[i].atype != (MPI_Datatype) -1; i++) {
-	int atype_size, ptype_size, stype_size, handbuilt_extent;
-	MPI_Aint ptype_extent, stype_extent, dummy_lb;
+	int atype_size, ptype_size, stype_size;
+	MPI_Aint ptype_extent, stype_extent, handbuilt_extent, dummy_lb;
 
 	types[0] = pairtypes[i].atype;
 
@@ -110,9 +110,15 @@ int main(int argc, char *argv[])
 	    errs++;
 
 	    if (verbose) fprintf(stderr,
-				 "extent of %s (%d) does not match extent of either hand-built MPI struct (%d) or equivalent C struct (%d)\n",
-				 pairtypes[i].name, (int) ptype_extent,
-				 (int) stype_extent,
+				 "extent of %s ("
+				 MPI_AINT_FMT_DEC_SPEC
+				 ") does not match extent of either hand-built MPI struct ("
+				 MPI_AINT_FMT_DEC_SPEC
+				 ") or equivalent C struct ("
+				 MPI_AINT_FMT_DEC_SPEC
+				 ")\n",
+				 pairtypes[i].name, ptype_extent,
+				 stype_extent,
 				 handbuilt_extent);
 	}
 	MPI_Type_free( &stype );

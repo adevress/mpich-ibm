@@ -1,4 +1,4 @@
-CC          = @CC@
+
 AR          = @AR@
 LIBNAME     = @LIBNAME@
 RANLIB      = @RANLIB@

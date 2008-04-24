@@ -1,4 +1,4 @@
-/* $Header$ */
+/* $Header: /msrc/proj/hpctools/cvs/tcgmsg/ipcv5.0/pbeginf.c,v 1.4 2006/01/19 02:18:59 manoj Exp $ */
 
 #include <stdio.h>
 #include "farg.h"

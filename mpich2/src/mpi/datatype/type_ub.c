@@ -38,7 +38,7 @@ Input Parameters:
 
 Output Parameter:
 . displacement - displacement of upper bound from origin, 
-                             in bytes (integer) 
+                             in bytes (address integer) 
 
 .N Deprecated
 The replacement for this routine is 'MPI_Type_get_extent'

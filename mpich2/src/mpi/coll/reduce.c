@@ -146,6 +146,12 @@ int MPIR_Reduce (
     if (mpi_errno) { MPIU_ERR_POP(mpi_errno); }
     MPID_Datatype_get_extent_macro(datatype, extent);
 
+   /* I think this is the worse case, so we can avoid an assert() 
+    * inside the for loop */
+   /* should be buf+{this}? */
+    MPID_Ensure_Aint_fits_in_pointer(
+      (count*(MPIR_MAX(extent, true_extent))));
+
     MPIU_CHKLMEM_MALLOC(tmp_buf, void *, count*(MPIR_MAX(extent,true_extent)),
 			mpi_errno, "temporary buffer");
     /* adjust for potential negative lower bound in datatype */
@@ -606,6 +612,7 @@ int MPIR_Reduce_inter (
     MPIU_THREADPRIV_GET;
     MPIR_Nest_incr();
     
+
     comm = comm_ptr->handle;
 
     if (root == MPI_ROOT) {
@@ -629,6 +636,11 @@ int MPIR_Reduce_inter (
 	    if (mpi_errno) { MPIU_ERR_POP(mpi_errno); }
 
             MPID_Datatype_get_extent_macro(datatype, extent);
+   /* I think this is the worse case, so we can avoid an assert() 
+    * inside the for loop */
+   /* Should MPIU_CHKLMEM_MALLOC do this? */
+    MPID_Ensure_Aint_fits_in_pointer(
+      (count*(MPIR_MAX(extent, true_extent))));
 	    MPIU_CHKLMEM_MALLOC(tmp_buf, void *, count*(MPIR_MAX(extent,true_extent)), mpi_errno, "temporary buffer");
             /* adjust for potential negative lower bound in datatype */
             tmp_buf = (void *)((char*)tmp_buf - true_lb);

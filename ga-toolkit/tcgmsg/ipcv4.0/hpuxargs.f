@@ -1,5 +1,5 @@
 c
-c     $Header$
+c     $Header: /msrc/proj/hpctools/cvs/tcgmsg/ipcv4.0/hpuxargs.f,v 1.4 1995/02/24 02:17:21 d3h325 Exp $
 c
       integer function hpargc()
       hpargc = iargc() + 1

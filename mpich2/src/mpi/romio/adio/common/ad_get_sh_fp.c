@@ -5,6 +5,9 @@
  */
 
 #include "adio.h"
+#ifdef ROMIO_BGL
+#include "../ad_bgl/ad_bgl.h"
+#endif
 
 /* returns the current location of the shared_fp in terms of the
    no. of etypes relative to the current view, and also increments the

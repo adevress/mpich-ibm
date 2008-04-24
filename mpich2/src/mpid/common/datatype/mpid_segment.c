@@ -235,19 +235,20 @@ static int MPID_Segment_contig_pack_to_iov(DLOOP_Offset *blocks_p,
     size = *blocks_p * (DLOOP_Offset) el_size;
 
     MPIU_DBG_MSG_FMT(DATATYPE,VERBOSE,(MPIU_DBG_FDEST,
-             "\t[contig to vec: do=%d, dp=%x, ind=%d, sz=%d, blksz=%d]\n",
-		    (unsigned) rel_off,
-		    (unsigned) (MPI_Aint)bufp,
+             "\t[contig to vec: do=" MPI_AINT_FMT_DEC_SPEC ", dp=%p, ind=%d, sz=%d, blksz=" MPI_AINT_FMT_DEC_SPEC "]\n",
+		    (MPI_Aint) rel_off,
+		    bufp,
 		    paramp->u.pack_vector.index,
 		    el_size,
-		    (int) *blocks_p));
+		    (MPI_Aint) *blocks_p));
     
     last_idx = paramp->u.pack_vector.index - 1;
     if (last_idx >= 0) {
 	last_end = ((char *) paramp->u.pack_vector.vectorp[last_idx].DLOOP_VECTOR_BUF) +
 	    paramp->u.pack_vector.vectorp[last_idx].DLOOP_VECTOR_LEN;
     }
-
+    
+    MPID_Ensure_Aint_fits_in_pointer( (MPI_VOID_PTR_CAST_TO_MPI_AINT (bufp)) + rel_off );
     if ((last_idx == paramp->u.pack_vector.length-1) &&
 	(last_end != ((char *) bufp + rel_off)))
     {
@@ -299,39 +300,39 @@ static int MPID_Segment_vector_pack_to_iov(DLOOP_Offset *blocks_p,
 					   void *bufp, /* start of buffer */
 					   void *v_paramp)
 {
-    int i, basic_size;
-    DLOOP_Offset size, blocks_left;
+    int i;
+    DLOOP_Offset size, blocks_left, basic_size;
     struct MPID_Segment_piece_params *paramp = v_paramp;
     MPIDI_STATE_DECL(MPID_STATE_MPID_SEGMENT_VECTOR_PACK_TO_IOV);
 
     MPIDI_FUNC_ENTER(MPID_STATE_MPID_SEGMENT_VECTOR_PACK_TO_IOV);
 
-    basic_size = MPID_Datatype_get_basic_size(el_type);
+    basic_size = (DLOOP_Offset)MPID_Datatype_get_basic_size(el_type);
     blocks_left = *blocks_p;
 
     MPIU_DBG_MSG_FMT(DATATYPE,VERBOSE,(MPIU_DBG_FDEST,
-             "\t[vector to vec: do=%d"
-             ", dp=" MPI_AINT_FMT_HEX_SPEC
+             "\t[vector to vec: do=" MPI_AINT_FMT_DEC_SPEC
+             ", dp=%p"
              ", len=%d, ind=%d, ct=%d, blksz=%d"
              ", str=" MPI_AINT_FMT_DEC_SPEC
              ", blks=" MPI_AINT_FMT_DEC_SPEC
              "]\n",
-		    (unsigned) rel_off,
-		    (MPI_Aint)bufp,
+		    (MPI_Aint) rel_off,
+		    bufp,
 		    paramp->u.pack_vector.length,
 		    paramp->u.pack_vector.index,
 		    count,
 		    blksz,
-		    stride,
-		    *blocks_p));
+		    (MPI_Aint)stride,
+		    (MPI_Aint)*blocks_p));
 
     for (i=0; i < count && blocks_left > 0; i++) {
 	int last_idx;
 	char *last_end = NULL;
 
-	if (blocks_left > blksz) {
-	    size = blksz * basic_size;
-	    blocks_left -= blksz;
+	if (blocks_left > (DLOOP_Offset)blksz) {
+	    size = ((DLOOP_Offset)blksz) * basic_size;
+	    blocks_left -= (DLOOP_Offset)blksz;
 	}
 	else {
 	    /* last pass */
@@ -345,6 +346,7 @@ static int MPID_Segment_vector_pack_to_iov(DLOOP_Offset *blocks_p,
 		paramp->u.pack_vector.vectorp[last_idx].DLOOP_VECTOR_LEN;
 	}
 
+	MPID_Ensure_Aint_fits_in_pointer( (MPI_VOID_PTR_CAST_TO_MPI_AINT (bufp)) + rel_off );
 	if ((last_idx == paramp->u.pack_vector.length-1) &&
 	    (last_end != ((char *) bufp + rel_off)))
 	{
@@ -356,21 +358,21 @@ static int MPID_Segment_vector_pack_to_iov(DLOOP_Offset *blocks_p,
 	    paramp->u.pack_vector.index++;
 #endif
 #ifdef MPID_SP_VERBOSE
-	    MPIU_dbg_printf("\t[vector to vec exiting (1): next ind = %d, %d blocks processed.\n",
+	    MPIU_dbg_printf("\t[vector to vec exiting (1): next ind = %d, " MPI_AINT_FMT_DEC_SPEC " blocks processed.\n",
 			    paramp->u.pack_vector.index,
-			    (int) *blocks_p);
+			    (MPI_Aint) *blocks_p);
 #endif
 	    MPIDI_FUNC_EXIT(MPID_STATE_MPID_SEGMENT_VECTOR_PACK_TO_IOV);
 	    return 1;
 	}
-	else if (last_idx >= 0 && (last_end == ((char *) bufp + rel_off)))
+	else if (last_idx >= 0 && (last_end == ((char *) bufp + (int)rel_off)))
 	{
 	    /* add this size to the last vector rather than using up new one */
 	    paramp->u.pack_vector.vectorp[last_idx].DLOOP_VECTOR_LEN += size;
 	}
 	else {
 	    paramp->u.pack_vector.vectorp[last_idx+1].DLOOP_VECTOR_BUF =
-		(char *) bufp + rel_off;
+		(char *) bufp + (int)rel_off;
 	    paramp->u.pack_vector.vectorp[last_idx+1].DLOOP_VECTOR_LEN = size;
 	    paramp->u.pack_vector.index++;
 	}
@@ -380,9 +382,9 @@ static int MPID_Segment_vector_pack_to_iov(DLOOP_Offset *blocks_p,
     }
 
 #ifdef MPID_SP_VERBOSE
-    MPIU_dbg_printf("\t[vector to vec exiting (2): next ind = %d, %d blocks processed.\n",
+    MPIU_dbg_printf("\t[vector to vec exiting (2): next ind = %d, " MPI_AINT_FMT_DEC_SPEC " blocks processed.\n",
 		    paramp->u.pack_vector.index,
-		    (int) *blocks_p);
+		    (MPI_Aint) *blocks_p);
 #endif
 
     /* if we get here then we processed ALL the blocks; don't need to update
@@ -415,27 +417,27 @@ static int MPID_Segment_contig_flatten(DLOOP_Offset *blocks_p,
     MPIDI_FUNC_ENTER(MPID_STATE_MPID_SEGMENT_CONTIG_FLATTEN);
 
     el_size = MPID_Datatype_get_basic_size(el_type);
-    size = *blocks_p * (DLOOP_Offset) el_size;
+    size = *blocks_p * (DLOOP_Offset)el_size;
     index = paramp->u.flatten.index;
 
 #ifdef MPID_SP_VERBOSE
-    MPIU_dbg_printf("\t[contig flatten: index = %d, loc = (%x + %x) = %x, size = %d]\n",
+    MPIU_dbg_printf("\t[contig flatten: index = %d, loc = (" MPI_AINT_FMT_HEX_SPEC " + " MPI_AINT_FMT_HEX_SPEC ") = " MPI_AINT_FMT_HEX_SPEC ", size = " MPI_AINT_FMT_DEC_SPEC "]\n",
 		    index,
-		    (unsigned) bufp,
-		    (unsigned) rel_off,
-		    (unsigned) bufp + rel_off,
-		    (int) size);
+		    MPI_VOID_PTR_CAST_TO_MPI_AINT bufp,
+		    (MPI_Aint) rel_off,
+		    MPI_VOID_PTR_CAST_TO_MPI_AINT bufp + rel_off,
+		    (MPI_Aint) size);
 #endif
     
-    if (index > 0 && ((DLOOP_Offset) bufp + rel_off) ==
+    if (index > 0 && ((DLOOP_Offset) MPI_VOID_PTR_CAST_TO_MPI_AINT bufp + rel_off) ==
 	((paramp->u.flatten.offp[index - 1]) +
-	 (DLOOP_Offset) paramp->u.flatten.sizep[index - 1]))
+	 (DLOOP_Offset)paramp->u.flatten.sizep[index - 1]))
     {
 	/* add this size to the last vector rather than using up another one */
 	paramp->u.flatten.sizep[index - 1] += size;
     }
     else {
-	paramp->u.flatten.offp[index] =  ((int64_t) (MPI_Aint) bufp) + (int64_t) rel_off;
+	paramp->u.flatten.offp[index] =  ((int64_t) MPI_VOID_PTR_CAST_TO_MPI_AINT bufp) + (int64_t) rel_off;
 	paramp->u.flatten.sizep[index] = size;
 
 	paramp->u.flatten.index++;
@@ -475,22 +477,22 @@ static int MPID_Segment_vector_flatten(DLOOP_Offset *blocks_p,
 				       void *bufp, /* start of buffer */
 				       void *v_paramp)
 {
-    int i, basic_size;
-    DLOOP_Offset size, blocks_left;
+    int i;
+    DLOOP_Offset size, blocks_left, basic_size;
     struct MPID_Segment_piece_params *paramp = v_paramp;
     MPIDI_STATE_DECL(MPID_STATE_MPID_SEGMENT_VECTOR_FLATTEN);
 
     MPIDI_FUNC_ENTER(MPID_STATE_MPID_SEGMENT_VECTOR_FLATTEN);
 
-    basic_size = MPID_Datatype_get_basic_size(el_type);
+    basic_size = (DLOOP_Offset)MPID_Datatype_get_basic_size(el_type);
     blocks_left = *blocks_p;
 
     for (i=0; i < count && blocks_left > 0; i++) {
 	int index = paramp->u.flatten.index;
 
-	if (blocks_left > blksz) {
-	    size = blksz * (DLOOP_Offset) basic_size;
-	    blocks_left -= blksz;
+	if (blocks_left > (DLOOP_Offset)blksz) {
+	    size = ((DLOOP_Offset)blksz) * basic_size;
+	    blocks_left -= (DLOOP_Offset)blksz;
 	}
 	else {
 	    /* last pass */
@@ -498,15 +500,15 @@ static int MPID_Segment_vector_flatten(DLOOP_Offset *blocks_p,
 	    blocks_left = 0;
 	}
 
-	if (index > 0 && ((DLOOP_Offset) bufp + rel_off) ==
-	    ((paramp->u.flatten.offp[index - 1]) + (DLOOP_Offset) paramp->u.flatten.sizep[index - 1]))
+	if (index > 0 && ((DLOOP_Offset) MPI_VOID_PTR_CAST_TO_MPI_AINT bufp + rel_off) ==
+	    ((paramp->u.flatten.offp[index - 1]) + (DLOOP_Offset)paramp->u.flatten.sizep[index - 1]))
 	{
 	    /* add this size to the last region rather than using up another one */
 	    paramp->u.flatten.sizep[index - 1] += size;
 	}
 	else if (index < paramp->u.flatten.length) {
 	    /* take up another region */
-	    paramp->u.flatten.offp[index]  = (DLOOP_Offset) bufp + rel_off;
+	    paramp->u.flatten.offp[index]  = (DLOOP_Offset) MPI_VOID_PTR_CAST_TO_MPI_AINT bufp + rel_off;
 	    paramp->u.flatten.sizep[index] = size;
 	    paramp->u.flatten.index++;
 	}

@@ -37,8 +37,8 @@
 . datatype - datatype to get information on (handle) 
 
    Output Parameters:
-+ lb - lower bound of datatype (integer) 
-- extent - extent of datatype (integer) 
++ lb - lower bound of datatype (address integer) 
+- extent - extent of datatype (address integer) 
 
 .N SignalSafe
 

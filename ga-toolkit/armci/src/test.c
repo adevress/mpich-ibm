@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: test.c,v 1.43.4.1 2006/12/18 11:48:00 manoj Exp $ */
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -1826,7 +1826,6 @@ int main(int argc, char* argv[])
 
         ARMCI_AllFence();
         MP_BARRIER();
-
         if(me==0){
            printf("\nTesting atomic fetch&add\n");
            printf("(Std Output for all processes is printed)\n\n"); 
@@ -1845,8 +1844,11 @@ int main(int argc, char* argv[])
            fflush(stdout);
         }
         test_swap();
+
         ARMCI_AllFence();
         MP_BARRIER();
+
+
 
         if(me==0){
            printf("\nTesting register-originated put and get\n");
@@ -1893,8 +1895,19 @@ int main(int argc, char* argv[])
 	MP_BARRIER();
 
 
+	if(me==0){
+	  printf("\nTesting memlock\n");
+	  fflush(stdout);
+	}
         MP_BARRIER();
-        /*test_memlock();*/
+	if(nproc > 4) {
+	  if(me==0){
+	    printf("\n WARNING: Memlock test does not scale well and cannot be tested for number of procs greater than 4.\n\n");
+	    fflush(stdout);
+	  }
+	}
+	else
+          test_memlock();
 
         MP_BARRIER();
 	if(me==0){printf("All tests passed\n"); fflush(stdout);}

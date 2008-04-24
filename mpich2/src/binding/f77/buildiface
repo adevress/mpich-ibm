@@ -1388,7 +1388,7 @@ sub addrint_in_decl {
 }
 sub addrint_in_arg {
     my $count = $_[0];
-    print $OUTFD "(void *)(MPI_Aint)((int)*(int *)v$count)";
+    print $OUTFD "MPI_AINT_CAST_TO_VOID_PTR(MPI_Aint)((int)*(int *)v$count)";
 }
 
 sub attrint_ctof {
@@ -1402,7 +1402,7 @@ sub attrint_ctof {
         *(MPI_Fint*)$cvar = 0;
     }
     else {
-        *(MPI_Fint*)$cvar = (MPI_Fint)(MPI_Aint)attr$cvar;
+        *(MPI_Fint*)$cvar = (MPI_Fint)MPI_VOID_PTR_CAST_TO_MPI_AINT attr$cvar;
     }\n";
 }
 
@@ -1428,7 +1428,7 @@ sub addraint_in_decl {
 }
 sub addraint_in_arg {
     my $count = $_[0];
-    print $OUTFD "(void *)(MPI_Aint)((MPI_Aint)*(MPI_Aint *)v$count)";
+    print $OUTFD "MPI_AINT_CAST_TO_VOID_PTR(MPI_Aint)((MPI_Aint)*(MPI_Aint *)v$count)";
 }
 
 sub attraint_ctof {
@@ -1440,7 +1440,7 @@ sub attraint_ctof {
         *(MPI_Aint*)$cvar = 0;
     }
     else {
-        *(MPI_Aint*)$cvar = (MPI_Aint)attr$cvar;
+        *(MPI_Aint*)$cvar = MPI_VOID_PTR_CAST_TO_MPI_AINT attr$cvar;
     }\n";
 }
 
@@ -2154,7 +2154,7 @@ if ( -s "../../mpi/romio/include/mpio.h.in" && $build_io) {
 #
 if ($write_mpif) {
 
-    $cchar = "C";
+    $cchar = "!";
     open ( MPIFFD, ">mpif.h.in.new" ) || die "Could not open mpif.h.in.new\n";
 
     
@@ -2370,8 +2370,8 @@ if ($write_mpif) {
     # use of the non-standard real*8 to force exactly 8 bytes.
     # Do we want to make this a configure time value or a 
     # build-time value?
-    print MPIFFD "       DOUBLE PRECISION MPI_WTIME, MPI_WTICK\n";
-    print MPIFFD "       DOUBLE PRECISION PMPI_WTIME, PMPI_WTICK\n";
+    print MPIFFD "       REAL*8 MPI_WTIME, MPI_WTICK\n";
+    print MPIFFD "       REAL*8 PMPI_WTIME, PMPI_WTICK\n";
     # We avoid adding the external declarations because some Fortran
     # compilers then insist on linking with the routines, even if 
     # they are not used.  Combined with systems that do not have weak
@@ -2632,7 +2632,7 @@ FORT_DLL_SPEC void FORT_CALL mpirinitc2_( char *a FORT_MIXED_LEN(d1)
 #ifdef USE_POINTER_FOR_BOTTOM
     b = a;
 #else
-    b = a - (MPI_Aint) MPIR_F_MPI_BOTTOM;
+    b = a - MPI_VOID_PTR_CAST_TO_MPI_AINT MPIR_F_MPI_BOTTOM;
 #endif
     *v2 = (MPI_Fint)( b );
 #ifdef HAVE_AINT_LARGER_THAN_FINT
@@ -2671,7 +2671,7 @@ FORT_DLL_SPEC void FORT_CALL mpirinitc2_( char *a FORT_MIXED_LEN(d1)
     &specialInitStatement( $OUTFD );
     print $OUTFD "\
 #ifndef USE_POINTER_FOR_BOTTOM
-    a = a - (MPI_Aint) MPIR_F_MPI_BOTTOM;
+    a = a - MPI_VOID_PTR_CAST_TO_MPI_AINT MPIR_F_MPI_BOTTOM;
 #endif
     *v2 =  a;
 }\n";
@@ -2783,7 +2783,7 @@ FORT_DLL_SPEC void FORT_CALL mpirinitc2_( char *a FORT_MIXED_LEN(d1)
     &print_args( $OUTFD, $args, 0, "dup_fn" );
     #&print_attr;
     print $OUTFD "{
-        *v5 = *v4;
+        *(MPI_Aint *)v5 = *(MPI_Aint *)v4;
         *v6 = MPIR_TO_FLOG(1);
         *ierr = MPI_SUCCESS;
 }\n";
@@ -3399,7 +3399,7 @@ sub WriteAttrDefaults {
     &print_args( $OUTFD, $args, 0, "${prefix}dup_fn" );
     #&print_attr;
     print $OUTFD "{
-        *v5 = *v4;
+        *(MPI_Aint *)v5 = *(MPI_Aint *)v4;
         *v6 = MPIR_TO_FLOG(1);
         *ierr = MPI_SUCCESS;
 }\n";

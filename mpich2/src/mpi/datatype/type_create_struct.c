@@ -36,7 +36,7 @@
 + count - number of blocks (integer) --- also number of entries in arrays 
   array_of_types, array_of_displacements and array_of_blocklengths 
 . array_of_blocklength - number of elements in each block (array of integer) 
-. array_of_displacements - byte displacement of each block (array of integer) 
+. array_of_displacements - byte displacement of each block (array of address integer) 
 - array_of_types - type of elements in each block (array of handles to 
   datatype objects) 
 

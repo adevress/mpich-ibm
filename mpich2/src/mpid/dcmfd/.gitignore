@@ -1,5 +1,7 @@
+/configure
 /Makefile
 /Makefile.in
+/autom4te.cache
 /*.o
 /*.lo
 /*.bb

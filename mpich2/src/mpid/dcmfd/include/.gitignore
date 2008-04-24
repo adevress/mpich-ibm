@@ -1,16 +1,1 @@
-/Makefile
-/Makefile.in
-/*.o
-/*.lo
-/*.bb
-/*.bbg
-/*.da
-/*.gcov
-/*.gcda
-/*.gcno
-/Debug
-/Release
-/.deps
-/.libs
-/.libstamp*
-/.state-cache
+/mpid_config.h.in

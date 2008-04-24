@@ -1,4 +1,4 @@
-/* $Header$ */
+/* $Header: /msrc/proj/hpctools/cvs/tcgmsg/ipcv4.0/sema.c,v 1.17 2003/05/08 15:44:43 edo Exp $ */
 
 /*
   These routines simplify the interface to semaphores for use in mutual

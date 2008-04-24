@@ -335,11 +335,11 @@ int main(int argc, char *argv[])
 	    {
 		if (bufalign != 0)
 		{
-		    args.buff += (bufalign - ((MPI_Aint)args.buff % bufalign) + bufoffset) % bufalign;
+		    args.buff += (bufalign - ((long)args.buff % bufalign) + bufoffset) % bufalign;
 		    /* args.buff1 += (bufalign - ((MPI_Aint)args.buff1 % bufalign) + bufoffset) % bufalign; */
 		}
 	    }
-	    args.buff1 += (bufalign - ((MPI_Aint)args.buff1 % bufalign) + bufoffset) % bufalign;
+	    args.buff1 += (bufalign - ((long)args.buff1 % bufalign) + bufoffset) % bufalign;
 	    
 	    if (args.tr && printopt)
 	    {
@@ -359,7 +359,7 @@ int main(int argc, char *argv[])
 		    {
 			if (bufalign != 0)
 			{
-			    args.buff = memtmp + ((bufalign - ((MPI_Aint)args.buff % bufalign) + bufoffset) % bufalign);
+			    args.buff = memtmp + ((bufalign - ((long)args.buff % bufalign) + bufoffset) % bufalign);
 			    /* args.buff1 = memtmp1 + ((bufalign - ((MPI_Aint)args.buff1 % bufalign) + bufoffset) % bufalign); */
 			}
 			else
@@ -417,7 +417,7 @@ int main(int argc, char *argv[])
 		    {
 			if (bufalign != 0)
 			{
-			    args.buff = memtmp + ((bufalign - ((MPI_Aint)args.buff % bufalign) + bufoffset) % bufalign);
+			    args.buff = memtmp + ((bufalign - ((long)args.buff % bufalign) + bufoffset) % bufalign);
 			    /* args.buff1 = memtmp1 + ((bufalign - ((MPI_Aint)args.buff1 % bufalign) + bufoffset) % bufalign); */
 			}
 			else

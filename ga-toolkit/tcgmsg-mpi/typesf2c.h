@@ -2,7 +2,7 @@
 #define _TYPES_F2C_H_
 
 /*
- * $Id$
+ * $Id: typesf2c.h,v 1.1.10.2 2006/12/28 01:23:54 manoj Exp $
  */
 
 #  ifdef WIN32

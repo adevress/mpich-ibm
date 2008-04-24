@@ -11,7 +11,7 @@ c
 *      real*4 dtime, tt(2)
 *      timer = dble(dtime(tt))
 *mdc*elseif tcgmsg
-C$Id$
+C$Id: timer.F,v 1.1 2005/03/08 23:58:03 d3g293 Exp $
       save mlast
       data mlast/0/
       m = mtime()

@@ -435,6 +435,13 @@ if test $DEBUG = "yes" ; then
 else 
     CFLAGS="$CFLAGS $C_OPT_FLAG"
 fi
+# set cross compilation setting -- Hao Yu
+    AC_MSG_RESULT([set cross compilation to yes])
+    cross_compiling=yes
+    ac_cv_prog_cc_cross=yes
+    ac_cv_prog_f77_cross=yes
+    ac_cv_prog_f90_cross=yes
+    ac_cv_prog_cxx_cross=yes
 # ---------------------------------------------------------------------------
 # Here go the rest of the tests
 # ---------------------------------------------------------------------------
@@ -2030,6 +2037,9 @@ AC_CHECK_HEADERS(unistd.h,
                 AC_MSG_RESULT(yes),
                 AC_MSG_RESULT(none) )
         )
+
+# for BGL, always support large file -- Hao Yu
+CFLAGS="${CFLAGS} -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64"
 
 echo "setting SYSDEP_INC to $SYSDEP_INC"
 AC_SUBST(SYSDEP_INC)

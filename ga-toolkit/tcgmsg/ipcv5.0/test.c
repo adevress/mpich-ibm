@@ -1,4 +1,4 @@
-/* $Header$ */
+/* $Header: /msrc/proj/hpctools/cvs/tcgmsg/ipcv5.0/test.c,v 1.4 2002/01/28 19:42:04 d3h325 Exp $ */
 
 #include <stdio.h>
 #include <stdlib.h>

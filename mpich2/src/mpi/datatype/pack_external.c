@@ -37,13 +37,13 @@
 . inbuf - input buffer start (choice)  
 . incount - number of input data items (integer)  
 . datatype - datatype of each input data item (handle)  
-- outsize - output buffer size, in bytes (integer)  
+- outcount - output buffer size, in bytes (address integer)  
 
    Output Parameter:
 . outbuf - output buffer start (choice)  
 
    Input/Output Parameter:
-. position - current position in buffer, in bytes (integer)  
+. position - current position in buffer, in bytes (address integer)  
 
 .N ThreadSafe
 
@@ -134,12 +134,15 @@ int MPI_Pack_external(char *datarep,
     first = 0;
     last  = SEGMENT_IGNORE_LAST;
 
+    /* Ensure that pointer increment fits in a pointer */
+    MPID_Ensure_Aint_fits_in_pointer( (MPI_VOID_PTR_CAST_TO_MPI_AINT outbuf) + *position );
+
     MPID_Segment_pack_external32(segp,
 				 first,
 				 &last,
 				 (void *)((char *) outbuf + *position));
 
-    *position += (int) last;
+    *position += last;
 
     MPID_Segment_free(segp);
 
@@ -155,7 +158,8 @@ int MPI_Pack_external(char *datarep,
     {
 	mpi_errno = MPIR_Err_create_code(
 	    mpi_errno, MPIR_ERR_RECOVERABLE, FCNAME, __LINE__, MPI_ERR_OTHER, "**mpi_pack_external",
-	    "**mpi_pack_external %s %p %d %D %p %d %p", datarep, inbuf, incount, datatype, outbuf, outcount, position);
+	    "**mpi_pack_external %s %p %d %D %p %L %p", 
+	    datarep, inbuf, incount, datatype, outbuf, MPI_AINT_CAST_TO_LONG_LONG outcount, position);
     }
 #   endif
     mpi_errno = MPIR_Err_return_comm( 0, FCNAME, mpi_errno );

@@ -3,6 +3,36 @@
 # COMM_LIBS    - list of libs that need to be linked with 
 # COMM_INCLUDES- include path to access communication protocol API
 #
+ifeq ($(ARMCI_NETWORK),DCMF)
+   COMM_DEFINES = -DDCMF
+   ifdef DCMF_INCLUDE
+      COMM_INCLUDES = -I$(DCMF_INCLUDE)
+   else
+      COMM_INCLUDES = -I$(MPI_INCLUDE)
+   endif
+   ifdef DCMF_LIB
+      COMM_LIBS = -L$(DCMF_LIB)
+   else
+      COMM_LIBS = -L$(MPI_LIB)
+   endif
+   DCMF_LIB_NAME= -ldcmf.cnk -ldcmfcoll.cnk
+endif
+ifeq ($(ARMCI_NETWORK),DCMFMPI)
+   COMM_DEFINES = -DDCMF
+   ifdef DCMF_INCLUDE
+      COMM_INCLUDES = -I$(DCMF_INCLUDE)
+   else
+      COMM_INCLUDES = -I$(MPI_INCLUDE)
+   endif
+   ifdef DCMF_LIB
+      COMM_LIBS = -L$(DCMF_LIB)
+   else
+      COMM_LIBS = -L$(MPI_LIB)
+   endif
+   DCMFMPI_LIB_NAME = -lfmpich.cnk -lmpich.cnk -ldcmfcoll.cnk -ldcmf.cnk  \
+   -lpthread -lrt -L${BG_RUNTIMEPATH}/SPI -lSPI.cna 
+   COMM_LIBS += $(DCMFMPI_LIB_NAME)
+endif
 ifeq ($(ARMCI_NETWORK),BGML)
    COMM_DEFINES = -DBGML
    ifdef BGML_INCLUDE

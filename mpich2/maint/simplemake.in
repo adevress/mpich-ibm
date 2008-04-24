@@ -117,7 +117,7 @@ $fixup_for_timestamps = 0;
 # if [ -z "$(INTERDIR_SLEEP)" ] ; then INTERDIR_SLEEP=1 ; fi ; sleep $(INTERDIR_SLEEP)
 $SleepSlow = "sleep 1";
 $SleepFast = "perl -e \'\$\$now=time;\$\$now-=10;utime \$\$now, \$\$now, \"LIB\";\'";
-$Sleep = $SleepFast;
+$Sleep = $SleepSlow;
 #
 # Output File end-of-line character
 $newline = "\n";

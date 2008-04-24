@@ -256,15 +256,15 @@ void PREPEND_PREFIX(Type_calc_footprint)(MPI_Datatype type,
 					tfp->lb, tfp->ub);
 	    tfp->true_lb = tfp->lb + (true_lb - lb);
 	    tfp->true_ub = tfp->ub + (true_ub - ub);
-	    tfp->size    = ints[0] * size;
+	    tfp->size    = (DLOOP_Offset)ints[0] * size;
 	    tfp->extent  = tfp->ub - tfp->lb;
 	    break;
 	case MPI_COMBINER_VECTOR:
 	case MPI_COMBINER_HVECTOR:
 	case MPI_COMBINER_HVECTOR_INTEGER:
-	    if (combiner == MPI_COMBINER_VECTOR) stride = ints[2] * extent;
+	    if (combiner == MPI_COMBINER_VECTOR) stride = (DLOOP_Offset)ints[2] * extent;
 	    else if (combiner == MPI_COMBINER_HVECTOR) stride = aints[0];
-	    else /* HVECTOR_INTEGER */ stride = ints[2];
+	    else /* HVECTOR_INTEGER */ stride = (DLOOP_Offset)ints[2];
 
 	    DLOOP_DATATYPE_VECTOR_LB_UB(ints[0] /* count */,
 					stride /* stride in bytes */,
@@ -273,25 +273,25 @@ void PREPEND_PREFIX(Type_calc_footprint)(MPI_Datatype type,
 					tfp->lb, tfp->ub);
 	    tfp->true_lb = tfp->lb + (true_lb - lb);
 	    tfp->true_ub = tfp->ub + (true_ub - ub);
-	    tfp->size    = ints[0] * ints[1] * size;
+	    tfp->size    = (DLOOP_Offset)ints[0] * (DLOOP_Offset)ints[1] * size;
 	    tfp->extent  = tfp->ub - tfp->lb;
 	    break;
 	case MPI_COMBINER_INDEXED_BLOCK:
 	    /* prime min_lb and max_ub */
 	    DLOOP_DATATYPE_BLOCK_LB_UB(ints[1] /* blklen */,
-				       ints[2] * extent /* disp */,
+				       (DLOOP_Offset)ints[2] * extent /* disp */,
 				       lb, ub, extent,
 				       min_lb, max_ub);
 
 	    for (i=1; i < ints[0]; i++) {
 		DLOOP_DATATYPE_BLOCK_LB_UB(ints[1] /* blklen */,
-					   ints[i+2] * extent /* disp */,
+					   (DLOOP_Offset)ints[i+2] * extent /* disp */,
 					   lb, ub, extent,
 					   tmp_lb, tmp_ub);
 		if (tmp_lb < min_lb) min_lb = tmp_lb;
 		if (tmp_ub > max_ub) max_ub = tmp_ub;
 	    }
-	    tfp->size    = ints[0] * ints[1] * size;
+	    tfp->size    = (DLOOP_Offset)ints[0] * (DLOOP_Offset)ints[1] * size;
 	    tfp->lb      = min_lb;
 	    tfp->ub      = max_ub;
 	    tfp->true_lb = min_lb + (true_lb - lb);
@@ -312,9 +312,9 @@ void PREPEND_PREFIX(Type_calc_footprint)(MPI_Datatype type,
 		/* prime min_lb, max_ub, count */
 		ntypes = ints[i+1];
 		if (combiner == MPI_COMBINER_INDEXED)
-		    disp = ints[ints[0]+i+1] * extent;
+		    disp = (DLOOP_Offset)ints[ints[0]+i+1] * extent;
 		else if (combiner == MPI_COMBINER_HINDEXED_INTEGER)
-		    disp = ints[ints[0]+i+1];
+		    disp = (DLOOP_Offset)ints[ints[0]+i+1];
 		else /* MPI_COMBINER_HINDEXED */
 		    disp = aints[i];
 
@@ -329,9 +329,9 @@ void PREPEND_PREFIX(Type_calc_footprint)(MPI_Datatype type,
 
 		    ntypes += ints[i+1];
 		    if (combiner == MPI_COMBINER_INDEXED)
-			disp = ints[ints[0]+i+1] * extent;
+			disp = (DLOOP_Offset)ints[ints[0]+i+1] * extent;
 		    else if (combiner == MPI_COMBINER_HINDEXED_INTEGER)
-			disp = ints[ints[0]+i+1];
+			disp = (DLOOP_Offset)ints[ints[0]+i+1];
 		    else /* MPI_COMBINER_HINDEXED */
 			disp = aints[i];
 
@@ -460,7 +460,7 @@ static void DLOOP_Type_calc_footprint_struct(MPI_Datatype type,
 
 	tmp_true_lb = tmp_lb + (true_lb - lb);
 	tmp_true_ub = tmp_ub + (true_ub - ub);
-	tmp_size += size * ints[i+1];
+	tmp_size += size * (DLOOP_Offset)ints[i+1];
 
 	if (combiner == MPI_COMBINER_NAMED) {
 	    /* NOTE: This is a special case. If a user creates a struct

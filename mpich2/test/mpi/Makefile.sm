@@ -1,10 +1,103 @@
 SUBDIRS_otherlangs = f77 cxx f90
 SUBDIRS_threadsdir = threads
 SUBDIRS = util attr basic datatype coll comm errhan group info init pt2pt rma spawn topo io @otherlangs@ @threadsdir@ errors manual perf .
+ROPTS =
+
+# This target is like the "testing*" ones, except that it has
+# the following format:
+#
+#	"testrun"[<tag>][_<option>[_<option>...]]
+#
+# Where <tag> will be appended to "testlist" and used as the list
+# of tests to run. Each _<option> will be added to the "runtests"
+# commandline as "-<option>" (i.e. the underscore changed to dash).
+# Additional (more complex) options may be passed using "ROPTS",
+# or environment variables specific to the system.
+#
+# For example, 1) To run the standard "testlist" in VN mode:
+#
+#	make testrun_virtualNodeMode
+#
+# 2) To use mpirun in DUAL mode:
+#
+#	make testrun_dualMode ROPTS="-usempirun \
+#		-partition=R00-M0-N03-J00 -nofree"
+#
+# 3) To use TXYZ mapping for VN mode:
+#
+#	CIORUNOPTIONS="--nodeRankMap TXYZ" make testrun_virtualNodeMode
+#
+# The XML summary file will have the entire target string appended,
+# for example #1 it would be "summary-testrun_virtualNodeMode.xml".
+#
+testrun%:
+	targ="$@";\
+	list="$${targ%%_*}";\
+	opts="$${targ#$${list}}"; opts="$${opts//_/ -}";\
+	list="$${list#testrun}";\
+	./runtests -srcdir=$(srcdir) -tests=testlist$$list \
+		-xmlfile=summary-$$targ.xml \
+		$$opts $(ROPTS) -nospawn -datestamp
 
 testing:
 	./runtests -srcdir=$(srcdir) -tests=testlist \
-		   -mpiexec=@MPIEXEC@ \
-		   -xmlfile=summary.xml
+		-xmlfile=summary.xml -nospawn -datestamp
+testingvnm:
+	./runtests -srcdir=$(srcdir) -tests=testlist \
+		-virtualNodeMode -xmlfile=summaryvnm.xml -nospawn -datestamp
+testingdual:
+	./runtests -srcdir=$(srcdir) -tests=testlist \
+		-dualMode -xmlfile=summarydual.xml -nospawn -datestamp
+testingio:
+	./runtests -srcdir=$(srcdir) -tests=iotestlist -datestamp \
+		-xmlfile=summaryio.xml -norma -nospawn
+
+testing-mpirun:
+	./runtests -srcdir=$(srcdir) -tests=testlist \
+		-xmlfile=summary.xml -nospawn -datestamp \
+		-usempirun -nofree -verbose
+testingvnm-mpirun:
+	./runtests -srcdir=$(srcdir) -tests=testlist \
+		-virtualNodeMode -xmlfile=summaryvnm.xml -nospawn -datestamp \
+		-usempirun -nofree -verbose
+testingdual-mpirun:
+	./runtests -srcdir=$(srcdir) -tests=testlist \
+		-dualMode -xmlfile=summarydual.xml -nospawn -datestamp \
+		-usempirun -nofree -verbose
 clean-local:
 	-rm -f summary.xml
+
+testingio-mpirun:
+	./runtests -srcdir=$(srcdir) -tests=iotestlist -datestamp \
+         -xmlfile=summaryio.xml -norma -nospawn  \
+         -usempirun -nofree -verbose
+#
+# The following are used to provide a target that is used to create a
+# distribution tarfile
+MPISVNHOME = @MPISVNHOME@
+PACKAGE    = mpi2test
+VERSION    = @VERSION@
+
+dist:
+	@version=${VERSION} ; \
+	prever=`echo ${VERSION} | sed -e 's/^[^-]*//'` ; \
+	if [ "$$prever" = "-SVN" ] ; then version=$${version}-`date "+%Y%m%d%H%M"` ; fi ; \
+	if [ -z "${TAG}" ] ; then tag=HEAD ; else tag=${TAG}; fi ; \
+	$(MAKE) version=$${version} tag=$${tag} doc=yes dist-with-version
+
+dist-with-version:
+	@if [ -z "$(version)" ] ; then \
+	    echo "Must invoke with make version=value tag=value dist-with-version" ;\
+	    exit 1 ; fi
+	@if [ -z "$(tag)" ] ; then \
+	    echo "Must invoke with make version=value tag=value dist-with-version" ;\
+	    exit 1 ; fi
+	@echo ""; echo "Cutting version ${version} of the MPICH2 distribution from tag ${tag}" ; echo ""
+	if [ ! -d tmpdir ] ; then mkdir tmpdir ; fi
+	rm -f svnexp.log
+	( cd tmpdir && svn export $(MPISVNHOME)/mpich2/tags/release/${tag} mpich2 > svnexp.log 2>&1 ) || (echo "svn export failed; see tmpdir/svnexp.log" && exit 1 )
+	mv tmpdir/mpi2test tmpdir/${PACKAGE}-${version}
+	( cd tmpdir/${PACKAGE}-${version} && maint/updatefiles -distrib )
+	( cd tmpdir && tar cf ${PACKAGE}-${version}.tar ${PACKAGE}-${version} )
+	mv -f tmpdir/${PACKAGE}-${version}.tar .
+	rm -rf tmpdir

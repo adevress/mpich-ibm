@@ -36,7 +36,7 @@
 + count - number of blocks --- also number of entries in 
   displacements and blocklengths (integer) 
 . blocklengths - number of elements in each block (array of nonnegative integers) 
-. displacements - byte displacement of each block (array of integer) 
+. displacements - byte displacement of each block (array of address integers) 
 - oldtype - old datatype (handle) 
 
    Output Parameter:

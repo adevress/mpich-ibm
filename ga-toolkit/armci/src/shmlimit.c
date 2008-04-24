@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: shmlimit.c,v 1.13 2000/10/11 21:37:01 d3h325 Exp $ */
 /*
  * This code is used to test shared memory limits within
  * a separately forked child process.

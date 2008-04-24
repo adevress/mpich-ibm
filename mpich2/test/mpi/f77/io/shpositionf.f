@@ -7,7 +7,7 @@ C
         implicit none
         include 'mpif.h'
         integer comm, fh, r, s, i
-        integer fileintsize
+        integer(kind=mpi_address_kind) fileintsize
         integer errs, err, ierr
         character *(100) filename
         include 'iooffset.h'
@@ -31,8 +31,10 @@ C Try writing the file, then check it
         endif
 C
 C Get the size of an INTEGER in the file
-        call mpi_file_get_type_extent( fh, MPI_INTEGER, aint, ierr )
-        fileintsize = aint
+        ! call mpi_file_get_type_extent( fh, MPI_INTEGER, offset, ierr )
+        ! fileintsize = offset
+        call mpi_file_get_type_extent( fh, MPI_INTEGER, 
+     &                                 fileintsize, ierr )
 C
 C We let each process write in turn, getting the position after each 
 C write

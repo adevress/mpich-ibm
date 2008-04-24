@@ -96,6 +96,20 @@ double MPID_Wtick( void )
 /* Rename the function so that we can access it */
 #define MPID_Wtick MPID_Generic_wtick
 
+
+#elif MPICH_TIMER_KIND == USE_DEVICE
+
+/*
+ * This is simply a generic holder that allows the device to define
+ * the results--and we don't have to litter the MPICH2 distributed
+ * code.  Configure will set "typedef double MPID_Time_t" for this
+ * interface.
+ *
+ * The true implementation should be in
+ * mpich2/src/mpid/__DEVICE__/..../mpid_time.c
+ * mpich2/src/mpid/dcmf/src/misc/mpid_time.c
+ */
+
 #elif MPICH_TIMER_KIND == USE_GETTIMEOFDAY
 #ifdef HAVE_SYS_TIME_H
 #include <sys/time.h>

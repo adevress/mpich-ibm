@@ -40,7 +40,7 @@ int main( int argc, char *argv[] )
     int itmp, fparm, n, b, i, k, r, s;
     int wrank, wsize;
     fileparm fparms[MAX_FPARM] = { 
-	1,4000,  4000,8,  4096,8,  64000,8,  65536,8 };
+	1,40,  4000,8,  4096,8,  64000,8,  65536,8 };
     char filename[1024];
     
     <writefiledecl/>

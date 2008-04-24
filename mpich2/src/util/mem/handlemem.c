@@ -312,8 +312,8 @@ void *MPIU_Handle_obj_alloc(MPIU_Object_alloc_t *objmem)
     }
 
     MPIU_DBG_MSG_FMT(HANDLE,TYPICAL,(MPIU_DBG_FDEST,
-				     "Allocating handle %x (0x%08x)\n",
-				     (unsigned) (MPI_Aint)ptr, ptr->handle));
+				     "Allocating handle %p (0x%08x)\n",
+				     ptr, ptr->handle));
 
 #ifdef USE_MEMORY_TRACING
     /* We set the object to an invalid pattern.  This is similar to 

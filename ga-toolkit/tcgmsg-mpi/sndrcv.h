@@ -1,4 +1,4 @@
-/* $Header$ */
+/* $Header: /msrc/proj/hpctools/cvs/tcgmsg-mpi/sndrcv.h,v 1.8 2002/03/16 02:06:57 edo Exp $ */
 
 #include "srftoc.h"
 #include "msgtypesc.h"

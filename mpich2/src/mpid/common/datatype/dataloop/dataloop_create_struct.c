@@ -622,7 +622,7 @@ static int DLOOP_Dataloop_create_flattened_struct(int count,
 	 */
 	if (oldtypes[i] != MPI_UB && oldtypes[i] != MPI_LB && blklens[i] != 0)
 	{
-	    PREPEND_PREFIX(Segment_init)((char *) disps[i],
+	    PREPEND_PREFIX(Segment_init)((char *) MPI_AINT_CAST_TO_VOID_PTR disps[i],
 					 (DLOOP_Count) blklens[i],
 					 oldtypes[i],
 					 segp,
@@ -646,7 +646,7 @@ static int DLOOP_Dataloop_create_flattened_struct(int count,
 	MPIU_DBG_OUT(DATATYPE,"--- start of flattened type ---");
         for (i=0; i < nr_blks; i++) {
 	MPIU_DBG_OUT_FMT(DATATYPE,(MPIU_DBG_FDEST,
-				   "a[%d] = (%d, %d)\n", i,
+				   "a[%d] = (%d, " MPI_AINT_FMT_DEC_SPEC ")\n", i,
 				   tmp_blklens[i], tmp_disps[i]));
 	}
 	MPIU_DBG_OUT(DATATYPE,"--- end of flattened type ---");

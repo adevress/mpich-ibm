@@ -39,10 +39,10 @@ int main( int argc, char **argv )
     MPI_Type_vector( n, 1, stride, MPI_DOUBLE, &vec );
     MPI_Type_commit( &vec );
     MPI_Type_extent( vec, &vextent );
-    if (vextent != ((n-1)*stride + 1) * sizeof(double) ) {
+    if (vextent != ((n-1)*(MPI_Aint)stride + 1) * sizeof(double) ) {
 	errs++;
-	printf( "Vector extent is %ld, should be %ld\n", 
-		 (long) vextent, (long)(((n-1)*stride+1)*sizeof(double)) );
+	printf( "Vector extent is " MPI_AINT_FMT_DEC_SPEC ", should be " MPI_AINT_FMT_DEC_SPEC "\n", 
+		 vextent, (((n-1)*(MPI_Aint)stride+1)*sizeof(double)) );
     }
     /* Note that the exted of type vector is from the first to the
        last element, not n*stride.

@@ -299,8 +299,8 @@ static void DLOOP_Type_indexed_array_copy(DLOOP_Count count,
 
     if (!dispinbytes)
     {
-	out_disp_array[0] = (DLOOP_Offset)
-	    ((int *) in_disp_array)[0] * old_extent;
+	out_disp_array[0] = 
+	    ((DLOOP_Offset)((int *) in_disp_array)[0]) * old_extent;
 	
 	for (i = 1; i < count; i++)
 	{
@@ -385,7 +385,7 @@ static DLOOP_Count DLOOP_Type_indexed_count_contig(DLOOP_Count count,
 	    {
 		continue;
 	    }
-	    else if (cur_tdisp + cur_blklen ==
+	    else if (cur_tdisp + (DLOOP_Offset)cur_blklen ==
 		     (DLOOP_Offset) ((int *) displacement_array)[i])
 	    {
 		/* adjacent to current block; add to block */
@@ -410,7 +410,7 @@ static DLOOP_Count DLOOP_Type_indexed_count_contig(DLOOP_Count count,
 	    {
 		continue;
 	    }
-	    else if (cur_bdisp + cur_blklen * old_extent ==
+	    else if (cur_bdisp + (DLOOP_Offset)cur_blklen * old_extent ==
 		     (DLOOP_Offset) ((MPI_Aint *) displacement_array)[i])
 	    {
 		/* adjacent to current block; add to block */

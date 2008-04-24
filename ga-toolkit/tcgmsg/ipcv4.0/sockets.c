@@ -1,4 +1,4 @@
-/* $Header$ */
+/* $Header: /msrc/proj/hpctools/cvs/tcgmsg/ipcv4.0/sockets.c,v 1.12 2005/04/08 16:55:04 vinodtipparaju Exp $ */
 
 
 #include <stdio.h>

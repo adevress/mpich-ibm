@@ -204,7 +204,7 @@ int mqs_image_has_queues (mqs_image *image, char **message)
 {
     mpich_image_info * i_info = 
 	(mpich_image_info *)dbgr_get_image_info (image);
-    int have_co = 0, have_cl = 0, have_req = 0, have_dreq = 0;
+    int have_co = 0, have_cl = 0, have_req = 0;
 
     /* Default failure message ! */
     *message = "The symbols and types in the MPICH library used by TotalView\n"
@@ -259,45 +259,12 @@ int mqs_image_has_queues (mqs_image *image, char **message)
 	mqs_type *req_type = dbgr_find_type( image, "MPID_Request", mqs_lang_c );
 	if (req_type) {
 	    have_req = 1;
-	    int dev_offs;
-	    dev_offs = dbgr_field_offset( req_type, "dev" );
 	    i_info->req_status_offs = dbgr_field_offset( req_type, "status" );
 	    i_info->req_cc_offs     = dbgr_field_offset( req_type, "cc" );
-	    if (dev_offs >= 0) {
-		mqs_type *dreq_type = dbgr_find_type( image, "MPIDI_Request", 
-						      mqs_lang_c );
-		i_info->req_dev_offs = dev_offs;
-		if (dreq_type) {
-		    int loff, match_offs;
-		    have_dreq = 1;
-		    loff = dbgr_field_offset( dreq_type, "next" );
-		    i_info->req_next_offs = dev_offs + loff;
-		    match_offs = dbgr_field_offset( dreq_type, "match" );
-		    if (match_offs >= 0) {
-			mqs_type *match_type = dbgr_find_type( image, "MPIDI_Message_match", mqs_lang_c );
-			if (match_type) {
-			    int moff;
-			    moff = dbgr_field_offset( match_type, "tag" );
-			    i_info->req_tag_offs = dev_offs + match_offs + moff;
-			    moff = dbgr_field_offset( match_type, "rank" );
-			    i_info->req_rank_offs = dev_offs + match_offs + moff;
-			    moff = dbgr_field_offset( match_type, "context_id" );
-			    i_info->req_context_id_offs = dev_offs + match_offs + moff;
-			}
-		    }
-		}
-	    }
-	}
-    }
-
-    /* Send queues use a separate system */
-    {
-	mqs_type *sreq_type = dbgr_find_type( image, "MPIR_Sendq", mqs_lang_c );
-	if (sreq_type) {
-	    i_info->sendq_next_offs = dbgr_field_offset( sreq_type, "next" );
-	    i_info->sendq_tag_offs  = dbgr_field_offset( sreq_type, "tag" );
-	    i_info->sendq_rank_offs  = dbgr_field_offset( sreq_type, "rank" );
-	    i_info->sendq_context_id_offs  = dbgr_field_offset( sreq_type, "context_id" );
+	    i_info->req_next_offs = dbgr_field_offset( req_type, "next" );
+	    i_info->req_tag_offs = dbgr_field_offset( req_type, "tag" );
+	    i_info->req_rank_offs = dbgr_field_offset( req_type, "rank" );
+	    i_info->req_context_id_offs = dbgr_field_offset( req_type, "context_id" );
 	}
     }
 
@@ -487,9 +454,11 @@ int mqs_setup_operation_iterator (mqs_process *proc, int op)
 {
     mpich_process_info *p_info = 
 	(mpich_process_info *)dbgr_get_process_info (proc);
+/*
     mqs_image * image          = dbgr_get_image (proc);
-/*    mpich_image_info *i_info   = 
-      (mpich_image_info *)dbgr_get_image_info (image); */
+    mpich_image_info *i_info   = 
+      (mpich_image_info *)dbgr_get_image_info (image);
+*/
 
   p_info->what = (mqs_op_class)op;
 
@@ -563,26 +532,22 @@ void mqs_destroy_image_info (mqs_image_info *info)
  * These routine know about the internal structure of the MPI implementation.
  */
 
-/* Get the next entry in the current receive queue (posted or unexpected) */
+static int fetch_common(mqs_process *proc, mpich_process_info *p_info,
+		mqs_pending_operation *res, int look_for_user_buffer,
+		mqs_image *image, mpich_image_info *i_info,
+		communicator_t *comm, int16_t wanted_context) {
 
-static int fetch_receive (mqs_process *proc, mpich_process_info *p_info,
-			  mqs_pending_operation *res, int look_for_user_buffer)
-{
-    mqs_image * image          = dbgr_get_image (proc);
-    mpich_image_info *i_info   = (mpich_image_info *)dbgr_get_image_info (image);
-    communicator_t   *comm     = p_info->current_communicator;
-    int16_t wanted_context     = comm->recvcontext_id;
-    mqs_taddr_t base           = fetch_pointer (proc, p_info->next_msg, p_info);
+    mqs_taddr_t base = fetch_pointer(proc, p_info->next_msg, p_info);
 
     while (base != 0) {
 	/* Check this entry to see if the context matches */
-	int16_t actual_context = fetch_int16( proc, base + i_info->req_context_id_offs, p_info );
-	
+	int16_t actual_context = fetch_int16(proc, base + i_info->req_context_id_offs, p_info);
+
 	if (actual_context == wanted_context) {
 	    /* Found a request for this communicator */
-	    int tag = fetch_int( proc, base + i_info->req_tag_offs, p_info );
-	    int rank = fetch_int16( proc, base + i_info->req_rank_offs, p_info );
-	    int is_complete = fetch_int (proc, base + i_info->req_cc_offs, p_info);
+	    int tag = fetch_int(proc, base + i_info->req_tag_offs, p_info);
+	    int rank = fetch_int16(proc, base + i_info->req_rank_offs, p_info);
+	    int is_complete = fetch_int(proc, base + i_info->req_cc_offs, p_info);
 
 	    res->desired_tag = tag;
 	    res->desired_local_rank = rank;
@@ -590,7 +555,7 @@ static int fetch_receive (mqs_process *proc, mpich_process_info *p_info,
 						if valid (in mpi-2, may
 						not be available) */
 	    res->desired_length = -1;
-	    
+
 	    res->tag_wild = (tag < 0);
 	    /* We don't know the rest of these */
 	    res->buffer   = 0;
@@ -599,7 +564,6 @@ static int fetch_receive (mqs_process *proc, mpich_process_info *p_info,
 	    res->actual_global_rank = -1;
 	    res->actual_tag = tag;
 	    res->actual_length = -1;
-	    res->extra_text[0][0] = 0;
 
 	    res->status = (is_complete != 0) ? mqs_st_pending : mqs_st_complete; 
 
@@ -612,93 +576,28 @@ static int fetch_receive (mqs_process *proc, mpich_process_info *p_info,
 	    base = fetch_pointer (proc, base + i_info->req_next_offs, p_info);
 	}
     }
-#if 0
-  while (base != 0)
-    { /* Well, there's a queue, at least ! */
-      mqs_tword_t actual_context = fetch_int (proc, base + i_info->context_id_offs, p_info);
-      
-      if (actual_context == wanted_context)
-	{ /* Found a good one */
-	  mqs_tword_t tag     = fetch_int (proc, base + i_info->tag_offs, p_info);
-	  mqs_tword_t tagmask = fetch_int (proc, base + i_info->tagmask_offs, p_info);
-	  mqs_tword_t lsrc    = fetch_int (proc, base + i_info->lsrc_offs, p_info);
-	  mqs_tword_t srcmask = fetch_int (proc, base + i_info->srcmask_offs, p_info);
-	  mqs_taddr_t ptr     = fetch_pointer (proc, base + i_info->ptr_offs, p_info);
-	  
-	  /* Fetch the fields from the MPIR_RHANDLE */
-	  int is_complete = fetch_int (proc, ptr + i_info->is_complete_offs, p_info);
-	  mqs_taddr_t buf     = fetch_pointer (proc, ptr + i_info->buf_offs, p_info);
-	  mqs_tword_t len     = fetch_int (proc, ptr + i_info->len_offs, p_info);
-	  mqs_tword_t count   = fetch_int (proc, ptr + i_info->count_offs, p_info);
+    p_info->next_msg = 0;
+    return mqs_end_of_list;
+}  /* fetch_common */
 
-	  /* If we don't have start, then use buf instead... */
-	  mqs_taddr_t start;
-	  if (i_info->start_offs < 0)
-	    start = buf;
-	  else
-	    start = fetch_pointer (proc, ptr + i_info->start_offs, p_info);
+/* Get the next entry in the current receive queue (posted or unexpected) */
 
-	  /* Hurrah, we should now be able to fill in all the necessary fields in the
-	   * result !
-	   */
-	  res->status = is_complete ? mqs_st_complete : mqs_st_pending; /* We can't discern matched */
-	  if (srcmask == 0)
-	    {
-	      res->desired_local_rank  = -1;
-	      res->desired_global_rank = -1;
-	    }
-	  else
-	    {
-	      res->desired_local_rank  = lsrc;
-	      res->desired_global_rank = translate (comm->group, lsrc);
-	      
-	    }
-	  res->tag_wild       = (tagmask == 0);
-	  res->desired_tag    = tag;
-	  
-	  if (look_for_user_buffer)
-	    {
-		res->system_buffer  = 0;
-	      res->buffer         = buf;
-	      res->desired_length = len;
-	    }
-	  else
-	    {
-	      res->system_buffer  = 1;
-	      /* Correct an oddity. If the buffer length is zero then no buffer
-	       * is allocated, but the descriptor is left with random data.
-	       */
-	      if (count == 0)
-		start = 0;
-	      
-	      res->buffer         = start;
-	      res->desired_length = count;
-	    }
-
-	  if (is_complete)
-	    { /* Fill in the actual results, rather than what we were looking for */
-	      mqs_tword_t mpi_source  = fetch_int (proc, ptr + i_info->MPI_SOURCE_offs, p_info);
-	      mqs_tword_t mpi_tag  = fetch_int (proc, ptr + i_info->MPI_TAG_offs, p_info);
-
-	      res->actual_length     = count;
-	      res->actual_tag        = mpi_tag;
-	      res->actual_local_rank = mpi_source;
-	      res->actual_global_rank= translate (comm->group, mpi_source);
-	    }
-
-	  /* Don't forget to step the queue ! */
-	  p_info->next_msg = base + i_info->next_offs;
-	  return mqs_ok;
-	}
-      else
-	{ /* Try the next one */
-	  base = fetch_pointer (proc, base + i_info->next_offs, p_info);
-	}
+static int fetch_receive (mqs_process *proc, mpich_process_info *p_info,
+			  mqs_pending_operation *res, int look_for_user_buffer)
+{
+    mqs_image * image          = dbgr_get_image (proc);
+    mpich_image_info *i_info   = (mpich_image_info *)dbgr_get_image_info (image);
+    communicator_t   *comm     = p_info->current_communicator;
+    int16_t wanted_context     = comm->recvcontext_id;
+    // We assume look_for_user_buffer means "expected"...
+    if (look_for_user_buffer) {
+        strncpy((char *)res->extra_text[0],"Posted receive",20);
+    } else {
+        strncpy((char *)res->extra_text[0],"Unexpected receive",20);
     }
-#endif  
-  p_info->next_msg = 0;
-  return mqs_end_of_list;
-}  /* fetch_receive */
+    res->extra_text[1][0] = 0;
+    return fetch_common(proc, p_info, res, look_for_user_buffer, image, i_info, comm, wanted_context);
+}
 
 /* Get the next entry in the send queue, if there is one.  The assumption is 
    that the MPI implementation is quiescent while these queue probes are
@@ -707,74 +606,20 @@ static int fetch_receive (mqs_process *proc, mpich_process_info *p_info,
 static int fetch_send (mqs_process *proc, mpich_process_info *p_info,
 		       mqs_pending_operation *res)
 {
+    if (!p_info->has_sendq)
+	return mqs_no_information;
     mqs_image * image        = dbgr_get_image (proc);
     mpich_image_info *i_info = (mpich_image_info *)dbgr_get_image_info (image);
     communicator_t   *comm   = p_info->current_communicator;
     int wanted_context       = comm->context_id;
-    mqs_taddr_t base         = fetch_pointer (proc, p_info->next_msg, p_info);
-    
-    if (!p_info->has_sendq)
-	return mqs_no_information;
-    
     /* Say what operation it is. We can only see non blocking send operations
      * in MPICH. Other MPI systems may be able to show more here. 
      */
     /* FIXME: handle size properly (declared as 64 in mpi_interface.h) */
-    strncpy ((char *)res->extra_text[0],"Non-blocking send",20);
+    strncpy((char *)res->extra_text[0],"Non-blocking send",20);
     res->extra_text[1][0] = 0;
-    
-    while (base != 0) {
-	/* Check this entry to see if the context matches */
-	int actual_context = fetch_int( proc, base + i_info->sendq_context_id_offs, p_info );
-	
-	if (actual_context == wanted_context) {
-
-	    
-	    /* Don't forget to step the queue ! */
-	    p_info->next_msg = base + i_info->sendq_next_offs;
-	    return mqs_ok;
-	}
-	else {
-	    /* Try the next one */
-	    base = fetch_pointer (proc, base + i_info->sendq_next_offs, p_info);
-	}
-    }
-#if 0
-  while (base != 0)
-    { /* Well, there's a queue, at least ! */
-      /* Check if it's one we're interested in ? */
-      mqs_taddr_t commp = fetch_pointer (proc, base+i_info->db_comm_offs, p_info);
-      mqs_taddr_t next  = base+i_info->db_next_offs;
-
-      if (commp == comm->comm_info.unique_id)
-	{ /* Found one */
-	  mqs_tword_t target = fetch_int (proc, base+i_info->db_target_offs,      p_info);
-	  mqs_tword_t tag    = fetch_int (proc, base+i_info->db_tag_offs,         p_info);
-	  mqs_tword_t length = fetch_int (proc, base+i_info->db_byte_length_offs, p_info);
-	  mqs_taddr_t data   = fetch_pointer (proc, base+i_info->db_data_offs,    p_info);
-	  mqs_taddr_t shandle= fetch_pointer (proc, base+i_info->db_shandle_offs, p_info);
-	  mqs_tword_t complete=fetch_int (proc, shandle+i_info->is_complete_offs, p_info);
-
-	  /* Ok, fill in the results */
-	  res->status = complete ? mqs_st_complete : mqs_st_pending; /* We can't discern matched */
-	  res->actual_local_rank = res->desired_local_rank = target;
-	  res->actual_global_rank= res->desired_global_rank= translate (comm->group, target);
-	  res->tag_wild   = 0;
-	  res->actual_tag = res->desired_tag = tag;
-	  res->desired_length = res->actual_length = length;
-	  res->system_buffer  = 0;
-	  res->buffer = data;
-
-	  p_info->next_msg = next;
-	  return mqs_ok;
-	}
-      
-      base = fetch_pointer (proc, next, p_info);
-    }
-
-  p_info->next_msg = 0;
-#endif
-  return mqs_end_of_list;
+    /// \todo determine if look_for_user_buffer should be '1' here
+    return fetch_common(proc, p_info, res, 0, image, i_info, comm, wanted_context);
 } /* fetch_send */
 
 /* ------------------------------------------------------------------------ */
@@ -784,8 +629,10 @@ static communicator_t * find_communicator (mpich_process_info *p_info,
 static group_t * find_or_create_group (mqs_process *proc,
 				       mqs_tword_t np,
 				       mqs_taddr_t table);
+#if 0
 static int translate (group_t *this, int idx);
 static int reverse_translate (group_t * this, int idx);
+#endif
 static void group_decref (group_t * group);
 
 
@@ -1016,6 +863,7 @@ static mqs_tword_t fetch_int16 (mqs_process * proc, mqs_taddr_t addr,
 /* With each communicator we need to translate ranks to/from their
    MPI_COMM_WORLD equivalents.  This code is not yet implemented */
 /* ------------------------------------------------------------------------- */
+#if 0
 static int translate (group_t *this, int idx) 
 { 	
     return -1;
@@ -1024,6 +872,7 @@ static int reverse_translate (group_t * this, int idx)
 { 	
     return -1;
 }
+#endif
 static group_t * find_or_create_group (mqs_process *proc,
 				       mqs_tword_t np,
 				       mqs_taddr_t table)

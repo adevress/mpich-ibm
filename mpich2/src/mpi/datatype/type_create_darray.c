@@ -123,7 +123,7 @@ PMPI_LOCAL int MPIR_Type_block(int *array_of_gsizes,
 	    /* --END ERROR HANDLING-- */
 	}
 	else {
-	    for (i=0; i<dim; i++) stride *= array_of_gsizes[i];
+	    for (i=0; i<dim; i++) stride *= (MPI_Aint)(array_of_gsizes[i]);
 	    mpi_errno = MPID_Type_vector(mysize,
 					 1,
 					 stride,
@@ -153,7 +153,7 @@ PMPI_LOCAL int MPIR_Type_block(int *array_of_gsizes,
 	    /* --END ERROR HANDLING-- */
 	}
 	else {
-	    for (i=ndims-1; i>dim; i--) stride *= array_of_gsizes[i];
+	    for (i=ndims-1; i>dim; i--) stride *= (MPI_Aint)(array_of_gsizes[i]);
 	    mpi_errno = MPID_Type_vector(mysize,
 					 1,
 					 stride,
@@ -170,7 +170,7 @@ PMPI_LOCAL int MPIR_Type_block(int *array_of_gsizes,
 	}
     }
 
-    *st_offset = blksize * rank;
+    *st_offset = (MPI_Aint)blksize * (MPI_Aint)rank;
      /* in terms of no. of elements of type oldtype in this dimension */
     if (mysize == 0) *st_offset = 0;
 
@@ -231,10 +231,10 @@ PMPI_LOCAL int MPIR_Type_cyclic(int *array_of_gsizes,
     count = local_size/blksize;
     rem = local_size % blksize;
     
-    stride = nprocs*blksize*orig_extent;
+    stride = (MPI_Aint)nprocs * (MPI_Aint)blksize * orig_extent;
     if (order == MPI_ORDER_FORTRAN)
-	for (i=0; i<dim; i++) stride *= array_of_gsizes[i];
-    else for (i=ndims-1; i>dim; i--) stride *= array_of_gsizes[i];
+	for (i=0; i<dim; i++) stride *= (MPI_Aint)(array_of_gsizes[i]);
+    else for (i=ndims-1; i>dim; i--) stride *= (MPI_Aint)(array_of_gsizes[i]);
 
     mpi_errno = MPID_Type_vector(count,
 				 blksize,
@@ -257,7 +257,7 @@ PMPI_LOCAL int MPIR_Type_cyclic(int *array_of_gsizes,
 	types[0] = *type_new;
 	types[1] = type_old;
 	disps[0] = 0;
-	disps[1] = count*stride;
+	disps[1] = (MPI_Aint)count * stride;
 	blklens[0] = 1;
 	blklens[1] = rem;
 
@@ -288,9 +288,9 @@ PMPI_LOCAL int MPIR_Type_cyclic(int *array_of_gsizes,
         types[0] = MPI_LB;
         disps[0] = 0;
         types[1] = *type_new;
-        disps[1] = rank * blksize * orig_extent;
+        disps[1] = (MPI_Aint)rank * (MPI_Aint)blksize * orig_extent;
         types[2] = MPI_UB;
-        disps[2] = orig_extent * array_of_gsizes[dim];
+        disps[2] = orig_extent * (MPI_Aint)(array_of_gsizes[dim]);
         blklens[0] = blklens[1] = blklens[2] = 1;
         mpi_errno = MPID_Type_struct(3,
 				     blklens,
@@ -314,7 +314,7 @@ PMPI_LOCAL int MPIR_Type_cyclic(int *array_of_gsizes,
                             the struct above */
     }
     else {
-        *st_offset = rank * blksize; 
+        *st_offset = (MPI_Aint)rank * (MPI_Aint)blksize; 
         /* st_offset is in terms of no. of elements of type oldtype in
          * this dimension */ 
     }
@@ -372,6 +372,11 @@ int MPI_Type_create_darray(int size,
     int procs, tmp_rank, tmp_size, blklens[3], *coords;
     MPI_Aint *st_offsets, orig_extent, disps[3];
     MPI_Datatype type_old, type_new = MPI_DATATYPE_NULL, types[3];
+
+#   ifdef HAVE_ERROR_CHECKING
+    MPI_Aint   size_with_aint;
+    MPI_Offset size_with_offset;
+#   endif
 
     int *ints;
     MPID_Datatype *datatype_ptr = NULL;
@@ -472,7 +477,7 @@ int MPI_Type_create_darray(int size,
 	    }
 
 	    /* TODO: GET THIS CHECK IN ALSO */
-#if 0
+#if 1
 	    /* check if MPI_Aint is large enough for size of global array. 
 	       if not, complain. */
 	    
@@ -481,8 +486,16 @@ int MPI_Type_create_darray(int size,
 	    size_with_offset = orig_extent;
 	    for (i=0; i<ndims; i++) size_with_offset *= array_of_gsizes[i];
 	    if (size_with_aint != size_with_offset) {
-		FPRINTF(stderr, "MPI_Type_create_darray: Can't use an array of this size unless the MPI implementation defines a 64-bit MPI_Aint\n");
-		MPI_Abort(MPI_COMM_WORLD, 1);
+		/* FPRINTF(stderr, "MPI_Type_create_darray: Can't use an array of this size unless the MPI implementation defines a 64-bit MPI_Aint\n"); */
+		/* MPI_Abort(MPI_COMM_WORLD, 1); */
+		mpi_errno = MPIR_Err_create_code(MPI_SUCCESS,
+						 MPIR_ERR_FATAL,
+						 FCNAME,
+						 __LINE__,
+						 MPI_ERR_ARG,
+						 "**darrayoverflow",
+						 "**darrayoverflow %L",
+						 size_with_offset);
 	    }
 #endif	    
 
@@ -578,7 +591,7 @@ int MPI_Type_create_darray(int size,
 	tmp_size = 1;
 	for (i=1; i<ndims; i++) {
 	    tmp_size *= array_of_gsizes[i-1];
-	    disps[1] += tmp_size*st_offsets[i];
+	    disps[1] += (MPI_Aint)tmp_size * st_offsets[i];
 	}
         /* rest done below for both Fortran and C order */
     }
@@ -646,14 +659,14 @@ int MPI_Type_create_darray(int size,
 	tmp_size = 1;
 	for (i=ndims-2; i>=0; i--) {
 	    tmp_size *= array_of_gsizes[i+1];
-	    disps[1] += tmp_size*st_offsets[i];
+	    disps[1] += (MPI_Aint)tmp_size * st_offsets[i];
 	}
     }
 
     disps[1] *= orig_extent;
 
     disps[2] = orig_extent;
-    for (i=0; i<ndims; i++) disps[2] *= array_of_gsizes[i];
+    for (i=0; i<ndims; i++) disps[2] *= (MPI_Aint)(array_of_gsizes[i]);
 	
     disps[0] = 0;
     blklens[0] = blklens[1] = blklens[2] = 1;

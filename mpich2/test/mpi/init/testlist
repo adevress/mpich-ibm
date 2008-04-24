@@ -1,6 +1,6 @@
-exitst1 2 resultTest=TestStatus
-exitst2 4 resultTest=TestStatus
+#exitst1 2 resultTest=TestStatus # temp disable until fixed. issue 7051
+#exitst2 4 resultTest=TestStatus # temp disable until fixed. issue 7051
 initstat 1
-timeout 2 resultTest=TestTimeout timeLimit=10
+#timeout 2 resultTest=TestTimeout timeLimit=10 # temp disable until fixed. issue 7051
 version 1
 finalized 1

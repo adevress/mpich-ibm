@@ -1,0 +1,8 @@
+rdwrord 8
+rdwrzero 8
+getextent 2
+setinfo 8
+setviewcur 8
+i_noncontig 2
+async 8
+async_any 8

@@ -42,7 +42,7 @@ int copy_fn( MPI_Comm oldcomm, int keyval, void *extra_state,
     /* Note that if (sizeof(int) < sizeof(void *), just setting the int
        part of attribute_val_out may leave some dirty bits
     */
-    *(MPI_Aint *)attribute_val_out = (MPI_Aint)attribute_val_in;
+    *(void **)attribute_val_out = attribute_val_in;
     *flag = 1;
     return MPI_SUCCESS;
 }
@@ -52,8 +52,8 @@ int delete_fn( MPI_Comm comm, int keyval, void *attribute_val,
 {
     int world_rank;
     MPI_Comm_rank( MPI_COMM_WORLD, &world_rank );
-    if ((MPI_Aint)attribute_val != (MPI_Aint)world_rank) {
-	printf( "incorrect attribute value %d\n", *(int*)attribute_val );
+    if (attribute_val != (void *)world_rank) {
+	printf( "incorrect attribute value %ld\n", (long)attribute_val );
 	MPI_Abort(MPI_COMM_WORLD, 1005 );
     }
     return MPI_SUCCESS;
@@ -73,7 +73,7 @@ int test_communicators( void )
 	    .        key_2
 	    
     */
-    MPI_Aint value;
+    int value;
 
     MPI_Comm_rank( MPI_COMM_WORLD, &world_rank );
     MPI_Comm_size( MPI_COMM_WORLD, &world_size );
@@ -180,7 +180,7 @@ int test_communicators( void )
 	/* This may generate a compilation warning; it is, however, an
 	   easy way to cache a value instead of a pointer */
 	/* printf( "key1 = %x key3 = %x\n", key_1, key_3 ); */
-	MPI_Attr_put(lo_comm, key_1, (void *) (MPI_Aint) world_rank );
+	MPI_Attr_put(lo_comm, key_1, (void *)world_rank );
 	/*         MPI_Attr_put(lo_comm, key_2, world_size ) */
 	MPI_Attr_put(lo_comm, key_3, (void *)0 );
 	
@@ -192,7 +192,7 @@ int test_communicators( void )
 	   a (void *) and cast to int. Note that this may generate warning
 	   messages from the compiler.  */
 	MPI_Attr_get(dup_comm, key_1, (void **)&vvalue, &flag );
-	value = (MPI_Aint)vvalue;
+	value = (int)vvalue;
 	
 	if (! flag) {
 	    errs++;
@@ -223,7 +223,7 @@ int test_communicators( void )
 	   }
 	*/
 	MPI_Attr_get(dup_comm, key_3, (void **)&vvalue, &flag );
-	value = (MPI_Aint)vvalue;
+	value = (int)vvalue;
 	if (flag) {
 	    errs++;
 	    printf( "dup_comm key_3 found!\n" );

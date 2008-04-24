@@ -116,7 +116,7 @@ static void *MTestTypeContigInit( MTestDatatype *mtype )
 	signed char *p;
 	int  i, totsize;
 	mtype->datatype.Get_extent( lb, size );
-	totsize = size * mtype->count;
+	totsize = (int)size * mtype->count;
 	if (!mtype->buf) {
 	    mtype->buf = (void *) malloc( totsize );
 	}
@@ -146,7 +146,7 @@ static void *MTestTypeContigInitRecv( MTestDatatype *mtype )
 	signed char *p;
 	int  i, totsize;
 	MPI_Type_extent( mtype->datatype, &size );
-	totsize = size * mtype->count;
+	totsize = (int)size * mtype->count;
 	if (!mtype->buf) {
 	    mtype->buf = (void *) malloc( totsize );
 	}
@@ -185,7 +185,7 @@ static int MTestTypeContigCheckbuf( MTestDatatype *mtype )
     p = (unsigned char *)mtype->buf;
     if (p) {
 	MPI_Type_extent( mtype->datatype, &size );
-	totsize = size * mtype->count;
+	totsize = (int)size * mtype->count;
 	for (i=0; i<totsize; i++) {
 	    expected = (0xff ^ (i & 0xff));
 	    if (p[i] != expected) {
@@ -215,7 +215,7 @@ static void *MTestTypeVectorInit( MTestDatatype *mtype )
 	int  i, j, k, nc, totsize;
 
 	mtype->datatype.Get_extent( lb, size );
-	totsize	   = mtype->count * size;
+	totsize	   = mtype->count * (int)size;
 	if (!mtype->buf) {
 	    mtype->buf = (void *) malloc( totsize );
 	}

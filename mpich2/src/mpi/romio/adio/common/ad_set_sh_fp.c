@@ -5,6 +5,9 @@
  */
 
 #include "adio.h"
+#ifdef ROMIO_BGL
+#include "../ad_bgl/ad_bgl.h"
+#endif
 
 /* set the shared file pointer to "offset" etypes relative to the current 
    view */

@@ -1,4 +1,4 @@
-/* $Header$ */
+/* $Header: /msrc/proj/hpctools/cvs/tcgmsg/ipcv4.0/nnodes.c,v 1.4 1995/02/24 02:17:30 d3h325 Exp $ */
 
 #include "sndrcv.h"
 #include "sndrcvP.h"

@@ -44,9 +44,9 @@ int main( int argc, char *argv[] )
     /* Create the corresponding message buffers */
     MPI_Type_extent( dtype, &extent );
     for (i=0; i<MAX_MSGS; i++) {
-	bufs[i] = (int *)malloc( extent );
+	bufs[i] = (int *)malloc( (size_t)extent );
 	if (!bufs[i]) {
-	    fprintf( stderr, "Unable to allocate buffer %d of size %d\n", 
+	    fprintf( stderr, "Unable to allocate buffer %d of size " MPI_AINT_FMT_DEC_SPEC "\n", 
 		    	i, extent );
 	    MPI_Abort( MPI_COMM_WORLD, 1 );
 	}

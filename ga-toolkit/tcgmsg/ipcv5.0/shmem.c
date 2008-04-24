@@ -1,4 +1,4 @@
-/* $Header$ */
+/* $Header: /msrc/proj/hpctools/cvs/tcgmsg/ipcv5.0/shmem.c,v 1.4 2002/01/24 22:07:27 d3h325 Exp $ */
 
 /*
   This stuff attempts to provide a simple interface to temporary shared

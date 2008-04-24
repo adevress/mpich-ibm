@@ -1,4 +1,4 @@
-/* $Header$ */
+/* $Header: /msrc/proj/hpctools/cvs/tcgmsg/ipcv5.0/drand48.c,v 1.2 1994/12/30 20:55:40 d3h325 Exp $ */
 
 #include "srftoc.h"
 

@@ -1,4 +1,4 @@
-/* $Header$ */
+/* $Header: /msrc/proj/hpctools/cvs/tcgmsg/ipcv4.0/synch.c,v 1.5 2002/07/17 17:20:11 vinod Exp $ */
 
 #include "sndrcv.h"
 

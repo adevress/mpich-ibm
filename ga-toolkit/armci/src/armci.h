@@ -214,10 +214,10 @@ extern char *mp_group_name;
 \*/
 typedef struct{
 #ifdef BGML 
-    int data[4]; /* tag, bufid, agg_flag, op, proc */
+    int data[5]; /* tag, bufid, agg_flag, op, proc, implicit */
     double dummy[72]; /* bg1s_t, count, extra */
 #else
-    int data[4];
+    int data[5];
 #if defined(_AIX) 
 #   if defined(__64BIT__)
     double dummy[27]; /*lapi_cntr_t is 200 bytes, using 216 just to be safe*/ 
@@ -227,10 +227,11 @@ typedef struct{
 #elif defined(ALLOW_PIN)
     void *dummy[2];/*2 cause itshould be aligned after we cast hdl_t to ihdl_t*/
 #else
-    double dummy;
+    unsigned dummy[3]; /* pad so that 'opaque' below is 16-byte aligned. */
+    char opaque[528];  /* data storage is a multiple of 16 bytes so that the entire structure is aligned/padded to 16 bytes. */
 #endif
 #endif
-} armci_hdl_t;
+} armci_hdl_t __attribute__ ((__aligned__ (16)));
 
 #define armci_req_t armci_hdl_t
 

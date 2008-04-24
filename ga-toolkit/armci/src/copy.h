@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: copy.h,v 1.82.2.7 2007/09/25 18:40:10 manoj Exp $ */
 #ifndef _COPY_H_
 #define _COPY_H_
 
@@ -284,6 +284,8 @@
 #   elif defined(BGML)
 #   include "bgmldefs.h"
 #   define FENCE_NODE(p) BGML_WaitProc(p)    
+#   elif defined(ARMCIX)
+#   define FENCE_NODE(p) ARMCIX_Fence(p) 
 #   else
 #    define FENCE_NODE(p)
 #   endif   
@@ -465,6 +467,11 @@ extern void armci_elan_put_with_tracknotify(char *src,char *dst,int n,int proc, 
 #elif defined(BGML)
 #define armci_get(src, dst, n, p)   ARMCI_Get(src, dst, n, p)
 #define armci_put(src, dst, n, p)   ARMCI_Put(src, dst, n, p)
+
+#elif defined(ARMCIX)
+#define armci_get(src, dst, n, p)   ARMCI_Get(src, dst, n, p)
+#define armci_put(src, dst, n, p)   ARMCI_Put(src, dst, n, p)
+#define ARMCI_NB_WAIT(cmplt) ARMCIX_Wait(&(cmplt))
 
 #else
 

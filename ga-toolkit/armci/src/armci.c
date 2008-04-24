@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: armci.c,v 1.110.2.10 2007/04/25 22:50:01 d3p687 Exp $ */
 
 /* DISCLAIMER
  *
@@ -24,6 +24,7 @@
  */
 
 #define  EXTERN
+
 #include <stdio.h>
 #include <stdlib.h>
 #if defined(CRAY) && !defined(__crayx1)
@@ -41,6 +42,9 @@
 #include "shmem.h"
 #include "signaltrap.h"
 
+#ifdef ARMCIX
+#include "x/armcix.h"
+#endif
 #ifdef GA_USE_VAMPIR
 #include "armci_vampir.h"
 #endif
@@ -288,6 +292,8 @@ void armci_init_memlock()
 
 #ifdef BGML
     bgml_init_locks ((void *) memlock_table_array[armci_me]);
+#elif ARMCIX
+    ARMCIX_init_memlock ((memlock_t *) memlock_table_array[armci_me]);
 #endif
 
 
@@ -368,7 +374,6 @@ void armci_create_ft_group()
 int ARMCI_Init()
 {
     if(_armci_initialized>0) return 0;
-
 #ifdef GA_USE_VAMPIR
     vampir_init(NULL,NULL,__FILE__,__LINE__);
     armci_vampir_init(__FILE__,__LINE__);
@@ -386,9 +391,10 @@ int ARMCI_Init()
       bgml_barrier = (BGML_Barrier) BGGI_Barrier;
     else
       bgml_barrier = (BGML_Barrier) BGTr_Barrier;
-
 #endif
-
+#ifdef ARMCIX
+    ARMCIX_Init ();
+#endif
     armci_nproc = armci_msg_nproc();
     armci_me = armci_msg_me();
     armci_usr_tid = THREAD_ID_SELF(); /*remember the main user thread id */
@@ -701,7 +707,6 @@ int direct=SAMECLUSNODE(nb_handle->proc);
     if(nb_handle){
 
 #     ifdef ARMCI_NB_WAIT
-
         if(nb_handle->tag==0){
               ARMCI_NB_WAIT(nb_handle->cmpl_info);
 #             ifdef ARMCI_PROFILE
@@ -709,7 +714,7 @@ int direct=SAMECLUSNODE(nb_handle->proc);
 #             endif
               return(success);
         }
-#       if defined(LAPI) || defined(ALLOW_PIN)
+#       if defined(LAPI) || defined(ALLOW_PIN) || defined(ARMCIX)
          if(nb_handle->tag!=0 && nb_handle->bufid==NB_NONE){
                ARMCI_NB_WAIT(nb_handle->cmpl_info);
 #              ifdef ARMCI_PROFILE
@@ -745,7 +750,9 @@ armci_ihdl_t armci_set_implicit_handle (int op, int proc) {
  
   int i=impcount%ARMCI_MAX_IMPLICIT;
   if(hdl_flag[i]=='1')
+  {
     ARMCI_Wait((armci_hdl_t*)&armci_inb_handle[i]);
+  }
 
 #ifdef BGML
    armci_inb_handle[i].count=0;
@@ -765,6 +772,8 @@ armci_ihdl_t armci_set_implicit_handle (int op, int proc) {
 int ARMCI_WaitAll (void) {
 #ifdef BGML
   BGML_WaitAll();
+#elif ARMCIX
+  ARMCIX_WaitAll ();
 #else
   int i;
   if(impcount) {
@@ -777,6 +786,7 @@ int ARMCI_WaitAll (void) {
   }
   impcount=0;
 #endif
+  
   return 0;
 }
  
@@ -784,6 +794,8 @@ int ARMCI_WaitAll (void) {
 int ARMCI_WaitProc (int proc) {
 #ifdef BGML
   BGML_WaitProc(proc);
+#elif ARMCIX
+  ARMCIX_WaitProc (proc);
 #else
   int i;
   if(impcount) {

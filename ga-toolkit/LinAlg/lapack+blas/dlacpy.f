@@ -6,7 +6,7 @@
 *     February 29, 1992
 *
 *     .. Scalar Arguments ..
-C$Id$
+C$Id: dlacpy.f,v 1.1.1.1 1999/05/28 00:46:53 d3h325 Exp $
       CHARACTER          UPLO
       INTEGER            LDA, LDB, M, N
 *     ..

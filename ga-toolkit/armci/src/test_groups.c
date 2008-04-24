@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: test_groups.c,v 1.3 2004/11/22 20:29:53 manoj Exp $ */
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>

@@ -4,9 +4,22 @@ smvarSubdir_commonmake=
 distclean-local:
 	rm -f runtests
 
-# Test both the MPI routines and the MPICH2 command scripts
+testingio:
+	(cd mpi && $(MAKE) testingio)
+
 testing:
-	(NOXMLCLOSE=YES && export NOXMLCLOSE && cd mpi && $(MAKE) testing)
-	(XMLFILE=../mpi/summary.xml && XMLCONTINUE=YES && \
-	export XMLFILE && export XMLCONTINUE && \
-	cd commands && $(MAKE) testing)
+	(cd mpi && $(MAKE) testing)
+
+testingvnm:
+	(cd mpi && $(MAKE) testingvnm)
+
+testing-mpirun:
+	(cd mpi && $(MAKE) testing-mpirun)
+testingvnm-mpirun:
+	(cd mpi && $(MAKE) testingvnm-mpirun)
+testingio-mpirun:
+	(cd mpi && $(MAKE) testingio-mpirun)
+
+testingdual-mpirun:
+	(cd mpi && $(MAKE) testingdual-mpirun)
+

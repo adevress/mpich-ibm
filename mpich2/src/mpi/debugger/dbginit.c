@@ -86,10 +86,10 @@ int MPIR_proctable_size          = 1;
  */
 void MPIR_WaitForDebugger( void )
 {
+#if 0
     int rank = MPIR_Process.comm_world->rank;
     int size = MPIR_Process.comm_world->local_size;
 
-#if 0
     /* FIXME: In MPICH2, the executables may not have the information
        on the other processes; this is part of the Process Manager Interface
        (PMI).  We need another way to provide this information to 
@@ -171,62 +171,34 @@ void * MPIR_Breakpoint( void )
  * send requests that were never completed.
  */
 
-/* We need to save the tag and rank since this information may not 
-   be included in the request.  Saving the context_id also simplifies
-   matching these entries with a communicator */
-typedef struct MPIR_Sendq {
-    MPID_Request *sreq;
-    int tag, rank, context_id;
-    struct MPIR_Sendq *next;
-} MPIR_Sendq;
-
-MPIR_Sendq *MPIR_Sendq_head = 0;
-/* Keep a pool of previous sendq elements to speed allocation of queue 
-   elements */
-static MPIR_Sendq *pool = 0;
+MPID_Request *MPIR_Sendq_head = 0;
 
 void MPIR_Sendq_remember( MPID_Request *req, 
 			  int rank, int tag, int context_id )
 {
-    MPIR_Sendq *p;
-    if (pool) {
-	p = pool;
-	pool = p->next;
-    }
-    else {
-	p = (MPIR_Sendq *)MPIU_Malloc( sizeof(MPIR_Sendq) );
-	if (!p) {
-	    /* Just ignore it */
-	    return;
-	}
-    }
-    p->sreq       = req;
-    p->tag        = tag;
-    p->rank       = rank;
-    p->context_id = context_id;
-    p->next       = MPIR_Sendq_head;
-    MPIR_Sendq_head = p;
+    //DCMF_assert(rank == MPID_Request_getMatchRank(req));
+    //DCMF_assert(tag == MPID_Request_getMatchTag(req));
+    //DCMF_assert(context_id == MPID_Request_getMatchCtxt(req));
+    req->dcmf.next = MPIR_Sendq_head;
+    MPIR_Sendq_head = req;
 }
 
 void MPIR_Sendq_forget( MPID_Request *req )
 {
-    MPIR_Sendq *p, *prev;
+    MPID_Request *p, *prev;
 
-    p    = MPIR_Sendq_head;
-    prev = 0;
+    p = MPIR_Sendq_head;
+    prev = NULL;
 
     /* FIXME: Make this thread-safe */
     while (p) {
-	if (p->sreq == req) {
-	    if (prev) prev->next = p->next;
-	    else MPIR_Sendq_head = p->next;
-	    /* Return this element to the pool */
-	    p->next = pool;
-	    pool    = p;
+	if (p == req) {
+	    if (prev) prev->dcmf.next = p->dcmf.next;
+	    else MPIR_Sendq_head = p->dcmf.next;
 	    break;
 	}
 	prev = p;
-	p    = p->next;
+	p = p->dcmf.next;
     }
     /* If we don't find the request, just ignore it */
 }
@@ -271,7 +243,7 @@ void MPIR_CommL_forget( MPID_Comm *comm_ptr )
 	    break;
 	}
 	if (p == p->comm_next) {
-	    MPIU_Internal_error_printf( "Mangled pointers to communicators - next is itself for %x\n", p );
+	    MPIU_Internal_error_printf( "Mangled pointers to communicators - next is itself for %x\n", (unsigned)p );
 	    break;
 	}
 	prev = p;

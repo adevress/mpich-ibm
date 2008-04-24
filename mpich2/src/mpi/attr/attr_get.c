@@ -92,9 +92,13 @@ int MPI_Attr_get(MPI_Comm comm, int keyval, void *attr_value, int *flag)
             /* A common user error is to pass the address of a 4-byte
 	       int when the address of a pointer (or an address-sized int)
 	       should have been used.  We can test for this specific
-	       case.  Note that this code assumes sizeof(MPI_Aint) is 
-	       a power of 2. */
-	    if ((MPI_Aint)attr_value & (sizeof(MPI_Aint)-1)) {
+	       case.  Note that this code assumes sizeof(void*) is 
+	       a power of 2. Note that this formerly used MPI_Aint for the
+               address sized int, but since this is configurable and could
+               be larger than a pointer, we use sizeof(void*).  We also
+               cast attr_value to an arbitrary sized numeric value since
+               we are only interested in the low-order few bits. */
+	    if ( (unsigned long) attr_value & (sizeof(void*)-1)) {
 		MPIU_ERR_SET(mpi_errno,MPI_ERR_ARG,"**attrnotptr");
 	    }
 #           endif

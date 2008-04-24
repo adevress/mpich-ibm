@@ -5,7 +5,7 @@
     private within the DistArrayDescriptorFactory.  Only
     DistArrayDescriptor is exposed to the outside. 
 
-    $Id$
+    $Id: DADFDescriptor.cxx,v 1.1 2003/08/01 00:41:53 manoj Exp $
  */
 
 /******************************************************************************

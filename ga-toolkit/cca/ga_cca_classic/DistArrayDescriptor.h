@@ -12,7 +12,7 @@
     does not conform exactly to the interface developed by the Working
     Group, and is intended to be exploratory rather than normative.
 
-    $Id$
+    $Id: DistArrayDescriptor.h,v 1.1 2003/08/01 00:41:53 manoj Exp $
 
     This interface is intended to support the creation of distributed
     data objects structured like dense multi-dimensional distributed

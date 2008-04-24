@@ -1,0 +1,40 @@
+#! /bin/sh
+#
+# This file contains configuration information for mpicc.  This is
+# essentially just the variable-initialization part of mpicc.
+# --------------------------------------------------------------------------
+# Set the default values of all variables.
+#
+# Directory locations: Fixed for any MPI implementation.
+# Set from the directory arguments to configure (e.g., --prefix=/usr/local)
+#
+# Default settings for compiler, flags, and libraries.
+# Determined by a combination of environment variables and tests within
+# configure (e.g., determining whehter -lsocket is needee)
+
+XL9C="/opt/ibmcmp/vacpp/bg/9.0/bin/bgxlc"
+XL9CXX="/opt/ibmcmp/vacpp/bg/9.0/bin/bgxlC"
+XL11F77="/opt/ibmcmp/xlf/bg/11.1/bin/bgxlf"
+XL11F90="/opt/ibmcmp/xlf/bg/11.1/bin/bgxlf90"
+XL11F95="/opt/ibmcmp/xlf/bg/11.1/bin/bgxlf95"
+XL11F2003="/opt/ibmcmp/xlf/bg/11.1/bin/bgxlf2003"
+
+XL9CR="/opt/ibmcmp/vacpp/bg/9.0/bin/bgxlc_r"
+XL9CXXR="/opt/ibmcmp/vacpp/bg/9.0/bin/bgxlC_r"
+XL11F77R="/opt/ibmcmp/xlf/bg/11.1/bin/bgxlf_r"
+XL11F90R="/opt/ibmcmp/xlf/bg/11.1/bin/bgxlf90_r"
+XL11F95R="/opt/ibmcmp/xlf/bg/11.1/bin/bgxlf95_r"
+XL11F2003R="/opt/ibmcmp/xlf/bg/11.1/bin/bgxlf2003_r"
+
+# No threads in BGL, so no thread-safe compilers.
+
+XL8C="/opt/ibmcmp/vacpp/bg/8.0/bin/blrts_xlc"
+XL8CXX="/opt/ibmcmp/vacpp/bg/8.0/bin/blrts_xlC"
+XL10F77="/opt/ibmcmp/xlf/bg/10.1/bin/blrts_xlf"
+XL10F90="/opt/ibmcmp/xlf/bg/10.1/bin/blrts_xlf90"
+XL10F95="/opt/ibmcmp/xlf/bg/10.1/bin/blrts_xlf95"
+
+# MPI_CFLAGS=""
+# MPI_CXXFLAGS=""
+# MPI_FFLAGS=""
+# F77CPP=""

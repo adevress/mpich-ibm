@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: vector.c,v 1.32.4.1 2006/12/18 11:48:00 manoj Exp $ */
 #include "armcip.h"
 #include "copy.h"
 #include "acc.h"
@@ -6,6 +6,9 @@
 #include <stdio.h>
 #include <assert.h>
 
+#ifdef ARMCIX
+#include "x/armcix.h"
+#endif
 #ifdef GA_USE_VAMPIR
 #include "armci_vampir.h"
 #endif
@@ -396,6 +399,8 @@ int ARMCI_PutV( armci_giov_t darr[], /* descriptor array */
    ARMCI_INIT_HANDLE(&nb_handle);
    ARMCI_NbPutV(darr, len, proc, &nb_handle);
    ARMCI_Wait(&nb_handle);
+#elif ARMCIX
+   ARMCIX_PutV (darr, len, proc);
 #else
 
     /* use direct protocol for remote access when performance is better */
@@ -480,6 +485,8 @@ int ARMCI_GetV( armci_giov_t darr[], /* descriptor array */
    ARMCI_INIT_HANDLE(&nb_handle);
    ARMCI_NbGetV(darr, len, proc, &nb_handle);
    ARMCI_Wait(&nb_handle);
+#elif ARMCIX
+   ARMCIX_GetV (darr, len, proc);
 #else
 
     /* use direct protocol for remote access when performance is better */
@@ -558,6 +565,8 @@ int ARMCI_AccV( int op,              /* oeration code */
    ARMCI_INIT_HANDLE(&nb_handle);
    ARMCI_NbAccV(op, scale, darr, len, proc, &nb_handle);
    ARMCI_Wait(&nb_handle);
+#elif ARMCIX
+   ARMCIX_AccV (op, scale, darr, len, proc);
 #else
 
 #   if defined(ACC_COPY) && !defined(ACC_SMP)
@@ -657,6 +666,10 @@ int ARMCI_NbPutV( armci_giov_t darr[], /* descriptor array */
          BGML_giov_t *array=(BGML_giov_t *)darr;
          BG1S_MemputV(&nb_handle->cmpl_info, proc, len, 
                       (BGML_giov_t *)darr, 0, &cb_wait, 1);
+#elif ARMCIX
+
+         ARMCIX_NbPutV (darr, len, proc, nb_handle);
+
 #else
 #if defined(DATA_SERVER) && defined(SOCKETS) && defined(USE_SOCKET_VECTOR_API)  
        /*500 is very conservative, the number here should be modified to be 
@@ -741,6 +754,10 @@ int ARMCI_NbGetV( armci_giov_t darr[], /* descriptor array */
        BGML_Callback_t cb_wait={wait_callback, &nb_handle->count};
        BG1S_MemgetV(&nb_handle->cmpl_info, proc, len, 
                 (BGML_giov_t *)darr, 0, &cb_wait, 1);
+#elif ARMCIX
+
+         ARMCIX_NbGetV (darr, len, proc, nb_handle);
+
 #else
 #if defined(DATA_SERVER) && defined(SOCKETS) && defined(USE_SOCKET_VECTOR_API) 
        /*500 is very conservative, the number here should be modified to be 

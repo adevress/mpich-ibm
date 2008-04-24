@@ -1,4 +1,4 @@
-#$Id$
+#$Id: GNUmakefile,v 1.5 2003/07/09 20:10:21 d3h325 Exp $
 #
 #  Initial version Jace A Mogill (12 June 1996), ANL
 

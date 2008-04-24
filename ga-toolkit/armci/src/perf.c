@@ -2,7 +2,7 @@
  *    Author: Jialin Ju, PNNL
  */
 
-/* $Id$ */
+/* $Id: perf.c,v 1.19.8.2 2006/09/13 17:58:03 andriy Exp $ */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -27,6 +27,163 @@
 
 /* tells to use ARMCI_Malloc_local instead of plain malloc */
 #define MALLOC_LOC 
+
+/*
+#define FORCE_DCMF_ADVANCE
+*/
+#define FORCE_DCMF_ADVANCE_LOOP 1000000
+#ifdef FORCE_DCMF_ADVANCE
+#include <dcmf.h>
+#endif
+
+
+/*
+#define TEST_DCMF
+*/
+#ifdef TEST_DCMF
+#include <dcmf.h>
+#include <string.h>
+
+#warning Compile DCMF version of the ARMCI performance test.
+/*********************************************************************************************/
+/* This memregion exchange code was originally copied from armci/src/x/dcmf/armcix_impl.[ch] */
+/*********************************************************************************************/
+
+typedef struct dcmf_connection_t
+{
+  DCMF_Memregion_t local_mem_region;
+  DCMF_Memregion_t remote_mem_region;
+  unsigned peer;
+  unsigned unused0;
+  unsigned unused1;
+  unsigned unused3;
+}
+dcmf_connection_t __attribute__ ((__aligned__ (16)));
+
+dcmf_connection_t * __connection;
+DCMF_Memregion_t __local_mem_region;
+DCMF_Protocol_t __dcmf_get_protocol;
+DCMF_Protocol_t __dcmf_put_protocol;
+
+/**
+ * \see DCMF_Callback_t
+ */
+void dcmf_cb_decrement (void * clientdata)
+{
+  unsigned * value = (unsigned *) clientdata;
+  (*value)--;
+}
+
+/**
+ * \see DCMF_RecvSend
+ */
+void dcmf_RecvMemregion1 (void           * clientdata,
+                          const DCQuad   * msginfo,
+                          unsigned         count,
+                          unsigned         peer,
+                          const char     * src,
+                          unsigned         bytes)
+{
+  dcmf_connection_t * connection = (dcmf_connection_t *) clientdata;
+  memcpy (&connection[peer].remote_mem_region, src, bytes);
+}
+
+
+/**
+ * \see DCMF_RecvSend
+ */
+DCMF_Request_t * dcmf_RecvMemregion2 (void             * clientdata,
+                                             const DCQuad     * msginfo,
+                                             unsigned           count,
+                                             unsigned           peer,
+                                             unsigned           sndlen,
+                                             unsigned         * rcvlen,
+                                             char            ** rcvbuf,
+                                             DCMF_Callback_t  * cb_done)
+{
+  dcmf_connection_t * connection = (dcmf_connection_t *) clientdata;
+
+  *rcvlen = sndlen;
+  *rcvbuf = (char *) &connection[peer].remote_mem_region;
+
+  cb_done->function   = free;
+  cb_done->clientdata = (void *) malloc (sizeof (DCMF_Request_t));
+
+  return cb_done->clientdata;
+}
+
+void dcmf_connection_initialize ()
+{
+  DCMF_Result result;
+
+  /* Register a Get protocol to test */
+  DCMF_Get_Configuration_t get_config;
+  get_config.protocol = DCMF_DEFAULT_GET_PROTOCOL;
+  result = DCMF_Get_register (&__dcmf_get_protocol, &get_config);
+
+  /* Register a Put protocol to test */
+  DCMF_Put_Configuration_t put_config;
+  put_config.protocol = DCMF_DEFAULT_PUT_PROTOCOL;
+  result = DCMF_Put_register (&__dcmf_put_protocol, &put_config);
+
+  unsigned rank = DCMF_Messager_rank ();
+  unsigned size = DCMF_Messager_size ();
+  posix_memalign ((void **)&__connection, 16, sizeof(dcmf_connection_t) * size);
+  memset ((void *)__connection, 0, sizeof(dcmf_connection_t) * size);
+
+  void * base  = NULL;
+  size_t bytes = (size_t) -1;
+
+  unsigned i;
+  for (i = 0; i < size; i++)
+  {
+    __connection[i].peer = i;
+/*#warning fix memregion setup to handle non-global address space pinning.
+    //DCMF_Result result =*/
+      DCMF_Memregion_create (&__connection[i].local_mem_region,
+                             &bytes, (size_t) -1, (void *) 0x00, 0);
+  }
+
+  DCMF_CriticalSection_enter(0);
+
+  /* Register a send protocol to exchange memory regions
+     Normally this shouldn't be on the stack, but since it will only be used
+     once it is ok ... just this once. */
+  DCMF_Protocol_t send_protocol;
+  DCMF_Send_Configuration_t send_configuration = {
+    DCMF_DEFAULT_SEND_PROTOCOL,
+    dcmf_RecvMemregion1,
+    __connection,
+    dcmf_RecvMemregion2,
+    __connection
+  };
+  DCMF_Send_register (&send_protocol, &send_configuration);
+
+  DCMF_Request_t request;
+  volatile unsigned active;
+  DCMF_Callback_t cb_done = { (void (*)(void*)) dcmf_cb_decrement, (void *) &active };
+
+  /* Exchange the memory regions */
+  for (i = 0; i < size; i++)
+  {
+    unsigned peer = (rank+i)%size;
+    active = 1;
+    DCMF_Send (&send_protocol,
+               &request,
+               cb_done,
+               DCMF_SEQUENTIAL_CONSISTENCY,
+               peer,
+               sizeof(DCMF_Memregion_t),
+               (char *) &__connection[peer].local_mem_region,
+               (DCQuad *) NULL,
+               0);
+    while (active) DCMF_Messager_advance();
+  }
+
+  DCMF_CriticalSection_exit(0);
+}
+
+#endif
 
 int CHECK_RESULT=0;
 
@@ -82,6 +239,25 @@ double time_get(double *src_buf, double *dst_buf, int chunk, int loop,
         tmp_buf_ptr = tmp_buf;
     }
     
+#ifdef TEST_DCMF
+    volatile unsigned dcmf_get_active;
+    DCMF_Request_t dcmf_request;
+    DCMF_Callback_t cb_done = (DCMF_Callback_t){dcmf_cb_decrement, (void *)&dcmf_get_active};
+    DCMF_Memregion_t * src_memregion = &__connection[proc].remote_mem_region;
+    DCMF_Memregion_t * dst_memregion = &__connection[proc].local_mem_region;
+    void * src_base;
+    void * dst_base;
+    size_t bytes;
+    DCMF_Memregion_query (src_memregion, &bytes, &src_base);
+    DCMF_Memregion_query (dst_memregion, &bytes, &dst_base);
+    size_t src_offset;
+    size_t dst_offset;
+
+    /* enter cs outside of time loop */
+    DCMF_CriticalSection_enter (0);
+#endif
+    
+    
     start_time = TIMER();
     for(i=0; i<loop; i++) {
          
@@ -95,9 +271,41 @@ double time_get(double *src_buf, double *dst_buf, int chunk, int loop,
         else
 #endif
         if(levels)
+#ifdef TEST_DCMF
+           assert(0);
+#else
            ARMCI_GetS(src_buf, stride, dst_buf, stride, count, stride_levels,proc);
+#endif
         else
+#ifdef TEST_DCMF
+        {
+           src_offset = (size_t)src_buf - (size_t)src_base;
+           dst_offset = (size_t)dst_buf - (size_t)dst_base;
+           dcmf_get_active = 1;
+/*
+size_t tmp_src_bytes;
+void * tmp_src_base;
+DCMF_Memregion_query (src_memregion, &tmp_src_bytes, &tmp_src_base);
+fprintf (stderr, "before DCMF_Get() - src_memregion = %p, src_memregion->base = %p, src_memregion->bytes = %d, src_offset = %d\n", src_memregion, tmp_src_base, tmp_src_bytes, 
+size_t tmp_dst_bytes;
+void * tmp_dst_base;
+DCMF_Memregion_query (dst_memregion, &tmp_dst_bytes, &tmp_dst_base);
+*/
+           DCMF_Get (&__dcmf_get_protocol,
+                     &dcmf_request,
+                     cb_done,
+                     DCMF_SEQUENTIAL_CONSISTENCY,
+                     proc,
+                     (size_t) count[0],
+                     src_memregion,
+                     dst_memregion,
+                     src_offset,
+                     dst_offset);
+           while (dcmf_get_active) DCMF_Messager_advance ();
+         }
+#else
            ARMCI_Get(src_buf, dst_buf,count[0], proc);
+#endif
 
         if(CHECK_RESULT) {
             sprintf(check_type, "ARMCI_GetS:");
@@ -119,6 +327,11 @@ double time_get(double *src_buf, double *dst_buf, int chunk, int loop,
     }
     stop_time = TIMER();
     total_time = (stop_time - start_time);
+
+#ifdef TEST_DCMF
+    /* exit cs outside of time loop */
+    DCMF_CriticalSection_exit (0);
+#endif
 
     if(CHECK_RESULT) free(tmp_buf);
 
@@ -149,6 +362,24 @@ double time_put(double *src_buf, double *dst_buf, int chunk, int loop,
         assert(tmp_buf != NULL);
     }
     
+#ifdef TEST_DCMF
+    volatile unsigned dcmf_put_active;
+    DCMF_Request_t dcmf_request;
+    DCMF_Callback_t cb_done = (DCMF_Callback_t){dcmf_cb_decrement, (void *)&dcmf_put_active};
+    DCMF_Memregion_t * src_memregion = &__connection[proc].local_mem_region;
+    DCMF_Memregion_t * dst_memregion = &__connection[proc].remote_mem_region;
+    void * src_base;
+    void * dst_base;
+    size_t bytes;
+    DCMF_Memregion_query (src_memregion, &bytes, &src_base);
+    DCMF_Memregion_query (dst_memregion, &bytes, &dst_base);
+    size_t src_offset;
+    size_t dst_offset;
+
+    /* enter cs outside of time loop */
+    DCMF_CriticalSection_enter (0);
+#endif
+
     start_time = TIMER();
     for(i=0; i<loop; i++) {
 
@@ -162,10 +393,34 @@ double time_put(double *src_buf, double *dst_buf, int chunk, int loop,
         else
 #endif
         if(levels)
+#ifdef TEST_DCMF
+           assert(0);
+#else
            ARMCI_PutS(src_buf, stride, dst_buf, stride, count, stride_levels,proc);
+#endif
         else
-           ARMCI_Put(src_buf, dst_buf,count[0], proc);
+#ifdef TEST_DCMF
+        {
+           src_offset = (size_t)src_buf - (size_t)src_base;
+           dst_offset = (size_t)dst_buf - (size_t)dst_base;
+           dcmf_put_active = 1;
 
+           DCMF_Put (&__dcmf_get_protocol,
+                     &dcmf_request,
+                     cb_done,
+                     DCMF_SEQUENTIAL_CONSISTENCY,
+                     proc,
+                     (size_t) count[0],
+                     src_memregion,
+                     dst_memregion,
+                     src_offset,
+                     dst_offset);
+           while (dcmf_put_active) DCMF_Messager_advance ();
+        }
+#else
+           ARMCI_Put(src_buf, dst_buf,count[0], proc);
+#endif
+#ifndef TEST_DCMF
         if(CHECK_RESULT) {
             ARMCI_GetS(dst_buf, stride, tmp_buf, stride, count,
                        stride_levels, proc);
@@ -173,6 +428,7 @@ double time_put(double *src_buf, double *dst_buf, int chunk, int loop,
             sprintf(check_type, "ARMCI_PutS:");
             check_result(tmp_buf, src_buf, stride, count, stride_levels);
         }
+#endif
         
         /* prepare next src and dst ptrs: avoid cache locality */
         if(bal == 0) {
@@ -187,6 +443,11 @@ double time_put(double *src_buf, double *dst_buf, int chunk, int loop,
     }
     stop_time = TIMER();
     total_time = (stop_time - start_time);
+
+#ifdef TEST_DCMF
+    /* exit cs outside of time loop */
+    DCMF_CriticalSection_exit (0);
+#endif
 
     if(CHECK_RESULT) free(tmp_buf);
     
@@ -333,10 +594,12 @@ void test_1D()
                 t_put += time_put((double *)buf, (double *)(ptr[dst]),
                                   chunk[i]*chunk[i], loop, dst, 0);
                 
+#ifndef TEST_DCMF
                 /* strided acc */
                 fill_array(buf, SIZE*SIZE, me*10);
                 t_acc += time_acc((double *)buf, (double *)(ptr[dst]),
                                   chunk[i]*chunk[i], loop, dst, 0);
+#endif
             }
             
             latency_get = t_get/(nproc - 1);
@@ -353,7 +616,17 @@ void test_1D()
                    latency_put, bandwidth_put, latency_acc, bandwidth_acc);
         }
     }
-    else sleep(3);
+    else
+#ifndef FORCE_DCMF_ADVANCE
+      sleep(3);
+#else
+    {
+      unsigned i = FORCE_DCMF_ADVANCE_LOOP;
+      DCMF_CriticalSection_enter (0);
+      while (i--) DCMF_Messager_advance ();
+      DCMF_CriticalSection_exit (0);
+    }
+#endif
     
     ARMCI_AllFence();
     MP_BARRIER();
@@ -363,7 +636,7 @@ void test_1D()
     ARMCI_Free(ptr[me]);
     
 #ifdef MALLOC_LOC 
-    if(me == 0) ARMCI_Free_local(buf);
+    /*if(me == 0) ARMCI_Free_local(buf);*/
 #else
     if(me == 0) free(buf);
 #endif
@@ -458,7 +731,17 @@ void test_2D()
                        latency_put, bandwidth_put, latency_acc, bandwidth_acc);
         }
     }
-    else sleep(3);
+    else
+#ifndef FORCE_DCMF_ADVANCE
+      sleep(3);
+#else
+    {
+      unsigned i = FORCE_DCMF_ADVANCE_LOOP;
+      DCMF_CriticalSection_enter (0);
+      while (i--) DCMF_Messager_advance ();
+      DCMF_CriticalSection_exit (0);
+    }
+#endif
     
     ARMCI_AllFence();
     MP_BARRIER();
@@ -495,6 +778,10 @@ int main(int argc, char **argv)
     /* initialize ARMCI */
     ARMCI_Init();
 
+#ifdef TEST_DCMF
+  dcmf_connection_initialize ();
+#endif
+
     if(!me)printf("\n             Performance of Basic Blocking Communication Operations\n");
     MP_BARRIER();
     
@@ -503,10 +790,12 @@ int main(int argc, char **argv)
     /* test 1 dimension array */
     if(!me)printf("\n\t\t\tContiguous Data Transfer\n");
     test_1D();
-    
+
+#ifndef TEST_DCMF
     /* test 2 dimension array */
     if(!me)printf("\n\t\t\tStrided Data Transfer\n");
     test_2D();
+#endif
 
     MP_BARRIER();
     if(me == 0){
@@ -517,16 +806,19 @@ int main(int argc, char **argv)
     }
 
     MP_BARRIER();
+#ifndef TEST_DCMF
     CHECK_RESULT=1;
     if(!me)printf("\n\t\t\tContiguous Data Transfer\n");
     test_1D();
     if(me == 0) printf("OK\n");
     MP_BARRIER();
+#endif
+#ifndef TEST_DCMF
     if(!me)printf("\n\t\t\tStrided Data Transfer\n");
     test_2D();
     if(me == 0) printf("OK\n\n\nTests Completed.\n");
     MP_BARRIER();
-
+#endif
     /* done */
     ARMCI_Finalize();
     MP_FINALIZE();

@@ -16,8 +16,8 @@ C
         integer fparms(2,maxfparm)
         character *(100) filename
         <writefiledecl/>
-        <readfiledecl/>
-        data fparms/1,4000,  4000,8,  4096,8,  64000,8,  65536,8 /
+	<readfiledecl/>
+	data fparms/1,40,  4000,8,  4096,8,  64000,8,  65536,8 /
 
         errs = 0
 

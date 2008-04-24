@@ -2,7 +2,7 @@
 #define _table_h
 
 /* 
- * $Id$
+ * $Id: table.h,v 1.3 1994/10/07 19:41:33 d3g681 Exp $
  */
 
 /* 

@@ -71,6 +71,12 @@
 #define MPIU_QUOTE(A) MPIU_QUOTE2(A)
 #define MPIU_QUOTE2(A) #A
 
+/* Include definitions from the device which must exist before items in this
+   file (mpiimpl.h) can be defined. */
+/* ------------------------------------------------------------------------- */
+#include "mpidpre.h"
+/* ------------------------------------------------------------------------- */
+
 /* FIXME: The code base should not define two of these */
 /* This is used to quote a name in a definition (see FUNCNAME/FCNAME below) */
 #ifndef MPIDI_QUOTE
@@ -93,11 +99,6 @@
 
 #include "mpiutil.h"
 
-/* Include definitions from the device which must exist before items in this
-   file (mpiimpl.h) can be defined. */
-/* ------------------------------------------------------------------------- */
-#include "mpidpre.h"
-/* ------------------------------------------------------------------------- */
 
 
 /* ------------------------------------------------------------------------- */
@@ -1363,6 +1364,9 @@ typedef struct MPID_Request {
     MPID_DEV_REQUEST_DECL
 #endif
 } MPID_Request;
+
+MPID_Request __totalview_request_dummyvar;
+
 extern MPIU_Object_alloc_t MPID_Request_mem;
 /* Preallocated request objects */
 extern MPID_Request MPID_Request_direct[];

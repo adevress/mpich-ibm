@@ -54,7 +54,7 @@ int copy_fn( const MPI::Comm &oldcomm, int keyval, void *extra_state,
     /* Note that if (sizeof(int) < sizeof(void *), just setting the int
        part of attribute_val_out may leave some dirty bits
     */
-    *(MPI::Aint *)attribute_val_out = (MPI::Aint)attribute_val_in;
+    *(void **)attribute_val_out = attribute_val_in;
     flag = 1;
     return MPI::SUCCESS;
 }
@@ -64,8 +64,8 @@ int delete_fn( MPI::Comm &comm, int keyval, void *attribute_val,
 {
     int world_rank;
     world_rank = MPI::COMM_WORLD.Get_rank();
-    if ((MPI::Aint)attribute_val != (MPI::Aint)world_rank) {
-	cout << "incorrect attribute value " << *(int*)attribute_val << "\n";
+    if (attribute_val != (void *)world_rank) {
+	cout << "incorrect attribute value " << (long)attribute_val << "\n";
 	MPI::COMM_WORLD.Abort( 1005 );
     }
     return MPI::SUCCESS;
@@ -81,7 +81,7 @@ int test_communicators( void )
     int flag, world_rank, world_size, rank, size, n, key_1, key_3;
     int color, key, result;
     int errs = 0;
-    MPI::Aint value;
+    int value;
 
     world_rank = MPI::COMM_WORLD.Get_rank();
     world_size = MPI::COMM_WORLD.Get_size();
@@ -182,7 +182,7 @@ int test_communicators( void )
 	
 	/* This may generate a compilation warning; it is, however, an
 	   easy way to cache a value instead of a pointer */
-	lo_comm.Set_attr( key_1, (void *) (MPI_Aint) world_rank );
+	lo_comm.Set_attr( key_1, (void *)world_rank );
 	lo_comm.Set_attr( key_3, (void *)0 );
 	
 	dup_comm = lo_comm.Dup();
@@ -193,7 +193,7 @@ int test_communicators( void )
 	   a (void *) and cast to int. Note that this may generate warning
 	   messages from the compiler.  */
 	flag = dup_comm.Get_attr( key_1, (void **)&vvalue );
-	value = (MPI::Aint)vvalue;
+	value = (int)vvalue;
 	
 	if (! flag) {
 	    errs++;
@@ -215,7 +215,7 @@ int test_communicators( void )
 	}
 	// Some C++ compilers (e.g., Solaris) refuse to 
 	// accept a straight cast to an int.
-	// value = (MPI::Aint)vvalue;
+	// value = (int)vvalue;
 	MPI::Comm::Free_keyval( key_1 );
 	MPI::Comm::Free_keyval( key_3 );
     }

@@ -1,0 +1,18 @@
+iwriteatf 8
+iwritef   8
+iwriteshf 8
+writef    8
+writeatf  8
+writeallf 8
+writeshf  8
+writeordf 8
+writeatallf 8
+writeatallbef 8
+writeallbef 8
+writeordbef 8
+fileerrf 1
+fileinfof 3
+shpositionf 4
+atomicityf 8
+miscfilef 4
+

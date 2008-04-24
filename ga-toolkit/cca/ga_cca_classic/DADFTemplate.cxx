@@ -6,7 +6,7 @@
     private within the DistArrayDescriptorFactory.  Only
     DistArrayTemplate is exposed to the outside. 
 
-    $Id$
+    $Id: DADFTemplate.cxx,v 1.1 2003/08/01 00:41:53 manoj Exp $
  */
 
 /******************************************************************************

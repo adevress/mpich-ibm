@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: memory.c,v 1.52.4.6 2007/08/03 19:38:22 manoj Exp $ */
 #include <stdio.h>
 #include <assert.h>
 #include "armcip.h"
@@ -568,6 +568,7 @@ void *reg_malloc(size_t size)
      return(ptr);
 }
 #endif
+
 
 /* public constructor to initialize the kr_malloc context */
 void armci_krmalloc_init_localmem() {

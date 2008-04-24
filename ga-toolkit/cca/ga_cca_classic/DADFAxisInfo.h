@@ -6,7 +6,7 @@
 
 /** A set of classes to hold distribution parameters on a per-axis basis.
 
-    $Id$
+    $Id: DADFAxisInfo.h,v 1.1 2003/08/01 00:41:53 manoj Exp $
 
     DADFAxisInfo is the abstract base class, but includes only two
     functions -- one to report the distribution type, and one to print

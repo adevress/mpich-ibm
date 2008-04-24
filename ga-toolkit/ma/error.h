@@ -2,7 +2,7 @@
 #define _error_h
 
 /* 
- * $Id$
+ * $Id: error.h,v 1.3 1994/10/07 19:41:20 d3g681 Exp $
  */
 
 /* 

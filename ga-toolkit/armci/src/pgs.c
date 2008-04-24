@@ -1,4 +1,4 @@
-/* $Id$ 
+/* $Id: pgs.c,v 1.14.4.3 2006/09/13 17:58:03 andriy Exp $ 
  * Note: the general ARMCI copyright does not apply to code included in this file 
  *       Explicit permission is required to copy/modify this code. 
  */

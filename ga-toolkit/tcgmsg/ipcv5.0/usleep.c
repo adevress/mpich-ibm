@@ -1,4 +1,4 @@
-/* $Header$ */
+/* $Header: /msrc/proj/hpctools/cvs/tcgmsg/ipcv5.0/usleep.c,v 1.4 1997/11/07 23:44:20 d3h325 Exp $ */
 
 #ifdef AIX
 #include <stdio.h>

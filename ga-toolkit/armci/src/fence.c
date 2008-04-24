@@ -1,9 +1,11 @@
-/* $Id$ */
+/* $Id: fence.c,v 1.25.2.1 2006/12/18 11:47:59 manoj Exp $ */
 #include "armcip.h"
 #include "armci.h"
 #include "copy.h"
 #include <stdio.h>
-#if defined(PVM)
+#if defined(ARMCIX)
+#   include "x/armcix.h"
+#elif defined(PVM)
 #   include <pvm3.h>
 #elif defined(TCGMSG)
 #   include <sndrcv.h>
@@ -68,6 +70,8 @@ void ARMCI_Fence(int proc)
            bzero(_armci_fence_arr+master, armci_clus_info[cluster].nslave); 
 
      }
+#elif defined(ARMCIX)
+     ARMCIX_Fence (proc);
 #elif defined(BGML)
      BGML_WaitProc(proc);
      MEM_FENCE;
@@ -133,6 +137,8 @@ void ARMCI_AllFence()
 #endif
 #ifdef _CRAYMPP
      if(cmpl_proc != -1) FENCE_NODE(cmpl_proc);
+#elif defined(ARMCIX)
+     ARMCIX_AllFence ();
 #elif defined(BGML)
            BGML_WaitAll();
 #elif defined(LAPI) || defined(CLUSTER)
@@ -185,6 +191,10 @@ void ARMCI_Barrier()
           armci_msg_gop_scope(SCOPE_NODE,&buf,1,"+",ARMCI_INT);
         }
     }
+/*
+#elif defined(ARMCIX)
+    ARMCIX_Barrier ();
+*/
 #elif defined(BGML)
     BGML_WaitAll();
     bgml_barrier(3);

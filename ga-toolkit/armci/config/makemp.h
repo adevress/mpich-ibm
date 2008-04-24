@@ -1,4 +1,4 @@
-# $Id$
+# $Id: makemp.h,v 1.7.8.5 2007/08/04 00:27:42 manoj Exp $
 #
 # settings dependent on selection of the message-passing library
 # MP_LIBS     - library path 
@@ -120,6 +120,24 @@ ifeq ($(MSG_COMMS), BGMLMPI)
     MP_DEFINES += -DBGML -DMPI
 endif
        
+ ifeq ($(MSG_COMMS), DCMFMPI)
+    ifdef DCMF_INCLUDE
+       MP_TMP_INCLUDES = $(DCMF_INCLUDE)
+   else
+      MP_TMP_INCLUDES = $(MPI_INCLUDE)
+   endif
+    ifdef DCMF_LIB
+       MP_LIBS += -L$(DCMF_LIB)
+   else
+      MP_LIBS = -L$(MPI_LIB)
+    endif
+    ifdef LIBDCMF_LIB_NAME
+       LIBDCMF_LIB_NAME = $(LIBDCMF)
+    endif
+    MP_LIBS += $(DCMF_LIB_NAME)
+    MP_DEFINES +=  -DDCMF
+    MP_DEFINES += -DDCMF -DMPI
+ endif
 
 
 #

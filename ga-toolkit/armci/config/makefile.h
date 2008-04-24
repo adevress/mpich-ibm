@@ -1,4 +1,4 @@
-#$Id$
+#$Id: makefile.h,v 1.120.4.15 2007/10/19 00:35:04 manoj Exp $
            FC = f77
            CC = cc
            AR = ar
@@ -25,6 +25,53 @@
 # enable -Wall when using GNU compilers
 ifdef USE_FULL_WARNINGS
    WALL = -Wall
+endif
+
+#-------------------------- IBM Deep Computing Messaging Framework -----
+ifeq ($(TARGET), DCMF)
+#INCPATH = ${shell pwd | sed -e 's,\(bgp/comm\).*,\1/../Make.rules,'}
+#include ${INCPATH}
+ifdef BGCOMPILERS
+ 	   FC     = $(F77LINUX)
+ 	   CC     = $(CCLINUX) -g
+ 	   AR     = $(ARLINUX)
+ 	   AS     = $(ASLINUX)
+ 	   CPP    = $(CXXLINUX)
+ 	   RANLIB = $(RANLIBLINUX)
+else
+           FLD    = mpif77
+ 	   CC     = mpicc
+endif
+	   GLOB_DEFINES+= -DDCMF -DMPI
+	   INCLUDES += -I$(BG_COMMPATH)/include
+		DCMF_INCLUDE += $(INCLUDES)
+		DCMF_LIBS += $(LIBS)
+	   COPT = -O0
+
+ifeq ($(_FC),blrts_xlf90)
+           XLFDEFINED =1
+           FOPT_REN +=   -qfixed
+endif
+ifeq ($(_FC),blrts_xlf)
+           XLFDEFINED =1
+endif
+ 
+ifdef XLFDEFINED
+ifdef USE_INTEGER8
+           FOPT_REN += -qintsize=8
+           CDEFS = -DEXT_INT -DEXT_INT64
+endif
+           FOPT_REN += -qEXTNAME
+           GLOB_DEFINES +=  -DEXTNAME
+           EXPLICITF = TRUE
+           FOPT=-O0
+           CPP = gcc -E -nostdinc -undef -P
+           FCONVERT = $(CPP) $(CPP_FLAGS)  $< | sed '/^\#/D'  > $*.f
+else
+
+ 	   FOPT = -O0 -fno-second-underscore
+endif
+
 endif
 
 #-------------------------- IBM BlueGene -----------------------------

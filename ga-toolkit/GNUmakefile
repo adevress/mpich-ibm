@@ -1,11 +1,11 @@
-# $Id$
+# $Id: GNUmakefile,v 1.10 2007/06/12 22:00:23 manoj Exp $
 #
 # This makefile has to be processed by GNU make
 #
 EXPERIMENTAL=SGI64 LAPI64 CYGWIN HITACHI CATAMOUNT
 SUPPORTED_TARGETS = SOLARIS SOLARIS64 SGI SGI_N32 SGITFP HPUX HPUX64 IBM IBM64 CRAY-SV1 cray-sv2
 SUPPORTED_TARGETS+= LAPI DECOSF LINUX LINUX64 CRAY-T3E CRAY-YMP CYGNUS CYGWIN INTERIX
-SUPPORTED_TARGETS+= FUJITSU-VPP FUJITSU-VPP64 NEC MACX BGL $(EXPERIMENTAL)
+SUPPORTED_TARGETS+= FUJITSU-VPP FUJITSU-VPP64 NEC MACX BGL DCMF $(EXPERIMENTAL)
 ALL_SUPPORTED_TARGETS = $(SUPPORTED_TARGETS) WIN32
 ifndef TARGET
  TARGET=UNDEFINED
@@ -97,9 +97,11 @@ endif
 test:
 	@echo ' ============================================================ '
 	@echo ' >>> GA Libraries compiled. Making an executable test <<< '
-	(cd ./global/testing; $(MAKE) test.x)
+#	(cd ./global/testing; $(MAKE) test.x)
+	(cd ./global/testing; $(MAKE) -s ngatest.x)
 	@echo ' ------------------------------------------------------------ '
-	@echo ' An executable test program for GA is ./global/testing/test.x'
+#	@echo ' An executable test program for GA is ./global/testing/test.x'
+	@echo ' An executable test program for GA is ./global/testing/ngatest.x'
 	@echo ' There are also other test programs in that directory.'
 	@echo ' ------------------------------------------------------------ '
 	@echo ' Also, to test your GA programs, suggested compiler/linker '

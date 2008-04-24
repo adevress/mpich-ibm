@@ -36,7 +36,7 @@ Output Parameters:
 @*/
 int MPI_File_get_amode(MPI_File mpi_fh, int *amode)
 {
-    int error_code=MPI_SUCCESS;
+    int error_code = MPI_SUCCESS;
     static char myname[] = "MPI_FILE_GET_AMODE";
     ADIO_File fh;
     

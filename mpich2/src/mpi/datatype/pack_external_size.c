@@ -40,7 +40,7 @@
 - datatype - datatype of each input data item (handle)  
 
    Output Parameters:
-. size - output buffer size, in bytes (integer)  
+. size - output buffer size, in bytes (address integer)  
 
 .N ThreadSafe
 
@@ -97,7 +97,7 @@ int MPI_Pack_external_size(char *datarep,
 
     /* ... body of routine ... */
     
-    *size = incount * MPID_Datatype_size_external32(datatype);
+    *size = (MPI_Aint)incount * (MPI_Aint)MPID_Datatype_size_external32(datatype);
 
     /* ... end of body of routine ... */
 

@@ -139,8 +139,8 @@ int vector_of_vectors_test(void)
     MPI_Pack_external_size("external32", 1, outer_vector, &sizeoftype);
     if (sizeoftype != 4*4) {
 	errs++;
-	if (verbose) fprintf(stderr, "size of type = %d; should be %d\n",
-			     (int) sizeoftype, 4*4);
+	if (verbose) fprintf(stderr, "size of type = " MPI_AINT_FMT_DEC_SPEC "; should be %d\n",
+			     sizeoftype, 4*4);
 	return errs;
     }
 
@@ -157,8 +157,8 @@ int vector_of_vectors_test(void)
 
     if (position != sizeoftype) {
 	errs++;
-	if (verbose) fprintf(stderr, "position = %d; should be %d (pack)\n",
-			     (int) position, (int) sizeoftype);
+	if (verbose) fprintf(stderr, "position = " MPI_AINT_FMT_DEC_SPEC "; should be " MPI_AINT_FMT_DEC_SPEC " (pack)\n",
+			     position, sizeoftype);
     }
 
     memset(array, 0, 9*sizeof(int));
@@ -173,8 +173,8 @@ int vector_of_vectors_test(void)
 
     if (position != sizeoftype) {
 	errs++;
-	if (verbose) fprintf(stderr, "position = %d; should be %d (unpack)\n",
-			     (int) position, (int) sizeoftype);
+	if (verbose) fprintf(stderr, "position = " MPI_AINT_FMT_DEC_SPEC "; should be " MPI_AINT_FMT_DEC_SPEC " (unpack)\n",
+			     position, sizeoftype);
     }
 
     for (i=0; i < 9; i++) {
@@ -231,8 +231,8 @@ int optimizable_vector_of_basics_test(void)
     if (sizeofint != 4) {
 	errs++;
 	if (verbose) fprintf(stderr, 
-			     "size of external32 MPI_INT = %d; should be %d\n",
-			     (int) sizeofint, 4);
+			     "size of external32 MPI_INT = " MPI_AINT_FMT_DEC_SPEC "; should be %d\n",
+			     sizeofint, 4);
     }
 
     /* set up type */
@@ -249,8 +249,8 @@ int optimizable_vector_of_basics_test(void)
 
     if (sizeoftype != 20 * sizeofint) {
 	errs++;
-	if (verbose) fprintf(stderr, "size of vector = %d; should be %d\n",
-			     (int) sizeoftype, (int) (20 * sizeofint));
+	if (verbose) fprintf(stderr, "size of vector = " MPI_AINT_FMT_DEC_SPEC "; should be " MPI_AINT_FMT_DEC_SPEC "\n",
+			     sizeoftype, (20 * sizeofint));
     }
 
     buf = (char *) malloc(sizeoftype);
@@ -266,8 +266,8 @@ int optimizable_vector_of_basics_test(void)
 
     if (position != sizeoftype) {
 	errs++;
-	if (verbose) fprintf(stderr, "position = %d; should be %d (pack)\n",
-			     (int) position, (int) sizeoftype);
+	if (verbose) fprintf(stderr, "position = " MPI_AINT_FMT_DEC_SPEC "; should be " MPI_AINT_FMT_DEC_SPEC " (pack)\n",
+			     position, sizeoftype);
     }
 
     memset(array, 0, 20 * sizeof(int));
@@ -384,8 +384,8 @@ int struct_of_basics_test(void)
     if (position != sizeoftype) {
 	errs++;
 	if (verbose) fprintf(stderr, 
-			     "position = %ld; should be %ld (unpack)\n",
-			     (long) position, (long) sizeoftype);
+			     "position = " MPI_AINT_FMT_DEC_SPEC "; should be " MPI_AINT_FMT_DEC_SPEC " (unpack)\n",
+			     position, sizeoftype);
     }
 
     for (i=0; i < 20; i++) {

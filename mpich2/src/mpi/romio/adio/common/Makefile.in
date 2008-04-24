@@ -10,7 +10,7 @@ SHLIBNAME   = @SHLIBNAME@
 INCLUDE_DIR = -I@MPI_INCLUDE_DIR@ -I${srcdir}/../include -I../include \
 	-I../../include -I${srcdir}/../../../../../src/include \
 	-I../../../../../src/include
-CFLAGS      = @CPPFLAGS@ @CFLAGS@ $(INCLUDE_DIR) 
+CFLAGS      = @CPPFLAGS@ @CFLAGS@ $(INCLUDE_DIR) -DBGL_OPTIM_STEP1_1=1
 
 top_builddir  = @master_topbuild_dir@
 LIBTOOL       = @LIBTOOL@

@@ -35,7 +35,7 @@
    Input Parameters:
 + count - number of blocks (nonnegative integer) 
 . blocklength - number of elements in each block (nonnegative integer) 
-. stride - number of bytes between start of each block (integer) 
+. stride - number of bytes between start of each block (address integer) 
 - oldtype - old datatype (handle) 
 
    Output Parameter:
@@ -124,8 +124,8 @@ int MPI_Type_create_hvector(int count,
 	mpi_errno = MPIR_Err_create_code(
 	    mpi_errno, MPIR_ERR_RECOVERABLE, FCNAME, __LINE__,
 	    MPI_ERR_OTHER, "**mpi_type_create_hvector",
-	    "**mpi_type_create_hvector %d %d %d %D %p", count,
-	    blocklength, stride, oldtype, newtype);
+	    "**mpi_type_create_hvector %d %d %L %D %p", count,
+	    blocklength, MPI_AINT_CAST_TO_LONG_LONG stride, oldtype, newtype);
     }
 #   endif
     mpi_errno = MPIR_Err_return_comm( NULL, FCNAME, mpi_errno );

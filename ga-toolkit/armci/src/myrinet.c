@@ -1,4 +1,4 @@
-/* $Id$
+/* $Id: myrinet.c,v 1.78.2.3 2006/09/13 17:58:03 andriy Exp $
  * DISCLAIMER
  *
  * This material was prepared as an account of work sponsored by an

@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: collect.c,v 1.22.4.4 2007/08/03 20:01:06 manoj Exp $ */
 #include "typesf2c.h"
 #include "globalp.h"
 #include "global.h"

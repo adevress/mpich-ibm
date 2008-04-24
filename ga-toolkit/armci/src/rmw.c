@@ -1,8 +1,12 @@
-/* $Id$ */
+/* $Id: rmw.c,v 1.21.2.6 2007/09/25 18:44:16 manoj Exp $ */
 #include "armcip.h"
 #include "locks.h"
 #include "copy.h"
 #include <stdio.h>
+
+#ifdef ARMCIX
+#include "x/armcix.h"
+#endif
 
 #ifdef LIBELAN_ATOMICS 
 
@@ -204,6 +208,8 @@ if(op==ARMCI_FETCH_AND_ADD_LONG || op==ARMCI_SWAP_LONG){
     BGML_Callback_t cb_wait={wait_callback, &done};
     BG1S_rmw(&request, proc, 0, prem, temp, ploc, oper, dt, &cb_wait, 1);
     BGML_Wait(&done);
+#elif ARMCIX
+    ARMCIX_Rmw(op, ploc, prem, extra, proc);
 #else
     switch (op) {
 #   if defined(QUADRICS) || defined(_CRAYMPP) || defined(XT3)

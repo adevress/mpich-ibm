@@ -1,4 +1,4 @@
-# $Id$
+# $Id: GNUmakefile,v 1.98.2.12 2007/08/03 19:38:22 manoj Exp $
 
          FOPT = -O
          COPT = -O
@@ -17,6 +17,7 @@ ifndef NOFORT
 OBJ += faccumulate.o fcopy.o
 endif
 
+
 #default message-passing library for ARMCI is MPI
 ifndef MSG_COMMS
   MSG_COMMS=MPI
@@ -32,12 +33,28 @@ endif
 
 ifeq ($(TARGET),BGL) 
 ifeq ($(MSG_COMMS), BGMLMPI)
-  OBJ+= message.o bgml.o groups.o
+  OBJ+= message.o bgml.o groups.o 
 else
   OBJ+= bgml.o
 endif
 endif 
 
+ifeq ($(TARGET),CATAMOUNT)
+     LIB_DEFINES += -DCLUSTER
+     ifndef ARMCI_NETWORK
+        ARMCI_NETWORK = CRAY-SHMEM
+     endif
+endif
+
+ifeq ($(TARGET),DCMF)
+ifeq ($(MSG_COMMS), DCMFMPI)
+   OBJ += message.o groups.o
+endif
+   OBJ += request.o
+   LIB_DEFINES += -DARMCIX
+   OBJ += x/dcmf/armcix_impl.o x/dcmf/armcix_wait.o x/dcmf/armcix_fence.o x/dcmf/armcix_rmw.o x/dcmf/armcix_get.o x/dcmf/armcix_put.o x/dcmf/armcix_lock.o x/dcmf/armcix_acc.o
+#   SUBDIRS += x/dcmf
+endif
 
 SYSTEM_V = SUN SOLARIS SOLARIS64 SGI SGI_N32 SGI64 SGITFP 
 SYSTEM_V += HPUX HPUX64 IBM IBM64 DECOSF LINUX LINUX64 INTERIX NEC
@@ -45,7 +62,7 @@ SHMEM    = $(SYSTEM_V) LAPI LAPI64
 CKPT = LINUX LINUX64 MACX
 SHMMMAP  = NEC
 SOCKETS  = $(SYSTEM_V) MACX
-ONESIDED_AVAILABLE = CRAY-T3D CRAY-T3E CRAY-YMP CRAY-SV2  LAPI FUJITSU-VPP FUJITSU-AP BGML
+ONESIDED_AVAILABLE = CRAY-T3D CRAY-T3E CRAY-YMP CRAY-SV2  LAPI FUJITSU-VPP FUJITSU-AP BGML DCMF
 NB_NONCONT_NET = CRAY-SHMEM #QUADRICS ELAN4 PORTALS
 #USE_PTHREADS = LINUX SGI_N32 SOLARIS
 #USE_POSIX = IBM
@@ -65,11 +82,8 @@ ifeq ($(TARGET),BGML)
      LIB_DEFINES += -DNO_SHM -DUSE_MALLOC
 endif
 
-ifeq ($(TARGET),CATAMOUNT)
-     LIB_DEFINES += -DCLUSTER
-     ifndef ARMCI_NETWORK
-        ARMCI_NETWORK = CRAY-SHMEM
-     endif
+ifeq ($(TARGET), DCMF)
+   LIB_DEFINES += -DNO_SHM
 endif
 
 ifeq ($(TARGET),HITACHI)

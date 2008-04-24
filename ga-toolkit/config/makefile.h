@@ -1,4 +1,4 @@
-# $Id$
+# $Id: makefile.h,v 1.139.2.23 2007/09/27 18:57:17 manoj Exp $
 # This is the main include file for GNU make. It is included by makefiles
 # in most subdirectories of the package.
 # It includes compiler flags, preprocessor and library definitions
@@ -62,21 +62,23 @@ ifdef USE_FULL_WARNINGS
    WALL = -Wall
 endif
 #
-#-------------------------- IBM BlueGene -----------------------------
-ifeq ($(TARGET), BGL)
+#-------------------------- IBM Deep Computing Message Framework -----------------------------
+ifeq ($(TARGET), DCMF)
+#INCPATH = ${shell pwd | sed -e 's,\(bgp/comm\).*,\1/../Make.rules,'}
+#include $(INCPATH)
 ifdef BGCOMPILERS
- 	   FC     = $(BGCOMPILERS)/powerpc-bgl-blrts-gnu-g77
- 	   CC     = $(BGCOMPILERS)/powerpc-bgl-blrts-gnu-gcc -g
- 	   AR     = $(BGCOMPILERS)/powerpc-bgl-blrts-gnu-ar
- 	   AS     = $(BGCOMPILERS)/powerpc-bgl-blrts-gnu-as
- 	   CPP    = $(BGCOMPILERS)/powerpc-bgl-blrts-gnu-cpp
- 	   RANLIB = $(BGCOMPILERS)/powerpc-bgl-blrts-gnu-ranlib
+	   FC     = $(F77LINUX)
+	   CC     = $(CCLINUX) -g
+	   AR     = $(ARLINUX)
+	   AS     = $(ASLINUX)
+	   CPP    = $(CXXLINUX)
+	   RANLIB = $(RANLIBLINUX)
 else
            FLD    = mpif77
- 	   CC     = mpicc
+	   CC     = mpicc
 endif
-	   GLOB_DEFINES+= -DBLRTS -DBGML -DMPI
-	   INCLUDES += -I$(BGDRIVER)/bglsys/include
+	   GLOB_DEFINES+= -DDCMF -DMPI
+	   INCLUDES += -I$(BG_COMMPATH)/include
 	   COPT = -O0
 
 ifeq ($(_FC),blrts_xlf90)
@@ -86,7 +88,7 @@ endif
 ifeq ($(_FC),blrts_xlf)
            XLFDEFINED =1
 endif
- 
+
 ifdef XLFDEFINED
 ifdef USE_INTEGER8
            FOPT_REN += -qintsize=8
@@ -100,7 +102,50 @@ endif
            FCONVERT = $(CPP) $(CPP_FLAGS)  $< | sed '/^\#/D'  > $*.f
 else
 
- 	   FOPT = -O0 -fno-second-underscore
+	   FOPT = -O0 -fno-second-underscore
+endif
+
+endif
+#
+#-------------------------- IBM BlueGene -----------------------------
+ifeq ($(TARGET), BGL)
+ifdef BGCOMPILERS
+	   FC     = $(BGCOMPILERS)/powerpc-bgl-blrts-gnu-g77
+	   CC     = $(BGCOMPILERS)/powerpc-bgl-blrts-gnu-gcc -g
+	   AR     = $(BGCOMPILERS)/powerpc-bgl-blrts-gnu-ar
+	   AS     = $(BGCOMPILERS)/powerpc-bgl-blrts-gnu-as
+	   CPP    = $(BGCOMPILERS)/powerpc-bgl-blrts-gnu-cpp
+	   RANLIB = $(BGCOMPILERS)/powerpc-bgl-blrts-gnu-ranlib
+else
+           FLD    = mpif77
+	   CC     = mpicc
+endif
+	   GLOB_DEFINES+= -DBLRTS -DBGML -DMPI
+	   INCLUDES += -I$(BGDRIVER)/bglsys/include
+	   COPT = -O0
+
+ifeq ($(_FC),blrts_xlf90)
+           XLFDEFINED =1
+           FOPT_REN +=   -qfixed
+endif
+ifeq ($(_FC),blrts_xlf)
+           XLFDEFINED =1
+endif
+
+ifdef XLFDEFINED
+ifdef USE_INTEGER8
+           FOPT_REN += -qintsize=8
+           CDEFS = -DEXT_INT -DEXT_INT64
+endif
+           FOPT_REN += -qEXTNAME
+           GLOB_DEFINES +=  -DEXTNAME
+           EXPLICITF = TRUE
+           FOPT=-O0
+           CPP = gcc -E -nostdinc -undef -P
+           FCONVERT = $(CPP) $(CPP_FLAGS)  $< | sed '/^\#/D'  > $*.f
+else
+
+	   FOPT = -O0 -fno-second-underscore
 endif
 
 endif

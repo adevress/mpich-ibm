@@ -1,6 +1,6 @@
-#if defined(LINUX) || defined(CYGWIN) || defined(BGML)
+#if defined(LINUX) || defined(CYGWIN) || defined(BGML) || defined(DCMF)
 
-#if defined(PPC) && !defined(XLCLINUX) || defined(BGML)
+#if defined(PPC) && !defined(XLCLINUX) || defined(BGML) || defined(DCMF)
 #include "tas-ppc.h"
 #define SPINLOCK  
 #define TESTANDSET(x) (! __compare_and_swap((long int *)(x),0,1)) 
@@ -134,7 +134,7 @@ static INLINE void armci_init_spinlock(LOCK_T *mutex)
 
 static INLINE void armci_acquire_spinlock(LOCK_T *mutex)
 {
-#ifdef BGML
+#if defined(BGML) || defined(DCMF)
    return;
 #else
 int loop=0, maxloop =10;
@@ -164,7 +164,7 @@ int loop=0, maxloop =10;
 #else
 static INLINE void armci_release_spinlock(LOCK_T *mutex)
 {
-#ifdef BGML
+#if defined(BGML) || defined(DCMF)
    return;
 #else
 #ifdef MEMORY_BARRIER

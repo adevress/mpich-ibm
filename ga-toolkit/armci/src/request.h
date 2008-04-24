@@ -43,7 +43,14 @@ extern void _armci_buf_clear_all();
 #  include "bgml.h"
 #  include "bgmldefs.h"
 #  define NB_CMPL_T BG1S_t  
-    typedef long msg_tag_t;
+   typedef long msg_tag_t;
+#elif defined(ARMCIX)
+#  ifndef ARMCIX_OPAQUE_SIZE
+#    define ARMCIX_OPAQUE_SIZE 8
+#  endif
+   typedef char armcix_opaque_t [ARMCIX_OPAQUE_SIZE];
+#  define NB_CMPL_T armcix_opaque_t
+   typedef long msg_tag_t;
 #else
    typedef long msg_tag_t;
 #endif
@@ -56,6 +63,7 @@ extern void _armci_buf_clear_all();
 #define QUIT 33
 #define ATTACH 34
 #define REGISTER 35
+
    
 /*\ the internal request structure for non-blocking api. 
 \*/

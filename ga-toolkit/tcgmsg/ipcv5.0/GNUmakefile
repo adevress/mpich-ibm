@@ -1,4 +1,4 @@
-# $Id$
+# $Id: GNUmakefile,v 1.12 2004/04/21 00:16:46 edo Exp $
 #
 # Makefile for a portable dynamic memory allocator.
 
