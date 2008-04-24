@@ -492,7 +492,7 @@ MPIDO_Allgatherv(void *sendbuf,
                                          recvtype,
                                          comm_ptr);
    }
-   else if(asyncrect)
+   else if(asyncrect && config.largecount>32768)
    {
       result = MPIDO_Allgatherv_Async_bcast(sendbuf,
                                             sendcount,
@@ -505,7 +505,7 @@ MPIDO_Allgatherv(void *sendbuf,
                &MPIDI_CollectiveProtocols.broadcast.async_rectangle);
    }
 
-   else if(asyncbinom)
+   else if(asyncbinom && config.largecount>32768)
    {
       result = MPIDO_Allgatherv_Async_bcast(sendbuf,
                                             sendcount,
