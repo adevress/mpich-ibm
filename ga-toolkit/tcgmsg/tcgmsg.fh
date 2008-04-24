@@ -1,0 +1,5 @@
+      double precision tcgtime
+!$Id$
+      integer nodeid, nnodes, mitob, mdtob, nxtval
+      external nodeid, nnodes, mitob, mdtob, nxtval
+      external tcgtime

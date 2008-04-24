@@ -1,0 +1,19 @@
+#!/bin/sh
+
+# $Header$
+
+# kill -9 all processes containing first argument ... sysv version
+
+if test "$1" = ""
+then
+    echo "Usage:  zapit stringpattern"
+    exit 1
+fi
+user=`whoami`
+for i in `ps -u $user | grep $1| grep -v zapit | awk '{printf("%d\t",$1)}'`
+do
+if test "$i" != $$
+then 
+  kill -9 $i
+fi
+done
