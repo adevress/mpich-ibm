@@ -310,8 +310,6 @@ int MPIDO_Allreduce(
                 DCMF_Geometry_analyze(&comm_ptr->dcmf.geometry,
                      &MPIDI_CollectiveProtocols.allreduce.binomial);
 
-   if(sendbuf == MPI_IN_PLACE)
-      binomavail = 0; /* temporary bug workaround */
 
 
 //   assert(comm_ptr->comm_kind != MPID_INTRACOMM);

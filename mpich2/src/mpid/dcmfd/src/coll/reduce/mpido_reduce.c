@@ -237,9 +237,6 @@ int MPIDO_Reduce(void * sendbuf,
                 DCMF_Geometry_analyze(&comm_ptr->dcmf.geometry,
                      &MPIDI_CollectiveProtocols.reduce.binomial);
 
-   if(sendbuf == MPI_IN_PLACE)
-      binomavail = 0; /* temporary bug workaround */
-
 
    MPIDI_Datatype_get_info(count,
                            datatype,
