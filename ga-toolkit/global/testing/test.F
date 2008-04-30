@@ -19,14 +19,17 @@ c#define MIRROR
 c#define GA3
 c#define NGA_GATSCAT
 
-#define MEM_INC 1000
+c The MEM_INC define essentially sets the maximum number of ranks that can be
+c used in the test. This is due to the array initializer that sets map(i)
+c where i = 2..nprocs.
+#define MEM_INC 8192
 
       program main
       implicit none
 #include "mafdecls.fh"
 #include "global.fh"
 #include "testutil.fh"
-      integer heap, stack, fudge, ma_heap, me, nproc, map(1000), block
+      integer heap, stack, fudge, ma_heap, me, nproc, map(MEM_INC), block
       integer g_s, ndim, dim1, i
       logical status
       parameter (heap=200*200*4, fudge=100, stack=200*200)
@@ -49,6 +52,15 @@ c
       call ga_initialize()
       nproc = ga_nnodes()
       me = ga_nodeid()
+
+      if(nproc.gt.(MEM_INC))then
+        if(ga_nodeid().eq.0)then
+         print *,' test not valid for > ', MEM_INC,' processes. Exiting.'
+         call ffflush(6)
+         call ga_error('too many nodes',-1) 
+        endif
+      endif
+
 c     we can also use GA_set_memory_limit BEFORE first ga_create call
 c
       ma_heap = heap/nproc + fudge 
@@ -2226,7 +2238,7 @@ c
       double precision nwords
       parameter (nloop = 100)
       integer maxproc
-      parameter (maxproc = 128)
+      parameter (maxproc = 8192)
       integer map(5,maxproc), found, np,k
       double precision crap, sum1, real
       integer buf
@@ -2239,6 +2251,16 @@ c
       lprocs = ga_cluster_nprocs(inode)
       nnodes = ga_cluster_nnodes()
       iproc = mod(me,lprocs)
+
+      if (me .eq. 0) then
+         if (np.gt.maxproc) then
+           write(6,*)
+           write(6,*) '> error. test not valid for np > ', maxproc
+           write(6,*)
+           call ffflush(6)
+           call ga_error('... exiting ',-1)
+         endif
+      endif
 c     
 c     a() is a local copy of what the global array should start as
 c

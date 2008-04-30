@@ -215,7 +215,13 @@ DoublePrecision time;
 
     if(me==0) printf("Using %d processes\n\n",nproc);
 
-    if(!MA_init((Integer)MT_F_DBL, stack/nproc, heap/nproc))
+    /* Change to allocate a fix amount of memory for the job. This is needed to
+       scale the test because the amount of memory needed increases as nodes
+       are added to the system, yet the amount of memory allocated (previously)
+       was decreasing as nodes were added to the system.
+     */
+    /*if(!MA_init((Integer)MT_F_DBL, stack/nproc, heap/nproc))*/
+    if(!MA_init((Integer)MT_F_DBL, stack, heap))
        GA_Error("MA_init failed bytes= %d",stack+heap);   
 
 #ifdef PERMUTE
