@@ -2253,7 +2253,7 @@ c
       iproc = mod(me,lprocs)
 
       if (me .eq. 0) then
-         if (np.gt.maxproc) then
+         if (nproc.gt.maxproc) then
            write(6,*)
            write(6,*) '> error. test not valid for np > ', maxproc
            write(6,*)
