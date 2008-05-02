@@ -1,4 +1,4 @@
-/* $Id: sr8k.c,v 1.6 2002/06/20 23:10:30 vinod Exp $
+/* $Id$
  *
  * Hitachi SR8000 specific code 
  *

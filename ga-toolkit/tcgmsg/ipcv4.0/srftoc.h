@@ -1,4 +1,4 @@
-/* $Header: /msrc/proj/hpctools/cvs/tcgmsg/ipcv4.0/srftoc.h,v 1.11 2002/01/30 01:15:35 d3h325 Exp $ */
+/* $Header$ */
 
 #ifndef SRFTOC_H_
 #define SRFTOC_H_

@@ -1,4 +1,4 @@
-/* $Id: via.c,v 1.31 2004/04/09 22:02:27 manoj Exp $ */
+/* $Id$ */
 #include <stdio.h>
 #include <strings.h>
 #include <assert.h>

@@ -6,7 +6,7 @@
 /* ---------------------------------------------------------------- */
 /*                                                                  */
 /* end_generated_IBM_copyright_prolog                               */
-/* $Id: bgml.c,v 1.1.4.4 2007/05/07 22:52:31 manoj Exp $ */
+/* $Id$ */
 
 static char COPYRIGHT[] =
 "(C)Copyright IBM Corp.  2007, 2008\nIBM BSD License.";

@@ -1,4 +1,4 @@
-/* $Id: groups.c,v 1.4 2004/09/08 00:42:13 manoj Exp $ */
+/* $Id$ */
 
 
 #include <stdio.h>

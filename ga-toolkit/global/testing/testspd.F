@@ -1,4 +1,4 @@
-c $Id: testspd.F,v 1.8 2004/11/12 22:19:10 edo Exp $
+c $Id$
 c***********************************************************************
 c* Source : testllt
 c* Scope  : test LLT SCALAPACK routines

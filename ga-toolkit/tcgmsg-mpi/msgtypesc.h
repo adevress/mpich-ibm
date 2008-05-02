@@ -1,4 +1,4 @@
-/* $Header: /msrc/proj/hpctools/cvs/tcgmsg-mpi/msgtypesc.h,v 1.2 1999/06/08 21:08:31 d3h325 Exp $ */
+/* $Header$ */
 
 #ifndef MSGTYPES_H_
 #define MSGTYPES_H_

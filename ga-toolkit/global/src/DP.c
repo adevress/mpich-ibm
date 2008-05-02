@@ -1,4 +1,4 @@
-/* $Id: DP.c,v 1.14 2003/02/18 00:24:32 manoj Exp $ */
+/* $Id$ */
 #include "global.h"
 #include "globalp.h"
 #include "macommon.h"

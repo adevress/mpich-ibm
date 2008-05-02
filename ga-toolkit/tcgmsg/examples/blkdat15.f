@@ -1,5 +1,5 @@
       block data
-C$Id: blkdat15.f,v 1.2 1995/02/02 23:23:47 d3g681 Exp $
+C$Id$
       implicit double precision (a-h, o-z)
       include 'cscf.h'
 c

@@ -1,4 +1,4 @@
-/* $Id: pack.c,v 1.36.8.1 2006/12/18 11:47:59 manoj Exp $ */
+/* $Id$ */
 #include "armcip.h"
 #include <stdio.h>
 

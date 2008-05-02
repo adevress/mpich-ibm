@@ -1,4 +1,4 @@
-c $Id: perform.F,v 1.9 2000/05/25 01:09:20 d3h325 Exp $
+c $Id$
       program perform
 c***
 c***  Last modification: Fri Jan 13 12:13:27 PST 1995

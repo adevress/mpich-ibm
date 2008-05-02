@@ -1,4 +1,4 @@
-/* $Header: /msrc/proj/hpctools/cvs/tcgmsg/ipcv4.0/signals.c,v 1.11 2004/04/01 02:04:57 manoj Exp $ */
+/* $Header$ */
 
 #include <signal.h>
 #include "sndrcvP.h"

@@ -1,4 +1,4 @@
-/* $Id: regions.c,v 1.12.2.2 2006/09/13 17:58:03 andriy Exp $ interface to keep track of memory regions accross the cluster */
+/* $Id$ interface to keep track of memory regions accross the cluster */
 /* 
  * armci_region_init - allocates list of regions, initialization
  * armci_region_register_shm - registers shared memory on the current node

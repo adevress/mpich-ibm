@@ -6,7 +6,7 @@
 /* ---------------------------------------------------------------- */
 /*                                                                  */
 /* end_generated_IBM_copyright_prolog                               */
-/* $Id: bgml.h,v 1.1.4.4 2007/05/07 22:52:31 manoj Exp $ */
+/* $Id$ */
 /*!
  * \file bgml.h
  * \brief Common external message layer interface.

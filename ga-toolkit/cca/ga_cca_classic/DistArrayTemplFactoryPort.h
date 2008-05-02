@@ -11,7 +11,7 @@ namespace classic {
       /** An interface for creating distributed array template
 	  descriptors.
 	  
-	  $Id: DistArrayTemplFactoryPort.h,v 1.1 2003/08/01 00:41:54 manoj Exp $
+	  $Id$
 	  
 	  This interface allows users to create, clone, and destroy
 	  descriptors for array distribution templates.

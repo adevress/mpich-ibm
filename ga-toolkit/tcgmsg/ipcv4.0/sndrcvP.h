@@ -1,4 +1,4 @@
-/* $Header: /msrc/proj/hpctools/cvs/tcgmsg/ipcv4.0/sndrcvP.h,v 1.17 2002/05/14 22:12:14 d3h325 Exp $ */
+/* $Header$ */
 
 /*
   This include file contains definitions PRIVATE to the message

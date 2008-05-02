@@ -1,4 +1,4 @@
-/* $Id: shmem.c,v 1.87.2.2 2007/09/10 23:31:32 manoj Exp $ */
+/* $Id$ */
 /* System V shared memory allocation and managment
  *
  * Interface:

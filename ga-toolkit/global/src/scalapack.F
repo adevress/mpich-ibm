@@ -4,7 +4,7 @@ cedo#define USE_PDSYEVR 1
 #else
 #define INTGR4 integer*4
 #endif
-C     $Id: scalapack.F,v 1.10.2.1 2006/12/28 01:23:38 manoj Exp $
+C     $Id$
 ****************************************************************************
 * GA to/from ScaLAPACK (square block scattered decomposition) interface    * 
 *                                                                          *

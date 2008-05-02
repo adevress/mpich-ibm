@@ -1,4 +1,4 @@
-/* $Header: /msrc/proj/hpctools/cvs/tcgmsg/ipcv4.0/parallel.c,v 1.22 2005/02/22 18:47:02 manoj Exp $ */
+/* $Header$ */
 
 #include <stdio.h>
 #ifdef SEQUENT

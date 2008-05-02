@@ -1,4 +1,4 @@
-/* $Id: test.c,v 1.43.4.1 2006/12/18 11:48:00 manoj Exp $ */
+/* $Id$ */
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>

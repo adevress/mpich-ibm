@@ -1,4 +1,4 @@
-/* $Id: winshmem.c,v 1.20 2005/09/29 21:30:10 d3h325 Exp $ */
+/* $Id$ */
 /* WIN32 & Posix SysV-like shared memory allocation and management
  * 
  *

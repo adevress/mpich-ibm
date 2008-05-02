@@ -1,4 +1,4 @@
-/* $Id: dataserv-gm.c,v 1.13 2004/03/31 02:17:17 manoj Exp $ */
+/* $Id$ */
 #include "armcip.h"
 #include "copy.h"
 #include "myrinet.h"

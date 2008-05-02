@@ -1,4 +1,4 @@
-/* $Header: /msrc/proj/hpctools/cvs/tcgmsg/ipcv4.0/pbegin.c,v 1.20 2005/02/22 18:47:02 manoj Exp $ */
+/* $Header$ */
 
 #include <stdio.h>
 #include <signal.h>

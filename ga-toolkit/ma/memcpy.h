@@ -2,7 +2,7 @@
 #define _memcpy_h
 
 /* 
- * $Id: memcpy.h,v 1.6 2005/04/14 19:05:21 manoj Exp $
+ * $Id$
  */
 
 /* 

@@ -13,7 +13,7 @@
     does not conform exactly to the interface developed by the Working
     Group, and is intended to be exploratory rather than normative.
 
-   $Id: DistArrayTemplate.h,v 1.1 2003/08/01 00:41:54 manoj Exp $
+   $Id$
 
     This interface is intended to support the creation of distribution
     templates to which actual data objects can later be

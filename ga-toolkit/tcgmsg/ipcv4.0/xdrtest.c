@@ -1,4 +1,4 @@
-/* $Header: /msrc/proj/hpctools/cvs/tcgmsg/ipcv4.0/xdrtest.c,v 1.3 1995/02/24 02:18:09 d3h325 Exp $ */
+/* $Header$ */
 
 #include <stdio.h>
 #include <rpc/types.h>

@@ -1,4 +1,4 @@
-/* $Id: gpc.c,v 1.7 2006/03/16 20:36:17 manoj Exp $ *****************************************************
+/* $Id$ *****************************************************
   Prototype of Global Procedure Calls.
   July/03 JN - shared memory version  
   

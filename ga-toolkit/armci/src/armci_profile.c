@@ -1,4 +1,4 @@
-/* $Id: armci_profile.c,v 1.8 2005/11/30 10:20:53 vinod Exp $ */
+/* $Id$ */
 
 /**
  * Set an environment variable as follows to enable ARMCI profiling

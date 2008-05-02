@@ -1,4 +1,4 @@
-/* $Header: /msrc/proj/hpctools/cvs/tcgmsg-mpi/farg.h,v 1.14 2005/11/24 01:14:27 manoj Exp $ */
+/* $Header$ */
 /*
   This include file defines ARGC_ and ARGV_ which are the appropriate
   global variables to get at the command argument list in the

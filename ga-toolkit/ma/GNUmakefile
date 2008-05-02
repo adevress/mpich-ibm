@@ -1,4 +1,4 @@
-# $Id: GNUmakefile,v 1.5.4.1 2006/12/18 11:48:12 manoj Exp $
+# $Id$
 #
 # Makefile for a portable dynamic memory allocator.
 

@@ -1,4 +1,4 @@
-/* $Id: lapi2.c,v 1.14.2.6 2007/06/01 16:28:37 vinod Exp $ */
+/* $Id$ */
 #define DEBUG 0
 #define DSCR_SIZE 4096*8  /*given that bufsize=30000*8,conservative,indeed*/
 

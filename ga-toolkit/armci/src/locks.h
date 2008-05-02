@@ -1,4 +1,4 @@
-/* $Id: locks.h,v 1.25.4.6 2007/08/03 19:38:22 manoj Exp $ */
+/* $Id$ */
 #ifndef _ARMCI_LOCKS_H_
 #define _ARMCI_LOCKS_H_
 #include <sys/types.h>

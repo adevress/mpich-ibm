@@ -1,5 +1,5 @@
       program scf
-C$Id: ft-scf.F,v 1.1 2005/07/07 17:41:07 vinod Exp $
+C$Id$
       implicit double precision (a-h, o-z)
       include 'cscf.h'
 #include "mafdecls.fh"

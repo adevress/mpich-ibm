@@ -1,4 +1,4 @@
-/* $Id: message.c,v 1.58.4.2 2007/05/07 22:52:32 manoj Exp $ */
+/* $Id$ */
 #if defined(BGML)
 # include "bgml.h"
 #elif defined(PVM)

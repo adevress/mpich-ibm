@@ -1,4 +1,4 @@
-/* $Id: signals.c,v 1.3 2000/11/14 20:43:56 d3h325 Exp $ */
+/* $Id$ */
 
 #include "tcgmsgP.h"
 #ifdef LINUX

@@ -1,4 +1,4 @@
-# $Id: GNUmakefile,v 1.10 2007/06/12 22:00:23 manoj Exp $
+# $Id$
 #
 # This makefile has to be processed by GNU make
 #

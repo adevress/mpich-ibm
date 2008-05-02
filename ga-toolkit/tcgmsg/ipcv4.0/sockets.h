@@ -1,4 +1,4 @@
-/* $Header: /msrc/proj/hpctools/cvs/tcgmsg/ipcv4.0/sockets.h,v 1.5 2000/09/30 19:04:22 d3g681 Exp $ */
+/* $Header$ */
 
 extern void ShutdownAll();
 extern int ReadFromSocket();

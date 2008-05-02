@@ -2,7 +2,7 @@
 #define _MATYPES_H
 
 /* 
- * $Id: matypes.h,v 1.6 1999/05/27 16:31:14 d3h325 Exp $
+ * $Id$
  */
 
 /* 

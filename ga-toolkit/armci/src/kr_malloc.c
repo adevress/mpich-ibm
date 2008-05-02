@@ -1,4 +1,4 @@
-/* $Id: kr_malloc.c,v 1.22.2.2 2006/09/13 17:58:02 andriy Exp $ */
+/* $Id$ */
 #include <stdio.h>
 #include "kr_malloc.h"
 #include "armcip.h" /* for DEBUG purpose only. remove later */

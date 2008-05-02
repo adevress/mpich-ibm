@@ -4,7 +4,7 @@ c     scales a vector by a constant.
 c     uses unrolled loops for increment equal to one.
 c     jack dongarra, linpack, 3/11/78.
 c
-C$Id: dscal.f,v 1.2 1995/02/02 23:24:08 d3g681 Exp $
+C$Id$
       double precision da,dx(1)
       integer i,incx,m,mp1,n,nincx
 c

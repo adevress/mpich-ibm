@@ -1,4 +1,4 @@
-/* $Id: memlock.c,v 1.21.4.5 2007/08/03 19:38:22 manoj Exp $ */
+/* $Id$ */
 #include "armcip.h"
 #include "locks.h"
 #include "copy.h"

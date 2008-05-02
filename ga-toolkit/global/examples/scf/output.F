@@ -21,7 +21,7 @@ c columns.
 c author;  nelson h.f. beebe, quantum theory project, university of
 c          florida, gainesville
 c.......................................................................
-C$Id: output.F,v 1.1 2005/03/08 23:58:03 d3g293 Exp $
+C$Id$
       implicit double precision (a-h,o-z)
 #include "mafdecls.fh"
 #include "global.fh"

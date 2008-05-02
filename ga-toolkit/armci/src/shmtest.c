@@ -1,4 +1,4 @@
-/* $Id: shmtest.c,v 1.6 2003/10/22 22:12:21 d3h325 Exp $ */
+/* $Id$ */
 #include <sys/types.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>

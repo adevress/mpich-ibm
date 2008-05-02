@@ -1,4 +1,4 @@
-c $Id: rsg.f,v 1.7 2004/07/29 08:37:12 manoj Exp $
+c $Id$
       subroutine rsg(nm,n,a,b,w,matz,z,fv1,fv2,ierr)
 c
       integer n,nm,ierr,matz
@@ -910,7 +910,7 @@ c     .......... set error -- b is not positive definite ..........
       end
 
 
-c $Id: rsg.f,v 1.7 2004/07/29 08:37:12 manoj Exp $
+c $Id$
 c
 c JN: the original file has been slightly modified
 c JN: renamed pythag to pythag000 to avoid multiply defined symbol also in rsg.f

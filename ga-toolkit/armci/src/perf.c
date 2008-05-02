@@ -2,7 +2,7 @@
  *    Author: Jialin Ju, PNNL
  */
 
-/* $Id: perf.c,v 1.19.8.2 2006/09/13 17:58:03 andriy Exp $ */
+/* $Id$ */
 
 #include <stdio.h>
 #include <stdlib.h>

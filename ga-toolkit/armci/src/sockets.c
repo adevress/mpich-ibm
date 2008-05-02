@@ -1,4 +1,4 @@
-/* $Id: sockets.c,v 1.23 2004/04/15 05:11:33 vinod Exp $ */
+/* $Id$ */
 /**************************************************************************
  Some parts of this code were derived from the TCGMSG file sockets.c
  Jarek Nieplocha, last update 10/28/99

@@ -1,4 +1,4 @@
-/*$Id: global.util.c,v 1.48.4.4 2007/09/28 22:25:54 d3g293 Exp $*/
+/*$Id$*/
 /*
  * module: global.util.c
  * author: Jarek Nieplocha

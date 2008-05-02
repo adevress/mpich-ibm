@@ -1,4 +1,4 @@
-/*$Id: string-util.c,v 1.2 1995/02/02 23:18:32 d3g681 Exp $*/
+/*$Id$*/
 /*
  * string-util.c
  */

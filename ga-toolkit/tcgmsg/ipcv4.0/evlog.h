@@ -1,4 +1,4 @@
-/* $Header: /msrc/proj/hpctools/cvs/tcgmsg/ipcv4.0/evlog.h,v 1.5 2003/06/27 13:52:54 manoj Exp $ */
+/* $Header$ */
 
 /*
   Define EVENT and KEY values used when calling evlog.

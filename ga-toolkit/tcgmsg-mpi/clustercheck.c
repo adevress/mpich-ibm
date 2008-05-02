@@ -1,4 +1,4 @@
-/* $Id: clustercheck.c,v 1.5 2001/11/30 00:40:34 d3h325 Exp $ */
+/* $Id$ */
 #include <stdlib.h>
 #include <stdio.h>
 #include <mpi.h>

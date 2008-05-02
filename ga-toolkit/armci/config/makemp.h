@@ -1,4 +1,4 @@
-# $Id: makemp.h,v 1.7.8.5 2007/08/04 00:27:42 manoj Exp $
+# $Id$
 #
 # settings dependent on selection of the message-passing library
 # MP_LIBS     - library path 

@@ -1,4 +1,4 @@
-/* $Id: timer.c,v 1.3 2004/04/09 22:03:51 manoj Exp $ */
+/* $Id$ */
 #ifdef WIN32
    static double msec;             /* reference for timer */
 #  include <windows.h>

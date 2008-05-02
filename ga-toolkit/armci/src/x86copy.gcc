@@ -1,4 +1,4 @@
-// $Id: x86copy.gcc,v 1.14 2003/02/06 18:49:36 manoj Exp $
+// $Id$
 // memory copy implementation derived from examples 3 and 4 at
 // http://www.sgi.com/developers/library/resources/asc_cpu.html
 //

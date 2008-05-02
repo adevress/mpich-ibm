@@ -1,4 +1,4 @@
-/* $Header: /msrc/proj/hpctools/cvs/tcgmsg/ipcv4.0/evlog.c,v 1.7 2003/09/18 18:27:43 edo Exp $ */
+/* $Header$ */
 
 /* Event logging routine with key driven varargs interface */
 

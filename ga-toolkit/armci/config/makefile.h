@@ -1,4 +1,4 @@
-#$Id: makefile.h,v 1.120.4.15 2007/10/19 00:35:04 manoj Exp $
+#$Id$
            FC = f77
            CC = cc
            AR = ar

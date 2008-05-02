@@ -1,4 +1,4 @@
-/* $Id: shared.files.c,v 1.14 2002/11/09 06:05:40 sohirata Exp $ */
+/* $Id$ */
 /* DISCLAIMER
  *
  * This material was prepared as an account of work sponsored by an

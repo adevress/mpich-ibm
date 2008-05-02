@@ -1,4 +1,4 @@
-/* $Header: /msrc/proj/hpctools/cvs/tcgmsg/ipcv4.0/ipsc.c,v 1.9 2002/09/21 17:46:37 vinod Exp $ */
+/* $Header$ */
 
 /*
    Toolkit interface for the iPSC-2, i860, DELTA and Paragon

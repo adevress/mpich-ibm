@@ -1,4 +1,4 @@
-/* $Header: /msrc/proj/hpctools/cvs/tcgmsg/ipcv4.0/waitcom.c,v 1.3 1995/02/24 02:18:06 d3h325 Exp $ */
+/* $Header$ */
 
 #include "sndrcv.h"
 

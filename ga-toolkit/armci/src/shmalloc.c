@@ -1,4 +1,4 @@
-/* $Id: shmalloc.c,v 1.10.12.1 2007/08/03 19:38:22 manoj Exp $ */
+/* $Id$ */
 #include <stdio.h>
 #include <string.h>
 #include "armcip.h"

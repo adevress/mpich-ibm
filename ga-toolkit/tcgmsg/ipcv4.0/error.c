@@ -1,4 +1,4 @@
-/* $Header: /msrc/proj/hpctools/cvs/tcgmsg/ipcv4.0/error.c,v 1.9 2003/05/27 22:06:51 edo Exp $ */
+/* $Header$ */
 
 #include <stdio.h>
 #include <setjmp.h>

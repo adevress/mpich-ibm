@@ -1,4 +1,4 @@
-c $Id: mir_perf1.F,v 1.1 2003/02/26 15:33:38 d3g293 Exp $
+c $Id$
 c------------------------------------------------------------------------
 c Program perf.x is used to test performance of GA put, get, accumulate  |
 c It has to be executed on four processors.                              |

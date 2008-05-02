@@ -1,4 +1,4 @@
-/* $Header: /msrc/proj/hpctools/cvs/tcgmsg/ipcv4.0/cluster.h,v 1.4 1995/02/24 02:17:13 d3h325 Exp $ */
+/* $Header$ */
 
 /*
   Define stubs for routines in cluster.c

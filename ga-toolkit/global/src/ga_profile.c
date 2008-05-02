@@ -1,4 +1,4 @@
-/* $Id: ga_profile.c,v 1.5 2005/07/21 08:13:26 manoj Exp $ */
+/* $Id$ */
 /**
  * Note #1: Right now, only process 0's profile is printed.
  * Each and every process saves its profile in the correspoding data struture.

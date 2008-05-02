@@ -1,4 +1,4 @@
-c$Id: ndim.F,v 1.7 2005/11/23 10:25:18 manoj Exp $
+c$Id$
 #define  MAXLOOP 100
 
       program test

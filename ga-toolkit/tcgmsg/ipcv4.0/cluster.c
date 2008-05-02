@@ -1,4 +1,4 @@
-/* $Header: /msrc/proj/hpctools/cvs/tcgmsg/ipcv4.0/cluster.c,v 1.11 2004/04/01 02:04:56 manoj Exp $ */
+/* $Header$ */
 
 #include <stdio.h>
 #include <stdlib.h>

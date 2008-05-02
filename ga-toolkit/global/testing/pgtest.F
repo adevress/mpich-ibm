@@ -1,4 +1,4 @@
-c $Id: pgtest.F,v 1.9.2.1 2007/03/08 23:00:35 vinod Exp $
+c $Id$
 c vector boxes lack arithmetic precision 
 #ifdef CRAY_YMP
 # define THRESH 1d-10

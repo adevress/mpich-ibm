@@ -1,4 +1,4 @@
-/* $Header: /msrc/proj/hpctools/cvs/tcgmsg/ipcv5.0/shmem.h,v 1.2 1994/12/30 20:56:12 d3h325 Exp $ */
+/* $Header$ */
 
 /*
   Header file which declares stubs for the shared memory interface.

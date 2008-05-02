@@ -1,4 +1,4 @@
-/*$Id: base.h,v 1.37 2005/12/12 17:49:51 d3g293 Exp $ */
+/*$Id$ */
 extern int _max_global_array;
 extern Integer *_ga_map;
 extern Integer GAme, GAnproc;

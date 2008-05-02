@@ -1,4 +1,4 @@
-/* $Header: /msrc/proj/hpctools/cvs/tcgmsg/ipcv5.0/mitod.c,v 1.1 1997/03/05 18:42:31 d3e129 Exp $ */
+/* $Header$ */
 
 #include "sndrcv.h"
 

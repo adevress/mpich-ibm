@@ -1,4 +1,4 @@
-# $Id: GNUmakefile,v 1.98.2.12 2007/08/03 19:38:22 manoj Exp $
+# $Id$
 
          FOPT = -O
          COPT = -O

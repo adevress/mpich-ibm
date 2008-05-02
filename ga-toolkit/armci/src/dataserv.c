@@ -1,4 +1,4 @@
-/* $Id: dataserv.c,v 1.30 2004/03/31 14:20:48 vinod Exp $ */
+/* $Id$ */
 #include "armcip.h"
 #include "request.h"
 #include "copy.h"

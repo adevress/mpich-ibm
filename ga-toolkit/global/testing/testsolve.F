@@ -1,4 +1,4 @@
-c $Id: testsolve.F,v 1.11 2006/03/20 20:02:29 manoj Exp $
+c $Id$
       program test
       implicit none
 #include "mafdecls.fh"

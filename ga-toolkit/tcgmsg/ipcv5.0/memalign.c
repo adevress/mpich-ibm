@@ -1,4 +1,4 @@
-/* $Header: /msrc/proj/hpctools/cvs/tcgmsg/ipcv5.0/memalign.c,v 1.2 1994/12/30 20:55:52 d3h325 Exp $ */
+/* $Header$ */
 
 #if !defined(SUN) && !defined(CRAY)
 

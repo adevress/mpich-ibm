@@ -1,4 +1,4 @@
-# $Id: makefile.h,v 1.139.2.23 2007/09/27 18:57:17 manoj Exp $
+# $Id$
 # This is the main include file for GNU make. It is included by makefiles
 # in most subdirectories of the package.
 # It includes compiler flags, preprocessor and library definitions

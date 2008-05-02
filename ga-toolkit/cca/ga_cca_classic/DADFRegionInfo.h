@@ -6,7 +6,7 @@
 /** A concrete class to hold a region specification for a
     multidimensional array.
 
-   $Id: DADFRegionInfo.h,v 1.1 2003/08/01 00:41:53 manoj Exp $
+   $Id$
 
    There's nothing fancy here, just lower bounds and upper bounds.
    Maybe eventually we'll need something fancier, with IDs/handles for

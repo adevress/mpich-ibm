@@ -1,4 +1,4 @@
-/* $Header: /msrc/proj/hpctools/cvs/tcgmsg/ipcv5.0/checkbyte.c,v 1.2 1994/12/30 20:55:37 d3h325 Exp $ */
+/* $Header$ */
 
 unsigned char CheckByte(c, n)
     unsigned char *c;

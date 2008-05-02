@@ -1,5 +1,5 @@
 /*
- * $Id: test-coalesce.c,v 1.4 2002/09/14 05:40:30 d3g001 Exp $
+ * $Id$
  */
 
 #include <stdio.h>

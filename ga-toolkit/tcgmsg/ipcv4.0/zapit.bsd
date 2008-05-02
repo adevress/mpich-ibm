@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# $Header: /msrc/proj/hpctools/cvs/tcgmsg/ipcv4.0/zapit.bsd,v 1.1.1.1 1994/03/29 06:44:52 d3g681 Exp $
+# $Header$
 
 #
 # kill -9 all processes which contain the first argument ... bsd version

@@ -1,4 +1,4 @@
-/* $Id: base.c,v 1.138.2.6 2007/01/29 23:34:19 d3g293 Exp $ */
+/* $Id$ */
 /* 
  * module: base.c
  * author: Jarek Nieplocha

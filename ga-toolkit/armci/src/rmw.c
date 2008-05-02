@@ -1,4 +1,4 @@
-/* $Id: rmw.c,v 1.21.2.6 2007/09/25 18:44:16 manoj Exp $ */
+/* $Id$ */
 #include "armcip.h"
 #include "locks.h"
 #include "copy.h"

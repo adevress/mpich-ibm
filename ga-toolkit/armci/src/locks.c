@@ -1,4 +1,4 @@
-/* $Id: locks.c,v 1.15 2005/01/24 09:01:38 manoj Exp $ */
+/* $Id$ */
 #define _LOCKS_C_
 #include "armcip.h"
 #include "locks.h"

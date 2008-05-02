@@ -1,4 +1,4 @@
-/*$Id: cscf60lin.h,v 1.2 1995/02/02 23:24:04 d3g681 Exp $*/
+/*$Id$*/
 c
 c     include file defining common /cscf/
 c

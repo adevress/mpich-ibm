@@ -1,4 +1,4 @@
-/* $Id: capi.c,v 1.86.2.5 2007/09/28 22:25:54 d3g293 Exp $ */
+/* $Id$ */
 #include "ga.h"
 #include "globalp.h"
 #include <stdio.h>

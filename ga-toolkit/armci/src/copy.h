@@ -1,4 +1,4 @@
-/* $Id: copy.h,v 1.82.2.7 2007/09/25 18:40:10 manoj Exp $ */
+/* $Id$ */
 #ifndef _COPY_H_
 #define _COPY_H_
 

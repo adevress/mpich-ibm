@@ -1,4 +1,4 @@
-/* $Id: vector.c,v 1.32.4.1 2006/12/18 11:48:00 manoj Exp $ */
+/* $Id$ */
 #include "armcip.h"
 #include "copy.h"
 #include "acc.h"
