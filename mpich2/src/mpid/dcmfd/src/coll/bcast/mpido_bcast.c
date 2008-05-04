@@ -248,7 +248,8 @@ int MPIDO_Bcast(void * buffer,
 
    else if(rectavail && asyncrect)
    {
-      if(data_sz < 131072 && comm_ptr->dcmf.bcastiter < 32)
+      if(data_sz < MPIDI_CollectiveProtocols.broadcast.asynccutoff && 
+         comm_ptr->dcmf.bcastiter < 32)
       {
          comm_ptr->dcmf.bcastiter++;
          rc = async_rect_bcast(data_buffer,
@@ -276,7 +277,8 @@ int MPIDO_Bcast(void * buffer,
    }
    else if(binomavail && asyncbinom)
    {
-      if(data_sz < 262144 && comm_ptr->dcmf.bcastiter < 32)
+      if(data_sz < MPIDI_CollectiveProtocols.broadcast.asynccutoff && 
+         comm_ptr->dcmf.bcastiter < 32 )
       {
          comm_ptr->dcmf.bcastiter++;
          rc = async_binom_bcast(data_buffer,

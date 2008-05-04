@@ -181,12 +181,15 @@ int MPIDO_Scatterv(void *sendbuf,
 
    /* Make sure parameters are the same on all the nodes */
    /* specifically, noncontig on the receive */
-   MPIDO_Allreduce(MPI_IN_PLACE,
-                   &optscatterv,
-                   1,
-                   MPI_INT,
-                   MPI_BAND,
-                   comm_ptr);
+   if(MPIDI_CollectiveProtocols.scatterv.preallreduce)
+   {
+      MPIDO_Allreduce(MPI_IN_PLACE,
+                      &optscatterv,
+                      1,
+                      MPI_INT,
+                      MPI_BAND,
+                      comm_ptr);
+   }
 
 
    if(optscatterv)

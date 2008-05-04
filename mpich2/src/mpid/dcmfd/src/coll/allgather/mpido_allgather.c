@@ -333,13 +333,16 @@ MPIDO_Allgather(void *sendbuf,
          recv_true_lb + comm_ptr->local_size*send_size));
 
    /* verify everyone's datatype contiguity */
-  MPIDO_Allreduce(MPI_IN_PLACE,
-                  &config,
-                  4,
-                  MPI_INT,
-                  MPI_BAND,
-                  comm_ptr);
+   if(MPIDI_CollectiveProtocols.allgather.preallreduce)
+   {
+     MPIDO_Allreduce(MPI_IN_PLACE,
+                     &config,
+                     4,
+                     MPI_INT,
+                     MPI_BAND,
+                     comm_ptr);
 
+   }
    /* determine which protocol to use */
    /* 1) Tree allreduce
     *    a) Need tree allreduce for this communicator, otherwise it is silly
@@ -435,7 +438,7 @@ MPIDO_Allgather(void *sendbuf,
                                      recvcount,
                                      recvtype,
                                      comm_ptr);
-   else if(asyncrect && config.largecount)
+   else if(asyncrect)// && config.largecount)
    {
          result = MPIDO_Allgather_Async_bcast(sendbuf,
                                               sendcount,
@@ -447,7 +450,7 @@ MPIDO_Allgather(void *sendbuf,
             &MPIDI_CollectiveProtocols.broadcast.async_rectangle);
    }
          
-   else if(asyncbinom && config.largecount)
+   else if(asyncbinom)// && config.largecount)
    {
          result = MPIDO_Allgather_Async_bcast(sendbuf,
                                               sendcount,

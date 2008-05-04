@@ -135,6 +135,7 @@ typedef struct
       unsigned char usebinom;
       unsigned char useasyncbinom;
       unsigned char useasyncrect;
+      unsigned int asynccutoff;
    } broadcast;
    unsigned char optbroadcast;
 
@@ -165,6 +166,7 @@ typedef struct
       unsigned char usebcast;
       unsigned char usealltoallv;
       unsigned char useasyncbcast;
+      unsigned char preallreduce;
    } allgather;
    unsigned char optallgather;
 
@@ -175,6 +177,7 @@ typedef struct
       unsigned char usebcast;
       unsigned char usealltoallv;
       unsigned char useasyncbcast;
+      unsigned char preallreduce;
    } allgatherv;
    unsigned char optallgatherv;
 
@@ -189,6 +192,7 @@ typedef struct
    struct
    {
       unsigned char usealltoallv;
+      unsigned char preallreduce;
    } scatterv;
    unsigned char optscatterv;
 

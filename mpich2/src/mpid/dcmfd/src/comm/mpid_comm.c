@@ -71,6 +71,7 @@ MPIDI_Env_setup()
    MPIDI_CollectiveProtocols.broadcast.usebinom = 1;
    MPIDI_CollectiveProtocols.broadcast.useasyncbinom = 1;
    MPIDI_CollectiveProtocols.broadcast.useasyncrect = 1;
+   MPIDI_CollectiveProtocols.broadcast.asynccutoff = 131072;
    MPIDI_CollectiveProtocols.optbroadcast = 1;
 
    MPIDI_CollectiveProtocols.allreduce.reusestorage = 1;
@@ -100,6 +101,9 @@ MPIDI_Env_setup()
    MPIDI_CollectiveProtocols.allgatherv.usebcast     = 1;
    MPIDI_CollectiveProtocols.allgatherv.useasyncbcast= 1;
    MPIDI_CollectiveProtocols.allgatherv.usealltoallv = 1;
+   MPIDI_CollectiveProtocols.allgather.preallreduce = 1;
+   MPIDI_CollectiveProtocols.allgatherv.preallreduce = 1;
+   MPIDI_CollectiveProtocols.scatterv.preallreduce = 1;
 
    MPIDI_CollectiveProtocols.optscatter              = 1;
    MPIDI_CollectiveProtocols.scatter.usebcast        = 1;
@@ -173,6 +177,11 @@ MPIDI_Env_setup()
   dval = 1000;
   ENV_Int(getenv("DCMF_RMA_PENDING"), &dval);
   MPIDI_Process.rma_pending = dval;
+
+  dval = 131072;
+  ENV_Int(getenv("DCMF_ASYNCCUTOFF"), &dval);
+  MPIDI_CollectiveProtocols.broadcast.asynccutoff = dval;
+
 
    envopts = getenv("DCMF_SCATTER");
    if(envopts != NULL)
@@ -275,6 +284,27 @@ MPIDI_Env_setup()
          MPIDI_CollectiveProtocols.numcolors = colors;
    }
 
+   envopts = getenv("DCMF_SAFEALLGATHER");
+   if(envopts != NULL)
+   {
+      if((strncasecmp(envopts, "Y", 1) == 0) || atoi(envopts)==1)
+         MPIDI_CollectiveProtocols.allgather.preallreduce = 0;
+   }
+
+   envopts = getenv("DCMF_SAFEALLGATHERV");
+   if(envopts != NULL)
+   {
+      if((strncasecmp(envopts, "Y", 1) == 0) || atoi(envopts)==1)
+         MPIDI_CollectiveProtocols.allgatherv.preallreduce = 0;
+   }
+
+   envopts = getenv("DCMF_SAFESCATTERV");
+   if(envopts != NULL)
+   {
+      if((strncasecmp(envopts, "Y", 1) == 0) || atoi(envopts)==1)
+         MPIDI_CollectiveProtocols.scatterv.preallreduce = 0;
+   }
+      
 
    envopts = getenv("DCMF_ALLTOALL");
    if(envopts != NULL)
