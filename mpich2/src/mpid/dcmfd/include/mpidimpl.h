@@ -193,6 +193,7 @@ typedef struct
    {
       unsigned char usealltoallv;
       unsigned char preallreduce;
+      unsigned char usebcast;
    } scatterv;
    unsigned char optscatterv;
 

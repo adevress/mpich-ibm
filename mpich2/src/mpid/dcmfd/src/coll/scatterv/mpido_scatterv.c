@@ -8,6 +8,42 @@
 
 #pragma weak PMPIDO_Scatterv = MPIDO_Scatterv
 
+/* basically, everyone receives recvcount via bcast */
+/* requires a contiguous/continous buffer on root though */
+int MPIDO_Scatterv_bcast(void *sendbuf,
+                         int *sendcounts,
+                         int *displs,
+                         MPI_Datatype sendtype,
+                         void *recvbuf,
+                         int recvcount,
+                         MPI_Datatype recvtype,
+                         int root,
+                         MPID_Comm *comm_ptr,
+                         int sum)
+{
+   int rank = comm_ptr->rank;
+   char *tempbuf;
+   int dtsize;
+   int rc;
+
+   MPI_Type_size(recvtype, &dtsize);
+
+   if(rank!=root)
+   {
+      tempbuf = MPIU_Malloc(sizeof(char)*sum);
+      assert(tempbuf);
+   }
+   else
+      tempbuf = sendbuf;
+
+   rc = MPIDO_Bcast(tempbuf, sum, sendtype, root, comm_ptr);
+   memcpy(recvbuf, tempbuf+displs[rank], sendcounts[rank]*dtsize);
+   if(rank!=root)
+      MPIU_Free(tempbuf);
+
+   return rc;
+}
+
 /* this guy requires quite a few buffers. maybe
  * we should somehow "steal" the comm_ptr alltoall ones? */
 int MPIDO_Scatterv_alltoallv(void * sendbuf,
@@ -143,14 +179,28 @@ int MPIDO_Scatterv(void *sendbuf,
                    MPID_Comm *comm_ptr)
 {
    int rank = comm_ptr->rank;
+   int size = comm_ptr->local_size;
+   int i;
    int nbytes;
    MPID_Datatype *dt_ptr;
    MPI_Aint true_lb=0; 
    int contig;
+   /* optscatterv[0] == optscatterv bcast? 
+    * optscatterv[1] == optscatterv alltoall? 
+    * (having both allows cutoff agreement)
+    * optscatterv[2] == sum of sendcounts */
+   int optscatterv[3]; 
 
-   int optscatterv = (MPIDI_CollectiveProtocols.scatterv.usealltoallv &&
-                      comm_ptr->dcmf.alltoalls);
-
+   optscatterv[0]= MPIDI_CollectiveProtocols.scatterv.usealltoallv &&
+                          comm_ptr->dcmf.alltoalls;
+   optscatterv[1]= MPIDI_CollectiveProtocols.scatterv.usebcast &&
+                        (comm_ptr->dcmf.bcasttree ||
+                         DCMF_Geometry_analyze(&comm_ptr->dcmf.geometry,
+                         &MPIDI_CollectiveProtocols.broadcast.rectangle) ||
+                         DCMF_Geometry_analyze(&comm_ptr->dcmf.geometry,
+                         &MPIDI_CollectiveProtocols.broadcast.binomial));
+   optscatterv[2] = 0;
+   
    if(comm_ptr->comm_kind != MPID_INTRACOMM || !optscatterv)
       return MPIR_Scatterv(sendbuf, sendcounts, displs, sendtype,
                            recvbuf, recvcount, recvtype,
@@ -158,6 +208,8 @@ int MPIDO_Scatterv(void *sendbuf,
 
    if(rank == root)
    {
+      for(i=0;i<size;i++)
+         optscatterv[2]+=sendcounts[i];
       MPIDI_Datatype_get_info(1,
                               sendtype,
                               contig,
@@ -165,10 +217,14 @@ int MPIDO_Scatterv(void *sendbuf,
                               dt_ptr,
                               true_lb);
       if(recvtype == MPI_DATATYPE_NULL || recvcount <=0 || !contig)
-         optscatterv = 0;
+      {
+         optscatterv[0] = 0;
+         optscatterv[1] = 0;
+      }
    }
    else
    {
+      optscatterv[2]=0;
       MPIDI_Datatype_get_info(1,
                               recvtype,
                               contig,
@@ -176,7 +232,10 @@ int MPIDO_Scatterv(void *sendbuf,
                               dt_ptr,
                               true_lb);
       if(sendtype == MPI_DATATYPE_NULL || !contig)
-         optscatterv = 0;
+      {
+         optscatterv[0] = 0;
+         optscatterv[1] = 0;
+      }
    }
 
    /* Make sure parameters are the same on all the nodes */
@@ -184,15 +243,13 @@ int MPIDO_Scatterv(void *sendbuf,
    if(MPIDI_CollectiveProtocols.scatterv.preallreduce)
    {
       MPIDO_Allreduce(MPI_IN_PLACE,
-                      &optscatterv,
-                      1,
+                      optscatterv,
+                      3,
                       MPI_INT,
-                      MPI_BAND,
+                      MPI_SUM,
                       comm_ptr);
    }
-
-
-   if(optscatterv)
+   if(optscatterv[0]==size || optscatterv[1]==size)
    {
       if(rank == root)
       {
@@ -209,15 +266,20 @@ int MPIDO_Scatterv(void *sendbuf,
             recvbuf = (char *)recvbuf + true_lb;
          }
       }
-      return MPIDO_Scatterv_alltoallv(sendbuf,
-                                      sendcounts,
-                                      displs,
-                                      sendtype,
-                                      recvbuf,
-                                      recvcount,
-                                      recvtype,
-                                      root,
-                                      comm_ptr);
+      if(optscatterv[0]==size)
+         return MPIDO_Scatterv_alltoallv(sendbuf,
+                                         sendcounts,
+                                         displs,
+                                         sendtype,
+                                         recvbuf,
+                                         recvcount,
+                                         recvtype,
+                                         root,
+                                         comm_ptr);
+      else 
+         return MPIDO_Scatterv_bcast(sendbuf, sendcounts, displs, sendtype,
+                                     recvbuf, recvcount, recvtype, root,
+                                     comm_ptr, optscatterv[2]);
    }
    else
    {

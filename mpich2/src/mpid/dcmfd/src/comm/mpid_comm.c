@@ -109,6 +109,7 @@ MPIDI_Env_setup()
    MPIDI_CollectiveProtocols.scatter.usebcast        = 1;
    MPIDI_CollectiveProtocols.optscatterv             = 1;
    MPIDI_CollectiveProtocols.scatterv.usealltoallv   = 1;
+   MPIDI_CollectiveProtocols.scatterv.usebcast   = 1;
    MPIDI_CollectiveProtocols.gather.usereduce        = 1;
    MPIDI_CollectiveProtocols.optgather               = 1;
 
@@ -199,6 +200,17 @@ MPIDI_Env_setup()
       {
          MPIDI_CollectiveProtocols.scatterv.usealltoallv = 0;
          MPIDI_CollectiveProtocols.optscatterv = 0;
+         MPIDI_CollectiveProtocols.scatterv.usebcast = 0;
+      }
+      else if(strncasecmp(envopts, "A", 1) == 0) /* alltoall */
+      {
+         MPIDI_CollectiveProtocols.scatterv.usealltoallv = 1;
+         MPIDI_CollectiveProtocols.scatterv.usebcast = 0;
+      }
+      else if(strncasecmp(envopts, "B", 1) == 0) /* bcast */
+      {
+         MPIDI_CollectiveProtocols.scatterv.usealltoallv = 0;
+         MPIDI_CollectiveProtocols.scatterv.usebcast = 1;
       }
    }
    envopts = getenv("DCMF_GATHER");
