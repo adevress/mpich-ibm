@@ -360,7 +360,7 @@ MPIDO_Allgather(void *sendbuf,
     *    a) Need tree bcast for this communicator, otherwise performance sucks
     *    b) User must be ok with allgather via bcast
     */
-   char treebcast = comm_ptr->dcmf.bcasttree &&
+   char treebcast = /*comm_ptr->dcmf.bcasttree &&*/
                      MPIDI_CollectiveProtocols.allgather.usebcast;
 
    /* 3) Alltoall
