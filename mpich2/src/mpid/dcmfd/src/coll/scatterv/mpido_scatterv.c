@@ -22,16 +22,26 @@ int MPIDO_Scatterv_bcast(void *sendbuf,
                          int sum)
 {
    int rank = comm_ptr->rank;
-   char *tempbuf;
-   int dtsize;
-   int rc;
 
-   MPI_Type_size(recvtype, &dtsize);
+   char *tempbuf;
+   int dtsize, rc=0, contig;
+   MPID_Datatype *dt_ptr;
+   MPI_Aint dt_lb;
+
+   MPIDI_Datatype_get_info(1,
+                           recvtype,
+                           contig,
+                           dtsize,
+                           dt_ptr,
+                           dt_lb);
 
    if(rank!=root)
    {
       tempbuf = MPIU_Malloc(sizeof(char)*sum);
-      assert(tempbuf);
+      if(!tempbuf)
+         return MPIR_Err_create_code(MPI_SUCCESS, MPIR_ERR_RECOVERABLE,
+                                     "MPI_Scatterv", __LINE__, MPI_ERR_OTHER,
+                                     "**nomem", 0);
    }
    else
       tempbuf = sendbuf;
@@ -185,6 +195,7 @@ int MPIDO_Scatterv(void *sendbuf,
    MPID_Datatype *dt_ptr;
    MPI_Aint true_lb=0; 
    int contig;
+   int sum = 0;
    /* optscatterv[0] == optscatterv bcast? 
     * optscatterv[1] == optscatterv alltoall? 
     * (having both allows cutoff agreement)
@@ -206,10 +217,17 @@ int MPIDO_Scatterv(void *sendbuf,
                            recvbuf, recvcount, recvtype,
                            root, comm_ptr);
 
+   /* everyone sum up sendcounts, then we'll check to see if they are
+    * equal across all nodes */
+   for(i=0;i<size;i++)
+   {
+      if(sendcounts[i])
+         sum+=sendcounts[i];
+   }
+   optscatterv[2] = sum;
+
    if(rank == root)
    {
-      for(i=0;i<size;i++)
-         optscatterv[2]+=sendcounts[i];
       MPIDI_Datatype_get_info(1,
                               sendtype,
                               contig,
@@ -224,7 +242,6 @@ int MPIDO_Scatterv(void *sendbuf,
    }
    else
    {
-      optscatterv[2]=0;
       MPIDI_Datatype_get_info(1,
                               recvtype,
                               contig,
@@ -246,10 +263,10 @@ int MPIDO_Scatterv(void *sendbuf,
                       optscatterv,
                       3,
                       MPI_INT,
-                      MPI_SUM,
+                      MPI_BAND,
                       comm_ptr);
    }
-   if(optscatterv[0]==size || optscatterv[1]==size)
+   if(optscatterv[0] || (optscatterv[1] && optscatterv[2]==sum))
    {
       if(rank == root)
       {
@@ -266,7 +283,8 @@ int MPIDO_Scatterv(void *sendbuf,
             recvbuf = (char *)recvbuf + true_lb;
          }
       }
-      if(optscatterv[0]==size)
+      if(optscatterv[0])
+      {
          return MPIDO_Scatterv_alltoallv(sendbuf,
                                          sendcounts,
                                          displs,
@@ -276,10 +294,13 @@ int MPIDO_Scatterv(void *sendbuf,
                                          recvtype,
                                          root,
                                          comm_ptr);
-      else 
+      }
+      else
+      {
          return MPIDO_Scatterv_bcast(sendbuf, sendcounts, displs, sendtype,
                                      recvbuf, recvcount, recvtype, root,
                                      comm_ptr, optscatterv[2]);
+      }
    }
    else
    {
