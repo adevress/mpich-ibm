@@ -125,7 +125,7 @@ void MPIDI_Coll_register(void)
    DCMF_Result rc;
 
    /* Register the global functions first */
-   
+
    /* ---------------------------------- */
    /* Register global barrier          */
    /* ---------------------------------- */
@@ -137,27 +137,27 @@ void MPIDI_Coll_register(void)
    {
       MPIDI_CollectiveProtocols.barrier.usegi = 0;
    }
-   
-   
+
+
    /* ---------------------------------- */
    /* Register global broadcast          */
    /* ---------------------------------- */
    gbcast_config.protocol = DCMF_TREE_GLOBALBCAST_PROTOCOL;
    rc = DCMF_GlobalBcast_register(&MPIDI_Protocols.globalbcast, &gbcast_config);
-   
+
    /* most likely, we lack shared memory and therefore can't use this */
    if(rc != DCMF_SUCCESS)
    {
       MPIDI_CollectiveProtocols.broadcast.usetree = 0;
    }
-   
+
    /* ---------------------------------- */
    /* Register global allreduce          */
    /* ---------------------------------- */
    gallreduce_config.protocol = DCMF_TREE_GLOBALALLREDUCE_PROTOCOL;
    rc = DCMF_GlobalAllreduce_register(&MPIDI_Protocols.globalallreduce,
                                       &gallreduce_config);
-   
+
    /* most likely, we lack shared memory and therefore can't use this */
    /* reduce uses the allreduce protocol */
    if(rc != DCMF_SUCCESS)
@@ -168,7 +168,7 @@ void MPIDI_Coll_register(void)
       MPIDI_CollectiveProtocols.allreduce.usetree     = 0;
       MPIDI_CollectiveProtocols.reduce.usetree        = 0;
    }
-   
+
 
    /* register first barrier protocols now */
    barrier_config.cb_geometry = getGeometryRequest;
@@ -193,7 +193,7 @@ void MPIDI_Coll_register(void)
          MPIDI_CollectiveProtocols.barrier.usegi = 0;
    }
 
-   /* 
+   /*
     * Always register a binomial barrier for collectives in subcomms, just
     * choose not to use it at mpido_barrier
     */
@@ -205,8 +205,8 @@ void MPIDI_Coll_register(void)
    /* if we don't even get a binomial barrier, we are in trouble */
    MPID_assert_debug(barriers_num >  0);
 
-   /* 
-    * Register local barriers for the geometry.  
+   /*
+    * Register local barriers for the geometry.
     * Both a true local lockbox barrier and a global binomial
     * barrier (which can be used non-optimally).  The geometry
     * will decide internally if/which to use.
@@ -220,7 +220,7 @@ void MPIDI_Coll_register(void)
         MPIDI_CollectiveProtocols.localbarrier.uselockbox = 0;
    }
 
-   /* 
+   /*
     * Always register a binomial barrier for collectives in subcomms
     */
   if(LOCAL_BARRIER_REGISTER(DCMF_TORUS_BINOMIAL_BARRIER_PROTOCOL,
@@ -228,9 +228,9 @@ void MPIDI_Coll_register(void)
                 &barrier_config) != DCMF_SUCCESS)
     MPIDI_CollectiveProtocols.localbarrier.usebinom = 0;
 
-   /* MPID doesn't care if this actually works.  Let someone else 
-    * handle problems as needed.  
-    * MPID_assert_debug(local_barriers_num >  0); 
+   /* MPID doesn't care if this actually works.  Let someone else
+    * handle problems as needed.
+    * MPID_assert_debug(local_barriers_num >  0);
     */
 
 
@@ -245,12 +245,12 @@ void MPIDI_Coll_register(void)
 
    if(BROADCAST_REGISTER(DCMF_TORUS_RECTANGLE_BROADCAST_PROTOCOL,
                       &MPIDI_CollectiveProtocols.broadcast.rectangle,
-			 &broadcast_config) != DCMF_SUCCESS)     
+			 &broadcast_config) != DCMF_SUCCESS)
       MPIDI_CollectiveProtocols.broadcast.userect = 0;
-   
+
    ASYNC_BROADCAST_REGISTER(DCMF_TORUS_ASYNCBROADCAST_RECTANGLE_PROTOCOL,
 			    &MPIDI_CollectiveProtocols.broadcast.async_rectangle,
-			    &a_broadcast_config);     
+			    &a_broadcast_config);
 
 //   BROADCAST_REGISTER(DCMF_TORUS_RECT_BCAST_3COLOR_PROTOCOL,
 //                     &MPIDI_CollectiveProtocols.broadcast.rectangle.threecolor,
@@ -263,7 +263,7 @@ void MPIDI_Coll_register(void)
 
    ASYNC_BROADCAST_REGISTER(DCMF_TORUS_ASYNCBROADCAST_BINOMIAL_PROTOCOL,
 			    &MPIDI_CollectiveProtocols.broadcast.async_binomial,
-			    &a_broadcast_config);       
+			    &a_broadcast_config);
 
    /* Register allreduce protocols */
    if(MPIDI_CollectiveProtocols.allreduce.usetree ||
@@ -366,7 +366,7 @@ void MPIDI_Coll_Comm_create (MPID_Comm *comm)
    comm->dcmf.reducetree = 1;
    comm->dcmf.allreduceccmitree = 1;
    comm->dcmf.reduceccmitree = 1;
-   comm->dcmf.bcasttree = 1; 
+   comm->dcmf.bcasttree = 1;
    comm->dcmf.alltoalls = 1;
    comm->dcmf.bcastiter = 0;
 
@@ -379,11 +379,6 @@ void MPIDI_Coll_Comm_create (MPID_Comm *comm)
    memset(comm->coll_fns, 0, sizeof(MPID_Collops));
 
 
-  /* ****************************************** */
-  /* Set all defaults                           */
-  /* ****************************************** */
-  comm->dcmf.worldranks              = NULL;
-
   /* If we are an intracomm, MPICH should handle */
   if (comm->comm_kind != MPID_INTRACOMM) return;
   /* User may disable all collectives */
@@ -392,12 +387,6 @@ void MPIDI_Coll_Comm_create (MPID_Comm *comm)
    MPID_Comm_get_ptr(MPI_COMM_WORLD, comm_world);
    MPID_assert_debug(comm_world != NULL);
 
-   /* creates ranks array in comm, geometry stores pointer to this array */
-   /* should we pass the returned int * to geometry_init? */
-  MPIDI_Comm_worldranks_init(comm);
-
-
-
    if(MPIR_ThreadInfo.thread_provided == MPI_THREAD_MULTIPLE)
    {
       if(comm != comm_world)
@@ -405,7 +394,7 @@ void MPIDI_Coll_Comm_create (MPID_Comm *comm)
          global = 0;
          /* alltoall protocols not entirely thread-safe so turn off for this
           * communicator
-          */ 
+          */
          comm->dcmf.alltoalls = 0;
       }
       /* we are comm_world */
@@ -426,25 +415,25 @@ void MPIDI_Coll_Comm_create (MPID_Comm *comm)
   /* These are ALL the pointers in the object   */
   /* ****************************************** */
 
-      comm->coll_fns->Barrier        = MPIDO_Barrier;
-      comm->coll_fns->Bcast          = MPIDO_Bcast;
-      comm->coll_fns->Reduce         = MPIDO_Reduce;
-      comm->coll_fns->Allreduce      = MPIDO_Allreduce;
-      comm->coll_fns->Alltoall       = MPIDO_Alltoall;
-      comm->coll_fns->Alltoallv      = MPIDO_Alltoallv;
-      comm->coll_fns->Alltoallw       = MPIDO_Alltoallw;
-      comm->coll_fns->Allgather      = MPIDO_Allgather;
-      comm->coll_fns->Allgatherv     = MPIDO_Allgatherv;
-  comm->coll_fns->Gather         = MPIDO_Gather;
-  comm->coll_fns->Gatherv        = MPIDO_Gatherv;
-  comm->coll_fns->Scatter        = MPIDO_Scatter;
-  comm->coll_fns->Scatterv       = MPIDO_Scatterv;
-  comm->coll_fns->Reduce_scatter = MPIDO_Reduce_scatter;
-  comm->coll_fns->Scan           = MPIDO_Scan;
-  comm->coll_fns->Exscan         = MPIDO_Exscan;
+   comm->coll_fns->Barrier        = MPIDO_Barrier;
+   comm->coll_fns->Bcast          = MPIDO_Bcast;
+   comm->coll_fns->Reduce         = MPIDO_Reduce;
+   comm->coll_fns->Allreduce      = MPIDO_Allreduce;
+   comm->coll_fns->Alltoall       = MPIDO_Alltoall;
+   comm->coll_fns->Alltoallv      = MPIDO_Alltoallv;
+   comm->coll_fns->Alltoallw       = MPIDO_Alltoallw;
+   comm->coll_fns->Allgather      = MPIDO_Allgather;
+   comm->coll_fns->Allgatherv     = MPIDO_Allgatherv;
+   comm->coll_fns->Gather         = MPIDO_Gather;
+   comm->coll_fns->Gatherv        = MPIDO_Gatherv;
+   comm->coll_fns->Scatter        = MPIDO_Scatter;
+   comm->coll_fns->Scatterv       = MPIDO_Scatterv;
+   comm->coll_fns->Reduce_scatter = MPIDO_Reduce_scatter;
+   comm->coll_fns->Scan           = MPIDO_Scan;
+   comm->coll_fns->Exscan         = MPIDO_Exscan;
 
 
-   
+
 
   /* ******************************************************* */
   /* Setup Barriers and geometry for this communicator       */
@@ -452,7 +441,7 @@ void MPIDI_Coll_Comm_create (MPID_Comm *comm)
   DCMF_Geometry_initialize(
              &comm->dcmf.geometry,
              comm->context_id,
-             comm->dcmf.worldranks,
+  (unsigned*)comm->vcr,
              comm->local_size,
              barriers,
              barriers_num,
@@ -495,7 +484,7 @@ void MPIDI_Coll_Comm_create (MPID_Comm *comm)
        comm->dcmf.reducetree = MPIDI_CollectiveProtocols.reduce.usetree;
        comm->dcmf.reduceccmitree = MPIDI_CollectiveProtocols.reduce.useccmitree;
    }
-   
+
    if(MPIDI_CollectiveProtocols.allreduce.usepipelinedtree &&
       !DCMF_Geometry_analyze(&comm->dcmf.geometry,
 			     &MPIDI_CollectiveProtocols.allreduce.pipelinedtree))
@@ -540,25 +529,26 @@ void MPIDI_Coll_Comm_create (MPID_Comm *comm)
 void MPIDI_Coll_Comm_destroy (MPID_Comm *comm)
 {
   MPID_assert (comm != NULL);
-  if (comm->coll_fns) MPIU_Free(comm->coll_fns); comm->coll_fns = NULL;
-  if(comm->dcmf.worldranks) MPIU_Free(comm->dcmf.worldranks);
+  if (comm->coll_fns)
+    MPIU_Free(comm->coll_fns);
   DCMF_Geometry_free(&comm->dcmf.geometry);
-  comm->dcmf.worldranks=NULL;
   if(comm->dcmf.sndlen)
-   MPIU_Free(comm->dcmf.sndlen);
+    MPIU_Free(comm->dcmf.sndlen);
   if(comm->dcmf.rcvlen)
-   MPIU_Free(comm->dcmf.rcvlen);
+    MPIU_Free(comm->dcmf.rcvlen);
   if(comm->dcmf.sdispls)
-   MPIU_Free(comm->dcmf.sdispls);
+    MPIU_Free(comm->dcmf.sdispls);
   if(comm->dcmf.rdispls)
-   MPIU_Free(comm->dcmf.rdispls);
+    MPIU_Free(comm->dcmf.rdispls);
   if(comm->dcmf.sndcounters)
-   MPIU_Free(comm->dcmf.sndcounters);
+    MPIU_Free(comm->dcmf.sndcounters);
   if(comm->dcmf.rcvcounters)
-   MPIU_Free(comm->dcmf.rcvcounters);
+    MPIU_Free(comm->dcmf.rcvcounters);
 
-  comm->dcmf.sndlen = comm->dcmf.rcvlen =
-  comm->dcmf.sdispls = comm->dcmf.rdispls =
-  comm->dcmf.sndcounters = comm->dcmf.rcvcounters = NULL;
-
+  comm->dcmf.sndlen  =
+  comm->dcmf.rcvlen  =
+  comm->dcmf.sdispls =
+  comm->dcmf.rdispls =
+  comm->dcmf.sndcounters =
+  comm->dcmf.rcvcounters = NULL;
 }

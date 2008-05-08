@@ -928,22 +928,3 @@ MPIDI_Env_setup()
          fprintf(stderr,"Invalid DCMF_LOCALBARRIER option\n");
    }
 }
-
-
-unsigned *
-MPIDI_Comm_worldranks_init(MPID_Comm *comm_ptr)
-{
-  unsigned *worldranks = NULL;
-  int lrank, numprocs  = comm_ptr->local_size;
-
-  worldranks = comm_ptr->dcmf.worldranks;
-  if (worldranks == NULL)
-    {
-      worldranks = comm_ptr->dcmf.worldranks = MPIU_Malloc(numprocs * sizeof(int));
-      MPID_assert(worldranks != NULL);
-      for (lrank = 0; lrank < numprocs; lrank++)
-        worldranks[lrank] = comm_ptr->vcr[lrank]->lpid;
-    }
-
-  return worldranks;
-}

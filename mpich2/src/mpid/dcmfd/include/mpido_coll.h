@@ -19,8 +19,6 @@ typedef struct {
 } MPIDO_Coll_config;
 
 /* Helpers */
-unsigned *MPIDI_Comm_worldranks_init(MPID_Comm *comm_ptr);
-
 int MPIDI_ConvertMPItoDCMF(MPI_Op op,
                            DCMF_Op *dcmf_op,
                            MPI_Datatype datatype,

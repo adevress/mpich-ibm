@@ -11,6 +11,29 @@ MPIDI_Process_t  MPIDI_Process;
 DCMF_Hardware_t  mpid_hw;
 
 
+void MPIDI_DMCF_Configure(int requested,
+                          int * provided)
+{
+  DCMF_Configure_t dcmf_config;
+  memset(&dcmf_config, 0x00, sizeof(DCMF_Configure_t));
+
+  // When interrupts are on, must use MPI_THREAD_MULTIPLE
+  // so locking is done to interlock between the main
+  // thread and the interrupt handler thread.
+  if ( MPIDI_Process.use_interrupts )
+    dcmf_config.interrupts   = DCMF_INTERRUPTS_ON;
+  else
+    dcmf_config.interrupts   = DCMF_INTERRUPTS_OFF;
+
+  // Attempt to set the same thread level as requestd
+  dcmf_config.thread_level = requested;
+
+  // Get the actual values back
+  DCMF_Messager_configure(&dcmf_config, &dcmf_config);
+  *provided = dcmf_config.thread_level;
+}
+
+
 /**
  * \brief Initialize MPICH2 at ADI level.
  * \param[in,out] argc Unused
@@ -23,14 +46,13 @@ DCMF_Hardware_t  mpid_hw;
  */
 int MPID_Init(int * argc,
               char *** argv,
-              int requested,
+              int   requested,
               int * provided,
               int * has_args,
               int * has_env)
 {
   int rank, size, i, rc;
   int tempthread;
-  MPIDI_VC * vc_table = NULL;
   MPID_Comm * comm;
   DCMF_Result dcmf_rc;
 
@@ -151,19 +173,6 @@ int MPID_Init(int * argc,
   rank = DCMF_Messager_rank();
   size = DCMF_Messager_size();
 
-  /* ------------------------------------ */
-  /*  Initialize Virtual Connection table */
-  /* ------------------------------------ */
-
-  vc_table = MPIU_Malloc(sizeof(MPIDI_VC) * size); /* !!! */
-  MPID_assert(vc_table != NULL);
-
-  for (i = 0; i < size; i++)
-    {
-      vc_table[i].ref_count = 0;
-      vc_table[i].lpid = i;
-    }
-
 
   /* -------------------------------- */
   /* Initialize MPI_COMM_WORLD object */
@@ -177,20 +186,17 @@ int MPID_Init(int * argc,
   rc = MPID_VCRT_Get_ptr(comm->vcrt, &comm->vcr);
   MPID_assert(rc == MPI_SUCCESS);
   for (i=0; i<size; i++)
-    {
-      vc_table[i].ref_count++;
-      comm->vcr[i] = &vc_table[i];
-    }
+    comm->vcr[i] = i;
 
-   /* comm_create for MPI_COMM_WORLD needs this information to ensure no
-    * barriers are done in dual mode with multithreading
-    * We don't get the thread_provided updated until AFTER MPID_Init is
-    * finished so we need to know the requested thread level in comm_create
-    */
-   tempthread = MPIR_ThreadInfo.thread_provided;
-   MPIR_ThreadInfo.thread_provided = requested;
-   MPIDI_Comm_create(comm);
-   MPIR_ThreadInfo.thread_provided = tempthread;
+  /* comm_create for MPI_COMM_WORLD needs this information to ensure no
+   * barriers are done in dual mode with multithreading
+   * We don't get the thread_provided updated until AFTER MPID_Init is
+   * finished so we need to know the requested thread level in comm_create
+   */
+  tempthread = MPIR_ThreadInfo.thread_provided;
+  MPIR_ThreadInfo.thread_provided = requested;
+  MPIDI_Comm_create(comm);
+  MPIR_ThreadInfo.thread_provided = tempthread;
 
   /* ------------------------------- */
   /* Initialize MPI_COMM_SELF object */
@@ -203,8 +209,7 @@ int MPID_Init(int * argc,
   MPID_assert(rc == MPI_SUCCESS);
   rc = MPID_VCRT_Get_ptr(comm->vcrt, &comm->vcr);
   MPID_assert(rc == MPI_SUCCESS);
-  vc_table[rank].ref_count++;
-  comm->vcr[0] = &vc_table[rank];
+  comm->vcr[0] = rank;
 
   /* ------------------------------- */
   /* Initialize timer data           */
@@ -215,26 +220,7 @@ int MPID_Init(int * argc,
   *has_args = TRUE;
   *has_env  = TRUE;
 
-
-  {
-    DCMF_Configure_t dcmf_config;
-    memset(&dcmf_config, 0x00, sizeof(DCMF_Configure_t));
-
-    // When interrupts are on, must use MPI_THREAD_MULTIPLE
-    // so locking is done to interlock between the main
-    // thread and the interrupt handler thread.
-    if ( MPIDI_Process.use_interrupts )
-      dcmf_config.interrupts   = DCMF_INTERRUPTS_ON;
-    else
-      dcmf_config.interrupts   = DCMF_INTERRUPTS_OFF;
-
-    // Attempt to set the same thread level as requestd
-    dcmf_config.thread_level = requested;
-
-    // Get the actual values back
-    DCMF_Messager_configure(&dcmf_config, &dcmf_config);
-    *provided = dcmf_config.thread_level;
-  }
+  MPIDI_DMCF_Configure(requested, provided);
 
   return MPI_SUCCESS;
 }

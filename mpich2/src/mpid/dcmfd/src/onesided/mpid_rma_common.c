@@ -1429,11 +1429,11 @@ int MPIDU_proto_send(MPID_Win *win, MPID_Group *grp, int type) {
                         lpid = grp->lrank_to_lpid[x].lpid;
                         /* convert group rank to comm rank */
                         for (z = 0; z < comm_size &&
-                                lpid != vc[z]->lpid; ++z);
+                                lpid != vc[z]; ++z);
                         MPID_assert_debug(z < comm_size);
                         comm_rank = z;
                 } else {
-                        lpid = vc[x]->lpid;
+                        lpid = vc[x];
                         comm_rank = x;
                 }
                 ctl.mpid_ctl_w1 = win->_dev.coll_info[comm_rank].win_handle;

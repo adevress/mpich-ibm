@@ -88,20 +88,13 @@
 #endif
 
 
-typedef struct MPIDI_VC
-{
-  int          handle;
-  volatile int ref_count;
-  int          lpid;
-}
-MPIDI_VC;
-
+typedef int                 MPIDI_VCR;
 typedef struct MPIDI_VCRT * MPID_VCRT;
-typedef struct MPIDI_VC   * MPID_VCR;
+typedef MPIDI_VCR           MPID_VCR;
 #define MPID_GPID_Get(comm_ptr, rank, gpid)     \
 {                                               \
   gpid[0] = 0;                                  \
-  gpid[1] = comm_ptr->vcr[rank]->lpid;          \
+  gpid[1] = comm_ptr->vcr[rank];                \
 }
 
 /** \brief Our progress engine does not require state */
@@ -286,24 +279,23 @@ struct MPIDI_DCMF_Comm
 {
   DCMF_Geometry_t geometry; /**< Geometry component for collectives           */
   DCMF_CollectiveRequest_t barrier; /**< Barrier request for collectives      */
-  unsigned *worldranks;     /**< rank list to be used by collectives          */
-   unsigned *sndlen; /**< lazy alloc alltoall vars */
-   unsigned *rcvlen;
-   unsigned *sdispls;
-   unsigned *rdispls;
-   unsigned *sndcounters;
-   unsigned *rcvcounters;
-   unsigned char allreducetree; /**< Comm specific tree flags */
-   unsigned char allreducepipelinedtree; /**< Comm specific tree flags */
-   unsigned char allreducepipelinedtree_dput; /**< Comm specific tree flags */
-   unsigned char reducetree;
-   unsigned char allreduceccmitree;
-   unsigned char reduceccmitree;
-   unsigned char bcasttree;
-   unsigned char alltoalls;
-   unsigned      bcastiter;   /* async broadcast is only used every 32
-			       * steps to prevent too many unexpected
-			       * messages */
+  unsigned *sndlen; /**< lazy alloc alltoall vars */
+  unsigned *rcvlen;
+  unsigned *sdispls;
+  unsigned *rdispls;
+  unsigned *sndcounters;
+  unsigned *rcvcounters;
+  unsigned char allreducetree; /**< Comm specific tree flags */
+  unsigned char allreducepipelinedtree; /**< Comm specific tree flags */
+  unsigned char allreducepipelinedtree_dput; /**< Comm specific tree flags */
+  unsigned char reducetree;
+  unsigned char allreduceccmitree;
+  unsigned char reduceccmitree;
+  unsigned char bcasttree;
+  unsigned char alltoalls;
+  unsigned      bcastiter;   /* async broadcast is only used every 32
+                              * steps to prevent too many unexpected
+                              * messages */
 };
 /** \brief This defines the portion of MPID_Comm that is specific to the DCMF Device */
 #define MPID_DEV_COMM_DECL      struct MPIDI_DCMF_Comm dcmf;

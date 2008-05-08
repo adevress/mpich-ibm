@@ -1035,7 +1035,7 @@ static inline MPID_VCR *MPIDU_world_vcr_c(MPID_Comm *c) {
 static inline int MPIDU_world_rank_c(MPID_Comm *c, int r) {
         MPID_VCR *vc;
         vc = MPIDU_world_vcr_c(c);
-        return vc[r]->lpid;
+        return vc[r];
 }
 
 /**

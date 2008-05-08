@@ -242,7 +242,7 @@ int MPIDO_Bcast(void * buffer,
 
       rc = tree_bcast(data_buffer,
                       data_sz,
-                      comm_ptr->vcr[root]->lpid,
+                      comm_ptr->vcr[root],
                       &comm_ptr->dcmf.geometry);
    }
 
@@ -254,7 +254,7 @@ int MPIDO_Bcast(void * buffer,
          comm_ptr->dcmf.bcastiter++;
          rc = async_rect_bcast(data_buffer,
                                data_sz,
-                               comm_ptr->vcr[root]->lpid,
+                               comm_ptr->vcr[root],
                                &comm_ptr->dcmf.geometry);
       }
       else
@@ -264,7 +264,7 @@ int MPIDO_Bcast(void * buffer,
      
          rc = sync_rect_bcast(data_buffer,
                               data_sz,
-                              comm_ptr->vcr[root]->lpid,
+                              comm_ptr->vcr[root],
                               &comm_ptr->dcmf.geometry);
       }
    }
@@ -272,7 +272,7 @@ int MPIDO_Bcast(void * buffer,
    {
          rc = sync_rect_bcast(data_buffer,
                               data_sz,
-                              comm_ptr->vcr[root]->lpid,
+                              comm_ptr->vcr[root],
                               &comm_ptr->dcmf.geometry);
    }
    else if(binomavail && asyncbinom)
@@ -283,7 +283,7 @@ int MPIDO_Bcast(void * buffer,
          comm_ptr->dcmf.bcastiter++;
          rc = async_binom_bcast(data_buffer,
                                 data_sz,
-                                comm_ptr->vcr[root]->lpid,
+                                comm_ptr->vcr[root],
                                 &comm_ptr->dcmf.geometry);
       }
       else
@@ -293,7 +293,7 @@ int MPIDO_Bcast(void * buffer,
 
          rc = sync_binom_bcast(data_buffer,
                                data_sz,
-                               comm_ptr->vcr[root]->lpid,
+                               comm_ptr->vcr[root],
                                &comm_ptr->dcmf.geometry);
       }
    }
@@ -301,7 +301,7 @@ int MPIDO_Bcast(void * buffer,
    {
          rc = sync_binom_bcast(data_buffer,
                                data_sz,
-                               comm_ptr->vcr[root]->lpid,
+                               comm_ptr->vcr[root],
                                &comm_ptr->dcmf.geometry);
 
    }

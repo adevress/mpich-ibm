@@ -79,9 +79,8 @@ int MPID_Isend(const void    * buf,
 
   /* communicator & destination info */
   sreq->comm                 = comm;  MPIR_Comm_add_ref(comm);
-  MPID_assert(comm->vcr[rank] != NULL);
   if (rank != MPI_PROC_NULL)
-    MPID_Request_setPeerRank(sreq, comm->vcr[rank]->lpid);
+    MPID_Request_setPeerRank(sreq, comm->vcr[rank]);
   MPID_Request_setPeerRequest(sreq, sreq);
 
   /* message type info */

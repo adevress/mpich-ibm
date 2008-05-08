@@ -207,7 +207,7 @@ int MPIDO_Reduce(void * sendbuf,
                                 count,
                                 dcmf_dt,
                                 dcmf_op,
-                                comm_ptr->vcr[root]->lpid,
+                                comm_ptr->vcr[root],
                                 &comm_ptr->dcmf.geometry);
       else
         rc = tree_reduce(sendbuf,
@@ -215,7 +215,7 @@ int MPIDO_Reduce(void * sendbuf,
                          count,
                          dcmf_dt,
                          dcmf_op,
-                         comm_ptr->vcr[root]->lpid,
+                         comm_ptr->vcr[root],
                          &comm_ptr->dcmf.geometry);
       return rc;
    }
@@ -290,7 +290,7 @@ int MPIDO_Reduce(void * sendbuf,
                        count,
                        dcmf_dt,
                        dcmf_op,
-                       comm_ptr->vcr[root]->lpid,
+                       comm_ptr->vcr[root],
                        &comm_ptr->dcmf.geometry);
    }
 
@@ -302,7 +302,7 @@ int MPIDO_Reduce(void * sendbuf,
                        count,
                        dcmf_dt,
                        dcmf_op,
-                       comm_ptr->vcr[root]->lpid,
+                       comm_ptr->vcr[root],
                        &comm_ptr->dcmf.geometry);
    }
    else if(usingbinom)
@@ -313,7 +313,7 @@ int MPIDO_Reduce(void * sendbuf,
                         count,
                         dcmf_dt,
                         dcmf_op,
-                        comm_ptr->vcr[root]->lpid,
+                        comm_ptr->vcr[root],
                         &comm_ptr->dcmf.geometry);
    }
    else

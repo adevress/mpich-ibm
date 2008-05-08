@@ -97,7 +97,7 @@ int MPID_Send(const void    * buf,
 
   /* communicator & destination info */
   sreq->comm                 = comm;  MPIR_Comm_add_ref(comm);
-  MPID_Request_setPeerRank(sreq, comm->vcr[rank]->lpid);
+  MPID_Request_setPeerRank(sreq, comm->vcr[rank]);
   MPID_Request_setPeerRequest(sreq, sreq);
 
   /* message type info */

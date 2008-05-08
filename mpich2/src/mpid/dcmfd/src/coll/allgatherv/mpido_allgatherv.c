@@ -141,7 +141,7 @@ int MPIDO_Allgatherv_Async_bcast(void *sendbuf,
                                 callback,
                                 DCMF_MATCH_CONSISTENCY,
                                 &comm_ptr->dcmf.geometry,
-                                comm_ptr->vcr[i+j]->lpid,
+                                comm_ptr->vcr[i+j],
                                 destbuf,
                                 data_sz * recvcounts[i+j]);
          else 
@@ -162,7 +162,7 @@ int MPIDO_Allgatherv_Async_bcast(void *sendbuf,
                                 callback,
                                 DCMF_MATCH_CONSISTENCY,
                                 &comm_ptr->dcmf.geometry,
-                                comm_ptr->vcr[max_size+i]->lpid,
+                                comm_ptr->vcr[max_size+i],
                                 destbuf,
                                 data_sz * recvcounts[max_size+i]);
          else
