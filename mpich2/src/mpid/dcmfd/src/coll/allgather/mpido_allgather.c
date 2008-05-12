@@ -360,9 +360,10 @@ MPIDO_Allgather(void *sendbuf,
     *    a) Need tree bcast for this communicator, otherwise performance sucks
     *    b) User must be ok with allgather via bcast
     */
-   char treebcast = /*comm_ptr->dcmf.bcasttree &&*/
+   char treebcast = comm_ptr->dcmf.bcasttree &&
                      MPIDI_CollectiveProtocols.allgather.usebcast;
 
+   char nontreebcast = MPIDI_CollectiveProtocols.allgather.usebcast;
    /* 3) Alltoall
     *    a) Need torus alltoall for this communicator
     *    b) User must be ok with allgather via alltoall
@@ -396,50 +397,46 @@ MPIDO_Allgather(void *sendbuf,
     * both bcast and reduce are available, use bcast >32768
     */
 
-   if(treereduce && treebcast && config.largecount)
-      result = MPIDO_Allgather_Bcast(sendbuf,
-                                     sendcount,
-                                     sendtype,
-                                     recvbuf,
-                                     recvcount,
-                                     recvtype,
-                                     comm_ptr);
-   else if(treereduce && treebcast && !config.largecount)
-      result = MPIDO_Allgather_Allreduce(sendbuf,
-                                         sendcount,
-                                         sendtype,
-                                         recvbuf,
-                                         recvcount,
-                                         recvtype,
-                                         comm_ptr,
-                                         send_true_lb,
-                                         recv_true_lb,
-                                         send_size,
-                                         recv_size);
-   /* we only can use allreduce, so use it regardless of size */
-   else if(treereduce)
-      result = MPIDO_Allgather_Allreduce(sendbuf,
-                                         sendcount,
-                                         sendtype,
-                                         recvbuf,
-                                         recvcount,
-                                         recvtype,
-                                         comm_ptr,
-                                         send_true_lb,
-                                         recv_true_lb,
-                                         send_size,
-                                         recv_size);
-   /* or, we can only use bcast, so use it regardless of size */
-   else if(treebcast)
-      result = MPIDO_Allgather_Bcast(sendbuf,
-                                     sendcount,
-                                     sendtype,
-                                     recvbuf,
-                                     recvcount,
-                                     recvtype,
-                                     comm_ptr);
-   else if(asyncrect)// && config.largecount)
+   int rank = comm_ptr->rank;
+   static int foo=0;
+   if((treereduce && treebcast && config.largecount) ||
+      (treebcast && !treereduce))
    {
+//      if(!rank)
+//         fprintf(stderr,"allg bcast tree %d\n", sendcount);
+      result = MPIDO_Allgather_Bcast(sendbuf,
+                                     sendcount,
+                                     sendtype,
+                                     recvbuf,
+                                     recvcount,
+                                     recvtype,
+                                     comm_ptr);
+   }
+   else if((treereduce && treebcast && !config.largecount) ||
+          (!treebcast && treereduce))
+   {
+//      if(!rank)
+//         fprintf(stderr,"allg allred tree sendcount: %d\n", sendcount);
+      result = MPIDO_Allgather_Allreduce(sendbuf,
+                                         sendcount,
+                                         sendtype,
+                                         recvbuf,
+                                         recvcount,
+                                         recvtype,
+                                         comm_ptr,
+                                         send_true_lb,
+                                         recv_true_lb,
+                                         send_size,
+                                         recv_size);
+   }
+   /* no tree, but have rectangle.
+    * if async & sync && small message, use async
+    * if just async, use async */
+   else if((asyncrect && nontreebcast && !config.largecount) ||
+           (asyncrect && !nontreebcast))
+   {
+//      if(!rank)
+//         fprintf(stderr,"async bcast size: %d\n", sendcount);
          result = MPIDO_Allgather_Async_bcast(sendbuf,
                                               sendcount,
                                               sendtype,
@@ -449,21 +446,12 @@ MPIDO_Allgather(void *sendbuf,
                                               comm_ptr,
             &MPIDI_CollectiveProtocols.broadcast.async_rectangle);
    }
-         
-   else if(asyncbinom)// && config.largecount)
-   {
-         result = MPIDO_Allgather_Async_bcast(sendbuf,
-                                              sendcount,
-                                              sendtype,
-                                              recvbuf,
-                                              recvcount,
-                                              recvtype,
-                                              comm_ptr,
-            &MPIDI_CollectiveProtocols.broadcast.async_binomial);
-   }
-         
-   /* no tree protocols (probably not comm_world) so use alltoall */
+   /* all else fails, use alltoall */
+   /* this might be a better default on larger messages/larger partitions */
    else if(usealltoall)
+   {
+//      if(!rank)
+//         fprintf(stderr,"alltoall size: %d\n", sendcount);
       result = MPIDO_Allgather_Alltoall(sendbuf,
                                         sendcount,
                                         sendtype,
@@ -475,8 +463,58 @@ MPIDO_Allgather(void *sendbuf,
                                         recv_true_lb,
                                         send_size,
                                         recv_size);
+   }
+   /* no tree, have rectangle
+    * have async&sync, but large message
+    * or just have sync */
+   else if((asyncrect && nontreebcast && config.largecount) ||
+           (!asyncrect && nontreebcast))
+   {
+//      if(!rank)
+//         fprintf(stderr,"sync bcast size: %d\n", sendcount);
+      result = MPIDO_Allgather_Bcast(sendbuf,
+                                     sendcount,
+                                     sendtype,
+                                     recvbuf,
+                                     recvcount,
+                                     recvtype,
+                                     comm_ptr);
+   }
+   /* no tree, no rect
+    * have asyncbinom, and tree bcast, and small message
+    * or, just have async binom */
+   else if((asyncbinom && nontreebcast && !config.largecount) ||
+           (asyncbinom && !nontreebcast))
+   {
+//      if(!rank)
+//         fprintf(stderr,"async binom bcast size: %d\n", sendcount);
+         result = MPIDO_Allgather_Async_bcast(sendbuf,
+                                              sendcount,
+                                              sendtype,
+                                              recvbuf,
+                                              recvcount,
+                                              recvtype,
+                                              comm_ptr,
+            &MPIDI_CollectiveProtocols.broadcast.async_binomial);
+   }
+   else if((asyncbinom && nontreebcast && config.largecount) ||
+           (!asyncbinom && nontreebcast))
+   {
+//      if(!rank)
+//         fprintf(stderr,"sync binom bcast size: %d\n", sendcount);
+      result = MPIDO_Allgather_Bcast(sendbuf,
+                                     sendcount,
+                                     sendtype,
+                                     recvbuf,
+                                     recvcount,
+                                     recvtype,
+                                     comm_ptr);
+   }
    /* don't even have alltoall, so use mpich */
    else 
+   {
+//      if(!rank)
+//         fprintf(stderr,"mpich size: %d\n", sendcount);
       result = MPIR_Allgather(sendbuf,
                               sendcount,
                               sendtype,
@@ -484,6 +522,7 @@ MPIDO_Allgather(void *sendbuf,
                               recvcount,
                               recvtype,
                               comm_ptr);
+   }
 
    return result;
 }
