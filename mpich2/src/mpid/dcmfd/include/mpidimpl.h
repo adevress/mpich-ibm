@@ -69,6 +69,7 @@ typedef struct
   {
     unsigned topology;           /**< Enable optimized topology functions.   */
     unsigned collectives;        /**< Enable optimized collective functions. */
+    unsigned tree;               /**< Used for disabling just the tree */
   }
   optimized;
   unsigned eager_limit;
