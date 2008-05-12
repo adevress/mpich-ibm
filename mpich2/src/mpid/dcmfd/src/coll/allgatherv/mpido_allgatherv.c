@@ -397,7 +397,7 @@ MPIDO_Allgatherv(void *sendbuf,
    *     d) Count must be a multiple of 4 since tree doesn't support
    *     chars right now
    */
-   int treereduce = comm_ptr->dcmf.allreducetree &&
+   char treereduce = comm_ptr->dcmf.allreducetree &&
                     MPIDI_CollectiveProtocols.allgatherv.useallreduce &&
                     config.recv_contig && config.send_contig &&
                     config.recv_continuous && buffer_sum % 4 ==0;
@@ -405,15 +405,16 @@ MPIDO_Allgatherv(void *sendbuf,
    *     a) Need tree bcast for this communicator
    *     b) User must be ok with allgatherv via bcast
    */     
-   int treebcast = //comm_ptr->dcmf.bcasttree &&
+   char treebcast = comm_ptr->dcmf.bcasttree &&
                    MPIDI_CollectiveProtocols.allgatherv.usebcast;
+   char nontreebcast = MPIDI_CollectiveProtocols.allgatherv.usebcast;
 
    /* 3) Alltoall
    *     a) Need torus alltoall for this communicator
    *     b) User must be ok with allgatherv via alltoall
    *     c) Need contiguous datatypes
    */
-   int usealltoall = comm_ptr->dcmf.alltoalls &&
+   char usealltoall = comm_ptr->dcmf.alltoalls &&
                      MPIDI_CollectiveProtocols.allgatherv.usealltoallv &&
                      config.recv_contig && config.send_contig;
 
@@ -436,7 +437,8 @@ MPIDO_Allgatherv(void *sendbuf,
 
 
 #warning assume same cutoff for allgather
-   if(treereduce && treebcast && config.largecount)
+   if((treereduce && treebcast && config.largecount) ||
+      (treebcast && !treereduce))
    {
 //      if(comm_ptr->rank ==0 )fprintf(stderr,"sendcount: %d, calling bcast\n", sendcount);
          result = MPIDO_Allgatherv_Bcast(sendbuf,
@@ -447,8 +449,9 @@ MPIDO_Allgatherv(void *sendbuf,
                                          displs,
                                          recvtype,
                                          comm_ptr);
-                                         }
-   else if(treereduce && treebcast && !config.largecount)
+   }
+   else if((treereduce && treebcast && !config.largecount) || 
+          (!treebcast && treereduce))
    {
 //      if(comm_ptr->rank ==0 )fprintf(stderr,"sendcount: %d, calling allreduce\n", sendcount);
          result = MPIDO_Allgatherv_Allreduce(sendbuf,
@@ -465,36 +468,6 @@ MPIDO_Allgatherv(void *sendbuf,
                                              recv_size,
                                              buffer_sum);
    }
-   else if(treereduce)
-   {
-//      if(comm_ptr->rank ==0 )fprintf(stderr,"sendcount: %d, only tree allreduce\n", sendcount);
-
-         result = MPIDO_Allgatherv_Allreduce(sendbuf,
-                                             sendcount,
-                                             sendtype,
-                                             recvbuf,
-                                             recvcounts,
-                                             displs,
-                                             recvtype,
-                                             comm_ptr,
-                                             send_true_lb,
-                                             recv_true_lb,
-                                             send_size,
-                                             recv_size,
-                                             buffer_sum);
-                                             }
-   else if(treebcast)
-   {
-//      if(comm_ptr->rank ==0 )fprintf(stderr,"sendcount: %d, only tree bcast\n", sendcount);
-         result = MPIDO_Allgatherv_Bcast(sendbuf,
-                                         sendcount,
-                                         sendtype,
-                                         recvbuf,
-                                         recvcounts,
-                                         displs,
-                                         recvtype,
-                                         comm_ptr);
-   }
 
    else if(usealltoall)
          result = MPIDO_Allgatherv_Alltoall(sendbuf,
@@ -509,7 +482,8 @@ MPIDO_Allgatherv(void *sendbuf,
                                             recv_true_lb,
                                             recv_size);
 
-   else if(asyncrect) // && !config.largecount)
+   else if((asyncrect && nontreebcast && !config.largecount) || 
+           (asyncrect && !nontreebcast))
    {
       result = MPIDO_Allgatherv_Async_bcast(sendbuf,
                                             sendcount,
@@ -521,8 +495,22 @@ MPIDO_Allgatherv(void *sendbuf,
                                             comm_ptr,
                &MPIDI_CollectiveProtocols.broadcast.async_rectangle);
    }
+   
+   else if((asyncrect && nontreebcast && config.largecount) ||
+           (!asyncrect && nontreebcast))
+   {
+         result = MPIDO_Allgatherv_Bcast(sendbuf,
+                                         sendcount,
+                                         sendtype,
+                                         recvbuf,
+                                         recvcounts,
+                                         displs,
+                                         recvtype,
+                                         comm_ptr);
+   }
 
-   else if(asyncbinom) // && !config.largecount)
+   else if((asyncbinom && nontreebcast && !config.largecount) ||
+           (asyncbinom && !nontreebcast))
    {
       result = MPIDO_Allgatherv_Async_bcast(sendbuf,
                                             sendcount,
@@ -533,6 +521,18 @@ MPIDO_Allgatherv(void *sendbuf,
                                             recvtype,
                                             comm_ptr,
                &MPIDI_CollectiveProtocols.broadcast.async_binomial);
+   }
+   else if((asyncbinom && nontreebcast && config.largecount) ||
+            (!asyncbinom && nontreebcast))
+   {
+         result = MPIDO_Allgatherv_Bcast(sendbuf,
+                                         sendcount,
+                                         sendtype,
+                                         recvbuf,
+                                         recvcounts,
+                                         displs,
+                                         recvtype,
+                                         comm_ptr);
    }
    else
          return MPIR_Allgatherv(sendbuf,
@@ -546,78 +546,3 @@ MPIDO_Allgatherv(void *sendbuf,
    return result;
 }
 
-#if 0
-
-
-
-   /* not worth doing on the torus */
-   if (MPIDI_CollectiveProtocols.allgatherv.useallreduce &&
-         comm_ptr->dcmf.allreducetree &&
-         config.recv_contig &&
-         config.send_contig &&
-         config.recv_continuous &&
-         buffer_sum % 4 == 0)
-    {
-      //if (0==comm_ptr->rank) puts("allreduce allgatherv");
-      result = MPIDO_Allgatherv_Allreduce(sendbuf,
-                                          sendcount,
-                                          sendtype,
-                                          recvbuf,
-                                          recvcounts,
-                                          displs,
-                                          recvtype,
-                                          comm_ptr,
-                                          send_true_lb,
-                                          recv_true_lb,
-                                          send_size,
-                                          recv_size,
-                                          buffer_sum);
-    }
-    /* again, too slow if we only have a rectangle bcast */
-   else if (MPIDI_CollectiveProtocols.allgatherv.usebcast &&
-               comm_ptr->dcmf.bcasttree)
-   {
-      //if (0==comm_ptr->rank) puts("bcast allgatherv");
-      result = MPIDO_Allgatherv_Bcast(sendbuf,
-                                      sendcount,
-                                      sendtype,
-                                      recvbuf,
-                                      recvcounts,
-                                      displs,
-                                      recvtype,
-                                      comm_ptr);
-   }
-   else if (MPIDI_CollectiveProtocols.allgatherv.usealltoallv &&
-               comm_ptr->dcmf.alltoalls &&
-               config.recv_contig &&
-               config.send_contig)
-   {
-      //if (0==comm_ptr->rank) puts("all2all allgatherv");
-      result = MPIDO_Allgatherv_Alltoall(sendbuf,
-                                         sendcount,
-                                         sendtype,
-                                         recvbuf,
-                                         recvcounts,
-                                         displs,
-                                         recvtype,
-                                         comm_ptr,
-                                         send_true_lb,
-                                         recv_true_lb,
-                                         recv_size);
-   }
-   else
-   {
-      //if (0==comm_ptr->rank) puts("mpich2 allgatherv");
-      return MPIR_Allgatherv(sendbuf,
-                             sendcount,
-                             sendtype,
-                             recvbuf,
-                             recvcounts,
-                             displs,
-                             recvtype,
-                             comm_ptr);
-   }
-
-   return result;
-}
-#endif

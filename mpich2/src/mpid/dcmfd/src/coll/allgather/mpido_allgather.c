@@ -397,8 +397,6 @@ MPIDO_Allgather(void *sendbuf,
     * both bcast and reduce are available, use bcast >32768
     */
 
-   int rank = comm_ptr->rank;
-   static int foo=0;
    if((treereduce && treebcast && config.largecount) ||
       (treebcast && !treereduce))
    {
@@ -429,23 +427,7 @@ MPIDO_Allgather(void *sendbuf,
                                          send_size,
                                          recv_size);
    }
-   /* no tree, but have rectangle.
-    * if async & sync && small message, use async
-    * if just async, use async */
-   else if((asyncrect && nontreebcast && !config.largecount) ||
-           (asyncrect && !nontreebcast))
-   {
-//      if(!rank)
-//         fprintf(stderr,"async bcast size: %d\n", sendcount);
-         result = MPIDO_Allgather_Async_bcast(sendbuf,
-                                              sendcount,
-                                              sendtype,
-                                              recvbuf,
-                                              recvcount,
-                                              recvtype,
-                                              comm_ptr,
-            &MPIDI_CollectiveProtocols.broadcast.async_rectangle);
-   }
+
    /* all else fails, use alltoall */
    /* this might be a better default on larger messages/larger partitions */
    else if(usealltoall)
@@ -463,6 +445,23 @@ MPIDO_Allgather(void *sendbuf,
                                         recv_true_lb,
                                         send_size,
                                         recv_size);
+   }
+   /* no tree, but have rectangle.
+    * if async & sync && small message, use async
+    * if just async, use async */
+   else if((asyncrect && nontreebcast && !config.largecount) ||
+           (asyncrect && !nontreebcast))
+   {
+//      if(!rank)
+//         fprintf(stderr,"async bcast size: %d\n", sendcount);
+         result = MPIDO_Allgather_Async_bcast(sendbuf,
+                                              sendcount,
+                                              sendtype,
+                                              recvbuf,
+                                              recvcount,
+                                              recvtype,
+                                              comm_ptr,
+            &MPIDI_CollectiveProtocols.broadcast.async_rectangle);
    }
    /* no tree, have rectangle
     * have async&sync, but large message
