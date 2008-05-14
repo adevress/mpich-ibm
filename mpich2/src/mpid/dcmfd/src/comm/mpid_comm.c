@@ -170,20 +170,20 @@ MPIDI_Env_setup()
    envopts = getenv("DCMF_COLLECTIVES");
   if(envopts != NULL)
   {
-      if(strncasecmp(envopts,"0", 1) == 0) /* turn off all collectives */
+      if(strncasecmp(envopts, "NOT", 3) == 0) /* turn off just tree */
+      {
+         MPIDI_Process.optimized.collectives = 1;
+         MPIDI_Process.optimized.tree = 0;
+      }
+      else if(atoi(envopts)==0)
       {
          MPIDI_Process.optimized.collectives = 0;
          MPIDI_Process.optimized.tree = 0;
       }
-      else if(strncasecmp(envopts, "1", 1) == 0) /* turn on (default */
+      else
       {
          MPIDI_Process.optimized.collectives = 1;
          MPIDI_Process.optimized.tree = 1;
-      }
-      else if(strncasecmp(envopts, "NOT", 3) == 0) /* turn off just tree */
-      {
-         MPIDI_Process.optimized.collectives = 1;
-         MPIDI_Process.optimized.tree = 0;
       }
    }
    #warning someone needs to update this description
@@ -192,7 +192,6 @@ MPIDI_Env_setup()
     * Default is 1000.
     */
    
-  MPIDI_Process.optimized.collectives = dval;
   dval = 1000;
   ENV_Int(getenv("DCMF_RMA_PENDING"), &dval);
   MPIDI_Process.rma_pending = dval;
