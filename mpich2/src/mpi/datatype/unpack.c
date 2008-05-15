@@ -134,7 +134,7 @@ int MPI_Unpack(void *inbuf, int insize, int *position,
     last  = SEGMENT_IGNORE_LAST;
 
     /* Ensure that pointer increment fits in a pointer */
-    MPID_Ensure_Aint_fits_in_pointer( (MPI_VOID_PTR_CAST_TO_MPI_AINT inbuf) + (MPI_Aint)*position );
+    MPID_Ensure_Aint_fits_in_pointer( (MPIR_VOID_PTR_CAST_TO_MPI_AINT inbuf) + (MPI_Aint)*position );
 
     MPID_Segment_unpack(segp,
 			first,

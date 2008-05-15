@@ -99,7 +99,7 @@ int MPIR_Scatter (
                recvcnt and recvtype are not valid */
             MPID_Datatype_get_size_macro(sendtype, sendtype_size);
             MPID_Ensure_Aint_fits_in_pointer(
-               (MPI_VOID_PTR_CAST_TO_MPI_AINT sendbuf + 
+               (MPIR_VOID_PTR_CAST_TO_MPI_AINT sendbuf + 
                   extent*sendcnt*comm_size));
 
             nbytes = sendtype_size * sendcnt;
@@ -514,7 +514,7 @@ int MPIR_Scatter_inter (
                 MPID_Datatype_get_extent_macro(recvtype, extent);
                MPID_Ensure_Aint_fits_in_pointer(extent*recvcnt*local_size);
                MPID_Ensure_Aint_fits_in_pointer(
-                  (MPI_VOID_PTR_CAST_TO_MPI_AINT sendbuf + 
+                  (MPIR_VOID_PTR_CAST_TO_MPI_AINT sendbuf + 
                   sendcnt*remote_size*extent));
 
                 tmp_buf =

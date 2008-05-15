@@ -886,9 +886,9 @@ void ADIOI_BGL_Calc_others_req(ADIO_File fd, int count_my_req_procs,
 	    others_req[i].lens = (int *)
 		ADIOI_Malloc(count_others_req_per_proc[i]*sizeof(int)); 
 
-	    if ( (MPI_Puint)others_req[i].offsets < (MPI_Puint)recvBufForOffsets )
+	    if ( (MPIR_Puint)others_req[i].offsets < (MPIR_Puint)recvBufForOffsets )
 		recvBufForOffsets = others_req[i].offsets;
-	    if ( (MPI_Puint)others_req[i].lens < (MPI_Puint)recvBufForLens )
+	    if ( (MPIR_Puint)others_req[i].lens < (MPIR_Puint)recvBufForLens )
 		recvBufForLens = others_req[i].lens;
 
 	    others_req[i].mem_ptrs = (MPI_Aint *)
@@ -917,11 +917,11 @@ void ADIOI_BGL_Calc_others_req(ADIO_File fd, int count_my_req_procs,
     for (i=0; i<nprocs; i++)
     {
 	if ( (my_req[i].count) &&
-	     ((MPI_Puint)my_req[i].offsets <= (MPI_Puint)sendBufForOffsets) )
+	     ((MPIR_Puint)my_req[i].offsets <= (MPIR_Puint)sendBufForOffsets) )
 	  sendBufForOffsets = my_req[i].offsets;
 	   
 	if ( (my_req[i].count) &&
-	     ((MPI_Puint)my_req[i].lens <= (MPI_Puint)sendBufForLens) )
+	     ((MPIR_Puint)my_req[i].lens <= (MPIR_Puint)sendBufForLens) )
 	    sendBufForLens = my_req[i].lens;
     }
 
@@ -938,9 +938,9 @@ void ADIOI_BGL_Calc_others_req(ADIO_File fd, int count_my_req_procs,
 	    sdispls[i] = 0;
 	else
   	  sdispls[i] =  (int)
-	                ( ( (MPI_Puint)my_req[i].offsets - 
-			   (MPI_Puint)sendBufForOffsets ) / 
-			  (MPI_Puint)sizeof(ADIO_Offset) );
+	                ( ( (MPIR_Puint)my_req[i].offsets - 
+			   (MPIR_Puint)sendBufForOffsets ) / 
+			  (MPIR_Puint)sizeof(ADIO_Offset) );
 
 	// Receive these offsets from process i.
 	rcounts[i] = count_others_req_per_proc[i];
@@ -948,9 +948,9 @@ void ADIOI_BGL_Calc_others_req(ADIO_File fd, int count_my_req_procs,
 	    rdispls[i] = 0;
 	else
 	    rdispls[i] = (int)
-	                 ( ( (MPI_Puint)others_req[i].offsets - 
-			     (MPI_Puint)recvBufForOffsets ) / 
-			   (MPI_Puint)sizeof(ADIO_Offset) );
+	                 ( ( (MPIR_Puint)others_req[i].offsets - 
+			     (MPIR_Puint)recvBufForOffsets ) / 
+			   (MPIR_Puint)sizeof(ADIO_Offset) );
     }
 
     /* Exchange the offsets */
@@ -972,9 +972,9 @@ void ADIOI_BGL_Calc_others_req(ADIO_File fd, int count_my_req_procs,
 	    sdispls[i] = 0;
 	else
 	  sdispls[i] = (int)
-	               ( ( (MPI_Puint)my_req[i].lens - 
-			   (MPI_Puint)sendBufForLens ) / 
-			 (MPI_Puint) sizeof(int) );
+	               ( ( (MPIR_Puint)my_req[i].lens - 
+			   (MPIR_Puint)sendBufForLens ) / 
+			 (MPIR_Puint) sizeof(int) );
 	
 	// Receive these offsets from process i.
 	rcounts[i] = count_others_req_per_proc[i];
@@ -982,9 +982,9 @@ void ADIOI_BGL_Calc_others_req(ADIO_File fd, int count_my_req_procs,
 	    rdispls[i] = 0;
 	else
 	    rdispls[i] = (int)
-	                 ( ( (MPI_Puint)others_req[i].lens - 
-			     (MPI_Puint)recvBufForLens ) / 
-			   (MPI_Puint) sizeof(int) );
+	                 ( ( (MPIR_Puint)others_req[i].lens - 
+			     (MPIR_Puint)recvBufForLens ) / 
+			   (MPIR_Puint) sizeof(int) );
     }
 
     /* Exchange the lengths */

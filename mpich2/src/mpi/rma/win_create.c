@@ -134,7 +134,7 @@ int MPI_Win_create(void *base, MPI_Aint size, int disp_unit, MPI_Info info,
     {
 	mpi_errno = MPIR_Err_create_code(
 	    mpi_errno, MPIR_ERR_RECOVERABLE, FCNAME, __LINE__, MPI_ERR_OTHER, "**mpi_win_create", 
-	    "**mpi_win_create %p %L %d %I %C %p", base, MPI_AINT_CAST_TO_LONG_LONG size, disp_unit, info, comm, win);
+	    "**mpi_win_create %p %L %d %I %C %p", base, MPIR_MPI_AINT_CAST_TO_LONG_LONG size, disp_unit, info, comm, win);
     }
 #   endif
     mpi_errno = MPIR_Err_return_comm( comm_ptr, FCNAME, mpi_errno );

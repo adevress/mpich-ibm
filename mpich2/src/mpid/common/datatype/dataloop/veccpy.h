@@ -11,20 +11,20 @@
 #ifdef HAVE_ANY_INT64_T_ALIGNEMENT
 #define MPIR_ALIGN8_TEST(p1,p2)
 #else
-#define MPIR_ALIGN8_TEST(p1,p2) && (((MPI_VOID_PTR_CAST_TO_MPI_AINT p1 | MPI_VOID_PTR_CAST_TO_MPI_AINT p2) & 0x7) == 0)
+#define MPIR_ALIGN8_TEST(p1,p2) && (((MPIR_VOID_PTR_CAST_TO_MPI_AINT p1 | MPIR_VOID_PTR_CAST_TO_MPI_AINT p2) & 0x7) == 0)
 #endif
 
 #ifdef HAVE_ANY_INT32_T_ALIGNEMENT
 #define MPIR_ALIGN4_TEST(p1,p2)
 #else
-#define MPIR_ALIGN4_TEST(p1,p2) && (((MPI_VOID_PTR_CAST_TO_MPI_AINT p1 | MPI_VOID_PTR_CAST_TO_MPI_AINT p2) & 0x3) == 0)
+#define MPIR_ALIGN4_TEST(p1,p2) && (((MPIR_VOID_PTR_CAST_TO_MPI_AINT p1 | MPIR_VOID_PTR_CAST_TO_MPI_AINT p2) & 0x3) == 0)
 #endif
 
 #define MPIDI_COPY_FROM_VEC(src,dest,stride,type,nelms,count) \
 { \
     if (!nelms) { \
-        src = (char*) MPI_AINT_CAST_TO_VOID_PTR                        \
-                      ((MPI_VOID_PTR_CAST_TO_MPI_AINT (src)) +         \
+        src = (char*) MPIR_MPI_AINT_CAST_TO_VOID_PTR                        \
+                      ((MPIR_VOID_PTR_CAST_TO_MPI_AINT (src)) +         \
 		       ((DLOOP_Offset)count * (DLOOP_Offset)stride) ); \
     } \
     else if (stride % sizeof(type)) { \
@@ -38,8 +38,8 @@
 #define MPIDI_COPY_TO_VEC(src,dest,stride,type,nelms,count) \
 { \
     if (!nelms) { \
-        dest = (char*) MPI_AINT_CAST_TO_VOID_PTR                        \
-                       ((MPI_VOID_PTR_CAST_TO_MPI_AINT (dest)) +        \
+        dest = (char*) MPIR_MPI_AINT_CAST_TO_VOID_PTR                        \
+                       ((MPIR_VOID_PTR_CAST_TO_MPI_AINT (dest)) +        \
                         ((DLOOP_Offset)count * (DLOOP_Offset)stride) ); \
     } \
     else if (stride % (DLOOP_Offset)sizeof(type)) { \

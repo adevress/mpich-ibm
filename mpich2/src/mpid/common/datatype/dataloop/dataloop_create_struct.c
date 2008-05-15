@@ -622,7 +622,7 @@ static int DLOOP_Dataloop_create_flattened_struct(int count,
 	 */
 	if (oldtypes[i] != MPI_UB && oldtypes[i] != MPI_LB && blklens[i] != 0)
 	{
-	    PREPEND_PREFIX(Segment_init)((char *) MPI_AINT_CAST_TO_VOID_PTR disps[i],
+	    PREPEND_PREFIX(Segment_init)((char *) MPIR_MPI_AINT_CAST_TO_VOID_PTR disps[i],
 					 (DLOOP_Count) blklens[i],
 					 oldtypes[i],
 					 segp,

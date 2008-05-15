@@ -90,7 +90,7 @@ int MPIDO_Allgather_Async_bcast(void *sendbuf,
                            dt_true_lb);
 
    MPID_Ensure_Aint_fits_in_pointer (
-      (MPI_VOID_PTR_CAST_TO_MPI_AINT recvbuf + 
+      (MPIR_VOID_PTR_CAST_TO_MPI_AINT recvbuf + 
          comm_ptr->local_size * recvcount * extent));
 
    if (sendbuf != MPI_IN_PLACE)
@@ -169,7 +169,7 @@ int MPIDO_Allgather_Bcast(void *sendbuf,
    MPI_Aint extent;
    MPID_Datatype_get_extent_macro(recvtype, extent);
    MPID_Ensure_Aint_fits_in_pointer (
-      (MPI_VOID_PTR_CAST_TO_MPI_AINT recvbuf + 
+      (MPIR_VOID_PTR_CAST_TO_MPI_AINT recvbuf + 
          comm_ptr->local_size * recvcount * extent));
 
    if (sendbuf != MPI_IN_PLACE)
@@ -322,14 +322,14 @@ MPIDO_Allgather(void *sendbuf,
                             dt_null,
                             send_true_lb);
       MPID_Ensure_Aint_fits_in_pointer (
-         (MPI_VOID_PTR_CAST_TO_MPI_AINT sendbuf + send_true_lb));
+         (MPIR_VOID_PTR_CAST_TO_MPI_AINT sendbuf + send_true_lb));
    }
 
    config.largecount = (sendcount>32768);
 
    /* Needed in alltoall/allreduce implementations */
    MPID_Ensure_Aint_fits_in_pointer (
-      (MPI_VOID_PTR_CAST_TO_MPI_AINT recvbuf + 
+      (MPIR_VOID_PTR_CAST_TO_MPI_AINT recvbuf + 
          recv_true_lb + comm_ptr->local_size*send_size));
 
    /* verify everyone's datatype contiguity */

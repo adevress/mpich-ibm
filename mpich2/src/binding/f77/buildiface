@@ -1388,7 +1388,7 @@ sub addrint_in_decl {
 }
 sub addrint_in_arg {
     my $count = $_[0];
-    print $OUTFD "MPI_AINT_CAST_TO_VOID_PTR(MPI_Aint)((int)*(int *)v$count)";
+    print $OUTFD "MPIR_MPI_AINT_CAST_TO_VOID_PTR(MPI_Aint)((int)*(int *)v$count)";
 }
 
 sub attrint_ctof {
@@ -1402,7 +1402,7 @@ sub attrint_ctof {
         *(MPI_Fint*)$cvar = 0;
     }
     else {
-        *(MPI_Fint*)$cvar = (MPI_Fint)MPI_VOID_PTR_CAST_TO_MPI_AINT attr$cvar;
+        *(MPI_Fint*)$cvar = (MPI_Fint)MPIR_VOID_PTR_CAST_TO_MPI_AINT attr$cvar;
     }\n";
 }
 
@@ -1428,7 +1428,7 @@ sub addraint_in_decl {
 }
 sub addraint_in_arg {
     my $count = $_[0];
-    print $OUTFD "MPI_AINT_CAST_TO_VOID_PTR(MPI_Aint)((MPI_Aint)*(MPI_Aint *)v$count)";
+    print $OUTFD "MPIR_MPI_AINT_CAST_TO_VOID_PTR(MPI_Aint)((MPI_Aint)*(MPI_Aint *)v$count)";
 }
 
 sub attraint_ctof {
@@ -1440,7 +1440,7 @@ sub attraint_ctof {
         *(MPI_Aint*)$cvar = 0;
     }
     else {
-        *(MPI_Aint*)$cvar = MPI_VOID_PTR_CAST_TO_MPI_AINT attr$cvar;
+        *(MPI_Aint*)$cvar = MPIR_VOID_PTR_CAST_TO_MPI_AINT attr$cvar;
     }\n";
 }
 
@@ -2632,7 +2632,7 @@ FORT_DLL_SPEC void FORT_CALL mpirinitc2_( char *a FORT_MIXED_LEN(d1)
 #ifdef USE_POINTER_FOR_BOTTOM
     b = a;
 #else
-    b = a - MPI_VOID_PTR_CAST_TO_MPI_AINT MPIR_F_MPI_BOTTOM;
+    b = a - MPIR_VOID_PTR_CAST_TO_MPI_AINT MPIR_F_MPI_BOTTOM;
 #endif
     *v2 = (MPI_Fint)( b );
 #ifdef HAVE_AINT_LARGER_THAN_FINT
@@ -2671,7 +2671,7 @@ FORT_DLL_SPEC void FORT_CALL mpirinitc2_( char *a FORT_MIXED_LEN(d1)
     &specialInitStatement( $OUTFD );
     print $OUTFD "\
 #ifndef USE_POINTER_FOR_BOTTOM
-    a = a - MPI_VOID_PTR_CAST_TO_MPI_AINT MPIR_F_MPI_BOTTOM;
+    a = a - MPIR_VOID_PTR_CAST_TO_MPI_AINT MPIR_F_MPI_BOTTOM;
 #endif
     *v2 =  a;
 }\n";

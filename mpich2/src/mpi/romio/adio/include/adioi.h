@@ -654,13 +654,13 @@ int  ADIOI_MPE_postwrite_b;
       to (possible) 4 byte ptr cast)                              */
 /* Should work even on 64bit or old 32bit configs                 */
   /* Use MPID_Ensure_Aint_fits_in_pointer from mpiutil.h and 
-         MPI_AINT_CAST_TO_VOID_PTR from configure (mpi.h) */
+         MPIR_MPI_AINT_CAST_TO_VOID_PTR from configure (mpi.h) */
   #include "mpiimpl.h"
 
-  #define ADIOI_AINT_CAST_TO_VOID_PTR MPI_AINT_CAST_TO_VOID_PTR
+  #define ADIOI_AINT_CAST_TO_VOID_PTR MPIR_MPI_AINT_CAST_TO_VOID_PTR
   /* The next two casts are only used when you don't want sign extension
      when casting a (possible 4 byte) aint to a (8 byte) long long or offset */
-  #define ADIOI_AINT_CAST_TO_LONG_LONG MPI_AINT_CAST_TO_LONG_LONG
+  #define ADIOI_AINT_CAST_TO_LONG_LONG MPIR_MPI_AINT_CAST_TO_LONG_LONG
   #define ADIOI_AINT_CAST_TO_OFFSET ADIOI_AINT_CAST_TO_LONG_LONG
 
   #define ADIOI_ENSURE_AINT_FITS_IN_PTR(aint_value) MPID_Ensure_Aint_fits_in_pointer(aint_value)

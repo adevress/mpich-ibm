@@ -201,7 +201,7 @@ int MPIDO_Bcast(void * buffer,
                            dt_true_lb);
 
    MPID_Ensure_Aint_fits_in_pointer ( 
-      (MPI_VOID_PTR_CAST_TO_MPI_AINT buffer + dt_true_lb));
+      (MPIR_VOID_PTR_CAST_TO_MPI_AINT buffer + dt_true_lb));
    data_buffer = (char *)buffer+dt_true_lb;
 
   /* tree asserts if the data type size is actually 0. should we make

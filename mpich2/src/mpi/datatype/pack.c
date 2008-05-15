@@ -191,7 +191,7 @@ int MPI_Pack(void *inbuf,
     last  = SEGMENT_IGNORE_LAST;
 
     /* Ensure that pointer increment fits in a pointer */
-    MPID_Ensure_Aint_fits_in_pointer( (MPI_VOID_PTR_CAST_TO_MPI_AINT outbuf) + (MPI_Aint)*position );
+    MPID_Ensure_Aint_fits_in_pointer( (MPIR_VOID_PTR_CAST_TO_MPI_AINT outbuf) + (MPI_Aint)*position );
 
     MPID_Segment_pack(segp,
 		      first,

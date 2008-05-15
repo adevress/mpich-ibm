@@ -303,7 +303,7 @@ const CLOG_CommIDs_t *CLOG_CommSet_add_intracomm( CLOG_CommSet_t *commset,
 
     /* Set the input MPI_Comm's LID_key attribute with new local CommID's LID */
     PMPI_Comm_set_attr( intracomm, commset->LID_key,
-               MPI_AINT_CAST_TO_VOID_PTR (MPI_Aint) intracommIDs->local_ID );
+               MPIR_MPI_AINT_CAST_TO_VOID_PTR (MPI_Aint) intracommIDs->local_ID );
 
     /* Set the Comm field */
     intracommIDs->comm   = intracomm;
@@ -358,7 +358,7 @@ CLOG_CommSet_add_intercomm(       CLOG_CommSet_t *commset,
 
     /* Set the input MPI_Comm's LID_key attribute with new local CommID */
     PMPI_Comm_set_attr( intercomm, commset->LID_key,
-             MPI_AINT_CAST_TO_VOID_PTR (MPI_Aint) intercommIDs->local_ID );
+             MPIR_MPI_AINT_CAST_TO_VOID_PTR (MPI_Aint) intercommIDs->local_ID );
 
     /* Set the Comm field with the intercomm's info */
     intercommIDs->comm   = intercomm;

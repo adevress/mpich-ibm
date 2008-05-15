@@ -19,7 +19,7 @@
 	type_size   = sizeof(foo.a) + sizeof(foo.b);			\
 	type_extent = (MPI_Aint) sizeof(foo);				\
 	el_size = (sizeof(foo.a) == sizeof(foo.b)) ? (int) sizeof(foo.a) : -1; \
-	true_ub = (MPI_VOID_PTR_CAST_TO_MPI_AINT ((char *) &foo.b -     \
+	true_ub = (MPIR_VOID_PTR_CAST_TO_MPI_AINT ((char *) &foo.b -     \
                                                   (char *) &foo.a)) +   \
                   (MPI_Aint) sizeof(foo.b);                             \
 	alignsize = MPIR_MAX(MPID_Datatype_get_basic_size(mt1_),	\

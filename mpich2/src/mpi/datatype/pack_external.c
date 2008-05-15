@@ -135,7 +135,7 @@ int MPI_Pack_external(char *datarep,
     last  = SEGMENT_IGNORE_LAST;
 
     /* Ensure that pointer increment fits in a pointer */
-    MPID_Ensure_Aint_fits_in_pointer( (MPI_VOID_PTR_CAST_TO_MPI_AINT outbuf) + *position );
+    MPID_Ensure_Aint_fits_in_pointer( (MPIR_VOID_PTR_CAST_TO_MPI_AINT outbuf) + *position );
 
     MPID_Segment_pack_external32(segp,
 				 first,
@@ -159,7 +159,7 @@ int MPI_Pack_external(char *datarep,
 	mpi_errno = MPIR_Err_create_code(
 	    mpi_errno, MPIR_ERR_RECOVERABLE, FCNAME, __LINE__, MPI_ERR_OTHER, "**mpi_pack_external",
 	    "**mpi_pack_external %s %p %d %D %p %L %p", 
-	    datarep, inbuf, incount, datatype, outbuf, MPI_AINT_CAST_TO_LONG_LONG outcount, position);
+	    datarep, inbuf, incount, datatype, outbuf, MPIR_MPI_AINT_CAST_TO_LONG_LONG outcount, position);
     }
 #   endif
     mpi_errno = MPIR_Err_return_comm( 0, FCNAME, mpi_errno );

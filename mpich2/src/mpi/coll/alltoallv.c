@@ -99,7 +99,7 @@ int MPIR_Alltoallv (
         dst = (rank+i) % comm_size;
         if (recvcnts[dst]) {
     MPID_Ensure_Aint_fits_in_pointer((
-      MPI_VOID_PTR_CAST_TO_MPI_AINT recvbuf + rdispls[dst]*recv_extent));
+      MPIR_VOID_PTR_CAST_TO_MPI_AINT recvbuf + rdispls[dst]*recv_extent));
             mpi_errno = MPIC_Irecv((char *)recvbuf+rdispls[dst]*recv_extent, 
                                    recvcnts[dst], recvtype, dst,
                                    MPIR_ALLTOALLV_TAG, comm,
@@ -119,7 +119,7 @@ int MPIR_Alltoallv (
         dst = (rank+i) % comm_size;
         if (sendcnts[dst]) {
     MPID_Ensure_Aint_fits_in_pointer((
-      MPI_VOID_PTR_CAST_TO_MPI_AINT sendbuf + sdispls[dst]*send_extent));
+      MPIR_VOID_PTR_CAST_TO_MPI_AINT sendbuf + sdispls[dst]*send_extent));
             mpi_errno = MPIC_Isend((char *)sendbuf+sdispls[dst]*send_extent, 
                                    sendcnts[dst], sendtype, dst,
                                    MPIR_ALLTOALLV_TAG, comm,
@@ -214,7 +214,7 @@ int MPIR_Alltoallv_inter (
         }
         else {
             MPID_Ensure_Aint_fits_in_pointer ((
-             MPI_VOID_PTR_CAST_TO_MPI_AINT recvbuf + rdispls[src]*recv_extent));
+             MPIR_VOID_PTR_CAST_TO_MPI_AINT recvbuf + rdispls[src]*recv_extent));
             recvaddr = (char *)recvbuf + rdispls[src]*recv_extent;
             recvcount = recvcnts[src];
         }
@@ -225,7 +225,7 @@ int MPIR_Alltoallv_inter (
         }
         else {
             MPID_Ensure_Aint_fits_in_pointer ((
-             MPI_VOID_PTR_CAST_TO_MPI_AINT sendbuf + sdispls[dst]*send_extent));
+             MPIR_VOID_PTR_CAST_TO_MPI_AINT sendbuf + sdispls[dst]*send_extent));
             sendaddr = (char *)sendbuf + sdispls[dst]*send_extent;
             sendcount = sendcnts[dst];
         }

@@ -321,7 +321,7 @@ int MPIDO_Allreduce(
                            dt_ptr,
                            dt_true_lb);
 
-   MPID_Ensure_Aint_fits_in_pointer(MPI_VOID_PTR_CAST_TO_MPI_AINT recvbuf +
+   MPID_Ensure_Aint_fits_in_pointer(MPIR_VOID_PTR_CAST_TO_MPI_AINT recvbuf +
                                    dt_true_lb);
    recvbuf = ((char *)recvbuf + dt_true_lb);
 
@@ -349,7 +349,7 @@ int MPIDO_Allreduce(
 
    if(sendbuf != MPI_IN_PLACE)
    {
-      MPID_Ensure_Aint_fits_in_pointer(MPI_VOID_PTR_CAST_TO_MPI_AINT sendbuf +
+      MPID_Ensure_Aint_fits_in_pointer(MPIR_VOID_PTR_CAST_TO_MPI_AINT sendbuf +
                                        dt_true_lb);
       sendbuf = ((char *)sendbuf + dt_true_lb);
      //      int err =

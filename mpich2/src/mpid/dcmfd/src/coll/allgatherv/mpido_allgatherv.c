@@ -110,7 +110,7 @@ int MPIDO_Allgatherv_Async_bcast(void *sendbuf,
    dt_true_lb);
       
    MPID_Ensure_Aint_fits_in_pointer (
-   (MPI_VOID_PTR_CAST_TO_MPI_AINT recvbuf +
+   (MPIR_VOID_PTR_CAST_TO_MPI_AINT recvbuf +
    displs[comm_ptr->rank] * extent));
    
    if(sendbuf != MPI_IN_PLACE)
@@ -203,7 +203,7 @@ int MPIDO_Allgatherv_Bcast(void *sendbuf,
    /* This isn't technically big enough, but we don't want to
     * add an assert inside the loop */
    MPID_Ensure_Aint_fits_in_pointer (
-      (MPI_VOID_PTR_CAST_TO_MPI_AINT recvbuf + 
+      (MPIR_VOID_PTR_CAST_TO_MPI_AINT recvbuf + 
          displs[comm_ptr->rank] * extent));
 
    if (sendbuf != MPI_IN_PLACE)
@@ -355,7 +355,7 @@ MPIDO_Allgatherv(void *sendbuf,
                               dt_null,
                               send_true_lb);
       MPID_Ensure_Aint_fits_in_pointer(
-            (MPI_VOID_PTR_CAST_TO_MPI_AINT sendbuf + send_true_lb));
+            (MPIR_VOID_PTR_CAST_TO_MPI_AINT sendbuf + send_true_lb));
    }
 
    int buffer_sum = 0;
@@ -387,7 +387,7 @@ MPIDO_Allgatherv(void *sendbuf,
                       comm_ptr);
    }
    MPID_Ensure_Aint_fits_in_pointer(
-         (MPI_VOID_PTR_CAST_TO_MPI_AINT recvbuf + recv_true_lb + buffer_sum));
+         (MPIR_VOID_PTR_CAST_TO_MPI_AINT recvbuf + recv_true_lb + buffer_sum));
 
    /* determine which protocol to use */
    /* 1) Tree allreduce

@@ -157,7 +157,7 @@ int MPI_Accumulate(void *origin_addr, int origin_count, MPI_Datatype
 	mpi_errno = MPIR_Err_create_code(
 	    mpi_errno, MPIR_ERR_RECOVERABLE, FCNAME, __LINE__, MPI_ERR_OTHER, "**mpi_accumulate",
 	    "**mpi_accumulate %p %d %D %d %L %d %D %O %W", origin_addr, origin_count, origin_datatype,
-	    target_rank, MPI_AINT_CAST_TO_LONG_LONG target_disp, target_count, target_datatype, op, win);
+	    target_rank, MPIR_MPI_AINT_CAST_TO_LONG_LONG target_disp, target_count, target_datatype, op, win);
     }
 #   endif
     mpi_errno = MPIR_Err_return_win( win_ptr, FCNAME, mpi_errno );

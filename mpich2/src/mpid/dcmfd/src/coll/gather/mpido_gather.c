@@ -157,11 +157,11 @@ int MPIDO_Gather(void *sendbuf,
    {
       if(sendbuf != MPI_IN_PLACE)
       {
-         MPID_Ensure_Aint_fits_in_pointer(MPI_VOID_PTR_CAST_TO_MPI_AINT sendbuf + 
+         MPID_Ensure_Aint_fits_in_pointer(MPIR_VOID_PTR_CAST_TO_MPI_AINT sendbuf + 
                                        true_lb);
          sendbuf = (char *)sendbuf + true_lb;
       }
-      MPID_Ensure_Aint_fits_in_pointer(MPI_VOID_PTR_CAST_TO_MPI_AINT recvbuf + 
+      MPID_Ensure_Aint_fits_in_pointer(MPIR_VOID_PTR_CAST_TO_MPI_AINT recvbuf + 
                                        true_lb);
       recvbuf = (char *)recvbuf + true_lb;
 
