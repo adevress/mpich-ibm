@@ -23,6 +23,7 @@ CPLUSPLUS_BEGIN
 #include "mpidu_sock_conf.h"
 /* Load just the utility definitions that we need */
 #include "mpibase.h"
+#include "mpirdefs.h"
 #include "mpiutil.h"
 #include "mpitypedefs.h"
 

@@ -1,0 +1,31 @@
+/*  (C)Copyright IBM Corp.  2008, 2008  */
+/**
+ * \file include/mpirdefs.h
+ * \brief Internal Configurable Definitions
+ */
+
+/* @configure_input@ */
+
+#ifndef MPIRDEFS_INCLUDED
+#define MPIRDEFS_INCLUDED
+
+/* Internal definitions for MPI implementations */
+
+/* Keep C++ compilers from getting confused */
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
+/* Definitions that are determined by configure. */
+typedef @MPIR_PINT@ MPIR_Pint;
+typedef @MPIR_PUINT@ MPIR_Puint;
+#define MPIR_MPI_AINT_CAST_TO_VOID_PTR @MPIR_MPI_AINT_CAST_TO_VOID_PTR@
+#define MPIR_VOID_PTR_CAST_TO_MPI_AINT @MPIR_VOID_PTR_CAST_TO_MPI_AINT@
+#define MPIR_PTR_DISP_CAST_TO_MPI_AINT @MPIR_PTR_DISP_CAST_TO_MPI_AINT@
+#define MPIR_MPI_AINT_CAST_TO_LONG_LONG @MPIR_MPI_AINT_CAST_TO_LONG_LONG@
+
+#if defined(__cplusplus)
+}
+#endif
+
+#endif

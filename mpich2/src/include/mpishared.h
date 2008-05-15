@@ -22,6 +22,9 @@
 #include "mpichconf.h"
 #endif
 
+/* Internal definitions */
+#include "mpirdefs.h"
+
 /* The most common MPI error classes */
 #ifndef MPI_SUCCESS
 #define MPI_SUCCESS 0

@@ -105,6 +105,6 @@ int MPID_Abort( struct MPID_Comm *comm, int mpi_errno, int exit_code, const char
  * \param[in]  aint  Variable of type MPI_Aint
  */
 #define MPID_Ensure_Aint_fits_in_pointer( aint ) \
-  MPIU_Assert( (aint) == (MPI_Aint)(MPI_Puint) MPI_AINT_CAST_TO_VOID_PTR (aint) );
+  MPIU_Assert( (aint) == (MPI_Aint)(MPIR_Puint) MPIR_MPI_AINT_CAST_TO_VOID_PTR (aint) );
 
 #endif /* !defined(MPIUTIL_H_INCLUDED) */

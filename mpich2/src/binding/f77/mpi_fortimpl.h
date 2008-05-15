@@ -5,6 +5,7 @@
  *      See COPYRIGHT in top-level directory.
  */
 #include "mpichconf.h"
+#include "mpirdefs.h"
 
 /* Handle different mechanisms for passing Fortran CHARACTER to routines */
 #ifdef USE_FORT_MIXED_STR_LEN
