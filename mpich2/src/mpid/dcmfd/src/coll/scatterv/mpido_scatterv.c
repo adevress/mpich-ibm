@@ -37,7 +37,7 @@ int MPIDO_Scatterv_bcast(void *sendbuf,
 
    if(rank!=root)
    {
-      tempbuf = MPIU_Malloc(sizeof(char)*sum);
+      tempbuf = MPIU_Malloc(dtsize*sum);
       if(!tempbuf)
          return MPIR_Err_create_code(MPI_SUCCESS, MPIR_ERR_RECOVERABLE,
                                      "MPI_Scatterv", __LINE__, MPI_ERR_OTHER,
@@ -47,6 +47,9 @@ int MPIDO_Scatterv_bcast(void *sendbuf,
       tempbuf = sendbuf;
 
    rc = MPIDO_Bcast(tempbuf, sum, sendtype, root, comm_ptr);
+   if(rank == root && recvbuf == MPI_IN_PLACE)
+      return rc;
+
    memcpy(recvbuf, tempbuf+displs[rank], sendcounts[rank]*dtsize);
    if(rank!=root)
       MPIU_Free(tempbuf);
@@ -73,6 +76,7 @@ int MPIDO_Scatterv_alltoallv(void * sendbuf,
    int *rdispls, *rcounts;
    char *sbuf, *rbuf;
    int contig, rbytes, sbytes;
+   int rc=0;
 
    MPID_Datatype *dt_ptr;
    MPI_Aint dt_lb=0;
@@ -141,22 +145,22 @@ int MPIDO_Scatterv_alltoallv(void * sendbuf,
 
    rcounts[root] = rbytes;
 
-   MPIDO_Alltoallv(sbuf,
-                   scounts,
-                   sdispls,
-                   sendtype,
-                   rbuf,
-                   rcounts,
-                   rdispls,
-                   MPI_CHAR,
-                   comm_ptr);
+   rc=MPIDO_Alltoallv(sbuf,
+                      scounts,
+                      sdispls,
+                      sendtype,
+                      rbuf,
+                      rcounts,
+                      rdispls,
+                      MPI_CHAR,
+                      comm_ptr);
 
    if(rank == root && recvbuf == MPI_IN_PLACE)
    {
       MPIU_Free(rbuf);
       MPIU_Free(rdispls);
       MPIU_Free(rcounts);
-      return MPI_SUCCESS;
+      return rc;
    }
    else
    {
@@ -173,7 +177,7 @@ int MPIDO_Scatterv_alltoallv(void * sendbuf,
       }
    }
 
-   return MPI_SUCCESS;
+   return rc;
 }
 
       

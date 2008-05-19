@@ -258,7 +258,7 @@ MPIDI_Env_setup()
    MPIDI_CollectiveProtocols.scatterv.preallreduce = 1;
    MPIDI_CollectiveProtocols.optscatterv             = 1;
    MPIDI_CollectiveProtocols.scatterv.usealltoallv   = 1;
-   MPIDI_CollectiveProtocols.scatterv.usebcast   = 1;
+   MPIDI_CollectiveProtocols.scatterv.usebcast   = 0; // off by default 
 
    /* Scatter */
    MPIDI_CollectiveProtocols.optscatter              = 1;
