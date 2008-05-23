@@ -131,11 +131,6 @@ MPI_Datatype Coll_info_rma_dt;
  */
 MPI_Op Coll_info_rma_op;
 
-/**
- * \brief Dummy, global, MPID_Progress_state since its not used.
- */
-MPID_Progress_state dummy_state;
-
 /*
  * * * * * Generic resource pool management * * * * *
  */

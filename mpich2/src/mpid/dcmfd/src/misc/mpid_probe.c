@@ -23,7 +23,6 @@ MPID_Probe_rsm(int source,
     }
   for(;;)
     {
-      MPID_Progress_start(&state);
       rreq = MPIDI_Recvq_FU(source, tag, context);
       if (rreq == NULL) MPID_Progress_wait(&state);
       else
@@ -31,7 +30,6 @@ MPID_Probe_rsm(int source,
           if (status != MPI_STATUS_IGNORE) *status = rreq->status;
 
           MPID_Request_release(rreq);
-          MPID_Progress_end(&state);
           return MPI_SUCCESS;
         }
     }

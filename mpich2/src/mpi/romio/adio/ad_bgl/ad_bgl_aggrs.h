@@ -23,9 +23,6 @@
 #include "adio.h"
 #include <sys/stat.h>
 
-    extern int *aggrsInPset;	/* defined in ad_bgl_aggrs.c */
-
-
     /* File system (BGL) specific information - 
          hung off of ADIOI_FileD file descriptor (fd->fs_ptr) at open */
     typedef struct ADIOI_BGL_fs_s {

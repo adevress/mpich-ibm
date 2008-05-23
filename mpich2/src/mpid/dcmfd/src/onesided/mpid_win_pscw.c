@@ -407,9 +407,7 @@ int MPID_Win_test (MPID_Win *win_ptr, int *flag)
                                 win_ptr->_dev.my_rma_recvs > 0) {
                 /* TBD: handled earlier? */
         }
-        MPID_Progress_start(&dummy_state);
         *flag = (mpid_check_post_done(win_ptr) != 0);
-        MPID_Progress_end(&dummy_state);
 
 fn_exit:
         MPIR_Nest_decr();
@@ -459,11 +457,9 @@ int MPID_Win_wait(MPID_Win *win_ptr)
                                 win_ptr->_dev.my_rma_recvs > 0) {
                 /* TBD: handled earlier? */
         }
-        MPID_Progress_start(&dummy_state);
         while (!mpid_check_post_done(win_ptr)) {
                 DCMF_CriticalSection_cycle(0);
         }
-        MPID_Progress_end(&dummy_state);
 
 fn_exit:
         MPIR_Nest_decr();

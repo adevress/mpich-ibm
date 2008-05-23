@@ -1367,9 +1367,6 @@ typedef struct MPID_Request {
     MPID_DEV_REQUEST_DECL
 #endif
 } MPID_Request;
-
-MPID_Request __totalview_request_dummyvar;
-
 extern MPIU_Object_alloc_t MPID_Request_mem;
 /* Preallocated request objects */
 extern MPID_Request MPID_Request_direct[];

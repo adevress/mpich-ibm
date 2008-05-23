@@ -24,8 +24,8 @@
 
 
 
-int aggrsInPsetSize=0;
-int *aggrsInPset=NULL;
+static int aggrsInPsetSize=0;
+static int *aggrsInPset=NULL;
 
 /* forward declaration */
 static void 

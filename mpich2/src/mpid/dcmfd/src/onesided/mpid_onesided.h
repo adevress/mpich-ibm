@@ -184,10 +184,6 @@ extern MPI_Datatype Coll_info_rma_dt;
 extern MPI_Op Coll_info_rma_op;
 
 /**
- * \brief Dummy, global, MPID_Progress_state since its not used.
- */
-extern MPID_Progress_state dummy_state;
-/**
  * \brief Progress (advance) wait - how to spin and make progress
  *
  * 'expr' is true if must wait, i.e.
@@ -203,14 +199,12 @@ extern MPID_Progress_state dummy_state;
  *			FALSE will terminate loop.
  * \return nothing
  */
-#define MPIDU_Progress_spin(expr) {	\
-        MPID_Progress_start(&dummy_state);\
-        do {				\
-                (void)MPID_Progress_test();\
-                MPID_CS_EXIT();		\
-                MPID_CS_ENTER();	\
-        } while (expr);			\
-        MPID_Progress_end(&dummy_state);\
+#define MPIDU_Progress_spin(expr) {             \
+        do {                                    \
+                (void)MPID_Progress_test();     \
+                MPID_CS_EXIT();                 \
+                MPID_CS_ENTER();                \
+        } while (expr);                         \
 }
 
 /*

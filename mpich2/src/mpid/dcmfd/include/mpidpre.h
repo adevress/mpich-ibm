@@ -305,8 +305,8 @@ struct MPIDI_DCMF_Comm
 #error "Build error - HAVE_DEV_COMM_HOOK defined at least twice!"
 #else
 #define HAVE_DEV_COMM_HOOK
-#define MPID_Dev_comm_create_hook(a)  MPIDI_Comm_create(a)
-#define MPID_Dev_comm_destroy_hook(a) MPIDI_Comm_destroy(a)
+#define MPID_Dev_comm_create_hook(a)  void MPIDI_Comm_create  (MPID_Comm *comm); MPIDI_Comm_create(a)
+#define MPID_Dev_comm_destroy_hook(a) void MPIDI_Comm_destroy (MPID_Comm *comm); MPIDI_Comm_destroy(a)
 #endif
 
 

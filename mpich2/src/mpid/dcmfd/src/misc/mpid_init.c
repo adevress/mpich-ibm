@@ -9,6 +9,7 @@
 MPIDI_Protocol_t MPIDI_Protocols;
 MPIDI_Process_t  MPIDI_Process;
 DCMF_Hardware_t  mpid_hw;
+MPID_Request __totalview_request_dummyvar;
 
 
 void MPIDI_DMCF_Configure(int requested,
