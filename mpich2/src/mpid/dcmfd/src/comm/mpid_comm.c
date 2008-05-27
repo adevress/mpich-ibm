@@ -5,6 +5,252 @@
  */
 #include "mpido_coll.h"
 
+/** \page env_vars Environment Variables
+ * - DCMF_VERBOSE - Increases the amount of information dumped during an 
+ * MPI_Abort() call. Options are 0 for off (the default) or 1 for
+ * on.
+ *
+ * - DCMF_STATISTICS - Turns on statistics printing for the message layer.
+ * Mostly prints out maximum receive queue depth. Options are 0 for off
+ * (the default) or 1 for on.
+ *
+ * - DCMF_EAGER -
+ * - DCMF_RZV -
+ * - DCMF_RVZ - Sets the cutoff for the switch to the rendezvous protocol.
+ * All three options are identical. This takes an argument, in bytes,
+ * to switch from the eager protocol to the rendezvous protocol for point-to-point
+ * messaging. Increasing the limit might help for larger partitions
+ * and if most of the communication is nearest neighbor. The
+ * default is 1200 bytes.
+ *
+ * - DCMF_OPTRVZ -
+ * - DCMF_OPTRZV - Determines the optimized rendezvous limit. Both options
+ * are identical.  This takes an argument, in bytes. The
+ * optimized rendezvous protocol will be used if:
+ * eager_limit <= message_size < (eager_limit + DCMF_OPTRZV).
+ * The default is 0 (off).
+ * For sending, one of three protocols will be used depending on the message 
+ * size: The eager protocol for small messages, the optimized rendezvous 
+ * protocol for medium messages, and the default rendezvous protocol for 
+ * large messages. The optimized rendezvous protocol generally has less 
+ * latency than the default rendezvous protocol, but does not wait for a 
+ * receive to be posted first. Therefore, unexpected messages in this size 
+ * range may be received, consuming storage until the receives are issued. 
+ * The default rendezvous protocol waits for a receive to be posted first. 
+ * Therefore, no unexpected messages in this size range will be received. 
+ * The optimized rendezvous protocol also avoids filling injection fifos 
+ * which can cause delays while larger fifos are allocated. For example, 
+ * alltoall on large subcommunicators with thread mode multiple will 
+ * benefit from optimized rendezvous. 
+ *
+ * - DCMF_NUMREQUESTS - Sets the number of outstanding asynchronous
+ * broadcasts to have before a barrier is called. This is mostly
+ * used in allgather/allgatherv using asynchronous broadcasts. 
+ * Higher numbers can help on larger partitions and larger
+ * message sizes. Default is 32.
+ *
+ * - DCMF_INTERRUPT -
+ * - DCMF_INTERRUPTS - Turns on interrupt driven communications. This
+ * can be beneficial to some applications and is required if you are
+ * using Global Arrays or ARMCI. (They force this on, regardless of
+ * the environment setting). Options are 0 for off (the default)
+ * or 1 for on.
+ *
+ * - DCMF_SENDER_SIDE_MATCHING -
+ * - DCMF_SSM - Turns on sender-side matching. This can speed up
+ * point-to-point messaging in well-behaved applications, specifically
+ * those that do not do MPI_ANY_SOURCE receives. Options are 0
+ * for off (the default) or 1 for on.
+ *
+ * - DCMF_TOPOLOGY - Turns on optimized topology
+ * creation functions when using MPI_Cart_create with the
+ * reorder flag. We attempt to create communicators similar
+ * to those requested, that match physical hardware as much
+ * as possible. Options are 1 for on (default) or 0 for off.
+ *
+ * - DCMF_COLLECTIVE - 
+ * - DCMF_COLLECTIVES - Turns on optimized collectives. 
+ * Options are 1 for on (the default), 0 for off,
+ * or NOTREE to turn off just the tree collectives 
+ *
+ * - DCMF_ASYNCCUTOFF - Changes the cutoff point between
+ * asynchronous and synchronous rectangular/binomial broadcasts.
+ * This can be highly application dependent. The default is
+ * 128k.
+ *
+ * - DCMF_SCATTER - Changes the protocol used for scatter.
+ * The default is to switch to a broadcast-based scatter
+ * at 2k message size. This can be turned off by
+ * specifying MPICH. This will then use the point-to-point
+ * MPICH algorithm for all scatters.
+ *
+ * - DCMF_SCATTERV - Controls which protocol is used for scatterv.
+ * Default is an all-to-all based protocol when message size is
+ * above 2k. This is optimal for larger messages and larger 
+ * partitions. There is also a broadcast based scatterv
+ * which can be enabled with BCAST. This works well for small
+ * messages. All optimized scatterv algorithms can be turned off with
+ * the MPICH option.
+ *
+ * - DCMF_GATHER - Controls which protocol is used for gather.
+ * Default is a reduce-based algorithm at larger messages. This
+ * can be turned off with the MPICH option which will use
+ * the MPICH point-to-point algorithm.
+ *
+ * - DCMF_REDUCESCATTER - Controls which protocol is used for reduce_scatter
+ * operations. The default is to use an optimized reduce followed by
+ * an optimized scatterv. This works well for larger messages. The
+ * options for DCMF_SCATTERV and DCMF_REDUCE can change the behavior
+ * of reduce_scatter. To turn off all optimizations for reduce_scatter,
+ * use the MPICH option.
+ *
+ * - DCMF_BCAST - Controls which protocol to use for broadcast. Options are:
+ *   - MPICH - Turn off all optimizations for broadcast and use the MPICH
+ *     point-to-point routines.
+ *   - TREE - Use the tree. This is the default on MPI_COMM_WORLD and 
+ *     duplicates of MPI_COMM_WORLD in MPI_THREAD_SINGLE mode. This provides
+ *     the fastest possible broadcast.
+ *   - AR - Use the asynchronous rectangle protocol. This is the default
+ *     for small messages on rectangular subcommunicators. The cutoff between
+ *     async and sync can be controlled with DCMF_ASYNCCUTOFF.
+ *   - AB - Use the asynchronous binomial protocol. This is the default
+ *     for irregularly shaped subcommunicators. The cutoff between
+ *     async and sync can be controlled with DCMF_ASYNCCUTOFF.
+ *   - RECT - Use the rectangle protocol. This is the default for rectangularly
+ *     shaped subcommunicators for large messages. This disables the asynchronous
+ *     protocol.
+ *   - BINOM - Use the binomial protocol. This is the default for irregularly
+ *     shaped subcommunicators for large messages. This disables the asynchronous
+ *     protocol.
+ *
+ * - DCMF_NUMCOLORS - Controls how many colors are used for rectangular
+ * broadcasts. The default is 0 which means "Let the lower level decide."
+ * Options are 0, 1, 2, and 3.
+ *
+ * - DCMF_SAFEALLGATHER - The optimized allgather protocols require
+ * contiguous datatypes and similar datatypes on all nodes. To verify
+ * this is true, we must do an allreduce at the beginning of the
+ * allgather call. If the application uses "well behaved" datatypes, you can
+ * set this option to skip over the allreduce. This is most useful in
+ * irregular subcommunicators where the allreduce can be expensive. Options
+ * are 'N', the default, or 'Y' to skip the allreduce. Setting this with
+ * "unsafe" datatypes will yield unpredictable results, usually hangs.
+ *
+ * - DCMF_SAFEALLGATHERV - The optimized allgatherv protocols require
+ * contiguous datatypes and similar datatypes on all nodes. Allgatherv
+ * also requires continuous displacements. To verify
+ * this is true, we must do an allreduce at the beginning of the
+ * allgatherv call. If the application uses "well behaved" datatypes and
+ * displacements, you can set this option to skip over the allreduce. 
+ * This is most useful in irregular subcommunicators where the allreduce 
+ * can be expensive. Options are 'N', the default, or 'Y' to skip the 
+ * allreduce. Setting this with "unsafe" datatypes will yield unpredictable
+ * results, usually hangs.
+ *
+ * - DCMF_SAFESCATTERV - The optimized scatterv protocol requires
+ * contiguous datatypes and similar datatypes on all nodes. It
+ * also requires continuous displacements. To verify
+ * this is true, we must do an allreduce at the beginning of the
+ * scatterv call. If the application uses "well behaved" datatypes and
+ * displacements, you can set this option to skip over the allreduce. 
+ * This is most useful in irregular subcommunicators where the allreduce 
+ * can be expensive. Options are 'N', the default, or 'Y' to skip the 
+ * allreduce. Setting this with "unsafe" datatypes will yield unpredictable
+ * results, usually hangs.
+ *
+ * - DCMF_ALLTOALL -
+ * - DCMF_ALLTOALLV - 
+ * - DCMF_ALLTOALLW - Turn off the optimized alltoall/alltoallv/alltoallw
+ * optimizations with the MPICH option. 
+ *
+ * - DCMF_ALLTOALL_PREMALLOC -
+ * - DCMF_ALLTOALLV_PREMALLOC -
+ * - DCMF_ALLTOALLW_PREMALLOC - These are equivalent options. 
+ * The alltoall protocols require 6 arrays to be setup
+ * before communication begins. These 6 arrays are each of size
+ * (comm_size) so can be sizeable on large machines. If your application
+ * does not use alltoall, or you need as much memory as possible, you can
+ * turn off pre-allocating these arrays. By default, we allocate them
+ * once per communicator creation. There is only one set, regardless of
+ * using alltoall, alltoallv, or alltoallw. Options are 'Y' (the default)
+ * to premalloc the arrays or 'N' to malloc and free on every alltoall 
+ * operation.
+ *
+ * - DCMF_ALLGATHER - Controls the algorithm used for allgather. Options are:
+ *   - MPICH - Turn off all optimizations for allgather and use the MPICH 
+ *     point-to-point implementation
+ *   - ALLREDUCE - Use a tree-based allreduce. This is the default on 
+ *     MPI_COMM_WORLD for smaller messages.
+ *   - ALLTOALL - Use an all-to-all based algorithm. This is the default on
+ *     irregular communicators. It works very well for larger messages.
+ *   - BCAST - Use a broadcast. This will use a tree broadcast on MPI_COMM_WORLD.
+ *     It is the default for larger messages on MPI_COMM_WORLD. This can work well
+ *     on rectangular subcommunicators for smaller messages.
+ *   - ASYNC - Use an async broadcast. This will use asynchronous broadcasts
+ *     to do the allgather. This is a good option for small messages on
+ *     rectangular or irregular subcommunicators.
+ *
+ * - DCMF_ALLGATHERV - Controls the algorithm used for allgatherv. 
+ * Options are:
+ *   - MPICH - Turn off all optimizations for allgatherv and use the MPICH 
+ *     point-to-point implementation.
+ *   - ALLREDUCE - Use a tree-based allreduce. This is the default on 
+ *     MPI_COMM_WORLD for smaller messages.
+ *   - ALLTOALL - Use an all-to-all based algorithm. This is the default on
+ *     irregular communicators. It works very well for larger messages.
+ *   - BCAST - Use a broadcast. This will use a tree broadcast on MPI_COMM_WORLD.
+ *     It is the default for larger messages on MPI_COMM_WORLD. This can work well
+ *     on rectangular subcommunicators for smaller messages.
+ *   - ASYNC - Use an async broadcast. This will use asynchronous broadcasts
+ *     to do the allgatherv. This is a good option for small messages on
+ *     rectnagular or irregular subcommunicators.
+ *
+ * - DCMF_ALLREDUCE - Controls what protocol to use for allreduce.
+ * Options are:
+ *   - MPICH - Turn off all optimizations and use the MPICH point-to-point
+ *     protocol.
+ *   - RING - Use a rectangular ring protoocl. This is the default for
+ *     rectangle subcommunicators.
+ *   - RECT - Use a rectangular/binomial protocol. This is off by default
+ *   - BINOM - Use a binomial protocol. This is the default for irregular
+ *     subcommunicators.
+ *   - TREE - Use the tree. This is the default for MPI_COMM_WORLD an
+ *     duplicates of MPI_COMM_WORLD in MPI_THREAD_SINGLE mode.
+ *   - CCMI - Use the CCMI Tree protocol. This is off by default.
+ *   - PIPE - Use the pipelined CCMI tree protocol. Also off by default.
+ *
+ * - DCMF_ALLREDUCE_REUSE_STORAGE - This allows the lower
+ * level protcols to reuse some storage instead of malloc/free
+ * on every allreduce call. Options are 'Y' which is the
+ * default or 'N' which can save some memory between allreduce
+ * calls.
+ *
+ * - DCMF_REDUCE - Controls what protocol to use for reduce.
+ * Options are:
+ *   - MPICH - Turn off all optimizations and use the MPICH point-to-point
+ *     protocol.
+ *   - RECT - Use a rectangular/binomial protocol. This is the default for
+ *     rectangular subcommunicators.
+ *   - BINOM - Use a binomial protocol. This is the default for irregular
+ *     subcommunicators.
+ *   - TREE - Use the tree. This is the default for MPI_COMM_WORLD an
+ *     duplicates of MPI_COMM_WORLD in MPI_THREAD_SINGLE mode.
+ *   - CCMI - Use the CCMI Tree protocol. This is off by default.
+ *
+ * - DCMF_REDUCE_REUSE_STORAGE - This allows the lower
+ * level protcols to reuse some storage instead of malloc/free
+ * on every reduce call. Options are 'Y' which is the
+ * default or 'N' which can save some memory between reduce
+ * calls.
+ *
+ * - DCMF_BARRIER - Selects a protocol to use for barriers. Options are:
+ *   - MPICH - Turn off optimized barriers and use MPICH.
+ *   - BINOM - Use the binomial barrier. This is the default for all
+ *     subcommunicators.
+ *   - GI - Use the GI network. This is the default for MPI_COMM_WORLD and
+ *     duplicates of MPI_COMM_WORLD in MPI_THREAD_SINGLE mode.
+ */
+
 /** \brief Hook function to handle communicator-specific optimization (creation) */
 void
 MPIDI_Comm_create (MPID_Comm *comm)
@@ -56,36 +302,16 @@ MPIDI_Env_setup()
   char *envopts;
 
 
-   /** \page env_vars
-    * - DCMF_VERBOSE - Increases amount of information dumped during an 
-    * MPI_Abort() call. Options are 0 for off (the default) or 1 for
-    * on.
-    */
   /* Set the verbose level */
   dval = 0;
   ENV_Int(getenv("DCMF_VERBOSE"), &dval);
   MPIDI_Process.verbose = dval;
 
-   /** \page env_vars
-    * - DCMF_STATISTICS - Turn on statistics priting for the message layer.
-    * Mostly prints out maximum receive queue depth. Options are 0 for off
-    * (the default) or 1 for on
-    */
   /* Enable the statistics  */
   dval = 0;
   ENV_Bool(getenv("DCMF_STATISTICS"), &dval);
   MPIDI_Process.statistics = dval;
 
-   /** \page env_vars
-    * - DCMF_EAGER -
-    * - DCMF_RZV -
-    * - DCMF_RVZ - Set the cutoff for the switch to rendezvous protocol.
-    * All three options are identical. This takes an argument, in bytes,
-    * to switch from eager protocol to rendezvous for point-to-point
-    * messaging. Increasing the limit might help for larger partitions
-    * and if most of the communication is nearest neighbor. The
-    * default is 1200.
-    */
   /* Determine eager limit */
   dval = 1200;
   ENV_Int(getenv("DCMF_RVZ"),   &dval);
@@ -93,75 +319,33 @@ MPIDI_Env_setup()
   ENV_Int(getenv("DCMF_EAGER"), &dval);
   MPIDI_Process.eager_limit = dval;
 
-   /** \page env_vars
-    * - DCMF_NUMREQUESTS - Sets the number of outstanding asynchronous
-    * broadcasts to have before a barrier is called. This is mostly
-    * used in allgather/allgatherv using asynchronous broadcasts. 
-    * Higher numbers can help on larger partitions and larger
-    * message sizes. Default is 32.
-    */
   /* Determine number of outstanding bcast requets (for async protocols) */
   dval = 32;
   ENV_Int(getenv("DCMF_NUMREQUESTS"), &dval);
   MPIDI_CollectiveProtocols.numrequests = dval;
 
-   /** \page env_vars
-    * - DCMF_OPTRVZ -
-    * - DCMF_OPTRZV - Determine the optimized rendezvous limit. The
-    * optimized protocol will be used if:
-    * eager_limit <= DCMF_OPTRZV < (eager_limit + DCMF_OPTRZV).
-    * The default is 0 (off)
-    */
   dval = 0; /* Default is not to use optimized rendezvous. */
   ENV_Int(getenv("DCMF_OPTRVZ"),   &dval);
   ENV_Int(getenv("DCMF_OPTRZV"),   &dval);
   MPIDI_Process.optrzv_limit = MPIDI_Process.eager_limit + dval;
 
-   /** \page env_vars
-    * - DCMF_INTERRUPT -
-    * - DCMF_INTERRUPTS - Turns on interrupt driven communication. This
-    * can be beneficial to some applications and is required if you are
-    * using Global Arrays or ARMCI. (They force this on, regardless of
-    * the environment setting). Options are 0 for off (the default)
-    * or 1 for on.
-    */
   /* Determine interrupt mode */
   dval = 0;
   ENV_Bool(getenv("DCMF_INTERRUPT"),  &dval);
   ENV_Bool(getenv("DCMF_INTERRUPTS"), &dval);
   MPIDI_Process.use_interrupts = dval;
 
-   /** \page env_vars
-    * - DCMF_SENDER_SIDE_MATCHING -
-    * - DCMF_SSM - Turns on sender-side matching. This can speed up
-    * point-to-point messaging in well-behaved applications, specifically
-    * those that do not do MPI_ANY_SOURCE receives. Options are 0
-    * for off (the default) or 1 for on.
-    */
   /* Enable Sender-side-matching of messages */
   dval = 0;
   ENV_Bool(getenv("DCMF_SENDER_SIDE_MATCHING"), &dval);
   ENV_Bool(getenv("DCMF_SSM"),  &dval);
   MPIDI_Process.use_ssm = dval;
 
-   /** \page env_vars
-    * - DCMF_TOPOLOGY - Turns on optimized topology
-    * creation functions when using MPI_Cart_create with the
-    * reorder flag. We attempt to create communicators similar
-    * to those requested, that match physical hardware as much
-    * as possible. Options are 1 for on (default) or 0 for off 
-    */ 
   /* Set the status of the optimized topology functions */
   dval = 1;
   ENV_Bool(getenv("DCMF_TOPOLOGY"), &dval);
   MPIDI_Process.optimized.topology = dval;
 
-   /** \page env_vars
-    * - DCMF_COLLECTIVE - 
-    * - DCMF_COLLECTIVES - Turn on optimized collectives. 
-    * Options are 1 for on (the default), 0 for off,
-    * or NOTREE to turn off just the tree collectives 
-    */ 
   /* Set the status of the optimized collectives */
   MPIDI_Process.optimized.collectives = 1;
   MPIDI_Process.optimized.tree = 1;
@@ -187,7 +371,7 @@ MPIDI_Env_setup()
       }
    }
    #warning someone needs to update this description
-   /** \page env_vars
+   /*
     * - DCMF_RMA_PENDING - Don't know what this does. 
     * Default is 1000.
     */
@@ -279,23 +463,10 @@ MPIDI_Env_setup()
    MPIDI_CollectiveProtocols.alltoall.premalloc = 1;
 
 
-   /** \page env_vars
-    * - DCMF_ASYNCCUTOFF - Changes the cutoff point between
-    * asynchronous and synchronous rectangular/binomial broadcasts.
-    * This can be highly application dependant. The default is
-    * 128k.
-    */
   dval = 131072;
   ENV_Int(getenv("DCMF_ASYNCCUTOFF"), &dval);
   MPIDI_CollectiveProtocols.broadcast.asynccutoff = dval;
 
-   /** \page env_vars
-    *  - DCMF_SCATTER - Changes the protocol used for scatter.
-    *  The default is to switch to a broadcast-based scatter
-    *  at 2k message size. This can be turned off by
-    *  specifying MPICH. This will then use the point-to-point
-    *  MPICH algorithm for all scatters.
-    */
    envopts = getenv("DCMF_SCATTER");
    if(envopts != NULL)
    {
@@ -305,15 +476,6 @@ MPIDI_Env_setup()
          MPIDI_CollectiveProtocols.optscatter = 0;
       }
    }
-   /** \page env_vars
-    * - DCMF_SCATTERV - Controls which protocol is used for scatterv.
-    * Default is an all-to-all based protocol when message size is
-    * above 2k. This is optimal for larger messages and larger 
-    * partitions. There is also a broadcast based scatterv
-    * which can be enabled with BCAST. This works well for small
-    * messages. All optimized scatterv algorithms can be turned off with
-    * the MPICH option
-    */
    envopts = getenv("DCMF_SCATTERV");
    if(envopts != NULL)
    {
@@ -334,12 +496,6 @@ MPIDI_Env_setup()
          MPIDI_CollectiveProtocols.scatterv.usebcast = 1;
       }
    }
-   /** \page env_vars
-    * - DCMF_GATHER - Controls what protocol is used for gather.
-    * Default is a reduce-based algorithm at larger messages. This
-    * can be turned off with the MPICH option which will use
-    * the MPICH point-to-point algorithm.
-    */
    envopts = getenv("DCMF_GATHER");
    if(envopts != NULL)
    {
@@ -350,14 +506,6 @@ MPIDI_Env_setup()
       }
    }
 
-   /** \page env_vars
-    * - DCMF_REDUCESCATTER - Controls what protocol is used for reduce_scatter
-    * operations. The default is to use an optimized reduce followed by
-    * an optimized scatterv. This works well for larger messages. The
-    * options for DCMF_SCATTERV and DCMF_REDUCE can change the behavior
-    * of reduce_scatter. To turn off all optimizations for reduce_scatter,
-    * use the MPICH option.
-    */
    envopts = getenv("DCMF_REDUCESCATTER");
    if(envopts != NULL)
    {
@@ -369,26 +517,6 @@ MPIDI_Env_setup()
    }
 
  
-   /** \page env_vars
-    * - DCMF_BCAST - Controls what protocol to use for broadcast. Options are:
-    * MPICH - Turn off all optimizations for broadcast and use the MPICH
-    * point-to-point routines
-    * TREE - Use the tree. This is the default on MPI_COMM_WORLD and 
-    * duplicates of MPI_COMM_WORLD in MPI_THREAD_SINGLE mode. This provides
-    * the fastest possible broadcast
-    * AR - Use the asynchronous rectangle protocol. This is the default
-    * for small messages on rectangular subcommunicators. The cutoff between
-    * async and sync can be controlled with DCMF_ASYNCCUTOFF.
-    * AB - Use the asynchronous binomial protocl. This is the default
-    * for irregularly shaped subcommunicators. The cutoff between
-    * async and sync can be controlled with DCMF_ASYNCCUTOFF.
-    * RECT - Use the rectangle protocol. This is the default for rectangularly
-    * shaped subcommunicators for large messages. This disables the asynchronous
-    * protocol.
-    * BINOM - Use the binomial protocol. This is the default for irregularly
-    * shaped subcommunicators for large messages. This disables the asynchronous
-    * protocol.
-    */
    envopts = getenv("DCMF_BCAST");
    if(envopts != NULL)
    {
@@ -441,11 +569,6 @@ MPIDI_Env_setup()
 
 
 
-   /** \page env_vars
-    * - DCMF_NUMCOLORS - Controls how many colors are used for rectangular
-    * broadcasts. The default is 0 which means "Let the lower level decide."
-    * Options are 0, 1, 2, and 3.
-    */
    envopts = getenv("DCMF_NUMCOLORS");
    if(envopts != NULL)
    {
@@ -456,16 +579,6 @@ MPIDI_Env_setup()
          MPIDI_CollectiveProtocols.numcolors = colors;
    }
 
-   /** \page env_vars
-    * - DCMF_SAFEALLGATHER - The optimized allgather protocols require
-    * contiguous datatypes and similar datatypes on all nodes. To verify
-    * this is true, we must do an allreduce at the beginning of the
-    * allgather call. If the application uses "well behaved" datatypes, you can
-    * set this option to skip over the allreduce. This is most useful in
-    * irregular subcommunicators where the allreduce can be expensive. Options
-    * are 'N', the default, or 'Y' to skip the allreduce. Setting this with
-    * "unsafe" datatypes will yield unpredictable results, usually hangs.
-    */
    envopts = getenv("DCMF_SAFEALLGATHER");
    if(envopts != NULL)
    {
@@ -473,18 +586,6 @@ MPIDI_Env_setup()
          MPIDI_CollectiveProtocols.allgather.preallreduce = 0;
    }
 
-   /** \page env_vars
-    * - DCMF_SAFEALLGATHERV - The optimized allgatherv protocols require
-    * contiguous datatypes and similar datatypes on all nodes. Allgatherv
-    * also requires continuous displacements. To verify
-    * this is true, we must do an allreduce at the beginning of the
-    * allgatherv call. If the application uses "well behaved" datatypes and
-    * displacements, you can set this option to skip over the allreduce. 
-    * This is most useful in irregular subcommunicators where the allreduce 
-    * can be expensive. Options are 'N', the default, or 'Y' to skip the 
-    * allreduce. Setting this with "unsafe" datatypes will yield unpredictable
-    * results, usually hangs.
-    */
    envopts = getenv("DCMF_SAFEALLGATHERV");
    if(envopts != NULL)
    {
@@ -492,17 +593,6 @@ MPIDI_Env_setup()
          MPIDI_CollectiveProtocols.allgatherv.preallreduce = 0;
    }
 
-   /** \page env_vars
-    * - DCMF_SAFESCATTERV - The optimized scatterv protocol requires
-    * contiguous datatypes and similar datatypes on all nodes. It
-    * also requires continuous displacements. To verify
-    * this is true, we must do an allreduce at the beginning of the
-    * scatterv call. If the application uses "well behaved" datatypes and
-    * displacements, you can set this option to skip over the allreduce. 
-    * This is most useful in irregular subcommunicators where the allreduce 
-    * can be expensive. Options are 'N', the default, or 'Y' to skip the 
-    * allreduce. Setting this with "unsafe" datatypes will yield unpredictable
-    */
    envopts = getenv("DCMF_SAFESCATTERV");
    if(envopts != NULL)
    {
@@ -511,12 +601,6 @@ MPIDI_Env_setup()
    }
       
 
-   /** \page env_vars
-    * - DCMF_ALLTOALL -
-    * - DCMF_ALLTOALLV - 
-    * - DCMF_ALLTOALLW - Turn off the optimized alltoall/alltoallv/alltoallw
-    * optimizations with the MPICH option. 
-    */
    envopts = getenv("DCMF_ALLTOALL");
    if(envopts != NULL)
    {
@@ -530,20 +614,6 @@ MPIDI_Env_setup()
          fprintf(stderr,"Invalid DCMF_ALLTOALL option\n");
    }
 
-   /** \page env_vars
-    * - DCMF_ALLTOALL_PREMALLOC -
-    * - DCMF_ALLTOALLV_PREMALLOC -
-    * - DCMF_ALLTOALLW_PREMALLOC - These are equivalent options. 
-    * The alltoall protocols require 6 arrays to be setup
-    * before communication begins. These 6 arrays are each of size
-    * (comm_size) so can be sizeable on large machines. If your application
-    * does not use alltoall, or you need as much memory as possible, you can
-    * turn off pre-allocating these arrays. By default, we allocate them
-    * once per communicator creation. There is only one set, regardless of
-    * using alltoall, alltoallv, or alltoallw. Options are 'Y' (the default)
-    * to premalloc the arrays or 'N' to malloc and free on every alltoall 
-    * operation.
-    */
    envopts = getenv("DCMF_ALLTOALL_PREMALLOC");
    if(envopts == NULL)
       envopts = getenv("DCMF_ALLTOALLV_PREMALLOC");
@@ -590,21 +660,6 @@ MPIDI_Env_setup()
          fprintf(stderr,"Invalid DCMF_ALLTOALLW option\n");
    }
 
-   /** \page env_vars
-    * - DCMF_ALLGATHER - Controls the algorithm used for allgather. Options are:
-    * MPICH - Turn off all optimizations for allgather and use the MPICH 
-    * point-to-point implementation
-    * ALLREDUCE - Use a tree-based allreduce. This is the default on 
-    * MPI_COMM_WORLD for smaller messages.
-    * ALLTOALL - Use an all-to-all based algorithm. This is the default on
-    * irregular communicators. It works very well for larger messages.
-    * BCAST - Use a broadcast. This will use a tree broadcast on MPI_COMM_WORLD.
-    * It is the default for larger messages on MPI_COMM_WORLD. This can work well
-    * on rectangular subcommunicators for smaller messages.
-    * ASYNC - Use an async broadcast. This will use asynchronous broadcasts
-    * to do the allgather. This is a good option for small messages on
-    * rectnagular or irregular subcommunicators.
-    */
    envopts = getenv("DCMF_ALLGATHER");
    if(envopts != NULL)
      {
@@ -648,22 +703,6 @@ MPIDI_Env_setup()
          fprintf(stderr,"Invalid DCMF_ALLGATHER option\n");
      }
 
-   /** \page env_vars
-    * - DCMF_ALLGATHERV - Controls the algorithm used for allgatherv. 
-    * Options are:
-    * MPICH - Turn off all optimizations for allgatherv and use the MPICH 
-    * point-to-point implementation
-    * ALLREDUCE - Use a tree-based allreduce. This is the default on 
-    * MPI_COMM_WORLD for smaller messages.
-    * ALLTOALL - Use an all-to-all based algorithm. This is the default on
-    * irregular communicators. It works very well for larger messages.
-    * BCAST - Use a broadcast. This will use a tree broadcast on MPI_COMM_WORLD.
-    * It is the default for larger messages on MPI_COMM_WORLD. This can work well
-    * on rectangular subcommunicators for smaller messages.
-    * ASYNC - Use an async broadcast. This will use asynchronous broadcasts
-    * to do the allgatherv. This is a good option for small messages on
-    * rectnagular or irregular subcommunicators.
-    */
    envopts = getenv("DCMF_ALLGATHERV");
    if(envopts != NULL)
      {
@@ -707,21 +746,6 @@ MPIDI_Env_setup()
          fprintf(stderr,"Invalid DCMF_ALLGATHERV option\n");
      }
 
-   /** \page env_vars
-    * - DCMF_ALLREDUCE - Controls what protocol to use for allreduce.
-    * Options are:
-    * MPICH - Turn off all optimizations and use the MPICH point-to-point
-    * protocol.
-    * RING - Use a rectangular ring protoocl. This is the default for
-    * rectangle subcommunicators.
-    * RECT - Use a rectangular/binomial protocol. This is off by default
-    * BINOM - Use a binomial protocol. This is the default for irregular
-    * subcommunicators.
-    * TREE - Use the tree. This is the default for MPI_COMM_WORLD an
-    * duplicates of MPI_COMM_WORLD in MPI_THREAD_SINGLE mode.
-    * CCMI - Use the CCMI Tree protocol. This is off by default.
-    * PIPE - Use the pipelined CCMI tree protocol. Also off by default.
-    */
    envopts = getenv("DCMF_ALLREDUCE");
    if(envopts != NULL)
    {
@@ -777,13 +801,6 @@ MPIDI_Env_setup()
          fprintf(stderr,"Invalid DCMF_ALLREDUCE option\n");
    }
 
-   /** \page env_vars
-    * - DCMF_ALLREDUCE_REUSE_STORAGE - This allows the lower
-    * level protcols to reuse some storage instead of malloc/free
-    * on every allreduce call. Options are 'Y' which is the
-    * default or 'N' which can save some memory between allreduce
-    * calls.
-    */
    envopts = getenv("DCMF_ALLREDUCE_REUSE_STORAGE");
    if(envopts != NULL)
    {
@@ -799,19 +816,6 @@ MPIDI_Env_setup()
          fprintf(stderr,"Invalid DCMF_ALLREDUCE_REUSE_STORAGE option\n");
    }
 
-   /** \page env_vars
-    * - DCMF_REDUCE - Controls what protocol to use for reduce.
-    * Options are:
-    * MPICH - Turn off all optimizations and use the MPICH point-to-point
-    * protocol.
-    * RECT - Use a rectangular/binomial protocol. This is the default for
-    * rectnagular subcommunicators.
-    * BINOM - Use a binomial protocol. This is the default for irregular
-    * subcommunicators.
-    * TREE - Use the tree. This is the default for MPI_COMM_WORLD an
-    * duplicates of MPI_COMM_WORLD in MPI_THREAD_SINGLE mode.
-    * CCMI - Use the CCMI Tree protocol. This is off by default.
-    */
    envopts = getenv("DCMF_REDUCE");
    if(envopts != NULL)
    {
@@ -860,13 +864,6 @@ MPIDI_Env_setup()
          fprintf(stderr,"Invalid DCMF_REDUCE option\n");
    }
 
-   /** \page env_vars
-    * - DCMF_REDUCE_REUSE_STORAGE - This allows the lower
-    * level protcols to reuse some storage instead of malloc/free
-    * on every reduce call. Options are 'Y' which is the
-    * default or 'N' which can save some memory between reduce
-    * calls.
-    */
    envopts = getenv("DCMF_REDUCE_REUSE_STORAGE");
    if(envopts != NULL)
    {
@@ -882,14 +879,6 @@ MPIDI_Env_setup()
          fprintf(stderr,"Invalid DCMF_REDUCE_REUSE_STORAGE option\n");
    }
 
-   /** \page env_vars
-    * - DCMF_BARRIER - Selects a protocol to use for barriers. Options are:
-    * MPICH - Turn off optimized barriers and use MPICH
-    * BINOM - Use the binomial barrier. This is the default for all
-    * subcommunicators.
-    * GI - Use the GI network. This is the default for MPI_COMM_WORLD and
-    * duplicates of MPI_COMM_WORLD in MPI_THREAD_SINGLE mode.
-    */
    envopts = getenv("DCMF_BARRIER");
    if(envopts != NULL)
    {
