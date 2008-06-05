@@ -144,7 +144,29 @@ void MPIDI_Coll_register(void)
    /* Register global broadcast          */
    /* ---------------------------------- */
    gbcast_config.protocol = DCMF_TREE_GLOBALBCAST_PROTOCOL;
-   rc = DCMF_GlobalBcast_register(&MPIDI_Protocols.globalbcast,&gbcast_config);
+
+   /* Check if we are in dual or vn mode and that all ranks in the system */
+   /* are physically located on one node. */
+   unsigned size = DCMF_Messager_size ();
+   if (size <= mpid_hw.tSize)
+   {
+     unsigned rank, x[4], y[4], z[4], t[4];
+     DCMF_Messager_rank2torus (0, &x[0], &y[0], &z[0], &t[0]);
+
+     gbcast_config.protocol = DCMF_INTRANODE_GLOBALBCAST_PROTOCOL;
+     for (rank = 1; rank < size; rank++)
+     {
+       DCMF_Messager_rank2torus (rank, &x[rank], &y[rank], &z[rank], &t[rank]);
+       if ((x[rank-1] != x[rank]) ||
+           (y[rank-1] != y[rank]) ||
+           (z[rank-1] != z[rank]))
+       {
+         gbcast_config.protocol = DCMF_TREE_GLOBALBCAST_PROTOCOL;
+         break;
+       }
+     }
+   }
+   rc = DCMF_GlobalBcast_register(&MPIDI_Protocols.globalbcast, &gbcast_config);
 
    /* most likely, we lack shared memory and therefore can't use this */
    if(rc != DCMF_SUCCESS)
