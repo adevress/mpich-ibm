@@ -5,6 +5,82 @@
  */
 
 #include "mpido_coll.h"
+#include <stdarg.h>
+
+inline int DCMF_CHECK_INFO(DCMF_Embedded_Info_Set * set, ...)
+{ 
+  va_list arg_ptr;
+  int value = 0, result = 1;
+
+  va_start(arg_ptr, set);
+
+  value = va_arg(arg_ptr, int);
+  
+  do
+    {
+      if (!DCMF_INFO_ISSET(set, value))
+	{
+	  result = 0;
+	  break;
+	}
+      value = va_arg(arg_ptr, int);      
+    }
+  while (value > DCMF_END_ARGS);
+  
+  va_end(arg_ptr);
+  return result;
+}
+
+inline void DCMF_SET_INFO(DCMF_Embedded_Info_Set * set, ...)
+{
+  va_list arg_ptr;
+  int value = 0;
+
+  va_start(arg_ptr, set);
+
+  value = va_arg(arg_ptr, int);
+  
+  do
+    {
+      DCMF_INFO_SET(set, value);
+      value = va_arg(arg_ptr, int);      
+    }
+  while (value > DCMF_END_ARGS);
+  
+  va_end(arg_ptr);
+}
+
+inline int DCMF_AllocateAlltoallBuffers(MPID_Comm * comm)
+{
+  int numprocs = comm -> local_size;
+  if (!comm->dcmf.sndlen)
+    comm->dcmf.sndlen = MPIU_Malloc(numprocs * sizeof(unsigned));
+  if (!comm->dcmf.rcvlen)
+    comm->dcmf.rcvlen = MPIU_Malloc(numprocs * sizeof(unsigned));
+  if (!comm->dcmf.sdispls)
+    comm->dcmf.sdispls = MPIU_Malloc(numprocs * sizeof(unsigned));
+  if (!comm->dcmf.rdispls)
+    comm->dcmf.rdispls = MPIU_Malloc(numprocs * sizeof(unsigned));
+  if (!comm->dcmf.sndcounters)
+    comm->dcmf.sndcounters = MPIU_Malloc(numprocs * sizeof(unsigned));
+  if (!comm->dcmf.rcvcounters)
+    comm->dcmf.rcvcounters = MPIU_Malloc(numprocs * sizeof(unsigned));
+
+  if(!comm->dcmf.sndlen || !comm->dcmf.rcvlen ||
+     !comm->dcmf.sdispls || !comm->dcmf.rdispls ||
+     !comm->dcmf.sndcounters || !comm->dcmf.rcvcounters)
+    {
+      if (comm->dcmf.sndlen) MPIU_Free(comm->dcmf.sndlen);
+      if (comm->dcmf.rcvlen) MPIU_Free(comm->dcmf.rcvlen);
+      if (comm->dcmf.sdispls) MPIU_Free(comm->dcmf.sdispls);
+      if (comm->dcmf.rdispls) MPIU_Free(comm->dcmf.rdispls);
+      if (comm->dcmf.sndcounters) MPIU_Free(comm->dcmf.sndcounters);
+      if (comm->dcmf.rcvcounters) MPIU_Free(comm->dcmf.rcvcounters);
+      return 0;
+    }
+  return 1;
+}
+
 
 int MPIDI_IsTreeOp(MPI_Op op, MPI_Datatype datatype)
 {

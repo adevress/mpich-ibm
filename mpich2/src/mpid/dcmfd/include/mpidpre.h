@@ -17,9 +17,12 @@
 #define MPICH_MPIDPRE_H_INCLUDED
 
 /* include message layer stuff */
+#include <defines.h>
 #include <dcmf.h>
 #include <dcmf_globalcollectives.h>
 #include <dcmf_collectives.h>
+
+char exec_name[512];
 
 /* verify that the version of the installed dcmf library is compatible */
 #if (DCMF_VERSION_RELEASE == 0)
@@ -285,18 +288,14 @@ struct MPIDI_DCMF_Comm
   unsigned *rdispls;
   unsigned *sndcounters;
   unsigned *rcvcounters;
-  unsigned char allreducetree; /**< Comm specific tree flags */
-  unsigned char allreducepipelinedtree; /**< Comm specific tree flags */
-  unsigned char allreducepipelinedtree_dput; /**< Comm specific tree flags */
-  unsigned char reducetree;
-  unsigned char allreduceccmitree;
-  unsigned char reduceccmitree;
-  unsigned char bcasttree;
-  unsigned char alltoalls;
-  unsigned      bcastiter;   /* async broadcast is only used every 32
-                              * steps to prevent too many unexpected
-                              * messages */
+  unsigned bcast_iter;   /* async broadcast is only used every 32
+			  * steps to prevent too many unexpected
+			  * messages */
+
+  /* struct of bits holding info relavant to comm */
+  DCMF_Embedded_Info_Set properties;
 };
+
 /** \brief This defines the portion of MPID_Comm that is specific to the DCMF Device */
 #define MPID_DEV_COMM_DECL      struct MPIDI_DCMF_Comm dcmf;
 

@@ -5,27 +5,9 @@
  */
 
 #include "mpido_coll.h"
+#include "mpidi_coll_prototypes.h"
 
 #pragma weak PMPIDO_Barrier = MPIDO_Barrier
-
-/**
- * **************************************************************************
- * \brief "Done" callback for barrier messages.
- * **************************************************************************
- */
-
-static void
-cb_done (void *clientdata) {
-  volatile unsigned *work_left = (unsigned *) clientdata;
-  *work_left = 0;
-  MPID_Progress_signal();
-  return;
-}
-
-static volatile unsigned mpid_globalbarrier_active = 0;// global active field for global barriers
-static DCMF_Request_t mpid_globalbarrier_request;
-static unsigned mpid_globalbarrier_restart = 0;
-
 
 /**
  * **************************************************************************
@@ -33,46 +15,18 @@ static unsigned mpid_globalbarrier_restart = 0;
  * **************************************************************************
  */
 
-int MPIDO_Barrier(MPID_Comm *comm_ptr)
+int MPIDO_Barrier(MPID_Comm * comm)
 {
-  volatile unsigned active; // local (thread safe) active field for non-global barriers
   int rc;
-  MPID_Comm *comm_world;
-  MPID_Comm_get_ptr(MPI_COMM_WORLD, comm_world);
-  DCMF_Callback_t callback = { cb_done, (void *) &mpid_globalbarrier_active }; // use global active field by default
-  if(comm_ptr == comm_world && MPIDI_CollectiveProtocols.barrier.usegi)
-  {
-    mpid_globalbarrier_active = 1; // initialize global active field
+  DCMF_Embedded_Info_Set * properties = &(comm -> dcmf.properties);
 
-    if (mpid_globalbarrier_restart)
-    {
-      rc = DCMF_Restart (&mpid_globalbarrier_request);
-    }
-    else
-    {
-      mpid_globalbarrier_restart = 1;
-      rc = DCMF_GlobalBarrier(&MPIDI_Protocols.globalbarrier, &mpid_globalbarrier_request, callback);
-    }
-  }
+  if (DCMF_CHECK_INFO(properties, DCMF_GLOBAL_CONTEXT, DCMF_GI,DCMF_END_ARGS))
+    rc = MPIDO_Barrier_gi(comm);
   else
-  {
-    callback.clientdata = (void*) &active;  // use local (thread safe) active field
-    active = 1;  // initialize local (thread safe) active field
+    rc = MPIDO_Barrier_dcmf(comm);
 
-    /* geometry sets up proper barrier for the geometry at init time */
-    rc = DCMF_Barrier (&comm_ptr->dcmf.geometry,
-                       callback,
-                       DCMF_MATCH_CONSISTENCY);
-  }
-
-  if (rc == DCMF_SUCCESS)
-  {
-    MPID_PROGRESS_WAIT_WHILE(*(int*)callback.clientdata); // use local or global active field - whichever was set
-  }
-  else
-  {
-    rc = MPIR_Barrier(comm_ptr);
-  }
-
+  if (rc != DCMF_SUCCESS)
+    rc = MPIR_Barrier(comm);
+  
   return rc;
 }

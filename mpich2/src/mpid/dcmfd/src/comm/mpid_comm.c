@@ -303,6 +303,7 @@
  *   - GI - Use the GI network.  This is the default for MPI_COMM_WORLD and
  *     duplicates of MPI_COMM_WORLD in MPI_THREAD_SINGLE mode.
  *   - Default varies based on the communicator.  See above.
+ *
  */
 
 /** \brief Hook function to handle communicator-specific optimization (creation) */

@@ -5,171 +5,9 @@
  */
 
 #include "mpido_coll.h"
+#include "mpidi_coll_prototypes.h"
 
 #pragma weak PMPIDO_Reduce = MPIDO_Reduce
-
-/**
- * **************************************************************************
- * \brief "Done" callback for collective allreduce message.
- * **************************************************************************
- */
-
-static void cb_done (void *clientdata)
-{
-   volatile unsigned *work_left = (unsigned *) clientdata;
-   *work_left = 0;
-   MPID_Progress_signal();
-
-   return;
-}
-
-
-static int tree_global_reduce(void * sendbuf,
-                              void * recvbuf,
-                              int count,
-                              DCMF_Dt dcmf_dt,
-                              DCMF_Op dcmf_op,
-                              int root,
-                              DCMF_Geometry_t * geometry)
-{
-   int rc;
-   DCMF_CollectiveRequest_t request;
-   volatile unsigned active = 1;
-   DCMF_Callback_t callback = { cb_done, (void *) &active };
-   rc = DCMF_GlobalAllreduce(&MPIDI_Protocols.globalallreduce,
-                             (DCMF_Request_t *)&request,
-                             callback,
-                             DCMF_MATCH_CONSISTENCY,
-                             root,
-                             sendbuf,
-                             recvbuf,
-                             count,
-                             dcmf_dt,
-                             dcmf_op);
-   MPID_PROGRESS_WAIT_WHILE(active);
-
-   return rc;
-}
-
-static int tree_reduce(void * sendbuf,
-                       void * recvbuf,
-                       int count,
-                       DCMF_Dt dcmf_dt,
-                       DCMF_Op dcmf_op,
-                       int root,
-                       DCMF_Geometry_t * geometry)
-{
-   int rc;
-   DCMF_CollectiveRequest_t request;
-   volatile unsigned active = 1;
-   DCMF_Callback_t callback = { cb_done, (void *) &active };
-   rc = DCMF_Reduce(&MPIDI_CollectiveProtocols.reduce.tree,
-                    &request,
-                    callback,
-                    DCMF_MATCH_CONSISTENCY,
-                    geometry,
-                    root,
-                    sendbuf,
-                    recvbuf,
-                    count,
-                    dcmf_dt,
-                    dcmf_op);
-   MPID_PROGRESS_WAIT_WHILE(active);
-
-   return rc;
-}
-
-
-static int binom_reduce(void * sendbuf,
-                        void * recvbuf,
-                        int count,
-                        DCMF_Dt dcmf_dt,
-                        DCMF_Op dcmf_op,
-                        int root,
-                        DCMF_Geometry_t * geometry)
-{
-   int rc;
-   DCMF_CollectiveRequest_t request;
-   volatile unsigned active = 1;
-   DCMF_Callback_t callback = { cb_done, (void *) &active };
-
-   rc = DCMF_Reduce(&MPIDI_CollectiveProtocols.reduce.binomial,
-                    &request,
-                    callback,
-                    DCMF_MATCH_CONSISTENCY,
-                    geometry,
-                    root,
-                    sendbuf,
-                    recvbuf,
-                    count,
-                    dcmf_dt,
-                    dcmf_op);
-
-   MPID_PROGRESS_WAIT_WHILE(active);
-   return rc;
-}
-
-static int rect_reduce(void * sendbuf,
-                       void * recvbuf,
-                       int count,
-                       DCMF_Dt dcmf_dt,
-                       DCMF_Op dcmf_op,
-                       int root,
-                       DCMF_Geometry_t * geometry)
-{
-   int rc;
-   DCMF_CollectiveRequest_t request;
-   volatile unsigned active = 1;
-   DCMF_Callback_t callback = { cb_done, (void *) &active };
-
-   rc = DCMF_Reduce(&MPIDI_CollectiveProtocols.reduce.rectangle,
-                    &request,
-                    callback,
-                    DCMF_MATCH_CONSISTENCY,
-                    geometry,
-                    root,
-                    sendbuf,
-                    recvbuf,
-                    count,
-                    dcmf_dt,
-                    dcmf_op);
-
-   MPID_PROGRESS_WAIT_WHILE(active);
-   return rc;
-}
-
-
-
-static int rectring_reduce(void * sendbuf,
-                       void * recvbuf,
-                       int count,
-                       DCMF_Dt dcmf_dt,
-                       DCMF_Op dcmf_op,
-                       int root,
-                       DCMF_Geometry_t * geometry)
-{
-   int rc;
-   DCMF_CollectiveRequest_t request;
-   volatile unsigned active = 1;
-   DCMF_Callback_t callback = { cb_done, (void *) &active };
-
-   rc = DCMF_Reduce(&MPIDI_CollectiveProtocols.reduce.rectanglering,
-                    &request,
-                    callback,
-                    DCMF_MATCH_CONSISTENCY,
-                    geometry,
-                    root,
-                    sendbuf,
-                    recvbuf,
-                    count,
-                    dcmf_dt,
-                    dcmf_op);
-
-   MPID_PROGRESS_WAIT_WHILE(active);
-   return rc;
-}
-
-
 
 int MPIDO_Reduce(void * sendbuf,
                  void * recvbuf,
@@ -177,153 +15,98 @@ int MPIDO_Reduce(void * sendbuf,
                  MPI_Datatype datatype,
                  MPI_Op op,
                  int root,
-                 MPID_Comm * comm_ptr)
+                 MPID_Comm * comm)
 {
-   int dt_contig, dt_extent, rc;
-   unsigned treeavail, rectavail, binomavail, rectringavail;
+  reduce_fptr func = NULL;
+  DCMF_Embedded_Info_Set * properties = &(comm -> dcmf.properties);
+  int success = 1, rc, op_type_support;
+  int data_contig, data_size;
+  unsigned char reset_sendbuff = 0;
+  MPID_Datatype * data_ptr;
+  MPI_Aint data_true_lb = 0;
 
-   MPID_Datatype *dt_ptr;
-   MPI_Aint dt_true_lb=0;
+  DCMF_Dt dcmf_data = DCMF_UNDEFINED_DT;
+  DCMF_Op dcmf_op = DCMF_UNDEFINED_OP;
 
-   DCMF_Dt dcmf_dt = DCMF_UNDEFINED_DT;
-   DCMF_Op dcmf_op = DCMF_UNDEFINED_OP;
+  if (count == 0) return MPI_SUCCESS;
 
-   if(count == 0)
-      return MPI_SUCCESS;
+  if (datatype != MPI_DATATYPE_NULL && count > 0)
+    {
+      MPIDI_Datatype_get_info(count,
+			      datatype,
+			      data_contig,
+			      data_size,
+			      data_ptr,
+			      data_true_lb);
+      if (!data_contig) success = 0;
+    }
+  else
+    success = 0;
 
-   treeavail = comm_ptr->dcmf.reducetree | comm_ptr->dcmf.reduceccmitree;
+  /* quick exit conditions */
+  if (comm -> comm_kind != MPID_INTRACOMM || comm -> local_size < 3 ||
+      HANDLE_GET_KIND(op) != HANDLE_KIND_BUILTIN || !success)
+    return MPIR_Reduce(sendbuf, recvbuf, count, datatype, op, root, comm);
 
-   rc = MPIDI_ConvertMPItoDCMF(op, &dcmf_op, datatype, &dcmf_dt);
+  op_type_support = MPIDI_ConvertMPItoDCMF(op, &dcmf_op, datatype, &dcmf_data);
 
-   extern int DCMF_TREE_SMP_SHORTCUT;
+  MPID_Ensure_Aint_fits_in_pointer(MPIR_VOID_PTR_CAST_TO_MPI_AINT recvbuf +
+				   data_true_lb);
+  recvbuf = (char *) recvbuf + data_true_lb;
 
-   if(rc == 0 && treeavail && comm_ptr->local_size > 2)
-   {
-      if(sendbuf == MPI_IN_PLACE)
-         sendbuf = recvbuf;
-      if(DCMF_TREE_SMP_SHORTCUT && comm_ptr->dcmf.reducetree)
-        rc = tree_global_reduce(sendbuf,
-                                recvbuf,
-                                count,
-                                dcmf_dt,
-                                dcmf_op,
-                                comm_ptr->vcr[root],
-                                &comm_ptr->dcmf.geometry);
+  if (sendbuf == MPI_IN_PLACE)
+    {
+      sendbuf = recvbuf;
+      reset_sendbuff = 1;
+    }
+  else
+    {
+      MPID_Ensure_Aint_fits_in_pointer(MPIR_VOID_PTR_CAST_TO_MPI_AINT sendbuf +
+				       data_true_lb);
+      sendbuf = (char *) sendbuf + data_true_lb;
+    }
+
+  extern int DCMF_TREE_SMP_SHORTCUT;
+
+  
+  if (op_type_support == DCMF_TREE_SUPPORT &&
+      DCMF_INFO_ISSET(properties, DCMF_TREE_REDUCE))
+    {
+      if (DCMF_TREE_SMP_SHORTCUT)
+	func = MPIDO_Reduce_global_tree;
       else
-        rc = tree_reduce(sendbuf,
-                         recvbuf,
-                         count,
-                         dcmf_dt,
-                         dcmf_op,
-                         comm_ptr->vcr[root],
-                         &comm_ptr->dcmf.geometry);
-      return rc;
-   }
+	func = MPIDO_Reduce_tree;
+    }
+  
+  if (op_type_support == DCMF_TORUS_SUPPORT)
+    {
+      if (DCMF_INFO_ISSET(properties, DCMF_RECT_REDUCE))
+	func = MPIDO_Reduce_rect;
+      
+      else if (DCMF_INFO_ISSET(properties, DCMF_RECTRING_REDUCE) &&
+	       count > 16384)
+	func = MPIDO_Reduce_rectring;
+      
+      else if (DCMF_INFO_ISSET(properties, DCMF_BINOM_REDUCE))
+	func = MPIDO_Reduce_binom;
+    }
+  
+  if (func)
+    rc = (func)(sendbuf, recvbuf, count, dcmf_data,
+		dcmf_op, datatype, root, comm);      
+  
+  /* 
+     if datatype or op are not device specific, or no func was found,
+     default to mpich 
+  */
+  else
+    {
+      if (reset_sendbuff) sendbuf = MPI_IN_PLACE;
+      rc = MPIR_Reduce(sendbuf, recvbuf, count, datatype, op, root, comm);
+    }
+  
 
-   /* quick exit conditions */
-   if(comm_ptr->comm_kind != MPID_INTRACOMM)
-      return MPIR_Reduce(sendbuf, recvbuf, count, datatype, op, root, comm_ptr);
-
-   /* check geometry for possibilities */
-   rectavail = MPIDI_CollectiveProtocols.reduce.userect &&
-               DCMF_Geometry_analyze(&comm_ptr->dcmf.geometry,
-                     &MPIDI_CollectiveProtocols.reduce.rectangle);
-
-   rectringavail = MPIDI_CollectiveProtocols.reduce.userectring &&
-               DCMF_Geometry_analyze(&comm_ptr->dcmf.geometry,
-                     &MPIDI_CollectiveProtocols.reduce.rectanglering);
-
-   binomavail = MPIDI_CollectiveProtocols.reduce.usebinom &&
-                DCMF_Geometry_analyze(&comm_ptr->dcmf.geometry,
-                     &MPIDI_CollectiveProtocols.reduce.binomial);
-
-
-   MPIDI_Datatype_get_info(count,
-                           datatype,
-                           dt_contig,
-                           dt_extent,
-                           dt_ptr,
-                           dt_true_lb);
-
-
-   rc = MPIDI_ConvertMPItoDCMF(op, &dcmf_op, datatype, &dcmf_dt);
-   /* return conditions */
-   if(
-   // unsupported datatype or op
-   rc == -1 ||
-   // no optimized topologies for this geometry
-   (!rectavail && !binomavail && !rectringavail) ||
-   // return to mpich for 1 processor reduce
-   (comm_ptr -> local_size <=2))
-   {
-      return MPIR_Reduce(sendbuf, recvbuf, count, datatype, op, root, comm_ptr);
-   }
-
-   /* at this point, decide which network/algorithm we are using based on
-    * benchmark data, the op, the type, etc, etc
-    * until then just pick rectangle then binomial based on availability*/
-   unsigned usingbinom=1 && binomavail;
-   unsigned usingrect=1 && rectavail;
-   unsigned usingrectring=(rectringavail && count > 16384);
-
-   MPID_Ensure_Aint_fits_in_pointer( MPIR_VOID_PTR_CAST_TO_MPI_AINT recvbuf + 
-                                    dt_true_lb);
-   recvbuf = (char *)recvbuf + dt_true_lb;
-
-   if(sendbuf != MPI_IN_PLACE)
-   {
-      MPID_Ensure_Aint_fits_in_pointer (MPIR_VOID_PTR_CAST_TO_MPI_AINT sendbuf +
-                                        dt_true_lb);
-      sendbuf = (char *)sendbuf + dt_true_lb;
-     //      int err =
-     //         MPIR_Localcopy(sendbuf, count, datatype, recvbuf, count, datatype);
-     //      if (err) return err;
-   }
-   else
-     sendbuf = recvbuf;
-
-   if(usingrectring)
-   {
-//      fprintf(stderr,"rectring reduce count: %d, dt: %d, op: %d, send: 0x%x, recv: 0x%x\n", count, dcmf_dt, dcmf_op, sendbuf, recvbuf);
-      rc = rectring_reduce(sendbuf,
-                       recvbuf,
-                       count,
-                       dcmf_dt,
-                       dcmf_op,
-                       comm_ptr->vcr[root],
-                       &comm_ptr->dcmf.geometry);
-   }
-
-   else if(usingrect)
-   {
-//      fprintf(stderr,"rect reduce count: %d, dt: %d, op: %d, send: 0x%x, recv: 0x%x\n", count, dcmf_dt, dcmf_op, sendbuf, recvbuf);
-      rc = rect_reduce(sendbuf,
-                       recvbuf,
-                       count,
-                       dcmf_dt,
-                       dcmf_op,
-                       comm_ptr->vcr[root],
-                       &comm_ptr->dcmf.geometry);
-   }
-   else if(usingbinom)
-   {
-//      fprintf(stderr,"binom reduce count: %d, dt: %d, op: %d, send: 0x%x, recv: 0x%x\n", count, dcmf_dt, dcmf_op, sendbuf, recvbuf);
-      rc = binom_reduce(sendbuf,
-                        recvbuf,
-                        count,
-                        dcmf_dt,
-                        dcmf_op,
-                        comm_ptr->vcr[root],
-                        &comm_ptr->dcmf.geometry);
-   }
-   else
-   {
-      if(sendbuf == recvbuf)
-         sendbuf = MPI_IN_PLACE;
-      return MPIR_Reduce(sendbuf, recvbuf, count, datatype, op, root, comm_ptr);
-   }
-
-
-   return rc;
-
+  if (reset_sendbuff) sendbuf = MPI_IN_PLACE;
+  
+  return rc;
 }

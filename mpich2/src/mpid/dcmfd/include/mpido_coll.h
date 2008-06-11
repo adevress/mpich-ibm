@@ -9,6 +9,40 @@
 
 #include "mpidimpl.h"
 
+/* MPIDO-Like function pointers for major collectives */
+typedef int (* bcast_fptr)     (void *, int, int, MPID_Comm *);
+
+typedef int (* allreduce_fptr) (void *, void *, int, DCMF_Dt, DCMF_Op,
+                                MPI_Datatype, MPID_Comm *);
+
+typedef int (* alltoall_fptr)  (void *, int, MPI_Datatype,
+                                void *, int, MPI_Datatype,
+                                MPID_Comm *);
+
+typedef int (* allgather_fptr) (void *, int, MPI_Datatype,
+                                void *, int, MPI_Datatype,
+                                MPI_Aint, MPI_Aint,
+                                size_t, size_t, MPID_Comm *);
+
+typedef int (* allgatherv_fptr) (void *, int, MPI_Datatype,
+                                 void *, int *, int, int *, MPI_Datatype,
+                                 MPI_Aint, MPI_Aint,
+                                 size_t, size_t, MPID_Comm *);
+
+typedef int (* reduce_fptr) (void *, void *, int, DCMF_Dt, DCMF_Op,
+                             MPI_Datatype, int, MPID_Comm *);
+
+typedef int (* gather_fptr) (void *, int, MPI_Datatype,
+                             void *, int, MPI_Datatype,
+                             int, MPID_Comm *);
+
+typedef int (* scatter_fptr) (void *, int, MPI_Datatype,
+                              void *, int, MPI_Datatype,
+                              int, MPID_Comm *);
+
+typedef int (* barrier_fptr) (MPID_Comm *);
+
+
 #define NOTTREEOP 1
 
 typedef struct {
@@ -19,6 +53,8 @@ typedef struct {
 } MPIDO_Coll_config;
 
 /* Helpers */
+int DCMF_AllocateAlltoallBuffers(MPID_Comm * comm);
+
 int MPIDI_ConvertMPItoDCMF(MPI_Op op,
                            DCMF_Op *dcmf_op,
                            MPI_Datatype datatype,

@@ -8,182 +8,8 @@
 
 #pragma weak PMPIDO_Scatterv = MPIDO_Scatterv
 
-/* basically, everyone receives recvcount via bcast */
-/* requires a contiguous/continous buffer on root though */
-int MPIDO_Scatterv_bcast(void *sendbuf,
-                         int *sendcounts,
-                         int *displs,
-                         MPI_Datatype sendtype,
-                         void *recvbuf,
-                         int recvcount,
-                         MPI_Datatype recvtype,
-                         int root,
-                         MPID_Comm *comm_ptr,
-                         int sum)
-{
-   int rank = comm_ptr->rank;
-
-   char *tempbuf;
-   int dtsize, rc=0, contig;
-   MPID_Datatype *dt_ptr;
-   MPI_Aint dt_lb;
-
-   MPIDI_Datatype_get_info(1,
-                           recvtype,
-                           contig,
-                           dtsize,
-                           dt_ptr,
-                           dt_lb);
-
-   if(rank!=root)
-   {
-      tempbuf = MPIU_Malloc(dtsize*sum);
-      if(!tempbuf)
-         return MPIR_Err_create_code(MPI_SUCCESS, MPIR_ERR_RECOVERABLE,
-                                     "MPI_Scatterv", __LINE__, MPI_ERR_OTHER,
-                                     "**nomem", 0);
-   }
-   else
-      tempbuf = sendbuf;
-
-   rc = MPIDO_Bcast(tempbuf, sum, sendtype, root, comm_ptr);
-   if(rank == root && recvbuf == MPI_IN_PLACE)
-      return rc;
-
-   memcpy(recvbuf, tempbuf+displs[rank], sendcounts[rank]*dtsize);
-   if(rank!=root)
-      MPIU_Free(tempbuf);
-
-   return rc;
-}
-
-/* this guy requires quite a few buffers. maybe
- * we should somehow "steal" the comm_ptr alltoall ones? */
-int MPIDO_Scatterv_alltoallv(void * sendbuf,
-                             int * sendcounts,
-                             int * displs,
-                             MPI_Datatype sendtype,
-                             void * recvbuf,
-                             int recvcount,
-                             MPI_Datatype recvtype,
-                             int root,
-                             MPID_Comm * comm_ptr)
-{
-   int rank = comm_ptr->rank;
-   int size = comm_ptr->local_size;
-
-   int *sdispls, *scounts;
-   int *rdispls, *rcounts;
-   char *sbuf, *rbuf;
-   int contig, rbytes, sbytes;
-   int rc=0;
-
-   MPID_Datatype *dt_ptr;
-   MPI_Aint dt_lb=0;
-
-   MPIDI_Datatype_get_info(recvcount,
-                           recvtype,
-                           contig,
-                           rbytes,
-                           dt_ptr,
-                           dt_lb);
-
-   if(rank == root)
-      MPIDI_Datatype_get_info(1, sendtype, contig, sbytes, dt_ptr, dt_lb);
-
-   rbuf = MPIU_Malloc(size * rbytes * sizeof(char));
-   if(!rbuf)
-   {
-      return MPIR_Err_create_code(MPI_SUCCESS,
-                                  MPIR_ERR_RECOVERABLE,
-                                  "MPI_Scatterv",
-                                  __LINE__, MPI_ERR_OTHER, "**nomem", 0);
-   }
-//   memset(rbuf, 0, rbytes * size * sizeof(char));
-
-   if(rank == root)
-   {
-      sdispls = displs;
-      scounts = sendcounts;
-      sbuf = sendbuf;
-   }
-   else
-   {
-      sdispls = MPIU_Malloc(size * sizeof(int));
-      scounts = MPIU_Malloc(size * sizeof(int));
-      sbuf = MPIU_Malloc(rbytes * sizeof(char));
-      if(!sdispls || !scounts || !sbuf)
-      {
-         if(sdispls)
-            MPIU_Free(sdispls);
-         if(scounts)
-            MPIU_Free(scounts);
-         return MPIR_Err_create_code(MPI_SUCCESS,
-                                     MPIR_ERR_RECOVERABLE,
-                                     "MPI_Scatterv",
-                                     __LINE__, MPI_ERR_OTHER, "**nomem", 0);
-      }
-      memset(sdispls, 0, size*sizeof(int));
-      memset(scounts, 0, size*sizeof(int));
-//      memset(sbuf, 0, rbytes * sizeof(char));
-   }
-
-   rdispls = MPIU_Malloc(size * sizeof(int));
-   rcounts = MPIU_Malloc(size * sizeof(int));
-   if(!rdispls || !rcounts)
-   {
-      if(rdispls)
-         MPIU_Free(rdispls);
-      return MPIR_Err_create_code(MPI_SUCCESS,
-                                  MPIR_ERR_RECOVERABLE,
-                                  "MPI_Scatterv",
-                                  __LINE__, MPI_ERR_OTHER, "**nomem", 0);
-   }
-
-   memset(rdispls, 0, size*sizeof(unsigned));
-   memset(rcounts, 0, size*sizeof(unsigned));
-
-   rcounts[root] = rbytes;
-
-   rc=MPIDO_Alltoallv(sbuf,
-                      scounts,
-                      sdispls,
-                      sendtype,
-                      rbuf,
-                      rcounts,
-                      rdispls,
-                      MPI_CHAR,
-                      comm_ptr);
-
-   if(rank == root && recvbuf == MPI_IN_PLACE)
-   {
-      MPIU_Free(rbuf);
-      MPIU_Free(rdispls);
-      MPIU_Free(rcounts);
-      return rc;
-   }
-   else
-   {
-//      memcpy(recvbuf, rbuf+(root*rbytes), rbytes);
-      memcpy(recvbuf, rbuf, rbytes);
-      MPIU_Free(rbuf);
-      MPIU_Free(rdispls);
-      MPIU_Free(rcounts);
-      if(rank != root)
-      {
-         MPIU_Free(sbuf);
-         MPIU_Free(sdispls);
-         MPIU_Free(scounts);
-      }
-   }
-
-   return rc;
-}
-
-      
-
 int MPIDO_Scatterv(void *sendbuf,
-                   int *sendcounts, 
+                   int *sendcounts,
                    int *displs,
                    MPI_Datatype sendtype,
                    void *recvbuf,
@@ -192,125 +18,100 @@ int MPIDO_Scatterv(void *sendbuf,
                    int root,
                    MPID_Comm *comm_ptr)
 {
-   int rank = comm_ptr->rank;
-   int size = comm_ptr->local_size;
-   int i;
-   int nbytes;
-   MPID_Datatype *dt_ptr;
-   MPI_Aint true_lb=0; 
-   int contig;
-   int sum = 0;
-   /* optscatterv[0] == optscatterv bcast? 
-    * optscatterv[1] == optscatterv alltoall? 
-    * (having both allows cutoff agreement)
-    * optscatterv[2] == sum of sendcounts */
-   int optscatterv[3]; 
+  DCMF_Embedded_Info_Set * properties = &(comm_ptr->dcmf.properties);
+  int rank = comm_ptr -> rank, np = comm_ptr -> local_size;
+  int i, nbytes, sum, contig;
+  MPID_Datatype *dt_ptr;
+  MPI_Aint true_lb=0;
+  unsigned char alltoall_scatterv = 0, bcast_scatterv = 0;
+  int info[2] = {1, 0}; /* 1: denotes success, 0 to be used in sum */
 
-   optscatterv[0]= MPIDI_CollectiveProtocols.scatterv.usealltoallv &&
-                          comm_ptr->dcmf.alltoalls;
-   optscatterv[1]= MPIDI_CollectiveProtocols.scatterv.usebcast &&
-                        (comm_ptr->dcmf.bcasttree ||
-                         DCMF_Geometry_analyze(&comm_ptr->dcmf.geometry,
-                         &MPIDI_CollectiveProtocols.broadcast.rectangle) ||
-                         DCMF_Geometry_analyze(&comm_ptr->dcmf.geometry,
-                         &MPIDI_CollectiveProtocols.broadcast.binomial));
-   optscatterv[2] = 0;
-   
-   if(comm_ptr->comm_kind != MPID_INTRACOMM || !optscatterv)
-      return MPIR_Scatterv(sendbuf, sendcounts, displs, sendtype,
-                           recvbuf, recvcount, recvtype,
-                           root, comm_ptr);
-
-   /* everyone sum up sendcounts, then we'll check to see if they are
-    * equal across all nodes */
-   for(i=0;i<size;i++)
-   {
-      if(sendcounts[i])
-         sum+=sendcounts[i];
-   }
-   optscatterv[2] = sum;
-
-   if(rank == root)
-   {
+  for (i = 0; i < np; i++)
+    if (sendcounts[i] > 0)
+      info[1] += sendcounts[i];
+  
+  sum = info[1];
+  
+  alltoall_scatterv = DCMF_INFO_ISSET(properties, DCMF_ALLTOALLV_SCATTERV);
+  bcast_scatterv = DCMF_INFO_ISSET(properties, DCMF_BCAST_SCATTERV);
+  
+  if(rank == root)
+    {
       MPIDI_Datatype_get_info(1,
-                              sendtype,
-                              contig,
-                              nbytes,
-                              dt_ptr,
-                              true_lb);
-      if(recvtype == MPI_DATATYPE_NULL || recvcount <=0 || !contig)
-      {
-         optscatterv[0] = 0;
-         optscatterv[1] = 0;
-      }
-   }
-   else
-   {
+			      sendtype,
+			      contig,
+			      nbytes,
+			      dt_ptr,
+			      true_lb);
+      if(recvtype == MPI_DATATYPE_NULL || recvcount <= 0 || !contig)
+	info[0] = 0;
+    }
+  else
+    {
       MPIDI_Datatype_get_info(1,
-                              recvtype,
-                              contig,
-                              nbytes,
-                              dt_ptr,
-                              true_lb);
+			      recvtype,
+			      contig,
+			      nbytes,
+			      dt_ptr,
+			      true_lb);
       if(sendtype == MPI_DATATYPE_NULL || !contig)
-      {
-         optscatterv[0] = 0;
-         optscatterv[1] = 0;
-      }
-   }
+	info[0] = 0;
+    }
 
-   /* Make sure parameters are the same on all the nodes */
-   /* specifically, noncontig on the receive */
-   if(MPIDI_CollectiveProtocols.scatterv.preallreduce)
-   {
-      MPIDO_Allreduce(MPI_IN_PLACE,
-                      optscatterv,
-                      3,
-                      MPI_INT,
-                      MPI_BAND,
-                      comm_ptr);
-   }
-   if(optscatterv[0] || (optscatterv[1] && optscatterv[2]==sum))
-   {
-      if(rank == root)
-      {
-         MPID_Ensure_Aint_fits_in_pointer(MPIR_VOID_PTR_CAST_TO_MPI_AINT sendbuf
-                                          + true_lb);
-         sendbuf = (char *)sendbuf + true_lb;
-      }
-      else
-      {
-         if(recvbuf != MPI_IN_PLACE)
-         {
-            MPID_Ensure_Aint_fits_in_pointer(MPIR_VOID_PTR_CAST_TO_MPI_AINT recvbuf
-                                          + true_lb);
-            recvbuf = (char *)recvbuf + true_lb;
-         }
-      }
-      if(optscatterv[0])
-      {
-         return MPIDO_Scatterv_alltoallv(sendbuf,
-                                         sendcounts,
-                                         displs,
-                                         sendtype,
-                                         recvbuf,
-                                         recvcount,
-                                         recvtype,
-                                         root,
-                                         comm_ptr);
-      }
-      else
-      {
-         return MPIDO_Scatterv_bcast(sendbuf, sendcounts, displs, sendtype,
-                                     recvbuf, recvcount, recvtype, root,
-                                     comm_ptr, optscatterv[2]);
-      }
-   }
-   else
-   {
-      return MPIR_Scatterv(sendbuf, sendcounts, displs, sendtype,
-                           recvbuf, recvcount, recvtype,
-                           root, comm_ptr);
-   }
+  /* Make sure parameters are the same on all the nodes */
+  /* specifically, noncontig on the receive */
+  MPIDO_Allreduce(MPI_IN_PLACE,
+		  info,
+		  2,
+		  MPI_INT,
+		  MPI_BAND,
+		  comm_ptr);
+
+  if(comm_ptr -> comm_kind != MPID_INTRACOMM ||
+     !info[0] ||
+     !alltoall_scatterv ||
+     !bcast_scatterv ||
+     (bcast_scatterv && info[1] != sum))
+    return MPIR_Scatterv(sendbuf, sendcounts, displs, sendtype,
+			 recvbuf, recvcount, recvtype,
+			 root, comm_ptr);
+  
+  
+  if(rank == root)
+    {
+      MPID_Ensure_Aint_fits_in_pointer(MPIR_VOID_PTR_CAST_TO_MPI_AINT
+				       sendbuf + true_lb);
+      sendbuf = (char *) sendbuf + true_lb;
+    }
+  else
+    {
+      if(recvbuf != MPI_IN_PLACE)
+	{
+	  MPID_Ensure_Aint_fits_in_pointer(MPIR_VOID_PTR_CAST_TO_MPI_AINT
+					   recvbuf + true_lb);
+	  recvbuf = (char *) recvbuf + true_lb;
+	}
+    }
+
+  if (alltoall_scatterv)
+    return MPIDO_Scatterv_alltoallv(sendbuf,
+				    sendcounts,
+				    displs,
+				    sendtype,
+				    recvbuf,
+				    recvcount,
+				    recvtype,
+				    root,
+				    comm_ptr);
+  
+  else
+    return MPIDO_Scatterv_bcast(sendbuf,
+				sendcounts,
+				displs,
+				sendtype,
+				recvbuf,
+				recvcount,
+				recvtype,
+				root,
+				comm_ptr);
 }
-      

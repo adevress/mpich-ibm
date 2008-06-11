@@ -168,6 +168,9 @@ typedef struct
       unsigned char usealltoallv;
       unsigned char useasyncbcast;
       unsigned char preallreduce;
+     unsigned char useasyncrectbcast;
+     unsigned char useasyncbinombcast;
+     
    } allgather;
    unsigned char optallgather;
 

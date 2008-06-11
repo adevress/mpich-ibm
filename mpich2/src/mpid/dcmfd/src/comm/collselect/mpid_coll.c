@@ -5,7 +5,6 @@
  */
 #include "mpido_coll.h"
 
-
 #warning reasonable hack for now
 #define MAXGEOMETRIES 65536
 
@@ -349,10 +348,13 @@ void MPIDI_Coll_register(void)
  */
 void MPIDI_Coll_Comm_create (MPID_Comm *comm)
 {
+  int global;
+  DCMF_Embedded_Info_Set * properties;
+  MPID_Comm *comm_world;
+
   MPID_assert (comm!= NULL);
 
-  int global=0;
-  MPID_Comm *comm_world;
+
 
   if (comm->coll_fns) MPIU_Free(comm->coll_fns);
   comm->coll_fns=NULL;   /* !!! Intercomm_merge does not NULL the fcns,
@@ -361,14 +363,12 @@ void MPIDI_Coll_Comm_create (MPID_Comm *comm)
                           * this is the correct behavior of merge
                           */
 
-   /* comm-specific protocol flags */
-   comm->dcmf.allreducetree = 1;
-   comm->dcmf.reducetree = 1;
-   comm->dcmf.allreduceccmitree = 1;
-   comm->dcmf.reduceccmitree = 1;
-   comm->dcmf.bcasttree = 1;
-   comm->dcmf.alltoalls = 1;
-   comm->dcmf.bcastiter = 0;
+  properties = &(comm -> dcmf.properties);
+  
+  /* unset all properties of a comm by default */
+  DCMF_INFO_ZERO(properties);
+  
+  comm -> dcmf.bcast_iter = 0;
 
   /* ****************************************** */
   /* Allocate space for the collective pointers */
@@ -387,135 +387,247 @@ void MPIDI_Coll_Comm_create (MPID_Comm *comm)
    MPID_Comm_get_ptr(MPI_COMM_WORLD, comm_world);
    MPID_assert_debug(comm_world != NULL);
 
-   if(MPIR_ThreadInfo.thread_provided == MPI_THREAD_MULTIPLE)
-   {
+  /* let us assume global context is comm_world */
+  global = 1;
+  
+  if(MPIR_ThreadInfo.thread_provided == MPI_THREAD_MULTIPLE)
+    {
+      DCMF_INFO_SET(properties, DCMF_THREADED);
       if(comm != comm_world)
-      {
-         global = 0;
-         /* alltoall protocols not entirely thread-safe so turn off for this
-          * communicator
-          */
-         comm->dcmf.alltoalls = 0;
-      }
-      /* we are comm_world */
-      else
-         global = 1;
-   }
-   else /* single MPI thread. */
-   {
-      /* and if we are a dupe of comm_world, global context is also safe */
-     if(comm->local_size == comm_world->local_size)
-       global = 1;
-     else
-       global = 0;
-   }
-
-
-  /* ****************************************** */
-  /* These are ALL the pointers in the object   */
-  /* ****************************************** */
-
-   comm->coll_fns->Barrier        = MPIDO_Barrier;
-   comm->coll_fns->Bcast          = MPIDO_Bcast;
-   comm->coll_fns->Reduce         = MPIDO_Reduce;
-   comm->coll_fns->Allreduce      = MPIDO_Allreduce;
-   comm->coll_fns->Alltoall       = MPIDO_Alltoall;
-   comm->coll_fns->Alltoallv      = MPIDO_Alltoallv;
-   comm->coll_fns->Alltoallw       = MPIDO_Alltoallw;
-   comm->coll_fns->Allgather      = MPIDO_Allgather;
-   comm->coll_fns->Allgatherv     = MPIDO_Allgatherv;
-   comm->coll_fns->Gather         = MPIDO_Gather;
-   comm->coll_fns->Gatherv        = MPIDO_Gatherv;
-   comm->coll_fns->Scatter        = MPIDO_Scatter;
-   comm->coll_fns->Scatterv       = MPIDO_Scatterv;
-   comm->coll_fns->Reduce_scatter = MPIDO_Reduce_scatter;
-   comm->coll_fns->Scan           = MPIDO_Scan;
-   comm->coll_fns->Exscan         = MPIDO_Exscan;
-
-
+	global = 0;
+    }
+  else /* single MPI thread. */
+    {
+      /* and if we are not dup of comm_world, global context is not safe */
+      if(comm->local_size != comm_world->local_size)
+	global = 0;
+    }
 
 
   /* ******************************************************* */
   /* Setup Barriers and geometry for this communicator       */
   /* ******************************************************* */
-  DCMF_Geometry_initialize(
-             &comm->dcmf.geometry,
-             comm->context_id,
-  (unsigned*)comm->vcr,
-             comm->local_size,
-             barriers,
-             barriers_num,
-             local_barriers,
-             local_barriers_num,
-             &comm->dcmf.barrier,
-             MPIDI_CollectiveProtocols.numcolors,
-             global);
+  DCMF_Geometry_initialize(&comm->dcmf.geometry,
+			   comm->context_id,
+			   (unsigned*)comm->vcr,
+			   comm->local_size,
+			   barriers,
+			   barriers_num,
+			   local_barriers,
+			   local_barriers_num,
+			   &comm->dcmf.barrier,
+			   MPIDI_CollectiveProtocols.numcolors,
+			   global);
+  
+  mpid_geometrytable[(comm->context_id)%MAXGEOMETRIES] = &comm->dcmf.geometry;
 
-//   fprintf(stderr,
-//       "context_id: %d, context_id mod MAX: %d\n",
-//       comm->context_id, (comm->context_id) % MAXGEOMETRIES);
-   mpid_geometrytable[(comm->context_id)%MAXGEOMETRIES] = &comm->dcmf.geometry;
+  /* ****************************************** */
+  /* These are ALL the pointers in the object   */
+  /* ****************************************** */
+  
+  comm->coll_fns->Barrier        = MPIDO_Barrier;
+  comm->coll_fns->Bcast          = MPIDO_Bcast;
+  comm->coll_fns->Reduce         = MPIDO_Reduce;
+  comm->coll_fns->Allreduce      = MPIDO_Allreduce;
+  comm->coll_fns->Alltoall       = MPIDO_Alltoall;
+  comm->coll_fns->Alltoallv      = MPIDO_Alltoallv;
+  comm->coll_fns->Alltoallw      = MPIDO_Alltoallw;
+  comm->coll_fns->Allgather      = MPIDO_Allgather;
+  comm->coll_fns->Allgatherv     = MPIDO_Allgatherv;
+  comm->coll_fns->Gather         = MPIDO_Gather;
+  comm->coll_fns->Gatherv        = MPIDO_Gatherv;
+  comm->coll_fns->Scatter        = MPIDO_Scatter;
+  comm->coll_fns->Scatterv       = MPIDO_Scatterv;
+  comm->coll_fns->Reduce_scatter = MPIDO_Reduce_scatter;
+  comm->coll_fns->Scan           = MPIDO_Scan;
+  comm->coll_fns->Exscan         = MPIDO_Exscan;
+
+  /* The following sets the properties of a communicator */
+  if (global)
+    DCMF_INFO_SET(properties, DCMF_GLOBAL_CONTEXT);
+  else
+    DCMF_INFO_SET(properties, DCMF_SUBCOMM);
+  
+  
+  if (DCMF_Geometry_analyze(&comm->dcmf.geometry,
+			    &MPIDI_CollectiveProtocols.broadcast.tree))
+    DCMF_INFO_SET(properties, DCMF_TREE);
+  
+  if(DCMF_Geometry_analyze(&comm->dcmf.geometry,
+			   &MPIDI_CollectiveProtocols.broadcast.rectangle))
+    DCMF_INFO_SET(properties, DCMF_RECT);
+  
+  if (DCMF_Geometry_analyze(&comm->dcmf.geometry,
+			    &MPIDI_CollectiveProtocols.alltoallv.torus))
+    DCMF_INFO_SET(properties, DCMF_TORUS);
+  
+  
+  if (DCMF_ISPOF2(comm->local_size))
+    DCMF_INFO_SET(properties, DCMF_POF2);
+  if (DCMF_ISEVEN(comm->local_size))
+    DCMF_INFO_SET(properties, DCMF_EVEN);
+  
+  if (DCMF_INFO_ISSET(properties, DCMF_TORUS))
+    {
+      if (MPIDI_CollectiveProtocols.alltoall.usetorus)
+	DCMF_INFO_SET(properties, DCMF_TORUS_ALLTOALL);
+      if (MPIDI_CollectiveProtocols.alltoallw.usetorus)
+	DCMF_INFO_SET(properties, DCMF_TORUS_ALLTOALLW);
+      if (MPIDI_CollectiveProtocols.alltoallv.usetorus)
+	DCMF_INFO_SET(properties, DCMF_TORUS_ALLTOALLV);
+    }
+
+  if (DCMF_INFO_ISSET(properties, DCMF_THREADED) && !global)
+    {
+      DCMF_INFO_UNSET(properties, DCMF_TORUS_ALLTOALL);
+      DCMF_INFO_UNSET(properties, DCMF_TORUS_ALLTOALLV);
+      DCMF_INFO_UNSET(properties, DCMF_TORUS_ALLTOALLW);
+    }
+  if (DCMF_INFO_ISSET(properties, DCMF_GLOBAL_CONTEXT))
+    {
+      if (MPIDI_CollectiveProtocols.localbarrier.uselockbox)
+	DCMF_INFO_SET(properties, DCMF_LOCKBOX_BARRIER);
+      
+      if (DCMF_INFO_ISSET(properties, DCMF_TREE))
+	{
+	  if (MPIDI_CollectiveProtocols.barrier.usegi)
+	    DCMF_INFO_SET(properties, DCMF_GI);
+	  if (MPIDI_CollectiveProtocols.broadcast.usetree)
+	    DCMF_INFO_SET(properties, DCMF_TREE_BCAST);
+
+	  if (comm -> local_size > 2)
+	    {
+	      if (MPIDI_CollectiveProtocols.allreduce.usetree)
+		DCMF_INFO_SET(properties, DCMF_TREE_ALLREDUCE);
+	      if (MPIDI_CollectiveProtocols.allreduce.useccmitree)
+		DCMF_INFO_SET(properties, DCMF_TREE_CCMI_ALLREDUCE);
+	      if (MPIDI_CollectiveProtocols.allreduce.usepipelinedtree)
+		DCMF_INFO_SET(properties, DCMF_TREE_PIPE_ALLREDUCE);
+	      if (MPIDI_CollectiveProtocols.reduce.usetree)
+		DCMF_INFO_SET(properties, DCMF_TREE_REDUCE);
+	      if (MPIDI_CollectiveProtocols.reduce.useccmitree)
+		DCMF_INFO_SET(properties, DCMF_TREE_CCMI_REDUCE);
+	    }
+	}
+    }
+
+  if (DCMF_INFO_ISSET(properties, DCMF_RECT))
+    {
+      int x_size, y_size, z_size, t_size;
+      uint32_t min_coords[4], max_coords[4];
+      
+      MPIR_Barrier(comm);
+      MPIR_Allreduce(mpid_hw.Coord, min_coords,4, MPI_UNSIGNED, MPI_MIN, comm);
+      MPIR_Allreduce(mpid_hw.Coord, max_coords,4, MPI_UNSIGNED, MPI_MAX, comm);
+      
+      t_size = (unsigned) (max_coords[0] - min_coords[0] + 1);
+      z_size = (unsigned) (max_coords[1] - min_coords[1] + 1);
+      y_size = (unsigned) (max_coords[2] - min_coords[2] + 1);
+      x_size = (unsigned) (max_coords[3] - min_coords[3] + 1);
+
+      if (x_size > 1 && y_size > 1 && z_size > 1)
+	DCMF_INFO_SET(properties, DCMF_RECT3);
+      else if ((x_size > 1 && y_size > 1) ||
+	       (x_size > 1 && z_size > 1) ||
+	       (y_size > 1 && z_size > 1))
+	DCMF_INFO_SET(properties, DCMF_RECT2);
+      else /* number of dims must be at least 1 if it is a rectangle */
+	DCMF_INFO_SET(properties, DCMF_RECT1);
 
 
-   if((MPIDI_CollectiveProtocols.allreduce.usetree ||
-       MPIDI_CollectiveProtocols.allreduce.useccmitree) &&
-      !DCMF_Geometry_analyze(&comm->dcmf.geometry,
-			     &MPIDI_CollectiveProtocols.allreduce.tree))
-   {
-       comm->dcmf.allreducetree = 0;
-       comm->dcmf.allreduceccmitree = 0;
-   }
-   else
-   {
-       comm->dcmf.allreducetree = MPIDI_CollectiveProtocols.allreduce.usetree;
-       comm->dcmf.allreduceccmitree = MPIDI_CollectiveProtocols.allreduce.useccmitree;
-   }
+      if (MPIDI_CollectiveProtocols.broadcast.useasyncrect)
+	DCMF_INFO_SET(properties, DCMF_ASYNC_RECT_BCAST);
 
-   if((MPIDI_CollectiveProtocols.reduce.usetree ||
-       MPIDI_CollectiveProtocols.reduce.useccmitree) &&
-      !DCMF_Geometry_analyze(&comm->dcmf.geometry,
-			     &MPIDI_CollectiveProtocols.reduce.tree))
-   {
-       comm->dcmf.reducetree = 0;
-       comm->dcmf.reduceccmitree = 0;
-   }
-   else
-   {
-       comm->dcmf.reducetree = MPIDI_CollectiveProtocols.reduce.usetree;
-       comm->dcmf.reduceccmitree = MPIDI_CollectiveProtocols.reduce.useccmitree;
-   }
+      if (MPIDI_CollectiveProtocols.broadcast.userect)
+	DCMF_INFO_SET(properties, DCMF_RECT_BCAST);
 
-   if(MPIDI_CollectiveProtocols.allreduce.usepipelinedtree &&
-      !DCMF_Geometry_analyze(&comm->dcmf.geometry,
-			     &MPIDI_CollectiveProtocols.allreduce.pipelinedtree))
-     comm->dcmf.allreducepipelinedtree = 0;
-   else
-     comm->dcmf.allreducepipelinedtree = MPIDI_CollectiveProtocols.allreduce.usepipelinedtree;
+      if (comm->local_size > 2)
+	{
+	  if (MPIDI_CollectiveProtocols.allreduce.userect)
+	    DCMF_INFO_SET(properties, DCMF_RECT_ALLREDUCE);
+	  if (MPIDI_CollectiveProtocols.allreduce.userectring)
+	    DCMF_INFO_SET(properties, DCMF_RECTRING_ALLREDUCE);
+	  if (MPIDI_CollectiveProtocols.reduce.userect)
+	    DCMF_INFO_SET(properties, DCMF_RECT_REDUCE);
+	  if (MPIDI_CollectiveProtocols.reduce.userectring)
+	    DCMF_INFO_SET(properties, DCMF_RECTRING_REDUCE);
+	}
+    }
 
-   if(MPIDI_CollectiveProtocols.broadcast.usetree &&
-      !DCMF_Geometry_analyze(&comm->dcmf.geometry,
-			     &MPIDI_CollectiveProtocols.broadcast.tree))
-     comm->dcmf.bcasttree = 0;
-   else
-     comm->dcmf.bcasttree = MPIDI_CollectiveProtocols.broadcast.usetree;
+  if (MPIDI_CollectiveProtocols.barrier.usebinom)
+    DCMF_INFO_SET(properties, DCMF_BINOM_BARRIER);
+  if (MPIDI_CollectiveProtocols.reduce.usebinom)
+    DCMF_INFO_SET(properties, DCMF_BINOM_REDUCE);
+  if (MPIDI_CollectiveProtocols.allreduce.usebinom)
+    DCMF_INFO_SET(properties, DCMF_BINOM_ALLREDUCE);
+  if (MPIDI_CollectiveProtocols.broadcast.usebinom)
+    DCMF_INFO_SET(properties, DCMF_BINOM_BCAST);
+  if (MPIDI_CollectiveProtocols.broadcast.useasyncbinom)
+    DCMF_INFO_SET(properties, DCMF_ASYNC_BINOM_BCAST);
+  
+  
+  if (MPIDI_CollectiveProtocols.allgather.useallreduce)
+    DCMF_INFO_SET(properties, DCMF_ALLREDUCE_ALLGATHER);
+  if (MPIDI_CollectiveProtocols.allgather.usebcast)
+    DCMF_INFO_SET(properties, DCMF_BCAST_ALLGATHER);
+  if (MPIDI_CollectiveProtocols.allgather.usealltoallv)
+    DCMF_INFO_SET(properties, DCMF_ALLTOALL_ALLGATHER);
+  if (MPIDI_CollectiveProtocols.allgather.useasyncrectbcast)
+    DCMF_INFO_SET(properties, DCMF_ASYNC_RECT_BCAST_ALLGATHER);
+  if (MPIDI_CollectiveProtocols.allgather.useasyncbinombcast)
+    DCMF_INFO_SET(properties, DCMF_ASYNC_BINOM_BCAST_ALLGATHER);
+  
+  if (MPIDI_CollectiveProtocols.allgatherv.useallreduce)
+    DCMF_INFO_SET(properties, DCMF_ALLREDUCE_ALLGATHERV);
+  if (MPIDI_CollectiveProtocols.allgatherv.usebcast)
+    DCMF_INFO_SET(properties, DCMF_BCAST_ALLGATHERV);
+  if (MPIDI_CollectiveProtocols.allgatherv.usealltoallv)
+    DCMF_INFO_SET(properties, DCMF_ALLTOALL_ALLGATHERV);
 
-   comm->dcmf.sndlen = NULL;
-   comm->dcmf.rcvlen = NULL;
-   comm->dcmf.sdispls = NULL;
-   comm->dcmf.rdispls = NULL;
-   comm->dcmf.sndcounters = NULL;
-   comm->dcmf.rcvcounters = NULL;
-   if(MPIDI_CollectiveProtocols.alltoall.premalloc)
-   {
-      comm->dcmf.sndlen = MPIU_Malloc(sizeof(unsigned) * comm->local_size);
-      comm->dcmf.rcvlen = MPIU_Malloc(sizeof(unsigned) * comm->local_size);
-      comm->dcmf.sdispls = MPIU_Malloc(sizeof(unsigned) * comm->local_size);
-      comm->dcmf.rdispls = MPIU_Malloc(sizeof(unsigned) * comm->local_size);
-      comm->dcmf.sndcounters = MPIU_Malloc(sizeof(unsigned) * comm->local_size);
-      comm->dcmf.rcvcounters = MPIU_Malloc(sizeof(unsigned) * comm->local_size);
-   }
+  if (MPIDI_CollectiveProtocols.gather.usereduce &&
+      DCMF_INFO_ISSET(properties, DCMF_TREE_REDUCE))
+    DCMF_INFO_SET(properties, DCMF_REDUCE_GATHER);
+  
+  if (MPIDI_CollectiveProtocols.scatter.usebcast &&
+      DCMF_INFO_ISSET(properties, DCMF_TREE_BCAST))
+    DCMF_INFO_SET(properties, DCMF_BCAST_SCATTER);
+  
+  
+  if (MPIDI_CollectiveProtocols.scatterv.usealltoallv &&
+      DCMF_INFO_ISSET(properties, DCMF_TORUS_ALLTOALLV))
+    DCMF_INFO_SET(properties, DCMF_ALLTOALLV_SCATTERV);
+  
+  if (MPIDI_CollectiveProtocols.scatterv.usebcast &&
+      (DCMF_INFO_ISSET(properties, DCMF_TREE_BCAST) ||
+       DCMF_INFO_ISSET(properties, DCMF_BINOM_BCAST) ||
+       DCMF_INFO_ISSET(properties, DCMF_RECT_BCAST)))
+    DCMF_INFO_SET(properties, DCMF_BCAST_SCATTERV);
+  
+  if (MPIDI_CollectiveProtocols.reduce_scatter.usereducescatter &&
+      (DCMF_INFO_ISSET(properties, DCMF_TREE_REDUCE) ||
+       DCMF_INFO_ISSET(properties, DCMF_TREE_CCMI_REDUCE)) &&
+      DCMF_INFO_ISSET(properties, DCMF_TORUS_ALLTOALL))
+    DCMF_INFO_SET(properties, DCMF_TREE_TORUS_REDUCE_SCATTER);
+    
+  comm -> dcmf.sndlen = NULL;
+  comm -> dcmf.rcvlen = NULL;
+  comm -> dcmf.sdispls = NULL;
+  comm -> dcmf.rdispls = NULL;
+  comm -> dcmf.sndcounters = NULL;
+  comm -> dcmf.rcvcounters = NULL;
 
-    MPIR_Barrier(comm);
+  if (MPIDI_CollectiveProtocols.alltoall.premalloc)
+    {
+      int type_sz = sizeof(unsigned);
+      comm -> dcmf.sndlen = MPIU_Malloc(type_sz * comm->local_size);
+      comm -> dcmf.rcvlen = MPIU_Malloc(type_sz * comm->local_size);
+      comm -> dcmf.sdispls = MPIU_Malloc(type_sz * comm->local_size);
+      comm -> dcmf.rdispls = MPIU_Malloc(type_sz * comm->local_size);
+      comm -> dcmf.sndcounters = MPIU_Malloc(type_sz * comm->local_size);
+      comm -> dcmf.rcvcounters = MPIU_Malloc(type_sz * comm->local_size);
+    }
+
+  MPIR_Barrier(comm);
 }
 
 
