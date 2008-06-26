@@ -234,6 +234,15 @@ extern void DCMF_SET_INFO(DCMF_Embedded_Info_Set * set, ...);
 /* no conditions needed to check */
 #define DCMF_NONE                                                         56
 
+/* can we use async binomial allreduce? */
+#define DCMF_ASYNC_BINOM_ALLREDUCE                                        57
+
+/* can we use async rectangle allreduce? */
+#define DCMF_ASYNC_RECT_ALLREDUCE                                         58
+
+/* can we use async rectangle ring allreduce? */
+#define DCMF_ASYNC_RECTRING_ALLREDUCE                                     59
+
 /* currently, we can have #define go upto 255, use below as a template */
 /* is ? */
 /* #define DCMF_                                                          56 */

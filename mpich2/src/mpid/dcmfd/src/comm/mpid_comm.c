@@ -466,6 +466,10 @@ MPIDI_Env_setup()
    MPIDI_CollectiveProtocols.allreduce.userect = 1;
    MPIDI_CollectiveProtocols.allreduce.userectring = 1; 
    MPIDI_CollectiveProtocols.allreduce.usebinom = 1;
+   MPIDI_CollectiveProtocols.allreduce.useasyncrect = 0; // defaults to off
+   MPIDI_CollectiveProtocols.allreduce.useasyncrectring = 0; // defaults to off
+   MPIDI_CollectiveProtocols.allreduce.useasyncbinom = 0; // defaults to off
+   MPIDI_CollectiveProtocols.allreduce.asynccutoff = 131072;
    MPIDI_CollectiveProtocols.optallreduce = 1;
 
    /* Reduce */
@@ -804,37 +808,60 @@ MPIDI_Env_setup()
    envopts = getenv("DCMF_ALLREDUCE");
    if(envopts != NULL)
    {
-      if(strncasecmp(envopts, "M", 1) == 0) /* MPICH */
+      if(strncasecmp(envopts, "A", 1) == 0) /* Enable Async XXX */
+      {
+           MPIDI_CollectiveProtocols.allreduce.useasyncrect = 1;
+           MPIDI_CollectiveProtocols.allreduce.useasyncbinom = 1;
+           MPIDI_CollectiveProtocols.allreduce.useasyncrectring = 1;
+           /* Increment past "A" and process the remaining flag 
+              e.g. "ARI" is Async Rectangle Ring.                 
+              e.g. "A" enables all async protocols */
+           envopts++;
+      }
+      if(*envopts == '\0') ; /* Must have been just "A" */
+      else if(strncasecmp(envopts, "M", 1) == 0) /* MPICH */
       {
          MPIDI_CollectiveProtocols.allreduce.usetree = 0;
          MPIDI_CollectiveProtocols.allreduce.userect = 0;
          MPIDI_CollectiveProtocols.allreduce.usebinom = 0;
          MPIDI_CollectiveProtocols.allreduce.userectring = 0;
          MPIDI_CollectiveProtocols.optallreduce = 0;
+         MPIDI_CollectiveProtocols.allreduce.useasyncrect = 0;
+         MPIDI_CollectiveProtocols.allreduce.useasyncbinom = 0;
+         MPIDI_CollectiveProtocols.allreduce.useasyncrectring = 0;
       }
       else if(strncasecmp(envopts, "RI", 2) == 0) /* Rectangle Ring*/
       {
          MPIDI_CollectiveProtocols.allreduce.userect = 0;
          MPIDI_CollectiveProtocols.allreduce.usetree = 0;
          MPIDI_CollectiveProtocols.allreduce.usebinom = 0;
+         MPIDI_CollectiveProtocols.allreduce.useasyncrect = 0;
+         MPIDI_CollectiveProtocols.allreduce.useasyncbinom = 0;
       }
       else if(strncasecmp(envopts, "R", 1) == 0) /* Rectangle */
       {
          MPIDI_CollectiveProtocols.allreduce.usetree = 0;
          MPIDI_CollectiveProtocols.allreduce.usebinom = 0;
          MPIDI_CollectiveProtocols.allreduce.userectring = 0;
+         MPIDI_CollectiveProtocols.allreduce.useasyncbinom = 0;
+         MPIDI_CollectiveProtocols.allreduce.useasyncrectring = 0;
       }
       else if(strncasecmp(envopts, "B", 1) == 0) /* Binomial */
       {
          MPIDI_CollectiveProtocols.allreduce.usetree = 0;
          MPIDI_CollectiveProtocols.allreduce.userect = 0;
          MPIDI_CollectiveProtocols.allreduce.userectring = 0;
+         MPIDI_CollectiveProtocols.allreduce.useasyncrect = 0;
+         MPIDI_CollectiveProtocols.allreduce.useasyncrectring = 0;
       }
       else if(strncasecmp(envopts, "T", 1) == 0) /* Tree */
       {
          MPIDI_CollectiveProtocols.allreduce.usebinom = 0;
          MPIDI_CollectiveProtocols.allreduce.userect = 0;
          MPIDI_CollectiveProtocols.allreduce.userectring = 0;
+         MPIDI_CollectiveProtocols.allreduce.useasyncrect = 0;
+         MPIDI_CollectiveProtocols.allreduce.useasyncbinom = 0;
+         MPIDI_CollectiveProtocols.allreduce.useasyncrectring = 0;
       }
       else if(strncasecmp(envopts, "C", 1) == 0) /* CCMI Tree */
       {
@@ -843,6 +870,9 @@ MPIDI_Env_setup()
          MPIDI_CollectiveProtocols.allreduce.usebinom = 0;
          MPIDI_CollectiveProtocols.allreduce.userect = 0;
          MPIDI_CollectiveProtocols.allreduce.userectring = 0;
+         MPIDI_CollectiveProtocols.allreduce.useasyncrect = 0;
+         MPIDI_CollectiveProtocols.allreduce.useasyncbinom = 0;
+         MPIDI_CollectiveProtocols.allreduce.useasyncrectring = 0;
       }
       else if(strncasecmp(envopts, "P", 1) == 0) /* CCMI Pipelined Tree */
       {
@@ -851,6 +881,9 @@ MPIDI_Env_setup()
          MPIDI_CollectiveProtocols.allreduce.usebinom = 0;
          MPIDI_CollectiveProtocols.allreduce.userect = 0;
          MPIDI_CollectiveProtocols.allreduce.userectring = 0;
+         MPIDI_CollectiveProtocols.allreduce.useasyncrect = 0;
+         MPIDI_CollectiveProtocols.allreduce.useasyncbinom = 0;
+         MPIDI_CollectiveProtocols.allreduce.useasyncrectring = 0;
       }
       else
          fprintf(stderr,"Invalid DCMF_ALLREDUCE option\n");

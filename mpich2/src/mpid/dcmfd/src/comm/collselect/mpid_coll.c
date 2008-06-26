@@ -300,6 +300,24 @@ void MPIDI_Coll_register(void)
                       &allreduce_config) != DCMF_SUCCESS)
          MPIDI_CollectiveProtocols.allreduce.usebinom = 0;
 
+   if(MPIDI_CollectiveProtocols.allreduce.useasyncrect && 
+      (ALLREDUCE_REGISTER(DCMF_TORUS_ASYNC_RECTANGLE_ALLREDUCE_PROTOCOL,
+                      &MPIDI_CollectiveProtocols.allreduce.asyncrectangle,
+                      &allreduce_config) != DCMF_SUCCESS))
+      MPIDI_CollectiveProtocols.allreduce.useasyncrect = 0;
+
+   if(MPIDI_CollectiveProtocols.allreduce.useasyncrectring &&
+      (ALLREDUCE_REGISTER(DCMF_TORUS_ASYNC_RECTANGLE_RING_ALLREDUCE_PROTOCOL,
+                      &MPIDI_CollectiveProtocols.allreduce.asyncrectanglering,
+                      &allreduce_config) != DCMF_SUCCESS))
+      MPIDI_CollectiveProtocols.allreduce.useasyncrectring = 0;
+
+   if(MPIDI_CollectiveProtocols.allreduce.useasyncbinom &&
+      (ALLREDUCE_REGISTER(DCMF_TORUS_ASYNC_BINOMIAL_ALLREDUCE_PROTOCOL,
+                      &MPIDI_CollectiveProtocols.allreduce.asyncbinomial,
+                      &allreduce_config) != DCMF_SUCCESS))
+         MPIDI_CollectiveProtocols.allreduce.useasyncbinom = 0;
+
    /* Register alltoallv protocols */
    if(ALLTOALLV_REGISTER(DCMF_TORUS_ALLTOALLV_PROTOCOL,
                       &MPIDI_CollectiveProtocols.alltoallv.torus,
@@ -547,6 +565,10 @@ void MPIDI_Coll_Comm_create (MPID_Comm *comm)
 	    DCMF_INFO_SET(properties, DCMF_RECT_ALLREDUCE);
 	  if (MPIDI_CollectiveProtocols.allreduce.userectring)
 	    DCMF_INFO_SET(properties, DCMF_RECTRING_ALLREDUCE);
+	  if (MPIDI_CollectiveProtocols.allreduce.useasyncrect)
+	    DCMF_INFO_SET(properties, DCMF_ASYNC_RECT_ALLREDUCE);
+	  if (MPIDI_CollectiveProtocols.allreduce.useasyncrectring)
+	    DCMF_INFO_SET(properties, DCMF_ASYNC_RECTRING_ALLREDUCE);
 	  if (MPIDI_CollectiveProtocols.reduce.userect)
 	    DCMF_INFO_SET(properties, DCMF_RECT_REDUCE);
 	  if (MPIDI_CollectiveProtocols.reduce.userectring)
@@ -560,6 +582,8 @@ void MPIDI_Coll_Comm_create (MPID_Comm *comm)
     DCMF_INFO_SET(properties, DCMF_BINOM_REDUCE);
   if (MPIDI_CollectiveProtocols.allreduce.usebinom)
     DCMF_INFO_SET(properties, DCMF_BINOM_ALLREDUCE);
+  if (MPIDI_CollectiveProtocols.allreduce.useasyncbinom)
+    DCMF_INFO_SET(properties, DCMF_ASYNC_BINOM_ALLREDUCE);
   if (MPIDI_CollectiveProtocols.broadcast.usebinom)
     DCMF_INFO_SET(properties, DCMF_BINOM_BCAST);
   if (MPIDI_CollectiveProtocols.broadcast.useasyncbinom)

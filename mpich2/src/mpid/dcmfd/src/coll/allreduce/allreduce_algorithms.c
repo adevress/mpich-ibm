@@ -242,3 +242,95 @@ int MPIDO_Allreduce_rectring(void * sendbuf,
    MPID_PROGRESS_WAIT_WHILE(active);
    return rc;
 }
+
+
+int MPIDO_Allreduce_async_binom(void * sendbuf,
+			  void * recvbuf,
+			  int count,
+			  DCMF_Dt dcmf_dt,
+			  DCMF_Op dcmf_op,
+			  MPI_Datatype mpi_type,
+			  MPID_Comm * comm)
+{
+  int rc;
+  DCMF_CollectiveRequest_t request;
+  volatile unsigned active = 1;
+  DCMF_Callback_t callback = { allreduce_cb_done, (void *) &active };
+  DCMF_Geometry_t * geometry = &(comm->dcmf.geometry);
+  
+  
+   rc = DCMF_Allreduce(&MPIDI_CollectiveProtocols.allreduce.asyncbinomial,
+                       &request,
+                       callback,
+                       DCMF_MATCH_CONSISTENCY,
+                       geometry,
+                       sendbuf,
+                       recvbuf,
+                       count,
+                       dcmf_dt,
+                       dcmf_op);
+
+   
+   MPID_PROGRESS_WAIT_WHILE(active);
+   return rc;
+}
+
+int MPIDO_Allreduce_async_rect(void * sendbuf,
+			 void * recvbuf,
+			 int count,
+			 DCMF_Dt dcmf_dt,
+			 DCMF_Op dcmf_op,
+			 MPI_Datatype mpi_type,
+			 MPID_Comm * comm)
+{
+  int rc;
+  DCMF_CollectiveRequest_t request;
+  volatile unsigned active = 1;
+  DCMF_Callback_t callback = { allreduce_cb_done, (void *) &active };
+  DCMF_Geometry_t * geometry = &(comm->dcmf.geometry);
+  
+  rc = DCMF_Allreduce(&MPIDI_CollectiveProtocols.allreduce.asyncrectangle,
+		      &request,
+		      callback,
+		      DCMF_MATCH_CONSISTENCY,
+		      geometry,
+		      sendbuf,
+		      recvbuf,
+		      count,
+		      dcmf_dt,
+		      dcmf_op);
+  
+  MPID_PROGRESS_WAIT_WHILE(active);
+  return rc;
+}
+
+
+
+int MPIDO_Allreduce_async_rectring(void * sendbuf,
+			     void * recvbuf,
+			     int count,
+			     DCMF_Dt dcmf_dt,
+			     DCMF_Op dcmf_op,
+			     MPI_Datatype mpi_type,
+			     MPID_Comm * comm)
+{
+  int rc;
+   DCMF_CollectiveRequest_t request;
+   volatile unsigned active = 1;
+   DCMF_Callback_t callback = { allreduce_cb_done, (void *) &active };
+   DCMF_Geometry_t * geometry = &(comm->dcmf.geometry);
+   
+   rc = DCMF_Allreduce(&MPIDI_CollectiveProtocols.allreduce.asyncrectanglering,
+                       &request,
+                       callback,
+                       DCMF_MATCH_CONSISTENCY,
+                       geometry,
+                       sendbuf,
+                       recvbuf,
+                       count,
+                       dcmf_dt,
+                       dcmf_op);
+
+   MPID_PROGRESS_WAIT_WHILE(active);
+   return rc;
+}

@@ -225,12 +225,19 @@ typedef struct
       unsigned char userect;
       unsigned char userectring;
       unsigned char usebinom;
+      unsigned char useasyncrect;
+      unsigned char useasyncrectring;
+      unsigned char useasyncbinom;
+      unsigned int asynccutoff;
       DCMF_CollectiveProtocol_t tree __attribute__((__aligned__(16)));
       DCMF_CollectiveProtocol_t pipelinedtree;
       DCMF_CollectiveProtocol_t pipelinedtree_dput;
       DCMF_CollectiveProtocol_t rectangle;
       DCMF_CollectiveProtocol_t rectanglering;
       DCMF_CollectiveProtocol_t binomial;
+      DCMF_CollectiveProtocol_t asyncrectangle;
+      DCMF_CollectiveProtocol_t asyncrectanglering;
+      DCMF_CollectiveProtocol_t asyncbinomial;
    } allreduce;
    unsigned char optallreduce;
 

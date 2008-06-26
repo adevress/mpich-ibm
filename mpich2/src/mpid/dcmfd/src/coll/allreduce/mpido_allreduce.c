@@ -75,15 +75,27 @@ MPIDO_Allreduce(void * sendbuf,
   
   else if (op_type_support == DCMF_TORUS_SUPPORT)
     {
+      if (DCMF_INFO_ISSET(properties, DCMF_ASYNC_RECT_ALLREDUCE) &&
+          data_size < MPIDI_CollectiveProtocols.allreduce.asynccutoff)
+	func = MPIDO_Allreduce_async_rect;
+      
       if (DCMF_INFO_ISSET(properties, DCMF_RECT_ALLREDUCE))
 	func = MPIDO_Allreduce_rect;
+      
+      else if (DCMF_INFO_ISSET(properties, DCMF_ASYNC_BINOM_ALLREDUCE) &&
+          data_size < MPIDI_CollectiveProtocols.allreduce.asynccutoff)
+	func = MPIDO_Allreduce_async_binom;
       
       else if (DCMF_INFO_ISSET(properties, DCMF_BINOM_ALLREDUCE))
 	func = MPIDO_Allreduce_binom;
       
+      else if (DCMF_INFO_ISSET(properties, DCMF_ASYNC_RECTRING_ALLREDUCE) &&
+          data_size < MPIDI_CollectiveProtocols.allreduce.asynccutoff)
+	func = MPIDO_Allreduce_async_rectring;
+
       else if (DCMF_INFO_ISSET(properties, DCMF_RECTRING_ALLREDUCE) &&
 	       count > 16384)
-	func = MPIDO_Allreduce_rectring;
+	func = MPIDO_Allreduce_rectring;  
     }
   
   if (func)
