@@ -259,6 +259,14 @@
  *     duplicates of MPI_COMM_WORLD in MPI_THREAD_SINGLE mode.
  *   - CCMI - Use the CCMI collective network protocol.  This is off by default.
  *   - PIPE - Use the pipelined CCMI collective network protocol. This is off by default.
+ *   - ASYNC - Enable the asynchronous versions of BINOM, RING, and RECT 
+ *     protocols (above). These are off by default.
+ *   - ARING - Enable the asynchronous version of the rectangular ring protocol.  
+ *     This is off by default.
+ *   - ARECT - Enable the asynchronous version of the rectangular/binomial protocol.  
+ *     This is off by default.
+ *   - ABINOM - Enable the asynchronous version of the binomial protocol.  
+ *     This is off by default.
  *   - Default varies based on the communicator.  See above.
  *
  * - DCMF_ALLREDUCE_REUSE_STORAGE - This allows the lower
