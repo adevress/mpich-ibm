@@ -16,7 +16,7 @@ MPIDO_Bcast(void * buffer,
 	    int root,
 	    MPID_Comm * comm)
 {
-  DCMF_Embedded_Info_Set * properties;
+  DCMF_Embedded_Info_Set * properties = &(comm -> dcmf.properties);
 
   int data_size, data_contig, rc = MPI_ERR_INTERN;
   char * data_buffer = NULL, * noncontig_buff = NULL;
@@ -24,11 +24,7 @@ MPIDO_Bcast(void * buffer,
   MPID_Datatype * data_ptr;
   MPID_Segment segment;
 
-  /* if communicating 0 elements or comm size == 1, then return right away */
-  if (count == 0 || comm -> local_size == 1)
-    return MPI_SUCCESS;
-
-  if (comm -> comm_kind != MPID_INTRACOMM)
+  if (DCMF_INFO_ISSET(properties, DCMF_USE_MPICH_BCAST))
     return MPIR_Bcast(buffer, count, datatype, root, comm);
 
   MPIDI_Datatype_get_info(count,
@@ -71,13 +67,12 @@ MPIDO_Bcast(void * buffer,
     is async binom bcast is available, use it, otherwise, use sync version,
     otherwise, use MPICH.
    */
-  properties = &(comm -> dcmf.properties);
   
-  if (DCMF_INFO_ISSET(properties, DCMF_TREE_BCAST) && data_size)
+  if (DCMF_INFO_ISSET(properties, DCMF_USE_TREE_BCAST) && data_size)
     rc = MPIDO_Bcast_tree(data_buffer, data_size, root, comm);
   
-  else if (DCMF_INFO_ISSET(properties, DCMF_ASYNC_RECT_BCAST))
-    if (data_size < MPIDI_CollectiveProtocols.broadcast.asynccutoff && 
+  else if (DCMF_INFO_ISSET(properties, DCMF_USE_ARECT_BCAST))
+    if (data_size < MPIDI_CollectiveProtocols.bcast_asynccutoff && 
 	comm -> dcmf.bcast_iter < 32)
       {
 	comm -> dcmf.bcast_iter++;
@@ -89,15 +84,15 @@ MPIDO_Bcast(void * buffer,
 	goto RECT_SYNC;
       }
   
-  else if (DCMF_INFO_ISSET(properties, DCMF_RECT_BCAST))
+  else if (DCMF_INFO_ISSET(properties, DCMF_USE_RECT_BCAST))
     {
     RECT_SYNC:
       rc = MPIDO_Bcast_rect_sync(data_buffer, data_size, root, comm);
     }
   
-  else if (DCMF_INFO_ISSET(properties, DCMF_ASYNC_BINOM_BCAST))
+  else if (DCMF_INFO_ISSET(properties, DCMF_USE_ABINOM_BCAST))
     {
-      if (data_size < MPIDI_CollectiveProtocols.broadcast.asynccutoff &&
+      if (data_size < MPIDI_CollectiveProtocols.bcast_asynccutoff &&
 	  comm -> dcmf.bcast_iter < 32)
 	{
 	  comm -> dcmf.bcast_iter++;
@@ -110,7 +105,7 @@ MPIDO_Bcast(void * buffer,
 	}
     }
   
-  else if (DCMF_INFO_ISSET(properties, DCMF_BINOM_BCAST))
+  else if (DCMF_INFO_ISSET(properties, DCMF_USE_BINOM_BCAST))
     {
     BINO_SYNC:
       rc = MPIDO_Bcast_binom_sync(data_buffer, data_size,root,comm);

@@ -361,10 +361,13 @@ ENV_Bool(char * env, int * dval)
 void
 MPIDI_Env_setup()
 {
+  DCMF_Embedded_Info_Set * properties = &MPIDI_CollectiveProtocols.properties;
   int   dval = 0;
   char *envopts;
-
-
+  
+  /* unset all properties of a mpidi_coll_protocol by default */
+  DCMF_INFO_ZERO(properties);
+  
   /* Set the verbose level */
   dval = 0;
   ENV_Int(getenv("DCMF_VERBOSE"), &dval);
@@ -433,583 +436,598 @@ MPIDI_Env_setup()
          MPIDI_Process.optimized.tree = 1;
       }
    }
-   #warning someone needs to update this description
-   /*
-    * - DCMF_RMA_PENDING - Don't know what this does. 
-    * Default is 1000.
-    */
-   
+#warning someone needs to update this description
+  /*
+   * - DCMF_RMA_PENDING - Don't know what this does. 
+   * Default is 1000.
+   */
+  
   dval = 1000;
   ENV_Int(getenv("DCMF_RMA_PENDING"), &dval);
   MPIDI_Process.rma_pending = dval;
+  
+  
+  /* Initialize selection variables */
+  /* turn these off in MPIDI_Coll_register if registration fails
+   * or based on env vars (below) */
+  
+  if (!MPIDI_Process.optimized.collectives)
+    {
+      if (!MPIDI_Process.optimized.tree)
+	DCMF_INFO_SET(properties, DCMF_USE_MPICH); 
+      else
+	DCMF_INFO_SET(properties, DCMF_USE_NOTREE_OPT_COLLECTIVES); 
+    }
 
-
-   /* Initialize selection variables */
-   /* turn these off in MPIDI_Coll_register if registration fails
-    * or based on env vars (below) */
-   
-   /* Barrier */
-   MPIDI_CollectiveProtocols.barrier.usegi = 1;
-   MPIDI_CollectiveProtocols.barrier.usebinom = 1;
-   MPIDI_CollectiveProtocols.optbarrier = 1;
-   /* Local barriers */
-   MPIDI_CollectiveProtocols.localbarrier.uselockbox = 1;
-   MPIDI_CollectiveProtocols.localbarrier.usebinom = 1;
-
-   /* Broadcast */
-   MPIDI_CollectiveProtocols.broadcast.usetree = MPIDI_Process.optimized.tree;
-   MPIDI_CollectiveProtocols.broadcast.userect = 1;
-   MPIDI_CollectiveProtocols.broadcast.usebinom = 1;
-   MPIDI_CollectiveProtocols.broadcast.useasyncbinom = 1;
-   MPIDI_CollectiveProtocols.broadcast.useasyncrect = 1;
-   MPIDI_CollectiveProtocols.broadcast.asynccutoff = 131072;
-   MPIDI_CollectiveProtocols.optbroadcast = 1;
-   MPIDI_CollectiveProtocols.numcolors = 0;
-
-   /* Allreduce */
-   MPIDI_CollectiveProtocols.allreduce.reusestorage = 1;
-   MPIDI_CollectiveProtocols.allreduce.usetree = MPIDI_Process.optimized.tree;
-   MPIDI_CollectiveProtocols.allreduce.usepipelinedtree = 0; // defaults to off
-   MPIDI_CollectiveProtocols.allreduce.useccmitree = 0; // defaults to off
-   MPIDI_CollectiveProtocols.allreduce.userect = 1;
-   MPIDI_CollectiveProtocols.allreduce.userectring = 1; 
-   MPIDI_CollectiveProtocols.allreduce.usebinom = 1;
-   MPIDI_CollectiveProtocols.allreduce.useasyncrect = 0; // defaults to off
-   MPIDI_CollectiveProtocols.allreduce.useasyncrectring = 0; // defaults to off
-   MPIDI_CollectiveProtocols.allreduce.useasyncbinom = 0; // defaults to off
-   MPIDI_CollectiveProtocols.allreduce.asynccutoff = 131072;
-   MPIDI_CollectiveProtocols.optallreduce = 1;
-
-   /* Reduce */
-   MPIDI_CollectiveProtocols.reduce.reusestorage = 1;
-   MPIDI_CollectiveProtocols.reduce.usetree = MPIDI_Process.optimized.tree;
-   MPIDI_CollectiveProtocols.reduce.useccmitree = 0; // defaults to off
-   MPIDI_CollectiveProtocols.reduce.userect = 1;
-   MPIDI_CollectiveProtocols.reduce.userectring = 1; 
-   MPIDI_CollectiveProtocols.reduce.usebinom = 1;
-   MPIDI_CollectiveProtocols.optreduce = 1;
-
-   /* Allgather */
-   MPIDI_CollectiveProtocols.optallgather            = 1;
-   MPIDI_CollectiveProtocols.allgather.useallreduce  = 1;
-   MPIDI_CollectiveProtocols.allgather.usebcast      = 1;
-   MPIDI_CollectiveProtocols.allgather.useasyncbcast = 1;
-   MPIDI_CollectiveProtocols.allgather.usealltoallv  = 1;
-   MPIDI_CollectiveProtocols.allgather.preallreduce = 1;
-
-   /* Allgatherv */
-   MPIDI_CollectiveProtocols.optallgatherv           = 1;
-   MPIDI_CollectiveProtocols.allgatherv.useallreduce = 1;
-   MPIDI_CollectiveProtocols.allgatherv.usebcast     = 1;
-   MPIDI_CollectiveProtocols.allgatherv.useasyncbcast= 1;
-   MPIDI_CollectiveProtocols.allgatherv.usealltoallv = 1;
-   MPIDI_CollectiveProtocols.allgatherv.preallreduce = 1;
-
-   /* Scatterv */
-   MPIDI_CollectiveProtocols.scatterv.preallreduce = 1;
-   MPIDI_CollectiveProtocols.optscatterv             = 1;
-   MPIDI_CollectiveProtocols.scatterv.usealltoallv   = 1;
-   MPIDI_CollectiveProtocols.scatterv.usebcast   = 0; // off by default 
-
-   /* Scatter */
-   MPIDI_CollectiveProtocols.optscatter              = 1;
-   MPIDI_CollectiveProtocols.scatter.usebcast        = 1;
-
-   /* Gather */
-   MPIDI_CollectiveProtocols.gather.usereduce        = 1;
-   MPIDI_CollectiveProtocols.optgather               = 1;
-
-   /* Reduce_scatter */
-   MPIDI_CollectiveProtocols.optreducescatter        = 1;
-   MPIDI_CollectiveProtocols.reduce_scatter.usereducescatter = 1;
-
-   /* Alltoall/Alltoallv/Alltoallw */
-   MPIDI_CollectiveProtocols.alltoallv.usetorus = 1;
-   MPIDI_CollectiveProtocols.alltoallw.usetorus = 1;
-   MPIDI_CollectiveProtocols.alltoall.usetorus = 1;
-   MPIDI_CollectiveProtocols.alltoall.premalloc = 1;
-
+  /* default setting of flags for the mpidi_coll_protocol object */
+  DCMF_MSET_INFO(properties, 
+		 DCMF_USE_GI_BARRIER,
+		 DCMF_USE_BINOM_BARRIER,
+		 DCMF_USE_OPT_BARRIER,
+		 DCMF_USE_LOCKBOX_LBARRIER,
+		 DCMF_USE_BINOM_LBARRIER,
+		 DCMF_USE_RECT_BCAST,
+		 DCMF_USE_ARECT_BCAST,
+		 DCMF_USE_BINOM_BCAST,
+		 DCMF_USE_ABINOM_BCAST,
+		 DCMF_USE_OPT_BCAST,
+		 DCMF_USE_STORAGE_ALLREDUCE,
+		 DCMF_USE_RECT_ALLREDUCE,
+		 DCMF_USE_RECTRING_ALLREDUCE,
+		 DCMF_USE_BINOM_ALLREDUCE,
+		 DCMF_USE_OPT_ALLREDUCE,
+		 DCMF_USE_STORAGE_REDUCE,
+		 DCMF_USE_RECT_REDUCE,
+		 DCMF_USE_RECTRING_REDUCE,
+		 DCMF_USE_BINOM_REDUCE,
+		 DCMF_USE_OPT_REDUCE,
+		 DCMF_USE_ALLREDUCE_ALLGATHER,
+		 DCMF_USE_BCAST_ALLGATHER,
+		 DCMF_USE_ABCAST_ALLGATHER,
+		 DCMF_USE_ALLTOALL_ALLGATHER,
+		 DCMF_USE_PREALLREDUCE_ALLGATHER,
+		 DCMF_USE_OPT_ALLGATHER,
+		 DCMF_USE_ALLREDUCE_ALLGATHERV,
+		 DCMF_USE_BCAST_ALLGATHERV,
+		 DCMF_USE_ABCAST_ALLGATHERV,
+		 DCMF_USE_ALLTOALL_ALLGATHERV,
+		 DCMF_USE_PREALLREDUCE_ALLGATHERV,
+		 DCMF_USE_OPT_ALLGATHERV,
+		 DCMF_USE_ALLTOALL_SCATTERV,
+		 DCMF_USE_PREALLREDUCE_SCATTERV,
+		 DCMF_USE_OPT_SCATTERV,
+		 DCMF_USE_BCAST_SCATTER,
+		 DCMF_USE_OPT_SCATTER,
+		 DCMF_USE_REDUCE_GATHER,
+		 DCMF_USE_OPT_GATHER,
+		 DCMF_USE_REDUCESCATTER,
+		 DCMF_USE_OPT_REDUCESCATTER,
+		 DCMF_USE_TORUS_ALLTOALL,
+		 DCMF_USE_TORUS_ALLTOALLV,
+		 DCMF_USE_TORUS_ALLTOALLW,
+		 DCMF_USE_PREMALLOC_ALLTOALL,
+		 DCMF_END_ARGS);
+  
+  if (MPIDI_Process.optimized.tree)
+    DCMF_MSET_INFO(properties, 
+		   DCMF_USE_TREE_BCAST, 
+		   DCMF_USE_TREE_ALLREDUCE,
+		   DCMF_USE_TREE_REDUCE, 
+		   DCMF_END_ARGS);
+  
+  MPIDI_CollectiveProtocols.bcast_asynccutoff = 131072;
+  MPIDI_CollectiveProtocols.allreduce_asynccutoff = 131072;
+  MPIDI_CollectiveProtocols.numcolors = 0;
 
   dval = 131072;
   ENV_Int(getenv("DCMF_ASYNCCUTOFF"), &dval);
-  MPIDI_CollectiveProtocols.broadcast.asynccutoff = dval;
+  MPIDI_CollectiveProtocols.bcast_asynccutoff = dval;
+  
+  envopts = getenv("DCMF_SCATTER");
+  if(envopts != NULL)
+    {
+      if(strncasecmp(envopts, "M", 1) == 0) /* mpich */
+	{
+	  DCMF_INFO_SET(properties, DCMF_USE_MPICH_SCATTER);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_BCAST_SCATTER);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_OPT_SCATTER);
+	}
+    }
 
-   envopts = getenv("DCMF_SCATTER");
-   if(envopts != NULL)
-   {
+  envopts = getenv("DCMF_SCATTERV");
+  if(envopts != NULL)
+    {
       if(strncasecmp(envopts, "M", 1) == 0) /* mpich */
-      {
-         MPIDI_CollectiveProtocols.scatter.usebcast = 0;
-         MPIDI_CollectiveProtocols.optscatter = 0;
-      }
-   }
-   envopts = getenv("DCMF_SCATTERV");
-   if(envopts != NULL)
-   {
-      if(strncasecmp(envopts, "M", 1) == 0) /* mpich */
-      {
-         MPIDI_CollectiveProtocols.scatterv.usealltoallv = 0;
-         MPIDI_CollectiveProtocols.optscatterv = 0;
-         MPIDI_CollectiveProtocols.scatterv.usebcast = 0;
-      }
+	{
+	  DCMF_INFO_SET(properties, DCMF_USE_MPICH_SCATTERV);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_ALLTOALL_SCATTERV);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_BCAST_SCATTERV);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_OPT_SCATTERV);
+	}
       else if(strncasecmp(envopts, "A", 1) == 0) /* alltoall */
-      {
-         MPIDI_CollectiveProtocols.scatterv.usealltoallv = 1;
-         MPIDI_CollectiveProtocols.scatterv.usebcast = 0;
-      }
+	{
+	  DCMF_INFO_UNSET(properties, DCMF_USE_BCAST_SCATTERV);
+	  DCMF_INFO_SET(properties, DCMF_USE_ALLTOALL_SCATTERV);
+	}
       else if(strncasecmp(envopts, "B", 1) == 0) /* bcast */
-      {
-         MPIDI_CollectiveProtocols.scatterv.usealltoallv = 0;
-         MPIDI_CollectiveProtocols.scatterv.usebcast = 1;
-      }
-   }
-   envopts = getenv("DCMF_GATHER");
-   if(envopts != NULL)
-   {
+	{
+	  DCMF_INFO_SET(properties, DCMF_USE_BCAST_SCATTERV);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_ALLTOALL_SCATTERV);
+	}
+    }
+
+  envopts = getenv("DCMF_GATHER");
+  if(envopts != NULL)
+    {
       if(strncasecmp(envopts, "M", 1) == 0)
-      {
-         MPIDI_CollectiveProtocols.gather.usereduce = 0;
-         MPIDI_CollectiveProtocols.optgather =0;
-      }
-   }
-
-   envopts = getenv("DCMF_REDUCESCATTER");
-   if(envopts != NULL)
-   {
+	{
+	  DCMF_INFO_SET(properties, DCMF_USE_MPICH_GATHER);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_REDUCE_GATHER);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_OPT_GATHER);
+	}
+    }
+  
+  envopts = getenv("DCMF_REDUCESCATTER");
+  if(envopts != NULL)
+    {
       if(strncasecmp(envopts, "M", 1) == 0) /* mpich */
-      {
-         MPIDI_CollectiveProtocols.reduce_scatter.usereducescatter = 0;
-         MPIDI_CollectiveProtocols.optreducescatter = 0;
-      }
-   }
-
- 
-   envopts = getenv("DCMF_BCAST");
-   if(envopts != NULL)
-   {
+	{
+	  DCMF_INFO_SET(properties, DCMF_USE_MPICH_REDUCESCATTER);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_REDUCESCATTER);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_OPT_REDUCESCATTER);
+	}
+    }
+  
+  
+  envopts = getenv("DCMF_BCAST");
+  if(envopts != NULL)
+    {
       if(strncasecmp(envopts, "M", 1) == 0) /* MPICH */
-      {
-         MPIDI_CollectiveProtocols.broadcast.usetree = 0;
-         MPIDI_CollectiveProtocols.broadcast.userect = 0;
-         MPIDI_CollectiveProtocols.broadcast.usebinom = 0;
-         MPIDI_CollectiveProtocols.broadcast.useasyncbinom = 0;
-         MPIDI_CollectiveProtocols.broadcast.useasyncrect = 0;
-         MPIDI_CollectiveProtocols.optbroadcast = 0;
-      }
+	{
+	  DCMF_INFO_SET(properties, DCMF_USE_MPICH_BCAST);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_TREE_BCAST);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_RECT_BCAST);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_ARECT_BCAST);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_BCAST);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_ABINOM_BCAST);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_OPT_BCAST);
+	}
       else if(strncasecmp(envopts, "AR", 2) == 0) /* Both rectangles */
-      {
-         MPIDI_CollectiveProtocols.broadcast.usetree = 0;
-         MPIDI_CollectiveProtocols.broadcast.usebinom = 0;
-         MPIDI_CollectiveProtocols.broadcast.useasyncbinom = 0;
-      }
+	{
+	  DCMF_INFO_UNSET(properties, DCMF_USE_TREE_BCAST);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_BCAST);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_ABINOM_BCAST);
+	}
       else if(strncasecmp(envopts, "AB", 2) == 0) /* Both binomials */
-      {
-         MPIDI_CollectiveProtocols.broadcast.usetree = 0;
-         MPIDI_CollectiveProtocols.broadcast.userect = 0;
-         MPIDI_CollectiveProtocols.broadcast.useasyncrect = 0;
-      }
+	{
+	  DCMF_INFO_UNSET(properties, DCMF_USE_TREE_BCAST);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_RECT_BCAST);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_ARECT_BCAST);
+	}
       else if(strncasecmp(envopts, "R", 1) == 0) /* Rectangle */
-      {
-         MPIDI_CollectiveProtocols.broadcast.usetree = 0;
-         MPIDI_CollectiveProtocols.broadcast.usebinom = 0;
-         MPIDI_CollectiveProtocols.broadcast.useasyncbinom = 0;
-         MPIDI_CollectiveProtocols.broadcast.useasyncrect = 0;
-      }
+	{
+	  DCMF_INFO_UNSET(properties, DCMF_USE_TREE_BCAST);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_ARECT_BCAST);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_BCAST);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_ABINOM_BCAST);
+	}
       else if(strncasecmp(envopts, "B", 1) == 0) /* Binomial */
-      {
-         MPIDI_CollectiveProtocols.broadcast.usetree = 0;
-         MPIDI_CollectiveProtocols.broadcast.userect = 0;
-         MPIDI_CollectiveProtocols.broadcast.useasyncbinom = 0;
-         MPIDI_CollectiveProtocols.broadcast.useasyncrect = 0;
-      }
+	{
+	  DCMF_INFO_UNSET(properties, DCMF_USE_TREE_BCAST);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_ARECT_BCAST);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_RECT_BCAST);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_ABINOM_BCAST);
+	}
       else if(strncasecmp(envopts, "T", 1) == 0) /* Tree */
-      {
-         MPIDI_CollectiveProtocols.broadcast.userect = 0;
-         MPIDI_CollectiveProtocols.broadcast.usebinom = 0;
-         MPIDI_CollectiveProtocols.broadcast.useasyncbinom = 0;
-         MPIDI_CollectiveProtocols.broadcast.useasyncrect = 0;
-      }
+	{
+	  DCMF_INFO_UNSET(properties, DCMF_USE_RECT_BCAST);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_ARECT_BCAST);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_BCAST);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_ABINOM_BCAST);
+	}
       else
-         fprintf(stderr,"Invalid DCMF_BCAST option - %s. M,AR,AB,R,B,T\n", 
-                  envopts);
-   }
-
-
-
-   envopts = getenv("DCMF_NUMCOLORS");
-   if(envopts != NULL)
-   {
+	fprintf(stderr,"Invalid DCMF_BCAST option - %s. M,AR,AB,R,B,T\n", 
+		envopts);
+    }
+  
+  
+  
+  envopts = getenv("DCMF_NUMCOLORS");
+  if(envopts != NULL)
+    {
       int colors = atoi(envopts);
       if(colors < 0 || colors > 3)
-         fprintf(stderr,"Invalid DCMF_NUMCOLORS option\n");
+	fprintf(stderr,"Invalid DCMF_NUMCOLORS option\n");
       else
-         MPIDI_CollectiveProtocols.numcolors = colors;
-   }
-
-   envopts = getenv("DCMF_SAFEALLGATHER");
-   if(envopts != NULL)
-   {
+	MPIDI_CollectiveProtocols.numcolors = colors;
+    }
+  
+  envopts = getenv("DCMF_SAFEALLGATHER");
+  if(envopts != NULL)
+    {
       if((strncasecmp(envopts, "Y", 1) == 0) || atoi(envopts)==1)
-         MPIDI_CollectiveProtocols.allgather.preallreduce = 0;
-   }
-
-   envopts = getenv("DCMF_SAFEALLGATHERV");
-   if(envopts != NULL)
-   {
+	DCMF_INFO_UNSET(properties, DCMF_USE_PREALLREDUCE_ALLGATHER);
+    }
+  
+  envopts = getenv("DCMF_SAFEALLGATHERV");
+  if(envopts != NULL)
+    {
       if((strncasecmp(envopts, "Y", 1) == 0) || atoi(envopts)==1)
-         MPIDI_CollectiveProtocols.allgatherv.preallreduce = 0;
-   }
-
-   envopts = getenv("DCMF_SAFESCATTERV");
-   if(envopts != NULL)
-   {
+	DCMF_INFO_UNSET(properties, DCMF_USE_PREALLREDUCE_ALLGATHERV);
+    }
+  
+  envopts = getenv("DCMF_SAFESCATTERV");
+  if(envopts != NULL)
+    {
       if((strncasecmp(envopts, "Y", 1) == 0) || atoi(envopts)==1)
-         MPIDI_CollectiveProtocols.scatterv.preallreduce = 0;
-   }
-      
-
-   envopts = getenv("DCMF_ALLTOALL");
-   if(envopts != NULL)
-   {
+	DCMF_INFO_UNSET(properties, DCMF_USE_PREALLREDUCE_SCATTERV);
+    }
+  
+  
+  envopts = getenv("DCMF_ALLTOALL");
+  if(envopts != NULL)
+    {
       if(strncasecmp(envopts, "M", 1) == 0) /* MPICH */
-         MPIDI_CollectiveProtocols.alltoall.usetorus = 0;
+	{
+	  DCMF_INFO_UNSET(properties, DCMF_USE_TORUS_ALLTOALL);
+	  DCMF_INFO_SET(properties, DCMF_USE_MPICH_ALLTOALL);
+	}
       else if(strncasecmp(envopts, "T", 1) == 0) /* Torus */
-      ;
-         /* This is on by default in MPIDI_Coll_register */
-/*         MPIDI_CollectiveProtocols.alltoall.usetorus = 1; */
+	;
+      /* This is on by default in MPIDI_Coll_register */
+      /*         MPIDI_CollectiveProtocols.alltoall.usetorus = 1; */
       else
-         fprintf(stderr,"Invalid DCMF_ALLTOALL option\n");
-   }
-
-   envopts = getenv("DCMF_ALLTOALL_PREMALLOC");
-   if(envopts == NULL)
-      envopts = getenv("DCMF_ALLTOALLV_PREMALLOC");
-   if(envopts == NULL)
-      envopts = getenv("DCMF_ALLTOALLW_PREMALLOC");
-   if(envopts != NULL)
-   {  /* Do not reuse the malloc'd storage */
+	fprintf(stderr,"Invalid DCMF_ALLTOALL option\n");
+    }
+  
+  envopts = getenv("DCMF_ALLTOALL_PREMALLOC");
+  if(envopts == NULL)
+    envopts = getenv("DCMF_ALLTOALLV_PREMALLOC");
+  if(envopts == NULL)
+    envopts = getenv("DCMF_ALLTOALLW_PREMALLOC");
+  if(envopts != NULL)
+    {  /* Do not reuse the malloc'd storage */
       if(strncasecmp(envopts, "N", 1) == 0)
-      {
-         MPIDI_CollectiveProtocols.alltoall.premalloc = 0;
-      }
+	{
+	  DCMF_INFO_UNSET(properties, DCMF_USE_PREMALLOC_ALLTOALL);
+	}
       else if(strncasecmp(envopts, "Y", 1) == 0) /* defaults to Y */
-      {
-         MPIDI_CollectiveProtocols.alltoall.premalloc = 1;
-      }
+	{
+	  DCMF_INFO_SET(properties, DCMF_USE_PREMALLOC_ALLTOALL);
+	}
       else
-         fprintf(stderr,"Invalid DCMF_ALLTOALL(VW)_PREMALLOC option\n");
-   }
-
-
-   envopts = getenv("DCMF_ALLTOALLV");
-   if(envopts != NULL)
-   {
+	fprintf(stderr,"Invalid DCMF_ALLTOALL(VW)_PREMALLOC option\n");
+    }
+  
+  
+  envopts = getenv("DCMF_ALLTOALLV");
+  if(envopts != NULL)
+    {
       if(strncasecmp(envopts, "M", 1) == 0) /* MPICH */
-         MPIDI_CollectiveProtocols.alltoallv.usetorus = 0;
+	{
+	  DCMF_INFO_UNSET(properties, DCMF_USE_TORUS_ALLTOALLV);
+	  DCMF_INFO_SET(properties, DCMF_USE_MPICH_ALLTOALLV);
+	}
       else if(strncasecmp(envopts, "T", 1) == 0) /* Torus */
-         ;
+	;
       /* This is on by default in MPIDI_Coll_register */
-/*         MPIDI_CollectiveProtocols.alltoallv.usetorus = 1;*/
+      /*         MPIDI_CollectiveProtocols.alltoallv.usetorus = 1;*/
       else
-         fprintf(stderr,"Invalid DCMF_ALLTOALLV option\n");
-   }
-
-   envopts = getenv("DCMF_ALLTOALLW");
-   if(envopts != NULL)
-   {
+	fprintf(stderr,"Invalid DCMF_ALLTOALLV option\n");
+    }
+  
+  envopts = getenv("DCMF_ALLTOALLW");
+  if(envopts != NULL)
+    {
       if(strncasecmp(envopts, "M", 1) == 0) /* MPICH */
-         MPIDI_CollectiveProtocols.alltoallw.usetorus = 0;
+	{
+	  DCMF_INFO_UNSET(properties, DCMF_USE_TORUS_ALLTOALLW);
+	  DCMF_INFO_SET(properties, DCMF_USE_MPICH_ALLTOALLW);
+	}
       else if(strncasecmp(envopts, "T", 1) == 0) /* Torus */
-         ;
+	;
       /* This is on by default in MPIDI_Coll_register */
-/*         MPIDI_CollectiveProtocols.alltoallw.usetorus = 1;*/
+      /*         MPIDI_CollectiveProtocols.alltoallw.usetorus = 1;*/
       else
-         fprintf(stderr,"Invalid DCMF_ALLTOALLW option\n");
-   }
-
-   envopts = getenv("DCMF_ALLGATHER");
-   if(envopts != NULL)
-     {
-       if(strncasecmp(envopts, "M", 1) == 0) /* MPICH */
-       {
-         MPIDI_CollectiveProtocols.optallgather = 0;
-         MPIDI_CollectiveProtocols.allgather.useasyncbcast = 0;
-         MPIDI_CollectiveProtocols.allgather.useallreduce  = 0;
-         MPIDI_CollectiveProtocols.allgather.usebcast      = 0;
-         MPIDI_CollectiveProtocols.allgather.usealltoallv  = 0;
-       }
-       else if(strncasecmp(envopts, "ALLR", 4) == 0) /* ALLREDUCE */
-         {
-           MPIDI_CollectiveProtocols.allgather.useallreduce  = 1;
-           MPIDI_CollectiveProtocols.allgather.usebcast      = 0;
-           MPIDI_CollectiveProtocols.allgather.usealltoallv  = 0;
-           MPIDI_CollectiveProtocols.allgather.useasyncbcast = 0;
-         }
-       else if(strncasecmp(envopts, "BCAST", 1) == 0) /* BCAST */
-         {
-           MPIDI_CollectiveProtocols.allgather.useallreduce  = 0;
-           MPIDI_CollectiveProtocols.allgather.usebcast      = 1;
-           MPIDI_CollectiveProtocols.allgather.usealltoallv  = 0;
-           MPIDI_CollectiveProtocols.allgather.useasyncbcast = 0;
-         }
-       else if(strncasecmp(envopts, "ALLT", 4) == 0) /* ALLTOALL */
-         {
-           MPIDI_CollectiveProtocols.allgather.useallreduce  = 0;
-           MPIDI_CollectiveProtocols.allgather.usebcast      = 0;
-           MPIDI_CollectiveProtocols.allgather.usealltoallv  = 1;
-           MPIDI_CollectiveProtocols.allgather.useasyncbcast = 0;
-         }
-       else if(strncasecmp(envopts, "AS", 2) == 0) /*Async bcast */
-       {
-           MPIDI_CollectiveProtocols.allgather.useasyncbcast = 1;
-           MPIDI_CollectiveProtocols.allgather.useallreduce  = 0;
-           MPIDI_CollectiveProtocols.allgather.usebcast      = 0;
-           MPIDI_CollectiveProtocols.allgather.usealltoallv  = 0;
-       }
-       else
-         fprintf(stderr,"Invalid DCMF_ALLGATHER option\n");
-     }
-
-   envopts = getenv("DCMF_ALLGATHERV");
-   if(envopts != NULL)
-     {
-       if(strncasecmp(envopts, "M", 1) == 0) /* MPICH */
-       {
-         MPIDI_CollectiveProtocols.optallgatherv = 0;
-         MPIDI_CollectiveProtocols.allgatherv.useallreduce  = 0;
-         MPIDI_CollectiveProtocols.allgatherv.usebcast      = 0;
-         MPIDI_CollectiveProtocols.allgatherv.usealltoallv  = 0;
-         MPIDI_CollectiveProtocols.allgatherv.useasyncbcast = 0;
-       }
-       else if(strncasecmp(envopts, "ALLR", 4) == 0) /* ALLREDUCE */
-         {
-           MPIDI_CollectiveProtocols.allgatherv.useallreduce  = 1;
-           MPIDI_CollectiveProtocols.allgatherv.usebcast      = 0;
-           MPIDI_CollectiveProtocols.allgatherv.usealltoallv  = 0;
-           MPIDI_CollectiveProtocols.allgatherv.useasyncbcast = 0;
-         }
-       else if(strncasecmp(envopts, "BCAST", 1) == 0) /* BCAST */
-         {
-           MPIDI_CollectiveProtocols.allgatherv.useallreduce  = 0;
-           MPIDI_CollectiveProtocols.allgatherv.usebcast      = 1;
-           MPIDI_CollectiveProtocols.allgatherv.usealltoallv  = 0;
-           MPIDI_CollectiveProtocols.allgatherv.useasyncbcast = 0;
-         }
-       else if(strncasecmp(envopts, "ALLT", 4) == 0) /* ALLTOALL */
-         {
-           MPIDI_CollectiveProtocols.allgatherv.useallreduce  = 0;
-           MPIDI_CollectiveProtocols.allgatherv.usebcast      = 0;
-           MPIDI_CollectiveProtocols.allgatherv.usealltoallv  = 1;
-           MPIDI_CollectiveProtocols.allgatherv.useasyncbcast = 0;
-         }
-       else if(strncasecmp(envopts, "AS", 2) == 0) /*Async bcast */
-       {
-           MPIDI_CollectiveProtocols.allgatherv.useasyncbcast = 1;
-           MPIDI_CollectiveProtocols.allgatherv.useallreduce  = 0;
-           MPIDI_CollectiveProtocols.allgatherv.usebcast      = 0;
-           MPIDI_CollectiveProtocols.allgatherv.usealltoallv  = 0;
-       }
-       else
-         fprintf(stderr,"Invalid DCMF_ALLGATHERV option\n");
-     }
-
-   envopts = getenv("DCMF_ALLREDUCE");
-   if(envopts != NULL)
-   {
-      if(strncasecmp(envopts, "A", 1) == 0) /* Enable Async XXX */
-      {
-           MPIDI_CollectiveProtocols.allreduce.useasyncrect = 1;
-           MPIDI_CollectiveProtocols.allreduce.useasyncbinom = 1;
-           MPIDI_CollectiveProtocols.allreduce.useasyncrectring = 1;
-           /* Increment past "A" and process the remaining flag 
-              e.g. "ARI" is Async Rectangle Ring.                 
-              e.g. "A" enables all async protocols */
-           envopts++;
-      }
+	fprintf(stderr,"Invalid DCMF_ALLTOALLW option\n");
+    }
+  
+  envopts = getenv("DCMF_ALLGATHER");
+  if(envopts != NULL)
+    {
+      if(strncasecmp(envopts, "M", 1) == 0) /* MPICH */
+	{
+	  DCMF_INFO_SET(properties, DCMF_USE_MPICH_ALLGATHER);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_OPT_ALLGATHER);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_ABCAST_ALLGATHER);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_BCAST_ALLGATHER);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_ALLTOALL_ALLGATHER);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_ALLREDUCE_ALLGATHER);
+	}
+      else if(strncasecmp(envopts, "ALLR", 4) == 0) /* ALLREDUCE */
+	{
+	  DCMF_INFO_UNSET(properties, DCMF_USE_ABCAST_ALLGATHER);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_BCAST_ALLGATHER);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_ALLTOALL_ALLGATHER);
+	  DCMF_INFO_SET(properties, DCMF_USE_ALLREDUCE_ALLGATHER);
+	}
+      else if(strncasecmp(envopts, "BCAST", 1) == 0) /* BCAST */
+	{
+	  DCMF_INFO_UNSET(properties, DCMF_USE_ABCAST_ALLGATHER);
+	  DCMF_INFO_SET(properties, DCMF_USE_BCAST_ALLGATHER);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_ALLTOALL_ALLGATHER);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_ALLREDUCE_ALLGATHER);
+	}
+      else if(strncasecmp(envopts, "ALLT", 4) == 0) /* ALLTOALL */
+	{
+	  DCMF_INFO_UNSET(properties, DCMF_USE_ABCAST_ALLGATHER);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_BCAST_ALLGATHER);
+	  DCMF_INFO_SET(properties, DCMF_USE_ALLTOALL_ALLGATHER);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_ALLREDUCE_ALLGATHER);
+	}
+      else if(strncasecmp(envopts, "AS", 2) == 0) /*Async bcast */
+	{
+	  DCMF_INFO_SET(properties, DCMF_USE_ABCAST_ALLGATHER);
+	  DCMF_INFO_SET(properties, DCMF_USE_ARECT_BCAST_ALLGATHER);
+	  DCMF_INFO_SET(properties, DCMF_USE_ABINOM_BCAST_ALLGATHER);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_BCAST_ALLGATHER);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_ALLTOALL_ALLGATHER);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_ALLREDUCE_ALLGATHER);
+	}
+      else
+	fprintf(stderr,"Invalid DCMF_ALLGATHER option\n");
+    }
+  
+  envopts = getenv("DCMF_ALLGATHERV");
+  if(envopts != NULL)
+    {
+      if(strncasecmp(envopts, "M", 1) == 0) /* MPICH */
+	{
+	  DCMF_INFO_SET(properties, DCMF_USE_MPICH_ALLGATHERV);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_OPT_ALLGATHERV);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_ABCAST_ALLGATHERV);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_BCAST_ALLGATHERV);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_ALLTOALL_ALLGATHERV);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_ALLREDUCE_ALLGATHERV);
+	}
+      else if(strncasecmp(envopts, "ALLR", 4) == 0) /* ALLREDUCE */
+	{
+	  DCMF_INFO_UNSET(properties, DCMF_USE_ABCAST_ALLGATHERV);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_BCAST_ALLGATHERV);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_ALLTOALL_ALLGATHERV);
+	  DCMF_INFO_SET(properties, DCMF_USE_ALLREDUCE_ALLGATHERV);
+	}
+      else if(strncasecmp(envopts, "BCAST", 1) == 0) /* BCAST */
+	{
+	  DCMF_INFO_UNSET(properties, DCMF_USE_ABCAST_ALLGATHERV);
+	  DCMF_INFO_SET(properties, DCMF_USE_BCAST_ALLGATHERV);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_ALLTOALL_ALLGATHERV);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_ALLREDUCE_ALLGATHERV);
+	}
+      else if(strncasecmp(envopts, "ALLT", 4) == 0) /* ALLTOALL */
+	{
+	  DCMF_INFO_UNSET(properties, DCMF_USE_ABCAST_ALLGATHERV);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_BCAST_ALLGATHERV);
+	  DCMF_INFO_SET(properties, DCMF_USE_ALLTOALL_ALLGATHERV);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_ALLREDUCE_ALLGATHERV);
+	}
+      else if(strncasecmp(envopts, "AS", 2) == 0) /*Async bcast */
+	{
+	  DCMF_INFO_SET(properties, DCMF_USE_ABCAST_ALLGATHERV);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_BCAST_ALLGATHERV);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_ALLTOALL_ALLGATHERV);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_ALLREDUCE_ALLGATHERV);
+	}
+      else
+	fprintf(stderr,"Invalid DCMF_ALLGATHERV option\n");
+    }
+  
+  envopts = getenv("DCMF_ALLREDUCE");
+  if(envopts != NULL)
+    {
+      if(strncasecmp(envopts, "A", 1) == 0)
+	{
+	  DCMF_INFO_SET(properties, DCMF_USE_ARECT_ALLREDUCE);
+	  DCMF_INFO_SET(properties, DCMF_USE_ABINOM_ALLREDUCE);
+	  DCMF_INFO_SET(properties, DCMF_USE_ARECTRING_ALLREDUCE);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_TREE_ALLREDUCE);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_ALLREDUCE);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_RECTRING_ALLREDUCE);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_RECT_ALLREDUCE);
+	  envopts++;
+	}
       if(*envopts == '\0') ; /* Must have been just "A" */
+
       else if(strncasecmp(envopts, "M", 1) == 0) /* MPICH */
-      {
-         MPIDI_CollectiveProtocols.allreduce.usetree = 0;
-         MPIDI_CollectiveProtocols.allreduce.userect = 0;
-         MPIDI_CollectiveProtocols.allreduce.usebinom = 0;
-         MPIDI_CollectiveProtocols.allreduce.userectring = 0;
-         MPIDI_CollectiveProtocols.optallreduce = 0;
-         MPIDI_CollectiveProtocols.allreduce.useasyncrect = 0;
-         MPIDI_CollectiveProtocols.allreduce.useasyncbinom = 0;
-         MPIDI_CollectiveProtocols.allreduce.useasyncrectring = 0;
-      }
+	{
+	  DCMF_INFO_SET(properties, DCMF_USE_MPICH_ALLREDUCE);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_TREE_ALLREDUCE);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_ALLREDUCE);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_RECTRING_ALLREDUCE);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_RECT_ALLREDUCE);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_ARECT_ALLREDUCE);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_ABINOM_ALLREDUCE);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_ARECTRING_ALLREDUCE);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_OPT_ALLREDUCE);
+	}
       else if(strncasecmp(envopts, "RI", 2) == 0) /* Rectangle Ring*/
-      {
-         MPIDI_CollectiveProtocols.allreduce.userect = 0;
-         MPIDI_CollectiveProtocols.allreduce.usetree = 0;
-         MPIDI_CollectiveProtocols.allreduce.usebinom = 0;
-         MPIDI_CollectiveProtocols.allreduce.useasyncrect = 0;
-         MPIDI_CollectiveProtocols.allreduce.useasyncbinom = 0;
-      }
+	{
+	  DCMF_INFO_UNSET(properties, DCMF_USE_TREE_ALLREDUCE);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_ALLREDUCE);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_RECT_ALLREDUCE);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_ARECT_ALLREDUCE);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_ABINOM_ALLREDUCE);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_ARECTRING_ALLREDUCE);
+	}
       else if(strncasecmp(envopts, "R", 1) == 0) /* Rectangle */
-      {
-         MPIDI_CollectiveProtocols.allreduce.usetree = 0;
-         MPIDI_CollectiveProtocols.allreduce.usebinom = 0;
-         MPIDI_CollectiveProtocols.allreduce.userectring = 0;
-         MPIDI_CollectiveProtocols.allreduce.useasyncbinom = 0;
-         MPIDI_CollectiveProtocols.allreduce.useasyncrectring = 0;
-      }
+	{
+	  DCMF_INFO_UNSET(properties, DCMF_USE_TREE_ALLREDUCE);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_ALLREDUCE);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_RECTRING_ALLREDUCE);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_ARECT_ALLREDUCE);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_ABINOM_ALLREDUCE);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_ARECTRING_ALLREDUCE);
+	}
       else if(strncasecmp(envopts, "B", 1) == 0) /* Binomial */
-      {
-         MPIDI_CollectiveProtocols.allreduce.usetree = 0;
-         MPIDI_CollectiveProtocols.allreduce.userect = 0;
-         MPIDI_CollectiveProtocols.allreduce.userectring = 0;
-         MPIDI_CollectiveProtocols.allreduce.useasyncrect = 0;
-         MPIDI_CollectiveProtocols.allreduce.useasyncrectring = 0;
-      }
+	{
+	  DCMF_INFO_UNSET(properties, DCMF_USE_TREE_ALLREDUCE);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_RECT_ALLREDUCE);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_RECTRING_ALLREDUCE);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_ARECT_ALLREDUCE);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_ABINOM_ALLREDUCE);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_ARECTRING_ALLREDUCE);
+	}
       else if(strncasecmp(envopts, "T", 1) == 0) /* Tree */
-      {
-         MPIDI_CollectiveProtocols.allreduce.usebinom = 0;
-         MPIDI_CollectiveProtocols.allreduce.userect = 0;
-         MPIDI_CollectiveProtocols.allreduce.userectring = 0;
-         MPIDI_CollectiveProtocols.allreduce.useasyncrect = 0;
-         MPIDI_CollectiveProtocols.allreduce.useasyncbinom = 0;
-         MPIDI_CollectiveProtocols.allreduce.useasyncrectring = 0;
-      }
+	{
+	  DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_ALLREDUCE);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_RECT_ALLREDUCE);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_RECTRING_ALLREDUCE);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_ARECT_ALLREDUCE);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_ABINOM_ALLREDUCE);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_ARECTRING_ALLREDUCE);
+	}
       else if(strncasecmp(envopts, "C", 1) == 0) /* CCMI Tree */
-      {
-         MPIDI_CollectiveProtocols.allreduce.useccmitree = 1;// defaults to off
-         MPIDI_CollectiveProtocols.allreduce.usetree = 0;
-         MPIDI_CollectiveProtocols.allreduce.usebinom = 0;
-         MPIDI_CollectiveProtocols.allreduce.userect = 0;
-         MPIDI_CollectiveProtocols.allreduce.userectring = 0;
-         MPIDI_CollectiveProtocols.allreduce.useasyncrect = 0;
-         MPIDI_CollectiveProtocols.allreduce.useasyncbinom = 0;
-         MPIDI_CollectiveProtocols.allreduce.useasyncrectring = 0;
-      }
+	{
+	  DCMF_INFO_SET(properties, DCMF_USE_CCMI_TREE_ALLREDUCE);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_ALLREDUCE);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_RECT_ALLREDUCE);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_RECTRING_ALLREDUCE);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_TREE_ALLREDUCE);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_ARECT_ALLREDUCE);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_ABINOM_ALLREDUCE);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_ARECTRING_ALLREDUCE);
+	}
       else if(strncasecmp(envopts, "P", 1) == 0) /* CCMI Pipelined Tree */
-      {
-         MPIDI_CollectiveProtocols.allreduce.usepipelinedtree = 1;// defaults to off
-         MPIDI_CollectiveProtocols.allreduce.usetree = 0;
-         MPIDI_CollectiveProtocols.allreduce.usebinom = 0;
-         MPIDI_CollectiveProtocols.allreduce.userect = 0;
-         MPIDI_CollectiveProtocols.allreduce.userectring = 0;
-         MPIDI_CollectiveProtocols.allreduce.useasyncrect = 0;
-         MPIDI_CollectiveProtocols.allreduce.useasyncbinom = 0;
-         MPIDI_CollectiveProtocols.allreduce.useasyncrectring = 0;
-      }
+	{
+	  DCMF_INFO_SET(properties, DCMF_USE_PIPELINED_TREE_ALLREDUCE);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_ALLREDUCE);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_RECT_ALLREDUCE);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_RECTRING_ALLREDUCE);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_TREE_ALLREDUCE);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_ARECT_ALLREDUCE);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_ABINOM_ALLREDUCE);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_ARECTRING_ALLREDUCE);
+	}
       else
-         fprintf(stderr,"Invalid DCMF_ALLREDUCE option\n");
-   }
-
-   envopts = getenv("DCMF_ALLREDUCE_REUSE_STORAGE");
-   if(envopts != NULL)
-   {
+	fprintf(stderr,"Invalid DCMF_ALLREDUCE option\n");
+    }
+  
+  envopts = getenv("DCMF_ALLREDUCE_REUSE_STORAGE");
+  if(envopts != NULL)
+    {
       if(strncasecmp(envopts, "N", 1) == 0) /* Do not reuse the malloc'd storage */
-      {
-         MPIDI_CollectiveProtocols.allreduce.reusestorage = 0;
-         fprintf(stderr, "N allreduce.reusestorage %X\n",
-                 MPIDI_CollectiveProtocols.allreduce.reusestorage);
-      }
+	{
+	  DCMF_INFO_UNSET(properties, DCMF_USE_STORAGE_ALLREDUCE);
+	  fprintf(stderr, "N allreduce.reusestorage %X\n", 0);	  
+	}
+      else if (strncasecmp(envopts, "Y", 1) == 0); /* defaults to Y */
       else
-        if(strncasecmp(envopts, "Y", 1) == 0); /* defaults to Y */
-      else
-         fprintf(stderr,"Invalid DCMF_ALLREDUCE_REUSE_STORAGE option\n");
-   }
-
-   envopts = getenv("DCMF_REDUCE");
-   if(envopts != NULL)
-   {
+	fprintf(stderr,"Invalid DCMF_ALLREDUCE_REUSE_STORAGE option\n");
+    }
+  
+  envopts = getenv("DCMF_REDUCE");
+  if(envopts != NULL)
+    {
       if(strncasecmp(envopts, "M", 1) == 0) /* MPICH */
-      {
-         MPIDI_CollectiveProtocols.reduce.usetree = 0;
-         MPIDI_CollectiveProtocols.reduce.userect = 0;
-         MPIDI_CollectiveProtocols.reduce.usebinom = 0;
-         MPIDI_CollectiveProtocols.reduce.userectring = 0;
-         MPIDI_CollectiveProtocols.optreduce = 0;
-      }
+	{
+	  DCMF_INFO_SET(properties, DCMF_USE_MPICH_REDUCE);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_TREE_REDUCE);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_REDUCE);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_RECTRING_REDUCE);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_RECT_REDUCE);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_OPT_REDUCE);
+	}
       else if(strncasecmp(envopts, "RI", 2) == 0) /* Rectangle Ring*/
-      {
-         MPIDI_CollectiveProtocols.reduce.userectring = 1;// defaults to off
-         MPIDI_CollectiveProtocols.reduce.userect = 0;
-         MPIDI_CollectiveProtocols.reduce.usetree = 0;
-         MPIDI_CollectiveProtocols.reduce.usebinom = 0;
-      }
+	{
+	  DCMF_INFO_UNSET(properties, DCMF_USE_TREE_REDUCE);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_REDUCE);
+	  DCMF_INFO_SET(properties, DCMF_USE_RECTRING_REDUCE);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_RECT_REDUCE);
+	}
       else if(strncasecmp(envopts, "R", 1) == 0) /* Rectangle */
-      {
-         MPIDI_CollectiveProtocols.reduce.usetree = 0;
-         MPIDI_CollectiveProtocols.reduce.usebinom = 0;
-         MPIDI_CollectiveProtocols.reduce.userectring = 0;
-      }
+	{
+	  DCMF_INFO_UNSET(properties, DCMF_USE_TREE_REDUCE);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_REDUCE);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_RECTRING_REDUCE);
+	  DCMF_INFO_SET(properties, DCMF_USE_RECT_REDUCE);
+	}
       else if(strncasecmp(envopts, "B", 1) == 0) /* Binomial */
-      {
-         MPIDI_CollectiveProtocols.reduce.usetree = 0;
-         MPIDI_CollectiveProtocols.reduce.userect = 0;
-         MPIDI_CollectiveProtocols.reduce.userectring = 0;
-      }
+	{
+	  DCMF_INFO_UNSET(properties, DCMF_USE_TREE_REDUCE);
+	  DCMF_INFO_SET(properties, DCMF_USE_BINOM_REDUCE);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_RECTRING_REDUCE);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_RECT_REDUCE);
+	}
       else if(strncasecmp(envopts, "T", 1) == 0) /* Tree */
-      {
-         MPIDI_CollectiveProtocols.reduce.usebinom = 0;
-         MPIDI_CollectiveProtocols.reduce.userect = 0;
-         MPIDI_CollectiveProtocols.reduce.userectring = 0;
-      }
+	{
+	  DCMF_INFO_SET(properties, DCMF_USE_TREE_REDUCE);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_REDUCE);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_RECTRING_REDUCE);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_RECT_REDUCE);
+	}
       else if(strncasecmp(envopts, "C", 1) == 0) /* CCMI Tree */
-      {
-         MPIDI_CollectiveProtocols.reduce.useccmitree = 1;// defaults to off
-         MPIDI_CollectiveProtocols.reduce.usetree = 0;
-         MPIDI_CollectiveProtocols.reduce.usebinom = 0;
-         MPIDI_CollectiveProtocols.reduce.userect = 0;
-         MPIDI_CollectiveProtocols.reduce.userectring = 0;
-      }
+	{
+	  DCMF_INFO_SET(properties, DCMF_USE_CCMI_TREE_REDUCE);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_TREE_REDUCE);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_REDUCE);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_RECTRING_REDUCE);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_RECT_REDUCE);
+	}
       else
-         fprintf(stderr,"Invalid DCMF_REDUCE option\n");
-   }
-
-   envopts = getenv("DCMF_REDUCE_REUSE_STORAGE");
-   if(envopts != NULL)
-   {
+	fprintf(stderr,"Invalid DCMF_REDUCE option\n");
+    }
+  
+  envopts = getenv("DCMF_REDUCE_REUSE_STORAGE");
+  if(envopts != NULL)
+    {
       if(strncasecmp(envopts, "N", 1) == 0) /* Do not reuse the malloc'd storage */
-      {
-         MPIDI_CollectiveProtocols.reduce.reusestorage = 0;
-         fprintf(stderr, "N protocol.reusestorage %X\n",
-                 MPIDI_CollectiveProtocols.reduce.reusestorage);
-      }
+	{
+	  DCMF_INFO_UNSET(properties, DCMF_USE_STORAGE_REDUCE);
+	  fprintf(stderr, "N protocol.reusestorage %X\n", 0);
+	}
+      else if(strncasecmp(envopts, "Y", 1) == 0); /* defaults to Y */
       else
-        if(strncasecmp(envopts, "Y", 1) == 0); /* defaults to Y */
-      else
-         fprintf(stderr,"Invalid DCMF_REDUCE_REUSE_STORAGE option\n");
-   }
-
-   envopts = getenv("DCMF_BARRIER");
-   if(envopts != NULL)
-   {
+	fprintf(stderr,"Invalid DCMF_REDUCE_REUSE_STORAGE option\n");
+    }
+  
+  envopts = getenv("DCMF_BARRIER");
+  if(envopts != NULL)
+    {
       if(strncasecmp(envopts, "M", 1) == 0) /* MPICH */
-      {
-         /* still need to register a barrier for DCMF collectives */
-         MPIDI_CollectiveProtocols.barrier.usebinom = 1;
-         /* MPIDI_Coll_register changes this state for us */
-         /* MPIDI_CollectiveProtocols.barrier.usegi = 1; */
-         MPIDI_CollectiveProtocols.optbarrier = 0;
-      }
-      else if(strncasecmp(envopts, "B", 1) == 0) /* Binomial */
-      {
-         MPIDI_CollectiveProtocols.barrier.usegi = 0;
-      }
-      else if(strncasecmp(envopts, "G", 1) == 0) /* GI */
-      {
-         MPIDI_CollectiveProtocols.barrier.usebinom = 0;
-      }
-      else
-         fprintf(stderr,"Invalid DCMF_BARRIER option\n");
-   }
+	{
+	  DCMF_INFO_SET(properties, DCMF_USE_MPICH_BARRIER);
 
-   envopts = getenv("DCMF_LOCALBARRIER");
-   if(envopts != NULL)
-   {
-      if(strncasecmp(envopts, "B", 1) == 0) /* Binomial */
-      {
-         MPIDI_CollectiveProtocols.localbarrier.uselockbox = 0;
-      }
-      else if(strncasecmp(envopts, "L", 1) == 0) /* Lockbox */
-      {
-         MPIDI_CollectiveProtocols.localbarrier.usebinom = 0;
-      }
+	  /* still need to register a barrier for DCMF collectives */
+	  DCMF_INFO_SET(properties, DCMF_USE_BINOM_BARRIER);
+
+	  /* MPIDI_Coll_register changes this state for us */
+	  /* MPIDI_CollectiveProtocols.barrier.usegi = 1; */
+	  DCMF_INFO_UNSET(properties, DCMF_USE_OPT_BARRIER);
+	}
+      else if(strncasecmp(envopts, "B", 1) == 0) /* Binomial */
+	{
+	  DCMF_INFO_UNSET(properties, DCMF_USE_GI_BARRIER);
+	}
+      else if(strncasecmp(envopts, "G", 1) == 0) /* GI */
+	{
+	  DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_BARRIER);
+	}
       else
-         fprintf(stderr,"Invalid DCMF_LOCALBARRIER option\n");
-   }
+	fprintf(stderr,"Invalid DCMF_BARRIER option\n");
+    }
+  
+  envopts = getenv("DCMF_LOCALBARRIER");
+  if(envopts != NULL)
+    {
+      if(strncasecmp(envopts, "B", 1) == 0) /* Binomial */
+	{
+	  DCMF_INFO_UNSET(properties, DCMF_USE_LOCKBOX_LBARRIER);
+	}
+      else if(strncasecmp(envopts, "L", 1) == 0) /* Lockbox */
+	{
+	  DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_LBARRIER);
+	}
+      else
+	fprintf(stderr,"Invalid DCMF_LOCALBARRIER option\n");
+    }
 }

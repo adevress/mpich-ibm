@@ -64,7 +64,7 @@ MPIDO_Reduce_tree(void * sendbuf,
    volatile unsigned active = 1;
    DCMF_Callback_t callback = { reduce_cb_done, (void *) &active };
    DCMF_Geometry_t * geometry = &(comm->dcmf.geometry);
-   rc = DCMF_Reduce(&MPIDI_CollectiveProtocols.reduce.tree,
+   rc = DCMF_Reduce(&MPIDI_CollectiveProtocols.tree_reduce,
                     &request,
                     callback,
                     DCMF_MATCH_CONSISTENCY,
@@ -97,7 +97,7 @@ MPIDO_Reduce_binom(void * sendbuf,
    DCMF_Callback_t callback = { reduce_cb_done, (void *) &active };
    DCMF_Geometry_t * geometry = &(comm->dcmf.geometry);
 
-   rc = DCMF_Reduce(&MPIDI_CollectiveProtocols.reduce.binomial,
+   rc = DCMF_Reduce(&MPIDI_CollectiveProtocols.binomial_reduce,
                     &request,
                     callback,
                     DCMF_MATCH_CONSISTENCY,
@@ -129,7 +129,7 @@ MPIDO_Reduce_rect(void * sendbuf,
    DCMF_Callback_t callback = { reduce_cb_done, (void *) &active };
    DCMF_Geometry_t * geometry = &(comm->dcmf.geometry);
 
-   rc = DCMF_Reduce(&MPIDI_CollectiveProtocols.reduce.rectangle,
+   rc = DCMF_Reduce(&MPIDI_CollectiveProtocols.rectangle_reduce,
                     &request,
                     callback,
                     DCMF_MATCH_CONSISTENCY,
@@ -163,7 +163,7 @@ MPIDO_Reduce_rectring(void * sendbuf,
    DCMF_Callback_t callback = { reduce_cb_done, (void *) &active };
    DCMF_Geometry_t * geometry = &(comm->dcmf.geometry);
 
-   rc = DCMF_Reduce(&MPIDI_CollectiveProtocols.reduce.rectanglering,
+   rc = DCMF_Reduce(&MPIDI_CollectiveProtocols.rectanglering_reduce,
                     &request,
                     callback,
                     DCMF_MATCH_CONSISTENCY,

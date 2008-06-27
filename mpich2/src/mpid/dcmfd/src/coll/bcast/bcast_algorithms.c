@@ -45,7 +45,7 @@ int MPIDO_Bcast_tree(void * buffer,
 			  buffer,
 			  bytes);
   } else {
-    rc = DCMF_Broadcast(&MPIDI_CollectiveProtocols.broadcast.tree,
+    rc = DCMF_Broadcast(&MPIDI_CollectiveProtocols.tree_bcast,
 			&request,
 			callback,
 			DCMF_MATCH_CONSISTENCY,
@@ -71,7 +71,7 @@ int MPIDO_Bcast_binom_sync(void * buffer,
 
    hw_root = comm -> vcr[root];
 
-   rc = DCMF_Broadcast(&MPIDI_CollectiveProtocols.broadcast.binomial,
+   rc = DCMF_Broadcast(&MPIDI_CollectiveProtocols.binomial_bcast,
                        &request,
                        callback,
                        DCMF_MATCH_CONSISTENCY,
@@ -96,7 +96,7 @@ int MPIDO_Bcast_rect_sync(void * buffer,
    DCMF_Callback_t callback = { bcast_cb_done, (void *) &active };
    hw_root = comm -> vcr[root];
 
-   rc = DCMF_Broadcast(&MPIDI_CollectiveProtocols.broadcast.rectangle,
+   rc = DCMF_Broadcast(&MPIDI_CollectiveProtocols.rectangle_bcast,
                        &request,
                        callback,
                        DCMF_MATCH_CONSISTENCY,
@@ -122,7 +122,7 @@ int MPIDO_Bcast_binom_async(void * buffer,
 
   hw_root = comm -> vcr[root];
 
-  rc = DCMF_AsyncBroadcast(&MPIDI_CollectiveProtocols.broadcast.async_binomial,
+  rc = DCMF_AsyncBroadcast(&MPIDI_CollectiveProtocols.async_binomial_bcast,
 			   &request,
 			   callback,
 			   DCMF_MATCH_CONSISTENCY,
@@ -149,7 +149,7 @@ int MPIDO_Bcast_rect_async(void * buffer,
    DCMF_Callback_t callback = { bcast_cb_done, (void *) &active };
 
    hw_root = comm -> vcr[root];
-   rc=DCMF_AsyncBroadcast(&MPIDI_CollectiveProtocols.broadcast.async_rectangle,
+   rc=DCMF_AsyncBroadcast(&MPIDI_CollectiveProtocols.async_rectangle_bcast,
 			  &request,
 			  callback,
 			  DCMF_MATCH_CONSISTENCY,

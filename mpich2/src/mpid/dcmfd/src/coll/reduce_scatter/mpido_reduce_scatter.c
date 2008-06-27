@@ -29,30 +29,19 @@ int MPIDO_Reduce_scatter(void *sendbuf,
   
   char *tempbuf;
   int *displs;
-  int size=comm_ptr->local_size;
-  
-  /* need a fast alltoall, and a fast reduce to make this viable */
-  int optreducescatter = DCMF_INFO_ISSET(properties, 
-					 DCMF_TREE_TORUS_REDUCE_SCATTER); 
+  int size = comm_ptr -> local_size;
 
-  if(comm_ptr -> comm_kind != MPID_INTRACOMM)
-    optreducescatter = 0;
-  
-  /* MPICH has better latency for smaller messages */
-  /* Don't bother if we can't use the tree */
-  if(recvcounts[0] < 256 || !MPIDI_IsTreeOp(op, datatype))
-    optreducescatter = 0;
-  
-  
-  if(!optreducescatter)
+  if(DCMF_INFO_ISSET(properties, DCMF_USE_MPICH_REDUCESCATTER) ||
+     !DCMF_INFO_ISSET(properties, DCMF_USE_REDUCESCATTER) ||
+     recvcounts[0] < 256 || 
+     !MPIDI_IsTreeOp(op, datatype))
     return MPIR_Reduce_scatter(sendbuf, 
 			       recvbuf, 
 			       recvcounts, 
 			       datatype, 
 			       op, 
 			       comm_ptr);
-  
-  
+
   MPIDI_Datatype_get_info(1, 
 			  datatype, 
 			  contig, 
@@ -65,48 +54,49 @@ int MPIDO_Reduce_scatter(void *sendbuf,
   
   tempbuf = MPIU_Malloc(nbytes * sizeof(char) * tcount);
   displs = MPIU_Malloc(size * sizeof(int));
-
+  
   if (!tempbuf || !displs)
     {
       if(tempbuf)
 	MPIU_Free(tempbuf);
       return MPIR_Err_create_code(MPI_SUCCESS, 
-				  MPIR_ERR_RECOVERABLE,
+				      MPIR_ERR_RECOVERABLE,
 				  "MPI_Reduce_scatter",
 				  __LINE__, MPI_ERR_OTHER, "**nomem", 0);
     }
   
-   memset(displs, 0, size*sizeof(int));
-   
-   MPID_Ensure_Aint_fits_in_pointer (MPIR_VOID_PTR_CAST_TO_MPI_AINT sendbuf + 
-                                     dt_lb);
-   sendbuf = (char *)sendbuf + dt_lb;
-   
-   rc = MPIDO_Reduce(sendbuf, 
-                     tempbuf, 
-                     tcount, 
-                     datatype, 
-                     op, 
-                     0, 
-                     comm_ptr);
-   
-   /* rank 0 has the entire buffer, need to split out our individual piece */
-   /* does recvbuf need a dt_lb added? */
-   if (rc == MPI_SUCCESS)
-     {
-       rc = MPIDO_Scatterv(tempbuf, 
-			   recvcounts, 
-			   displs, 
-			   datatype,
-			   recvbuf, 
-			   tcount/size, 
-			   datatype, 
-			   0, 
-			   comm_ptr);
-     }
+  memset(displs, 0, size*sizeof(int));
+  
+  MPID_Ensure_Aint_fits_in_pointer(MPIR_VOID_PTR_CAST_TO_MPI_AINT sendbuf+ 
+				   dt_lb);
+  sendbuf = (char *)sendbuf + dt_lb;
+  
+  rc = MPIDO_Reduce(sendbuf, 
+		    tempbuf, 
+		    tcount, 
+		    datatype, 
+		    op, 
+		    0, 
+		    comm_ptr);
+  
+  /* rank 0 has the entire buffer, need to split out our individual 
+     piece does recvbuf need a dt_lb added? */
+  if (rc == MPI_SUCCESS)
+    {
+      rc = MPIDO_Scatterv(tempbuf, 
+			  recvcounts, 
+			  displs, 
+			  datatype,
+			  recvbuf, 
+			  tcount/size, 
+			  datatype, 
+			  0, 
+			  comm_ptr);
+    }
+  
+  MPIU_Free(tempbuf);
+  MPIU_Free(displs);
 
-   MPIU_Free(tempbuf);
-   MPIU_Free(displs);
-   
-   return rc;
+  return rc;
 }
+  

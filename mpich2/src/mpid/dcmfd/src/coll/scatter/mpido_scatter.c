@@ -65,7 +65,8 @@ int MPIDO_Scatter(void *sendbuf,
 
   MPIDO_Allreduce(MPI_IN_PLACE, &success, 1, MPI_INT, MPI_BAND, comm);
 
-  if (!success || comm->comm_kind != MPID_INTRACOMM)
+  if (!success || DCMF_INFO_ISSET(properties, DCMF_USE_MPICH_SCATTER) ||
+      !DCMF_INFO_ISSET(properties, DCMF_USE_BCAST_SCATTER))
     return MPIR_Scatter(sendbuf, sendcount, sendtype,
 			recvbuf, recvcount, recvtype,
 			root, comm);
@@ -76,17 +77,12 @@ int MPIDO_Scatter(void *sendbuf,
 
   if (recvbuf != MPI_IN_PLACE)
     {
-      MPID_Ensure_Aint_fits_in_pointer (MPIR_VOID_PTR_CAST_TO_MPI_AINT recvbuf +
-					true_lb);
+      MPID_Ensure_Aint_fits_in_pointer(MPIR_VOID_PTR_CAST_TO_MPI_AINT recvbuf +
+				       true_lb);
       recvbuf = (char *) recvbuf + true_lb;
     }
 
-  if (DCMF_INFO_ISSET(properties, DCMF_BCAST_SCATTER))
     return MPIDO_Scatter_bcast(sendbuf, sendcount, sendtype,
 			       recvbuf, recvcount, recvtype,
 			       root, comm);
-  else
-    return MPIR_Scatter(sendbuf, sendcount, sendtype,
-			recvbuf, recvcount, recvtype,
-			root, comm);      
 }

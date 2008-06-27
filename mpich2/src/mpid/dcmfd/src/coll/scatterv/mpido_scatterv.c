@@ -32,8 +32,8 @@ int MPIDO_Scatterv(void *sendbuf,
   
   sum = info[1];
   
-  alltoall_scatterv = DCMF_INFO_ISSET(properties, DCMF_ALLTOALLV_SCATTERV);
-  bcast_scatterv = DCMF_INFO_ISSET(properties, DCMF_BCAST_SCATTERV);
+  alltoall_scatterv = DCMF_INFO_ISSET(properties, DCMF_USE_ALLTOALL_SCATTERV);
+  bcast_scatterv = DCMF_INFO_ISSET(properties, DCMF_USE_BCAST_SCATTERV);
   
   if(rank == root)
     {
@@ -67,7 +67,7 @@ int MPIDO_Scatterv(void *sendbuf,
 		  MPI_BAND,
 		  comm_ptr);
 
-  if(comm_ptr -> comm_kind != MPID_INTRACOMM ||
+  if (DCMF_INFO_ISSET(properties, DCMF_USE_MPICH_SCATTERV) ||
      !info[0] ||
      !alltoall_scatterv ||
      !bcast_scatterv ||

@@ -51,7 +51,10 @@ int MPIDO_Gather(void *sendbuf,
 
   MPIDO_Allreduce(MPI_IN_PLACE, &success, 1, MPI_INT, MPI_BAND, comm);
 
-  if (!success || comm -> comm_kind != MPID_INTRACOMM)
+  if (!success || 
+      sendcount < 2048 ||
+      DCMF_INFO_ISSET(properties, DCMF_USE_MPICH_GATHER) || 
+      !DCMF_INFO_ISSET(properties, DCMF_USE_REDUCE_GATHER))
     return MPIR_Gather(sendbuf, sendcount, sendtype,
 		       recvbuf, recvcount, recvtype,
 		       root, comm);
@@ -65,17 +68,10 @@ int MPIDO_Gather(void *sendbuf,
   
   MPID_Ensure_Aint_fits_in_pointer(MPIR_VOID_PTR_CAST_TO_MPI_AINT recvbuf +
 				   true_lb);
-  recvbuf = (char *) recvbuf + true_lb;
-  
-  if (DCMF_INFO_ISSET(properties, DCMF_REDUCE_GATHER) && sendcount >= 2048)
-    /*((send_bytes * np) % sizeof(int) == 0))*/
-    {
-      return MPIDO_Gather_reduce(sendbuf, sendcount, sendtype,
-				 recvbuf, recvcount, recvtype,
-				 root, comm);
-    }
 
-  return MPIR_Gather(sendbuf, sendcount, sendtype,
-		     recvbuf, recvcount, recvtype,
-		     root, comm);
+  recvbuf = (char *) recvbuf + true_lb;
+
+  return MPIDO_Gather_reduce(sendbuf, sendcount, sendtype,
+			     recvbuf, recvcount, recvtype,
+			     root, comm);    
 }

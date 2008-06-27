@@ -29,13 +29,10 @@ MPIDO_Allreduce(void * sendbuf,
   int rc, op_type_support, data_contig, data_size;  
   unsigned char reset_sendbuff = 0;
 
-  if (count == 0) return MPI_SUCCESS;
-
   /* quick exit conditions */
-  if (comm -> comm_kind != MPID_INTRACOMM || comm->local_size < 3 ||
+  if (DCMF_INFO_ISSET(properties, DCMF_USE_MPICH_ALLREDUCE) ||
       HANDLE_GET_KIND(op) != HANDLE_KIND_BUILTIN)
     return MPIR_Allreduce(sendbuf, recvbuf, count, datatype, op, comm);
-
   
   MPIDI_Datatype_get_info(count, datatype, data_contig, data_size,
 			  data_ptr, data_true_lb);
@@ -61,39 +58,40 @@ MPIDO_Allreduce(void * sendbuf,
   recvbuf = ((char *) recvbuf + data_true_lb);
   
   if (op_type_support == DCMF_TREE_SUPPORT &&
-      DCMF_INFO_ISSET(properties, DCMF_TREE_ALLREDUCE))
+      DCMF_INFO_ISSET(properties, DCMF_USE_TREE_ALLREDUCE))
     {
       if (DCMF_TREE_SMP_SHORTCUT)
 	func = MPIDO_Allreduce_global_tree;
       
-      else if (DCMF_INFO_ISSET(properties, DCMF_TREE_CCMI_ALLREDUCE))
+      else if (DCMF_INFO_ISSET(properties, DCMF_USE_CCMI_TREE_ALLREDUCE))
 	func = MPIDO_Allreduce_tree;
       
-      else if (DCMF_INFO_ISSET(properties, DCMF_TREE_PIPE_ALLREDUCE))
+      else if (DCMF_INFO_ISSET(properties, DCMF_USE_PIPELINED_TREE_ALLREDUCE))
 	func = MPIDO_Allreduce_pipelined_tree;
     }
   
-  else if (op_type_support == DCMF_TORUS_SUPPORT)
+  else if (op_type_support == DCMF_TORUS_SUPPORT ||
+	   op_type_support == DCMF_TREE_SUPPORT)
     {
-      if (DCMF_INFO_ISSET(properties, DCMF_ASYNC_RECT_ALLREDUCE) &&
-          data_size < MPIDI_CollectiveProtocols.allreduce.asynccutoff)
+      if (DCMF_INFO_ISSET(properties, DCMF_USE_ARECT_ALLREDUCE) &&
+	  data_size < MPIDI_CollectiveProtocols.allreduce_asynccutoff)
 	func = MPIDO_Allreduce_async_rect;
       
-      if (DCMF_INFO_ISSET(properties, DCMF_RECT_ALLREDUCE))
+      else if (DCMF_INFO_ISSET(properties, DCMF_USE_RECT_ALLREDUCE))
 	func = MPIDO_Allreduce_rect;
       
-      else if (DCMF_INFO_ISSET(properties, DCMF_ASYNC_BINOM_ALLREDUCE) &&
-          data_size < MPIDI_CollectiveProtocols.allreduce.asynccutoff)
+      else if (DCMF_INFO_ISSET(properties, DCMF_USE_ABINOM_ALLREDUCE) &&
+	       data_size < MPIDI_CollectiveProtocols.allreduce_asynccutoff)
 	func = MPIDO_Allreduce_async_binom;
       
-      else if (DCMF_INFO_ISSET(properties, DCMF_BINOM_ALLREDUCE))
+      else if (DCMF_INFO_ISSET(properties, DCMF_USE_BINOM_ALLREDUCE))
 	func = MPIDO_Allreduce_binom;
       
-      else if (DCMF_INFO_ISSET(properties, DCMF_ASYNC_RECTRING_ALLREDUCE) &&
-          data_size < MPIDI_CollectiveProtocols.allreduce.asynccutoff)
+      else if (DCMF_INFO_ISSET(properties, DCMF_USE_ARECTRING_ALLREDUCE) &&
+	       data_size < MPIDI_CollectiveProtocols.allreduce_asynccutoff)
 	func = MPIDO_Allreduce_async_rectring;
-
-      else if (DCMF_INFO_ISSET(properties, DCMF_RECTRING_ALLREDUCE) &&
+      
+      else if (DCMF_INFO_ISSET(properties, DCMF_USE_RECTRING_ALLREDUCE) &&
 	       count > 16384)
 	func = MPIDO_Allreduce_rectring;  
     }

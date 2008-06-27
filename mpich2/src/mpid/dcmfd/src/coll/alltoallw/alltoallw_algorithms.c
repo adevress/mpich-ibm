@@ -45,7 +45,7 @@ int MPIDO_Alltoallw_torus(void *sendbuf,
    unsigned * sndcounters = comm -> dcmf.sndcounters;
    unsigned * rcvcounters = comm -> dcmf.rcvcounters;
 
-   rc = DCMF_Alltoallv(&MPIDI_CollectiveProtocols.alltoallv.torus,
+   rc = DCMF_Alltoallv(&MPIDI_CollectiveProtocols.torus_alltoallv,
                        &request,
                        callback,
                        DCMF_MATCH_CONSISTENCY,

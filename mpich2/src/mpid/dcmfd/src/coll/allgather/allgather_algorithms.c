@@ -46,7 +46,7 @@ int MPIDO_Allgather_bcast_rect_async(void *sendbuf,
    DCMF_CollectiveRequest_t *requests;
    DCMF_Callback_t callback = {allgather_async_done, (void *)&active};
    DCMF_CollectiveProtocol_t *protocol =
-               &(MPIDI_CollectiveProtocols.broadcast.async_rectangle);
+               &(MPIDI_CollectiveProtocols.async_rectangle_bcast);
 
    void *destbuf;
 
@@ -158,7 +158,7 @@ int MPIDO_Allgather_bcast_binom_async(void *sendbuf,
    DCMF_CollectiveRequest_t *requests;
    DCMF_Callback_t callback = {allgather_async_done, (void *)&active};
    DCMF_CollectiveProtocol_t *protocol =
-               &(MPIDI_CollectiveProtocols.broadcast.async_binomial);
+               &(MPIDI_CollectiveProtocols.async_binomial_bcast);
 
    void *destbuf;
 

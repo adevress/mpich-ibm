@@ -20,7 +20,7 @@ MPIDO_Alltoall(void *sendbuf,
 {
   int i, numprocs = comm->local_size;
   int tsndlen, trcvlen, snd_contig, rcv_contig, rc;
-  DCMF_Embedded_Info_Set * properties;
+  DCMF_Embedded_Info_Set * properties = &(comm -> dcmf.properties);
 
   MPI_Aint sdt_true_lb, rdt_true_lb;
   MPID_Datatype *dt_null = NULL;
@@ -38,13 +38,11 @@ MPIDO_Alltoall(void *sendbuf,
   MPID_Ensure_Aint_fits_in_pointer(MPIR_VOID_PTR_CAST_TO_MPI_AINT recvbuf +
 				   rdt_true_lb);
 
-  properties = &(comm -> dcmf.properties);
-
   if (!snd_contig ||
       !rcv_contig ||
       tsndlen != trcvlen ||
-      numprocs < 2 ||
-      comm -> comm_kind != MPID_INTRACOMM)
+      DCMF_INFO_ISSET(properties, DCMF_USE_MPICH_ALLTOALL)  ||
+      !DCMF_INFO_ISSET(properties, DCMF_USE_TORUS_ALLTOALL))
     return MPIR_Alltoall(sendbuf, sendcount, sendtype,
 			 recvbuf, recvcount, recvtype,
 			 comm);
@@ -67,17 +65,6 @@ MPIDO_Alltoall(void *sendbuf,
       comm->dcmf.rcvlen [i] =     trcvlen;
       comm->dcmf.rdispls[i] = i * trcvlen;
     }
-
-  /*
-    DEFAULT code path or if coming here from within another collective.
-    if the torus alltoall is available, use it, otherwise, MPICH.
-   */
-
-  if (!DCMF_INFO_ISSET(properties, DCMF_TORUS_ALLTOALL))
-    return MPIR_Alltoall(sendbuf, sendcount, sendtype,
-			 recvbuf, recvcount, recvtype,
-			 comm);
-  
   
   /* Create a message layer collective message      */
   /* ---------------------------------------------- */

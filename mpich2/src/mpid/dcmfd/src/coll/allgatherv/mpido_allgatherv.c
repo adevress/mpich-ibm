@@ -34,9 +34,10 @@ MPIDO_Allgatherv(void *sendbuf,
   char use_tree_reduce, use_tree_bcast, use_alltoall;
   char use_binom_async, use_rect_async;
 
-  DCMF_Embedded_Info_Set * properties = &(comm->dcmf.properties);
-  
-  if (comm -> comm_kind != MPID_INTRACOMM)
+  DCMF_Embedded_Info_Set * comm_prop = &(comm->dcmf.properties);
+  DCMF_Embedded_Info_Set * coll_prop = &MPIDI_CollectiveProtocols.properties;
+
+  if (DCMF_INFO_ISSET(comm_prop, DCMF_USE_MPICH_ALLGATHERV))
     return MPIR_Allgatherv(sendbuf, sendcount, sendtype,
 			   recvbuf, recvcounts, displs, recvtype,
 			   comm);
@@ -82,52 +83,37 @@ MPIDO_Allgatherv(void *sendbuf,
   MPID_Ensure_Aint_fits_in_pointer(MPIR_VOID_PTR_CAST_TO_MPI_AINT recvbuf +
 				   recv_true_lb + buffer_sum);
   
-  if (MPIDI_CollectiveProtocols.allgatherv.preallreduce)
+  if (DCMF_INFO_ISSET(coll_prop, DCMF_USE_PREALLREDUCE_ALLGATHERV))
     MPIDO_Allreduce(MPI_IN_PLACE, &config, 4, MPI_INT, MPI_BAND, comm);
 
   config.largecount = (sendcount > 65536);
  
-  if (!DCMF_CHECK_INFO(properties,
-		       DCMF_ALLREDUCE_ALLGATHERV,
-		       DCMF_ALLTOALL_ALLGATHERV,
-		       DCMF_BCAST_ALLGATHERV,
-		       DCMF_END_ARGS))
-    return MPIR_Allgatherv(sendbuf, sendcount, sendtype,
-			   recvbuf, recvcounts, displs, recvtype,
-			   comm);
-      
-
-  use_tree_reduce = DCMF_CHECK_INFO(properties, DCMF_TREE_ALLREDUCE ,
-				    DCMF_ALLREDUCE_ALLGATHERV, DCMF_END_ARGS) &&
-                    config.recv_contig &&
+  use_tree_reduce = DCMF_INFO_ISSET(comm_prop, DCMF_USE_TREE_ALLREDUCE) &&
+                    DCMF_INFO_ISSET(comm_prop, DCMF_USE_ALLREDUCE_ALLGATHERV)&&
+	            config.recv_contig &&
                     config.send_contig &&
-                    config.recv_continuous &&
+ 	            config.recv_continuous &&
                     buffer_sum % sizeof(int) == 0;
 
-  use_tree_bcast = DCMF_CHECK_INFO(properties,
-				   DCMF_TREE_BCAST,
-				   DCMF_BCAST_ALLGATHERV,
-				   DCMF_END_ARGS);
 
-  use_alltoall = DCMF_CHECK_INFO(properties,
-				 DCMF_TORUS_ALLTOALL, 
-				 DCMF_ALLTOALL_ALLGATHERV,
-				 DCMF_END_ARGS) &&
-             	 config.recv_contig && config.send_contig;
-      
-  use_binom_async = DCMF_CHECK_INFO(properties,
-				    DCMF_ASYNC_BINOM_BCAST_ALLGATHERV,
-				    DCMF_ASYNC_BINOM_BCAST,
-				    DCMF_END_ARGS) &&
+  use_tree_bcast = DCMF_INFO_ISSET(comm_prop, DCMF_USE_TREE_BCAST) &&
+                   DCMF_INFO_ISSET(comm_prop, DCMF_USE_BCAST_ALLGATHERV);
+  
+  use_alltoall = DCMF_INFO_ISSET(comm_prop, DCMF_USE_TORUS_ALLTOALL) &&
+                 DCMF_INFO_ISSET(comm_prop, DCMF_USE_ALLTOALL_ALLGATHERV) &&
+                 config.recv_contig && config.send_contig;
+  
+  use_binom_async = DCMF_INFO_ISSET(comm_prop,
+				    DCMF_USE_ABINOM_BCAST_ALLGATHERV) &&
+                    DCMF_INFO_ISSET(comm_prop, DCMF_USE_ABINOM_BCAST) &&
                     config.recv_contig &&
 	            config.send_contig;
 
-  use_rect_async = DCMF_CHECK_INFO(properties,
-				   DCMF_ASYNC_RECT_BCAST_ALLGATHERV,
-				   DCMF_ASYNC_RECT_BCAST,
-				   DCMF_END_ARGS) &&
-                   config.recv_contig &&
-                   config.send_contig;
+  use_rect_async = DCMF_INFO_ISSET(comm_prop, 
+				   DCMF_USE_ARECT_BCAST_ALLGATHERV) &&
+                   DCMF_INFO_ISSET(comm_prop, DCMF_USE_ARECT_BCAST) &&
+	           config.recv_contig &&
+	           config.send_contig;
       
   if (use_tree_reduce && use_tree_bcast)
     if (config.largecount)

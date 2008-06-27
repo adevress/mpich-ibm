@@ -7,31 +7,7 @@
 #include "mpido_coll.h"
 #include <stdarg.h>
 
-inline int DCMF_CHECK_INFO(DCMF_Embedded_Info_Set * set, ...)
-{ 
-  va_list arg_ptr;
-  int value = 0, result = 1;
-
-  va_start(arg_ptr, set);
-
-  value = va_arg(arg_ptr, int);
-  
-  do
-    {
-      if (!DCMF_INFO_ISSET(set, value))
-	{
-	  result = 0;
-	  break;
-	}
-      value = va_arg(arg_ptr, int);      
-    }
-  while (value > DCMF_END_ARGS);
-  
-  va_end(arg_ptr);
-  return result;
-}
-
-inline void DCMF_SET_INFO(DCMF_Embedded_Info_Set * set, ...)
+inline void DCMF_MSET_INFO(DCMF_Embedded_Info_Set * set, ...)
 {
   va_list arg_ptr;
   int value = 0;
@@ -48,6 +24,16 @@ inline void DCMF_SET_INFO(DCMF_Embedded_Info_Set * set, ...)
   while (value > DCMF_END_ARGS);
   
   va_end(arg_ptr);
+}
+
+inline int DCMF_INFO_MET(DCMF_Embedded_Info_Set *s, DCMF_Embedded_Info_Set *d)
+{
+  int i, j = sizeof(DCMF_Embedded_Info_Set) / sizeof(DCMF_Embedded_Info_Mask);
+  for (i = 0; i < j; i++)
+    if ((DCMF_INFO_BITS (s)[i] & DCMF_INFO_BITS (d)[i]) != 
+	DCMF_INFO_BITS (s)[i])
+      return 0;
+  return 1;
 }
 
 inline int DCMF_AllocateAlltoallBuffers(MPID_Comm * comm)

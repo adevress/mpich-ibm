@@ -27,12 +27,13 @@ typedef int DCMF_Embedded_Info_Mask;
 
 #define DCMF_INFO_TOTAL_BITS (8 * sizeof (DCMF_Embedded_Info_Mask))
 #define DCMF_INFO_ELMT(d)    ((d) / DCMF_INFO_TOTAL_BITS)
-#define DCMF_INFO_MASK(d)    ((DCMF_Embedded_Info_Mask) 1 << ((d) % DCMF_INFO_TOTAL_BITS))
+#define DCMF_INFO_MASK(d)                                                     \
+        ((DCMF_Embedded_Info_Mask) 1 << ((d) % DCMF_INFO_TOTAL_BITS))
 
 /* embedded_info_set of informative bits */
 typedef struct
 {
-  DCMF_Embedded_Info_Mask info_bits[8]; /* initially 256 bits */
+  DCMF_Embedded_Info_Mask info_bits[4]; /* initially 128 bits */
 } DCMF_Embedded_Info_Set;
 
 # define DCMF_INFO_BITS(set) ((set) -> info_bits)
@@ -48,205 +49,255 @@ typedef struct
       DCMF_INFO_BITS (__arr)[__i] = 0;                                        \
   } while (0)
 
+#define DCMF_INFO_OR(s, d)                                                    \
+  do                                                                          \
+  {                                                                           \
+    unsigned int __i, __j;                                                    \
+    DCMF_Embedded_Info_Set * __src = (s);                                     \
+    DCMF_Embedded_Info_Set * __dst = (d);                                     \
+    __j = sizeof(DCMF_Embedded_Info_Set) / sizeof(DCMF_Embedded_Info_Mask);   \
+    for (__i = 0; __i < __j; ++__i)                                           \
+      DCMF_INFO_BITS (__dst)[__i] |= DCMF_INFO_BITS (__src)[__i];             \
+  } while (0)
+
+
+
 /* sets a bit in the embedded_info_set */
-#define DCMF_INFO_SET(s, d)   (DCMF_INFO_BITS (s)[DCMF_INFO_ELMT(d)] |= DCMF_INFO_MASK(d))
+#define DCMF_INFO_SET(s, d)                                                   \
+        (DCMF_INFO_BITS (s)[DCMF_INFO_ELMT(d)] |= DCMF_INFO_MASK(d))
 
 /* unsets a bit in the embedded_info_set */
-#define DCMF_INFO_UNSET(s, d) (DCMF_INFO_BITS (s)[DCMF_INFO_ELMT(d)] &= ~DCMF_INFO_MASK(d))
+#define DCMF_INFO_UNSET(s, d)                                                 \
+        (DCMF_INFO_BITS (s)[DCMF_INFO_ELMT(d)] &= ~DCMF_INFO_MASK(d))
 
 /* checks a bit in the embedded_info_set */
-#define DCMF_INFO_ISSET(s, d) ((DCMF_INFO_BITS (s)[DCMF_INFO_ELMT(d)] & DCMF_INFO_MASK(d)) != 0)
+#define DCMF_INFO_ISSET(s, d)                                                 \
+        ((DCMF_INFO_BITS (s)[DCMF_INFO_ELMT(d)] & DCMF_INFO_MASK(d)) != 0)
 
-extern int DCMF_CHECK_INFO(DCMF_Embedded_Info_Set * set, ...);
-extern void DCMF_SET_INFO(DCMF_Embedded_Info_Set * set, ...);
+/* this sets multiple bits in one call */
+extern void DCMF_MSET_INFO(DCMF_Embedded_Info_Set * set, ...);
+
+/* this sees if bits pattern in s are in d */
+extern int DCMF_INFO_MET(DCMF_Embedded_Info_Set *s, DCMF_Embedded_Info_Set *d);
 
 /* Each #define below corresponds to a bit position in the Embedded_Info_Set */
 
+#define DCMF_USE_OPT_BARRIER                                               0
+
+#define DCMF_USE_LOCKBOX_LBARRIER                                          1
+
+#define DCMF_USE_BINOM_LBARRIER                                            2
+
+#define DCMF_USE_TREE_BCAST                                                3
+
+#define DCMF_USE_RECT_BCAST                                                4
+
+#define DCMF_USE_ARECT_BCAST                                               5
+
+#define DCMF_USE_BINOM_BCAST                                               6
+
+#define DCMF_USE_ABINOM_BCAST                                              7
+
+#define DCMF_USE_OPT_BCAST                                                 8
+                                              
+#define DCMF_USE_TORUS_ALLTOALL                                            9
+
+#define DCMF_USE_TORUS_ALLTOALLV                                          10
+
+#define DCMF_USE_TORUS_ALLTOALLW                                          11
+                                              
+#define DCMF_USE_PREMALLOC_ALLTOALL                                       12
+                                              
+#define DCMF_USE_ALLREDUCE_ALLGATHER                                      13
+                                              
+#define DCMF_USE_BCAST_ALLGATHER                                          14
+                                              
+#define DCMF_USE_ALLTOALL_ALLGATHER                                       15
+                                              
+#define DCMF_USE_ABCAST_ALLGATHER                                         16
+
+#define DCMF_USE_ARECT_BCAST_ALLGATHER                                    17
+
+#define DCMF_USE_ABINOM_BCAST_ALLGATHER                                   18
+
+#define DCMF_USE_PREALLREDUCE_ALLGATHER                                   19
+
+#define DCMF_USE_OPT_ALLGATHER                                            20
+                                              
+#define DCMF_USE_ALLREDUCE_ALLGATHERV                                     21
+                                              
+#define DCMF_USE_BCAST_ALLGATHERV                                         22
+                                              
+#define DCMF_USE_ALLTOALL_ALLGATHERV                                      23
+                                              
+#define DCMF_USE_ABCAST_ALLGATHERV                                        24
+
+#define DCMF_USE_PREALLREDUCE_ALLGATHERV                                  25
+
+#define DCMF_USE_OPT_ALLGATHERV                                           26
+                                              
+#define DCMF_USE_BCAST_SCATTER                                            27  
+
+#define DCMF_USE_OPT_SCATTER                                              28  
+
+#define DCMF_USE_BCAST_SCATTERV                                           29   
+
+#define DCMF_USE_ALLTOALL_SCATTERV                                        30 
+
+#define DCMF_USE_ALLREDUCE_SCATTERV                                       31
+
+#define DCMF_USE_PREALLREDUCE_SCATTERV                                    32
+
+#define DCMF_USE_OPT_SCATTERV                                             33
+       
+#define DCMF_USE_REDUCESCATTER                                            34
+
+#define DCMF_USE_OPT_REDUCESCATTER                                        35
+                                              
+#define DCMF_USE_REDUCE_GATHER                                            36
+  
+#define DCMF_USE_OPT_GATHER                                               37
+                                           
+#define DCMF_USE_STORAGE_ALLREDUCE                                        38
+                                              
+#define DCMF_USE_TREE_ALLREDUCE                                           39
+                                              
+#define DCMF_USE_CCMI_TREE_ALLREDUCE                                      40
+                                              
+#define DCMF_USE_PIPELINED_TREE_ALLREDUCE                                 41
+                                              
+#define DCMF_USE_RECT_ALLREDUCE                                           42
+                                              
+#define DCMF_USE_RECTRING_ALLREDUCE                                       43
+                                              
+#define DCMF_USE_BINOM_ALLREDUCE                                          44
+                                              
+#define DCMF_USE_OPT_ALLREDUCE                                            45
+
+#define DCMF_USE_STORAGE_REDUCE                                           46
+                                              
+#define DCMF_USE_TREE_REDUCE                                              47
+                                              
+#define DCMF_USE_CCMI_TREE_REDUCE                                         48
+                                              
+#define DCMF_USE_RECT_REDUCE                                              49
+                                              
+#define DCMF_USE_RECTRING_REDUCE                                          50
+                                             
+#define DCMF_USE_BINOM_REDUCE                                             51
+                                              
+#define DCMF_USE_OPT_REDUCE                                               52
+                                              
+#define DCMF_USE_NOTREE_OPT_COLLECTIVES                                   53
+
+#define DCMF_USE_MPICH                                                    54
+
+#define DCMF_USE_GI_BARRIER                                               55
+
+#define DCMF_USE_BINOM_BARRIER                                            56
+
+#define DCMF_USE_MPICH_BARRIER                                            57
+
+#define DCMF_USE_MPICH_BCAST                                              58
+
+#define DCMF_USE_MPICH_ALLTOALL                                           59
+
+#define DCMF_USE_MPICH_ALLTOALLW                                          60  
+
+#define DCMF_USE_MPICH_ALLTOALLV                                          61  
+
+#define DCMF_USE_MPICH_ALLGATHER                                          62  
+
+#define DCMF_USE_MPICH_ALLGATHERV                                         63   
+
+#define DCMF_USE_MPICH_ALLREDUCE                                          64  
+
+#define DCMF_USE_MPICH_REDUCE                                             65
+
+#define DCMF_USE_MPICH_GATHER                                             66
+
+#define DCMF_USE_MPICH_SCATTER                                            67
+
+#define DCMF_USE_MPICH_SCATTERV                                           68
+
+#define DCMF_USE_MPICH_REDUCESCATTER                                      69
+
+#define DCMF_USE_ARECT_BCAST_ALLGATHERV                                   70
+
+#define DCMF_USE_ABINOM_BCAST_ALLGATHERV                                  71
 
 /* if comm size is power of 2 */
-#define DCMF_POF2                                                         0   
+#define DCMF_POF2_COMM                                                    72   
 
 /* if comm size is even */
-#define DCMF_EVEN                                                         1
+#define DCMF_EVEN_COMM                                                    73
 
 /* Is comm in threaded mode? */
-#define DCMF_THREADED                                                     2
+#define DCMF_THREADED_MODE                                                74
 
 /* is comm a torus? */
-#define DCMF_TORUS                                                        3
+#define DCMF_TORUS_COMM                                                   75
 
 /* does comm support tree? */
-#define DCMF_TREE                                                         4 
+#define DCMF_TREE_COMM                                                    76 
 
 /* Is comm subbcomm? */
-#define DCMF_SUBCOMM                                                      5
+#define DCMF_SUB_COMM                                                     77
 
 /* is comm a rect? */
-#define DCMF_RECT                                                         6
+#define DCMF_RECT_COMM                                                    78
 
 /* Is comm 1D rect? */
-#define DCMF_RECT1                                                        7
+#define DCMF_1D_RECT_COMM                                                 79
 
 /* Is comm 2D rect? */
-#define DCMF_RECT2                                                        8
+#define DCMF_2D_RECT_COMM                                                 80
 
 /* Is comm 3D rect? */
-#define DCMF_RECT3                                                        9
+#define DCMF_3D_RECT_COMM                                                 81
 
 /* does comm have global context? */
-#define DCMF_GLOBAL_CONTEXT                                               10
+#define DCMF_GLOBAL_CONTEXT                                               82
 
 /* works with any comm */
-#define DCMF_ANY_COMM                                                     11
-
-/* can we use tree bcast? */
-#define DCMF_TREE_BCAST                                                   12
-
-/* can we use rect bcast? */
-#define DCMF_RECT_BCAST                                                   13
-
-/* can we use binomial bcast? */
-#define DCMF_BINOM_BCAST                                                  14
-
-/* can we use async rect bcast? */
-#define DCMF_ASYNC_RECT_BCAST                                             15
-
-/* can we use async binomial bcast? */
-#define DCMF_ASYNC_BINOM_BCAST                                            16
-
-/* can we use tree allred? */
-#define DCMF_TREE_ALLREDUCE                                               17
-
-/* can we use tree pipelined allred? */
-#define DCMF_TREE_PIPE_ALLREDUCE                                          18
-
-/* can we use CCMI allreduce? */
-#define DCMF_TREE_CCMI_ALLREDUCE                                          19
-
-/* can we use binomial allreduce? */
-#define DCMF_BINOM_ALLREDUCE                                              20
-
-/* can we use rectangle allreduce? */
-#define DCMF_RECT_ALLREDUCE                                               21
-
-/* can we use rectangle ring allreduce? */
-#define DCMF_RECTRING_ALLREDUCE                                           22
-
-/* can we use tree reduce? */
-#define DCMF_TREE_REDUCE                                                  23
-
-/* can we use tree ccmi reduce? */
-#define DCMF_TREE_CCMI_REDUCE                                             24
-
-/* can we use binomial reduce? */
-#define DCMF_BINOM_REDUCE                                                 25
-
-/* can we use rect reduce? */
-#define DCMF_RECT_REDUCE                                                  26
-
-/* can we use rectring reduce? */
-#define DCMF_RECTRING_REDUCE                                              27
-
-/* can we use optimized alltoall? */
-#define DCMF_TORUS_ALLTOALL                                               28
-
-/* can we use opt torus alltoallv? */
-#define DCMF_TORUS_ALLTOALLV                                              29
-
-/* can we use opt torus alltoallw? */
-#define DCMF_TORUS_ALLTOALLW                                              30
-
-/* can we use lockbox barrier */
-#define DCMF_LOCKBOX_BARRIER                                              31
-
-/* can we use binomial barrier? */
-#define DCMF_BINOM_BARRIER                                                32
-
-/* can we use GI network? */
-#define DCMF_GI                                                           33
+#define DCMF_ANY_COMM                                                     83
 
 /* alg works only with tree op/type */
-#define DCMF_TREE_OP_TYPE                                                 34
+#define DCMF_TREE_OP_TYPE                                                 84
 
 /* alg works with supported op/type */
-#define DCMF_TORUS_OP_TYPE                                                35
+#define DCMF_TORUS_OP_TYPE                                                85
 
 /* alg works with any op/type */
-#define DCMF_ANY_OP_TYPE                                                  36
-
-/* can we use allreduce allgather? */
-#define DCMF_ALLREDUCE_ALLGATHER                                          37
-
-/* can we use alltoall allgather? */
-#define DCMF_ALLTOALL_ALLGATHER                                           38
-
-/* can we use bcast based allgather? */
-#define DCMF_BCAST_ALLGATHER                                              39
-
-/* can we use async binom bcast based allgather? */
-#define DCMF_ASYNC_BINOM_BCAST_ALLGATHER                                  40
-
-/* can we use async rect bcast based allgather? */
-#define DCMF_ASYNC_RECT_BCAST_ALLGATHER                                   41
-
-/* can we use allreduce allgatherv? */
-#define DCMF_ALLREDUCE_ALLGATHERV                                         42
-
-/* can we use alltoall allgatherv? */
-#define DCMF_ALLTOALL_ALLGATHERV                                          43
-
-/* can we use bcast based allgatherv? */
-#define DCMF_BCAST_ALLGATHERV                                             44
-
-/* can we use async binom bcast based allgather? */
-#define DCMF_ASYNC_BINOM_BCAST_ALLGATHERV                                 45
-
-/* can we use async rect bcast based allgather? */
-#define DCMF_ASYNC_RECT_BCAST_ALLGATHERV                                  46
-
-/* can we use reduce based gather? */
-#define DCMF_REDUCE_GATHER                                                47
-
-/* can we use bcast based scatter? */
-#define DCMF_BCAST_SCATTER                                                48
+#define DCMF_ANY_OP_TYPE                                                  86
 
 /* does send buff need to be contig? */
-#define DCMF_SBUFF_CONTIG                                                 49
+#define DCMF_SBUFF_CONTIG                                                 87
 
 /* does recv buff need to be contig?*/
-#define DCMF_RBUFF_CONTIG                                                 50
+#define DCMF_RBUFF_CONTIG                                                 88
 
 /* does recv buff need to be contin?*/
-#define DCMF_RBUFF_CONTIN                                                 51
+#define DCMF_RBUFF_CONTIN                                                 89
 
 /* is buff size multiple of 4? */
-#define DCMF_BUFF_SIZE_MUL4                                               52
+#define DCMF_BUFF_SIZE_MUL4                                               90
 
-/* can we use bcast based scatterv? */
-#define DCMF_BCAST_SCATTERV                                               53
+#define DCMF_NONE                                                         91
 
-/* can we use alltoallv based scatterv? */
-#define DCMF_ALLTOALLV_SCATTERV                                           54
+#define DCMF_USE_ARECT_ALLREDUCE                                          92
+                                              
+#define DCMF_USE_ARECTRING_ALLREDUCE                                      93
+                                              
+#define DCMF_USE_ABINOM_ALLREDUCE                                         94
 
-/* can we use alltoallv based scatterv? */
-#define DCMF_TREE_TORUS_REDUCE_SCATTER                                    55
+#define DCMF_USE_RECT_BCAST_ALLGATHER                                     95
 
-/* no conditions needed to check */
-#define DCMF_NONE                                                         56
+#define DCMF_USE_BINOM_BCAST_ALLGATHER                                    96
 
-/* can we use async binomial allreduce? */
-#define DCMF_ASYNC_BINOM_ALLREDUCE                                        57
+#define DCMF_USE_RECT_BCAST_ALLGATHERV                                    97
 
-/* can we use async rectangle allreduce? */
-#define DCMF_ASYNC_RECT_ALLREDUCE                                         58
-
-/* can we use async rectangle ring allreduce? */
-#define DCMF_ASYNC_RECTRING_ALLREDUCE                                     59
-
-/* currently, we can have #define go upto 255, use below as a template */
-/* is ? */
-/* #define DCMF_                                                          56 */
-
+#define DCMF_USE_BINOM_BCAST_ALLGATHERV                                   98
 
 enum DCMF_SUPPORTED {
   DCMF_TREE_SUPPORT        =  0,

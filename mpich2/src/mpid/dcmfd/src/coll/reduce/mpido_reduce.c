@@ -28,8 +28,6 @@ int MPIDO_Reduce(void * sendbuf,
   DCMF_Dt dcmf_data = DCMF_UNDEFINED_DT;
   DCMF_Op dcmf_op = DCMF_UNDEFINED_OP;
 
-  if (count == 0) return MPI_SUCCESS;
-
   if (datatype != MPI_DATATYPE_NULL && count > 0)
     {
       MPIDI_Datatype_get_info(count,
@@ -44,7 +42,7 @@ int MPIDO_Reduce(void * sendbuf,
     success = 0;
 
   /* quick exit conditions */
-  if (comm -> comm_kind != MPID_INTRACOMM || comm -> local_size < 3 ||
+  if (DCMF_INFO_ISSET(properties, DCMF_USE_MPICH_REDUCE) ||
       HANDLE_GET_KIND(op) != HANDLE_KIND_BUILTIN || !success)
     return MPIR_Reduce(sendbuf, recvbuf, count, datatype, op, root, comm);
 
@@ -70,7 +68,7 @@ int MPIDO_Reduce(void * sendbuf,
 
   
   if (op_type_support == DCMF_TREE_SUPPORT &&
-      DCMF_INFO_ISSET(properties, DCMF_TREE_REDUCE))
+      DCMF_INFO_ISSET(properties, DCMF_USE_TREE_REDUCE))
     {
       if (DCMF_TREE_SMP_SHORTCUT)
 	func = MPIDO_Reduce_global_tree;
@@ -78,16 +76,17 @@ int MPIDO_Reduce(void * sendbuf,
 	func = MPIDO_Reduce_tree;
     }
   
-  if (op_type_support == DCMF_TORUS_SUPPORT)
+  else if (op_type_support == DCMF_TORUS_SUPPORT ||
+	   op_type_support == DCMF_TREE_SUPPORT)
     {
-      if (DCMF_INFO_ISSET(properties, DCMF_RECT_REDUCE))
+      if (DCMF_INFO_ISSET(properties, DCMF_USE_RECT_REDUCE))
 	func = MPIDO_Reduce_rect;
       
-      else if (DCMF_INFO_ISSET(properties, DCMF_RECTRING_REDUCE) &&
+      else if (DCMF_INFO_ISSET(properties, DCMF_USE_RECTRING_REDUCE) &&
 	       count > 16384)
 	func = MPIDO_Reduce_rectring;
       
-      else if (DCMF_INFO_ISSET(properties, DCMF_BINOM_REDUCE))
+      else if (DCMF_INFO_ISSET(properties, DCMF_USE_BINOM_REDUCE))
 	func = MPIDO_Reduce_binom;
     }
   

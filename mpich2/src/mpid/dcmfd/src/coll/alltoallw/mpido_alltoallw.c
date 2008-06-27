@@ -47,21 +47,20 @@ MPIDO_Alltoallw(void *sendbuf,
 				       rdt_true_lb);
 
 
-      if(!DCMF_INFO_ISSET(properties, DCMF_TORUS_ALLTOALLW) ||
-         !snd_contig ||
-         !rcv_contig ||
-         tsndlen[i] != trcvlen[i] ||
-         numprocs < 2 ||
-	 comm_ptr -> comm_kind != MPID_INTRACOMM)
-      {
-         if(tsndlen) MPIU_Free(tsndlen);
-         if(trcvlen) MPIU_Free(trcvlen);
-         return MPIR_Alltoallw(sendbuf, sendcounts, senddispls, sendtypes,
-                               recvbuf, recvcounts, recvdispls, recvtypes,
-                               comm_ptr);
-      }
-   }
-
+      if (DCMF_INFO_ISSET(properties, DCMF_USE_MPICH_ALLTOALLW) ||
+	  !DCMF_INFO_ISSET(properties, DCMF_USE_TORUS_ALLTOALLW) ||
+	  !snd_contig ||
+	  !rcv_contig ||
+	  tsndlen[i] != trcvlen[i])
+	{
+	  if(tsndlen) MPIU_Free(tsndlen);
+	  if(trcvlen) MPIU_Free(trcvlen);
+	  return MPIR_Alltoallw(sendbuf, sendcounts, senddispls, sendtypes,
+				recvbuf, recvcounts, recvdispls, recvtypes,
+				comm_ptr);
+	}
+    }
+  
   if (!DCMF_AllocateAlltoallBuffers(comm_ptr))
     return MPIR_Err_create_code(MPI_SUCCESS,
 				MPIR_ERR_RECOVERABLE,

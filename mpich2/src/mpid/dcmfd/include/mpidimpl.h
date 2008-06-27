@@ -65,6 +65,7 @@ int SSM_ABORT();
 
 typedef struct
 {
+
   struct
   {
     unsigned topology;           /**< Enable optimized topology functions.   */
@@ -102,162 +103,49 @@ extern MPIDI_Protocol_t MPIDI_Protocols;
 
 typedef struct
 {
-   unsigned char numcolors; /* number of colors for bcast/allreduce */
-   /* Optimized barrier protocols and usage flags */
-   struct
-   {
-      DCMF_CollectiveProtocol_t gi;
-      unsigned char usegi;
-      DCMF_CollectiveProtocol_t binomial;
-      unsigned char usebinom;
-   } barrier;
-   unsigned char optbarrier; /* do we have an optimized barrier? */
+  DCMF_Embedded_Info_Set properties;
+  unsigned char numcolors; /* number of colors for bcast/allreduce */
+  unsigned numrequests;
+  unsigned int bcast_asynccutoff;  
+  unsigned int allreduce_asynccutoff;
 
-   /* Optimized local barrier protocols and usage flags  (not used directly by MPICH
-    * but stored in the geometry) */
-   struct
-   {
-      DCMF_CollectiveProtocol_t lockbox;
-      unsigned char uselockbox;
-      DCMF_CollectiveProtocol_t binomial;
-      unsigned char usebinom;
-   } localbarrier;
+  /* Optimized barrier protocols and usage flags */
+  DCMF_CollectiveProtocol_t gi_barrier;
+  DCMF_CollectiveProtocol_t binomial_barrier;
 
-   /* Optimized broadcast protocols and usage flags */
-   struct
-   {
-      DCMF_CollectiveProtocol_t tree;
-      unsigned char usetree;
-      DCMF_CollectiveProtocol_t rectangle;
-      DCMF_CollectiveProtocol_t async_rectangle;
-      unsigned char userect;
-      DCMF_CollectiveProtocol_t binomial;
-      DCMF_CollectiveProtocol_t async_binomial;
-      unsigned char usebinom;
-      unsigned char useasyncbinom;
-      unsigned char useasyncrect;
-      unsigned int asynccutoff;
-   } broadcast;
-   unsigned char optbroadcast;
+  /* Optimized local barrier protocols and usage flags  (not used directly by 
+     MPICH but stored in the geometry) */
 
-   /* Optimized alltoallv protocol and usage flag */
-   struct
-   {
-      DCMF_CollectiveProtocol_t torus;
-      unsigned char usetorus;
-   } alltoallv;
+  DCMF_CollectiveProtocol_t lockbox_localbarrier;
+  DCMF_CollectiveProtocol_t binomial_localbarrier;
 
-   /* For consistancy, optimized alltoall flag. Uses alltoallv protocol */
-   struct
-   {
-      unsigned char usetorus;
-      unsigned char premalloc;
-   } alltoall;
+  /* Optimized broadcast protocols and usage flags */
+  DCMF_CollectiveProtocol_t tree_bcast;
+  DCMF_CollectiveProtocol_t rectangle_bcast;
+  DCMF_CollectiveProtocol_t async_rectangle_bcast;
+  DCMF_CollectiveProtocol_t binomial_bcast;
+  DCMF_CollectiveProtocol_t async_binomial_bcast;
 
-   struct
-   {
-      unsigned char usetorus;
-   } alltoallw;
+  
+  /* Optimized alltoall(v, w) protocol and usage flag */
+  DCMF_CollectiveProtocol_t torus_alltoallv;
 
-
-   /* Optimized allgather usage flag */
-   struct
-   {
-      unsigned char useallreduce;
-      unsigned char usebcast;
-      unsigned char usealltoallv;
-      unsigned char useasyncbcast;
-      unsigned char preallreduce;
-     unsigned char useasyncrectbcast;
-     unsigned char useasyncbinombcast;
-     
-   } allgather;
-   unsigned char optallgather;
-
-   /* Optimized allgatherv usage flag */
-   struct
-   {
-      unsigned char useallreduce;
-      unsigned char usebcast;
-      unsigned char usealltoallv;
-      unsigned char useasyncbcast;
-      unsigned char preallreduce;
-   } allgatherv;
-   unsigned char optallgatherv;
-
-   /* Optimized scatter usage flag */
-   struct
-   {
-      unsigned char usebcast;
-   } scatter;
-   unsigned char optscatter;
-
-   /* Optimized scatterv usage flag */
-   struct
-   {
-      unsigned char usealltoallv;
-      unsigned char preallreduce;
-      unsigned char usebcast;
-   } scatterv;
-   unsigned char optscatterv;
-
-   /* Optimized reduce_scatter usage flag */
-   struct
-   {
-      unsigned char usereducescatter;
-   } reduce_scatter;
-   unsigned char optreducescatter;
-
-   struct
-   {
-      unsigned char usereduce;
-   } gather;
-   unsigned char optgather;
-
-
-   /* Optimized allreduce protocols and usage flags */
-   struct
-   {
-      unsigned char reusestorage;
-      unsigned char usetree;
-      unsigned char useccmitree;
-      unsigned char usepipelinedtree;
-      unsigned char userect;
-      unsigned char userectring;
-      unsigned char usebinom;
-      unsigned char useasyncrect;
-      unsigned char useasyncrectring;
-      unsigned char useasyncbinom;
-      unsigned int asynccutoff;
-      DCMF_CollectiveProtocol_t tree __attribute__((__aligned__(16)));
-      DCMF_CollectiveProtocol_t pipelinedtree;
-      DCMF_CollectiveProtocol_t pipelinedtree_dput;
-      DCMF_CollectiveProtocol_t rectangle;
-      DCMF_CollectiveProtocol_t rectanglering;
-      DCMF_CollectiveProtocol_t binomial;
-      DCMF_CollectiveProtocol_t asyncrectangle;
-      DCMF_CollectiveProtocol_t asyncrectanglering;
-      DCMF_CollectiveProtocol_t asyncbinomial;
-   } allreduce;
-   unsigned char optallreduce;
-
-   /* Optimized reduce protocols and usage flags */
-   struct
-   {
-      unsigned char reusestorage;
-      DCMF_CollectiveProtocol_t tree;
-      unsigned char usetree;
-      unsigned char useccmitree;
-      DCMF_CollectiveProtocol_t rectangle;
-      unsigned char userect;
-      DCMF_CollectiveProtocol_t rectanglering;
-      unsigned char userectring;
-      DCMF_CollectiveProtocol_t binomial;
-      unsigned char usebinom;
-   } reduce;
-   unsigned char optreduce;
-
-   unsigned numrequests;
+  /* Optimized allreduce protocols and usage flags */
+  DCMF_CollectiveProtocol_t tree_allreduce __attribute__((__aligned__(16)));
+  DCMF_CollectiveProtocol_t pipelinedtree_allreduce;
+  DCMF_CollectiveProtocol_t pipelinedtree_dput_allreduce;
+  DCMF_CollectiveProtocol_t rectangle_allreduce;
+  DCMF_CollectiveProtocol_t rectanglering_allreduce;
+  DCMF_CollectiveProtocol_t binomial_allreduce;
+  DCMF_CollectiveProtocol_t async_binomial_allreduce;
+  DCMF_CollectiveProtocol_t async_rectangle_allreduce;
+  DCMF_CollectiveProtocol_t async_ringrectangle_allreduce;
+  
+  /* Optimized reduce protocols and usage flags */
+  DCMF_CollectiveProtocol_t tree_reduce;
+  DCMF_CollectiveProtocol_t rectangle_reduce;
+  DCMF_CollectiveProtocol_t rectanglering_reduce;
+  DCMF_CollectiveProtocol_t binomial_reduce;
 
 }      MPIDI_CollectiveProtocol_t;
 extern MPIDI_CollectiveProtocol_t MPIDI_CollectiveProtocols;

@@ -35,17 +35,14 @@ MPIDO_Alltoallv(void *sendbuf,
   MPID_Ensure_Aint_fits_in_pointer(MPIR_VOID_PTR_CAST_TO_MPI_AINT recvbuf +
 				   rdt_true_lb);
   
-  if (!DCMF_INFO_ISSET(properties, DCMF_TORUS_ALLTOALLV) ||
+  if (DCMF_INFO_ISSET(properties, DCMF_USE_MPICH_ALLTOALLV) ||
+      !DCMF_INFO_ISSET(properties, DCMF_USE_TORUS_ALLTOALLV) ||
       !snd_contig ||
       !rcv_contig ||
-      tsndlen != trcvlen ||
-      numprocs < 2 ||
-      comm_ptr -> comm_kind != MPID_INTRACOMM)
-    {
-      return MPIR_Alltoallv(sendbuf, sendcounts, senddispls, sendtype,
-                            recvbuf, recvcounts, recvdispls, recvtype,
-                            comm_ptr);
-    }
+      tsndlen != trcvlen)
+    return MPIR_Alltoallv(sendbuf, sendcounts, senddispls, sendtype,
+			  recvbuf, recvcounts, recvdispls, recvtype,
+			  comm_ptr);
   
   if (!DCMF_AllocateAlltoallBuffers(comm_ptr))
     return MPIR_Err_create_code(MPI_SUCCESS,
