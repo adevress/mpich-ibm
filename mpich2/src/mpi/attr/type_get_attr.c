@@ -89,10 +89,10 @@ int MPI_Type_get_attr(MPI_Datatype type, int type_keyval, void *attribute_val,
 	       case.  Note that this code assumes sizeof(void*) is 
 	       a power of 2. Note that this formerly used MPI_Aint for the
                address sized int, but since this is configurable and could
-               be larger than a pointer, we use sizeof(void*).  We also
-               cast attribute_val to an arbitrary sized numeric value since
-               we are only interested in the low-order few bits. */
-	    if ( (unsigned long) attribute_val & (sizeof(void*)-1)) {
+               be larger than a pointer, we use MPIR_Puint instead, which is
+	       the size of a pointer.
+	    */
+	    if ( (MPIR_Puint) attribute_val & (sizeof(void*)-1)) {
 		MPIU_ERR_SET(mpi_errno,MPI_ERR_ARG,"**attrnotptr");
 	    }
 #           endif
