@@ -1077,23 +1077,18 @@ static void ADIOI_R_Exchange_data_alltoallv(
     }
 
 #if RDCOLL_DEBUG
-    DBG_FPRINTF(stderr, "\tsend_size = " );
-    for (i=0; i<nprocs; i++) { DBG_FPRINTF(stderr, "%2d,", send_size[i] ); }
-    DBG_FPRINTF(stderr, "\n" );
-    DBG_FPRINTF(stderr, "\trecv_size = " );
-    for (i=0; i<nprocs; i++) { DBG_FPRINTF(stderr, "%2d,", recv_size[i] ); }
-    DBG_FPRINTF(stderr, "\n" );
-    DBG_FPRINTF(stderr, "\tsdispls   = " );
-    for (i=0; i<nprocs; i++) { DBG_FPRINTF(stderr, "%2d,", sdispls  [i] ); }
-    DBG_FPRINTF(stderr, "\n" );
-    DBG_FPRINTF(stderr, "\trdispls   = " );
-    for (i=0; i<nprocs; i++) { DBG_FPRINTF(stderr, "%2d,", rdispls  [i] ); }
-    DBG_FPRINTF(stderr, "\n" );
+    DBG_FPRINTF(stderr, "\tsend_size = [%d]%2d,",0,send_size[0]);
+    for (i=1; i<nprocs; i++) if(send_size[i-1]!=send_size[i]){ DBG_FPRINTF(stderr, "\t\t[%d]%2d,", i,send_size[i] ); }
+    DBG_FPRINTF(stderr, "\trecv_size =  [%d]%2d,",0,recv_size[0]);
+    for (i=1; i<nprocs; i++) if(recv_size[i-1]!=recv_size[i]){ DBG_FPRINTF(stderr, "\t\t[%d]%2d,", i,recv_size[i] ); }
+    DBG_FPRINTF(stderr, "\tsdispls   =  [%d]%2d,",0,sdispls[0]);
+    for (i=1; i<nprocs; i++) if(sdispls[i-1]!=sdispls[i]){ DBG_FPRINTF(stderr, "\t\t[%d]%2d,", i,sdispls  [i] ); }
+    DBG_FPRINTF(stderr, "\trdispls   =  [%d]%2d,",0,rdispls[0]);
+    for (i=1; i<nprocs; i++) if(rdispls[i-1]!=rdispls[i]){ DBG_FPRINTF(stderr, "\t\t[%d]%2d,", i,rdispls  [i] ); }
     DBG_FPRINTF(stderr, "\ttails = %4d, %4d\n", stail, rtail );
     if (nprocs_send) {
-    DBG_FPRINTF(stderr, "\tall_send_buf = " );
-    for (i=0; i<nprocs; i++) { DBG_FPRINTF(stderr, "%2d,", all_send_buf  [i*131072] ); }
-    DBG_FPRINTF(stderr, "\n" );
+    DBG_FPRINTF(stderr, "\tall_send_buf =  [%d]%2d,",0,all_send_buf[0]);
+    for (i=1; i<nprocs; i++) if(all_send_buf[(i-1)*131072]!=all_send_buf[i*131072]){ DBG_FPRINTF(stderr, "\t\t[%d]%2d,", i, all_send_buf  [i*131072] ); }
     }
 #endif
     
