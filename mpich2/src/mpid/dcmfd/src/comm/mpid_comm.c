@@ -279,6 +279,13 @@
  *         use between allreduce calls.
  *   - Default is Y.
  *
+ * - DCMF_ALLREDUCE_REUSE_STORAGE_LIMIT - This specifies the upper limit
+ *   of storage to save and reuse across allreduce calls when
+ *   DCMF_ALLREDUCE_REUSE_STORAGE is set to Y. (This environment variable
+ *   is processed within the DCMF_Allreduce_register() API, not in
+ *   MPIDI_Env_setup().)
+ *   - Default is 1048576 bytes.
+ *
  * - DCMF_REDUCE - Controls the protocol used for reduce.
  *   Possible values:
  *   - MPICH - Turn off all optimizations and use the MPICH point-to-point
@@ -301,6 +308,13 @@
  *   - N - Malloc/free on every reduce call.  This frees up storage for
  *         use between reduce calls.
  *   - Default is Y.
+ *
+ * - DCMF_REDUCE_REUSE_STORAGE_LIMIT - This specifies the upper limit
+ *   of storage to save and reuse across allreduce calls when
+ *   DCMF_REDUCE_REUSE_STORAGE is set to Y. (This environment variable
+ *   is processed within the DCMF_Reduce_register() API, not in
+ *   MPIDI_Env_setup().)
+ *   - Default is 1048576 bytes.
  *
  * - DCMF_BARRIER - Controls the protocol used for barriers.
  *   Possible values:
