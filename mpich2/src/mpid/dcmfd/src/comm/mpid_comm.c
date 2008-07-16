@@ -1040,7 +1040,7 @@ MPIDI_Env_setup()
       if(strncasecmp(envopts, "N", 1) == 0) /* Do not reuse the malloc'd storage */
 	{
 	  DCMF_INFO_UNSET(properties, DCMF_USE_STORAGE_REDUCE);
-	  fprintf(stderr, "N protocol.reusestorage %X\n", 0);
+    /*fprintf(stderr, "N protocol.reusestorage %X\n", 0);*/
 	}
       else if(strncasecmp(envopts, "Y", 1) == 0); /* defaults to Y */
       else
