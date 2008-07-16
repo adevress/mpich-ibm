@@ -85,6 +85,79 @@ int MPIDO_Bcast_binom_sync(void * buffer,
 }
 
 
+int MPIDO_Bcast_rect_dput(void * buffer,
+			  int bytes,
+			  int root,
+			  MPID_Comm * comm)
+{
+   fprintf(stderr,"direct put\n");
+   int rc, hw_root;
+   DCMF_CollectiveRequest_t request;
+   volatile unsigned active = 1;
+   DCMF_Geometry_t * geometry = &(comm->dcmf.geometry);
+   DCMF_Callback_t callback = { bcast_cb_done, (void *) &active };
+   hw_root = comm -> vcr[root];
+
+   rc = DCMF_Broadcast(&MPIDI_CollectiveProtocols.rectangle_bcast_dput,
+                       &request,
+                       callback,
+                       DCMF_MATCH_CONSISTENCY,
+                       geometry,
+                       hw_root,
+                       buffer,
+                       bytes);
+   MPID_PROGRESS_WAIT_WHILE(active);
+   return rc;
+}
+
+int MPIDO_Bcast_rect_singleth(void * buffer,
+			  int bytes,
+			  int root,
+			  MPID_Comm * comm)
+{
+   int rc, hw_root;
+   DCMF_CollectiveRequest_t request;
+   volatile unsigned active = 1;
+   DCMF_Geometry_t * geometry = &(comm->dcmf.geometry);
+   DCMF_Callback_t callback = { bcast_cb_done, (void *) &active };
+   hw_root = comm -> vcr[root];
+
+   rc = DCMF_Broadcast(&MPIDI_CollectiveProtocols.rectangle_bcast_singleth,
+                       &request,
+                       callback,
+                       DCMF_MATCH_CONSISTENCY,
+                       geometry,
+                       hw_root,
+                       buffer,
+                       bytes);
+   MPID_PROGRESS_WAIT_WHILE(active);
+   return rc;
+}
+
+int MPIDO_Bcast_binom_singleth(void * buffer,
+			  int bytes,
+			  int root,
+			  MPID_Comm * comm)
+{
+   int rc, hw_root;
+   DCMF_CollectiveRequest_t request;
+   volatile unsigned active = 1;
+   DCMF_Geometry_t * geometry = &(comm->dcmf.geometry);
+   DCMF_Callback_t callback = { bcast_cb_done, (void *) &active };
+   hw_root = comm -> vcr[root];
+
+   rc = DCMF_Broadcast(&MPIDI_CollectiveProtocols.binomial_bcast_singleth,
+                       &request,
+                       callback,
+                       DCMF_MATCH_CONSISTENCY,
+                       geometry,
+                       hw_root,
+                       buffer,
+                       bytes);
+   MPID_PROGRESS_WAIT_WHILE(active);
+   return rc;
+}
+
 int MPIDO_Bcast_rect_sync(void * buffer,
 			  int bytes,
 			  int root,

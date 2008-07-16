@@ -127,6 +127,9 @@ typedef struct
   DCMF_CollectiveProtocol_t async_rectangle_bcast;
   DCMF_CollectiveProtocol_t binomial_bcast;
   DCMF_CollectiveProtocol_t async_binomial_bcast;
+  DCMF_CollectiveProtocol_t binomial_bcast_singleth;
+  DCMF_CollectiveProtocol_t rectangle_bcast_singleth;
+  DCMF_CollectiveProtocol_t rectangle_bcast_dput;
 
   
   /* Optimized alltoall(v, w) protocol and usage flag */

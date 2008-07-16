@@ -19,8 +19,8 @@ int MPIDO_Scatterv_bcast(void *sendbuf,
                          int root,
                          MPID_Comm *comm_ptr)
 {
-  int rank = comm_ptr -> rank;
-  int np = comm_ptr -> local_size;
+  int rank = comm_ptr->rank;
+  int np = comm_ptr->local_size;
   char *tempbuf;
   int i, sum = 0, dtsize, rc=0, contig;
   MPID_Datatype *dt_ptr;

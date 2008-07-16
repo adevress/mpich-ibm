@@ -26,7 +26,7 @@ int MPIDO_Scatter(void *sendbuf,
 
   int contig, nbytes;
   int rank = comm->rank;
-  int success = 1, rc;
+  int success = 1;
 
   if (rank == root)
     {

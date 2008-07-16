@@ -314,8 +314,40 @@ void MPIDI_Coll_register(int threadrequested)
     * MPID_assert_debug(local_barriers_num >  0);
     */
 
+   /* Sort out the single thread memory optimizations first. If we
+    * are single threaed, we want to register the single thread versions
+    * to save memory */
+   if(DCMF_INFO_ISSET(properties, DCMF_USE_RECT_BCAST_DPUT) &&
+      threadrequested != DCMF_THREAD_MULTIPLE)
+   {
+      if(BROADCAST_REGISTER(
+            DCMF_TORUS_RECTANGLE_BROADCAST_PROTOCOL_DPUT_SINGLETH,
+            &MPIDI_CollectiveProtocols.rectangle_bcast_dput,
+            &broadcast_config) != DCMF_SUCCESS)
+         DCMF_INFO_UNSET(properties, DCMF_USE_RECT_BCAST_DPUT);
+   }
 
-   /* Register broadcast protocols */
+   if(DCMF_INFO_ISSET(properties, DCMF_USE_RECT_BCAST_SINGLETH) &&
+      threadrequested != DCMF_THREAD_MULTIPLE)
+   {
+      if(BROADCAST_REGISTER(
+            DCMF_TORUS_RECTANGLE_BROADCAST_PROTOCOL_SINGLETH,
+            &MPIDI_CollectiveProtocols.rectangle_bcast_dput,
+            &broadcast_config) != DCMF_SUCCESS)
+         DCMF_INFO_UNSET(properties, DCMF_USE_RECT_BCAST_SINGLETH);
+   }
+
+   if(DCMF_INFO_ISSET(properties, DCMF_USE_BINOM_BCAST_SINGLETH) &&
+      threadrequested != DCMF_THREAD_MULTIPLE)
+   {
+      if(BROADCAST_REGISTER(
+            DCMF_TORUS_BINOMIAL_BROADCAST_PROTOCOL_SINGLETH,
+            &MPIDI_CollectiveProtocols.rectangle_bcast_dput,
+            &broadcast_config) != DCMF_SUCCESS)
+         DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_BCAST_SINGLETH);
+   }
+
+   /* Register the other broadcast protocols */
    if(DCMF_INFO_ISSET(properties, DCMF_USE_TREE_BCAST))
      {
        if(BROADCAST_REGISTER(DCMF_TREE_BROADCAST_PROTOCOL,

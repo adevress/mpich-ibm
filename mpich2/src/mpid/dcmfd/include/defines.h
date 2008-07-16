@@ -298,6 +298,9 @@ extern int DCMF_INFO_MET(DCMF_Embedded_Info_Set *s, DCMF_Embedded_Info_Set *d);
 #define DCMF_USE_RECT_BCAST_ALLGATHERV                                    97
 
 #define DCMF_USE_BINOM_BCAST_ALLGATHERV                                   98
+#define DCMF_USE_RECT_BCAST_DPUT 99
+#define DCMF_USE_RECT_BCAST_SINGLETH 100
+#define DCMF_USE_BINOM_BCAST_SINGLETH 101
 
 #define DCMF_IRREG_COMM                                                   99
 

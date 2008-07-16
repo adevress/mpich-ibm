@@ -12,7 +12,7 @@ DCMF_Hardware_t  mpid_hw;
 MPID_Request __totalview_request_dummyvar;
 
 
-void MPIDI_DMCF_Configure(int requested,
+void MPIDI_DCMF_Configure(int requested,
                           int * provided)
 {
   DCMF_Configure_t dcmf_config;
@@ -225,7 +225,7 @@ int MPID_Init(int * argc,
   *has_args = TRUE;
   *has_env  = TRUE;
 
-  MPIDI_DMCF_Configure(requested, provided);
+  MPIDI_DCMF_Configure(requested, provided);
 
   return MPI_SUCCESS;
 }
