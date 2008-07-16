@@ -526,7 +526,6 @@ void MPIDI_Coll_Comm_create (MPID_Comm *comm)
 
       if (x_size > 1 && y_size > 1 && z_size > 1)
 	DCMF_INFO_SET(comm_prop, DCMF_3D_RECT_COMM);
-
       else if ((x_size > 1 && y_size > 1) ||
 	       (x_size > 1 && z_size > 1) ||
 	       (y_size > 1 && z_size > 1))
@@ -535,6 +534,8 @@ void MPIDI_Coll_Comm_create (MPID_Comm *comm)
       else /* number of dims must be at least 1 if it is a rectangle */
 	DCMF_INFO_SET(comm_prop, DCMF_1D_RECT_COMM);
     }
+  else if (!global) /* if not rect and not global, it means comm is irreg */
+    DCMF_INFO_SET(comm_prop, DCMF_IRREG_COMM);
 
   /* end of setting geometric properties of the communicator */
 

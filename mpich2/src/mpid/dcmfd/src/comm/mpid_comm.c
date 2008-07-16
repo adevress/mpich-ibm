@@ -489,6 +489,11 @@ MPIDI_Env_setup()
 		 DCMF_USE_RECT_ALLREDUCE,
 		 DCMF_USE_RECTRING_ALLREDUCE,
 		 DCMF_USE_BINOM_ALLREDUCE,
+
+		 DCMF_USE_ARECT_ALLREDUCE,
+		 DCMF_USE_ARECTRING_ALLREDUCE,
+		 DCMF_USE_ABINOM_ALLREDUCE,
+
 		 DCMF_USE_OPT_ALLREDUCE,
 		 DCMF_USE_STORAGE_REDUCE,
 		 DCMF_USE_RECT_REDUCE,
@@ -529,11 +534,11 @@ MPIDI_Env_setup()
 		   DCMF_USE_TREE_REDUCE, 
 		   DCMF_END_ARGS);
   
-  MPIDI_CollectiveProtocols.bcast_asynccutoff = 131072;
+  MPIDI_CollectiveProtocols.bcast_asynccutoff = 8192;
   MPIDI_CollectiveProtocols.allreduce_asynccutoff = 131072;
   MPIDI_CollectiveProtocols.numcolors = 0;
 
-  dval = 131072;
+  dval = 8192;
   ENV_Int(getenv("DCMF_ASYNCCUTOFF"), &dval);
   MPIDI_CollectiveProtocols.bcast_asynccutoff = dval;
   

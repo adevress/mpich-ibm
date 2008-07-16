@@ -299,6 +299,8 @@ extern int DCMF_INFO_MET(DCMF_Embedded_Info_Set *s, DCMF_Embedded_Info_Set *d);
 
 #define DCMF_USE_BINOM_BCAST_ALLGATHERV                                   98
 
+#define DCMF_IRREG_COMM                                                   99
+
 enum DCMF_SUPPORTED {
   DCMF_TREE_SUPPORT        =  0,
   DCMF_TORUS_SUPPORT       =  1,

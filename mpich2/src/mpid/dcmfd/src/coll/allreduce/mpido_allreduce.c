@@ -18,8 +18,6 @@ MPIDO_Allreduce(void * sendbuf,
 		MPI_Op op,
 		MPID_Comm * comm)
 {
-  int rank;
-  MPI_Comm_rank(comm->handle, &rank);
   allreduce_fptr func = NULL;
   DCMF_Embedded_Info_Set * properties = &(comm -> dcmf.properties);
   DCMF_Dt dcmf_data = DCMF_UNDEFINED_DT;
@@ -33,7 +31,7 @@ MPIDO_Allreduce(void * sendbuf,
   if (DCMF_INFO_ISSET(properties, DCMF_USE_MPICH_ALLREDUCE) ||
       HANDLE_GET_KIND(op) != HANDLE_KIND_BUILTIN)
     return MPIR_Allreduce(sendbuf, recvbuf, count, datatype, op, comm);
-  
+
   MPIDI_Datatype_get_info(count, datatype, data_contig, data_size,
 			  data_ptr, data_true_lb);
   
@@ -56,13 +54,13 @@ MPIDO_Allreduce(void * sendbuf,
   extern int DCMF_TREE_SMP_SHORTCUT;
   
   recvbuf = ((char *) recvbuf + data_true_lb);
-  
+
   if (op_type_support == DCMF_TREE_SUPPORT &&
       DCMF_INFO_ISSET(properties, DCMF_USE_TREE_ALLREDUCE))
     {
       if (DCMF_TREE_SMP_SHORTCUT)
 	func = MPIDO_Allreduce_global_tree;
-      
+
       else if (DCMF_INFO_ISSET(properties, DCMF_USE_CCMI_TREE_ALLREDUCE))
 	func = MPIDO_Allreduce_tree;
       
@@ -73,29 +71,38 @@ MPIDO_Allreduce(void * sendbuf,
   else if (op_type_support == DCMF_TORUS_SUPPORT ||
 	   op_type_support == DCMF_TREE_SUPPORT)
     {
-      if (DCMF_INFO_ISSET(properties, DCMF_USE_ARECT_ALLREDUCE) &&
-	  data_size < MPIDI_CollectiveProtocols.allreduce_asynccutoff)
-	func = MPIDO_Allreduce_async_rect;
+
+      if (data_size < 128)
+	{
+	  if (DCMF_INFO_ISSET(properties, DCMF_USE_ABINOM_ALLREDUCE))
+	    func = MPIDO_Allreduce_async_binom;
+
+	  else if (DCMF_INFO_ISSET(properties, DCMF_USE_BINOM_ALLREDUCE))
+	    func = MPIDO_Allreduce_binom;
+	}
+
+      else  if (data_size < 32768)
+	{
+	  if (DCMF_INFO_ISSET(properties, DCMF_USE_ARECT_ALLREDUCE))
+	    func = MPIDO_Allreduce_async_rect;
+
+	  else if (DCMF_INFO_ISSET(properties, DCMF_USE_RECT_ALLREDUCE))
+	    func = MPIDO_Allreduce_rect;
+	}
       
-      else if (DCMF_INFO_ISSET(properties, DCMF_USE_RECT_ALLREDUCE))
-	func = MPIDO_Allreduce_rect;
-      
-      else if (DCMF_INFO_ISSET(properties, DCMF_USE_ABINOM_ALLREDUCE) &&
-	       data_size < MPIDI_CollectiveProtocols.allreduce_asynccutoff)
-	func = MPIDO_Allreduce_async_binom;
-      
-      else if (DCMF_INFO_ISSET(properties, DCMF_USE_BINOM_ALLREDUCE))
-	func = MPIDO_Allreduce_binom;
-      
-      else if (DCMF_INFO_ISSET(properties, DCMF_USE_ARECTRING_ALLREDUCE) &&
-	       data_size < MPIDI_CollectiveProtocols.allreduce_asynccutoff)
-	func = MPIDO_Allreduce_async_rectring;
-      
-      else if (DCMF_INFO_ISSET(properties, DCMF_USE_RECTRING_ALLREDUCE) &&
-	       count > 16384)
-	func = MPIDO_Allreduce_rectring;  
+      else 
+	{
+	  if (DCMF_INFO_ISSET(properties, DCMF_USE_ARECTRING_ALLREDUCE))
+	    func = MPIDO_Allreduce_async_rectring;
+
+	  else if (DCMF_INFO_ISSET(properties, DCMF_USE_RECTRING_ALLREDUCE))
+	    func = MPIDO_Allreduce_rectring;
+	}
     }
-  
+
+  if (!func && DCMF_INFO_ISSET(properties, DCMF_IRREG_COMM))
+    func = MPIDO_Allreduce_async_binom;
+
   if (func)
     rc = (func)(sendbuf, 
 		recvbuf, 
@@ -104,7 +111,6 @@ MPIDO_Allreduce(void * sendbuf,
 		dcmf_op, 
 		datatype, 
 		comm);
-  
   /* 
      punt to MPICH in the case no optimized func is found or in the case 
      generic op/type is used
