@@ -56,9 +56,10 @@ MPIDO_Allreduce(void * sendbuf,
   recvbuf = ((char *) recvbuf + data_true_lb);
 
   if (op_type_support == DCMF_TREE_SUPPORT &&
-      DCMF_INFO_ISSET(properties, DCMF_USE_TREE_ALLREDUCE))
+      DCMF_INFO_ISSET(properties, DCMF_TREE_COMM))
     {
-      if (DCMF_TREE_SMP_SHORTCUT)
+      if (DCMF_INFO_ISSET(properties, DCMF_USE_TREE_ALLREDUCE) &&
+          DCMF_TREE_SMP_SHORTCUT)
 	func = MPIDO_Allreduce_global_tree;
 
       else if (DCMF_INFO_ISSET(properties, DCMF_USE_CCMI_TREE_ALLREDUCE))
