@@ -5,9 +5,11 @@
  */
 #include "mpidimpl.h"
 
-#if MPICH_TIMER_KIND != USE_DEVICE
+#if MPICH_TIMER_KIND == USE_GETTIMEOFDAY
+#warning Compiling dcmfd/src/misc/mpid_time.c when MPICH_TIMER_KIND == USE_GETTIMEOFDAY
+#elif MPICH_TIMER_KIND != USE_DEVICE
 #error "Not using USE_BG_TIMEBASE"
-#endif
+#else
 
 
 void MPID_Wtime( MPID_Time_t *tval )
@@ -34,3 +36,5 @@ void MPID_Wtime_init()
 {
   /* We used to call DCMF_Timer() here, but the messager wasn't created yet */
 }
+
+#endif

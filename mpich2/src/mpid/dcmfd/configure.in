@@ -42,6 +42,14 @@ AC_ARG_WITH(assert-level,
 AC_SUBST(ASSERT_LEVEL)
 AC_DEFINE_UNQUOTED([ASSERT_LEVEL], $ASSERT_LEVEL, [Which messager is being used])
 
+USE_COLL=ccmi
+AC_ARG_WITH(opt-coll,
+  AS_HELP_STRING([--with-opt-coll={none ccmi}],[which optimized collectives to use (default: ccmi)]),
+  [ USE_COLL=$withval ])
+if test "$USE_COLL" = "ccmi" ; then
+    AC_DEFINE_UNQUOTED([USE_CCMI_COLL], 1, [Define to use CCMI collectives])
+fi
+
 
 #
 # bring in the default implementation of the MPID_Thread package

@@ -6,13 +6,14 @@
 
 #include "mpido_coll.h"
 
+#ifdef USE_CCMI_COLL
 /**
  * **************************************************************************
  * \brief "Done" callback for collective allreduce message.
  * **************************************************************************
  */
 
-void allreduce_cb_done(void *clientdata)
+void allreduce_cb_done(void *clientdata, DCMF_Error_t *err)
 {
   volatile unsigned *work_left = (unsigned *) clientdata;
   *work_left = 0;
@@ -334,3 +335,5 @@ int MPIDO_Allreduce_async_rectring(void * sendbuf,
    MPID_PROGRESS_WAIT_WHILE(active);
    return rc;
 }
+
+#endif /* USE_CCMI_COLL */

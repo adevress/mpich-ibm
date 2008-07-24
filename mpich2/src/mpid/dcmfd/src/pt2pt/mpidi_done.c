@@ -12,8 +12,9 @@
  *
  * \param[in,out] sreq MPI receive request object
  */
-void MPIDI_DCMF_SendDoneCB (MPID_Request * sreq)
+void MPIDI_DCMF_SendDoneCB (void *clientdata, DCMF_Error_t *err)
 {
+  MPID_Request * sreq = (MPID_Request *)clientdata;
   MPID_assert(sreq != NULL);
 
   if (sreq->dcmf.uebuf)
@@ -49,8 +50,9 @@ void MPIDI_DCMF_SendDoneCB (MPID_Request * sreq)
  *
  * \param[in,out] rreq MPI receive request object
  */
-void MPIDI_DCMF_RecvDoneCB (MPID_Request * rreq)
+void MPIDI_DCMF_RecvDoneCB (void *clientdata, DCMF_Error_t *err)
 {
+  MPID_Request * rreq = (MPID_Request *)clientdata;
   MPID_assert(rreq != NULL);
   switch (rreq->dcmf.ca)
     {
@@ -120,8 +122,9 @@ void MPIDI_DCMF_RecvDoneCB (MPID_Request * rreq)
  *
  * \param[in,out] rreq MPI receive request object
  */
-void MPIDI_DCMF_RecvRzvDoneCB (MPID_Request * rreq)
+void MPIDI_DCMF_RecvRzvDoneCB (void *clientdata, DCMF_Error_t *err)
 {
+  MPID_Request * rreq = (MPID_Request *)clientdata;
   MPID_assert(rreq != NULL);
 
   /* Is it neccesary to save the original value of the 'type' field ?? */
@@ -133,5 +136,5 @@ void MPIDI_DCMF_RecvRzvDoneCB (MPID_Request * rreq)
                 rreq->dcmf.envelope.envelope.msginfo.quad);
   MPID_Request_setType(rreq, original_value);
 
-  MPIDI_DCMF_RecvDoneCB (rreq);
+  MPIDI_DCMF_RecvDoneCB (rreq, NULL);
 }

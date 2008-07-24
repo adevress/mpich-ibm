@@ -26,5 +26,7 @@ int MPID_Finalize()
   /* ------------------------- */
   MPIDI_Recvq_finalize();
 
+  DCMF_Messager_finalize();
+
   return MPI_SUCCESS;
 }

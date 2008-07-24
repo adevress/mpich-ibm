@@ -63,7 +63,7 @@ void ARMCIX_DCMF_ReceiveFenceAck (void                 * clientdata,
 {
   DCMF_Callback_t * cb = (DCMF_Callback_t *) info;
   if (cb->function)
-    cb->function(cb->clientdata);
+    cb->function(cb->clientdata, NULL);
 }
 
 
@@ -159,7 +159,7 @@ void ARMCIX_AllFence ()
   cb->clientdata = (void *) &active;
 
   DCMF_Callback_t cb_null = { NULL, NULL };
-  DCMF_Callback_t cb_done = { (void(*)(void *)) ARMCIX_DCMF_request_free, NULL };
+  DCMF_Callback_t cb_done = { (void (*)(void *, DCMF_Error_t *))ARMCIX_DCMF_request_free, NULL };
   for (peer = 0; peer < size; peer++)
   {
     ARMCIX_DCMF_Request_t * new_request = ARMCIX_DCMF_request_allocate (cb_null);

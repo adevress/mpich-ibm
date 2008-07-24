@@ -16,17 +16,26 @@
 #ifndef MPICH_MPIDPRE_H_INCLUDED
 #define MPICH_MPIDPRE_H_INCLUDED
 
+#include <mpid_config.h>
+
 /* include message layer stuff */
 #include <defines.h>
 #include <dcmf.h>
 #include <dcmf_globalcollectives.h>
+#ifdef USE_CCMI_COLL
 #include <dcmf_collectives.h>
+#else /* !USE_CCMI_COLL */
+/* objects declared from these types should never be used */
+typedef DCQuad DCMF_Geometry_t[1];
+typedef DCQuad DCMF_CollectiveRequest_t[1];
+typedef DCQuad DCMF_CollectiveProtocol_t[1];
+#endif /* !USE_CCMI_COLL */
 
 char exec_name[512];
 
 /* verify that the version of the installed dcmf library is compatible */
 #if (DCMF_VERSION_RELEASE == 0)
-  #if (DCMF_VERSION_MAJOR == 1)
+  #if (DCMF_VERSION_MAJOR == 2)
     #if (DCMF_VERSION_MINOR < 0)
       #error Incompatible dcmf minor version
     #endif
@@ -70,6 +79,13 @@ char exec_name[512];
 #error "MPID_CS_ENTER is already defined"
 #endif
 #define MPID_DEFINES_MPID_CS 1
+#if (MPICH_THREAD_LEVEL != MPI_THREAD_MULTIPLE)
+#define MPID_CS_INITIALIZE() {}
+#define MPID_CS_FINALIZE()   {}
+#define MPID_CS_ENTER()      {}
+#define MPID_CS_EXIT()       {}
+#define MPID_CS_CYCLE()      {}
+#else
 #define MPID_CS_INITIALIZE()                                          \
 {                                                                     \
   /* Create thread local storage for nest count that MPICH uses */    \
@@ -80,11 +96,6 @@ char exec_name[512];
   /* Destroy thread local storage created during MPID_CS_INITIALIZE */\
   MPID_Thread_tls_destroy(&MPIR_ThreadInfo.thread_storage, NULL);	      \
 }
-#if (MPICH_THREAD_LEVEL != MPI_THREAD_MULTIPLE)
-#define MPID_CS_ENTER()      {}
-#define MPID_CS_EXIT()       {}
-#define MPID_CS_CYCLE()      {}
-#else
 #define MPID_CS_ENTER()      DCMF_CriticalSection_enter(0);
 #define MPID_CS_EXIT()       DCMF_CriticalSection_exit(0);
 #define MPID_CS_CYCLE()      DCMF_CriticalSection_cycle(0);

@@ -6,7 +6,8 @@
 
 #include "mpido_coll.h"
 
-void allgather_async_done(void *clientdata)
+#ifdef USE_CCMI_COLL
+void allgather_async_done(void *clientdata, DCMF_Error_t *err)
 {
   volatile unsigned *work_left = (unsigned *)clientdata;
   (*work_left)--;
@@ -235,7 +236,8 @@ int MPIDO_Allgather_bcast_binom_async(void *sendbuf,
    return MPI_SUCCESS;
 
 }
-         
+
+#endif /* USE_CCMI_COLL */
 
 
 /* ****************************************************************** */
@@ -310,7 +312,7 @@ int MPIDO_Allgather_bcast(void *sendbuf,
 			  size_t recv_size,
 			  MPID_Comm * comm)
 {
-  int i, np, rc;
+  int i, np, rc = 0;
   MPI_Aint extent;
 
   np = comm ->local_size;
@@ -329,6 +331,7 @@ int MPIDO_Allgather_bcast(void *sendbuf,
                      recvtype);
     }
 
+#warning this code should either abort on first error or somehow aggregate error codes
   for (i = 0; i < np; i++)
     {
       void *destbuf = recvbuf + i * recvcount * extent;

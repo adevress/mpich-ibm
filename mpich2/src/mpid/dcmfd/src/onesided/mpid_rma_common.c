@@ -1099,7 +1099,7 @@ void MPIDU_free_req(DCMF_Request_t *req, DCQuad *bgq) {
  *
  * \ref rqcache_design
  */
-void done_rqc_cb(void *v) {
+void done_rqc_cb(void *v, DCMF_Error_t *e) {
         volatile unsigned *pending;
         DCQuad xtra;
 
@@ -1131,7 +1131,7 @@ void done_rqc_cb(void *v) {
  *
  * \ref rqcache_design
  */
-static void done_free_rqc_cb(void *v) {
+static void done_free_rqc_cb(void *v, DCMF_Error_t *e) {
         volatile unsigned *pending;
         DCQuad xtra;
 
@@ -1166,7 +1166,7 @@ static void done_free_rqc_cb(void *v) {
  *
  * \ref rqcache_design
  */
-void done_getfree_rqc_cb(void *v) {
+void done_getfree_rqc_cb(void *v, DCMF_Error_t *e) {
         volatile unsigned *pending;
 	volatile struct mpid_get_cb_data *get;
         DCQuad xtra;
@@ -1218,7 +1218,7 @@ void done_getfree_rqc_cb(void *v) {
  *
  * \ref rqcache_design
  */
-void done_reffree_rqc_cb(void *v) {
+void done_reffree_rqc_cb(void *v, DCMF_Error_t *e) {
         volatile unsigned *pending;
 	volatile struct mpid_put_cb_data *put;
         DCQuad xtra;
@@ -1254,7 +1254,7 @@ void done_reffree_rqc_cb(void *v) {
  *
  * \ref rqcache_design
  */
-static void free_rqc_cb(void *v) {
+static void free_rqc_cb(void *v, DCMF_Error_t *e) {
         DCQuad xtra;
 
         MPIDU_free_req((DCMF_Request_t *)v, &xtra);
@@ -1284,7 +1284,7 @@ static void free_rqc_cb(void *v) {
  *
  * \ref rqcache_design
  */
-void rma_rqc_cb(void *v) {
+void rma_rqc_cb(void *v, DCMF_Error_t *e) {
         MPID_Win *win;
         DCQuad xtra;
 
@@ -1312,7 +1312,7 @@ void rma_rqc_cb(void *v) {
  *
  * \ref rqcache_design
  */
-void none_rqc_cb(void *v) {
+void none_rqc_cb(void *v, DCMF_Error_t *e) {
         MPIDU_free_req((DCMF_Request_t *)v, NULL);
 }
 
@@ -1328,7 +1328,7 @@ void none_rqc_cb(void *v) {
  * \param[in] v	Pointer to integer counter to decrement
  * \return nothing
  */
-static void done_cb(void *v) {
+static void done_cb(void *v, DCMF_Error_t *e) {
         int *cp = (int *)v;
         --(*cp);
 }
@@ -1340,7 +1340,7 @@ static void done_cb(void *v) {
  * \param[in] v	Pointer to request object used for transfer
  * \return	nothing
  */
-void dtc1_rqc_cb(void *v) {
+void dtc1_rqc_cb(void *v, DCMF_Error_t *e) {
         DCQuad xtra;
 
         MPIDU_free_req((DCMF_Request_t *)v, &xtra);
@@ -1354,7 +1354,7 @@ void dtc1_rqc_cb(void *v) {
  * \param[in] v	Pointer to request object used for transfer
  * \return	nothing
  */
-static void dtc2_rqc_cb(void *v) {
+static void dtc2_rqc_cb(void *v, DCMF_Error_t *e) {
         DCQuad xtra;
 
         MPIDU_free_req((DCMF_Request_t *)v, &xtra);

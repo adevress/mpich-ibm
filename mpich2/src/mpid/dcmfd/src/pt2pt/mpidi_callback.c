@@ -76,7 +76,7 @@ DCMF_Request_t * MPIDI_BG2S_RecvCB(void                     * clientdata,
   /* -------------------------------------------------------- */
   /* we have enough information to fill in the callback info. */
   /* -------------------------------------------------------- */
-  cb_info->function = (void (*)(void *))MPIDI_DCMF_RecvDoneCB;
+  cb_info->function = MPIDI_DCMF_RecvDoneCB;
   cb_info->clientdata = (void *)rreq;
 
   /* ----------------------------------------- */

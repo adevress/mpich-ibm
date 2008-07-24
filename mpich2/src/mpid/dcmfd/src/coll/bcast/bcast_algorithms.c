@@ -6,6 +6,7 @@
 
 #include "mpido_coll.h"
 
+#ifdef USE_CCMI_COLL
 /**
  * **************************************************************************
  * \brief "Done" callback for collective broadcast message.
@@ -13,7 +14,7 @@
  */
 
 static void
-bcast_cb_done(void *clientdata)
+bcast_cb_done(void *clientdata, DCMF_Error_t *err)
 {
    volatile unsigned *work_left = (unsigned *) clientdata;
    *work_left = 0;
@@ -162,6 +163,7 @@ int MPIDO_Bcast_rect_async(void * buffer,
 
      return rc;
 }
+#endif /* USE_CCMI_COLL */
 
 
 int

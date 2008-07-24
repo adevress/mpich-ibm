@@ -349,9 +349,9 @@ void MPIDI_BG2S_SsmAckCB(void                     * clientdata,
                          unsigned                   senderrank,
                          const char               * sndbuf,
                          unsigned                   sndlen);
-void MPIDI_DCMF_SendDoneCB    (MPID_Request * sreq);
-void MPIDI_DCMF_RecvDoneCB    (MPID_Request * rreq);
-void MPIDI_DCMF_RecvRzvDoneCB (MPID_Request * rreq);
+void MPIDI_DCMF_SendDoneCB    (void *sreq, DCMF_Error_t *err);
+void MPIDI_DCMF_RecvDoneCB    (void *rreq, DCMF_Error_t *err);
+void MPIDI_DCMF_RecvRzvDoneCB (void *rreq, DCMF_Error_t *err);
 void MPIDI_DCMF_StartMsg      (MPID_Request * sreq);
 int  MPIDI_Irecv(void          * buf,
                  int             count,

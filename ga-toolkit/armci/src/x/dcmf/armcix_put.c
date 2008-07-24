@@ -63,7 +63,8 @@ int ARMCIX_Put( void * src, void * dst, int bytes, int proc)
               src_memregion,
               dst_memregion,
               armcix_dcmf_va_to_offset (src_memregion, src),
-              armcix_dcmf_va_to_offset (dst_memregion, dst));
+              armcix_dcmf_va_to_offset (dst_memregion, dst),
+              (DCMF_Callback_t){NULL,NULL});
 
 #ifdef BLOCKING_OPERATIONS_REQUIRE_FENCE
   ARMCIX_Fence (proc);
@@ -101,7 +102,7 @@ int ARMCIX_NbPut (void * src, void * dst, int bytes, int proc, armci_ihdl_t nb_h
 
   DCMF_Callback_t cb_free = { ARMCIX_DCMF_NbOp_cb_done, nb_handle };
   ARMCIX_DCMF_Request_t * new_request = ARMCIX_DCMF_request_allocate (cb_free);
-  DCMF_Callback_t cb_done = { (void(*)(void *)) ARMCIX_DCMF_request_free, new_request };
+  DCMF_Callback_t cb_done = { (void (*)(void *, DCMF_Error_t *))ARMCIX_DCMF_request_free, new_request };
 
   DCMF_Memregion_t * src_memregion = &__connection[proc].local_mem_region;
   DCMF_Memregion_t * dst_memregion = &__connection[proc].remote_mem_region;
@@ -116,7 +117,8 @@ int ARMCIX_NbPut (void * src, void * dst, int bytes, int proc, armci_ihdl_t nb_h
               src_memregion,
               dst_memregion,
               armcix_dcmf_va_to_offset (src_memregion, src),
-              armcix_dcmf_va_to_offset (dst_memregion, dst));
+              armcix_dcmf_va_to_offset (dst_memregion, dst),
+              (DCMF_Callback_t){NULL,NULL});
 
   DCMF_CriticalSection_exit  (0);
 
@@ -184,7 +186,7 @@ int ARMCIX_NbPutV (armci_giov_t * darr, int len, int proc, armci_ihdl_t nb_handl
   DCMF_Memregion_t * dst_memregion = &__connection[proc].remote_mem_region;
 
   DCMF_Callback_t cb_free = { ARMCIX_DCMF_NbOp_cb_done, nb_handle };
-  DCMF_Callback_t cb_done = { (void(*)(void *)) ARMCIX_DCMF_request_free, NULL };
+  DCMF_Callback_t cb_done = { (void (*)(void *, DCMF_Error_t *))ARMCIX_DCMF_request_free, NULL };
   for (i = 0; i < len; i++)
   {
     for (j = 0; j < darr[i].ptr_array_len; j++)
@@ -202,7 +204,8 @@ int ARMCIX_NbPutV (armci_giov_t * darr, int len, int proc, armci_ihdl_t nb_handl
                 src_memregion,
                 dst_memregion,
                 armcix_dcmf_va_to_offset (src_memregion, darr[i].src_ptr_array[j]),
-                armcix_dcmf_va_to_offset (dst_memregion, darr[i].dst_ptr_array[j]));
+                armcix_dcmf_va_to_offset (dst_memregion, darr[i].dst_ptr_array[j]),
+                (DCMF_Callback_t){NULL,NULL});
     }
   }
   //fprintf (stderr, "ARMCIX_NbPutV() <<\n");
@@ -229,7 +232,7 @@ unsigned ARMCIX_DCMF_PutS_recurse (void * src_ptr, int * src_stride_arr,
 
     DCMF_Callback_t cb_free = { ARMCIX_DCMF_NbOp_cb_done, nb_handle };
     ARMCIX_DCMF_Request_t * new_request = ARMCIX_DCMF_request_allocate (cb_free);
-    DCMF_Callback_t cb_done = { (void(*)(void *)) ARMCIX_DCMF_request_free, new_request };
+    DCMF_Callback_t cb_done = { (void (*)(void *, DCMF_Error_t *))ARMCIX_DCMF_request_free, new_request };
 
     DCMF_Memregion_t * src_memregion = &__connection[proc].local_mem_region;
     DCMF_Memregion_t * dst_memregion = &__connection[proc].remote_mem_region;
@@ -243,7 +246,8 @@ unsigned ARMCIX_DCMF_PutS_recurse (void * src_ptr, int * src_stride_arr,
               src_memregion,
               dst_memregion,
               armcix_dcmf_va_to_offset (src_memregion, src_ptr),
-              armcix_dcmf_va_to_offset (dst_memregion, dst_ptr));
+              armcix_dcmf_va_to_offset (dst_memregion, dst_ptr),
+              (DCMF_Callback_t){NULL,NULL});
 
     num_requests++;
   }

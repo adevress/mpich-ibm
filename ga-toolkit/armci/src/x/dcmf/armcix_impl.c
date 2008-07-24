@@ -122,7 +122,7 @@ void ARMCIX_DCMF_request_free (ARMCIX_DCMF_Request_t * request)
 
   // Invoke the "free" callback if it is specified.
   if (_request->cb_free.function != NULL)
-    _request->cb_free.function (_request->cb_free.clientdata);
+    _request->cb_free.function (_request->cb_free.clientdata, NULL);
 
   // Return the request to the free request pool.
   _request->next = __armcix_dcmf_requestpool.head;
@@ -134,7 +134,7 @@ void ARMCIX_DCMF_request_free (ARMCIX_DCMF_Request_t * request)
  *
  * \param[in] clientdata Address of the variable to decrement
  */
-void ARMCIX_DCMF_cb_decrement (void * clientdata)
+void ARMCIX_DCMF_cb_decrement (void * clientdata, DCMF_Error_t *err)
 {
   unsigned * value = (unsigned *) clientdata;
   (*value)--;
@@ -145,7 +145,7 @@ void ARMCIX_DCMF_cb_decrement (void * clientdata)
  *
  * \param[in] clientdata The non-blocking handle to complete
  */
-void ARMCIX_DCMF_NbOp_cb_done (void * clientdata)
+void ARMCIX_DCMF_NbOp_cb_done (void * clientdata, DCMF_Error_t *err)
 {
   armci_ihdl_t nb_handle = (armci_ihdl_t) clientdata;
   armcix_dcmf_opaque_t * dcmf = (armcix_dcmf_opaque_t *) &nb_handle->cmpl_info;
@@ -192,7 +192,7 @@ DCMF_Request_t * ARMCIX_DCMF_RecvMemregion2 (void             * clientdata,
   *rcvlen = sndlen;
   *rcvbuf = (char *) &connection[peer].remote_mem_region;
 
-  cb_done->function   = free;
+  cb_done->function   = (void (*)(void *, DCMF_Error_t *))free; // still works, for now.
   cb_done->clientdata = (void *) malloc (sizeof (DCMF_Request_t));
 
   return cb_done->clientdata;
@@ -235,7 +235,7 @@ void ARMCIX_DCMF_Connection_initialize ()
 
   DCMF_Request_t request;
   volatile unsigned active;
-  DCMF_Callback_t cb_done = { (void (*)(void*)) ARMCIX_DCMF_cb_decrement, (void *) &active };
+  DCMF_Callback_t cb_done = { ARMCIX_DCMF_cb_decrement, (void *) &active };
 
   // Exchange the memory regions
   __memregions_to_receive = size;

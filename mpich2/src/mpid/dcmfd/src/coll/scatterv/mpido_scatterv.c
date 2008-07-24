@@ -8,6 +8,8 @@
 
 #pragma weak PMPIDO_Scatterv = MPIDO_Scatterv
 
+#ifdef USE_CCMI_COLL
+
 int MPIDO_Scatterv(void *sendbuf,
                    int *sendcounts,
                    int *displs,
@@ -115,3 +117,19 @@ int MPIDO_Scatterv(void *sendbuf,
 				root,
 				comm_ptr);
 }
+
+#else /* !USE_CCMI_COLL */
+
+int MPIDO_Scatterv(void *sendbuf,
+                   int *sendcounts, 
+                   int *displs,
+                   MPI_Datatype sendtype,
+                   void *recvbuf,
+                   int recvcount,
+                   MPI_Datatype recvtype,
+                   int root,
+                   MPID_Comm *comm_ptr)
+{
+    MPID_abort();
+}
+#endif /* !USE_CCMI_COLL */

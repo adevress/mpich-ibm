@@ -8,6 +8,7 @@
 
 #pragma weak PMPIDO_Alltoallw = MPIDO_Alltoallw
 
+#ifdef USE_CCMI_COLL
 
 int
 MPIDO_Alltoallw(void *sendbuf,
@@ -101,3 +102,19 @@ MPIDO_Alltoallw(void *sendbuf,
 
   return rc;
 }
+
+#else /* !USE_CCMI_COLL */
+
+int MPIDO_Alltoallw(void *sendbuf,
+                int *sendcounts,
+                int *senddispls,
+                MPI_Datatype *sendtypes,
+                void *recvbuf,
+                int *recvcounts,
+                int *recvdispls,
+                MPI_Datatype *recvtypes,
+                MPID_Comm *comm_ptr)
+{
+    MPID_abort();
+}
+#endif /* !USE_CCMI_COLL */

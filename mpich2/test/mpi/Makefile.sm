@@ -30,7 +30,7 @@ ROPTS =
 # The XML summary file will have the entire target string appended,
 # for example #1 it would be "summary-testrun_virtualNodeMode.xml".
 #
-testrun%:
+testrun testrun%:
 	targ="$@";\
 	list="$${targ%%_*}";\
 	opts="$${targ#$${list}}"; opts="$${opts//_/ -}";\

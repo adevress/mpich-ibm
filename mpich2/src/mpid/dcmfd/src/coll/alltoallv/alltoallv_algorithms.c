@@ -7,6 +7,7 @@
 #include "mpido_coll.h"
 
 
+#ifdef USE_CCMI_COLL
 /**
  * **************************************************************************
  * \brief "Done" callback for collective alltoall message.
@@ -14,7 +15,7 @@
  */
 
 void
-alltoallv_cb_done(void *clientdata)
+alltoallv_cb_done(void *clientdata, DCMF_Error_t *err)
 {
   volatile unsigned *work_left = (unsigned *) clientdata;
   *work_left = 0;
@@ -65,3 +66,4 @@ int MPIDO_Alltoallv_torus(void *sendbuf,
    return rc;
 }
 
+#endif /* USE_CCMI_COLL */

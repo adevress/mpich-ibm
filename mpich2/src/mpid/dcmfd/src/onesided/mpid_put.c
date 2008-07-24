@@ -200,7 +200,8 @@ int MPID_Put(void *origin_addr, int origin_count,
 				bufmr,
 				&win_ptr->_dev.coll_info[target_rank].mem_region,
 				(size_t)s,
-				(size_t)b);
+				(size_t)b,
+				(DCMF_Callback_t){NULL, NULL});
 #else /* ! USE_DCMF_PUT */
                         mpi_errno = DCMF_Send(&bg1s_sn_proto, reqp,
                                 cb_send, win_ptr->_dev.my_cstcy, lpid,
@@ -240,7 +241,8 @@ int MPID_Put(void *origin_addr, int origin_count,
 						bufmr,
 						&win_ptr->_dev.coll_info[target_rank].mem_region,
 						(unsigned)s,
-						(unsigned)b + dti.map[i].off);
+						(unsigned)b + dti.map[i].off,
+						(DCMF_Callback_t){NULL, NULL});
 #else /* ! USE_DCMF_PUT */
                                         reqp = MPIDU_get_req(&xtra, &info);
                 			info->mpid_info_w0 = MPID_MSGTYPE_PUT;

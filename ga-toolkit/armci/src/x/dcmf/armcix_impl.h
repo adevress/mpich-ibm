@@ -21,7 +21,7 @@
 
 /* verify that the version of the installed dcmf library is compatible */
 #if (DCMF_VERSION_RELEASE == 0)
-  #if (DCMF_VERSION_MAJOR == 1)
+  #if (DCMF_VERSION_MAJOR == 2)
     #if (DCMF_VERSION_MINOR < 0)
       #error Incompatible dcmf minor version
     #endif
@@ -99,14 +99,14 @@ static inline size_t armcix_dcmf_va_to_offset (DCMF_Memregion_t * mr, void * va)
  *
  * \param[in] clientdata The variable to decrement
  */
-void ARMCIX_DCMF_cb_decrement (void * clientdata);
+void ARMCIX_DCMF_cb_decrement (void * clientdata, DCMF_Error_t *err);
 
 /**
  * \brief Callback function for non-blocking operations
  *
  * \param[in] clientdata The non-blocking handle to complete
  */
-void ARMCIX_DCMF_NbOp_cb_done (void * clientdata);
+void ARMCIX_DCMF_NbOp_cb_done (void * clientdata, DCMF_Error_t *err);
 
 /**
  * \brief Allocate a request from the free request pool

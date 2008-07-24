@@ -9,6 +9,8 @@
 
 #pragma weak PMPIDO_Reduce = MPIDO_Reduce
 
+#ifdef USE_CCMI_COLL
+
 int MPIDO_Reduce(void * sendbuf,
                  void * recvbuf,
                  int count,
@@ -109,3 +111,17 @@ int MPIDO_Reduce(void * sendbuf,
   
   return rc;
 }
+
+#else /* !USE_CCMI_COLL */
+
+int MPIDO_Reduce(void * sendbuf,
+                 void * recvbuf,
+                 int count,
+                 MPI_Datatype datatype,
+                 MPI_Op op,
+                 int root,
+                 MPID_Comm * comm_ptr)
+{
+    MPID_abort();
+}
+#endif /* !USE_CCMI_COLL */

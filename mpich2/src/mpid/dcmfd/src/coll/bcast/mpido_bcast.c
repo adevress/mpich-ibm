@@ -9,6 +9,8 @@
 
 #pragma weak PMPIDO_Bcast = MPIDO_Bcast
 
+#ifdef USE_CCMI_COLL
+
 int
 MPIDO_Bcast(void * buffer,
 	    int count,
@@ -145,3 +147,15 @@ MPIDO_Bcast(void * buffer,
 
   return rc;
 }
+
+#else /* !USE_CCMI_COLL */
+
+int MPIDO_Bcast(void * buffer,
+                int count,
+                MPI_Datatype datatype,
+                int root,
+                MPID_Comm * comm_ptr)
+{
+    MPID_abort();
+}
+#endif /* !USE_CCMI_COLL */

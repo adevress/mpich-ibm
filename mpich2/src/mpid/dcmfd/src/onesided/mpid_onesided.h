@@ -809,7 +809,7 @@ void MPIDU_free_req(DCMF_Request_t *req, DCQuad *bgq);
  *
  * \ref rqcache_design
  */
-void done_rqc_cb(void *v);
+void done_rqc_cb(void *v, DCMF_Error_t *);
 
 #ifdef NOT_USED
 /**
@@ -832,7 +832,7 @@ void done_rqc_cb(void *v);
  *
  * \ref rqcache_design
  */
-void done_free_rqc_cb(void *v);
+void done_free_rqc_cb(void *v, DCMF_Error_t *);
 #endif /* NOT_USED */
 
 /**
@@ -856,7 +856,7 @@ void done_free_rqc_cb(void *v);
  *
  * \ref rqcache_design
  */
-void done_getfree_rqc_cb(void *v);
+void done_getfree_rqc_cb(void *v, DCMF_Error_t *);
 
 /**
  * \brief Generic request cache done callback with counter decr,
@@ -878,7 +878,7 @@ void done_getfree_rqc_cb(void *v);
  *
  * \ref rqcache_design
  */
-void done_reffree_rqc_cb(void *v);
+void done_reffree_rqc_cb(void *v, DCMF_Error_t *);
 
 #ifdef NOT_USED
 /**
@@ -897,7 +897,7 @@ void done_reffree_rqc_cb(void *v);
  *
  * \ref rqcache_design
  */
-void free_rqc_cb(void *v);
+void free_rqc_cb(void *v, DCMF_Error_t *);
 #endif /* NOT_USED */
 
 /**
@@ -944,7 +944,7 @@ void rma_recvs_cb(MPID_Win *win, int orig, int lpid, int count);
  *
  * \ref rqcache_design
  */
-void rma_rqc_cb(void *v);
+void rma_rqc_cb(void *v, DCMF_Error_t *);
 
 /**
  * \brief Generic callback for request cache
@@ -964,7 +964,7 @@ void rma_rqc_cb(void *v);
  *
  * \ref rqcache_design
  */
-void none_rqc_cb(void *v);
+void none_rqc_cb(void *v, DCMF_Error_t *);
 
 #ifdef NOT_USED
 /**
@@ -978,7 +978,7 @@ void none_rqc_cb(void *v);
  * \param[in] v	Pointer to integer counter to decrement
  * \return nothing
  */
-void done_cb(void *v);
+void done_cb(void *v, DCMF_Error_t *);
 #endif /* NOT_USED */
 
 /**
@@ -987,7 +987,7 @@ void done_cb(void *v);
  * \param[in] v	Pointer to request object used for transfer
  * \return	nothing
  */
-void dtc1_rqc_cb(void *v);
+void dtc1_rqc_cb(void *v, DCMF_Error_t *);
 
 #ifdef NOT_USED
 /**
@@ -996,7 +996,7 @@ void dtc1_rqc_cb(void *v);
  * \param[in] v	Pointer to request object used for transfer
  * \return	nothing
  */
-void dtc2_rqc_cb(void *v);
+void dtc2_rqc_cb(void *v, DCMF_Error_t *);
 #endif /* NOT_USED */
 
 /*
@@ -1250,7 +1250,7 @@ void recv_ctl_cb(void *cd, const DCMF_Control_t *ctl, unsigned or);
  *
  * \ref msginfo_usage
  */
-void accum_cb(void *v);
+void accum_cb(void *v, DCMF_Error_t *);
 
 /**
  * \brief Receive callback for RMA operations messages

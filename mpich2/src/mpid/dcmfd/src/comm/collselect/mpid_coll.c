@@ -5,12 +5,14 @@
  */
 #include "mpido_coll.h"
 
+MPIDI_CollectiveProtocol_t MPIDI_CollectiveProtocols;
+
+#ifdef USE_CCMI_COLL
+
 #warning reasonable hack for now
 #define MAXGEOMETRIES 65536
 
-
 static DCMF_Geometry_t *mpid_geometrytable[MAXGEOMETRIES];
-MPIDI_CollectiveProtocol_t MPIDI_CollectiveProtocols;
 
 /*
  * geometries have a 'comm' ID which needs to be equivalently unique as
@@ -106,13 +108,15 @@ static inline int REDUCE_REGISTER(DCMF_Reduce_Protocol proto,
    config->protocol = proto;
    return DCMF_Reduce_register(proto_ptr, config);
 }
+#endif /* USE_CCMI_COLL */
 
 
 
 /** \brief Helper used to register all the collective protocols at initialization */
 void MPIDI_Coll_register(void)
 {
-  DCMF_Embedded_Info_Set * properties = &MPIDI_CollectiveProtocols.properties;
+#ifdef USE_CCMI_COLL
+   DCMF_Embedded_Info_Set * properties = &MPIDI_CollectiveProtocols.properties;
    DCMF_Barrier_Configuration_t   barrier_config;
    DCMF_Broadcast_Configuration_t broadcast_config;
    DCMF_AsyncBroadcast_Configuration_t a_broadcast_config;
@@ -386,6 +390,7 @@ void MPIDI_Coll_register(void)
 		      &MPIDI_CollectiveProtocols.rectanglering_reduce,
 		      &reduce_config) != DCMF_SUCCESS)
      DCMF_INFO_UNSET(properties, DCMF_USE_RECTRING_REDUCE);
+#endif /* USE_CCMI_COLL */
 }
 
 
@@ -444,16 +449,16 @@ void MPIDI_Coll_Comm_create (MPID_Comm *comm)
     {
       DCMF_INFO_SET(comm_prop, DCMF_THREADED_MODE);
       if(comm != comm_world)
-	global = 0;
+       global = 0;
     }
   else /* single MPI thread. */
     {
       /* and if we are not dup of comm_world, global context is not safe */
       if(comm->local_size != comm_world->local_size)
-	global = 0;
+       global = 0;
     }
 
-
+#ifdef USE_CCMI_COLL
   /* ******************************************************* */
   /* Setup Barriers and geometry for this communicator       */
   /* ******************************************************* */
@@ -609,6 +614,27 @@ void MPIDI_Coll_Comm_create (MPID_Comm *comm)
 	}
     }
 
+#else /* !USE_CCMI_COLL */
+
+   comm->coll_fns->Barrier        = NULL;
+   comm->coll_fns->Bcast          = NULL;
+   comm->coll_fns->Reduce         = NULL;
+   comm->coll_fns->Allreduce      = NULL;
+   comm->coll_fns->Alltoall       = NULL;
+   comm->coll_fns->Alltoallv      = NULL;
+   comm->coll_fns->Alltoallw       = NULL;
+   comm->coll_fns->Allgather      = NULL;
+   comm->coll_fns->Allgatherv     = NULL;
+   comm->coll_fns->Gather         = NULL;
+   comm->coll_fns->Gatherv        = NULL;
+   comm->coll_fns->Scatter        = NULL;
+   comm->coll_fns->Scatterv       = NULL;
+   comm->coll_fns->Reduce_scatter = NULL;
+   comm->coll_fns->Scan           = NULL;
+   comm->coll_fns->Exscan         = NULL;
+
+#endif /* !USE_CCMI_COLL */
+
   comm -> dcmf.sndlen = NULL;
   comm -> dcmf.rcvlen = NULL;
   comm -> dcmf.sdispls = NULL;
@@ -643,7 +669,9 @@ void MPIDI_Coll_Comm_destroy (MPID_Comm *comm)
   MPID_assert (comm != NULL);
   if (comm->coll_fns)
     MPIU_Free(comm->coll_fns);
+#ifdef USE_CCMI_COLL
   DCMF_Geometry_free(&comm->dcmf.geometry);
+#endif /* USE_CCMI_COLL */
   if(comm->dcmf.sndlen)
     MPIU_Free(comm->dcmf.sndlen);
   if(comm->dcmf.rcvlen)

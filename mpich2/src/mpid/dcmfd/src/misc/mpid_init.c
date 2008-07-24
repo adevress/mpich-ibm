@@ -77,7 +77,9 @@ int MPID_Init(int * argc,
   /* Initialize messager           */
   /* ----------------------------- */
   DCMF_Messager_initialize();
+#ifdef USE_CCMI_COLL
   DCMF_Collective_initialize();
+#endif /* USE_CCMI_COLL */
   DCMF_Hardware(&mpid_hw);
 
   if (MPIDI_Process.use_ssm)
@@ -154,10 +156,12 @@ int MPID_Init(int * argc,
     };
   DCMF_Control_register (&MPIDI_Protocols.control, &control_config);
 
+#ifdef USE_CCMI_COLL
   /* ---------------------------------- */
   /* Register the collectives           */
   /* ---------------------------------- */
   MPIDI_Coll_register();
+#endif /* USE_CCMI_COLL */
 
   /* ------------------------------------------------------ */
   /* Set process attributes.                                */

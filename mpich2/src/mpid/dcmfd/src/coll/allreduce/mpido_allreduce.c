@@ -10,6 +10,8 @@
 
 #pragma weak PMPIDO_Allreduce = MPIDO_Allreduce
 
+#ifdef USE_CCMI_COLL
+
 int
 MPIDO_Allreduce(void * sendbuf,
 		void * recvbuf,
@@ -126,3 +128,18 @@ MPIDO_Allreduce(void * sendbuf,
   
   return rc;
 }
+
+#else /* !USE_CCMI_COLL */
+
+int MPIDO_Allreduce(
+            void * sendbuf,
+            void * recvbuf,
+            int count,
+            MPI_Datatype datatype,
+            MPI_Op op,
+            MPID_Comm * comm_ptr)
+{
+    MPID_abort();
+}
+
+#endif /* !USE_CCMI_COLL */

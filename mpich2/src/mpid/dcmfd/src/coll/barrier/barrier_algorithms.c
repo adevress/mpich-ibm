@@ -6,6 +6,7 @@
 
 #include "mpido_coll.h"
 
+#ifdef USE_CCMI_COLL
 /**
  * **************************************************************************
  * \brief "Done" callback for barrier messages.
@@ -13,7 +14,7 @@
  */
 
 void
-barrier_cb_done(void * clientdata)
+barrier_cb_done(void * clientdata, DCMF_Error_t *err)
 {
   volatile unsigned * work_left = (unsigned *) clientdata;
   *work_left = 0;
@@ -75,3 +76,5 @@ MPIDO_Barrier_dcmf(MPID_Comm * comm)
 
   return rc;
 }
+
+#endif /* USE_CCMI_COLL */

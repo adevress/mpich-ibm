@@ -6,6 +6,7 @@
 
 #include "mpido_coll.h"
 
+#ifdef USE_CCMI_COLL
 /* \brief Callback for async bcast. MPIDO_Bcast call wouldn't be appropriate
  * here, so we just use call DCMF_AsyncBroadcast directly
  */
@@ -226,6 +227,8 @@ int MPIDO_Allgatherv_bcast_rect_async(void *sendbuf,
    return MPI_SUCCESS;
   
 }
+
+#endif /* USE_CCMI_COLL */
 
 /* ****************************************************************** */
 /**

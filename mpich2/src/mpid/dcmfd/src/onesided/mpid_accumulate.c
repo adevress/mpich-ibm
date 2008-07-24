@@ -139,7 +139,7 @@ void target_accumulate(MPIDU_Onesided_info_t *mi,
  *
  * \ref msginfo_usage
  */
-void accum_cb(void *v) {
+void accum_cb(void *v, DCMF_Error_t *e) {
         MPIDU_Onesided_info_t *info;
         DCQuad xtra;
         char *buf;

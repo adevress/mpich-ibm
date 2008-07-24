@@ -302,7 +302,7 @@ int ARMCIX_NbAcc (int datatype, void * scale, void * src, void * dst, int bytes,
 
   DCMF_Callback_t cb_free = { ARMCIX_DCMF_NbOp_cb_done, nb_handle };
   ARMCIX_DCMF_Request_t * new_request = ARMCIX_DCMF_request_allocate (cb_free);
-  DCMF_Callback_t cb_done = { (void(*)(void *)) ARMCIX_DCMF_request_free, new_request };
+  DCMF_Callback_t cb_done = { (void (*)(void *, DCMF_Error_t *))ARMCIX_DCMF_request_free, new_request };
 
   ARMCIX_DCMF_AccInfo_t * info = (ARMCIX_DCMF_AccInfo_t *) &(new_request->quad[0]);
   info->dst = dst;
@@ -515,7 +515,7 @@ int ARMCIX_NbAccV (int datatype, void * scale, armci_giov_t * darr, int len, int
     {
       DCMF_Callback_t cb_free = { ARMCIX_DCMF_NbOp_cb_done, nb_handle };
       ARMCIX_DCMF_Request_t * new_request = ARMCIX_DCMF_request_allocate (cb_free);
-      DCMF_Callback_t cb_done = { (void(*)(void *)) ARMCIX_DCMF_request_free, new_request };
+      DCMF_Callback_t cb_done = { (void (*)(void *, DCMF_Error_t *))ARMCIX_DCMF_request_free, new_request };
 
       ARMCIX_DCMF_AccInfo_t * info = (ARMCIX_DCMF_AccInfo_t *) &(new_request->quad[0]);
       //info->dst = dst;
@@ -584,7 +584,7 @@ unsigned ARMCIX_DCMF_AccS_recurse (int datatype, void * scale,
   {
     DCMF_Callback_t cb_free = { ARMCIX_DCMF_NbOp_cb_done, nb_handle };
     ARMCIX_DCMF_Request_t * new_request = ARMCIX_DCMF_request_allocate (cb_free);
-    DCMF_Callback_t cb_done = { (void(*)(void *)) ARMCIX_DCMF_request_free, new_request };
+    DCMF_Callback_t cb_done = { (void (*)(void *, DCMF_Error_t *))ARMCIX_DCMF_request_free, new_request };
 
     ARMCIX_DCMF_AccInfo_t * info = (ARMCIX_DCMF_AccInfo_t *) &(new_request->quad[0]);
     //info->dst = dst;

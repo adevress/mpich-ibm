@@ -9,6 +9,8 @@
 
 #pragma weak PMPIDO_Allgather = MPIDO_Allgather
 
+#ifdef USE_CCMI_COLL
+
 int
 MPIDO_Allgather(void *sendbuf,
                int sendcount,
@@ -153,3 +155,17 @@ MPIDO_Allgather(void *sendbuf,
   
    return rc;
 }
+
+#else /* !USE_CCMI_COLL */
+
+int MPIDO_Allgather(void *sendbuf,
+               int sendcount,
+               MPI_Datatype sendtype,
+               void *recvbuf,
+               int recvcount,
+               MPI_Datatype recvtype,
+               MPID_Comm * comm_ptr)
+{
+    MPID_abort();
+}
+#endif /* !USE_CCMI_COLL */

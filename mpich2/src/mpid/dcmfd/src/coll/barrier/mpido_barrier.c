@@ -9,6 +9,8 @@
 
 #pragma weak PMPIDO_Barrier = MPIDO_Barrier
 
+#ifdef USE_CCMI_COLL
+
 /**
  * **************************************************************************
  * \brief General MPIDO_Barrier() implementation
@@ -30,3 +32,11 @@ int MPIDO_Barrier(MPID_Comm * comm)
   
   return rc;
 }
+
+#else /* !USE_CCMI_COLL */
+
+int MPIDO_Barrier(MPID_Comm *comm_ptr)
+{
+    MPID_abort();
+}
+#endif /* !USE_CCMI_COLL */

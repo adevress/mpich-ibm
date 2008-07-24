@@ -53,7 +53,7 @@ void MPIDI_BG2S_SsmAckCB(void                     * clientdata,
  *
  * \param[in,out] sreq MPI receive request object
  */
-void MPIDI_DCMF_SsmPutDoneCB (MPID_Request * sreq)
+void MPIDI_DCMF_SsmPutDoneCB (void *clientdata, DCMF_Error_t *err)
 {
   SSM_ABORT();
 }

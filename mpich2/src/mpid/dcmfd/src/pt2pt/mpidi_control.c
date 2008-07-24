@@ -61,7 +61,7 @@ static inline void MPIDI_DCMF_procSyncAck(MPIDI_DCMF_MsgInfo *info, unsigned pee
 }
 
 
-void MPIDI_DCMF_postCancelReq_free(void* p)
+void MPIDI_DCMF_postCancelReq_free(void* p, DCMF_Error_t *err)
 {
   MPID_assert_debug(p != NULL);
   MPIU_Free(p);
@@ -188,7 +188,7 @@ static inline void MPIDI_DCMF_procCanelAck(MPIDI_DCMF_MsgInfo *info, unsigned pe
            * from the target node, and the send done callback must be
            * explicitly called here.
            */
-          MPIDI_DCMF_SendDoneCB(infoRequest);
+          MPIDI_DCMF_SendDoneCB(infoRequest, NULL);
         }
     }
 }
@@ -205,7 +205,7 @@ static inline void MPIDI_DCMF_procCanelAck(MPIDI_DCMF_MsgInfo *info, unsigned pe
 static inline void MPIDI_DCMF_procRzvAck(MPIDI_DCMF_MsgInfo *info, unsigned peer)
 {
   MPID_assert(info->msginfo.req != NULL);
-  MPIDI_DCMF_SendDoneCB((MPID_Request *)info->msginfo.req);
+  MPIDI_DCMF_SendDoneCB((MPID_Request *)info->msginfo.req, NULL);
 }
 
 

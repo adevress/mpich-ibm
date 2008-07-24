@@ -5031,6 +5031,7 @@ if test "$with_aint_size" == "8" ; then
     # use 8 byte MPI_Aint override
     AC_MSG_RESULT([Overriding MPI_Aint $with_aint_size])
     MPI_SIZEOF_AINT=8
+    ADDRESS_KIND=8
     MPI_AINT="long long"
 
     MPI_AINT_FMT_DEC_SPEC="%lld"
