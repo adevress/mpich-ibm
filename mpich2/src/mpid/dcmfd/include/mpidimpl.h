@@ -399,8 +399,6 @@ int MPIDI_Isend_self(const void    * buf,
 /** \brief Helper function to complete a rendevous transfer */
 void MPIDI_DCMF_RendezvousTransfer (MPID_Request * rreq);
 
-void MPID_Dump_stacks        ();
-
 
 void MPIDI_Comm_create       (MPID_Comm *comm);
 void MPIDI_Comm_destroy      (MPID_Comm *comm);

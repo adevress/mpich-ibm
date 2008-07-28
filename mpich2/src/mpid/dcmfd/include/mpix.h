@@ -145,6 +145,12 @@ extern "C" {
                                   unsigned *z,
                                   unsigned *t);
 
+  /**
+   * \brief Print the current system stack
+   *
+   * The first frame (this function) is discarded to make the trace look nicer.
+   */
+  void     MPIX_Dump_stacks();
 
 #if defined(__cplusplus)
 }

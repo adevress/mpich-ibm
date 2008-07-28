@@ -49,12 +49,8 @@ MPIDO_Bcast(void * buffer,
       data_buffer = noncontig_buff;
       if (noncontig_buff == NULL)
 	{
-	  fprintf(stderr,
-		  "Pack: Tree Bcast cannot allocate local non-contig pack"
-		  " buffer\n");
-	  MPID_Dump_stacks();
 	  MPID_Abort(NULL, MPI_ERR_NO_SPACE, 1,
-		     "Fatal:  Cannot allocate pack buffer");
+		     "Fatal: Tree Bcast cannot allocate local non-contig pack buffer");
 	}
 
       if (comm -> rank == root)

@@ -174,3 +174,25 @@ int MPIX_Pset_diff_comm_create(MPI_Comm *pset_comm)
 
   return PMPI_Comm_split(MPI_COMM_WORLD, color, key, pset_comm);
 }
+
+
+#pragma weak MPID_Dump_stacks = MPIX_Dump_stacks
+extern int backtrace(void **buffer, int size);                  /**< GlibC backtrace support */
+extern char **backtrace_symbols(void *const *buffer, int size); /**< GlibC backtrace support */
+void MPIX_Dump_stacks()
+{
+  void *array[32];
+  size_t i;
+  size_t size    = backtrace(array, 32);
+  char **strings = backtrace_symbols(array, size);
+  fprintf(stderr, "Dumping %zd frames:\n", size - 1);
+  for (i = 1; i < size; i++)
+    {
+      if (strings != NULL)
+        fprintf(stderr, "\tFrame %d: %p: %s\n", i, array[i], strings[i]);
+      else
+        fprintf(stderr, "\tFrame %d: %p\n", i, array[i]);
+    }
+
+  free(strings); /* Since this is not allocated by MPIU_Malloc, do not use MPIU_Free */
+}

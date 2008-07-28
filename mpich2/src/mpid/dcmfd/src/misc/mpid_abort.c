@@ -4,9 +4,7 @@
  * \brief Handle general operations assosicated with erroneous job termination
  */
 #include "mpidimpl.h"
-
-extern int backtrace(void **buffer, int size); /**< GlibC backtrace support */
-extern char **backtrace_symbols(void *const *buffer, int size); /**< GlibC backtrace support */
+#include "mpix.h"
 
 /**
  * \brief The central parts of the MPID_Abort() call
@@ -54,7 +52,7 @@ void MPID_Abort_core(MPID_Comm * comm, int mpi_errno, int exit_code, const char 
   MPIU_Error_printf("%s", error_str);
 
   if (MPIDI_Process.verbose)
-    MPID_Dump_stacks();
+    MPIX_Dump_stacks();
 
   fflush(stderr);  fflush(stdout);
 }
@@ -74,28 +72,4 @@ int MPID_Abort(MPID_Comm * comm, int mpi_errno, int exit_code, const char *error
   MPID_Abort_core(comm, mpi_errno, exit_code, error_msg);
   abort();
   return MPI_ERR_INTERN;
-}
-
-
-/**
- * \brief Print the current system stack
- *
- * The first frame (this function) is discarded to make the trace look nicer.
- */
-void MPID_Dump_stacks()
-{
-  void *array[32];
-  size_t i;
-  size_t size    = backtrace(array, 32);
-  char **strings = backtrace_symbols(array, size);
-  fprintf(stderr, "Dumping %zd frames:\n", size - 1);
-  for (i = 1; i < size; i++)
-    {
-      if (strings != NULL)
-        fprintf(stderr, "\tFrame %d: %p: %s\n", i, array[i], strings[i]);
-      else
-        fprintf(stderr, "\tFrame %d: %p\n", i, array[i]);
-    }
-
-  free(strings); /* Since this is not allocated by MPIU_Malloc, do not use MPIU_Free */
 }
