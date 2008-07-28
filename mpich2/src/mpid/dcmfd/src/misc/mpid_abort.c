@@ -65,11 +65,17 @@ void MPID_Abort_core(MPID_Comm * comm, int mpi_errno, int exit_code, const char 
  * \param[in] error_msg The message to display (may be NULL_
  * \returns MPI_ERR_INTERN
  *
- * This function SHOULD NEVER return.
+ * This function MUST NEVER return.
  */
 int MPID_Abort(MPID_Comm * comm, int mpi_errno, int exit_code, const char *error_msg)
 {
+  char* env     = getenv("DCMF_COREONMPIDABORT");
+  if (!env) env = getenv("DCMF_COREONMPIABORT");
+  if (!env) env = getenv("DCMF_COREONABORT");
   MPID_Abort_core(comm, mpi_errno, exit_code, error_msg);
-  abort();
+  if ( (strncasecmp("no", env, 2)==0) || (strncasecmp("exit", env, 4)==0) || (strncmp("0", env, 1)==0) )
+    exit(1);
+  else
+    abort();
   return MPI_ERR_INTERN;
 }
