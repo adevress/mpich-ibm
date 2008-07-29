@@ -112,6 +112,7 @@ typedef struct
   /* Optimized barrier protocols and usage flags */
   DCMF_CollectiveProtocol_t gi_barrier;
   DCMF_CollectiveProtocol_t binomial_barrier;
+  DCMF_CollectiveProtocol_t rect_barrier;
 
   /* Optimized local barrier protocols and usage flags  (not used directly by 
      MPICH but stored in the geometry) */

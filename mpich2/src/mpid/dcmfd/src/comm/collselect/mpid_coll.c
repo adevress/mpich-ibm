@@ -219,23 +219,56 @@ void MPIDI_Coll_register(void)
     * but barriers are associated with a geometry and this knowledge
     * isn't available to mpido_barrier
     */
-   if(DCMF_INFO_ISSET(properties, DCMF_USE_GI_BARRIER))
+   if (DCMF_INFO_ISSET(properties, DCMF_USE_GI_BARRIER))
      {
-       if(BARRIER_REGISTER(DCMF_GI_BARRIER_PROTOCOL,
-			   &MPIDI_CollectiveProtocols.gi_barrier,
-			   &barrier_config) != DCMF_SUCCESS)
+       if (BARRIER_REGISTER(DCMF_GI_BARRIER_PROTOCOL,
+			    &MPIDI_CollectiveProtocols.gi_barrier,
+			    &barrier_config) != DCMF_SUCCESS)
 	 DCMF_INFO_UNSET(properties, DCMF_USE_GI_BARRIER);
      }
 
-   /*
-    * Always register a binomial barrier for collectives in subcomms, just
-    * choose not to use it at mpido_barrier
-    */
-   if(BARRIER_REGISTER(DCMF_TORUS_BINOMIAL_BARRIER_PROTOCOL,
-		       &MPIDI_CollectiveProtocols.binomial_barrier,
-		       &barrier_config) != DCMF_SUCCESS)
-     DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_BARRIER);
+   if (!DCMF_INFO_ISSET(properties, DCMF_USE_RECT_BARRIER) &&
+       DCMF_INFO_ISSET(properties, DCMF_USE_BINOM_BARRIER))
+     {
+       /*
+	* Always register a binomial barrier for collectives in subcomms, just
+	* choose not to use it at mpido_barrier
+	*/
+       if (BARRIER_REGISTER(DCMF_TORUS_BINOMIAL_BARRIER_PROTOCOL,
+			    &MPIDI_CollectiveProtocols.binomial_barrier,
+			    &barrier_config) != DCMF_SUCCESS)
+	 DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_BARRIER);
+
+     }
    
+   else if (DCMF_INFO_ISSET(properties, DCMF_USE_RECT_BARRIER) &&
+	    !DCMF_INFO_ISSET(properties, DCMF_USE_BINOM_BARRIER))
+     {
+       if (BARRIER_REGISTER(DCMF_TORUS_RECTANGLE_BARRIER_PROTOCOL,
+			    &MPIDI_CollectiveProtocols.rect_barrier,
+			    &barrier_config) != DCMF_SUCCESS)
+	 {
+	   DCMF_INFO_UNSET(properties, DCMF_USE_RECT_BARRIER);
+	   /* if rect barrier does not work, then try binom */
+	   if (BARRIER_REGISTER(DCMF_TORUS_BINOMIAL_BARRIER_PROTOCOL,
+				&MPIDI_CollectiveProtocols.binomial_barrier,
+				&barrier_config) != DCMF_SUCCESS)
+	     DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_BARRIER);
+	 }
+     }
+
+   else
+     {
+       if (BARRIER_REGISTER(DCMF_TORUS_RECTANGLE_BARRIER_PROTOCOL,
+			    &MPIDI_CollectiveProtocols.rect_barrier,
+			    &barrier_config) != DCMF_SUCCESS)
+	 DCMF_INFO_UNSET(properties, DCMF_USE_RECT_BARRIER);
+       if (BARRIER_REGISTER(DCMF_TORUS_BINOMIAL_BARRIER_PROTOCOL,
+			    &MPIDI_CollectiveProtocols.binomial_barrier,
+			    &barrier_config) != DCMF_SUCCESS)
+	 DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_BARRIER);
+     }
+
    /* if we don't even get a binomial barrier, we are in trouble */
    MPID_assert_debug(barriers_num >  0);
    
@@ -575,6 +608,7 @@ void MPIDI_Coll_Comm_create (MPID_Comm *comm)
 
       if (!DCMF_INFO_ISSET(comm_prop, DCMF_RECT_COMM))
 	{
+	  DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_BARRIER);
 	  DCMF_INFO_UNSET(comm_prop, DCMF_USE_ARECT_BCAST);
 	  DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_BCAST);
 	  DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_BCAST_ALLGATHER);

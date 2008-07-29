@@ -476,6 +476,7 @@ MPIDI_Env_setup()
   /* default setting of flags for the mpidi_coll_protocol object */
   DCMF_MSET_INFO(properties, 
 		 DCMF_USE_GI_BARRIER,
+		 DCMF_USE_RECT_BARRIER,
 		 DCMF_USE_BINOM_BARRIER,
 		 DCMF_USE_OPT_BARRIER,
 		 DCMF_USE_LOCKBOX_LBARRIER,
@@ -1064,10 +1065,17 @@ MPIDI_Env_setup()
       else if(strncasecmp(envopts, "B", 1) == 0) /* Binomial */
 	{
 	  DCMF_INFO_UNSET(properties, DCMF_USE_GI_BARRIER);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_RECT_BARRIER);
 	}
       else if(strncasecmp(envopts, "G", 1) == 0) /* GI */
 	{
 	  DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_BARRIER);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_RECT_BARRIER);
+	}
+      else if(strncasecmp(envopts, "R", 1) == 0) /* Rect */
+	{
+	  DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_BARRIER);
+	  DCMF_INFO_UNSET(properties, DCMF_USE_GI_BARRIER);
 	}
       else
 	fprintf(stderr,"Invalid DCMF_BARRIER option\n");

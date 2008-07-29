@@ -24,6 +24,8 @@ int MPIDO_Barrier(MPID_Comm * comm)
 
   if (DCMF_INFO_ISSET(properties, DCMF_USE_GI_BARRIER))
     rc = MPIDO_Barrier_gi(comm);
+  //else if (DCMF_INFO_ISSET(properties, DCMF_USE_RECT_BARRIER))
+  //  rc = MPIDO_Barrier_rect(comm);
   else
     rc = MPIDO_Barrier_dcmf(comm);
 
