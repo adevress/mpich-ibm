@@ -36,7 +36,7 @@ testrun testrun%:
 	targ="$@";\
 	list="$${targ%%_*}";\
 	opts="$${targ#$${list}}"; opts="$${opts//_/ -}";\
-	list="$${list#testrun}"; list="$${list%+*};\
+	list="$${list#testrun}"; list="$${list%+*}";\
 	./runtests -srcdir=$(srcdir) -tests=testlist$$list \
 		-xmlfile=summary-$$targ.xml \
 		$$opts $(ROPTS) -nospawn -datestamp
