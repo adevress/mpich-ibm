@@ -6,13 +6,15 @@ ROPTS =
 # This target is like the "testing*" ones, except that it has
 # the following format:
 #
-#	"testrun"[<tag>][_<option>[_<option>...]]
+#	"testrun"[<tag>][+<id>][_<option>[_<option>...]]
 #
 # Where <tag> will be appended to "testlist" and used as the list
 # of tests to run. Each _<option> will be added to the "runtests"
 # commandline as "-<option>" (i.e. the underscore changed to dash).
 # Additional (more complex) options may be passed using "ROPTS",
-# or environment variables specific to the system.
+# or environment variables specific to the system. +<id> is used
+# to make the summary file distinct from other runs, it is removed from
+# potential options as well as testlist suffix.
 #
 # For example, 1) To run the standard "testlist" in VN mode:
 #
@@ -34,7 +36,7 @@ testrun testrun%:
 	targ="$@";\
 	list="$${targ%%_*}";\
 	opts="$${targ#$${list}}"; opts="$${opts//_/ -}";\
-	list="$${list#testrun}";\
+	list="$${list#testrun}"; list="$${list%+*};\
 	./runtests -srcdir=$(srcdir) -tests=testlist$$list \
 		-xmlfile=summary-$$targ.xml \
 		$$opts $(ROPTS) -nospawn -datestamp
