@@ -110,7 +110,7 @@ void make_dt_map_vec(MPI_Datatype dt, mpid_dt_info *dti) {
         /* This works because we go backwards, and DLOOP_VECTOR << MPID_Type_map */
         for (i = nb; i > 0; ) {
                 --i;
-                mv[i].off = (unsigned)iv[i].DLOOP_VECTOR_BUF;
+                mv[i].off = (size_t)iv[i].DLOOP_VECTOR_BUF;
                 mv[i].len = iv[i].DLOOP_VECTOR_LEN;
                 mv[i].num = (eltype ? mv[i].len / size : 0);
                 mv[i].dt = eltype;
@@ -856,16 +856,16 @@ static char *mpid_update_rem_dt(int lpid, MPI_Datatype fdt, int dlz) {
  * - \e w2 - origin rank
  * - \e w3 - datatype handle on origin
  *
- * \param[in] xt	Pointer to xtra msginfo saved from original message
+ * \param[in] xtra	Pointer to xtra msginfo saved from original message
  * \return	nothing
  *
  */
-void MPID_Recvdone1_rem_dt(const DCQuad *xt) {
+void MPID_Recvdone1_rem_dt(MPIDU_Onesided_xtra_t *xtra) {
         struct mpid_dtc_entry *dtc;
 
-        dtc = MPIDU_locate_dt(xt->w2 | MPIDU_ORIGIN_FLAG, xt->w3, NULL, NULL);
+        dtc = MPIDU_locate_dt(xtra->mpid_xtra_w2 | MPIDU_ORIGIN_FLAG, xtra->mpid_xtra_w3, NULL, NULL);
         MPID_assert_debug(dtc != NULL);
-        dtc->dti.map_len = xt->w1;
+        dtc->dti.map_len = xtra->mpid_xtra_w1;
 }
 
 #ifdef NOT_USED
@@ -880,16 +880,16 @@ void MPID_Recvdone1_rem_dt(const DCQuad *xt) {
  * - \e w2 - origin rank
  * - \e w3 - datatype handle on origin
  *
- * \param[in] xt	Pointer to xtra msginfo saved from original message
+ * \param[in] xtra	Pointer to xtra msginfo saved from original message
  * \return	nothing
  *
  */
-static void mpid_recvdone2_rem_dt(const DCQuad *xt) {
+static void mpid_recvdone2_rem_dt(MPIDU_Onesided_xtra_t *xtra) {
         struct mpid_dtc_entry *dtc;
 
-        dtc = MPIDU_locate_dt(xt->w2 | MPIDU_ORIGIN_FLAG, xt->w3, NULL, NULL);
+        dtc = MPIDU_locate_dt(xtra->mpid_xtra_w2 | MPIDU_ORIGIN_FLAG, xtra->mpid_xtra_w3, NULL, NULL);
         MPID_assert_debug(dtc != NULL);
-        dtc->dti.iov_len = xt->w1;
+        dtc->dti.iov_len = xtra->mpid_xtra_w1;
 }
 #endif /* NOT_USED */
 
@@ -989,7 +989,7 @@ return 1;
 struct mpid_rqc_entry {
         struct mpid_rqc_entry *next;	/**< next used or next free */
         int _pad[3];	/**< must 16-byte align DCMF_Request_t */
-        DCQuad bgq;	/**< generic piggy-back.
+        MPIDU_Onesided_xtra_t xtra;	/**< generic piggy-back.
                          * Not directly used in communications. */
 	MPIDU_Onesided_info_t info;	/**< MPID1S info */
         DCMF_Request_t req;	/**< DCMF Request object */
@@ -1022,17 +1022,17 @@ static int mpid_match_rq(void *v1, void *v2, void *v3) {
 /**
  * \brief Get a new request object from the resource queue.
  *
- * If 'bgq' is not NULL, copy data into request cache element,
+ * If 'xtra' is not NULL, copy data into request cache element,
  * otherwise zero the field.
  * Returns pointer to the request component of the cache element.
  *
- * \param[in] bgq	Optional pointer to additional info to save
+ * \param[in] xtra	Optional pointer to additional info to save
  * \param[out] info	Optional pointer to private msg info to use
  * \return Pointer to DCMF request object
  *
  * \ref rqcache_design
  */
-DCMF_Request_t *MPIDU_get_req(const DCQuad *bgq,
+DCMF_Request_t *MPIDU_get_req(MPIDU_Onesided_xtra_t *xtra,
 			MPIDU_Onesided_info_t **info) {
         struct mpid_rqc_entry *rqe;
 
@@ -1040,10 +1040,10 @@ DCMF_Request_t *MPIDU_get_req(const DCQuad *bgq,
         MPID_assert_debug(rqe != NULL);
 	// This assert is not relavent for non-BG and not needed for BG.
         // MPID_assert_debug((((unsigned)&rqe->req) & 0x0f) == 0);
-        if (bgq) {
-                rqe->bgq = *bgq;
+        if (xtra) {
+                rqe->xtra = *xtra;
         } else {
-                memset(&rqe->bgq, 0, sizeof(rqe->bgq));
+                memset(&rqe->xtra, 0, sizeof(rqe->xtra));
         }
 	if (info) {
 		*info = &rqe->info;
@@ -1055,24 +1055,24 @@ DCMF_Request_t *MPIDU_get_req(const DCQuad *bgq,
  * \brief Release a DCMF request object and retrieve info
  *
  * Locate the request object in the request cache and free it.
- * If 'bgq' is not NULL, copy piggy-back data into 'bgp'.
+ * If 'xtra' is not NULL, copy piggy-back data into 'bgp'.
  * Assumes request object was returned by a call to MPIDU_get_req().
  *
  * \param[in] req	Pointer to DCMF request object being released
- * \param[out] bgq	Optional pointer to receive saved additional info
+ * \param[out] xtra	Optional pointer to receive saved additional info
  * \return nothing
  *
  * \ref rqcache_design
  */
-void MPIDU_free_req(DCMF_Request_t *req, DCQuad *bgq) {
+void MPIDU_free_req(DCMF_Request_t *req, MPIDU_Onesided_xtra_t *xtra) {
         struct mpid_rqc_entry *rqe;
         struct mpid_element *pp = NULL;
 
         rqe = (struct mpid_rqc_entry *)MPIDU_find_element(&rqc,
                                         mpid_match_rq, NULL, req, &pp);
         MPID_assert_debug(rqe != NULL);
-        if (bgq) {
-                *bgq = rqe->bgq;
+        if (xtra) {
+                *xtra = rqe->xtra;
         }
         MPIDU_free_element(&rqc, rqe, pp);
 }
@@ -1101,10 +1101,10 @@ void MPIDU_free_req(DCMF_Request_t *req, DCQuad *bgq) {
  */
 void done_rqc_cb(void *v, DCMF_Error_t *e) {
         volatile unsigned *pending;
-        DCQuad xtra;
+        MPIDU_Onesided_xtra_t xtra;
 
         MPIDU_free_req((DCMF_Request_t *)v, &xtra);
-        pending = (volatile unsigned *)xtra.w0;
+        pending = (volatile unsigned *)xtra.mpid_xtra_w0;
         if (pending) {
                 --(*pending);
         }
@@ -1133,15 +1133,15 @@ void done_rqc_cb(void *v, DCMF_Error_t *e) {
  */
 static void done_free_rqc_cb(void *v, DCMF_Error_t *e) {
         volatile unsigned *pending;
-        DCQuad xtra;
+        MPIDU_Onesided_xtra_t xtra;
 
         MPIDU_free_req((DCMF_Request_t *)v, &xtra);
-        pending = (volatile unsigned *)xtra.w0;
+        pending = (volatile unsigned *)xtra.mpid_xtra_w0;
         if (pending) {
                 --(*pending);
         }
-        if (xtra.w2) { MPIDU_FREE(xtra.w2, e, "xtra.w2"); }
-        if (xtra.w3) { MPIDU_FREE(xtra.w3, e, "xtra.w3"); }
+        if (xtra.mpid_xtra_w2) { MPIDU_FREE(xtra.mpid_xtra_w2, e, "xtra.mpid_xtra_w2"); }
+        if (xtra.mpid_xtra_w3) { MPIDU_FREE(xtra.mpid_xtra_w3, e, "xtra.mpid_xtra_w3"); }
 }
 #endif /* NOT_USED */
 
@@ -1169,11 +1169,11 @@ static void done_free_rqc_cb(void *v, DCMF_Error_t *e) {
 void done_getfree_rqc_cb(void *v, DCMF_Error_t *e) {
         volatile unsigned *pending;
 	volatile struct mpid_get_cb_data *get;
-        DCQuad xtra;
+        MPIDU_Onesided_xtra_t xtra;
 
         MPIDU_free_req((DCMF_Request_t *)v, &xtra);
-        pending = (volatile unsigned *)xtra.w0;
-        get = (volatile struct mpid_get_cb_data *)xtra.w1;
+        pending = (volatile unsigned *)xtra.mpid_xtra_w0;
+        get = (volatile struct mpid_get_cb_data *)xtra.mpid_xtra_w1;
         if (pending) {
                 --(*pending);
         }
@@ -1192,8 +1192,8 @@ void done_getfree_rqc_cb(void *v, DCMF_Error_t *e) {
 		MPID_assert_debug(last == get->len);
 		MPID_Datatype_release(get->dtp);
 		DCMF_Memregion_destroy((DCMF_Memregion_t *)&get->memreg);
-                if (xtra.w2) { MPIDU_FREE(xtra.w2, e, "xtra.w2"); }
-                if (xtra.w3) { MPIDU_FREE(xtra.w3, e, "xtra.w3"); }
+                if (xtra.mpid_xtra_w2) { MPIDU_FREE(xtra.mpid_xtra_w2, e, "xtra.mpid_xtra_w2"); }
+                if (xtra.mpid_xtra_w3) { MPIDU_FREE(xtra.mpid_xtra_w3, e, "xtra.mpid_xtra_w3"); }
         }
 }
 
@@ -1221,19 +1221,19 @@ void done_getfree_rqc_cb(void *v, DCMF_Error_t *e) {
 void done_reffree_rqc_cb(void *v, DCMF_Error_t *e) {
         volatile unsigned *pending;
 	volatile struct mpid_put_cb_data *put;
-        DCQuad xtra;
+        MPIDU_Onesided_xtra_t xtra;
 
         MPIDU_free_req((DCMF_Request_t *)v, &xtra);
-        pending = (volatile unsigned *)xtra.w0;
-        put = (volatile struct mpid_put_cb_data *)xtra.w1;
+        pending = (volatile unsigned *)xtra.mpid_xtra_w0;
+        put = (volatile struct mpid_put_cb_data *)xtra.mpid_xtra_w1;
         if (pending) {
                 --(*pending);
         }
 	MPID_assert_debug(put != NULL);
         if (--put->ref == 0) {
 		if (put->flag) DCMF_Memregion_destroy((DCMF_Memregion_t *)&put->memreg);
-                if (xtra.w2) { MPIDU_FREE(xtra.w2, e, "xtra.w2"); }
-                if (xtra.w3) { MPIDU_FREE(xtra.w3, e, "xtra.w3"); }
+                if (xtra.mpid_xtra_w2) { MPIDU_FREE(xtra.mpid_xtra_w2, e, "xtra.mpid_xtra_w2"); }
+                if (xtra.mpid_xtra_w3) { MPIDU_FREE(xtra.mpid_xtra_w3, e, "xtra.mpid_xtra_w3"); }
         }
 }
 
@@ -1255,11 +1255,11 @@ void done_reffree_rqc_cb(void *v, DCMF_Error_t *e) {
  * \ref rqcache_design
  */
 static void free_rqc_cb(void *v, DCMF_Error_t *e) {
-        DCQuad xtra;
+        MPIDU_Onesided_xtra_t xtra;
 
         MPIDU_free_req((DCMF_Request_t *)v, &xtra);
-        if (xtra.w0) { MPIDU_FREE(xtra.w0, e, "xtra.w0"); }
-        if (xtra.w1) { MPIDU_FREE(xtra.w1, e, "xtra.w1"); }
+        if (xtra.mpid_xtra_w0) { MPIDU_FREE(xtra.mpid_xtra_w0, e, "xtra.mpid_xtra_w0"); }
+        if (xtra.mpid_xtra_w1) { MPIDU_FREE(xtra.mpid_xtra_w1, e, "xtra.mpid_xtra_w1"); }
 }
 #endif /* NOT_USED */
 
@@ -1286,12 +1286,12 @@ static void free_rqc_cb(void *v, DCMF_Error_t *e) {
  */
 void rma_rqc_cb(void *v, DCMF_Error_t *e) {
         MPID_Win *win;
-        DCQuad xtra;
+        MPIDU_Onesided_xtra_t xtra;
 
         MPIDU_free_req((DCMF_Request_t *)v, &xtra);
-        MPID_Win_get_ptr((MPI_Win)xtra.w1, win);
+        MPID_Win_get_ptr((MPI_Win)xtra.mpid_xtra_w1, win);
         MPID_assert_debug(win != NULL);
-        rma_recvs_cb(win, xtra.w2, xtra.w3, 1);
+        rma_recvs_cb(win, xtra.mpid_xtra_w2, xtra.mpid_xtra_w3, 1);
 }
 
 /**
@@ -1341,10 +1341,10 @@ static void done_cb(void *v, DCMF_Error_t *e) {
  * \return	nothing
  */
 void dtc1_rqc_cb(void *v, DCMF_Error_t *e) {
-        DCQuad xtra;
+        MPIDU_Onesided_xtra_t xtra;
 
         MPIDU_free_req((DCMF_Request_t *)v, &xtra);
-        MPID_Recvdone1_rem_dt((const DCQuad *)&xtra);
+        MPID_Recvdone1_rem_dt(&xtra);
 }
 
 #ifdef NOT_USED
@@ -1355,10 +1355,10 @@ void dtc1_rqc_cb(void *v, DCMF_Error_t *e) {
  * \return	nothing
  */
 static void dtc2_rqc_cb(void *v, DCMF_Error_t *e) {
-        DCQuad xtra;
+        MPIDU_Onesided_xtra_t xtra;
 
         MPIDU_free_req((DCMF_Request_t *)v, &xtra);
-        mpid_recvdone2_rem_dt((const DCQuad *)&xtra);
+        mpid_recvdone2_rem_dt(&xtra);
 }
 #endif /* NOT_USED */
 
@@ -1493,7 +1493,7 @@ void recv_sm_cb(void *cd, const DCQuad *_mi, unsigned ct, unsigned or,
         switch (_mi[0].w0) {
         /* The following all use msginfo as DCMF_Control_t (DCQuad[1]) */
         case MPID_MSGTYPE_COMPLETE:
-                MPID_assert_debug(ct == 1);
+                MPID_assert_debug(ct == MPIDU_1SCTL_NQUADS);
                 MPID_assert_debug(sl == 0);
                 MPID_Win_get_ptr((MPI_Win)mc->mpid_ctl_w1, win);
                 MPID_assert_debug(win != NULL);
@@ -1501,23 +1501,23 @@ void recv_sm_cb(void *cd, const DCQuad *_mi, unsigned ct, unsigned or,
                 ++win->_dev.my_sync_done;
                 break;
         case MPID_MSGTYPE_POST:
-                MPID_assert_debug(ct == 1);
+                MPID_assert_debug(ct == MPIDU_1SCTL_NQUADS);
                 MPID_assert_debug(sl == 0);
                 MPID_Win_get_ptr((MPI_Win)mc->mpid_ctl_w1, win);
                 MPID_assert_debug(win != NULL);
                 ++win->_dev.my_sync_begin;
                 break;
         case MPID_MSGTYPE_LOCK:
-                MPID_assert_debug(ct == 1);
+                MPID_assert_debug(ct == MPIDU_1SCTL_NQUADS);
                 lock_cb(mc, or);
                 break;
         case MPID_MSGTYPE_UNLOCK:
-                MPID_assert_debug(ct == 1);
+                MPID_assert_debug(ct == MPIDU_1SCTL_NQUADS);
                 unlk_cb(mc, or);
                 break;
         case MPID_MSGTYPE_LOCKACK:
         case MPID_MSGTYPE_UNLOCKACK:
-                MPID_assert_debug(ct == 1);
+                MPID_assert_debug(ct == MPIDU_1SCTL_NQUADS);
                 MPID_Win_get_ptr((MPI_Win)mc->mpid_ctl_w1, win);
                 MPID_assert_debug(win != NULL);
                 ++win->_dev.my_sync_done;
@@ -1525,7 +1525,7 @@ void recv_sm_cb(void *cd, const DCQuad *_mi, unsigned ct, unsigned or,
 
         /* The following all use msginfo as DCQuad[2] */
         case MPID_MSGTYPE_PUT:
-                MPID_assert_debug(ct == 2);
+                MPID_assert_debug(ct == MPIDU_1SINFO_NQUADS);
                 MPID_Win_get_ptr((MPI_Win)mi->mpid_info_w1, win);
                 MPID_assert_debug(win != NULL);
                 MPIDU_assert_PUTOK(win);
@@ -1542,22 +1542,22 @@ void recv_sm_cb(void *cd, const DCQuad *_mi, unsigned ct, unsigned or,
 #endif /* ! USE_DCMF_PUT */
                 break;
         case MPID_MSGTYPE_DT_MAP:
-                MPID_assert_debug(ct == 2);
+                MPID_assert_debug(ct == MPIDU_1SINFO_NQUADS);
                 rb = MPID_Prepare_rem_dt(mi);
                 if (rb) {
-                        DCQuad xtra;
+                        MPIDU_Onesided_xtra_t xtra;
 
-                        xtra.w0 = mi->mpid_info_w0;
-                        xtra.w1 = mi->mpid_info_w1;
-                        xtra.w2 = mi->mpid_info_w2;
-                        xtra.w3 = mi->mpid_info_w3;
+                        xtra.mpid_xtra_w0 = mi->mpid_info_w0;
+                        xtra.mpid_xtra_w1 = mi->mpid_info_w1;
+                        xtra.mpid_xtra_w2 = mi->mpid_info_w2;
+                        xtra.mpid_xtra_w3 = mi->mpid_info_w3;
                         memcpy(rb, sb, sl);
                         MPID_Recvdone1_rem_dt(&xtra);
                 }
                 break;
         case MPID_MSGTYPE_DT_IOV:
 #ifdef NOT_USED
-                MPID_assert_debug(ct == 2);
+                MPID_assert_debug(ct == MPIDU_1SINFO_NQUADS);
                 rb = mpid_update_rem_dt(mi->mpid_info_w2, mi->mpid_info_w3, mi->mpid_info_w1);
                 if (rb) {
                         memcpy(rb, sb, sl);
@@ -1567,7 +1567,7 @@ void recv_sm_cb(void *cd, const DCQuad *_mi, unsigned ct, unsigned or,
 #endif /* NOT_USED */
                 MPID_abort();
         case MPID_MSGTYPE_ACC:
-                MPID_assert_debug(ct == 2);
+                MPID_assert_debug(ct == MPIDU_1SINFO_NQUADS);
                 MPID_Win_get_ptr((MPI_Win)mi->mpid_info_w1, win);
                 MPID_assert_debug(win != NULL);
                 MPIDU_assert_PUTOK(win);
@@ -1600,7 +1600,7 @@ void recv_sm_cb(void *cd, const DCQuad *_mi, unsigned ct, unsigned or,
  * \return	nothing
  */
 void recv_ctl_cb(void *cd, const DCMF_Control_t *ctl, unsigned or) {
-        recv_sm_cb(cd, (const DCQuad *)ctl, 1, or, NULL, 0);
+        recv_sm_cb(cd, (const DCQuad *)ctl, MPIDU_1SCTL_NQUADS, or, NULL, 0);
 }
 
 /**
@@ -1639,7 +1639,7 @@ DCMF_Request_t *recv_cb(void *cd, const DCQuad *_mi, unsigned ct,
 #ifdef USE_DCMF_PUT
 		MPID_abort();
 #else /* ! USE_DCMF_PUT */
-                MPID_assert_debug(ct == 2);
+                MPID_assert_debug(ct == MPIDU_1SINFO_NQUADS);
                 MPID_Win_get_ptr((MPI_Win)mi->mpid_info_w1, win);
                 MPID_assert_debug(win != NULL);
                 MPIDU_assert_PUTOK(win);
@@ -1647,16 +1647,16 @@ DCMF_Request_t *recv_cb(void *cd, const DCQuad *_mi, unsigned ct,
                         /** \todo exact error handling */
                 }
                 MPID_assert_debug(mi->mpid_info_w3 >=
-                                        (unsigned)win->base &&
+                                        (size_t)win->base &&
                         mi->mpid_info_w3 + sl <=
-                                        (unsigned)win->base + win->size);
+                                        (size_t)win->base + win->size);
                 *rl = sl;
                 *rb = (char *)mi->mpid_info_w3;
-                {	DCQuad xtra;
-                        xtra.w0 = mi->mpid_info_w3;
-                        xtra.w1 = mi->mpid_info_w1;
-                        xtra.w2 = mi->mpid_info_w2;
-                        xtra.w3 = or;
+                {	MPIDU_Onesided_xtra_t xtra;
+                        xtra.mpid_xtra_w0 = mi->mpid_info_w3;
+                        xtra.mpid_xtra_w1 = mi->mpid_info_w1;
+                        xtra.mpid_xtra_w2 = mi->mpid_info_w2;
+                        xtra.mpid_xtra_w3 = or;
                         req = MPIDU_get_req(&xtra, NULL);
                 }
                 cb->clientdata = req;
@@ -1664,17 +1664,17 @@ DCMF_Request_t *recv_cb(void *cd, const DCQuad *_mi, unsigned ct,
                 return req;
 #endif /* ! USE_DCMF_PUT */
         case MPID_MSGTYPE_DT_MAP:
-                MPID_assert_debug(ct == 2);
+                MPID_assert_debug(ct == MPIDU_1SINFO_NQUADS);
                 *rb = MPID_Prepare_rem_dt(mi);
                 if (!*rb) {
                         return NULL;
                 }
                 *rl = sl;
-                {	DCQuad xtra;
-                        xtra.w0 = mi->mpid_info_w0;
-                        xtra.w1 = mi->mpid_info_w1;
-                        xtra.w2 = mi->mpid_info_w2;
-                        xtra.w3 = mi->mpid_info_w3;
+                {	MPIDU_Onesided_xtra_t xtra;
+                        xtra.mpid_xtra_w0 = mi->mpid_info_w0;
+                        xtra.mpid_xtra_w1 = mi->mpid_info_w1;
+                        xtra.mpid_xtra_w2 = mi->mpid_info_w2;
+                        xtra.mpid_xtra_w3 = mi->mpid_info_w3;
                         req = MPIDU_get_req(&xtra, NULL);
                 }
                 cb->clientdata = req;
@@ -1682,17 +1682,17 @@ DCMF_Request_t *recv_cb(void *cd, const DCQuad *_mi, unsigned ct,
                 return req;
         case MPID_MSGTYPE_DT_IOV:
 #ifdef NOT_USED
-                MPID_assert_debug(ct == 2);
+                MPID_assert_debug(ct == MPIDU_1SINFO_NQUADS);
                 *rb = mpid_update_rem_dt(mi->mpid_info_w2, mi->mpid_info_w3, mi->mpid_info_w1);
                 if (!*rb) {
                         return NULL;
                 }
                 *rl = sl;
-                {	DCQuad xtra;
-                        xtra.w0 = mi->mpid_info_w0;
-                        xtra.w1 = mi->mpid_info_w1;
-                        xtra.w2 = mi->mpid_info_w2;
-                        xtra.w3 = mi->mpid_info_w3;
+                {	MPIDU_Onesided_xtra_t xtra;
+                        xtra.mpid_xtra_w0 = mi->mpid_info_w0;
+                        xtra.mpid_xtra_w1 = mi->mpid_info_w1;
+                        xtra.mpid_xtra_w2 = mi->mpid_info_w2;
+                        xtra.mpid_xtra_w3 = mi->mpid_info_w3;
                         req = MPIDU_get_req(&xtra, NULL);
                 }
                 cb->clientdata = req;
@@ -1701,10 +1701,10 @@ DCMF_Request_t *recv_cb(void *cd, const DCQuad *_mi, unsigned ct,
 #endif /* NOT_USED */
                 MPID_abort();
         case MPID_MSGTYPE_ACC:
-                MPID_assert_debug(ct == 2);
+                MPID_assert_debug(ct == MPIDU_1SINFO_NQUADS);
         { /* block */
                 MPIDU_Onesided_info_t *info;
-                DCQuad xtra = {0};
+                MPIDU_Onesided_xtra_t xtra = {0};
 
                 MPID_Win_get_ptr((MPI_Win)mi->mpid_info_w1, win);
                 MPID_assert_debug(win != NULL);
@@ -1720,8 +1720,8 @@ DCMF_Request_t *recv_cb(void *cd, const DCQuad *_mi, unsigned ct,
                 *rb = (char *)(info + 1);
                 *rl = sl;
                 memcpy(info, mi, sizeof(MPIDU_Onesided_info_t));
-                xtra.w2 = (unsigned)info;
-                xtra.w3 = or;
+                xtra.mpid_xtra_w2 = (size_t)info;
+                xtra.mpid_xtra_w3 = or;
                 req = MPIDU_get_req(&xtra, NULL);
                 cb->clientdata = req;
                 cb->function = accum_cb;
@@ -1770,7 +1770,7 @@ int mpid_queue_datatype(MPI_Datatype dt,
                         int o_lpid, int t_lpid, volatile unsigned *pending,
                         DCMF_Consistency *consistency) {
         MPIDU_Onesided_info_t *info;
-        DCQuad xtra = {0};
+        MPIDU_Onesided_xtra_t xtra = {0};
         DCMF_Callback_t cb_send;
         DCMF_Request_t *reqp;
         int mpi_errno = MPI_SUCCESS;
@@ -1782,7 +1782,7 @@ int mpid_queue_datatype(MPI_Datatype dt,
         }
         /** \todo need to ensure we don't LOWER consistency... */
         *consistency = DCMF_WEAK_CONSISTENCY;
-        xtra.w0 = (unsigned)pending;
+        xtra.mpid_xtra_w0 = (size_t)pending;
 
         reqp = MPIDU_get_req(&xtra, &info);
         info->mpid_info_w0 = MPID_MSGTYPE_DT_MAP;
@@ -1798,7 +1798,7 @@ int mpid_queue_datatype(MPI_Datatype dt,
         mpi_errno = DCMF_Send(&bg1s_sn_proto, reqp, cb_send,
                         *consistency, t_lpid,
                         dti.map_len * sizeof(*dti.map), (char *)dti.map,
-                        info->info, 2);
+                        info->info, MPIDU_1SINFO_NQUADS);
         if (mpi_errno) { return(mpi_errno); }
         reqp = MPIDU_get_req(&xtra, &info);
         info->mpid_info_w0 = MPID_MSGTYPE_DT_IOV;
@@ -1814,7 +1814,7 @@ int mpid_queue_datatype(MPI_Datatype dt,
         mpi_errno = DCMF_Send(&bg1s_sn_proto, reqp, cb_send,
                         *consistency, t_lpid,
                         dti.iov_len * sizeof(*dti.iov), (char *)dti.iov,
-                        info->info, 2);
+                        info->info, MPIDU_1SINFO_NQUADS);
         return mpi_errno;
 }
 #endif /* NOT_USED */

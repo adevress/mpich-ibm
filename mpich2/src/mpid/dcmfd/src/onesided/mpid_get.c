@@ -119,7 +119,7 @@ int MPID_Get(void *origin_addr, int origin_count,
 		size_t mrcfg_bytes;
 		void * mrcfg_base;
                 int lpid;
-                DCQuad xtra = {0};
+                MPIDU_Onesided_xtra_t xtra = {0};
 
                 lpid = MPIDU_world_rank(win_ptr, target_rank);
                 MPIDI_Datatype_get_info(target_count, target_datatype,
@@ -128,7 +128,7 @@ int MPID_Get(void *origin_addr, int origin_count,
 
                 get_len = (data_sz < t_data_sz ? data_sz : t_data_sz);
 
-                xtra.w0 = (unsigned)&win_ptr->_dev.my_get_pends;
+                xtra.mpid_xtra_w0 = (size_t)&win_ptr->_dev.my_get_pends;
                 if (dt_contig) {
                         buf = origin_addr;
                         cb_send.function = done_rqc_cb;
@@ -154,7 +154,7 @@ int MPID_Get(void *origin_addr, int origin_count,
 			(void)DCMF_Memregion_create(&get->memreg, &mrcfg_bytes, mrcfg_bytes, mrcfg_base, 0);
 			// check errors?
 			bufmr = &get->memreg;
-			s = (char *)(buf - (unsigned)mrcfg_base);
+			s = (char *)(buf - (size_t)mrcfg_base);
 			get->ref = 0;
 			refp = &get->ref;
 			get->dtp = dtp;
@@ -162,8 +162,8 @@ int MPID_Get(void *origin_addr, int origin_count,
 			get->count = origin_count;
 			get->len = get_len;
 			get->buf = buf;
-			xtra.w1 = (unsigned)get;
-			xtra.w2 = (unsigned)get;
+			xtra.mpid_xtra_w1 = (size_t)get;
+			xtra.mpid_xtra_w2 = (size_t)get;
                         cb_send.function = done_getfree_rqc_cb;
                 }
                 if (t_dt_contig) {
