@@ -91,7 +91,7 @@ AC_SUBST(LIBTOOL)
 dnl Place holder macro for finalization
 PAC_SUBCONFIG_FINALIZE()
 
-FILE=`cd $srcdir && find -name Makefile.in | perl -pe 's,^\./,,;s/\.in$//'`
+FILE=$(cd $srcdir && find -name Makefile.in | perl -pe 's,^\./,,;s/\.in$//;s/\n/ /g;')
 AC_OUTPUT(
 localdefs
 $MPID_THREAD_OUTPUT_FILES
