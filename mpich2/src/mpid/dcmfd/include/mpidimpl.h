@@ -120,6 +120,7 @@ typedef struct
   DCMF_CollectiveProtocol_t lockbox_localbarrier;
   DCMF_CollectiveProtocol_t binomial_localbarrier;
 
+
   /* Optimized broadcast protocols and usage flags */
   DCMF_CollectiveProtocol_t tree_bcast;
   DCMF_CollectiveProtocol_t rectangle_bcast;
@@ -411,6 +412,6 @@ int  MPID_Dims_create        (int nnodes, int ndims, int *dims);
 
 void MPIDI_Coll_Comm_create  (MPID_Comm *comm);
 void MPIDI_Coll_Comm_destroy (MPID_Comm *comm);
-void MPIDI_Coll_register     (void);
+void MPIDI_Coll_register     (int threadrequested);
 
 #endif

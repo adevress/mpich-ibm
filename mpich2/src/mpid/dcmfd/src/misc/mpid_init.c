@@ -160,7 +160,7 @@ int MPID_Init(int * argc,
   /* ---------------------------------- */
   /* Register the collectives           */
   /* ---------------------------------- */
-  MPIDI_Coll_register();
+  MPIDI_Coll_register(requested);
 #endif /* USE_CCMI_COLL */
 
   /* ------------------------------------------------------ */

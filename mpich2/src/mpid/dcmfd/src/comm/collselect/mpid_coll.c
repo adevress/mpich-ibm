@@ -113,7 +113,7 @@ static inline int REDUCE_REGISTER(DCMF_Reduce_Protocol proto,
 
 
 /** \brief Helper used to register all the collective protocols at initialization */
-void MPIDI_Coll_register(void)
+void MPIDI_Coll_register(int threadrequested)
 {
 #ifdef USE_CCMI_COLL
    DCMF_Embedded_Info_Set * properties = &MPIDI_CollectiveProtocols.properties;
@@ -170,7 +170,7 @@ void MPIDI_Coll_register(void)
        }
      }
    }
-   rc = DCMF_GlobalBcast_register(&MPIDI_Protocols.globalbcast, &gbcast_config);
+   rc= DCMF_GlobalBcast_register(&MPIDI_Protocols.globalbcast, &gbcast_config);
 
    /* most likely, we lack shared memory and therefore can't use this */
    if(rc != DCMF_SUCCESS)
@@ -219,6 +219,18 @@ void MPIDI_Coll_register(void)
     * but barriers are associated with a geometry and this knowledge
     * isn't available to mpido_barrier
     */
+
+   /*
+     if in single thread mode, register gi, rect (via rectlockbox), bino
+     else register gi, rect (via rect barrier), bino 
+    */
+
+   DCMF_Barrier_Protocol barrier_proto;
+   if (threadrequested != DCMF_THREAD_MULTIPLE)
+     barrier_proto = DCMF_TORUS_RECTANGLELOCKBOX_BARRIER_PROTOCOL_SINGLETH;
+   else
+     barrier_proto = DCMF_TORUS_RECTANGLE_BARRIER_PROTOCOL; 
+
    if (DCMF_INFO_ISSET(properties, DCMF_USE_GI_BARRIER))
      {
        if (BARRIER_REGISTER(DCMF_GI_BARRIER_PROTOCOL,
@@ -244,11 +256,12 @@ void MPIDI_Coll_register(void)
    else if (DCMF_INFO_ISSET(properties, DCMF_USE_RECT_BARRIER) &&
 	    !DCMF_INFO_ISSET(properties, DCMF_USE_BINOM_BARRIER))
      {
-       if (BARRIER_REGISTER(DCMF_TORUS_RECTANGLE_BARRIER_PROTOCOL,
+       if (BARRIER_REGISTER(barrier_proto,
 			    &MPIDI_CollectiveProtocols.rect_barrier,
 			    &barrier_config) != DCMF_SUCCESS)
 	 {
 	   DCMF_INFO_UNSET(properties, DCMF_USE_RECT_BARRIER);
+
 	   /* if rect barrier does not work, then try binom */
 	   if (BARRIER_REGISTER(DCMF_TORUS_BINOMIAL_BARRIER_PROTOCOL,
 				&MPIDI_CollectiveProtocols.binomial_barrier,
@@ -259,7 +272,7 @@ void MPIDI_Coll_register(void)
 
    else
      {
-       if (BARRIER_REGISTER(DCMF_TORUS_RECTANGLE_BARRIER_PROTOCOL,
+       if (BARRIER_REGISTER(barrier_proto,
 			    &MPIDI_CollectiveProtocols.rect_barrier,
 			    &barrier_config) != DCMF_SUCCESS)
 	 DCMF_INFO_UNSET(properties, DCMF_USE_RECT_BARRIER);
