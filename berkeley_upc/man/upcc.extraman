@@ -1,0 +1,131 @@
+[DESCRIPTION]
+
+upcc is the front-end to the Berkeley UPC compiler suite.  It handles all
+stages of the UPC compilation process: 1) initial preprocessing, 2) UPC-to-C
+translation, 3) back-end C compilation, and 4) linking.  
+
+upcc has the same interface as a traditional C compiler, plus some additional
+flags for UPC-specific options. Default options to be used for every compilation
+can be specified in the UPCC_FLAGS environment variable, and in the 
+upcc configuration files (see below).
+
+[UPC FILE EXTENSIONS]
+
+upcc recognizes both `.c' and `.upc' as valid file name extensions for UPC code.
+Header files may have either a `.uph' or `.h' extension.  
+
+`.trans.c' is recognized specially as a file which has already been translated
+(via a previous call to `upcc -trans').  upcc passes `.trans.c' files directly to
+the C compiler/linker.
+
+
+[REGULAR C FILES/OBJECTS/LIBRARIES]
+
+Berkeley UPC is fully interoperable with regular C source, object, and library
+files.  You may pass regular C files to upcc, include regular .h files in your
+UPC code, and link C-based libraries and object files into a UPC application.
+
+[CONFIGURATION FILES]
+
+upcc uses a site-wide `upcc.conf' file to get some of its settings.  You may
+override any of the settings found in the global upcc.conf file by creating 
+a `.upccrc' file in your $HOME directory.  
+
+To choose a different default network API for your programs:
+
+    default_network=[mpi, udp, smp, lapi, gm, vapi, sci, elan]
+
+To specify flags to pass to upcc each time it is invoked, set `default_options':
+
+    default_options = -save-all-temps -v -DFOO=bar
+
+To specify flags to pass to upcc each time it is invoked for a specific network (a.k.a. conduit), set `<conduit>_options':
+
+    mpi_options = -v -DUSING_MPI=1
+
+To override the default amount of shared memory (per UPC thread) to be used by
+your UPC applications:
+
+    shared_heap = 128MB   // or `2GB', etc.
+
+To use a different UPC-to-C translator:
+
+    translator = /path/to/translator         # local translator
+    translator = http://foo.org/upcc.cgi     # remote via HTTP
+    translator = foo.org:/path/to/translator # remote via SSH
+
+See the Berkeley UPC User's Guide for more information on using a remote
+translator.
+
+To have upcc use the basename of the first file  argument for the executable
+name (i.e., `upcc foo.upc bar.upc' will produce `foo' instead of `a.out'):
+
+    smart_output = yes  #or put -smart-output in `default_options'
+
+[ENVIRONMENT VARIABLES]
+
+The UPCC_FLAGS environment variable can be set to pass any flags/arguments that
+you wish to use for every invocation of upcc.  This is in addition to
+the `default_options' parameter described above.
+
+[OPTION PROCESSING]
+
+Options are read from the site-wide and user-specific configuration files, the environment and the command-line.  The precedence of options is equivalent to parsing the options in the following order:
+
+    default_options <conduit>_options UPCC_FLAGS command-line
+
+For options which set a value (such as -T and -shared-heap), the last value seen is the one used.  Thus values on the command-line always take precedence over any others.
+
+The `default_options' and `<conduit>_options' are taken from your $HOME/.upccrc file if present there, or from the site-wide upcc.conf otherwise.  If a given setting is present in both files only the settings in $HOME/.upccrc are used; they are not additive.  However, passing the option -norc on the command-line or setting the UPCC_NORC environment variable will disable reading of the $HOME/.upccrc file, causing `default_options' and `<conduit>_options' to be taken only from the site-wide upcc.conf.
+
+Arguments in `default_options', `<conduit>_options' and UPCC_FLAGS are split on whitespace, but single- or double-quotes will suppress splitting.  The backslash character `\\' does not have any special meaning.
+
+To avoid ambiguity `-network=FOO' is not allowed in the `<conduit>_options' settings.  The option `-norc' is only permitted on the command-line, though its affect can also be achieved by setting UPCC_NORC.
+
+[A MAKEFILE EXAMPLE]
+
+The following small Makefile shows how you might handle the .upc extension if
+you use `make' to build your programs:
+
+    _______________________________________________________
+
+    # A simple Makefile for building UPC programs
+
+    TARGET          = foobar
+    UPCC            = upcc
+    UPCFLAGS       = -g
+
+    UPC_OBJS        = foo.o bar.o
+
+    .SUFFIXES:
+    .SUFFIXES: .upc .o
+
+    # suffix rule for compiling .upc files 
+    .upc.o:
+            $(UPCC) -c $(UPCFLAGS) -o $@ $<
+
+    $(TARGET): $(UPC_OBJS)
+            $(UPCC) $(UPCFLAGS) -o $(TARGET) $(UPC_OBJS)
+    _______________________________________________________
+
+    $make 
+    upcc -c -g foo.upc
+    upcc -c -g bar.upc
+    upcc -g -o foobar foo.o bar.o
+
+Alternatively, if you use the .c extension for your UPC files, you can simply
+set the CC variable in your Makefile (or your shell environment) to `upcc',
+after which the regular make rules for C files will handle your UPC files (and
+the standard CFLAGS variable can be set to pass upcc options).
+
+[REPORTING BUGS]
+
+We are very interested in fixing any bugs in our UPC implementation.  For bug
+reporting instructions, please go to http://upc.lbl.gov.
+
+[SEE ALSO]
+
+upcrun(1), upc_trace(1)
+
+The Berkeley UPC User's Guide (available at http://upc.lbl.gov)
+

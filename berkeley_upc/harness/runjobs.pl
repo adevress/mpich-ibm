@@ -1,0 +1,521 @@
+#!/usr/bin/env perl
+
+require 5.005;
+use strict;
+use IO::File;
+use IO::Seekable;
+use File::Basename;
+use POSIX ":sys_wait_h";
+use Text::ParseWords;
+
+my $warning_blacklist = '^'.
+  '(.*?rmsapi: Error:.*?)|'.
+  '(.*?libmsql: Socket read.*?)|'.
+  '(.*?Retrying allocation .... press control-C to terminate.*?)|'.
+  '(.*?Job passed jobfilter.*?)|'.
+  '(.*?GASNet reporting enabled.*?)|'.
+  '(.*?AMUDP WARNING: Receive buffer full - unable to drain network.*?)|'.
+  '(.*?error in locking authority file.*?)|'.
+  '(.*?upcc: banner: *?)|'.
+  '(.*?using fake authentication data for X11 forwarding.*?)|'.
+  '()$';
+
+my $mydir = $0;
+$mydir =~ s@/[^/]*$@@;
+push @INC, $mydir;  # set up search path for our perl includes
+require "harness_util.pl";
+
+# exit codes
+my $finished_code = 0;
+my $again_code = 1;
+my $failure_code = 2;
+
+my $debug = 0;
+my $testonly = 0;
+#my $arg_count = scalar(@ARGV);
+
+# size limit of stdout/stderr that we attempt to parse
+my $size_limit = 64*1024;
+
+my $got_limit = 0;
+my $got_outofmem = 0;
+my $got_crash = 0;
+my $got_timeout = 0;
+
+# gather arguments
+my $logdir = shift;
+my $run_file = shift;
+my $rpt_file = shift;
+my $runarg = shift;
+my $timelimit = shift;
+
+# the runlist field names
+my @runlist_fields = qw(rundir runcmd app limit e_code pass_expr fail_expr nthread
+		     pthreads keep_binary save_output app_args app_env known benchmark);
+my $num_runlist_fields = scalar(@runlist_fields);
+
+# sanity checks
+if (! defined($logdir) || (! -e $logdir)) {
+    print "no such logdir [$logdir]\n";
+    exit $failure_code;
+}
+my $runlist_file = "$logdir/${run_file}";
+if (! defined($runlist_file) || (! -e $runlist_file)) {
+    print "no such run_file [$runlist_file]\n";
+    exit $failure_code;
+}
+if (! defined($runarg)) {
+    print "runarg not defined [$runarg]\n";
+    exit $failure_code;
+}
+if (! defined($timelimit) || ($timelimit !~ /^\d+$/)) {
+    print "bad timelimit [$timelimit]\n";
+    exit $failure_code;
+}
+
+
+my $header1 = '=' x 78 . "\n";
+#my $header2 = sprintf("%-16s %-35s %5s %6s\n",
+#		   "TimeStamp","CodeName","Time",
+#		   "Result");
+
+my $report_file = "$logdir/$rpt_file";
+
+if (!(-e $report_file)) {
+    my $rpt = new IO::File(">> $report_file");
+    die "Cant append to $report_file" if !defined($rpt);
+    print $rpt $header1;
+    #print $rpt $header2;
+    undef $rpt;
+}
+
+if (-e $runlist_file) {
+    my $save = ${runlist_file} . "_" . &gen_timestamp();
+    print "Copying $runlist_file to $save\n";
+    `cp ${runlist_file} $save`;
+}
+
+my $slack = 15;
+
+my $start_time = time();
+while (1) {
+    # compute time left in seconds
+    my $now = time();
+    my $elapsed = $now - $start_time;
+    my $time_left = $timelimit - $elapsed;
+
+    print "\n";
+    print "Time Left = $time_left\n" unless ($timelimit == 0);
+
+    # choose what, if any job to run
+    # Note that the code will exit in this routine if there
+    # are no jobs to run or if we don't have enough time to
+    # run another.
+    my $job = &select_job($time_left,$slack);
+
+    # Now run the selected job under the watchfull eye of
+    # the watchdog.  This will kill the job if it runs for
+    # too long.  It will also report on the success/failure 
+    # of the run to the run_rpt file.
+    &run_job($job);
+}
+
+# we should never get here.
+exit 0;
+    
+# =================================================================
+# Choose a job from the file of jobs to run
+#
+# If no jobs are left to run, exit with the $finished_code.
+# If not enough time left to run any of the jobs in the list
+# return the $again_code.
+# =================================================================
+sub select_job {
+    my $time_left = shift;
+    my $slack = shift;
+
+    my $file = ${runlist_file};
+
+    if (! -e $file) {
+	printf("Finished: runlist file [$file] does not exist.\n");
+	exit $finished_code;
+    }
+    my $fh = new IO::File("< $file");
+    if (! defined($fh)) {
+	printf("Unable top open file [$file] for reading.\n");
+	exit $failure_code;
+    }
+
+    my $job = undef;
+    my @arr = ();
+    my $cnt = 0;
+    while (<$fh>) {
+	chomp;
+	s/^\s+//;
+	s/\s+$//;
+	next if /^\#/;  # skip comment lines
+	my @runargs = &parse_line(' ',1,$_);
+	my $numarg = scalar(@runargs);
+	if ($numarg != $num_runlist_fields) {
+	    printf("Invalid number of runlist fields [$_]\n");
+	    exit $failure_code;
+	}
+	my $t_limit = $runargs[3];
+	if (!defined($job) && ($t_limit <= ($time_left - $slack) || ($timelimit == 0))) {
+	    # run this job
+	    for (my $i = 0; $i < $numarg; $i++) {
+		my $v = $runargs[$i];
+		# strip off outer quotes if they exist
+		if ($v =~ /^\'(.*)\'/) {
+		    $v = $1;
+		} elsif ($v =~ /^\"(.*)\"/) {
+		    $v = $1;
+		}
+		$job->{$runlist_fields[$i]} = $v;
+	    }
+	} else {
+	    # queue it up to re-write the runlist file
+	    push(@arr,$_);
+	}
+	$cnt++;
+    }
+
+    # close the runlist file
+    undef $fh;
+
+    if (! defined($job)) {
+	if ($cnt == 0) {
+	    # nothing left to run, we have finally finished!
+	    unlink($file);
+	    printf ("Finished: No apps left to run.\n");
+            my $rpt = new IO::File(">> $report_file");
+            die "Cant append to $report_file" if !defined($rpt);
+            printf $rpt "Run of $runlist_file COMPLETE\n";
+            undef $rpt;
+
+    	    my $run_done = new IO::File("> $logdir/${run_file}-complete");
+    	    if (defined($run_done)) {
+           	my $timestamp = &gen_timestamp();
+           	printf $run_done "$timestamp\n";
+           	undef $run_done;
+    	    }
+	    exit $finished_code;
+	}
+	# jobs left to run, but none small enough to fit into our
+	# time limit.  Leave the runlist file as it is and tell
+	# the job script to re-submit itself.
+	print "Time Limit reached, $cnt jobs remain.\n";
+	exit $again_code;
+    }
+
+    # if we got here, we found a job to run.  Now re-create the
+    # runlist file without the job we selected.
+    unlink($file);
+
+    # Now re-create runlist file and write remaining jobs to it
+    $fh = new IO::File("> $file");
+    if (! defined($fh)) {
+	printf("Unable to re-create file [$file]\n");
+	exit $failure_code;
+    }
+    my $line;
+    foreach $line (@arr) {
+	printf $fh ("%s\n",$line);
+    }
+    undef $fh;
+
+    #printf("Selected job to run [%s]\n",$job->{app});
+
+    return $job;
+}
+
+# =================================================================
+# =================================================================
+sub run_job {
+    my $job = shift;
+
+    my $rundir    = $job->{rundir};
+    my $runcmd    = $job->{runcmd};
+    my $app       = $job->{app};
+    my $app_args  = $job->{app_args};
+    my $app_env   = $job->{app_env};
+    my $timeout   = $job->{limit};
+    my $exitcode  = $job->{e_code};
+    my $pthreads  = $job->{pthreads};
+    my $nth       = $job->{nthread};
+    my $keep_output = $job->{save_output};
+    my $known     = ($job->{known} eq '') ? undef : $job->{known};
+    my $benchmark = ($job->{benchmark} eq '') ? undef : $job->{benchmark};
+
+    my $outbase = $app;
+    # bug 1266: prevent output file collisions for tests with multiple dynamic threads 
+    #           that the batch system may run concurrently
+    $outbase = sprintf("${app}_dy%02d",$nth) if (!($outbase =~ m/_st\d+$/));
+    my $app_out = "${outbase}.out";
+    my $app_err = "${outbase}.err";
+
+    if (!chdir($rundir)) {
+	printf("Unable to cd to rundir [$rundir] for app [$app]\n");
+	exit $failure_code;
+    }
+
+    unlink($app_out) if (-e $app_out);
+    unlink($app_err) if (-e $app_err);
+
+    # these are global vars
+    $got_timeout = 0;
+    $got_outofmem = 0;
+    $got_limit = 0;
+    $got_crash = 0;
+
+    my $cmd = "";
+    if ($runcmd =~ /%[Bb]/) { # is Berkeley upcrun
+        $cmd .= "env $app_env " if ($app_env);
+	my $berkargs = "";
+	$berkargs .= " -p $pthreads" if ($pthreads > 0);
+        $runcmd =~ s/%[Bb]/$berkargs/g; 
+    } else {
+        $cmd .= "env $app_env UPC_QUIET=1";
+	$cmd .= " UPC_PTHREADS_PER_PROC=$pthreads" if ($pthreads > 0);
+    }
+    #print "APPARGS: '$app_args'\n";
+    $runcmd =~ s/%[Pp]/.\/$app/g; 
+    $runcmd =~ s/%[Aa]/$app_args/g; 
+    $runcmd =~ s/%[Nn]/$nth/g; 
+    $cmd .= " $runcmd";
+
+    my $app_start = time();
+    my $status;
+    ($status,$got_timeout) = runjob_withtimeout(sub {
+	if ($testonly) {
+	    printf("Would exec [$cmd]\n");
+	    sleep $timeout/4;
+	    exit $exitcode;
+	} else {
+	    execcmd($cmd, $app_out, $app_err);
+	}
+    }, $timeout, $debug);
+    my $app_stop = time();
+
+    # check the output file for pass/fail strings.
+    my $match_result = &pass_fail($app_out,$app_err,$job);
+
+    my $exit_result;
+
+    # Check the exit code
+    if ( $exitcode =~ /^\s*\d+\s*$/ ) {
+	if ($status == $exitcode) {
+	    $exit_result = "SUCCESS";
+	} else {
+	    $exit_result = sprintf("EXIT=%d",$status);
+	}
+    } else {
+	$exit_result = "ignore";
+    }
+	    
+    my $cur_dir = `pwd`;
+    chomp($cur_dir);
+    my $suite = basename($cur_dir);
+    my $timestamp = &gen_timestamp();
+    my $result = "SUCCESS";
+    my $failtype = 'run-unknown';
+    # order is very important here, because some failures trigger more than one failure indication
+    if ($exit_result =~ /EXIT/) {
+      $result = "FAILED ($exit_result";
+      $failtype = 'run-exit'; 
+    }
+    if ($match_result =~ /FAILED/) {
+      $result = "FAILED (MATCH";
+      $failtype = 'run-match'; 
+    }
+    if ($got_limit) {
+      $result = "FAILED (LIMIT";
+      $failtype = 'run-limit'; 
+    }
+    if ($got_timeout) {
+      $result = "FAILED (TIME";
+      $failtype = 'run-time'; 
+    }
+    if ($got_crash) {
+      $result = "FAILED (CRASH";
+      $failtype = 'run-crash'; 
+    }
+    if ($got_outofmem) {
+      $result = "FAILED (MEM"; 
+      $failtype = 'run-mem'; 
+    }
+    if ($result =~ /FAILED/) {
+      my $knowndesc = undef;
+      foreach my $knownfail (split(/\|/,$known)) {
+        print "checking failure '$failtype' against knownfailures: $knownfail\n" if ($debug);
+        my ($modes,$descstr) = split(/;/,$knownfail);
+        my @modelist = split(',',$modes);
+        print "  checking modes: ".join(' ',@modelist)."\n" if ($debug);
+        if (grep(/^$failtype$/,@modelist) || grep(/^all$/,@modelist) || grep(/^run-all$/,@modelist)) {
+          $knowndesc = $descstr;
+          last;
+        }
+      } 
+      if (defined($knowndesc)) {
+	$result .= "/KNOWN)\n Known failure: $knowndesc";
+      } else {
+	$result .= "/NEW)";
+      }
+    }
+    my $secs = $app_stop - $app_start;
+    my $outstr = "[$suite/$app]   ${secs}sec  $timestamp  $result\n";
+    #$outstr = sprintf(": %-35s %3dsec %6s\n",
+    #		       "$suite/$app",$app_stop - $app_start,
+    #		       $result);
+
+    print $header1;
+    #print $header2;
+    print $outstr;
+    print "commandline: [$cmd]\n";
+
+    if ($benchmark && -e $app_out) {
+    	my $oldslash = $/;
+    	undef $/;
+ 	my $out = new IO::File("< $app_out");
+    	my $outtxt = <$out>;
+    	$/ = $oldslash;
+	undef $out;
+	if ($outtxt =~ /$benchmark/) {
+	  my $result = $1;
+	  my $units = $2;
+	  $units = "MFLOPS" if (!$units);
+	  if (defined($result)) {
+	    $result =~ s/:/-/g;
+	    $units =~ s/:/-/g;
+	    print "BenchmarkResult:$result:$units:THREADS=$nth:PTHREADS_PER_PROC=$pthreads:\n";
+	  }
+	}
+    }
+
+    my $remove_executable;
+    if ($result =~ /FAILED/) {
+	print "PassExpr: $job->{pass_expr}\n";
+	print "FailExpr: $job->{fail_expr}\n";
+	$remove_executable = ($job->{keep_binary} == 0); # only remove if user specified always remove
+	$keep_output = 1;
+    } else { # test succeeded
+	$remove_executable = ($job->{keep_binary} == 0 || $job->{keep_binary} == 2); # always remove or auto-remove
+    }
+
+    if ($keep_output) {
+	if (-e $app_out) {
+	  print "--- App stdout ---\n";
+	  my $out = new IO::File("< $app_out");
+	  if ((stat($out))[7] < $size_limit) {
+	    print <$out>;
+	  } else {
+	    my $line = 0;
+	    while (<$out>) { print; last if ($line++ == 1024); }
+	    print "\nOUTPUT LIMIT EXCEEDED -- OUTPUT TRUNCATED\n" if (<$out>);
+	  }
+	  undef $out;
+	}
+	if (-e $app_err) {
+	  print "--- App stderr ---\n";
+	  my $out = new IO::File("< $app_err");
+	  if ((stat($out))[7] < $size_limit) {
+	    print <$out>;
+	  } else {
+	    my $line = 0;
+	    while (<$out>) { print; last if ($line++ == 1024); }
+	    print "\nOUTPUT LIMIT EXCEEDED -- OUTPUT TRUNCATED\n" if (<$out>);
+	  }
+	  undef $out;
+	}
+	print "------------------\n";
+    }
+    if ($remove_executable) {
+	printf("Removing binary [$app]\n");
+	unlink "$app";
+    }
+
+        # append to report file
+	my $rpt = new IO::File(">> $report_file");
+	die "Cant append to $report_file" if !defined($rpt);
+	print $rpt $outstr;
+	undef $rpt;
+}
+
+sub gen_timestamp {
+    my ($sec,$min,$hour,$day,$mon,$year) = (localtime(time))[0..5];
+    $year += 1900;
+    $mon++;
+    return sprintf("%04d%02d%02d_%02d%02d%02d",
+		   $year,$mon,$day,$hour,$min,$sec);
+}
+
+# ======================================================================
+# Determine if the test passed by scanning the output file
+# for (possibly) both the pass_expr and the fail_expr.
+#
+# Return a string indicating the results of the test.  The string
+# will be:
+#  "ignore" if neither a pass_expr or fail_expr expression is defined.
+#  "SUCCESS"     if no fail_expr is found and a pass_expr is found.
+#  "FAILED" if a fail_expr is found, or no pass_expr is found.
+# ======================================================================
+sub pass_fail {
+    my $fileout = shift;
+    my $fileerr = shift;
+    my $job = shift;
+    my $passed = 1;
+    my $result = "ignore";
+    my $pass_expr = $job->{pass_expr};
+    my $fail_expr = $job->{fail_expr};
+
+    return "FAILED" if (! -e $fileout);
+    my $out = new IO::File("< $fileout");
+    return "FAILED" if (! -e $fileerr);
+    my $err = new IO::File("< $fileerr");
+
+    my $oldslash = $/;
+    undef $/;
+    my ($outtxt, $errtxt);
+
+    if ((stat($out))[7] > $size_limit) {
+      $got_limit = 1;
+    } else {
+      $outtxt = <$out>;
+    }
+
+    if ((stat($err))[7] > $size_limit) {
+      $got_limit = 1;
+    } else {
+      $errtxt = <$err>;
+    }
+
+    $/ = $oldslash;
+    undef $out;
+    undef $err;
+  
+    # remove known-harmless warnings 
+    $errtxt =~ s/$warning_blacklist//mg; 
+    $outtxt =~ s/$warning_blacklist//mg; 
+
+    if (${fail_expr} !~ /^\s*0\s*$/) {
+	if ( $outtxt =~ m/${fail_expr}/m || $errtxt =~ m/${fail_expr}/m) {
+	    $passed = 0;
+	    $result = "FAILED";
+	} else {
+	    $result = "SUCCESS";
+	}
+    }
+    if ($passed && (${pass_expr} !~ /^\s*0\s*$/)) {
+	if ( $outtxt =~ m/${pass_expr}/m || $errtxt =~ m/${pass_expr}/m) {
+	    $result = "SUCCESS";
+	} else {
+	    $passed = 0;
+	    $result = "FAILED";
+	}
+    }
+    $got_outofmem = 1 if ($errtxt =~ /UPC Runtime error:.*out of shared memory/);
+    $got_crash = 1 if ($errtxt =~ /UPC Runtime error:/ && !$got_outofmem);
+    $got_crash = 1 if ($errtxt =~ /UPC Runtime: GASNet error/);
+    $got_crash = 1 if ($errtxt =~ /Caught a fatal signal/);
+    return $result;
+}

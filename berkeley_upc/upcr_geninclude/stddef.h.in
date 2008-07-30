@@ -1,0 +1,25 @@
+#ifndef _IN_UPCR_STDDEF_H
+#define _IN_UPCR_STDDEF_H
+
+#if __BERKELEY_UPC_FIRST_PREPROCESS__
+  #undef offsetof /* avoid redef warnings upon reinclusion */
+#endif
+
+@UPCR_INCLUDE_NEXT_STDDEF_H@
+
+#if __BERKELEY_UPC_FIRST_PREPROCESS__
+  /* bug1318: some systems fail to define offsetof in their system headers, 
+     so do it ourselves to make sure we get a working version 
+     use long below instead of uintptr_t to avoid introducing a stdint dependence
+   */
+  #undef offsetof
+  #define offsetof(type, field)  ((size_t)(long)(&((type *)0)->field))
+#endif
+
+#ifndef _UPCR_STDDEF_H
+#define _UPCR_STDDEF_H
+
+#endif
+
+#undef _IN_UPCR_STDDEF_H
+#endif

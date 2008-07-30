@@ -1,0 +1,83 @@
+
+
+# Nutty workaround to support building with both a build and install trees:
+# second value overrides first during build, but is filtered out with a grep
+# during the install process.  
+GASNET_MAK_DIR=###INSTALL_PREFIX###/include
+## No spaces between end of macro and '###', else space added to value
+GASNET_MAK_DIR=@TOP_BUILDDIR@/gasnet###NOINSTALL###
+
+# Same trick with our own build/install trees
+UPCR_MAK_DIR=###INSTALL_PREFIX###/include
+UPCR_MAK_DIR=@TOP_SRCDIR@###NOINSTALL###
+
+# Include proper GASNet .mak fragment for our network/thread model/debug 
+# settings.  
+ifeq ($(strip $(UPCR_PARSEQ)),)
+    PARSEQ  = seq
+endif
+
+# Pthreads settings
+# 1) 'seq' means single threaded only
+# 2) 'tv' is Totalview-enabled:  one UPC thread per process, plus progress thread 
+# 3) 'par' uses pthreads for UPC threads (both UPCRI_SUPPORT_PTHREADS 
+#     and UPCRI_UPC_PTHREADS defined)
+ifeq ($(strip $(UPCR_PARSEQ)),seq)
+    UPCR_EXTRA_CPPFLAGS=
+    GASNET_PARSEQ=seq
+endif
+ifeq ($(strip $(UPCR_PARSEQ)),tv)
+@HAVE_PTHREAD_TRUE@  UPCR_EXTRA_CPPFLAGS=-DUPCRI_SUPPORT_PTHREADS=1 -DUPCRI_SUPPORT_TOTALVIEW=1
+@HAVE_PTHREAD_TRUE@  GASNET_PARSEQ=par
+@HAVE_PTHREAD_FALSE@ UPCR_EXTRA_CPPFLAGS=-DUPCRI_SUPPORT_TOTALVIEW=1
+@HAVE_PTHREAD_FALSE@ GASNET_PARSEQ=seq
+endif
+ifeq ($(strip $(UPCR_PARSEQ)),par)
+    UPCR_EXTRA_CPPFLAGS=-DUPCRI_SUPPORT_PTHREADS=1 -DUPCRI_UPC_PTHREADS=1
+    GASNET_PARSEQ=par
+endif
+
+# don't do include if UPCR_CONDUIT not set--breaks 'make distclean'
+ifneq ($(strip $(UPCR_CONDUIT)),)
+    gasnet_makfile = $(GASNET_MAK_DIR)/$(UPCR_CONDUIT)-conduit/$(UPCR_CONDUIT)-$(GASNET_PARSEQ).mak
+    -include $(gasnet_makfile) 
+endif
+
+# More build vs. install hackery: define all settings twice, once for
+# installed locations and once for build: we'll strip out the build defines
+# when we install
+
+UPCR_INCLUDES = -I###INSTALL_PREFIX###/include -I###INSTALL_PREFIX###/umalloc
+UPCR_LIBDIRS  = -L###INSTALL_PREFIX###/lib
+UPCR_EXTERN_INCLUDEDIR = ###INSTALL_PREFIX###/include
+
+UPCR_INCLUDES = -I@TOP_SRCDIR@ -I@TOP_SRCDIR@/umalloc -I@TOP_BUILDDIR@###NOINSTALL###
+UPCR_LIBDIRS  = -L@TOP_BUILDDIR@ -L@TOP_BUILDDIR@/umalloc###NOINSTALL###
+UPCR_EXTERN_INCLUDEDIR = @TOP_SRCDIR@###NOINSTALL###
+
+# merge GASNet make settings with runtime's, and with any upcc-specified
+# EXTRA_CFLAGS, EXTRA_CPPFLAGS, and/or EXTRA_LDFLAGS 
+
+UPCR_CC         = $(GASNET_CC)
+UPCR_CPPFLAGS_GENERIC   = $(EXTRA_CPPFLAGS) $(GASNET_DEFINES) $(UPCC_GENINCLUDE_CPPFLAGS) $(GASNET_INCLUDES) $(UPCR_INCLUDES) $(UPCR_EXTRA_CPPFLAGS)
+UPCR_CPPFLAGS   = $(UPCR_CPPFLAGS_GENERIC) $(GASNET_MISC_CPPFLAGS)
+UPCR_CFLAGS     = $(GASNET_CFLAGS) @UPCR_SYSTEM_CFLAGS@ $(EXTRA_CFLAGS)
+
+
+ifeq ($(UPCC_USER_LD),)
+    UPCR_LD         = $(GASNET_LD)
+    UPCR_LDFLAGS    = $(GASNET_LDFLAGS) $(EXTRA_LDFLAGS) $(UPCR_LIBDIRS)
+else
+    UPCR_LD         = $(UPCC_USER_LD)
+    UPCR_LDFLAGS    = $(EXTRA_LDFLAGS) $(UPCR_LIBDIRS)
+endif
+UPCR_LIBS       = -lupcr-$(UPCR_CONDUIT)-$(UPCR_PARSEQ) -lumalloc $(GASNET_LIBS)
+
+# used for totalview assistant lib on cross-compiled systems
+ifeq ($(strip $(UPCR_MAK_HOSTCC)),yes)
+  UPCR_CC =       @HOST_CC@
+  UPCR_CFLAGS =   @HOST_CFLAGS@
+  UPCR_LD =       @HOST_CC@
+  UPCR_LDFLAGS =  @HOST_LDFLAGS@
+endif
+

@@ -1,0 +1,71 @@
+COMMONSRCS = c_timers.c wtime.c c_print_results.c 
+COMPILE = upcc  mg.c $(COMMONSRCS)  c_randdp.o
+HPCOMPILE = upc -O mg.c $(COMMONSRCS)  c_randdp.o -lm
+
+
+#CC = cc
+#CFLAGS = -O4 -tune host -inline all
+
+CC = gcc
+CFLAGS = -O3
+
+NATIVECONDUIT = mpi
+#NATIVECONDUIT = gm
+MUPCLIB = /usr/users/1/bonachea/UPC/mupc-install/lib
+
+.PHONY: all setup 
+
+all: setup c_randdp.o berkeley hp mupc 
+
+setup:
+	@for file in ../common/*.[ch] ; do \
+	  if test ! -f `basename $$file`; then \
+	    echo ln -s $$file . ;\
+	    ln -s $$file . ;\
+          else :; fi; \
+        done
+
+c_randdp.o:
+	$(CC) -c $(CFLAGS) c_randdp.c
+
+berkeley: setup c_randdp.o
+	$(COMPILE) -o mg-$(NATIVECONDUIT)1 -T 1 -network $(NATIVECONDUIT)
+	$(COMPILE) -o mg-mpi1  -T 1 -network mpi
+	$(COMPILE) -o mg-$(NATIVECONDUIT)2 -T 2 -network $(NATIVECONDUIT)
+	$(COMPILE) -o mg-mpi2  -T 2 -network mpi
+	$(COMPILE) -o mg-$(NATIVECONDUIT)4 -T 4 -network $(NATIVECONDUIT)
+	$(COMPILE) -o mg-mpi4  -T 4 -network mpi
+	$(COMPILE) -o mg-$(NATIVECONDUIT)8 -T 8 -network $(NATIVECONDUIT)
+	$(COMPILE) -o mg-mpi8  -T 8 -network mpi
+	$(COMPILE) -o mg-$(NATIVECONDUIT)16 -T 16 -network $(NATIVECONDUIT)
+	$(COMPILE) -o mg-mpi16  -T 16 -network mpi
+	$(COMPILE) -o mg-$(NATIVECONDUIT)32 -T 32 -network $(NATIVECONDUIT)
+	$(COMPILE) -o mg-mpi32  -T 32 -network mpi
+
+hp: setup c_randdp.o
+	$(HPCOMPILE) -o mghp-elan1 -fthreads 1
+	$(HPCOMPILE) -o mghp-elan2 -fthreads 2
+	$(HPCOMPILE) -o mghp-elan4 -fthreads 4
+	$(HPCOMPILE) -o mghp-elan8 -fthreads 8
+	$(HPCOMPILE) -o mghp-elan16 -fthreads 16
+	$(HPCOMPILE) -o mghp-elan32 -fthreads 32
+
+mupc: setup c_randdp.o
+	$(CC) -c $(CFLAGS) $(COMMONSRCS)
+	mupcc -c mg.c -fthreads 1
+	$(CC) -o mg-mupc1 -pthread *.o -lm $(MUPCLIB)/libmupc.a -lmpi
+	mupcc -c mg.c -fthreads 2
+	$(CC) -o mg-mupc2 -pthread *.o -lm $(MUPCLIB)/libmupc.a -lmpi
+	mupcc -c mg.c -fthreads 4
+	$(CC) -o mg-mupc4 -pthread *.o -lm $(MUPCLIB)/libmupc.a -lmpi      
+	mupcc -c mg.c -fthreads 8
+	$(CC) -o mg-mupc8 -pthread *.o -lm $(MUPCLIB)/libmupc.a -lmpi      
+	mupcc -c mg.c -fthreads 16
+	$(CC) -o mg-mupc16 -pthread *.o -lm $(MUPCLIB)/libmupc.a -lmpi     
+	mupcc -c mg.c -fthreads 32
+	$(CC) -o mg-mupc32 -pthread *.o -lm $(MUPCLIB)/libmupc.a -lmpi
+
+clean:
+	rm -f mg-elan* mg-mpi* mghp-elan* mg-mupc*
+	rm -f *.o  whirl2c.h *.w2c.c *.w2c.h $(UPC_OBJS) *_startup_tmp.* *.global_data.c *_symbols *.B *.N *.t *.i *.upc.c upc{c,r}-sizes
+

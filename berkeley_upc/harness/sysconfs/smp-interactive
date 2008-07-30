@@ -1,0 +1,26 @@
+network = smp
+batch_sys = interactive
+
+queues = [
+        {
+          Q_name     => none,   
+          Q_maxnode  => 1,      
+          Q_minnode  => 1,       
+	  Q_maxtpn   => 4,      
+	  Q_maxtime  => 00:00:00 
+        }
+]
+
+# by default, smp-interactive generates pthreaded executables which run with 4
+# pthreads.  To not use pthreads set num_pthreads=0 and nthread_default=1, or
+# call 'harness -pthreads=0 -threads=1', which overrides settings below
+# note the harness currently special-cases smp-conduit to ensure 
+# that nthread_default == num_pthreads
+nthread_default = 4
+num_pthreads = 4
+
+# the max_proc_per_node for the SMP conduit is hard-coded at 1, since it is
+# currently single-process only
+max_proc_per_node = 1
+min_num_nodes = 1
+
