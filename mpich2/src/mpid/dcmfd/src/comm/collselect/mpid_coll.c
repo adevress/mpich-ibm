@@ -448,7 +448,7 @@ void MPIDI_Coll_register(int threadrequested)
 void MPIDI_Coll_Comm_create (MPID_Comm *comm)
 {
   int global, x_size, y_size, z_size, t_size;
-  unsigned min_coords[4], max_coords[4];
+  unsigned my_coords[4], min_coords[4], max_coords[4];
   DCMF_Embedded_Info_Set * comm_prop, * coll_prop;
   MPID_Comm *comm_world;
 
@@ -562,14 +562,21 @@ void MPIDI_Coll_Comm_create (MPID_Comm *comm)
 
   MPIR_Barrier(comm);
 
+  MPIX_Comm_rank2torus(comm -> handle,
+		       comm -> rank,
+		       &my_coords[0], 
+		       &my_coords[1],
+		       &my_coords[2], 
+		       &my_coords[3]);
+
   /* find if the communicator is a rectangle */
-  MPIR_Allreduce(mpid_hw.Coord, min_coords,4, MPI_UNSIGNED, MPI_MIN, comm);
-  MPIR_Allreduce(mpid_hw.Coord, max_coords,4, MPI_UNSIGNED, MPI_MAX, comm);
+  MPIR_Allreduce(my_coords, min_coords,4, MPI_UNSIGNED, MPI_MIN, comm);
+  MPIR_Allreduce(my_coords, max_coords,4, MPI_UNSIGNED, MPI_MAX, comm);
   
-  t_size = (unsigned) (max_coords[0] - min_coords[0] + 1);
-  z_size = (unsigned) (max_coords[1] - min_coords[1] + 1);
-  y_size = (unsigned) (max_coords[2] - min_coords[2] + 1);
-  x_size = (unsigned) (max_coords[3] - min_coords[3] + 1);
+  t_size = (unsigned) (max_coords[3] - min_coords[3] + 1);
+  z_size = (unsigned) (max_coords[2] - min_coords[2] + 1);
+  y_size = (unsigned) (max_coords[1] - min_coords[1] + 1);
+  x_size = (unsigned) (max_coords[0] - min_coords[0] + 1);
 
   if (x_size * y_size * z_size * t_size == comm -> local_size)
     {

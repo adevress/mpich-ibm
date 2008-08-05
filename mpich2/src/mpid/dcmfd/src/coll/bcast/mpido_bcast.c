@@ -87,6 +87,7 @@ MPIDO_Bcast(void * buffer,
          protocols cannot handle the message size range.
   */
 
+  char name[200];
   if (DCMF_INFO_ISSET(properties, DCMF_USE_TREE_BCAST) && data_size && 
       data_size < 64 * MPIDI_CollectiveProtocols.bcast_asynccutoff)
     func = MPIDO_Bcast_tree;
