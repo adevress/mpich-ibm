@@ -97,6 +97,7 @@ int MPID_Init(int * argc,
       DCMF_Send_Configuration_t ssm_msg_config =
         {
           DCMF_DEFAULT_SEND_PROTOCOL,
+	  DCMF_DefaultNetwork,
           NULL,
           NULL,
           NULL,
@@ -115,6 +116,7 @@ int MPID_Init(int * argc,
       DCMF_Send_Configuration_t default_config =
 	{
 	  DCMF_DEFAULT_SEND_PROTOCOL,
+	  DCMF_DefaultNetwork,
 	  (DCMF_RecvSendShort) MPIDI_BG2S_RecvShortCB,
 	  NULL,
 	  (DCMF_RecvSend)      MPIDI_BG2S_RecvCB,
@@ -128,6 +130,7 @@ int MPID_Init(int * argc,
       DCMF_Send_Configuration_t rzv_config =
 	{
 	  DCMF_RZV_SEND_PROTOCOL,
+	  DCMF_DefaultNetwork,
 	  (DCMF_RecvSendShort) MPIDI_BG2S_RecvShortCB,
 	  NULL,
 	  (DCMF_RecvSend)      MPIDI_BG2S_RecvCB,
@@ -160,6 +163,7 @@ int MPID_Init(int * argc,
   DCMF_Control_Configuration_t control_config =
     {
       DCMF_DEFAULT_CONTROL_PROTOCOL,
+      DCMF_DefaultNetwork,
       (DCMF_RecvControl) MPIDI_BG2S_ControlCB, NULL
     };
   DCMF_Control_register (&MPIDI_Protocols.control, &control_config);

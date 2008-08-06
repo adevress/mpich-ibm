@@ -15,7 +15,11 @@
  */
 static void mpid_ctl_init(void) {
         DCMF_Control_Configuration_t ctl_cfg =
-                { DCMF_DEFAULT_CONTROL_PROTOCOL, recv_ctl_cb, NULL};
+                { 
+		  DCMF_DEFAULT_CONTROL_PROTOCOL, 
+		  DCMF_DefaultNetwork,
+		  recv_ctl_cb, NULL
+		};
         DCMF_Control_register(&bg1s_ct_proto, &ctl_cfg);
 }
 
@@ -34,7 +38,9 @@ static void mpid_lock_init(void) {
  */
 static void mpid_send_init(void) {
         DCMF_Send_Configuration_t send_cfg =
-                { DCMF_DEFAULT_SEND_PROTOCOL, recv_sm_cb, NULL, recv_cb, NULL };
+                { DCMF_DEFAULT_SEND_PROTOCOL, 
+		  DCMF_DefaultNetwork,recv_sm_cb, 
+		  NULL, recv_cb, NULL };
 
         DCMF_Send_register(&bg1s_sn_proto, &send_cfg);
 }
