@@ -320,10 +320,10 @@ if [ "$linking" = yes ] ; then
         # Prepend the path for the shared libraries to the library list
         mpilibs="$F90_LINKPATH_SHL$libdir $mpilibs"
     fi
-    $Show $F90 "${allargs[@]}" $F90INCDIRS $F90MODDIRS $F90FLAGS $LDFLAGS -L$libdir $F90MODLIBS $mpilibs $MPI_OTHERLIBS
+    $Show $F90 $F90FLAGS $LDFLAGS "${allargs[@]}" $F90INCDIRS $F90MODDIRS -L$libdir $F90MODLIBS $mpilibs $MPI_OTHERLIBS
     rc=$?
 else
-    $Show $F90 "${allargs[@]}" $F90INCDIRS $F90MODDIRS $F90FLAGS
+    $Show $F90 $F90FLAGS "${allargs[@]}" $F90INCDIRS $F90MODDIRS
     rc=$?
 fi
 if [ -n "$rmfiles" ] ; then
@@ -339,3 +339,4 @@ if [ -n "$rmfiles" ] ; then
     rm -f $rmfiles
 fi
 exit $rc
+
