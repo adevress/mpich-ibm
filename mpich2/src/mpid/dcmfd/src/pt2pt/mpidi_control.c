@@ -21,7 +21,7 @@ static inline int MPIDI_DCMF_CtrlSend(MPIDI_DCMF_MsgInfo * control, unsigned pee
   rc = DCMF_Control(&MPIDI_Protocols.control,
                     DCMF_MATCH_CONSISTENCY,
                     peerrank,
-                    control->quad);
+                    &control->quad);
   return rc;
 }
 

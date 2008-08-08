@@ -133,7 +133,7 @@ void MPIDI_DCMF_RecvRzvDoneCB (void *clientdata, DCMF_Error_t *err)
   DCMF_Control (&MPIDI_Protocols.control,
                 DCMF_MATCH_CONSISTENCY,
                 rreq->dcmf.peerrank,
-                rreq->dcmf.envelope.envelope.msginfo.quad);
+                &rreq->dcmf.envelope.envelope.msginfo.quad);
   MPID_Request_setType(rreq, original_value);
 
   MPIDI_DCMF_RecvDoneCB (rreq, NULL);
