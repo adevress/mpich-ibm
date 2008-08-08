@@ -4,6 +4,7 @@
  * \brief Collective setup
  */
 #include "mpido_coll.h"
+#include "mpix.h"
 
 MPIDI_CollectiveProtocol_t MPIDI_CollectiveProtocols;
 
@@ -332,7 +333,7 @@ void MPIDI_Coll_register(int threadrequested)
    {
       if(BROADCAST_REGISTER(
             DCMF_TORUS_RECTANGLE_BROADCAST_PROTOCOL_SINGLETH,
-            &MPIDI_CollectiveProtocols.rectangle_bcast_dput,
+            &MPIDI_CollectiveProtocols.rectangle_bcast_singleth,
             &broadcast_config) != DCMF_SUCCESS)
          DCMF_INFO_UNSET(properties, DCMF_USE_RECT_BCAST_SINGLETH);
    }
@@ -342,7 +343,7 @@ void MPIDI_Coll_register(int threadrequested)
    {
       if(BROADCAST_REGISTER(
             DCMF_TORUS_BINOMIAL_BROADCAST_PROTOCOL_SINGLETH,
-            &MPIDI_CollectiveProtocols.rectangle_bcast_dput,
+            &MPIDI_CollectiveProtocols.binomial_bcast_singleth,
             &broadcast_config) != DCMF_SUCCESS)
          DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_BCAST_SINGLETH);
    }
@@ -630,7 +631,7 @@ void MPIDI_Coll_Comm_create (MPID_Comm *comm)
   /* end of setting geometric properties of the communicator */
 
   /* quick setting of conditions that results to defaulting to MPICH */
-  if (comm -> comm_kind != MPID_INTRACOMM || comm->local_size < 3)
+  if (comm -> comm_kind != MPID_INTRACOMM || comm->local_size <= 4)
     DCMF_MSET_INFO(comm_prop,
 		   DCMF_USE_MPICH_BARRIER,
 		   DCMF_USE_MPICH_BCAST,

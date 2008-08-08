@@ -5,6 +5,7 @@
  */
 
 #include "mpido_coll.h"
+#include "mpidi_coll_prototypes.h"
 
 #pragma weak PMPIDO_Scatterv = MPIDO_Scatterv
 

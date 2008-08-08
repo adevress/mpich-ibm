@@ -90,7 +90,6 @@ int MPIDO_Bcast_rect_dput(void * buffer,
 			  int root,
 			  MPID_Comm * comm)
 {
-   fprintf(stderr,"direct put\n");
    int rc, hw_root;
    DCMF_CollectiveRequest_t request;
    volatile unsigned active = 1;

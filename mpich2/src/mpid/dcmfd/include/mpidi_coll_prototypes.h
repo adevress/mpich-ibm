@@ -55,6 +55,11 @@ int MPIDO_Alltoallw(void *sendbuf, int *sendcounts, int *senddispls,
                     void *recvbuf, int *recvcounts, int *recvdispls,
                     MPI_Datatype *recvtypes,
                     MPID_Comm *comm_ptr);
+int MPIDO_Alltoallw_torus(void *sendbuf, int *sendcounts, int *senddispls,
+                    MPI_Datatype *sendtypes,
+                    void *recvbuf, int *recvcounts, int *recvdispls,
+                    MPI_Datatype *recvtypes,
+                    MPID_Comm *comm_ptr);
 
 int MPIDO_Alltoallv(void *sendbuf, int *sendcounts, int *senddispls,
                     MPI_Datatype sendtype,
@@ -62,6 +67,11 @@ int MPIDO_Alltoallv(void *sendbuf, int *sendcounts, int *senddispls,
                     MPI_Datatype recvtype,
                     MPID_Comm *comm_ptr);
 
+int MPIDO_Alltoallv_torus(void *sendbuf, int *sendcounts, int *senddispls,
+                    MPI_Datatype sendtype,
+                    void *recvbuf, int *recvcounts, int *recvdispls,
+                    MPI_Datatype recvtype,
+                    MPID_Comm *comm_ptr);
 
 
 /* Allgather prototypes */

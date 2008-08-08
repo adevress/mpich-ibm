@@ -6,6 +6,7 @@
 
 #include "mpido_coll.h"
 #include "mpidi_coll_prototypes.h"
+#include "mpix.h"
 
 #pragma weak PMPIDO_Bcast = MPIDO_Bcast
 
@@ -18,7 +19,7 @@ MPIDO_Bcast(void * buffer,
 	    int root,
 	    MPID_Comm * comm)
 {
-  bcast_fptr func = NULL;
+   bcast_fptr func = NULL;
 
    DCMF_Embedded_Info_Set * properties = &(comm->dcmf.properties);
 
@@ -27,6 +28,7 @@ MPIDO_Bcast(void * buffer,
    MPI_Aint data_true_lb = 0;
    MPID_Datatype * data_ptr;
    MPID_Segment segment;
+   int commsize = comm->local_size;
 
    if(DCMF_INFO_ISSET(properties, DCMF_USE_MPICH_BCAST))
       return MPIR_Bcast(buffer, count, datatype, root, comm);
@@ -52,7 +54,7 @@ MPIDO_Bcast(void * buffer,
          fprintf(stderr,
                "Pack: Tree Bcast cannot allocate local non-contig pack"
                " buffer\n");
-         MPID_Dump_stacks();
+         MPIX_Dump_stacks();
          MPID_Abort(NULL, MPI_ERR_NO_SPACE, 1,
                "Fatal:  Cannot allocate pack buffer");
       }
@@ -65,75 +67,106 @@ MPIDO_Bcast(void * buffer,
       }
    }
 
-  /* DEFAULT code path or if coming here from within another collective.
-    if the tree is available and data_size is not zero, use the tree bcast,
-    is async rect bcast is available, use it, otherwise, use sync version,
-    is async binom bcast is available, use it, otherwise, use sync version,
-    otherwise, use MPICH.
+  /* 
+   *      The following cut offs were based on benchmark data 
+   *
+   *      A. if (tree is on && 0 < msize < 512KB) 
+   *         - Tree
+   *         - This condition can fail if user does not want tree or comm is not 
+   *         comm_world or msize >= 512KB
+   *
+   *      B. if A fails, then we attempt 
+   *         - Arect if msize <= 8KB
+   *         - Rect if msize > 8KB
+   *         - This condition can fail if user does not want rect protocols or msize
+   *         is not in range.
+   *
+   *      C. If B fails, we attempt
+   *         - Abinom if msize <= 16KB
+   *         - Binom if 16KB < msize <= 65KB
+   *         - This condition can fail if user does not want binom protocols or msize
+   *         is not in range.
+   *
+   *      D. If C fails, attempt
+   *         - Scatter-Gather
+   *         - This scenario happens when the communicator is irregular and binom 
+   *         protocols cannot handle the message size range.
    */
-  
-   if(DCMF_INFO_ISSET(properties, DCMF_USE_TREE_BCAST) && data_size)
-      rc = MPIDO_Bcast_tree(data_buffer, data_size, root, comm);
-  
-   else if(DCMF_INFO_ISSET(properties, DCMF_USE_ARECT_BCAST))
+
+
+   if(DCMF_INFO_ISSET(properties, DCMF_USE_TREE_BCAST) && data_size &&
+      data_size < 64 * MPIDI_CollectiveProtocols.bcast_asynccutoff)
+         func = MPIDO_Bcast_tree;
+   if(!func && DCMF_INFO_ISSET(properties, DCMF_USE_ARECT_BCAST))
    {
-      if(data_size < MPIDI_CollectiveProtocols.bcast_asynccutoff && 
-         comm->dcmf.bcast_iter < 32)
+      if(data_size <= MPIDI_CollectiveProtocols.bcast_asynccutoff)
       {
-         comm->dcmf.bcast_iter++;
-         rc = MPIDO_Bcast_rect_async(data_buffer, data_size, root, comm);
-      }
-      else
-      {
-         comm->dcmf.bcast_iter = 0;
-         goto RECT_SYNC;
-      }
-   }
-  
-   else if(DCMF_INFO_ISSET(properties, DCMF_USE_RECT_BCAST))
-   {
-      RECT_SYNC:
-      rc = MPIDO_Bcast_rect_sync(data_buffer, data_size, root, comm);
-   }
-  
-   else if(DCMF_INFO_ISSET(properties, DCMF_USE_ABINOM_BCAST))
-   {
-      if(data_size < MPIDI_CollectiveProtocols.bcast_asynccutoff &&
-         comm->dcmf.bcast_iter < 32)
-      {
-         comm->dcmf.bcast_iter++;
-         rc = MPIDO_Bcast_binom_async(data_buffer, data_size,root,comm);
-      }
-      else
-      {
-         comm->dcmf.bcast_iter = 0;
-         goto BINO_SYNC;
+         if(comm->dcmf.bcast_iter < 32)
+         {
+            comm->dcmf.bcast_iter++;
+            func = MPIDO_Bcast_rect_async;
+         }
+         else
+         {
+            comm->dcmf.bcast_iter = 0;
+         }
       }
    }
   
-   else if(DCMF_INFO_ISSET(properties, DCMF_USE_BINOM_BCAST))
+   if(!func && DCMF_INFO_ISSET(properties, DCMF_USE_RECT_BCAST))
    {
-      BINO_SYNC:
-      rc = MPIDO_Bcast_binom_sync(data_buffer, data_size,root,comm);
-   }	    
-
-   else if(DCMF_INFO_ISSET(properties, DCMF_USE_RECT_BCAST_DPUT))
+      func = MPIDO_Bcast_rect_sync;
+   }
+   if(!func && DCMF_INFO_ISSET(properties, DCMF_USE_ABINOM_BCAST))
    {
-      rc = MPIDO_Bcast_rect_dput(data_buffer, data_size, root, comm);
+      if(data_size <= 2 * MPIDI_CollectiveProtocols.bcast_asynccutoff)
+      {
+         if(comm->dcmf.bcast_iter < 32)
+         {
+            comm->dcmf.bcast_iter++;
+            func = MPIDO_Bcast_binom_async;
+         }
+         else
+         {
+            comm->dcmf.bcast_iter = 0;
+         }
+      }
+   }
+   if (!func && DCMF_INFO_ISSET(properties, DCMF_USE_BINOM_BCAST))
+   {
+      if (data_size > 2 * MPIDI_CollectiveProtocols.bcast_asynccutoff &&
+          data_size <= 8 * MPIDI_CollectiveProtocols.bcast_asynccutoff)
+      {
+         func = MPIDO_Bcast_binom_sync;
+      }
    }
 
-   else if(DCMF_INFO_ISSET(properties, DCMF_USE_RECT_BCAST_SINGLETH))
+   if(!func && DCMF_INFO_ISSET(properties, DCMF_USE_RECT_BCAST_DPUT) &&
+      !(unsigned)data_buffer & 0x0F && commsize > 4)
    {
-      rc = MPIDO_Bcast_rect_singleth(data_buffer, data_size, root, comm);
+      func = MPIDO_Bcast_rect_dput;
    }
 
-   else if(DCMF_INFO_ISSET(properties, DCMF_USE_BINOM_BCAST_SINGLETH))
+   if(!func && DCMF_INFO_ISSET(properties, DCMF_USE_RECT_BCAST_SINGLETH) &&
+      commsize > 4)
    {
-      rc = MPIDO_Bcast_binom_singleth(data_buffer, data_size, root, comm);
+      func = MPIDO_Bcast_rect_singleth;
    }
 
-   else
-      rc = MPIR_Bcast(buffer, count, datatype, root, comm);
+   if(!func && DCMF_INFO_ISSET(properties, DCMF_USE_BINOM_BCAST_SINGLETH) &&
+      commsize > 4)
+   {
+      func = MPIDO_Bcast_binom_singleth;
+   }
+
+   if(!func && DCMF_INFO_ISSET(properties, DCMF_USE_SCATTER_GATHER_BCAST))
+   {
+      func = MPIDO_Bcast_scatter_gather;
+   }
+   if(!func)
+      return MPIR_Bcast(buffer, count, datatype, root, comm);
+
+   rc = (func)(data_buffer, data_size, root, comm);
    
    if(!data_contig)
    {
