@@ -47,11 +47,11 @@ testing:
 testingvnm:
 	./runtests -srcdir=$(srcdir) -tests=testlist \
 		-virtualNodeMode -xmlfile=summaryvnm.xml -nospawn -datestamp \
-		--nodeRankMap TXYZ
+		-nodemap=TXYZ
 testingdual:
 	./runtests -srcdir=$(srcdir) -tests=testlist \
 		-dualMode -xmlfile=summarydual.xml -nospawn -datestamp \
-		--nodeRankMap TXYZ
+		-nodemap=TXYZ
 testingio:
 	./runtests -srcdir=$(srcdir) -tests=iotestlist -datestamp \
 		-xmlfile=summaryio.xml -norma -nospawn
@@ -63,11 +63,11 @@ testing-mpirun:
 testingvnm-mpirun:
 	./runtests -srcdir=$(srcdir) -tests=testlist \
 		-virtualNodeMode -xmlfile=summaryvnm.xml -nospawn -datestamp \
-		-usempirun -nofree -verbose -mapfile TXYZ
+		-usempirun -nofree -verbose -nodemap=TXYZ
 testingdual-mpirun:
 	./runtests -srcdir=$(srcdir) -tests=testlist \
 		-dualMode -xmlfile=summarydual.xml -nospawn -datestamp \
-		-usempirun -nofree -verbose -mapfile TXYZ
+		-usempirun -nofree -verbose -nodemap=TXYZ
 clean-local:
 	-rm -f summary.xml
 
