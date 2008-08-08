@@ -11,12 +11,11 @@
  * here, so we just use call DCMF_AsyncBroadcast directly
  */
 
-void allgatherv_async_done(void *clientdata)
+static void allgatherv_async_done(void *clientdata, DCMF_Error_t *err)
 {
   volatile unsigned *work_left = (unsigned *)clientdata;
   (*work_left)--;
   MPID_Progress_signal();
-  return;
 }
 
 int MPIDO_Allgatherv_bcast_binom_async(void *sendbuf,
