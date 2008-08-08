@@ -68,9 +68,10 @@ void MPIDI_Recvq_finalize()
  * \param [in]  context_id Find by Context ID (communicator)
  * \return      The matching UE request or NULL
  */
-MPID_Request * MPIDI_Recvq_FU(int source, int tag, int context_id)
+int MPIDI_Recvq_FU(int source, int tag, int context_id, MPI_Status * status)
 {
     MPID_Request * rreq;
+    int found = 0;
 #ifdef USE_STATISTICS
     unsigned search_length = 0;
 #endif
@@ -89,10 +90,11 @@ MPID_Request * MPIDI_Recvq_FU(int source, int tag, int context_id)
                      (MPID_Request_getMatchRank(rreq) == source    ) &&
                      (MPID_Request_getMatchTag(rreq)  == tag       )
                    )
-                {
-                    MPID_Request_add_ref(rreq);
+                  {
+                    found = 1;
+                    *status = (rreq->status);
                     break;
-                }
+                  }
 
                 rreq = rreq->dcmf.next;
             }
@@ -139,10 +141,11 @@ MPID_Request * MPIDI_Recvq_FU(int source, int tag, int context_id)
                      ( (MPID_Request_getMatchRank(rreq) & mask.rank) == match.rank      ) &&
                      ( (MPID_Request_getMatchTag(rreq)  & mask.tag ) == match.tag       )
                    )
-                {
-                    MPID_Request_add_ref(rreq);
+                  {
+                    found = 1;
+                    *status = (rreq->status);
                     break;
-                }
+                  }
 
                 rreq = rreq->dcmf.next;
             }
@@ -154,7 +157,7 @@ MPID_Request * MPIDI_Recvq_FU(int source, int tag, int context_id)
     MPIDI_Statistics_time(MPIDI_Statistics.recvq.unexpected_search, search_length);
 #endif
 
-    return rreq;
+    return found;
 }
 
 
