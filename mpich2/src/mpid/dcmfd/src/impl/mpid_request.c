@@ -85,24 +85,18 @@ MPID_Request * MPID_SendRequest_create()
 /*           destroy a request                                             */
 /* *********************************************************************** */
 
-void MPID_Request_destroy(MPID_Request * req)
-{
-  MPID_assert(HANDLE_GET_MPI_KIND(req->handle) == MPID_REQUEST);
-  MPID_assert(req->ref_count == 0);
-
-  if (req->comm)              MPIR_Comm_release(req->comm, 0);
-  if (req->dcmf.datatype_ptr) MPID_Datatype_release(req->dcmf.datatype_ptr);
-
-  MPIU_Handle_obj_free(&MPID_Request_mem, req);
-}
-
 void MPID_Request_release (MPID_Request *req)
 {
   int ref_count;
   MPID_assert(HANDLE_GET_MPI_KIND(req->handle) == MPID_REQUEST);
   MPIU_Object_release_ref(req, &ref_count);
   MPID_assert(req->ref_count >= 0);
-  if (ref_count == 0) MPID_Request_destroy(req);
+  if (ref_count == 0)
+    {
+      if (req->comm)              MPIR_Comm_release(req->comm, 0);
+      if (req->dcmf.datatype_ptr) MPID_Datatype_release(req->dcmf.datatype_ptr);
+      MPIU_Handle_obj_free(&MPID_Request_mem, req);
+    }
 }
 
 /* *********************************************************************** */

@@ -68,8 +68,8 @@ int MPIDI_Isend_self(const void    * buf,
   if (rreq == NULL)
     {
       int mpi_errno;
-      MPIU_Object_set_ref(sreq, 0);
-      MPID_Request_destroy(sreq);
+      MPIU_Object_set_ref(sreq, 1);
+      MPID_Request_release(sreq);
       *request = NULL;
       mpi_errno = MPIR_Err_create_code(MPI_SUCCESS,
                                        MPIR_ERR_RECOVERABLE,
