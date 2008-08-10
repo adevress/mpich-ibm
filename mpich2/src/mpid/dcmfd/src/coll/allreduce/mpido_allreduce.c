@@ -101,10 +101,11 @@ MPIDO_Allreduce(void * sendbuf,
 	  else if (DCMF_INFO_ISSET(properties, DCMF_USE_RECTRING_ALLREDUCE))
 	    func = MPIDO_Allreduce_rectring;
 	}
-    }
 
-  if (!func && DCMF_INFO_ISSET(properties, DCMF_IRREG_COMM))
+  if (!func && DCMF_INFO_ISSET(properties, DCMF_IRREG_COMM) &&
+      DCMF_INFO_ISSET(properties, DCMF_USE_ABINOM_ALLREDUCE))
     func = MPIDO_Allreduce_async_binom;
+    }
 
   if (func)
     rc = (func)(sendbuf, 
