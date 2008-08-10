@@ -31,7 +31,7 @@ typedef DCQuad DCMF_CollectiveRequest_t[1];
 typedef DCQuad DCMF_CollectiveProtocol_t[1];
 #endif /* !USE_CCMI_COLL */
 
-char exec_name[512];
+char * exec_name;
 
 /* verify that the version of the installed dcmf library is compatible */
 #if (DCMF_VERSION_RELEASE == 0)

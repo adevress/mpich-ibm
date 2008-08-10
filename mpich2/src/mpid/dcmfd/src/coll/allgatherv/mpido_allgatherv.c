@@ -116,42 +116,82 @@ MPIDO_Allgatherv(void *sendbuf,
                    DCMF_INFO_ISSET(comm_prop, DCMF_USE_ARECT_BCAST) &&
 	           config.recv_contig &&
 	           config.send_contig;
-      
+  /*
+  if (comm->rank == 0) printf("tree red %d tree bcast %d alltoall %d abino %d arect %d :%d %d\n",
+			      use_tree_reduce,use_tree_bcast , use_alltoall,use_binom_async,use_rect_async,
+			      config.recv_contig ,config.send_contig);
+			      char name[256];
+  */
+
+
   if (use_tree_reduce && use_tree_bcast)
     if (config.largecount)
+      {
+	//strcpy(name, "bcast");
       func = MPIDO_Allgatherv_bcast;
+      }
     else
+      {
       func = MPIDO_Allgatherv_allreduce;
-
+      //strcpy(name, "allred");
+      }
   /* we only can use allreduce, so use it regardless of size */
   else if (use_tree_reduce)
+    {
     func = MPIDO_Allgatherv_allreduce;
-  
+    //strcpy(name, "allreduce2");
+
+    }
   /* or, we can only use bcast, so use it regardless of size */
-  else if (use_tree_bcast || (!use_binom_async && !use_rect_async))
+  else if (use_tree_bcast && !use_binom_async && !use_rect_async)
+    {
     func = MPIDO_Allgatherv_bcast;
-  
+    //strcpy(name, "bcast2");
+    }
   /* no tree protocols (probably not comm_world) so use alltoall */
   else if (use_alltoall)
+    {
     func = MPIDO_Allgatherv_alltoall;
-  
+    //strcpy(name, "alltoall");
+    }
   else if (use_rect_async)
     if (!config.largecount)
+      {
       func = MPIDO_Allgatherv_bcast_rect_async;
+      //strcpy(name, "arect");
+      }
     else
+      {
       func = MPIDO_Allgatherv_bcast;
-  
+      //strcpy(name, "bcast3");
+      }
   else if (use_binom_async)
     if (!config.largecount)
+      {
       func = MPIDO_Allgatherv_bcast_binom_async;
+      //strcpy(name, "abinom");
+      }
     else
+      {
       func = MPIDO_Allgatherv_bcast;
-  
+      //strcpy(name, "bcast4");
+      }
   else
     return MPIR_Allgatherv(sendbuf, sendcount, sendtype,
 			   recvbuf, recvcounts, displs, recvtype,
 			   comm);
-  
+  /*
+  MPI_Barrier(comm->handle);
+  int j;
+  for (j = 0; j < comm->local_size; j++)
+    {
+      MPI_Barrier(comm->handle);
+      if (j == comm->rank)
+	printf("%d using %s %d\n", comm->rank, name, comm->handle);
+
+    }
+  */
+
   rc = (func)(sendbuf, sendcount, sendtype,
 	      recvbuf, recvcounts, buffer_sum, displs, recvtype,
 	      send_true_lb, recv_true_lb, send_size, recv_size,

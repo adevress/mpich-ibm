@@ -21,6 +21,9 @@ int MPID_Finalize()
   /* ------------------------- */
   MPIDI_Statistics_finalize();
 
+  if (exec_name) 
+    free(exec_name);
+
   /* ------------------------- */
   /* shutdown request queues   */
   /* ------------------------- */

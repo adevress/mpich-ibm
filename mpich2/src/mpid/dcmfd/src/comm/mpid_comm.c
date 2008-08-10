@@ -481,12 +481,15 @@ MPIDI_Env_setup()
 		 DCMF_USE_OPT_BARRIER,
 		 DCMF_USE_LOCKBOX_LBARRIER,
 		 DCMF_USE_BINOM_LBARRIER,
+		 //DCMF_USE_RECT_DPUT_BCAST,
+		 //DCMF_USE_RECT_SINGLETH_BCAST,
+		 //DCMF_USE_BINOM_SINGLETH_BCAST,
 		 DCMF_USE_RECT_BCAST,
 		 DCMF_USE_ARECT_BCAST,
 		 DCMF_USE_BINOM_BCAST,
 		 DCMF_USE_ABINOM_BCAST,
 		 DCMF_USE_OPT_BCAST,
-       DCMF_USE_SCATTER_GATHER_BCAST,
+		 DCMF_USE_SCATTER_GATHER_BCAST,
 		 DCMF_USE_STORAGE_ALLREDUCE,
 		 DCMF_USE_RECT_ALLREDUCE,
 		 DCMF_USE_RECTRING_ALLREDUCE,
@@ -600,116 +603,139 @@ MPIDI_Env_setup()
   
    envopts = getenv("DCMF_BCAST");
    if(envopts != NULL)
-   {
-      if(strncasecmp(envopts, "M", 1) == 0) /* MPICH */
-      {
-         DCMF_INFO_SET(properties, DCMF_USE_MPICH_BCAST);
-         DCMF_INFO_UNSET(properties, DCMF_USE_TREE_BCAST);
-         DCMF_INFO_UNSET(properties, DCMF_USE_RECT_BCAST);
-         DCMF_INFO_UNSET(properties, DCMF_USE_ARECT_BCAST);
-         DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_BCAST);
-         DCMF_INFO_UNSET(properties, DCMF_USE_ABINOM_BCAST);
-         DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_BCAST_SINGLETH);
-         DCMF_INFO_UNSET(properties, DCMF_USE_RECT_BCAST_DPUT);
-         DCMF_INFO_UNSET(properties, DCMF_USE_RECT_BCAST_SINGLETH);
-         DCMF_INFO_UNSET(properties, DCMF_USE_OPT_BCAST);
-         DCMF_INFO_UNSET(properties, DCMF_USE_SCATTER_GATHER_BCAST);
-      }
-      else if(strncasecmp(envopts, "AR", 2) == 0) /* Both rectangles */
-      {
-         DCMF_INFO_UNSET(properties, DCMF_USE_TREE_BCAST);
-         DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_BCAST);
-         DCMF_INFO_UNSET(properties, DCMF_USE_ABINOM_BCAST);
-         DCMF_INFO_UNSET(properties, DCMF_USE_SCATTER_GATHER_BCAST);
-      }
-      else if(strncasecmp(envopts, "AB", 2) == 0) /* Both binomials */
-      {
-         DCMF_INFO_UNSET(properties, DCMF_USE_TREE_BCAST);
-         DCMF_INFO_UNSET(properties, DCMF_USE_RECT_BCAST);
-         DCMF_INFO_UNSET(properties, DCMF_USE_ARECT_BCAST);
-         DCMF_INFO_UNSET(properties, DCMF_USE_SCATTER_GATHER_BCAST);
-      }
-      else if(strncasecmp(envopts, "R", 1) == 0) /* Rectangle */
-      {
-         DCMF_INFO_UNSET(properties, DCMF_USE_TREE_BCAST);
-         DCMF_INFO_UNSET(properties, DCMF_USE_ARECT_BCAST);
-         DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_BCAST);
-         DCMF_INFO_UNSET(properties, DCMF_USE_ABINOM_BCAST);
-         DCMF_INFO_UNSET(properties, DCMF_USE_SCATTER_GATHER_BCAST);
-      }
-      else if(strncasecmp(envopts, "B", 1) == 0) /* Binomial */
-      {
-         DCMF_INFO_UNSET(properties, DCMF_USE_TREE_BCAST);
-         DCMF_INFO_UNSET(properties, DCMF_USE_ARECT_BCAST);
-         DCMF_INFO_UNSET(properties, DCMF_USE_RECT_BCAST);
-         DCMF_INFO_UNSET(properties, DCMF_USE_ABINOM_BCAST);
-         DCMF_INFO_UNSET(properties, DCMF_USE_SCATTER_GATHER_BCAST);
-      }
-      else if(strncasecmp(envopts, "T", 1) == 0) /* Tree */
-      {
-         DCMF_INFO_UNSET(properties, DCMF_USE_RECT_BCAST);
-         DCMF_INFO_UNSET(properties, DCMF_USE_ARECT_BCAST);
-         DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_BCAST);
-         DCMF_INFO_UNSET(properties, DCMF_USE_ABINOM_BCAST);
-         DCMF_INFO_UNSET(properties, DCMF_USE_SCATTER_GATHER_BCAST);
-      }
-      else if(strncasecmp(envopts, "D", 1) == 0) /* Direct put */
-      {
-         DCMF_INFO_UNSET(properties, DCMF_USE_TREE_BCAST);
-         DCMF_INFO_UNSET(properties, DCMF_USE_RECT_BCAST);
-         DCMF_INFO_UNSET(properties, DCMF_USE_ARECT_BCAST);
-         DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_BCAST);
-         DCMF_INFO_UNSET(properties, DCMF_USE_ABINOM_BCAST);
-         DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_BCAST_SINGLETH);
-         DCMF_INFO_SET(properties, DCMF_USE_RECT_BCAST_DPUT);
-         DCMF_INFO_UNSET(properties, DCMF_USE_RECT_BCAST_SINGLETH);
-         DCMF_INFO_UNSET(properties, DCMF_USE_SCATTER_GATHER_BCAST);
-      }
-      else if(strncasecmp(envopts, "SB", 1) == 0) /* Single thread, binomial */
-      {
-         DCMF_INFO_UNSET(properties, DCMF_USE_TREE_BCAST);
-         DCMF_INFO_UNSET(properties, DCMF_USE_RECT_BCAST);
-         DCMF_INFO_UNSET(properties, DCMF_USE_ARECT_BCAST);
-         DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_BCAST);
-         DCMF_INFO_UNSET(properties, DCMF_USE_ABINOM_BCAST);
-         DCMF_INFO_SET(properties, DCMF_USE_BINOM_BCAST_SINGLETH);
-         DCMF_INFO_UNSET(properties, DCMF_USE_RECT_BCAST_DPUT);
-         DCMF_INFO_UNSET(properties, DCMF_USE_RECT_BCAST_SINGLETH);
-         DCMF_INFO_UNSET(properties, DCMF_USE_SCATTER_GATHER_BCAST);
-      }
-      else if(strncasecmp(envopts, "SR", 1) == 0) /* Single thread, rect */
-      {
-         DCMF_INFO_UNSET(properties, DCMF_USE_TREE_BCAST);
-         DCMF_INFO_UNSET(properties, DCMF_USE_RECT_BCAST);
-         DCMF_INFO_UNSET(properties, DCMF_USE_ARECT_BCAST);
-         DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_BCAST);
-         DCMF_INFO_UNSET(properties, DCMF_USE_ABINOM_BCAST);
-         DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_BCAST_SINGLETH);
-         DCMF_INFO_UNSET(properties, DCMF_USE_RECT_BCAST_DPUT);
-         DCMF_INFO_SET(properties, DCMF_USE_RECT_BCAST_SINGLETH);
-         DCMF_INFO_UNSET(properties, DCMF_USE_SCATTER_GATHER_BCAST);
-      }
-      else if(strncasecmp(envopts, "SG", 1) == 0) /* Scatter/gather via pt2pt */
-      {
-         DCMF_INFO_UNSET(properties, DCMF_USE_TREE_BCAST);
-         DCMF_INFO_UNSET(properties, DCMF_USE_RECT_BCAST);
-         DCMF_INFO_UNSET(properties, DCMF_USE_ARECT_BCAST);
-         DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_BCAST);
-         DCMF_INFO_UNSET(properties, DCMF_USE_ABINOM_BCAST);
-         DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_BCAST_SINGLETH);
-         DCMF_INFO_UNSET(properties, DCMF_USE_RECT_BCAST_DPUT);
-         DCMF_INFO_UNSET(properties, DCMF_USE_RECT_BCAST_SINGLETH);
-         DCMF_INFO_SET(properties, DCMF_USE_SCATTER_GATHER_BCAST);
-      }
-      else
-      {
-         fprintf(stderr,
-         "Invalid bcast: %s, Valid bcast options are: M, AR, AB, R, B, T, D, SR, SB, and SG\n", 
-            envopts);
-      }
+     {
+       if(strncasecmp(envopts, "M", 1) == 0) /* MPICH */
+	 {
+	   DCMF_INFO_SET(properties, DCMF_USE_MPICH_BCAST);
+	   DCMF_INFO_UNSET(properties, DCMF_USE_TREE_BCAST);
+	   DCMF_INFO_UNSET(properties, DCMF_USE_RECT_BCAST);
+	   DCMF_INFO_UNSET(properties, DCMF_USE_ARECT_BCAST);
+	   DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_BCAST);
+	   DCMF_INFO_UNSET(properties, DCMF_USE_ABINOM_BCAST);
+	   DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_SINGLETH_BCAST);
+	   DCMF_INFO_UNSET(properties, DCMF_USE_RECT_DPUT_BCAST);
+	   DCMF_INFO_UNSET(properties, DCMF_USE_RECT_SINGLETH_BCAST);
+	   DCMF_INFO_UNSET(properties, DCMF_USE_OPT_BCAST);
+	   DCMF_INFO_UNSET(properties, DCMF_USE_SCATTER_GATHER_BCAST);
+	 }
+       else if(strncasecmp(envopts, "AR", 2) == 0) /* Both rectangles */
+	 {
+	   DCMF_INFO_UNSET(properties, DCMF_USE_TREE_BCAST);
+	   DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_BCAST);
+	   DCMF_INFO_UNSET(properties, DCMF_USE_ABINOM_BCAST);
+	   DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_SINGLETH_BCAST);
+	   DCMF_INFO_UNSET(properties, DCMF_USE_RECT_DPUT_BCAST);
+	   DCMF_INFO_UNSET(properties, DCMF_USE_RECT_SINGLETH_BCAST);
+	   DCMF_INFO_UNSET(properties, DCMF_USE_OPT_BCAST);
+	   DCMF_INFO_UNSET(properties, DCMF_USE_SCATTER_GATHER_BCAST);
+	 }
+       else if(strncasecmp(envopts, "AB", 2) == 0) /* Both binomials */
+	 {
+	   DCMF_INFO_UNSET(properties, DCMF_USE_TREE_BCAST);
+	   DCMF_INFO_UNSET(properties, DCMF_USE_RECT_BCAST);
+	   DCMF_INFO_UNSET(properties, DCMF_USE_ARECT_BCAST);
+	   DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_SINGLETH_BCAST);
+	   DCMF_INFO_UNSET(properties, DCMF_USE_RECT_DPUT_BCAST);
+	   DCMF_INFO_UNSET(properties, DCMF_USE_RECT_SINGLETH_BCAST);
+	   DCMF_INFO_UNSET(properties, DCMF_USE_OPT_BCAST);
+	   DCMF_INFO_UNSET(properties, DCMF_USE_SCATTER_GATHER_BCAST);
+	 }
+       else if(strncasecmp(envopts, "R", 1) == 0) /* Rectangle */
+	 {
+	   DCMF_INFO_UNSET(properties, DCMF_USE_TREE_BCAST);
+	   DCMF_INFO_UNSET(properties, DCMF_USE_ARECT_BCAST);
+	   DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_BCAST);
+	   DCMF_INFO_UNSET(properties, DCMF_USE_ABINOM_BCAST);
+	   DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_SINGLETH_BCAST);
+	   DCMF_INFO_UNSET(properties, DCMF_USE_RECT_DPUT_BCAST);
+	   DCMF_INFO_UNSET(properties, DCMF_USE_RECT_SINGLETH_BCAST);
+	   DCMF_INFO_UNSET(properties, DCMF_USE_OPT_BCAST);
+	   DCMF_INFO_UNSET(properties, DCMF_USE_SCATTER_GATHER_BCAST);
+	 }
+       else if(strncasecmp(envopts, "B", 1) == 0) /* Binomial */
+	 {
+	   DCMF_INFO_UNSET(properties, DCMF_USE_TREE_BCAST);
+	   DCMF_INFO_UNSET(properties, DCMF_USE_RECT_BCAST);
+	   DCMF_INFO_UNSET(properties, DCMF_USE_ARECT_BCAST);
+	   DCMF_INFO_UNSET(properties, DCMF_USE_ABINOM_BCAST);
+	   DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_SINGLETH_BCAST);
+	   DCMF_INFO_UNSET(properties, DCMF_USE_RECT_DPUT_BCAST);
+	   DCMF_INFO_UNSET(properties, DCMF_USE_RECT_SINGLETH_BCAST);
+	   DCMF_INFO_UNSET(properties, DCMF_USE_OPT_BCAST);
+	   DCMF_INFO_UNSET(properties, DCMF_USE_SCATTER_GATHER_BCAST);
+	 }
+       else if(strncasecmp(envopts, "T", 1) == 0) /* Tree */
+	 {
+	   DCMF_INFO_UNSET(properties, DCMF_USE_RECT_BCAST);
+	   DCMF_INFO_UNSET(properties, DCMF_USE_ARECT_BCAST);
+	   DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_BCAST);
+	   DCMF_INFO_UNSET(properties, DCMF_USE_ABINOM_BCAST);
+	   DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_SINGLETH_BCAST);
+	   DCMF_INFO_UNSET(properties, DCMF_USE_RECT_DPUT_BCAST);
+	   DCMF_INFO_UNSET(properties, DCMF_USE_RECT_SINGLETH_BCAST);
+	   DCMF_INFO_UNSET(properties, DCMF_USE_OPT_BCAST);
+	   DCMF_INFO_UNSET(properties, DCMF_USE_SCATTER_GATHER_BCAST);
+	 }
+       else if(strncasecmp(envopts, "D", 1) == 0) /* Direct put */
+	{
+	   DCMF_INFO_SET(properties, DCMF_USE_RECT_DPUT_BCAST);
+	   DCMF_INFO_UNSET(properties, DCMF_USE_TREE_BCAST);
+	   DCMF_INFO_UNSET(properties, DCMF_USE_RECT_BCAST);
+	   DCMF_INFO_UNSET(properties, DCMF_USE_ARECT_BCAST);
+	   DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_BCAST);
+	   DCMF_INFO_UNSET(properties, DCMF_USE_ABINOM_BCAST);
+	   DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_SINGLETH_BCAST);
+	   DCMF_INFO_UNSET(properties, DCMF_USE_RECT_SINGLETH_BCAST);
+	   DCMF_INFO_UNSET(properties, DCMF_USE_OPT_BCAST);
+	   DCMF_INFO_UNSET(properties, DCMF_USE_SCATTER_GATHER_BCAST);
+	}
+       else if(strncasecmp(envopts, "SB", 1) == 0) /* Single thread, binomial */
+	 {
+	   DCMF_INFO_SET(properties, DCMF_USE_BINOM_SINGLETH_BCAST);
+	   DCMF_INFO_UNSET(properties, DCMF_USE_TREE_BCAST);
+	   DCMF_INFO_UNSET(properties, DCMF_USE_RECT_BCAST);
+	   DCMF_INFO_UNSET(properties, DCMF_USE_ARECT_BCAST);
+	   DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_BCAST);
+	   DCMF_INFO_UNSET(properties, DCMF_USE_ABINOM_BCAST);
+	   DCMF_INFO_UNSET(properties, DCMF_USE_RECT_DPUT_BCAST);
+	   DCMF_INFO_UNSET(properties, DCMF_USE_RECT_SINGLETH_BCAST);
+	   DCMF_INFO_UNSET(properties, DCMF_USE_OPT_BCAST);
+	   DCMF_INFO_UNSET(properties, DCMF_USE_SCATTER_GATHER_BCAST);
+	 }
+       else if(strncasecmp(envopts, "SR", 1) == 0) /* Single thread, rect */
+	 {
+	   DCMF_INFO_SET(properties, DCMF_USE_RECT_SINGLETH_BCAST);
+	   DCMF_INFO_UNSET(properties, DCMF_USE_TREE_BCAST);
+	   DCMF_INFO_UNSET(properties, DCMF_USE_RECT_BCAST);
+	   DCMF_INFO_UNSET(properties, DCMF_USE_ARECT_BCAST);
+	   DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_BCAST);
+	   DCMF_INFO_UNSET(properties, DCMF_USE_ABINOM_BCAST);
+	   DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_SINGLETH_BCAST);
+	   DCMF_INFO_UNSET(properties, DCMF_USE_RECT_DPUT_BCAST);
+	   DCMF_INFO_UNSET(properties, DCMF_USE_OPT_BCAST);
+	   DCMF_INFO_UNSET(properties, DCMF_USE_SCATTER_GATHER_BCAST);
+	 }
+       else if(strncasecmp(envopts, "SG", 1) == 0) /* Scatter/gather via pt2pt */
+	 {
+	   DCMF_INFO_UNSET(properties, DCMF_USE_TREE_BCAST);
+	   DCMF_INFO_UNSET(properties, DCMF_USE_RECT_BCAST);
+	   DCMF_INFO_UNSET(properties, DCMF_USE_ARECT_BCAST);
+	   DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_BCAST);
+	   DCMF_INFO_UNSET(properties, DCMF_USE_ABINOM_BCAST);
+	   DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_SINGLETH_BCAST);
+	   DCMF_INFO_UNSET(properties, DCMF_USE_RECT_DPUT_BCAST);
+	   DCMF_INFO_UNSET(properties, DCMF_USE_RECT_SINGLETH_BCAST);
+	   DCMF_INFO_UNSET(properties, DCMF_USE_OPT_BCAST);
+	 }
+       else
+	 {
+	   fprintf(stderr,
+		   "Invalid bcast: %s, Valid bcast options are: M, AR, AB, R, B, T, D, SR, SB, and SG\n", 
+		   envopts);
+	 }
    } 
-  
-  envopts = getenv("DCMF_NUMCOLORS");
+   
+   envopts = getenv("DCMF_NUMCOLORS");
   if(envopts != NULL)
     {
       int colors = atoi(envopts);
@@ -870,7 +896,7 @@ MPIDI_Env_setup()
 	  DCMF_INFO_UNSET(properties, DCMF_USE_ALLREDUCE_ALLGATHER);
 	}
       else
-	fprintf(stderr,"Invalid DCMF_ALLGATHERV option\n");
+	fprintf(stderr,"Invalid DCMF_ALLGATHER option\n");
     }
   
   envopts = getenv("DCMF_ALLGATHERV");

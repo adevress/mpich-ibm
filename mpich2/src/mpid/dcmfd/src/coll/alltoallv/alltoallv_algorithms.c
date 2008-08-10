@@ -47,7 +47,10 @@ int MPIDO_Alltoallv_torus(void *sendbuf,
    unsigned * sndcounters = comm -> dcmf.sndcounters;
    unsigned * rcvcounters = comm -> dcmf.rcvcounters;
 
-   
+   //assert(sndcounters != NULL);   
+   //assert(rcvcounters != NULL);   
+   //assert(rdispls != NULL);   
+
    rc = DCMF_Alltoallv(&MPIDI_CollectiveProtocols.torus_alltoallv,
                        &request,
                        callback,

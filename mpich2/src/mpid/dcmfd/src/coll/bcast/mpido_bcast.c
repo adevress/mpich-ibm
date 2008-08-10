@@ -30,8 +30,10 @@ MPIDO_Bcast(void * buffer,
    MPID_Segment segment;
    int commsize = comm->local_size;
 
-   if(DCMF_INFO_ISSET(properties, DCMF_USE_MPICH_BCAST))
-      return MPIR_Bcast(buffer, count, datatype, root, comm);
+   if (!count) return MPI_SUCCESS;
+
+   if (DCMF_INFO_ISSET(properties, DCMF_USE_MPICH_BCAST))
+     return MPIR_Bcast(buffer, count, datatype, root, comm);
 
    MPIDI_Datatype_get_info(count,
 			  datatype,
@@ -97,6 +99,7 @@ MPIDO_Bcast(void * buffer,
    if(DCMF_INFO_ISSET(properties, DCMF_USE_TREE_BCAST) && data_size &&
       data_size < 64 * MPIDI_CollectiveProtocols.bcast_asynccutoff)
          func = MPIDO_Bcast_tree;
+
    if(!func && DCMF_INFO_ISSET(properties, DCMF_USE_ARECT_BCAST))
    {
       if(data_size <= MPIDI_CollectiveProtocols.bcast_asynccutoff)
@@ -114,73 +117,70 @@ MPIDO_Bcast(void * buffer,
    }
   
    if(!func && DCMF_INFO_ISSET(properties, DCMF_USE_RECT_BCAST))
-   {
-      func = MPIDO_Bcast_rect_sync;
-   }
+     {
+       func = MPIDO_Bcast_rect_sync;
+     }
+
    if(!func && DCMF_INFO_ISSET(properties, DCMF_USE_ABINOM_BCAST))
-   {
-      if(data_size <= 2 * MPIDI_CollectiveProtocols.bcast_asynccutoff)
-      {
-         if(comm->dcmf.bcast_iter < 32)
-         {
-            comm->dcmf.bcast_iter++;
-            func = MPIDO_Bcast_binom_async;
-         }
-         else
-         {
-            comm->dcmf.bcast_iter = 0;
-         }
-      }
-   }
+     {
+       if(data_size <= 2 * MPIDI_CollectiveProtocols.bcast_asynccutoff)
+	 {
+	   if(comm->dcmf.bcast_iter < 32)
+	     {
+	       comm->dcmf.bcast_iter++;
+	       func = MPIDO_Bcast_binom_async;
+	     }
+	   else
+	     {
+	       comm->dcmf.bcast_iter = 0;
+	     }
+	 }
+     }
    if (!func && DCMF_INFO_ISSET(properties, DCMF_USE_BINOM_BCAST))
-   {
-      if (data_size > 2 * MPIDI_CollectiveProtocols.bcast_asynccutoff &&
-          data_size <= 8 * MPIDI_CollectiveProtocols.bcast_asynccutoff)
-      {
-         func = MPIDO_Bcast_binom_sync;
-      }
-   }
+     {
+       if (data_size > 2 * MPIDI_CollectiveProtocols.bcast_asynccutoff &&
+	   data_size <= 8 * MPIDI_CollectiveProtocols.bcast_asynccutoff)
+	 {
+	   func = MPIDO_Bcast_binom_sync;
+	 }
+     }
 
-   if(!func && DCMF_INFO_ISSET(properties, DCMF_USE_RECT_BCAST_DPUT) &&
-      !(unsigned)data_buffer & 0x0F && commsize > 4)
-   {
-      func = MPIDO_Bcast_rect_dput;
-   }
+   if(!func && DCMF_INFO_ISSET(properties, DCMF_USE_RECT_DPUT_BCAST) &&
+      !((unsigned)data_buffer & 0x0F))
+     {
+       func = MPIDO_Bcast_rect_dput;
+     }
+   
+   if(!func && DCMF_INFO_ISSET(properties, DCMF_USE_RECT_SINGLETH_BCAST))
+     {
+       func = MPIDO_Bcast_rect_singleth;
+     }
+   
+   if(!func && DCMF_INFO_ISSET(properties, DCMF_USE_BINOM_SINGLETH_BCAST))
+     {
+       func = MPIDO_Bcast_binom_singleth;
+     }
 
-   if(!func && DCMF_INFO_ISSET(properties, DCMF_USE_RECT_BCAST_SINGLETH) &&
-      commsize > 4)
-   {
-      func = MPIDO_Bcast_rect_singleth;
-   }
-
-   if(!func && DCMF_INFO_ISSET(properties, DCMF_USE_BINOM_BCAST_SINGLETH) &&
-      commsize > 4)
-   {
-      func = MPIDO_Bcast_binom_singleth;
-   }
-
-   if(!func && DCMF_INFO_ISSET(properties, DCMF_USE_SCATTER_GATHER_BCAST))
-   {
-      func = MPIDO_Bcast_scatter_gather;
-   }
    if(!func)
-      return MPIR_Bcast(buffer, count, datatype, root, comm);
+     {
+       func = MPIDO_Bcast_scatter_gather;
+     }
 
    rc = (func)(data_buffer, data_size, root, comm);
    
-   if(!data_contig)
-   {
-      if(comm->rank != root)
-      {
-         int smpi_errno, rmpi_errno;
-         MPIDI_msg_sz_t rcount;
-         MPIDI_DCMF_Buffer_copy(noncontig_buff, data_size, MPI_CHAR,
-            &smpi_errno, buffer, count, datatype,
-            &rcount, &rmpi_errno);
-      }
-      MPIU_Free(noncontig_buff);
-   }
-
+   if (!data_contig)
+     {
+       if (comm->rank != root)
+	 {
+	   int smpi_errno, rmpi_errno;
+	   MPIDI_msg_sz_t rcount;
+	   MPIDI_DCMF_Buffer_copy(noncontig_buff, data_size, MPI_CHAR,
+				  &smpi_errno, buffer, count, datatype,
+				  &rcount, &rmpi_errno);
+	 }
+       MPIU_Free(noncontig_buff);
+     }
+   
    return rc;
 }
 
