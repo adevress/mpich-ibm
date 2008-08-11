@@ -193,6 +193,7 @@ void ARMCIX_DCMF_Acc_register (ARMCIX_DCMF_Connection_t * connection_array)
 
   DCMF_Send_Configuration_t configuration = {
     DCMF_DEFAULT_SEND_PROTOCOL,
+    DCMF_DefaultNetwork,
     ARMCIX_DCMF_RecvAcc1,
     connection_array,
     ARMCIX_DCMF_RecvAcc2,
