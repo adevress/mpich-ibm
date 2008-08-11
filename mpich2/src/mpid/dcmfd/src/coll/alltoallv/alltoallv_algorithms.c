@@ -40,12 +40,12 @@ int MPIDO_Alltoallv_torus(void *sendbuf,
    DCMF_Geometry_t * geometry = &(comm->dcmf.geometry);   
 
    /* ignore some of the args passed in, used the one setup in comm ptr */
-   unsigned * sndlen = comm -> dcmf.sndlen;
-   unsigned * sdispls = comm -> dcmf.sdispls;
-   unsigned * rcvlen = comm -> dcmf.rcvlen;
-   unsigned * rdispls = comm -> dcmf.rdispls;
-   unsigned * sndcounters = comm -> dcmf.sndcounters;
-   unsigned * rcvcounters = comm -> dcmf.rcvcounters;
+   unsigned * sndlen = comm->dcmf.sndlen;
+   unsigned * sdispls = comm->dcmf.sdispls;
+   unsigned * rcvlen = comm->dcmf.rcvlen;
+   unsigned * rdispls = comm->dcmf.rdispls;
+   unsigned * sndcounters = comm->dcmf.sndcounters;
+   unsigned * rcvcounters = comm->dcmf.rcvcounters;
 
    //assert(sndcounters != NULL);   
    //assert(rcvcounters != NULL);   

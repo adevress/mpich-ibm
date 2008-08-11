@@ -68,7 +68,7 @@ MPIDO_Allgatherv(void *sendbuf,
   if (displs[0])
     config.recv_continuous = 0;
   
-  for (i = 1; i < comm -> local_size; i++)
+  for (i = 1; i < comm->local_size; i++)
     {
       buffer_sum += recvcounts[i - 1];
       if (buffer_sum != displs[i])
@@ -78,7 +78,7 @@ MPIDO_Allgatherv(void *sendbuf,
 	}
     }
   
-  buffer_sum += recvcounts[comm -> local_size - 1];
+  buffer_sum += recvcounts[comm->local_size - 1];
   
   buffer_sum *= recv_size;
   

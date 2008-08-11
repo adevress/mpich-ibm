@@ -38,7 +38,7 @@ inline int DCMF_INFO_MET(DCMF_Embedded_Info_Set *s, DCMF_Embedded_Info_Set *d)
 
 inline int DCMF_AllocateAlltoallBuffers(MPID_Comm * comm)
 {
-  int numprocs = comm -> local_size;
+  int numprocs = comm->local_size;
   if (!comm->dcmf.sndlen)
     comm->dcmf.sndlen = MPIU_Malloc(numprocs * sizeof(unsigned));
   if (!comm->dcmf.rcvlen)

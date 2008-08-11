@@ -1,5 +1,4 @@
 /*  (C)Copyright IBM Corp.  2007, 2008  */
-
 /**
  * \file src/coll/allreduce/mpido_allreduce.c
  * \brief ???
@@ -21,23 +20,22 @@ MPIDO_Allreduce(void * sendbuf,
 		MPID_Comm * comm)
 {
   allreduce_fptr func = NULL;
-  DCMF_Embedded_Info_Set * properties = &(comm -> dcmf.properties);
+  DCMF_Embedded_Info_Set * properties = &(comm->dcmf.properties);
   DCMF_Dt dcmf_data = DCMF_UNDEFINED_DT;
   DCMF_Op dcmf_op = DCMF_UNDEFINED_OP;
   MPID_Datatype * data_ptr;
   MPI_Aint data_true_lb = 0;
-  int rc, op_type_support, data_contig, data_size;  
+  int rc, op_type_support, data_contig, data_size;
   unsigned char reset_sendbuff = 0;
 
   /* quick exit conditions */
   if (DCMF_INFO_ISSET(properties, DCMF_USE_MPICH_ALLREDUCE) ||
-      DCMF_INFO_ISSET(properties, DCMF_IRREG_COMM) ||
       HANDLE_GET_KIND(op) != HANDLE_KIND_BUILTIN)
     return MPIR_Allreduce(sendbuf, recvbuf, count, datatype, op, comm);
 
   MPIDI_Datatype_get_info(count, datatype, data_contig, data_size,
 			  data_ptr, data_true_lb);
-  
+
   MPID_Ensure_Aint_fits_in_pointer(MPIR_VOID_PTR_CAST_TO_MPI_AINT recvbuf +
 				   data_true_lb);
   if (sendbuf == MPI_IN_PLACE)
@@ -55,7 +53,7 @@ MPIDO_Allreduce(void * sendbuf,
   op_type_support = MPIDI_ConvertMPItoDCMF(op, &dcmf_op, datatype, &dcmf_data);
 
   extern int DCMF_TREE_SMP_SHORTCUT;
-  
+
   recvbuf = ((char *) recvbuf + data_true_lb);
 
   if (op_type_support == DCMF_TREE_SUPPORT &&
@@ -67,7 +65,7 @@ MPIDO_Allreduce(void * sendbuf,
 
       else if (DCMF_INFO_ISSET(properties, DCMF_USE_CCMI_TREE_ALLREDUCE))
 	func = MPIDO_Allreduce_tree;
-      
+
       else if (DCMF_INFO_ISSET(properties, DCMF_USE_PIPELINED_TREE_ALLREDUCE))
 	func = MPIDO_Allreduce_pipelined_tree;
     }
@@ -91,8 +89,8 @@ MPIDO_Allreduce(void * sendbuf,
 	  else if (DCMF_INFO_ISSET(properties, DCMF_USE_RECT_ALLREDUCE))
 	    func = MPIDO_Allreduce_rect;
 	}
-      
-      else 
+
+      else
 	{
 	  if (DCMF_INFO_ISSET(properties, DCMF_USE_ARECTRING_ALLREDUCE))
 	    func = MPIDO_Allreduce_async_rectring;
@@ -103,16 +101,16 @@ MPIDO_Allreduce(void * sendbuf,
 
 
   if (func)
-    rc = (func)(sendbuf, 
-		recvbuf, 
-		count, 
-		dcmf_data, 
-		dcmf_op, 
-		datatype, 
+    rc = (func)(sendbuf,
+		recvbuf,
+		count,
+		dcmf_data,
+		dcmf_op,
+		datatype,
 		comm);
 
-  /* 
-     punt to MPICH in the case no optimized func is found or in the case 
+  /*
+     punt to MPICH in the case no optimized func is found or in the case
      generic op/type is used
   */
   else
@@ -120,9 +118,9 @@ MPIDO_Allreduce(void * sendbuf,
       if (reset_sendbuff) sendbuf = MPI_IN_PLACE;
       rc = MPIR_Allreduce(sendbuf, recvbuf, count, datatype, op, comm);
     }
-  
+
   if (reset_sendbuff) sendbuf = MPI_IN_PLACE;
-  
+
   return rc;
 }
 

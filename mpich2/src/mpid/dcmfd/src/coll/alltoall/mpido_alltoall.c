@@ -22,7 +22,7 @@ MPIDO_Alltoall(void *sendbuf,
 {
   int i, numprocs = comm->local_size;
   int tsndlen, trcvlen, snd_contig, rcv_contig, rc;
-  DCMF_Embedded_Info_Set * properties = &(comm -> dcmf.properties);
+  DCMF_Embedded_Info_Set * properties = &(comm->dcmf.properties);
 
   MPI_Aint sdt_true_lb, rdt_true_lb;
   MPID_Datatype *dt_null = NULL;

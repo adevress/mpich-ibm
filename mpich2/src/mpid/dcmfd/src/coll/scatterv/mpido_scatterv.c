@@ -22,7 +22,7 @@ int MPIDO_Scatterv(void *sendbuf,
                    MPID_Comm *comm_ptr)
 {
   DCMF_Embedded_Info_Set * properties = &(comm_ptr->dcmf.properties);
-  int rank = comm_ptr -> rank, np = comm_ptr -> local_size;
+  int rank = comm_ptr->rank, np = comm_ptr->local_size;
   int i, nbytes, sum, contig;
   MPID_Datatype *dt_ptr;
   MPI_Aint true_lb=0;

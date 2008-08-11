@@ -20,7 +20,7 @@ int MPIDO_Reduce(void * sendbuf,
                  MPID_Comm * comm)
 {
   reduce_fptr func = NULL;
-  DCMF_Embedded_Info_Set * properties = &(comm -> dcmf.properties);
+  DCMF_Embedded_Info_Set * properties = &(comm->dcmf.properties);
   int success = 1, rc, op_type_support;
   int data_contig, data_size;
   unsigned char reset_sendbuff = 0;

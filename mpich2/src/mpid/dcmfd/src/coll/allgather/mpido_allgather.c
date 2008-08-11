@@ -27,7 +27,7 @@ MPIDO_Allgather(void *sendbuf,
   
   allgather_fptr func;
   DCMF_Embedded_Info_Set * coll_prop = &MPIDI_CollectiveProtocols.properties;
-  DCMF_Embedded_Info_Set * comm_prop = &(comm -> dcmf.properties);
+  DCMF_Embedded_Info_Set * comm_prop = &(comm->dcmf.properties);
   MPIDO_Coll_config config = {1,1,1,1};
   MPID_Datatype * dt_null = NULL;
   MPI_Aint send_true_lb = 0;
@@ -60,7 +60,7 @@ MPIDO_Allgather(void *sendbuf,
   recv_size *= comm->local_size;
   
   MPID_Ensure_Aint_fits_in_pointer(MPIR_VOID_PTR_CAST_TO_MPI_AINT recvbuf
-				   + recv_true_lb + comm -> local_size *
+				   + recv_true_lb + comm->local_size *
 				   send_size);
   
   if (sendbuf != MPI_IN_PLACE)

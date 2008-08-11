@@ -22,7 +22,7 @@ MPIDO_Alltoallw(void *sendbuf,
                 MPI_Datatype *recvtypes,
                 MPID_Comm *comm_ptr)
 {
-  DCMF_Embedded_Info_Set * properties = &(comm_ptr -> dcmf.properties);
+  DCMF_Embedded_Info_Set * properties = &(comm_ptr->dcmf.properties);
   int numprocs = comm_ptr->local_size;
   int *tsndlen, *trcvlen, snd_contig, rcv_contig, rc ,i;
   MPI_Aint sdt_true_lb=0, rdt_true_lb=0;

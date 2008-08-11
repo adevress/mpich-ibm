@@ -20,7 +20,7 @@ int MPIDO_Reduce_scatter(void *sendbuf,
                          MPI_Op op,
                          MPID_Comm * comm_ptr)
 {
-  DCMF_Embedded_Info_Set * properties = &(comm_ptr -> dcmf.properties);
+  DCMF_Embedded_Info_Set * properties = &(comm_ptr->dcmf.properties);
   int tcount=0, i, rc;
   
   int contig, nbytes;
@@ -29,7 +29,7 @@ int MPIDO_Reduce_scatter(void *sendbuf,
   
   char *tempbuf;
   int *displs;
-  int size = comm_ptr -> local_size;
+  int size = comm_ptr->local_size;
 
   if(DCMF_INFO_ISSET(properties, DCMF_USE_MPICH_REDUCESCATTER) ||
      !DCMF_INFO_ISSET(properties, DCMF_USE_REDUCESCATTER) ||
