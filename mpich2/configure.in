@@ -1114,26 +1114,6 @@ if test -n "$perform_dbgmutex" ; then
    AC_DEFINE(MPICH_DEBUG_MUTEX,1,[Define to enable mutex debugging])
 fi
 
-if test "$enable_debuginfo" = "yes" ; then
-    debugger_dir=debugger
-    AC_DEFINE(HAVE_DEBUGGER_SUPPORT,1,[Define if debugger support is included])
-    # The debugger support requires a shared library.  This is handled 
-    # below, after we check for compiler support for shared libraries
-    # Note: if libdir contains exec_prefix, handle the fact that the
-    # default exec_prefix is NONE, which (much later in configure)
-    # gets turned into the value of prefix
-    if test "x$exec_prefix" = xNONE ; then
-        saveExecPrefix=$exec_prefix
-	exec_prefix=$prefix
-        eval dlldir=$libdir"64"/libbgpmpi.so
-	exec_prefix=$saveExecPrefix
-    else
-        eval dlldir=$libdir"64"/libbgpmpi.so
-    fi
-    dlldir='"'$dlldir'"'
-    AC_DEFINE_UNQUOTED(MPICH_INFODLL_LOC,$dlldir,[Define as the name of the debugger support library])
-fi
-AC_SUBST(debugger_dir)
 pac_cross_compiling=no
 if test "$with_cross" != "no" ; then
     if test -s "$with_cross" ; then
@@ -2700,7 +2680,31 @@ on all link lines (consider adding it to LDFLAGS)])
    AC_SUBST(BUILD_TVDLL)
    AC_SUBST(CC_SHL_DBG)
    AC_SUBST(C_LINK_SHL_DBG)
+
+    # Now configure the library name. must be after setup, above.
+    debugger_dir=debugger
+    debugger_lib=tvmpich2
+    AC_DEFINE(HAVE_DEBUGGER_SUPPORT,1,[Define if debugger support is included])
+    # The debugger support requires a shared library.  This is handled 
+    # below, after we check for compiler support for shared libraries
+    # Note: if libdir contains exec_prefix, handle the fact that the
+    # default exec_prefix is NONE, which (much later in configure)
+    # gets turned into the value of prefix
+    if test "x$exec_prefix" = xNONE ; then
+        saveExecPrefix=$exec_prefix
+	exec_prefix=$prefix
+        eval dlldir=$libdir/lib${debugger_lib}.${SHLIB_EXT}
+	exec_prefix=$saveExecPrefix
+    else
+        eval dlldir=$libdir/lib${debugger_lib}.${SHLIB_EXT}
+    fi
+    debugger_path=$dlldir
+    dlldir='"'$dlldir'"'
+    AC_DEFINE_UNQUOTED(MPICH_INFODLL_LOC,$dlldir,[Define as the name of the debugger support library])
+    AC_SUBST(debugger_path)
+    AC_SUBST(debugger_lib)
 fi
+AC_SUBST(debugger_dir)
 # ----------------------------------------------------------------------------
 
 nameserv_name=""
