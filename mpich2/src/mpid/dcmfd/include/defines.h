@@ -317,12 +317,16 @@ extern int DCMF_INFO_MET(DCMF_Embedded_Info_Set *s, DCMF_Embedded_Info_Set *d);
 
 #define DCMF_BUFF_ALIGNED                                                107
 
+#define DCMF_ALLREDUCE_ENVVAR                                            108
+
+#define DCMF_BCAST_ENVVAR                                                109
+
 
 
 enum DCMF_SUPPORTED {
   DCMF_TREE_SUPPORT        =  0,
   DCMF_TORUS_SUPPORT       =  1,
-  DCMF_GENERIC_SUPPORT     = -1,
+  DCMF_NOT_SUPPORTED       = -1,
   DCMF_SUPPORT_NOT_NEEDED  = -2
 };
 
