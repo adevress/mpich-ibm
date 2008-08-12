@@ -6,8 +6,19 @@
 #ifndef MPIDU_PROCESS_LOCKS_H
 #define MPIDU_PROCESS_LOCKS_H
 
+/* FIXME: This inclusion is disgusting but necessary for now.  Including
+ * mpidimpl.h will get us USE_BUSY_LOCKS from the ssm channel (or any other
+ * device that defines it), that's why we do it.  Unfortunately, it sucks in the
+ * whole MPI headers ball of wax at the same time, and implies a potential
+ * circular dependency.  Doing the right thing here basically means a total gut
+ * job, which is out of scope at this time. [goodell@ 2008-03-19] */
+#include "mpidimpl.h"
+
 #include "mpishared.h"
 #include "mpid_locksconf.h"
+
+/* XXX DJG TODO eliminate any atomic operations assembly in here and convert it
+   to using the MPIDU_Atomic_* functions. */
 
 /* This is used to quote a name in a definition (see FUNCNAME/FCNAME below) */
 #ifndef MPIDI_QUOTE

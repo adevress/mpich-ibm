@@ -8,29 +8,36 @@
 -------------------------------------------------------------------------------
                               Known Deficiencies
 -------------------------------------------------------------------------------
+
+- The default ch3:nemesis channel does not work on Solaris. Instead, use the
+  ch3:sock channel if running on multiple machines or the ch3:shm
+  channel if running on a single machine (configure with
+  --with-device=ch3:sock or --with-device=ch3:shm). 
+
 - The MPD process manager can only handle relatively small amounts of data on 
   stdin and may also have problems if there is data on stdin that is not
-  consumed by the program.  
+  consumed by the program. 
+
+- Using the nemesis channel, RMA operations will fail in certain cases
+  when transferring more than about 256K of data and a complicated
+  remote datatype. There are known deficiencies for multi-threaded
+  programs in extreme cases where there is a lot of contention for
+  locks between two threads (locks are acquired when two threads make
+  MPI calls at the same time).
 
 - Only the ch3:sock and ch3:nemesis channels support thread safety.
  
-- The sock, sctp, and ssm channels are the only channels that implement dynamic 
-  process support (i.e., MPI_COMM_SPAWN, MPI_COMM_CONNECT, MPI_COMM_ACCEPT, 
-  etc.) under Unix.  All other channels will experience failures for tests 
-  exercising dynamic process functionality.  Under Windows, the sock, ssm, 
-  and sshm channels implement the dynamic process support.
+- The sock, sctp, nemesis, and ssm channels are the only channels that
+  implement dynamic process support (i.e., MPI_COMM_SPAWN,
+  MPI_COMM_CONNECT, MPI_COMM_ACCEPT, etc.) under Unix.  All other
+  channels will experience failures for tests exercising dynamic
+  process functionality.  Under Windows, the sock, ssm, and sshm
+  channels implement the dynamic process support.
 
 - The ssm channel uses special interprocess locks (often assembly) that may 
   not work with some compilers or machine architectures. It works on
   Linux with gcc, Intel, and Pathscale compilers on various Intel
   architectures. It also works in Windows environments.
-
-- The MPI-IO implementation does not support filetypes that use the
-  MPI-2 functions MPI_Type_create_indexed_block or
-  MPI_Type_create_resized. You will need to use MPI_Type_indexed
-  instead of MPI_Type_create_indexed_block and, instead of
-  MPI_Type_create_resized, use MPI_Type_struct to explicity set MPI_LB
-  and MPI_UB. 
 
 - Support for the "external32" data representation is incomplete.  This affects
   the MPI_PACK_EXTERNAL and MPI_UNPACK_EXTERNAL routines, as well the external
@@ -92,11 +99,20 @@
   the user-based SCTP stack available at 
   http://www.sctp.de/sctp-download.html ; it is currently being
   evaluated for use with a future MPICH2 release.
+
+- the installed man/, www/ and doc/ are not under share/, which is recommended
+  by autoconf 2.6x.  This will be fixed in the formal 1.1 release.
+
+- MPICH2LIB_F90FLAGS should be default to -O2.  But it isn't the case in
+  the 1.1a1 release.
   
   
 -------------------------------------------------------------------------------
 			Issues for Developers
 -------------------------------------------------------------------------------
+
+- MPICH2 is switched to autoconf-2.62.  So any older autoconf won't work
+  with the top-level MPICH2 configure.in.
 
 - In order to handle the construction of intercommunicators in the dynamic
   process case, the context id in MPID_Comm has been split into a receive 
@@ -116,6 +132,7 @@
 - There are significant changes to the ch3 code base.  We expect further
   changes in the next release, particularly to reduce latency and 
   eliminate "copy and paste" code, in order to ease maintenance and tuning.
+
 
 -------------------------------------------------------------------------------
                         Issues From Previous Releases (1.0.4)

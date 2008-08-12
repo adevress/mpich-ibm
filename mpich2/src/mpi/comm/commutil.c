@@ -185,11 +185,11 @@ int MPIR_Setup_intercomm_localcomm( MPID_Comm *intercomm_ptr )
  * 
  * These assume that int is 32 bits; they should use uint_32 instead, 
  * and an MPI_UINT32 type (should be able to use MPI_INTEGER4)
+ *
+ * Both the threaded and non-threaded routines use the same mask of
+ * available context id values.
  */
-
-/* Both the threaded and non-threaded routines use the same mask of available
-   context id values. */
-#define MAX_CONTEXT_MASK 32
+#define MAX_CONTEXT_MASK 256
 static unsigned int context_mask[MAX_CONTEXT_MASK];
 static int initialize_context_mask = 1;
 
@@ -337,6 +337,8 @@ int MPIR_Get_contextid( MPID_Comm *comm_ptr )
     int          mpi_errno = 0;
     unsigned int local_mask[MAX_CONTEXT_MASK];
     int          own_mask = 0;
+    int          testCount = 10;
+
     MPIU_THREADPRIV_DECL;
     MPID_MPI_STATE_DECL(MPID_STATE_MPIR_GET_CONTEXTID);
 
@@ -357,6 +359,17 @@ int MPIR_Get_contextid( MPID_Comm *comm_ptr )
        using the mask, we take a mask of zero */
     MPIU_DBG_MSG_FMT( COMM, VERBOSE, (MPIU_DBG_FDEST,
          "Entering; shared state is %d:%d", mask_in_use, lowestContextId ) );
+    /* We need a special test in this loop for the case where some process
+     has exhausted its supply of context ids.  In the single threaded case, 
+     this is simple, because the algorithm is deterministic (see above).  In 
+     the multithreaded case, it is more complicated, because we may get a
+     zero for the context mask because some other thread holds the mask.  
+     In addition, we can't check for the case where this process did not
+     select MPI_THREAD_MULTIPLE, because one of the other processes
+     may have selected MPI_THREAD_MULTIPLE.  To handle this case, after a 
+     fixed number of failures, we test to see if some process has exhausted 
+     its supply of context ids.  If so, all processes can invoke the 
+     out-of-context-id error.  That fixed number of tests is in testCount */
     while (context_id == 0) {
 	/* MPIU_THREAD_SINGLE_CS_ENTER("context_id"); */
 	if (initialize_context_mask) {
@@ -429,6 +442,24 @@ int MPIR_Get_contextid( MPID_Comm *comm_ptr )
 	    MPID_Thread_mutex_unlock(&MPIR_ThreadInfo.global_mutex);
 	    MPID_Thread_yield();
 	    MPID_Thread_mutex_lock(&MPIR_ThreadInfo.global_mutex);
+	}
+	/* Here is the test for out-of-context ids */
+	if (testCount-- == 0) {
+	    int hasNoId, totalHasNoId;
+	    /* We don't need to lock on this because we're just looking for
+	       zero or nonzero */
+	    hasNoId = MPIR_Find_context_bit( context_mask ) == 0;
+	    NMPI_Allreduce( &hasNoId, &totalHasNoId, 1, MPI_INT, 
+			    MPI_MAX, comm_ptr->handle );
+	    if (totalHasNoId == 1) {
+		/* Failure */
+		context_id = 0;
+		/* Release the masks */
+		if (own_mask) {
+		    mask_in_use = 0;
+		}
+		break;
+	    }
 	}
     }
 
@@ -564,8 +595,8 @@ void MPIR_Free_contextid( int context_id )
 /*
  * Copy a communicator, including creating a new context and copying the
  * virtual connection tables and clearing the various fields.
- * Does *not* copy attributes.  If size is < the size of the (local group
- * in the ) input communicator, copy only the first size elements.  
+ * Does *not* copy attributes.  If size is < the size of the local group
+ * in the input communicator, copy only the first size elements.
  * If this process is not a member, return a null pointer in outcomm_ptr.
  * This is only supported in the case where the communicator is in 
  * Intracomm (not an Intercomm).  Note that this is all that is required
@@ -661,8 +692,9 @@ int MPIR_Comm_copy( MPID_Comm *comm_ptr, int size, MPID_Comm **outcomm_ptr )
     /* Set the sizes and ranks */
     newcomm_ptr->rank        = comm_ptr->rank;
     if (comm_ptr->comm_kind == MPID_INTERCOMM) {
-	newcomm_ptr->local_size  = comm_ptr->local_size;
-	newcomm_ptr->remote_size = comm_ptr->remote_size;
+	newcomm_ptr->local_size   = comm_ptr->local_size;
+	newcomm_ptr->remote_size  = comm_ptr->remote_size;
+	newcomm_ptr->is_low_group = comm_ptr->is_low_group;
     }
     else {
 	newcomm_ptr->local_size  = size;
@@ -707,7 +739,6 @@ int MPIR_Comm_release(MPID_Comm * comm_ptr, int isDisconnect)
     
     MPIR_Comm_release_ref( comm_ptr, &inuse );
     if (!inuse) {
-
 	/* Remove the attributes, executing the attribute delete routine.  
            Do this only if the attribute functions are defined. 
 	   This must be done first, because if freeing the attributes

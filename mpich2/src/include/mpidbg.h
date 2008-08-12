@@ -98,6 +98,7 @@ enum MPIU_DBG_CLASS { MPIU_DBG_PT2PT         = 0x1,
                       MPIU_DBG_NEM_SOCK_DET  = 0x80000,
 		      MPIU_DBG_VC            = 0x100000,
 		      MPIU_DBG_REFCOUNT      = 0x200000,
+		      MPIU_DBG_ROMIO         = 0x400000,
 		      MPIU_DBG_ALL           = (~0) };   /* alias for all */
 
 extern int MPIU_DBG_ActiveClasses;
@@ -105,6 +106,6 @@ extern int MPIU_DBG_MaxLevel;
 int MPIU_DBG_Outevent(const char *, int, int, int, const char *, ...) 
                                         ATTRIBUTE((format(printf,5,6)));
 int MPIU_DBG_Init( int *, char ***, int, int, int );
-int MPIU_DBG_PreInit( int *, char *** );
+int MPIU_DBG_PreInit( int *, char ***, int );
 
 #endif

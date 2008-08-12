@@ -112,9 +112,10 @@ static int checkForUserErrcode( int errcode );
 #endif
 
 /* Preallocated errorhandler objects */
-MPID_Errhandler MPID_Errhandler_builtin[2] = 
+MPID_Errhandler MPID_Errhandler_builtin[3] = 
           { { MPI_ERRORS_ARE_FATAL, 0},
-	    { MPI_ERRORS_RETURN, 0} }; 
+	    { MPI_ERRORS_RETURN, 0},
+	    { MPIR_ERRORS_THROW_EXCEPTIONS, 0 } }; 
 MPID_Errhandler MPID_Errhandler_direct[MPID_ERRHANDLER_PREALLOC] = { {0} };
 MPIU_Object_alloc_t MPID_Errhandler_mem = { 0, 0, 0, 0, MPID_ERRHANDLER, 
 					    sizeof(MPID_Errhandler), 
@@ -231,8 +232,9 @@ int MPIR_Err_return_comm( MPID_Comm  *comm_ptr, const char fcname[],
 
     /* Check for the special case of a user-provided error code */
     errcode = checkForUserErrcode( errcode );
-    
-    if (comm_ptr->errhandler->handle == MPI_ERRORS_RETURN)
+
+    if (comm_ptr->errhandler->handle == MPI_ERRORS_RETURN ||
+	comm_ptr->errhandler->handle == MPIR_ERRORS_THROW_EXCEPTIONS)
     {
 	return errcode;
     }
@@ -303,7 +305,8 @@ int MPIR_Err_return_win( MPID_Win  *win_ptr, const char fcname[], int errcode )
     /* Check for the special case of a user-provided error code */
     errcode = checkForUserErrcode( errcode );
     
-    if (win_ptr->errhandler->handle == MPI_ERRORS_RETURN)
+    if (win_ptr->errhandler->handle == MPI_ERRORS_RETURN ||
+	win_ptr->errhandler->handle == MPIR_ERRORS_THROW_EXCEPTIONS)
     {
 	return errcode;
     }
@@ -914,6 +917,7 @@ static int vsnprintf_mpi(char *str, size_t maxlen, const char *fmt_orig,
     MPI_Errhandler E;
     char *s;
     int t, i, d, mpi_errno=MPI_SUCCESS;
+    long long ll;
     void *p;
 
     fmt = MPIU_Strdup(fmt_orig);
@@ -953,6 +957,10 @@ static int vsnprintf_mpi(char *str, size_t maxlen, const char *fmt_orig,
 	case (int)'d':
 	    d = va_arg(list, int);
 	    MPIU_Snprintf(str, maxlen, "%d", d);
+	    break;
+	case (int)'L':
+	    ll = va_arg(list, long long);
+	    MPIU_Snprintf(str, maxlen, "%lld", ll);
 	    break;
 	case (int)'i':
 	    i = va_arg(list, int);

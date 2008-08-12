@@ -16,6 +16,10 @@
 #ifdef HAVE_STDLIB_H
 #include <stdlib.h>
 #endif
+#ifdef HAVE_STRING_H
+/* Often needed for strsignal */
+#include <string.h>
+#endif
 
 #include "pmutil.h"
 #include "ioloop.h"
@@ -1004,3 +1008,74 @@ int MPIE_SetupSingleton( ProcessUniverse *pUniv )
 
     return 0;
 }
+
+/* There are still problems with this (see the portable process affinity project
+ * that the OpenMPI folks have done for some of the reasons why) */
+#if defined(HAVE_SCHED_SETAFFINITY) && defined(HAVE_CPU_SET_T) && \
+    defined(HAVE_CPU_SET_MACROS) && 0
+/* FIXME: This is an ugly hack to ensure that the macros to manipulate the
+ * cpu_set_t are defined - without these, you can't use the affinity routines
+ */
+#ifdef NEED___USE_GNU_FOR_CPU_SET
+#define __USE_GNU
+#endif
+#include <sched.h>
+/*
+ * Set the processor affinity for the calling process.  Normally, this will
+ * be used in the "postfork" routine provided by the process manager, before
+ * the user's application is exec'ed.
+ *
+ * To work with multithreaded applications, the process can set the 
+ * affinity set to contain "size" processors, starting with the one 
+ * numbered "rank".  
+ *
+ * More complex affinity sets may be necessary, so we may want to 
+ * provide a second, more general routine (perhaps taking a cpu set mask).
+ */
+int MPIE_SetProcessorAffinity( int rank, int size )
+{
+    cpu_set_t cpuset;
+    int       i, err;
+
+    CPU_ZERO(&cpuset);
+    for (i=0; i<size; i++) {
+	CPU_SET((rank+i),&cpuset);
+    }
+    err = sched_setaffinity( 0, sizeof(cpu_set_t), &cpuset );
+    if (err < 0) {
+	/* Can check errno here for reasons */
+	return 1;
+    }
+
+    return 0;
+}
+#elif defined(HAVE_BINDPROCESSOR) && 0
+/* AIX processor affinity */
+#include <sys/processor.h>
+int MPIE_SetProcessorAffinity( int rank, int size )
+{
+    int pid;
+    pid = getpid();
+
+    err = bindprocessor( BINDPROCESS, pid, rank );
+    /* Use BINDTHREAD instead of BINDPROCESS to bind threads to processors -
+       in which case, the pid is a thread id */
+    /* FIXME: How do we bind the threads when we don't have direct access to 
+       them? */
+    if (err < 0) {
+	return 1;
+    }
+    return 0;
+}
+#elif defined(HAVE_OSX_THREAD_AFFINITY) && 0
+/* OSX only has affinity policies, and they don't fit this model well */
+int MPIE_SetProcessorAffinity( int rank, int size )
+{
+    return 1;
+}
+#else
+int MPIE_SetProcessorAffinity( int rank, int size )
+{
+    return 1;
+}
+#endif

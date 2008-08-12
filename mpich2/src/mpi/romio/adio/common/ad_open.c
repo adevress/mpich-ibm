@@ -59,6 +59,9 @@ MPI_File ADIO_Open(MPI_Comm orig_comm,
     fd->filetype = filetype;    /* MPI_BYTE by default */
     fd->etype_size = 1;  /* default etype is MPI_BYTE */
 
+    fd->file_realm_st_offs = NULL;
+    fd->file_realm_types = NULL;
+
     fd->perm = perm;
 
     fd->async_count = 0;
@@ -70,7 +73,7 @@ MPI_File ADIO_Open(MPI_Comm orig_comm,
     MPI_Comm_rank(comm, &rank);
     MPI_Comm_size(comm, &procs);
 /* create and initialize info object */
-    fd->hints = (ADIOI_Hints *)ADIOI_Malloc(sizeof(struct ADIOI_Hints_struct));
+    fd->hints = (ADIOI_Hints *)ADIOI_Calloc(1, sizeof(struct ADIOI_Hints_struct));
     if (fd->hints == NULL) {
 	/* NEED TO HANDLE ENOMEM ERRORS */
     }
@@ -79,18 +82,13 @@ MPI_File ADIO_Open(MPI_Comm orig_comm,
     fd->hints->initialized = 0;
     fd->info = MPI_INFO_NULL;
 
-    if (info == MPI_INFO_NULL) 
-	*error_code = MPI_Info_create(&dupinfo);
-    else
-	*error_code = MPI_Info_dup(info, &dupinfo);
-    if (*error_code != MPI_SUCCESS)
-	goto fn_exit;
-
-    ADIOI_process_system_hints(dupinfo);
+    ADIOI_incorporate_system_hints(info, ADIOI_syshints, &dupinfo);
     ADIO_SetInfo(fd, dupinfo, &err);
-    *error_code = MPI_Info_free(&dupinfo);
-    if (*error_code != MPI_SUCCESS)
-	goto fn_exit;
+    if (dupinfo != MPI_INFO_NULL) {
+	*error_code = MPI_Info_free(&dupinfo);
+	if (*error_code != MPI_SUCCESS)
+	    goto fn_exit;
+    }
 
      /* deferred open: 
      * we can only do this optimization if 'fd->hints->deferred_open' is set
@@ -123,18 +121,21 @@ MPI_File ADIO_Open(MPI_Comm orig_comm,
       * IO */
     fd->agg_comm = MPI_COMM_NULL;
     fd->is_open = 0;
+    fd->my_cb_nodes_index = -2;
+    fd->is_agg = is_aggregator(rank, fd);
     if (fd->hints->deferred_open) {
 	    /* MPI_Comm_split will create a communication group of aggregators.
 	     * for non-aggregators it will return MPI_COMM_NULL .  we rely on
 	     * fd->agg_comm == MPI_COMM_NULL for non-aggregators in several
 	     * tests in the code  */
-	    if (is_aggregator(rank, fd)) {
+	    if (fd->is_agg) {
 		    MPI_Comm_split(fd->comm, 1, 0, &aggregator_comm);
 		    fd->agg_comm = aggregator_comm;
 	    } else {
 		    MPI_Comm_split(fd->comm, MPI_UNDEFINED, 0, &aggregator_comm);
 		    fd->agg_comm = aggregator_comm;
 	    }
+
     }
 
     orig_amode_excl = access_mode;
@@ -300,10 +301,18 @@ MPI_File ADIO_Open(MPI_Comm orig_comm,
 int is_aggregator(int rank, ADIO_File fd ) {
         int i;
         
-        for (i=0; i< fd->hints->cb_nodes; i++ ) {
-                if ( rank == fd->hints->ranklist[i] )
-                        return 1;
+	if (fd->my_cb_nodes_index == -2) {
+	    for (i=0; i< fd->hints->cb_nodes; i++ ) {
+		if ( rank == fd->hints->ranklist[i] ) {
+		    fd->my_cb_nodes_index = i;
+		    return 1;
+		}
+	    }
+	    fd->my_cb_nodes_index = -1;
         }
+	else if (fd->my_cb_nodes_index != -1)
+	    return 1;
+
         return 0;
 }
 

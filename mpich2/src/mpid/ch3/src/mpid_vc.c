@@ -145,12 +145,10 @@ int MPID_VCRT_Release(MPID_VCRT vcrt, int isDisconnect )
 	    MPIDI_VC_t * const vc = vcrt->vcr_table[i];
 	    
 	    MPIDI_VC_release_ref(vc, &in_use);
-	    /* The rule for disconnect that we use is that if
-	       MPI_Comm_disconnect removes the last reference to this
-	       VC, we fully remove the VC.  This is not quite what the
-	       MPI standard says, but this is sufficient to give the 
-	       expected behavior for most user programs that
-	       use MPI_Comm_disconnect */
+
+            /* Dynamic connections start with a refcount of 2 instead of 1.
+             * That way we can distinguish between an MPI_Free and an
+             * MPI_Comm_disconnect. */
 	    if (isDisconnect && vc->ref_count == 1) {
 		MPIDI_VC_release_ref(vc, &in_use);
 	    }
@@ -170,8 +168,10 @@ int MPID_VCRT_Release(MPID_VCRT vcrt, int isDisconnect )
 		}
 		
 		/* FIXME: the correct test is ACTIVE or REMOTE_CLOSE */
-		if (vc->state != MPIDI_VC_STATE_INACTIVE) {
-		    /* printf( "Sending close to vc[%d]\n", i ); */
+		/*if (vc->state != MPIDI_VC_STATE_INACTIVE) { */
+		if (vc->state == MPIDI_VC_STATE_ACTIVE ||
+		    vc->state == MPIDI_VC_STATE_REMOTE_CLOSE)
+		{
 		    MPIDI_CH3U_VC_SendClose( vc, i );
 		}
 		else
@@ -186,16 +186,18 @@ int MPID_VCRT_Release(MPID_VCRT vcrt, int isDisconnect )
                             "vc=%p: not sending a close to %d, vc in state %s",
 			     vc, i, MPIDI_VC_GetStateString(vc->state)));
 		}
-		mpi_errno = MPIU_CALL(MPIDI_CH3,VC_Destroy(vc));
-		if (mpi_errno) { MPIU_ERR_POP(mpi_errno); }
+
+                /* NOTE: we used to * MPIU_CALL(MPIDI_CH3,VC_Destroy(&(pg->vct[i])))
+                   here but that is incorrect.  According to the standard, it's
+                   entirely possible (likely even) that this VC might still be
+                   connected.  VCs are now destroyed when the PG that "owns"
+                   them is destroyed (see MPIDI_PG_Destroy). [goodell@ 2008-06-13] */
 	    }
 	}
 
 	MPIU_Free(vcrt);
     }
 
-    /* Commented out blocks that are not needed unless MPIU_ERR_POP is 
-       used above */
  fn_exit:    
     MPIDI_FUNC_EXIT(MPID_STATE_MPID_VCRT_RELEASE);
     return mpi_errno;
@@ -254,11 +256,12 @@ int MPID_VCR_Dup(MPID_VCR orig_vcr, MPID_VCR * new_vcr)
      as part of the initial connect/accept action, so in that case,
      ignore the pg ref count update */
     if (orig_vcr->ref_count == 0 && orig_vcr->pg) {
-	MPIU_Object_set_ref( orig_vcr, 2 );
+	MPIDI_VC_add_ref( orig_vcr );
+	MPIDI_VC_add_ref( orig_vcr );
 	MPIDI_PG_add_ref( orig_vcr->pg );
     }
     else {
-	MPIU_Object_add_ref(orig_vcr);
+	MPIDI_VC_add_ref(orig_vcr);
     }
     MPIU_DBG_MSG_FMT(REFCOUNT,TYPICAL,(MPIU_DBG_FDEST,\
          "Incr VCR %p ref count to %d",orig_vcr,orig_vcr->ref_count));
@@ -360,11 +363,12 @@ int MPID_GPID_ToLpidArray( int size, int gpid[], int lpid[] )
     int i, mpi_errno = MPI_SUCCESS;
     int pgid;
     MPIDI_PG_t *pg = 0;
+    MPIDI_PG_iterator iter;
 
     for (i=0; i<size; i++) {
-	MPIDI_PG_Iterate_reset();
+        MPIDI_PG_Get_iterator(&iter);
 	do {
-	    MPIDI_PG_Get_next( &pg );
+	    MPIDI_PG_Get_next( &iter, &pg );
 	    if (!pg) {
 		/* Internal error.  This gpid is unknown on this process */
 		printf("No matching pg foung for id = %d\n", pgid );
@@ -417,6 +421,7 @@ int MPID_VCR_CommFromLpids( MPID_Comm *newcomm_ptr,
 {
     MPID_Comm *commworld_ptr;
     int i;
+    MPIDI_PG_iterator iter;
 
     commworld_ptr = MPIR_Process.comm_world;
     /* Setup the communicator's vc table: remote group */
@@ -441,11 +446,11 @@ int MPID_VCR_CommFromLpids( MPID_Comm *newcomm_ptr,
 	    MPIDI_PG_t *pg = 0;
 	    int j;
 
-	    MPIDI_PG_Iterate_reset();
+	    MPIDI_PG_Get_iterator(&iter);
 	    /* Skip comm_world */
-	    MPIDI_PG_Get_next( &pg );
+	    MPIDI_PG_Get_next( &iter, &pg );
 	    do {
-		MPIDI_PG_Get_next( &pg );
+		MPIDI_PG_Get_next( &iter, &pg );
 		if (!pg) {
 		    return MPIR_Err_create_code( MPI_SUCCESS, 
 				     MPIR_ERR_RECOVERABLE,
@@ -502,11 +507,12 @@ int MPID_PG_ForwardPGInfo( MPID_Comm *peer_ptr, MPID_Comm *comm_ptr,
 {
     int i, allfound = 1, pgid, pgidWorld;
     MPIDI_PG_t *pg = 0;
+    MPIDI_PG_iterator iter;
 
     /* Get the pgid for CommWorld (always attached to the first process 
        group) */
-    MPIDI_PG_Iterate_reset();
-    MPIDI_PG_Get_next( &pg );
+    MPIDI_PG_Get_iterator(&iter);
+    MPIDI_PG_Get_next( &iter, &pg );
     MPIDI_PG_IdToNum( pg, &pgidWorld );
     
     /* Extract the unique process groups */
@@ -514,9 +520,9 @@ int MPID_PG_ForwardPGInfo( MPID_Comm *peer_ptr, MPID_Comm *comm_ptr,
 	if (gpids[0] != pgidWorld) {
 	    /* Add this gpid to the list of values to check */
 	    /* FIXME: For testing, we just test in place */
-	    MPIDI_PG_Iterate_reset();
+            MPIDI_PG_Get_iterator(&iter);
 	    do {
-		MPIDI_PG_Get_next( &pg );
+                MPIDI_PG_Get_next( &iter, &pg );
 		if (!pg) {
 		    /* We don't know this pgid */
 		    allfound = 0;

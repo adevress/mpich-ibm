@@ -262,7 +262,7 @@ AC_ARG_VAR([F90FLAGS], [Fortran 90 compiler flags])dnl
 _AC_ARG_VAR_LDFLAGS()dnl
 AC_CHECK_TOOLS(F90,
       [m4_default([$1],
-                  [f90 xlf90 pgf90 ifort epcf90 f95 fort xlf95 lf95 pathf90 g95 gfortran ifc efc])])
+                  [f90 xlf90 pgf90 ifort epcf90 f95 fort xlf95 lf95 pathf95 pathf90 g95 gfortran ifc efc])])
 
 # once we find the compiler, confirm the extension 
 AC_MSG_CHECKING([that $ac_ext works as the extension for Fortran 90 program])
@@ -1078,7 +1078,6 @@ elif test -s work.pc ; then
          AC_MSG_RESULT([-cl,filename where filename contains a list of files and directories])
 	 F90_WORK_FILES_ARG="-cl,mpimod.pcl"
          F90MODINCSPEC="-cl,<dir>/<file>mod.pcl"
-	 AC_SUBST(F90_WORK_FILES_ARG)
      else 
          # The version of the Intel compiler that I have refuses to let
 	 # you put the "work catalog" list anywhere but the current directory.
@@ -1102,6 +1101,7 @@ if test "$pac_madedir" = "yes" ; then rm -rf conftestdir ; fi
 rm -f conftest*
 AC_LANG_POP
 ])
+AC_SUBST(F90_WORK_FILES_ARG)
 AC_SUBST(F90MODINCFLAG)
 F90MODINCFLAG=$pac_cv_f90_module_incflag
 ])

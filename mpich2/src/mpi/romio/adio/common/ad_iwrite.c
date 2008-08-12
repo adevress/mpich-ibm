@@ -55,6 +55,7 @@ void ADIOI_GEN_IwriteContig(ADIO_File fd, void *buf, int count,
 
     MPI_Type_size(datatype, &typesize);
     len = count * typesize;
+    ADIOI_Assert(len == (int)((ADIO_Offset)count * (ADIO_Offset)typesize)); /* the count is an int parm */
 
     if (file_ptr_type == ADIO_INDIVIDUAL) offset = fd->fp_ind;
     aio_errno = ADIOI_GEN_aio(fd, buf, len, offset, 1, request);
@@ -178,7 +179,7 @@ void ADIOI_GEN_IwriteStrided(ADIO_File fd, void *buf, int count,
 
     if (*error_code == MPI_SUCCESS) {
 	MPI_Type_size(datatype, &typesize);
-	nbytes = count * typesize;
+	nbytes = (MPI_Offset)count * (MPI_Offset)typesize;
     }
     MPIO_Completed_request_create(&fd, nbytes, error_code, request);
 }
@@ -289,6 +290,19 @@ int ADIOI_GEN_aio_wait_fn(int count, void ** array_of_states,
         return errcode;
 }
 
+int ADIOI_GEN_aio_free_fn(void *extra_state)
+{
+	ADIOI_AIO_Request *aio_req;
+	aio_req = (ADIOI_AIO_Request*)extra_state;
+
+	if (aio_req->aiocbp != NULL)
+		ADIOI_Free(aio_req->aiocbp);
+	ADIOI_Free(aio_req);
+
+	return MPI_SUCCESS;
+}
+#endif /* working AIO */
+
 int ADIOI_GEN_aio_query_fn(void *extra_state, MPI_Status *status) 
 {
 	ADIOI_AIO_Request *aio_req;
@@ -309,19 +323,6 @@ int ADIOI_GEN_aio_query_fn(void *extra_state, MPI_Status *status)
 	/* this generalized request never fails */ 
 	return MPI_SUCCESS; 
 }
-
-int ADIOI_GEN_aio_free_fn(void *extra_state)
-{
-	ADIOI_AIO_Request *aio_req;
-	aio_req = (ADIOI_AIO_Request*)extra_state;
-
-	if (aio_req->aiocbp != NULL)
-		ADIOI_Free(aio_req->aiocbp);
-	ADIOI_Free(aio_req);
-
-	return MPI_SUCCESS;
-}
-#endif /* working AIO */
 /* 
  * vim: ts=8 sts=4 sw=4 noexpandtab 
  */

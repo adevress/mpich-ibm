@@ -140,7 +140,10 @@ for arg in "$@" ; do
     -v)
     # Pass this argument to the compiler as well.
     echo "mpicxx for $MPIVERSION"
-    linking=no
+    # if there is only 1 argument, it must be -v.
+    if [ "$#" -eq "1" ] ; then
+        linking=no
+    fi
     ;;
     -profile=*)
     # Pass the name of a profiling configuration.  As

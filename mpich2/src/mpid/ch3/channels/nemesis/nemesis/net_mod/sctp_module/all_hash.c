@@ -1,3 +1,9 @@
+/* -*- Mode: C; c-basic-offset:4 ; -*- */
+/*
+ *  (C) 2007 by Argonne National Laboratory.
+ *      See COPYRIGHT in top-level directory.
+ */
+
 /*
  * Copyright (c) 2001-2002 The Trustees of Indiana University.  
  *                         All rights reserved.
@@ -219,7 +225,6 @@ ah_insert_with_expand(HASH *ahd, void *elem) {
     if(ah_expand(ahd, newsize))
       return (LAMERROR);
     
-    // try again
     result = ah_insert(ahd, elem);
   } else 
     return result;

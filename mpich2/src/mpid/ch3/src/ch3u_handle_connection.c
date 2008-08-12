@@ -56,6 +56,9 @@ int MPIDI_CH3U_Handle_connection(MPIDI_VC_t * vc, MPIDI_VC_Event_t event)
 		       not always */
 		    /* MPIU_Object_set_ref(vc, 0); ??? */
 
+                    mpi_errno = MPIDI_CH3_Handle_vc_close(vc);
+                    if (mpi_errno) MPIU_ERR_POP(mpi_errno);
+
 		    /*
 		     * FIXME: The VC used in connect accept has a NULL 
 		     * process group
@@ -109,10 +112,12 @@ int MPIDI_CH3U_Handle_connection(MPIDI_VC_t * vc, MPIDI_VC_Event_t event)
 	    break;
 	}
     }
-	
-    MPIDI_FUNC_EXIT(MPID_STATE_MPIDI_CH3U_HANDLE_CONNECTION);
 
+fn_exit:
+    MPIDI_FUNC_EXIT(MPID_STATE_MPIDI_CH3U_HANDLE_CONNECTION);
     return mpi_errno;
+fn_fail:
+    goto fn_exit;
 }
 
 #undef FUNCNAME
@@ -192,8 +197,9 @@ int MPIDI_CH3U_VC_SendClose( MPIDI_VC_t *vc, int rank )
     }
     
     if (sreq != NULL) {
+	/* There is still another reference being held by the channel.  It
+	   will not be released until the pkt is actually sent. */
 	MPID_Request_release(sreq);
-	/* printf( "Panic on send close ack\n" ); fflush(stdout); */
     }
 
     MPIDI_FUNC_EXIT(MPID_STATE_MPIDI_CH3U_VC_SENDCLOSE);
@@ -228,8 +234,9 @@ int MPIDI_CH3_PktHandler_Close( MPIDI_VC_t *vc, MPIDI_CH3_Pkt_t *pkt,
 	
 	if (resp_sreq != NULL)
 	{
+	    /* There is still another reference being held by the channel.  It
+	       will not be released until the pkt is actually sent. */
 	    MPID_Request_release(resp_sreq);
-	    /*printf( "Panic on send close\n" ); fflush(stdout);*/
 	}
     }
     
@@ -276,7 +283,7 @@ int MPIDI_CH3_PktHandler_Close( MPIDI_VC_t *vc, MPIDI_CH3_Pkt_t *pkt,
 	    vc->state = MPIDI_VC_STATE_REMOTE_CLOSE;
 	}
     }
-    else
+    else /* (close_pkt->ack == TRUE) */
     {
 	MPIU_DBG_MSG_D(CH3_DISCONNECT,TYPICAL,
                        "received close(TRUE) from %d, moving to CLOSE_ACKED.", 

@@ -496,8 +496,15 @@ int MPIDI_PG_Create(int vct_sz, void * pg_id, MPIDI_PG_t ** ppg);
 int MPIDI_PG_Destroy(MPIDI_PG_t * pg);
 int MPIDI_PG_Find(void * id, MPIDI_PG_t ** pgp);
 int MPIDI_PG_Id_compare(void *id1, void *id2);
-int MPIDI_PG_Get_next(MPIDI_PG_t ** pgp);
-int MPIDI_PG_Iterate_reset(void);
+
+/* Always use the MPIDI_PG_iterator type, never its expansion.  Otherwise it
+   will be difficult to make any changes later. */
+typedef MPIDI_PG_t * MPIDI_PG_iterator;
+/* 'iter' is similar to 'saveptr' in strtok_r */
+int MPIDI_PG_Get_iterator(MPIDI_PG_iterator *iter);
+int MPIDI_PG_Has_next(MPIDI_PG_iterator *iter);
+int MPIDI_PG_Get_next(MPIDI_PG_iterator *iter, MPIDI_PG_t **pgp);
+
 /* FIXME: MPIDI_PG_Get_vc is a macro, not a routine */
 int MPIDI_PG_Get_vc(MPIDI_PG_t * pg, int rank, struct MPIDI_VC ** vc); 
 int MPIDI_PG_Close_VCs( void );
@@ -593,6 +600,9 @@ typedef struct MPIDI_VC
 
     /* Local process ID */
     int lpid;
+
+    /* port name tag */ 
+    int port_name_tag; /* added to handle dynamic process mgmt */
     
 #if defined(MPID_USE_SEQUENCE_NUMBERS)
     /* Sequence number of the next packet to be sent */
@@ -666,7 +676,6 @@ int MPIDI_VC_Init( MPIDI_VC_t *, MPIDI_PG_t *, int );
 #else
 #   define MPIDI_VC_Init_seqnum_recv(vc_);
 #endif
-
 
 
 #define MPIDI_VC_add_ref( _vc )                                 \
@@ -796,11 +805,12 @@ int MPIDI_PrintConnStrToFile( FILE *fd, const char *file, int line,
    msg.
 
 */
-#define MPIU_DBG_VCSTATECHANGE(_vc,_newstate) \
+#define MPIU_DBG_VCSTATECHANGE(_vc,_newstate) do { \
      MPIU_DBG_MSG_FMT(CH3_CONNECT,TYPICAL,(MPIU_DBG_FDEST, \
      "vc=%p: Setting state (vc) from %s to %s, vcchstate is %s", \
                  _vc, MPIDI_VC_GetStateString((_vc)->state), \
-                 #_newstate, MPIU_CALL(MPIDI_CH3,VC_GetStateString( (_vc) ))) )
+                 #_newstate, MPIU_CALL(MPIDI_CH3,VC_GetStateString( (_vc) ))) );\
+} while (0)
 
 #define MPIU_DBG_VCCHSTATECHANGE(_vc,_newstate) \
      MPIU_DBG_MSG_FMT(CH3_CONNECT,TYPICAL,(MPIU_DBG_FDEST, \
@@ -974,7 +984,7 @@ int MPIDI_CH3_RMAFnsInit( MPIDI_RMAFns * );
 #define MPID_LOCK_NONE 0
 
 int MPIDI_Win_create(void *, MPI_Aint, int, MPID_Info *, MPID_Comm *,
-                    MPID_Win **, MPIDI_RMAFns *);
+                    MPID_Win ** );
 int MPIDI_Win_fence(int, MPID_Win *);
 int MPIDI_Put(void *, int, MPI_Datatype, int, MPI_Aint, int,
             MPI_Datatype, MPID_Win *); 
@@ -984,6 +994,7 @@ int MPIDI_Accumulate(void *, int, MPI_Datatype, int, MPI_Aint, int,
 		   MPI_Datatype,  MPI_Op, MPID_Win *);
 int MPIDI_Win_free(MPID_Win **); 
 int MPIDI_Win_wait(MPID_Win *win_ptr);
+int MPIDI_Win_test(MPID_Win *win_ptr, int *);
 int MPIDI_Win_complete(MPID_Win *win_ptr);
 int MPIDI_Win_post(MPID_Group *group_ptr, int assert, MPID_Win *win_ptr);
 int MPIDI_Win_start(MPID_Group *group_ptr, int assert, MPID_Win *win_ptr);
@@ -1278,9 +1289,10 @@ int MPIDI_CH3_Connect_to_root(const char *, MPIDI_VC_t **);
  */
 int MPIDI_CH3U_Recvq_FU(int, int, int, MPI_Status * );
 MPID_Request * MPIDI_CH3U_Recvq_FDU(MPI_Request, MPIDI_Message_match *);
-MPID_Request * MPIDI_CH3U_Recvq_FDU_or_AEP(int, int, int, int * found);
+MPID_Request * MPIDI_CH3U_Recvq_FDU_or_AEP(int source, int tag, 
+                                          int context_id, MPID_Comm *comm, void *user_buf,
+                                           int user_count, MPI_Datatype datatype, int * foundp);
 int MPIDI_CH3U_Recvq_DP(MPID_Request * rreq);
-MPID_Request * MPIDI_CH3U_Recvq_FDP(MPIDI_Message_match * match);
 MPID_Request * MPIDI_CH3U_Recvq_FDP_or_AEU(MPIDI_Message_match * match, 
 					   int * found);
 
@@ -1442,6 +1454,12 @@ int MPIDI_CH3U_VC_WaitForClose( void );
 int MPIDI_CH3_Channel_close( void );
 #else
 #define MPIDI_CH3_Channel_close( )   MPI_SUCCESS
+#endif
+
+#if defined(MPIDI_CH3_USES_SOCK)
+int MPIDI_CH3_Handle_vc_close(MPIDI_VC_t *vc);
+#else
+#define MPIDI_CH3_Handle_vc_close(vc) MPI_SUCCESS
 #endif
 
 /*@

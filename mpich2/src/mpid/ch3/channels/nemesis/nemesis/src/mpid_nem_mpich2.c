@@ -104,7 +104,7 @@ MPID_nem_mpich2_init (int ckpt_restart)
 
     MPIU_CHKPMEM_COMMIT();
  fn_exit:
-    MPIDI_FUNC_ENTER(MPID_STATE_MPID_NEM_MPICH2_INIT);
+    MPIDI_FUNC_EXIT(MPID_STATE_MPID_NEM_MPICH2_INIT);
     return mpi_errno;
  fn_fail:
     /* --BEGIN ERROR HANDLING-- */
@@ -196,6 +196,7 @@ MPID_nem_mpich2_send_ckpt_marker (unsigned short wave, MPIDI_VC_t *vc, int *try_
 #ifdef ENABLED_CHECKPOINTING
     MPID_nem_cell_ptr_t el;
     int my_rank;
+    MPIDI_CH3I_VC *vc_ch = (MPIDI_CH3I_VC *)vc->channel_private;
 
     my_rank = MPID_nem_mem_region.rank;
 
@@ -218,11 +219,11 @@ MPID_nem_mpich2_send_ckpt_marker (unsigned short wave, MPIDI_VC_t *vc, int *try_
     el->pkt.ckpt.source  = my_rank;
     el->pkt.ckpt.dest    = vc->lpid;
     el->pkt.ckpt.datalen = sizeof(el->pkt.ckpt.wave); /* FIXME: we need a way to handle packet types w/ different sizes */
-    el->pkt.ckpt.seqno   = ((MPIDI_CH3I_VC *)vc->channel_private)->send_seqno++;
+    el->pkt.ckpt.seqno   = vc_ch->send_seqno++;
     el->pkt.ckpt.type    = MPID_NEM_PKT_CKPT;
     el->pkt.ckpt.wave    = wave;
 
-    if(MPID_NEM_IS_LOCAL (vc->lpid))
+    if(vc_ch->is_local)
     {
 	MPID_nem_queue_enqueue( MPID_nem_mem_region.RecvQ[vc->lpid], el);
 	/*MPID_nem_rel_dump_queue( MPID_nem_mem_region.RecvQ[vc->lpid] ); */
