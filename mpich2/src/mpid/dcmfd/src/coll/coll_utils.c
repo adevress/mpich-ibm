@@ -112,7 +112,7 @@ int MPIDI_IsTreeOp(MPI_Op op, MPI_Datatype datatype)
 int MPIDI_ConvertMPItoDCMF(MPI_Op op, DCMF_Op *dcmf_op,
                            MPI_Datatype datatype, DCMF_Dt *dcmf_dt)
 {
-   int rc = 0;
+   int rc = DCMF_TREE_SUPPORT;
 
    switch(op)
    {
@@ -121,9 +121,9 @@ int MPIDI_ConvertMPItoDCMF(MPI_Op op, DCMF_Op *dcmf_op,
          break;
       case MPI_PROD:
          if(datatype == MPI_COMPLEX || datatype == MPI_DOUBLE_COMPLEX)
-            return -1;
+            return DCMF_NOT_SUPPORTED;
          *dcmf_op = DCMF_PROD;
-         rc = NOTTREEOP;
+         rc = DCMF_TORUS_SUPPORT;
          break;
       case MPI_MAX:
          *dcmf_op = DCMF_MAX;
@@ -137,9 +137,9 @@ int MPIDI_ConvertMPItoDCMF(MPI_Op op, DCMF_Op *dcmf_op,
             datatype == MPI_UNSIGNED|| datatype == MPI_UNSIGNED_LONG)
          {
             *dcmf_op = DCMF_LAND;
-         	 rc = NOTTREEOP;
+         	 rc = DCMF_TORUS_SUPPORT;
          }
-         else return -1;
+         else return DCMF_NOT_SUPPORTED;
          break;
       case MPI_LOR:
          if(datatype == MPI_LOGICAL || datatype == MPI_INT ||
@@ -147,9 +147,9 @@ int MPIDI_ConvertMPItoDCMF(MPI_Op op, DCMF_Op *dcmf_op,
             datatype == MPI_UNSIGNED|| datatype == MPI_UNSIGNED_LONG)
          {
             *dcmf_op = DCMF_LOR;
-         	 rc = NOTTREEOP;
+         	 rc = DCMF_TORUS_SUPPORT;
          }
-         else return -1;
+         else return DCMF_NOT_SUPPORTED;
          break;
       case MPI_LXOR:
          if(datatype == MPI_LOGICAL || datatype == MPI_INT ||
@@ -157,9 +157,9 @@ int MPIDI_ConvertMPItoDCMF(MPI_Op op, DCMF_Op *dcmf_op,
             datatype == MPI_UNSIGNED|| datatype == MPI_UNSIGNED_LONG)
          {
             *dcmf_op = DCMF_LXOR;
-         	 rc = NOTTREEOP;
+         	 rc = DCMF_TORUS_SUPPORT;
          }
-         else return -1;
+         else return DCMF_NOT_SUPPORTED;
          break;
       case MPI_BAND:
          if(datatype == MPI_LONG || datatype == MPI_INTEGER ||
@@ -168,7 +168,7 @@ int MPIDI_ConvertMPItoDCMF(MPI_Op op, DCMF_Op *dcmf_op,
          {
             *dcmf_op = DCMF_BAND;
          }
-         else return -1;
+         else return DCMF_NOT_SUPPORTED;
          break;
       case MPI_BOR:
          if(datatype == MPI_LONG || datatype == MPI_INTEGER ||
@@ -177,7 +177,7 @@ int MPIDI_ConvertMPItoDCMF(MPI_Op op, DCMF_Op *dcmf_op,
          {
             *dcmf_op = DCMF_BOR;
          }
-         else return -1;
+         else return DCMF_NOT_SUPPORTED;
          break;
       case MPI_BXOR:
          if(datatype == MPI_LONG || datatype == MPI_INTEGER ||
@@ -186,7 +186,7 @@ int MPIDI_ConvertMPItoDCMF(MPI_Op op, DCMF_Op *dcmf_op,
          {
             *dcmf_op = DCMF_BXOR;
          }
-         else return -1;
+         else return DCMF_NOT_SUPPORTED;
          break;
       case MPI_MAXLOC:
          *dcmf_op = DCMF_MAXLOC;
@@ -197,7 +197,7 @@ int MPIDI_ConvertMPItoDCMF(MPI_Op op, DCMF_Op *dcmf_op,
       default:
          *dcmf_dt = DCMF_UNDEFINED_DT;
          *dcmf_op = DCMF_UNDEFINED_OP;
-         return -1;
+         return DCMF_NOT_SUPPORTED;
    }
    int rc_tmp = rc;
    switch(datatype)
@@ -206,13 +206,13 @@ int MPIDI_ConvertMPItoDCMF(MPI_Op op, DCMF_Op *dcmf_op,
       case MPI_SIGNED_CHAR:
       case MPI_CHARACTER:
          *dcmf_dt = DCMF_SIGNED_CHAR;
-         return NOTTREEOP;
+         return DCMF_TORUS_SUPPORT;
          break;
 
       case MPI_UNSIGNED_CHAR:
       case MPI_BYTE:
          *dcmf_dt = DCMF_UNSIGNED_CHAR;
-         return NOTTREEOP;
+         return DCMF_TORUS_SUPPORT;
          break;
 
       case MPI_INT:
@@ -239,7 +239,7 @@ int MPIDI_ConvertMPItoDCMF(MPI_Op op, DCMF_Op *dcmf_op,
       case MPI_REAL:
          *dcmf_dt = DCMF_FLOAT;
          if(op != MPI_MAX || op != MPI_MIN )
-            return NOTTREEOP;
+            return DCMF_TORUS_SUPPORT;
          break;
 
       case MPI_DOUBLE:
@@ -250,8 +250,8 @@ int MPIDI_ConvertMPItoDCMF(MPI_Op op, DCMF_Op *dcmf_op,
       case MPI_LONG_DOUBLE:
          *dcmf_dt = DCMF_LONG_DOUBLE;
          if(op == MPI_LAND || op == MPI_LOR || op == MPI_LXOR)
-            return -1;
-         return NOTTREEOP;
+            return DCMF_NOT_SUPPORTED;
+         return DCMF_TORUS_SUPPORT;
          break;
 
       case MPI_LONG_LONG:
@@ -260,12 +260,12 @@ int MPIDI_ConvertMPItoDCMF(MPI_Op op, DCMF_Op *dcmf_op,
 
       case MPI_DOUBLE_COMPLEX:
          *dcmf_dt = DCMF_DOUBLE_COMPLEX;
-         return NOTTREEOP;
+         return DCMF_TORUS_SUPPORT;
          break;
 
       case MPI_COMPLEX:
          *dcmf_dt = DCMF_SINGLE_COMPLEX;
-         return NOTTREEOP;
+         return DCMF_TORUS_SUPPORT;
          break;
 
       case MPI_LOGICAL:
@@ -301,9 +301,9 @@ int MPIDI_ConvertMPItoDCMF(MPI_Op op, DCMF_Op *dcmf_op,
       default:
          *dcmf_dt = DCMF_UNDEFINED_DT;
          *dcmf_op = DCMF_UNDEFINED_OP;
-         return -1;
+         return DCMF_NOT_SUPPORTED;
    }
-   if(rc_tmp ==NOTTREEOP)
+   if(rc_tmp ==DCMF_TORUS_SUPPORT)
      return rc_tmp;
    return rc;
 }
