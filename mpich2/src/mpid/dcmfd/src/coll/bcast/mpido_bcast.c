@@ -25,7 +25,8 @@ MPIDO_Bcast(void *buffer,
   MPI_Aint data_true_lb = 0;
   MPID_Datatype *data_ptr;
   MPID_Segment segment;
-  int commsize = comm->local_size;
+  int userenvset = DCMF_INFO_ISSET(properties, DCMF_BCAST_ENVVAR);
+  int rank = comm->rank;
 
   if (!count)
     return MPI_SUCCESS;
@@ -91,77 +92,103 @@ MPIDO_Bcast(void *buffer,
    */
 
 
-  if (DCMF_INFO_ISSET(properties, DCMF_USE_TREE_BCAST) && data_size &&
-      data_size < 64 * MPIDI_CollectiveProtocols.bcast_asynccutoff)
-    func = MPIDO_Bcast_tree;
+   if(DCMF_INFO_ISSET(properties, DCMF_USE_TREE_BCAST) && 
+     (userenvset ||
+      (data_size <=65536 || (unsigned)data_buffer & 0x0F)))
+   {
+//      if(!rank)
+//      fprintf(stderr,"size: %d, aligned: %d calling tree tree: %d rect: %d dput: %d\n", data_size, (unsigned)data_buffer & 0x0F, 
+//      DCMF_INFO_ISSET(properties, DCMF_USE_TREE_BCAST),
+//      DCMF_INFO_ISSET(properties, DCMF_USE_RECT_BCAST), DCMF_INFO_ISSET(properties, DCMF_USE_RECT_DPUT_BCAST));
+      func = MPIDO_Bcast_tree;
+   }
 
-  if (!func && DCMF_INFO_ISSET(properties, DCMF_USE_ARECT_BCAST))
-    {
-      if (data_size <= MPIDI_CollectiveProtocols.bcast_asynccutoff)
-        {
-          if (comm->dcmf.bcast_iter < 32)
-            {
-              comm->dcmf.bcast_iter++;
-              func = MPIDO_Bcast_rect_async;
-            }
-          else
-            {
-              comm->dcmf.bcast_iter = 0;
-            }
-        }
-    }
-
-  if (!func && DCMF_INFO_ISSET(properties, DCMF_USE_RECT_BCAST))
-    {
+   if (!func && DCMF_INFO_ISSET(properties, DCMF_USE_RECT_BCAST) &&
+      (userenvset || data_size <= 4096))
+   {
+//      if(!rank)
+//      fprintf(stderr,"size: %d, aligned: %d calling rect bcast tree: %d rect: %d dput: %d\n", data_size, (unsigned)data_buffer & 0x0F, 
+//      DCMF_INFO_ISSET(properties, DCMF_USE_TREE_BCAST),
+//      DCMF_INFO_ISSET(properties, DCMF_USE_RECT_BCAST), DCMF_INFO_ISSET(properties, DCMF_USE_RECT_DPUT_BCAST));
       func = MPIDO_Bcast_rect_sync;
-    }
+   }
 
-  if (!func && DCMF_INFO_ISSET(properties, DCMF_USE_ABINOM_BCAST))
-    {
-      if (data_size <= 2 * MPIDI_CollectiveProtocols.bcast_asynccutoff)
-        {
-          if (comm->dcmf.bcast_iter < 32)
-            {
-              comm->dcmf.bcast_iter++;
-              func = MPIDO_Bcast_binom_async;
-            }
-          else
-            {
-              comm->dcmf.bcast_iter = 0;
-            }
-        }
-    }
-  if (!func && DCMF_INFO_ISSET(properties, DCMF_USE_BINOM_BCAST))
-    {
-      if (data_size > 2 * MPIDI_CollectiveProtocols.bcast_asynccutoff &&
-          data_size <= 8 * MPIDI_CollectiveProtocols.bcast_asynccutoff)
-        {
-          func = MPIDO_Bcast_binom_sync;
-        }
-    }
 
-  if (!func && DCMF_INFO_ISSET(properties, DCMF_USE_RECT_DPUT_BCAST) &&
-      !((unsigned) data_buffer & 0x0F))
-    {
+   if (!func && DCMF_INFO_ISSET(properties, DCMF_USE_RECT_DPUT_BCAST) &&
+       !((unsigned) data_buffer & 0x0F))
+   {
+//      if(!rank)
+//      fprintf(stderr,"size: %d, aligned: %d calling dput bcast tree: %d rect: %d dput: %d\n", data_size, (unsigned)data_buffer & 0x0F,
+//      DCMF_INFO_ISSET(properties, DCMF_USE_TREE_BCAST),
+//      DCMF_INFO_ISSET(properties, DCMF_USE_RECT_BCAST), DCMF_INFO_ISSET(properties, DCMF_USE_RECT_DPUT_BCAST));
       func = MPIDO_Bcast_rect_dput;
-    }
+   }
 
-  if (!func && DCMF_INFO_ISSET(properties, DCMF_USE_RECT_SINGLETH_BCAST))
-    {
+//   if(!func && DCMF_INFO_ISSET(properties, DCMF_USE_ARECT_BCAST))
+   if(!func && userenvset && DCMF_INFO_ISSET(properties, DCMF_USE_ARECT_BCAST))
+   {
+//      if (userenvset || 
+//          data_size <= 4096)
+//      {
+         if (comm->dcmf.bcast_iter < 32)
+         {
+            comm->dcmf.bcast_iter++;
+            func = MPIDO_Bcast_rect_async;
+         }
+         else
+         {
+            comm->dcmf.bcast_iter = 0;
+         }
+//      }
+   }
+
+
+
+   if (!func && DCMF_INFO_ISSET(properties, DCMF_USE_ABINOM_BCAST))
+   {
+      if (userenvset || 
+          data_size <= 16384)
+      {
+         if (comm->dcmf.bcast_iter < 32)
+         {
+            comm->dcmf.bcast_iter++;
+            func = MPIDO_Bcast_binom_async;
+         }
+         else
+         {
+            comm->dcmf.bcast_iter = 0;
+         }
+      }
+   }
+   if (!func && DCMF_INFO_ISSET(properties, DCMF_USE_BINOM_BCAST))
+   {
+      func = MPIDO_Bcast_binom_sync;
+   }
+
+
+   if (!func && DCMF_INFO_ISSET(properties, DCMF_USE_RECT_SINGLETH_BCAST))
+   {
       func = MPIDO_Bcast_rect_singleth;
-    }
+   }
 
-  if (!func && DCMF_INFO_ISSET(properties, DCMF_USE_BINOM_SINGLETH_BCAST))
-    {
+   if (!func && DCMF_INFO_ISSET(properties, DCMF_USE_BINOM_SINGLETH_BCAST))
+   {
       func = MPIDO_Bcast_binom_singleth;
-    }
+   }
 
-  if (!func)
-    {
+   if (!func && DCMF_INFO_ISSET(properties, DCMF_USE_SCATTER_GATHER_BCAST))
+   {
       func = MPIDO_Bcast_scatter_gather;
-    }
+   }
 
-  rc = (func) (data_buffer, data_size, root, comm);
+   if(!func)
+   {
+//      if(!rank)
+//      fprintf(stderr,"calling mpich\n");
+      return MPIR_Bcast(buffer, count, datatype, root, comm);
+   }
+
+   rc = (func) (data_buffer, data_size, root, comm);
 
   if (!data_contig)
     {
