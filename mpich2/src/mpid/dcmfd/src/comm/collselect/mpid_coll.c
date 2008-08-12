@@ -36,8 +36,8 @@ static int barriers_num=0;
 static DCMF_CollectiveProtocol_t *barriers[DCMF_NUM_BARRIER_PROTOCOLS];
 
 static inline int BARRIER_REGISTER(DCMF_Barrier_Protocol proto,
-				   DCMF_CollectiveProtocol_t *proto_ptr,
-				   DCMF_Barrier_Configuration_t *config)
+                                   DCMF_CollectiveProtocol_t *proto_ptr,
+                                   DCMF_Barrier_Configuration_t *config)
 {
   int rc;
   config->protocol = proto;
@@ -135,70 +135,88 @@ void MPIDI_Coll_register(int threadrequested)
    /* ---------------------------------- */
    /* Register global barrier          */
    /* ---------------------------------- */
-   gbarrier_config.protocol = DCMF_GI_GLOBALBARRIER_PROTOCOL;
-   rc = DCMF_GlobalBarrier_register(&MPIDI_Protocols.globalbarrier,
-                                    &gbarrier_config);
-   /* registering the global barrier failed, so don't use it */
-   if(rc != DCMF_SUCCESS)
+   if(DCMF_INFO_ISSET(properties, DCMF_USE_GI_BARRIER))
    {
-     DCMF_INFO_UNSET(properties, DCMF_USE_GI_BARRIER);
+      gbarrier_config.protocol = DCMF_GI_GLOBALBARRIER_PROTOCOL;
+      rc = DCMF_GlobalBarrier_register(&MPIDI_Protocols.globalbarrier,
+                                       &gbarrier_config);
+      /* registering the global barrier failed, so don't use it */
+      if(rc != DCMF_SUCCESS)
+      {
+        DCMF_INFO_UNSET(properties, DCMF_USE_GI_BARRIER);
+      }
    }
 
 
    /* ---------------------------------- */
    /* Register global broadcast          */
    /* ---------------------------------- */
-   gbcast_config.protocol = DCMF_TREE_GLOBALBCAST_PROTOCOL;
-
-   /* Check if we are in dual or vn mode and that all ranks in the system */
-   /* are physically located on one node. */
-   unsigned size = DCMF_Messager_size ();
-   if (size <= mpid_hw.tSize)
+   if(DCMF_INFO_ISSET(properties, DCMF_USE_TREE_BCAST))
    {
-     unsigned rank, x[4], y[4], z[4], t[4];
-     DCMF_Messager_rank2torus (0, &x[0], &y[0], &z[0], &t[0]);
+      gbcast_config.protocol = DCMF_TREE_GLOBALBCAST_PROTOCOL;
 
-     gbcast_config.protocol = DCMF_INTRANODE_GLOBALBCAST_PROTOCOL;
-     for (rank = 1; rank < size; rank++)
-     {
-       DCMF_Messager_rank2torus (rank, &x[rank], &y[rank], &z[rank], &t[rank]);
-       if ((x[rank-1] != x[rank]) ||
-           (y[rank-1] != y[rank]) ||
-           (z[rank-1] != z[rank]))
-       {
-         gbcast_config.protocol = DCMF_TREE_GLOBALBCAST_PROTOCOL;
-         break;
-       }
-     }
-   }
-   rc= DCMF_GlobalBcast_register(&MPIDI_Protocols.globalbcast, &gbcast_config);
+      /* Check if we are in dual or vn mode and that all ranks in the system */
+      /* are physically located on one node. */
+      unsigned size = DCMF_Messager_size ();
+      if (size <= mpid_hw.tSize)
+      {
+        unsigned rank, x[4], y[4], z[4], t[4];
+        DCMF_Messager_rank2torus (0, &x[0], &y[0], &z[0], &t[0]);
 
-   /* most likely, we lack shared memory and therefore can't use this */
-   if(rc != DCMF_SUCCESS)
-   {
-     DCMF_INFO_UNSET(properties, DCMF_USE_TREE_BCAST);
+        gbcast_config.protocol = DCMF_INTRANODE_GLOBALBCAST_PROTOCOL;
+        for (rank = 1; rank < size; rank++)
+        {
+          DCMF_Messager_rank2torus (rank, &x[rank], &y[rank], &z[rank], &t[rank]);
+          if ((x[rank-1] != x[rank]) ||
+              (y[rank-1] != y[rank]) ||
+              (z[rank-1] != z[rank]))
+          {
+            gbcast_config.protocol = DCMF_TREE_GLOBALBCAST_PROTOCOL;
+            break;
+          }
+        }
+      }
+
+      rc = DCMF_GlobalBcast_register(&MPIDI_Protocols.globalbcast, &gbcast_config);
+
+      /* most likely, we lack shared memory and therefore can't use this */
+      if(rc != DCMF_SUCCESS)
+      {
+        DCMF_INFO_UNSET(properties, DCMF_USE_TREE_BCAST);
+      }   
    }
 
    /* ---------------------------------- */
    /* Register global allreduce          */
    /* ---------------------------------- */
-   gallreduce_config.protocol = DCMF_TREE_GLOBALALLREDUCE_PROTOCOL;
-   rc = DCMF_GlobalAllreduce_register(&MPIDI_Protocols.globalallreduce,
-                                      &gallreduce_config);
+   if(DCMF_INFO_ISSET(properties, DCMF_USE_TREE_ALLREDUCE))
+   {
+      gallreduce_config.protocol = DCMF_TREE_GLOBALALLREDUCE_PROTOCOL;
+      rc = DCMF_GlobalAllreduce_register(&MPIDI_Protocols.globalallreduce,
+                                         &gallreduce_config);
 
-   /* most likely, we lack shared memory and therefore can't use this */
-   /* reduce uses the allreduce protocol */
-   if(rc != DCMF_SUCCESS)
-     {
-       /* Try the ccmi tree if we were trying global tree */
-       if (DCMF_INFO_ISSET(properties, DCMF_USE_TREE_ALLREDUCE))
-	 DCMF_INFO_SET(properties, DCMF_USE_CCMI_TREE_ALLREDUCE);
-       if (DCMF_INFO_ISSET(properties, DCMF_USE_TREE_REDUCE))
-	 DCMF_INFO_SET(properties, DCMF_USE_CCMI_TREE_REDUCE);
-       
-       DCMF_INFO_UNSET(properties, DCMF_USE_TREE_ALLREDUCE);
-       DCMF_INFO_UNSET(properties, DCMF_USE_TREE_REDUCE);
-     }
+      /* most likely, we lack shared memory and therefore can't use this */
+      /* reduce uses the allreduce protocol */
+      if(rc != DCMF_SUCCESS)
+      {
+          /* Try the ccmi tree if we were trying global tree */
+         if (DCMF_INFO_ISSET(properties, DCMF_USE_TREE_ALLREDUCE))
+            DCMF_INFO_SET(properties, DCMF_USE_CCMI_TREE_ALLREDUCE);
+         if (DCMF_INFO_ISSET(properties, DCMF_USE_TREE_REDUCE))
+            DCMF_INFO_SET(properties, DCMF_USE_CCMI_TREE_REDUCE);
+          
+          DCMF_INFO_UNSET(properties, DCMF_USE_TREE_ALLREDUCE);
+          DCMF_INFO_UNSET(properties, DCMF_USE_TREE_REDUCE);
+      }
+   }
+   else /* not registering the global allreduce, so don't use it for reduce 
+         * either. 
+         */
+   {
+      if(DCMF_INFO_ISSET(properties, DCMF_USE_TREE_REDUCE))
+         DCMF_INFO_UNSET(properties, DCMF_USE_TREE_REDUCE);
+   }
+      
 
 
    /* register first barrier protocols now */
@@ -215,30 +233,29 @@ void MPIDI_Coll_register(int threadrequested)
    reduce_config.reuse_storage = 
      DCMF_INFO_ISSET(properties, DCMF_USE_STORAGE_REDUCE);
 
-
+   /* ---------------------------------- */
+   /* Register multi-node barriers       */
+   /* ---------------------------------- */
    /* Other env vars can be checked at communicator creation time
     * but barriers are associated with a geometry and this knowledge
     * isn't available to mpido_barrier
-    */
-
-   /*
-     if in single thread mode, register gi, rect (via rectlockbox), bino
-     else register gi, rect (via rect barrier), bino 
+    * If in single thread mode, register gi, rect (via rectlockbox), bino
+    * else register gi, rect (via rect barrier), bino 
     */
 
    DCMF_Barrier_Protocol barrier_proto;
    if (threadrequested != DCMF_THREAD_MULTIPLE)
-     barrier_proto = DCMF_TORUS_RECTANGLELOCKBOX_BARRIER_PROTOCOL_SINGLETH;
+      barrier_proto = DCMF_TORUS_RECTANGLELOCKBOX_BARRIER_PROTOCOL_SINGLETH;
    else
-     barrier_proto = DCMF_TORUS_RECTANGLE_BARRIER_PROTOCOL; 
+      barrier_proto = DCMF_TORUS_RECTANGLE_BARRIER_PROTOCOL; 
 
    if (DCMF_INFO_ISSET(properties, DCMF_USE_GI_BARRIER))
-     {
-       if (BARRIER_REGISTER(DCMF_GI_BARRIER_PROTOCOL,
+   {
+      if (BARRIER_REGISTER(DCMF_GI_BARRIER_PROTOCOL,
 			    &MPIDI_CollectiveProtocols.gi_barrier,
 			    &barrier_config) != DCMF_SUCCESS)
-	 DCMF_INFO_UNSET(properties, DCMF_USE_GI_BARRIER);
-     }
+         DCMF_INFO_UNSET(properties, DCMF_USE_GI_BARRIER);
+   }
 
    if (!DCMF_INFO_ISSET(properties, DCMF_USE_RECT_BARRIER) &&
        DCMF_INFO_ISSET(properties, DCMF_USE_BINOM_BARRIER))
@@ -286,6 +303,9 @@ void MPIDI_Coll_register(int threadrequested)
    /* if we don't even get a binomial barrier, we are in trouble */
    MPID_assert_debug(barriers_num >  0);
    
+   /* ---------------------------------- */
+   /* Register local barriers            */
+   /* ---------------------------------- */
    /*
     * Register local barriers for the geometry.
     * Both a true local lockbox barrier and a global binomial
@@ -315,6 +335,9 @@ void MPIDI_Coll_register(int threadrequested)
     * MPID_assert_debug(local_barriers_num >  0);
     */
 
+   /* -------------------------------------------------------------- */
+   /* Register single-thread (memory optimized) protocols if desired */
+   /* -------------------------------------------------------------- */
    /* Sort out the single thread memory optimizations first. If we
     * are single threaed, we want to register the single thread versions
     * to save memory */
@@ -347,8 +370,9 @@ void MPIDI_Coll_register(int threadrequested)
             &broadcast_config) != DCMF_SUCCESS)
          DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_SINGLETH_BCAST);
    }
-
-   /* Register the other broadcast protocols */
+   /* --------------------------------------------------- */
+   /* Register all other bcast protocols needed/requested */
+   /* --------------------------------------------------- */
    if(DCMF_INFO_ISSET(properties, DCMF_USE_TREE_BCAST))
      {
        if(BROADCAST_REGISTER(DCMF_TREE_BROADCAST_PROTOCOL,
@@ -362,44 +386,47 @@ void MPIDI_Coll_register(int threadrequested)
 			 &broadcast_config) != DCMF_SUCCESS)
      DCMF_INFO_UNSET(properties, DCMF_USE_RECT_BCAST);
 
-   
-   ASYNC_BROADCAST_REGISTER(DCMF_TORUS_ASYNCBROADCAST_RECTANGLE_PROTOCOL,
+   if(ASYNC_BROADCAST_REGISTER(DCMF_TORUS_ASYNCBROADCAST_RECTANGLE_PROTOCOL,
 			    &MPIDI_CollectiveProtocols.async_rectangle_bcast,
-			    &a_broadcast_config);
+			    &a_broadcast_config) != DCMF_SUCCESS)
+      DCMF_INFO_UNSET(properties, DCMF_USE_ARECT_BCAST);
    
-   //   BROADCAST_REGISTER(DCMF_TORUS_RECT_BCAST_3COLOR_PROTOCOL,
-   //                     &MPIDI_CollectiveProtocols.broadcast.rectangle.threecolor,
-   //                     &broadcast_config);
 
    if(BROADCAST_REGISTER(DCMF_TORUS_BINOMIAL_BROADCAST_PROTOCOL,
 			 &MPIDI_CollectiveProtocols.binomial_bcast,
 			 &broadcast_config) != DCMF_SUCCESS)
      DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_BCAST);
 
-   ASYNC_BROADCAST_REGISTER(DCMF_TORUS_ASYNCBROADCAST_BINOMIAL_PROTOCOL,
+   if(ASYNC_BROADCAST_REGISTER(DCMF_TORUS_ASYNCBROADCAST_BINOMIAL_PROTOCOL,
 			    &MPIDI_CollectiveProtocols.async_binomial_bcast,
-			    &a_broadcast_config);
+			    &a_broadcast_config) != DCMF_SUCCESS)
+      DCMF_INFO_UNSET(properties, DCMF_USE_ABINOM_BCAST);
 
-   /* Register allreduce protocols */
+   /* --------------------------------------------- */
+   /* Register allreduce protocols needed/requested */
+   /* --------------------------------------------- */
    if(DCMF_INFO_ISSET(properties, DCMF_USE_TREE_ALLREDUCE) ||
       DCMF_INFO_ISSET(properties, DCMF_USE_CCMI_TREE_ALLREDUCE))
-     {
-       if(ALLREDUCE_REGISTER(DCMF_TREE_ALLREDUCE_PROTOCOL,
+   {
+      if(ALLREDUCE_REGISTER(DCMF_TREE_ALLREDUCE_PROTOCOL,
 			     &MPIDI_CollectiveProtocols.tree_allreduce,
 			     &allreduce_config) != DCMF_SUCCESS)
-	 {
-	   DCMF_INFO_UNSET(properties, DCMF_USE_TREE_ALLREDUCE);
-	   DCMF_INFO_UNSET(properties, DCMF_USE_CCMI_TREE_ALLREDUCE);
-	 }
-     }
+      {
+         DCMF_INFO_UNSET(properties, DCMF_USE_TREE_ALLREDUCE);
+         DCMF_INFO_UNSET(properties, DCMF_USE_CCMI_TREE_ALLREDUCE);
+      }
+   }
    
-   if((ALLREDUCE_REGISTER(DCMF_TREE_PIPELINED_ALLREDUCE_PROTOCOL,
-			  &MPIDI_CollectiveProtocols.pipelinedtree_allreduce,
-			  &allreduce_config) != DCMF_SUCCESS) ||
-      (ALLREDUCE_REGISTER(DCMF_TREE_DPUT_PIPELINED_ALLREDUCE_PROTOCOL,
-			  &MPIDI_CollectiveProtocols.pipelinedtree_dput_allreduce,
-			  &allreduce_config) != DCMF_SUCCESS) )
-     DCMF_INFO_UNSET(properties, DCMF_USE_PIPELINED_TREE_ALLREDUCE);
+   if(DCMF_INFO_ISSET(properties, DCMF_USE_PIPELINED_TREE_ALLREDUCE))
+   {
+      if((ALLREDUCE_REGISTER(DCMF_TREE_PIPELINED_ALLREDUCE_PROTOCOL,
+              &MPIDI_CollectiveProtocols.pipelinedtree_allreduce,
+              &allreduce_config) != DCMF_SUCCESS) ||
+         (ALLREDUCE_REGISTER(DCMF_TREE_DPUT_PIPELINED_ALLREDUCE_PROTOCOL,
+              &MPIDI_CollectiveProtocols.pipelinedtree_dput_allreduce,
+              &allreduce_config) != DCMF_SUCCESS) )
+        DCMF_INFO_UNSET(properties, DCMF_USE_PIPELINED_TREE_ALLREDUCE);
+   }
 
 
    if(ALLREDUCE_REGISTER(DCMF_TORUS_RECTANGLE_ALLREDUCE_PROTOCOL,
@@ -432,7 +459,10 @@ void MPIDI_Coll_register(int threadrequested)
 			    &allreduce_config) != DCMF_SUCCESS)
      DCMF_INFO_UNSET(properties, DCMF_USE_ABINOM_ALLREDUCE);
      
-   /* Register alltoallv protocols */
+   /* ----------------------------------------------- */
+   /* Register alltoallv protocol needed/requested    */
+   /* This also covvers alltoall/alltoallw operations */
+   /* ----------------------------------------------- */
    if(ALLTOALLV_REGISTER(DCMF_TORUS_ALLTOALLV_PROTOCOL,
 			 &MPIDI_CollectiveProtocols.torus_alltoallv,
 			 &alltoallv_config) != DCMF_SUCCESS)
@@ -442,7 +472,9 @@ void MPIDI_Coll_register(int threadrequested)
        DCMF_INFO_UNSET(properties, DCMF_USE_TORUS_ALLTOALLW);
      }
    
-   /* Register reduce protocols */
+   /* --------------------------------------------- */
+   /* Register reduce protocols needed/requested    */
+   /* --------------------------------------------- */
    if(DCMF_INFO_ISSET(properties, DCMF_USE_TREE_REDUCE) ||
       DCMF_INFO_ISSET(properties, DCMF_USE_CCMI_TREE_REDUCE))
      {
@@ -585,8 +617,9 @@ void MPIDI_Coll_Comm_create (MPID_Comm *comm)
 
   DCMF_INFO_SET(comm_prop, DCMF_TORUS_COMM);
 
-  if (comm -> local_size == DCMF_Messager_size())
-    DCMF_INFO_SET(comm_prop, DCMF_TREE_COMM);
+  if (comm -> local_size == DCMF_Messager_size() &&
+   !DCMF_INFO_ISSET(comm_prop, DCMF_USE_NOTREE_OPT_COLLECTIVES))
+      DCMF_INFO_SET(comm_prop, DCMF_TREE_COMM);
 
   if (global)
     DCMF_INFO_SET(comm_prop, DCMF_GLOBAL_CONTEXT);
@@ -688,7 +721,8 @@ void MPIDI_Coll_Comm_create (MPID_Comm *comm)
 	}
 
       if (!DCMF_INFO_ISSET(comm_prop, DCMF_GLOBAL_CONTEXT) ||
-	  !DCMF_INFO_ISSET(comm_prop, DCMF_TREE_COMM))
+	  !DCMF_INFO_ISSET(comm_prop, DCMF_TREE_COMM) ||
+     DCMF_INFO_ISSET(comm_prop, DCMF_USE_NOTREE_OPT_COLLECTIVES))
 	{
 	  DCMF_INFO_UNSET(comm_prop, DCMF_USE_GI_BARRIER);
 	  DCMF_INFO_UNSET(comm_prop, DCMF_USE_TREE_BCAST);
