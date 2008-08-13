@@ -57,7 +57,7 @@ typedef union {
  *
  * We always use 2 quads, just for consistency.
  */
-#define MPIDU_1SINFO_NQUADS	(sizeof(struct _i_u_s) / sizeof(DCQuad))
+#define MPIDU_1SINFO_NQUADS	((sizeof(struct _i_u_s) + sizeof(DCQuad) - 1) / sizeof(DCQuad))
 typedef union {
         struct _i_u_s {
                 size_t _0w0;	/**< word 0 */
