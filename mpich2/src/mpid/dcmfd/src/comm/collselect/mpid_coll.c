@@ -330,68 +330,67 @@ void MPIDI_Coll_register(int threadrequested)
 			    &barrier_config) != DCMF_SUCCESS)
     DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_LBARRIER);
 
+   /* MPID doesn't care if this actually works.  Let someone else
+    * handle problems as needed.
+    * MPID_assert_debug(local_barriers_num >  0);
+    */
 
-  /* MPID doesn't care if this actually works.  Let someone else
-   * handle problems as needed.
-   * MPID_assert_debug(local_barriers_num >  0);
-   */
+   /* -------------------------------------------------------------- */
+   /* Register single-thread (memory optimized) protocols if desired */
+   /* -------------------------------------------------------------- */
+   /* Sort out the single thread memory optimizations first. If we
+    * are single threaed, we want to register the single thread versions
+    * to save memory */
 
-  /* -------------------------------------------------------------- */
-  /* Register single-thread (memory optimized) protocols if desired */
-  /* -------------------------------------------------------------- */
-  /* Sort out the single thread memory optimizations first. If we
-   * are single threaed, we want to register the single thread versions
-   * to save memory */
-  if(DCMF_INFO_ISSET(properties, DCMF_USE_RECT_DPUT_BCAST) &&
-     threadrequested != DCMF_THREAD_MULTIPLE)
-  {
-    if(BROADCAST_REGISTER(
-                          DCMF_TORUS_RECTANGLE_BROADCAST_PROTOCOL_DPUT_SINGLETH,
-                          &MPIDI_CollectiveProtocols.rectangle_bcast_dput,
-                          &broadcast_config) != DCMF_SUCCESS)
-      DCMF_INFO_UNSET(properties, DCMF_USE_RECT_DPUT_BCAST);
-  }
+   if(DCMF_INFO_ISSET(properties, DCMF_USE_RECT_DPUT_BCAST) &&
+      threadrequested != DCMF_THREAD_MULTIPLE)
+   {
+      if(BROADCAST_REGISTER(
+            DCMF_TORUS_RECTANGLE_BROADCAST_PROTOCOL_DPUT_SINGLETH,
+            &MPIDI_CollectiveProtocols.rectangle_bcast_dput,
+            &broadcast_config) != DCMF_SUCCESS)
+         DCMF_INFO_UNSET(properties, DCMF_USE_RECT_DPUT_BCAST);
+   }
 
-  if(DCMF_INFO_ISSET(properties, DCMF_USE_RECT_SINGLETH_BCAST) &&
-     threadrequested != DCMF_THREAD_MULTIPLE)
-  {
-    if(BROADCAST_REGISTER(
-                          DCMF_TORUS_RECTANGLE_BROADCAST_PROTOCOL_SINGLETH,
-                          &MPIDI_CollectiveProtocols.rectangle_bcast_singleth,
-                          &broadcast_config) != DCMF_SUCCESS)
-      DCMF_INFO_UNSET(properties, DCMF_USE_RECT_SINGLETH_BCAST);
-  }
+   if(DCMF_INFO_ISSET(properties, DCMF_USE_RECT_SINGLETH_BCAST) &&
+      threadrequested != DCMF_THREAD_MULTIPLE)
+   {
+      if(BROADCAST_REGISTER(
+            DCMF_TORUS_RECTANGLE_BROADCAST_PROTOCOL_SINGLETH,
+            &MPIDI_CollectiveProtocols.rectangle_bcast_singleth,
+            &broadcast_config) != DCMF_SUCCESS)
+         DCMF_INFO_UNSET(properties, DCMF_USE_RECT_SINGLETH_BCAST);
+   }
 
-  if(DCMF_INFO_ISSET(properties, DCMF_USE_BINOM_SINGLETH_BCAST) &&
-     threadrequested != DCMF_THREAD_MULTIPLE)
-  {
-    if(BROADCAST_REGISTER(
-                          DCMF_TORUS_BINOMIAL_BROADCAST_PROTOCOL_SINGLETH,
-                          &MPIDI_CollectiveProtocols.binomial_bcast_singleth,
-                          &broadcast_config) != DCMF_SUCCESS)
-      DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_SINGLETH_BCAST);
-  }
-  /* --------------------------------------------------- */
-  /* Register all other bcast protocols needed/requested */
-  /* --------------------------------------------------- */
-  if(DCMF_INFO_ISSET(properties, DCMF_USE_TREE_BCAST))
-  {
-    if(BROADCAST_REGISTER(DCMF_TREE_BROADCAST_PROTOCOL,
-                          &MPIDI_CollectiveProtocols.tree_bcast,
-                          &broadcast_config) != DCMF_SUCCESS)
-      DCMF_INFO_UNSET(properties, DCMF_USE_TREE_BCAST);
-  }
+   if(DCMF_INFO_ISSET(properties, DCMF_USE_BINOM_SINGLETH_BCAST) &&
+      threadrequested != DCMF_THREAD_MULTIPLE)
+   {
+      if(BROADCAST_REGISTER(
+            DCMF_TORUS_BINOMIAL_BROADCAST_PROTOCOL_SINGLETH,
+            &MPIDI_CollectiveProtocols.binomial_bcast_singleth,
+            &broadcast_config) != DCMF_SUCCESS)
+         DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_SINGLETH_BCAST);
+   }
+   /* --------------------------------------------------- */
+   /* Register all other bcast protocols needed/requested */
+   /* --------------------------------------------------- */
+   if(DCMF_INFO_ISSET(properties, DCMF_USE_TREE_BCAST))
+     {
+       if(BROADCAST_REGISTER(DCMF_TREE_BROADCAST_PROTOCOL,
+			     &MPIDI_CollectiveProtocols.tree_bcast,
+			     &broadcast_config) != DCMF_SUCCESS)
+	 DCMF_INFO_UNSET(properties, DCMF_USE_TREE_BCAST);
+     }
 
-  if(BROADCAST_REGISTER(DCMF_TORUS_RECTANGLE_BROADCAST_PROTOCOL,
-                        &MPIDI_CollectiveProtocols.rectangle_bcast,
-                        &broadcast_config) != DCMF_SUCCESS)
-    DCMF_INFO_UNSET(properties, DCMF_USE_RECT_BCAST);
+   if(BROADCAST_REGISTER(DCMF_TORUS_RECTANGLE_BROADCAST_PROTOCOL,
+			 &MPIDI_CollectiveProtocols.rectangle_bcast,
+			 &broadcast_config) != DCMF_SUCCESS)
+     DCMF_INFO_UNSET(properties, DCMF_USE_RECT_BCAST);
 
-  if(ASYNC_BROADCAST_REGISTER(DCMF_TORUS_ASYNCBROADCAST_RECTANGLE_PROTOCOL,
-                              &MPIDI_CollectiveProtocols.async_rectangle_bcast,
-                              &a_broadcast_config) != DCMF_SUCCESS)
-    DCMF_INFO_UNSET(properties, DCMF_USE_ARECT_BCAST);
-   
+   if(ASYNC_BROADCAST_REGISTER(DCMF_TORUS_ASYNCBROADCAST_RECTANGLE_PROTOCOL,
+			    &MPIDI_CollectiveProtocols.async_rectangle_bcast,
+			    &a_broadcast_config) != DCMF_SUCCESS)
+      DCMF_INFO_UNSET(properties, DCMF_USE_ARECT_BCAST);
 
   if(BROADCAST_REGISTER(DCMF_TORUS_BINOMIAL_BROADCAST_PROTOCOL,
                         &MPIDI_CollectiveProtocols.binomial_bcast,
@@ -557,12 +556,12 @@ void MPIDI_Coll_Comm_create (MPID_Comm *comm)
   /* let us assume global context is comm_world */
   global = 1;
   
-  if(MPIR_ThreadInfo.thread_provided == MPI_THREAD_MULTIPLE)
-  {
-    DCMF_INFO_SET(comm_prop, DCMF_THREADED_MODE);
-    if(comm != comm_world)
-      global = 0;
-  }
+   if(MPIR_ThreadInfo.thread_provided == MPI_THREAD_MULTIPLE)
+   {
+      DCMF_INFO_SET(comm_prop, DCMF_THREADED_MODE);
+      if(comm != comm_world)
+       global = 0;
+    }
   else /* single MPI thread. */
   {
     DCMF_INFO_SET(comm_prop, DCMF_SINGLE_THREAD_MODE);
@@ -691,24 +690,30 @@ void MPIDI_Coll_Comm_create (MPID_Comm *comm)
     */
     DCMF_INFO_OR(coll_prop, comm_prop);
 
-    if (!DCMF_INFO_ISSET(comm_prop, DCMF_RECT_COMM))
-    {
-      DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_BARRIER);
-      DCMF_INFO_UNSET(comm_prop, DCMF_USE_ARECT_BCAST);
-      DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_BCAST);
+   if(MPIR_ThreadInfo.thread_provided == MPI_THREAD_MULTIPLE)
+   {
       DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_DPUT_BCAST);
       DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_SINGLETH_BCAST);
-      DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_BCAST_ALLGATHER);
-      DCMF_INFO_UNSET(comm_prop, DCMF_USE_ARECT_BCAST_ALLGATHER);
-      DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_BCAST_ALLGATHERV);
-      DCMF_INFO_UNSET(comm_prop, DCMF_USE_ARECT_BCAST_ALLGATHERV);
-      DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_ALLREDUCE);
-      DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECTRING_ALLREDUCE);
-      DCMF_INFO_UNSET(comm_prop, DCMF_USE_ARECT_ALLREDUCE);
-      DCMF_INFO_UNSET(comm_prop, DCMF_USE_ARECTRING_ALLREDUCE);
-      DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_REDUCE);
-      DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECTRING_REDUCE);
-    }
+      DCMF_INFO_UNSET(comm_prop, DCMF_USE_BINOM_SINGLETH_BCAST);
+   }
+      if (!DCMF_INFO_ISSET(comm_prop, DCMF_RECT_COMM))
+	{
+	  DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_BARRIER);
+	  DCMF_INFO_UNSET(comm_prop, DCMF_USE_ARECT_BCAST);
+	  DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_BCAST);
+	  DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_DPUT_BCAST);
+	  DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_SINGLETH_BCAST);
+	  DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_BCAST_ALLGATHER);
+	  DCMF_INFO_UNSET(comm_prop, DCMF_USE_ARECT_BCAST_ALLGATHER);
+	  DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_BCAST_ALLGATHERV);
+	  DCMF_INFO_UNSET(comm_prop, DCMF_USE_ARECT_BCAST_ALLGATHERV);
+	  DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_ALLREDUCE);
+	  DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECTRING_ALLREDUCE);
+	  DCMF_INFO_UNSET(comm_prop, DCMF_USE_ARECT_ALLREDUCE);
+	  DCMF_INFO_UNSET(comm_prop, DCMF_USE_ARECTRING_ALLREDUCE);
+	  DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_REDUCE);
+	  DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECTRING_REDUCE);
+	}
       
     if (DCMF_INFO_ISSET(comm_prop, DCMF_THREADED_MODE) && !global)
     {

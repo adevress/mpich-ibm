@@ -637,71 +637,71 @@ MPIDI_Env_setup()
   }
   
   
-  envopts = getenv("DCMF_BCAST");
-  if(envopts != NULL)
-  {
-    DCMF_INFO_UNSET(properties, DCMF_USE_TREE_BCAST);
-    DCMF_INFO_UNSET(properties, DCMF_USE_RECT_BCAST);
-    DCMF_INFO_UNSET(properties, DCMF_USE_ARECT_BCAST);
-    DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_BCAST);
-    DCMF_INFO_UNSET(properties, DCMF_USE_ABINOM_BCAST);
-    DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_SINGLETH_BCAST);
-    DCMF_INFO_UNSET(properties, DCMF_USE_RECT_DPUT_BCAST);
-    DCMF_INFO_UNSET(properties, DCMF_USE_RECT_SINGLETH_BCAST);
-    DCMF_INFO_UNSET(properties, DCMF_USE_SCATTER_GATHER_BCAST);
-    DCMF_INFO_SET(properties, DCMF_BCAST_ENVVAR);
+   envopts = getenv("DCMF_BCAST");
+   if(envopts != NULL)
+   {
+      DCMF_INFO_UNSET(properties, DCMF_USE_TREE_BCAST);
+      DCMF_INFO_UNSET(properties, DCMF_USE_RECT_BCAST);
+      DCMF_INFO_UNSET(properties, DCMF_USE_ARECT_BCAST);
+      DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_BCAST);
+      DCMF_INFO_UNSET(properties, DCMF_USE_ABINOM_BCAST);
+      DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_SINGLETH_BCAST);
+      DCMF_INFO_UNSET(properties, DCMF_USE_RECT_DPUT_BCAST);
+      DCMF_INFO_UNSET(properties, DCMF_USE_RECT_SINGLETH_BCAST);
+      DCMF_INFO_UNSET(properties, DCMF_USE_SCATTER_GATHER_BCAST);
+      DCMF_INFO_SET(properties, DCMF_BCAST_ENVVAR);
 
-    if(strncasecmp(envopts, "M", 1) == 0) /* MPICH */
-    {
-      DCMF_INFO_SET(properties, DCMF_USE_MPICH_BCAST);
-      DCMF_INFO_UNSET(properties, DCMF_USE_OPT_BCAST);
-    }
-    else if(strncasecmp(envopts, "AR", 2) == 0) /* async rectangle */
-    {
-      DCMF_INFO_SET(properties, DCMF_USE_ARECT_BCAST);
-    }
-    else if(strncasecmp(envopts, "AB", 2) == 0) /* async binomials */
-    {
-      DCMF_INFO_SET(properties, DCMF_USE_ABINOM_BCAST);
-    }
-    else if(strncasecmp(envopts, "R", 1) == 0) /* Rectangle */
-    {
-      DCMF_INFO_SET(properties, DCMF_USE_RECT_BCAST);
-    }
-    else if(strncasecmp(envopts, "B", 1) == 0) /* Binomial */
-    {
-      DCMF_INFO_SET(properties, DCMF_USE_BINOM_BCAST);
-    }
-    else if(strncasecmp(envopts, "T", 1) == 0) /* Tree */
-    {
-      DCMF_INFO_SET(properties, DCMF_USE_TREE_BCAST);
-    }
-    else if(strncasecmp(envopts, "D", 1) == 0) /* Direct put */
-    {
-      DCMF_INFO_SET(properties, DCMF_USE_RECT_DPUT_BCAST);
-    }
-    else if(strncasecmp(envopts, "SB", 1) == 0) /* Single thread, binomial */
-    {
-      DCMF_INFO_SET(properties, DCMF_USE_BINOM_SINGLETH_BCAST);
-    }
-    else if(strncasecmp(envopts, "SR", 1) == 0) /* Single thread, rect */
-    {
-      DCMF_INFO_SET(properties, DCMF_USE_RECT_SINGLETH_BCAST);
-    }
-    else if(strncasecmp(envopts, "SG", 1) == 0) /* Scatter/gather via pt2pt */
-    {
-      DCMF_INFO_SET(properties, DCMF_USE_SCATTER_GATHER_BCAST);
-    }
-    else
-    {
-      fprintf(stderr,
-              "Valid bcasts are: M, AR, AB, R, B, T, D, SR, SB, and SG. Using MPICH\n");
-      DCMF_INFO_SET(properties, DCMF_USE_MPICH_BCAST);
-      DCMF_INFO_UNSET(properties, DCMF_USE_OPT_BCAST);
-    }
-  } 
+      if(strncasecmp(envopts, "M", 1) == 0) /* MPICH */
+      {
+         DCMF_INFO_SET(properties, DCMF_USE_MPICH_BCAST);
+         DCMF_INFO_UNSET(properties, DCMF_USE_OPT_BCAST);
+      }
+      else if(strncasecmp(envopts, "AR", 2) == 0) /* async rectangle */
+      {
+         DCMF_INFO_SET(properties, DCMF_USE_ARECT_BCAST);
+      }
+      else if(strncasecmp(envopts, "AB", 2) == 0) /* async binomials */
+      {
+         DCMF_INFO_SET(properties, DCMF_USE_ABINOM_BCAST);
+      }
+      else if(strncasecmp(envopts, "R", 1) == 0) /* Rectangle */
+      {
+         DCMF_INFO_SET(properties, DCMF_USE_RECT_BCAST);
+      }
+      else if(strncasecmp(envopts, "B", 1) == 0) /* Binomial */
+      {
+         DCMF_INFO_SET(properties, DCMF_USE_BINOM_BCAST);
+      }
+      else if(strncasecmp(envopts, "T", 1) == 0) /* Tree */
+      {
+         DCMF_INFO_SET(properties, DCMF_USE_TREE_BCAST);
+      }
+      else if(strncasecmp(envopts, "D", 1) == 0) /* Direct put */
+      {
+         DCMF_INFO_SET(properties, DCMF_USE_RECT_DPUT_BCAST);
+      }
+      else if(strncasecmp(envopts, "SB", 2) == 0) /* Single thread, binomial */
+      {
+         DCMF_INFO_SET(properties, DCMF_USE_BINOM_SINGLETH_BCAST);
+      }
+      else if(strncasecmp(envopts, "SR", 2) == 0) /* Single thread, rect */
+      {
+         DCMF_INFO_SET(properties, DCMF_USE_RECT_SINGLETH_BCAST);
+      }
+      else if(strncasecmp(envopts, "SG", 2) == 0) /* Scatter/gather via pt2pt */
+      {
+         DCMF_INFO_SET(properties, DCMF_USE_SCATTER_GATHER_BCAST);
+      }
+      else
+      {
+         fprintf(stderr,
+            "Valid bcasts are: M, AR, AB, R, B, T, D, SR, SB, and SG. Using MPICH\n");
+         DCMF_INFO_SET(properties, DCMF_USE_MPICH_BCAST);
+         DCMF_INFO_UNSET(properties, DCMF_USE_OPT_BCAST);
+      }
+   } 
    
-  envopts = getenv("DCMF_NUMCOLORS");
+   envopts = getenv("DCMF_NUMCOLORS");
   if(envopts != NULL)
   {
     int colors = atoi(envopts);
