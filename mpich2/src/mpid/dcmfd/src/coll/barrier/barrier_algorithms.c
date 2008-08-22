@@ -42,11 +42,11 @@ MPIDO_Barrier_gi(MPID_Comm * comm)
   if (mpid_globalbarrier_restart)
     rc = DCMF_Restart (&mpid_globalbarrier_request);
   else
-    {
-      mpid_globalbarrier_restart = 1;
-      rc = DCMF_GlobalBarrier(&MPIDI_Protocols.globalbarrier,
-			      &mpid_globalbarrier_request, callback);
-    }
+  {
+    mpid_globalbarrier_restart = 1;
+    rc = DCMF_GlobalBarrier(&MPIDI_Protocols.globalbarrier,
+                            &mpid_globalbarrier_request, callback);
+  }
 
   if (rc == DCMF_SUCCESS)
     MPID_PROGRESS_WAIT_WHILE(* (int *) callback.clientdata);

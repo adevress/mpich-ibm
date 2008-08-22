@@ -6,6 +6,8 @@
 #include "mpidimpl.h"
 #include "pmi.h"
 
+extern STAR_FreeMem(MPID_Comm *);
+
 /**
  * \brief Shut down the system
  *
@@ -14,22 +16,25 @@
 */
 int MPID_Finalize()
 {
-  PMPI_Barrier(MPI_COMM_WORLD);
+  MPID_Comm * comm;
+  MPID_Comm_get_ptr(MPI_COMM_WORLD, comm);
+
+  MPIR_Barrier(comm);
+
+  STAR_FreeMem(comm);
+
+  if (exec_name)
+    free(exec_name);
 
   /* ------------------------- */
   /* shutdown the statistics   */
   /* ------------------------- */
   MPIDI_Statistics_finalize();
 
-  if (exec_name) 
-    free(exec_name);
-
   /* ------------------------- */
   /* shutdown request queues   */
   /* ------------------------- */
   MPIDI_Recvq_finalize();
-
-  DCMF_Messager_finalize();
 
   return MPI_SUCCESS;
 }

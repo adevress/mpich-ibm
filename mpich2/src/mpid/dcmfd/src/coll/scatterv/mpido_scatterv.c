@@ -5,6 +5,7 @@
  */
 
 #include "mpido_coll.h"
+#include "mpidi_star.h"
 #include "mpidi_coll_prototypes.h"
 
 #pragma weak PMPIDO_Scatterv = MPIDO_Scatterv
@@ -39,62 +40,67 @@ int MPIDO_Scatterv(void *sendbuf,
   bcast_scatterv = DCMF_INFO_ISSET(properties, DCMF_USE_BCAST_SCATTERV);
   
   if(rank == root)
-    {
-      MPIDI_Datatype_get_info(1,
-			      sendtype,
-			      contig,
-			      nbytes,
-			      dt_ptr,
-			      true_lb);
-      if(recvtype == MPI_DATATYPE_NULL || recvcount <= 0 || !contig)
-	info[0] = 0;
-    }
+  {
+    MPIDI_Datatype_get_info(1,
+                            sendtype,
+                            contig,
+                            nbytes,
+                            dt_ptr,
+                            true_lb);
+    if(recvtype == MPI_DATATYPE_NULL || recvcount <= 0 || !contig)
+      info[0] = 0;
+  }
   else
-    {
-      MPIDI_Datatype_get_info(1,
-			      recvtype,
-			      contig,
-			      nbytes,
-			      dt_ptr,
-			      true_lb);
-      if(sendtype == MPI_DATATYPE_NULL || !contig)
-	info[0] = 0;
-    }
+  {
+    MPIDI_Datatype_get_info(1,
+                            recvtype,
+                            contig,
+                            nbytes,
+                            dt_ptr,
+                            true_lb);
+    if(sendtype == MPI_DATATYPE_NULL || !contig)
+      info[0] = 0;
+  }
 
   /* Make sure parameters are the same on all the nodes */
   /* specifically, noncontig on the receive */
+  /* set the internal control flow to disable internal star tuning */
+  STAR_info.internal_control_flow = 1;
+
   MPIDO_Allreduce(MPI_IN_PLACE,
 		  info,
 		  2,
 		  MPI_INT,
 		  MPI_BAND,
 		  comm_ptr);
+  /* reset flag */
+  STAR_info.internal_control_flow = 0;  
 
   if (DCMF_INFO_ISSET(properties, DCMF_USE_MPICH_SCATTERV) ||
-     !info[0] ||
-     !alltoall_scatterv ||
-     !bcast_scatterv ||
-     (bcast_scatterv && info[1] != sum))
+      !info[0] ||
+      !alltoall_scatterv ||
+      !bcast_scatterv ||
+      (bcast_scatterv && info[1] != sum))
     return MPIR_Scatterv(sendbuf, sendcounts, displs, sendtype,
 			 recvbuf, recvcount, recvtype,
 			 root, comm_ptr);
   
   
   if(rank == root)
+  {
+    MPID_Ensure_Aint_fits_in_pointer(MPIR_VOID_PTR_CAST_TO_MPI_AINT
+                                     sendbuf + true_lb);
+    sendbuf = (char *) sendbuf + true_lb;
+  }
+  else
+  {
+    if(recvbuf != MPI_IN_PLACE)
     {
       MPID_Ensure_Aint_fits_in_pointer(MPIR_VOID_PTR_CAST_TO_MPI_AINT
-				       sendbuf + true_lb);
-      sendbuf = (char *) sendbuf + true_lb;
+                                       recvbuf + true_lb);
+      recvbuf = (char *) recvbuf + true_lb;
     }
-  else
-    {
-      if(recvbuf != MPI_IN_PLACE)
-	{
-	  MPID_Ensure_Aint_fits_in_pointer(MPIR_VOID_PTR_CAST_TO_MPI_AINT
-					   recvbuf + true_lb);
-	  recvbuf = (char *) recvbuf + true_lb;
-	}
-    }
+  }
 
   if (alltoall_scatterv)
     return MPIDO_Scatterv_alltoallv(sendbuf,
@@ -131,6 +137,6 @@ int MPIDO_Scatterv(void *sendbuf,
                    int root,
                    MPID_Comm *comm_ptr)
 {
-    MPID_abort();
+  MPID_abort();
 }
 #endif /* !USE_CCMI_COLL */

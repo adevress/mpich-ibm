@@ -56,14 +56,14 @@ int MPIDO_Reduce_scatter(void *sendbuf,
   displs = MPIU_Malloc(size * sizeof(int));
   
   if (!tempbuf || !displs)
-    {
-      if(tempbuf)
-	MPIU_Free(tempbuf);
-      return MPIR_Err_create_code(MPI_SUCCESS, 
-				      MPIR_ERR_RECOVERABLE,
-				  "MPI_Reduce_scatter",
-				  __LINE__, MPI_ERR_OTHER, "**nomem", 0);
-    }
+  {
+    if(tempbuf)
+      MPIU_Free(tempbuf);
+    return MPIR_Err_create_code(MPI_SUCCESS, 
+                                MPIR_ERR_RECOVERABLE,
+                                "MPI_Reduce_scatter",
+                                __LINE__, MPI_ERR_OTHER, "**nomem", 0);
+  }
   
   memset(displs, 0, size*sizeof(int));
   
@@ -82,17 +82,17 @@ int MPIDO_Reduce_scatter(void *sendbuf,
   /* rank 0 has the entire buffer, need to split out our individual 
      piece does recvbuf need a dt_lb added? */
   if (rc == MPI_SUCCESS)
-    {
-      rc = MPIDO_Scatterv(tempbuf, 
-			  recvcounts, 
-			  displs, 
-			  datatype,
-			  recvbuf, 
-			  tcount/size, 
-			  datatype, 
-			  0, 
-			  comm_ptr);
-    }
+  {
+    rc = MPIDO_Scatterv(tempbuf, 
+                        recvcounts, 
+                        displs, 
+                        datatype,
+                        recvbuf, 
+                        tcount/size, 
+                        datatype, 
+                        0, 
+                        comm_ptr);
+  }
   
   MPIU_Free(tempbuf);
   MPIU_Free(displs);

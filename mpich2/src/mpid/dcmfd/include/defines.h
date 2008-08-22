@@ -321,6 +321,10 @@ extern int DCMF_INFO_MET(DCMF_Embedded_Info_Set *s, DCMF_Embedded_Info_Set *d);
 
 #define DCMF_BCAST_ENVVAR                                                109
 
+#define DCMF_USE_RECT_DPUT_ALLGATHER                                     110
+
+#define DCMF_USE_RECT_DPUT_ALLGATHERV                                    111
+
 
 
 enum DCMF_SUPPORTED {
@@ -329,5 +333,9 @@ enum DCMF_SUPPORTED {
   DCMF_NOT_SUPPORTED       = -1,
   DCMF_SUPPORT_NOT_NEEDED  = -2
 };
+
+#define COMWRLD 0
+#define RECT    1
+#define IRREG   2
 
 #endif

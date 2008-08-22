@@ -31,6 +31,7 @@ typedef DCQuad DCMF_CollectiveRequest_t[1];
 typedef DCQuad DCMF_CollectiveProtocol_t[1];
 #endif /* !USE_CCMI_COLL */
 
+/* name of executable */
 char * exec_name;
 
 /* verify that the version of the installed dcmf library is compatible */
@@ -288,11 +289,14 @@ struct MPIDI_DCMF_Request
 /** \brief needed by the (stolen) CH3 implementation of dcmf_buffer.c */
 typedef unsigned MPIDI_msg_sz_t;
 
+struct STAR_Tuning_Session;
+
 /** \brief This defines the portion of MPID_Comm that is specific to the DCMF Device */
 struct MPIDI_DCMF_Comm
 {
-  DCMF_Geometry_t geometry; /**< Geometry component for collectives           */
-  DCMF_CollectiveRequest_t barrier; /**< Barrier request for collectives      */
+  DCMF_Geometry_t geometry; /**< Geometry component for collectives      */
+  DCMF_CollectiveRequest_t barrier; /**< Barrier request for collectives */
+  unsigned char comm_shape; /* 0: commworld, 1: rect, 2: irreg */ 
   unsigned *sndlen; /**< lazy alloc alltoall vars */
   unsigned *rcvlen;
   unsigned *sdispls;
@@ -303,6 +307,9 @@ struct MPIDI_DCMF_Comm
 			  * steps to prevent too many unexpected
 			  * messages */
 
+  /* this will hold a list of tuning session for the collective sites */
+  struct STAR_Tuning_Session * tuning_session;
+  
   /* struct of bits holding info relavant to comm */
   DCMF_Embedded_Info_Set properties;
 };

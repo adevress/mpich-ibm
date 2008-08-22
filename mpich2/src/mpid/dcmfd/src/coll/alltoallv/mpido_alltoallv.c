@@ -59,12 +59,12 @@ MPIDO_Alltoallv(void *sendbuf,
   /* per advance loop.  The best performance is 2   */
   /* ---------------------------------------------- */
   for (i = 0; i < numprocs; i++)
-    {
-      comm_ptr->dcmf.sndlen [i] = tsndlen * sendcounts[i];
-      comm_ptr->dcmf.sdispls[i] = tsndlen * senddispls[i];
-      comm_ptr->dcmf.rcvlen [i] = trcvlen * recvcounts[i];
-      comm_ptr->dcmf.rdispls[i] = trcvlen * recvdispls[i];
-    }
+  {
+    comm_ptr->dcmf.sndlen [i] = tsndlen * sendcounts[i];
+    comm_ptr->dcmf.sdispls[i] = tsndlen * senddispls[i];
+    comm_ptr->dcmf.rcvlen [i] = trcvlen * recvcounts[i];
+    comm_ptr->dcmf.rdispls[i] = trcvlen * recvdispls[i];
+  }
 
 
   /* ---------------------------------------------- */
@@ -86,15 +86,15 @@ MPIDO_Alltoallv(void *sendbuf,
 #else /* !USE_CCMI_COLL */
 
 int MPIDO_Alltoallv(void *sendbuf,
-                int *sendcounts,
-                int *senddispls,
-                MPI_Datatype sendtype,
-                void *recvbuf,
-                int *recvcounts,
-                int *recvdispls,
-                MPI_Datatype recvtype,
-                MPID_Comm *comm_ptr)
+                    int *sendcounts,
+                    int *senddispls,
+                    MPI_Datatype sendtype,
+                    void *recvbuf,
+                    int *recvcounts,
+                    int *recvdispls,
+                    MPI_Datatype recvtype,
+                    MPID_Comm *comm_ptr)
 {
-    MPID_abort();
+  MPID_abort();
 }
 #endif /* !USE_CCMI_COLL */

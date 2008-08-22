@@ -58,12 +58,12 @@ int MPID_Init(int * argc,
   DCMF_Result dcmf_rc;
 
  if (argc)
-   {
-     exec_name = NULL;
-     i = strlen(* argv[0]) + 1;
-     exec_name = (char *) malloc(sizeof(char) * i);
-     strcpy(exec_name, *argv[0]);
-   }
+ {
+   exec_name = NULL;
+   i = strlen(* argv[0]) + 1;
+   exec_name = (char *) malloc(sizeof(char) * i);
+   strcpy(exec_name, *argv[0]);
+ }
 
   /* ------------------------- */
   /* initialize the statistics */

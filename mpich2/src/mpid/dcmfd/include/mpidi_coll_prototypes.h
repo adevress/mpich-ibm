@@ -15,11 +15,11 @@ int MPIDO_Bcast_binom_sync(void *, int, int, MPID_Comm *);
 int MPIDO_Bcast_rect_sync(void *, int, int, MPID_Comm *);
 int MPIDO_Bcast_binom_async(void *, int, int, MPID_Comm *);
 int MPIDO_Bcast_rect_async(void *, int, int, MPID_Comm *);
+int MPIDO_Bcast_scatter_gather(void *, int, int, MPID_Comm *);
+int MPIDO_Bcast_flattree(void *, int, int, MPID_Comm *);
 int MPIDO_Bcast_rect_dput(void *, int, int, MPID_Comm *);
 int MPIDO_Bcast_rect_singleth(void *, int, int, MPID_Comm *);
 int MPIDO_Bcast_binom_singleth(void *, int, int, MPID_Comm *);
-int MPIDO_Bcast_scatter_gather(void *, int, int, MPID_Comm *);
-int MPIDO_Bcast_flattree(void *, int, int, MPID_Comm *);
 
 /* Allreduce  prototypes */
 int MPIDO_Allreduce_global_tree(void *, void *, int, DCMF_Dt, DCMF_Op,
@@ -36,11 +36,11 @@ int MPIDO_Allreduce_rect(void *, void *, int, DCMF_Dt, DCMF_Op,
 int MPIDO_Allreduce_rectring(void *, void *, int, DCMF_Dt, DCMF_Op,
 			     MPI_Datatype, MPID_Comm *);
 int MPIDO_Allreduce_async_binom(void *, void *, int, DCMF_Dt, DCMF_Op,
-			  MPI_Datatype, MPID_Comm *);
+				MPI_Datatype, MPID_Comm *);
 int MPIDO_Allreduce_async_rect(void *, void *, int, DCMF_Dt, DCMF_Op,
-			 MPI_Datatype, MPID_Comm *);
+			       MPI_Datatype, MPID_Comm *);
 int MPIDO_Allreduce_async_rectring(void *, void *, int, DCMF_Dt, DCMF_Op,
-			     MPI_Datatype, MPID_Comm *);
+				   MPI_Datatype, MPID_Comm *);
 
 
 /* Alltoall prototypes */
@@ -50,29 +50,6 @@ int MPIDO_Alltoall_torus(void *, int, MPI_Datatype,
 int MPIDO_Alltoall_simple(void *, int, MPI_Datatype,
 			  void *, int, MPI_Datatype,
 			  MPID_Comm *);
-int MPIDO_Alltoallw(void *sendbuf, int *sendcounts, int *senddispls,
-                    MPI_Datatype *sendtypes,
-                    void *recvbuf, int *recvcounts, int *recvdispls,
-                    MPI_Datatype *recvtypes,
-                    MPID_Comm *comm_ptr);
-int MPIDO_Alltoallw_torus(void *sendbuf, int *sendcounts, int *senddispls,
-                    MPI_Datatype *sendtypes,
-                    void *recvbuf, int *recvcounts, int *recvdispls,
-                    MPI_Datatype *recvtypes,
-                    MPID_Comm *comm_ptr);
-
-int MPIDO_Alltoallv(void *sendbuf, int *sendcounts, int *senddispls,
-                    MPI_Datatype sendtype,
-                    void *recvbuf, int *recvcounts, int *recvdispls,
-                    MPI_Datatype recvtype,
-                    MPID_Comm *comm_ptr);
-
-int MPIDO_Alltoallv_torus(void *sendbuf, int *sendcounts, int *senddispls,
-                    MPI_Datatype sendtype,
-                    void *recvbuf, int *recvcounts, int *recvdispls,
-                    MPI_Datatype recvtype,
-                    MPID_Comm *comm_ptr);
-
 
 /* Allgather prototypes */
 int MPIDO_Allgather_allreduce(void *,
@@ -134,7 +111,8 @@ int MPIDO_Allgather_bcast_binom_async(void *sendbuf,
                                       size_t send_size,
                                       size_t recv_size,
                                       MPID_Comm *comm_ptr);
-                                      
+
+
 /* Allgatherv prototypes */
 int MPIDO_Allgatherv_allreduce(void *,
 			       int,
@@ -219,17 +197,6 @@ int MPIDO_Barrier_dcmf(MPID_Comm *);
 int MPIDO_Scatter_bcast(void *, int, MPI_Datatype,
 			void *, int, MPI_Datatype,
 			int, MPID_Comm *);
-
-int MPIDO_Scatterv_bcast(void *sendbuf, int *sendcounts, int *displs,
-                         MPI_Datatype sendtype,
-                         void *recvbuf, int recvcount, MPI_Datatype recvtype,
-                         int root, MPID_Comm *comm_ptr);
-
-int MPIDO_Scatterv_alltoallv(void * sendbuf, int * sendcounts, int * displs,
-                             MPI_Datatype sendtype,
-                             void * recvbuf, int recvcount, 
-                             MPI_Datatype recvtype, int root, 
-                             MPID_Comm * comm_ptr);
 
 /* Reduce prototypes */
 int MPIDO_Reduce_rectring(void *, void *, int, DCMF_Dt, DCMF_Op, MPI_Datatype,

@@ -4,6 +4,7 @@
  * \brief Collective setup
  */
 #include "mpido_coll.h"
+#include "mpidi_star.h"
 #include "mpix.h"
 
 MPIDI_CollectiveProtocol_t MPIDI_CollectiveProtocols;
@@ -26,8 +27,8 @@ static DCMF_Geometry_t *mpid_geometrytable[MAXGEOMETRIES];
 static DCMF_Geometry_t *
 getGeometryRequest(int comm)
 {
-   assert(mpid_geometrytable[comm%MAXGEOMETRIES] != NULL);
-   return mpid_geometrytable[comm%MAXGEOMETRIES];
+  assert(mpid_geometrytable[comm%MAXGEOMETRIES] != NULL);
+  return mpid_geometrytable[comm%MAXGEOMETRIES];
 }
 
 
@@ -70,8 +71,8 @@ static inline int BROADCAST_REGISTER(DCMF_Broadcast_Protocol proto,
 				     DCMF_CollectiveProtocol_t *proto_ptr,
 				     DCMF_Broadcast_Configuration_t *config)
 {
-   config->protocol = proto;
-   return DCMF_Broadcast_register(proto_ptr, config);
+  config->protocol = proto;
+  return DCMF_Broadcast_register(proto_ptr, config);
 }
 
 
@@ -79,35 +80,35 @@ static inline int ASYNC_BROADCAST_REGISTER(DCMF_AsyncBroadcast_Protocol proto,
 					   DCMF_CollectiveProtocol_t *proto_ptr,
 					   DCMF_AsyncBroadcast_Configuration_t *config)
 {
-   config->protocol = proto;
-   config->isBuffered = 1;
-   config->cb_geometry = getGeometryRequest;
-   return DCMF_AsyncBroadcast_register(proto_ptr, config);
+  config->protocol = proto;
+  config->isBuffered = 1;
+  config->cb_geometry = getGeometryRequest;
+  return DCMF_AsyncBroadcast_register(proto_ptr, config);
 }
 
 
 static inline int ALLREDUCE_REGISTER(DCMF_Allreduce_Protocol proto,
-                              DCMF_CollectiveProtocol_t *proto_ptr,
-                              DCMF_Allreduce_Configuration_t *config)
+                                     DCMF_CollectiveProtocol_t *proto_ptr,
+                                     DCMF_Allreduce_Configuration_t *config)
 {
-   config->protocol = proto;
-   return DCMF_Allreduce_register(proto_ptr, config);
+  config->protocol = proto;
+  return DCMF_Allreduce_register(proto_ptr, config);
 }
 
 static inline int ALLTOALLV_REGISTER(DCMF_Alltoallv_Protocol proto,
 				     DCMF_CollectiveProtocol_t *proto_ptr,
 				     DCMF_Alltoallv_Configuration_t *config)
 {
-   config->protocol = proto;
-   return DCMF_Alltoallv_register(proto_ptr, config);
+  config->protocol = proto;
+  return DCMF_Alltoallv_register(proto_ptr, config);
 }
 
 static inline int REDUCE_REGISTER(DCMF_Reduce_Protocol proto,
 				  DCMF_CollectiveProtocol_t *proto_ptr,
 				  DCMF_Reduce_Configuration_t *config)
 {
-   config->protocol = proto;
-   return DCMF_Reduce_register(proto_ptr, config);
+  config->protocol = proto;
+  return DCMF_Reduce_register(proto_ptr, config);
 }
 #endif /* USE_CCMI_COLL */
 
@@ -117,390 +118,390 @@ static inline int REDUCE_REGISTER(DCMF_Reduce_Protocol proto,
 void MPIDI_Coll_register(int threadrequested)
 {
 #ifdef USE_CCMI_COLL
-   DCMF_Embedded_Info_Set * properties = &MPIDI_CollectiveProtocols.properties;
-   DCMF_Barrier_Configuration_t   barrier_config;
-   DCMF_Broadcast_Configuration_t broadcast_config;
-   DCMF_AsyncBroadcast_Configuration_t a_broadcast_config;
-   DCMF_Allreduce_Configuration_t allreduce_config;
-   DCMF_Alltoallv_Configuration_t alltoallv_config;
-   DCMF_Reduce_Configuration_t    reduce_config;
-   DCMF_GlobalBarrier_Configuration_t gbarrier_config;
-   DCMF_GlobalBcast_Configuration_t gbcast_config;
-   DCMF_GlobalAllreduce_Configuration_t gallreduce_config;
+  DCMF_Embedded_Info_Set * properties = &MPIDI_CollectiveProtocols.properties;
+  DCMF_Barrier_Configuration_t   barrier_config;
+  DCMF_Broadcast_Configuration_t broadcast_config;
+  DCMF_AsyncBroadcast_Configuration_t a_broadcast_config;
+  DCMF_Allreduce_Configuration_t allreduce_config;
+  DCMF_Alltoallv_Configuration_t alltoallv_config;
+  DCMF_Reduce_Configuration_t    reduce_config;
+  DCMF_GlobalBarrier_Configuration_t gbarrier_config;
+  DCMF_GlobalBcast_Configuration_t gbcast_config;
+  DCMF_GlobalAllreduce_Configuration_t gallreduce_config;
 
-   DCMF_Result rc;
+  DCMF_Result rc;
 
-   /* Register the global functions first */
+  /* Register the global functions first */
    
-   /* ---------------------------------- */
-   /* Register global barrier          */
-   /* ---------------------------------- */
-   if(DCMF_INFO_ISSET(properties, DCMF_USE_GI_BARRIER))
-   {
-      gbarrier_config.protocol = DCMF_GI_GLOBALBARRIER_PROTOCOL;
-      rc = DCMF_GlobalBarrier_register(&MPIDI_Protocols.globalbarrier,
-                                       &gbarrier_config);
-      /* registering the global barrier failed, so don't use it */
-      if(rc != DCMF_SUCCESS)
+  /* ---------------------------------- */
+  /* Register global barrier          */
+  /* ---------------------------------- */
+  if(DCMF_INFO_ISSET(properties, DCMF_USE_GI_BARRIER))
+  {
+    gbarrier_config.protocol = DCMF_GI_GLOBALBARRIER_PROTOCOL;
+    rc = DCMF_GlobalBarrier_register(&MPIDI_Protocols.globalbarrier,
+                                     &gbarrier_config);
+    /* registering the global barrier failed, so don't use it */
+    if(rc != DCMF_SUCCESS)
+    {
+      DCMF_INFO_UNSET(properties, DCMF_USE_GI_BARRIER);
+    }
+  }
+
+
+  /* ---------------------------------- */
+  /* Register global broadcast          */
+  /* ---------------------------------- */
+  if(DCMF_INFO_ISSET(properties, DCMF_USE_TREE_BCAST))
+  {
+    gbcast_config.protocol = DCMF_TREE_GLOBALBCAST_PROTOCOL;
+
+    /* Check if we are in dual or vn mode and that all ranks in the system */
+    /* are physically located on one node. */
+    unsigned size = DCMF_Messager_size ();
+    if (size <= mpid_hw.tSize)
+    {
+      unsigned rank, x[4], y[4], z[4], t[4];
+      DCMF_Messager_rank2torus (0, &x[0], &y[0], &z[0], &t[0]);
+
+      gbcast_config.protocol = DCMF_INTRANODE_GLOBALBCAST_PROTOCOL;
+      for (rank = 1; rank < size; rank++)
       {
-        DCMF_INFO_UNSET(properties, DCMF_USE_GI_BARRIER);
-      }
-   }
-
-
-   /* ---------------------------------- */
-   /* Register global broadcast          */
-   /* ---------------------------------- */
-   if(DCMF_INFO_ISSET(properties, DCMF_USE_TREE_BCAST))
-   {
-      gbcast_config.protocol = DCMF_TREE_GLOBALBCAST_PROTOCOL;
-
-      /* Check if we are in dual or vn mode and that all ranks in the system */
-      /* are physically located on one node. */
-      unsigned size = DCMF_Messager_size ();
-      if (size <= mpid_hw.tSize)
-      {
-        unsigned rank, x[4], y[4], z[4], t[4];
-        DCMF_Messager_rank2torus (0, &x[0], &y[0], &z[0], &t[0]);
-
-        gbcast_config.protocol = DCMF_INTRANODE_GLOBALBCAST_PROTOCOL;
-        for (rank = 1; rank < size; rank++)
+        DCMF_Messager_rank2torus (rank, &x[rank], &y[rank], &z[rank], &t[rank]);
+        if ((x[rank-1] != x[rank]) ||
+            (y[rank-1] != y[rank]) ||
+            (z[rank-1] != z[rank]))
         {
-          DCMF_Messager_rank2torus (rank, &x[rank], &y[rank], &z[rank], &t[rank]);
-          if ((x[rank-1] != x[rank]) ||
-              (y[rank-1] != y[rank]) ||
-              (z[rank-1] != z[rank]))
-          {
-            gbcast_config.protocol = DCMF_TREE_GLOBALBCAST_PROTOCOL;
-            break;
-          }
+          gbcast_config.protocol = DCMF_TREE_GLOBALBCAST_PROTOCOL;
+          break;
         }
       }
+    }
 
-      rc = DCMF_GlobalBcast_register(&MPIDI_Protocols.globalbcast, &gbcast_config);
+    rc = DCMF_GlobalBcast_register(&MPIDI_Protocols.globalbcast, &gbcast_config);
 
-      /* most likely, we lack shared memory and therefore can't use this */
-      if(rc != DCMF_SUCCESS)
-      {
-        DCMF_INFO_UNSET(properties, DCMF_USE_TREE_BCAST);
-      }   
-   }
+    /* most likely, we lack shared memory and therefore can't use this */
+    if(rc != DCMF_SUCCESS)
+    {
+      DCMF_INFO_UNSET(properties, DCMF_USE_TREE_BCAST);
+    }   
+  }
 
-   /* ---------------------------------- */
-   /* Register global allreduce          */
-   /* ---------------------------------- */
-   if(DCMF_INFO_ISSET(properties, DCMF_USE_TREE_ALLREDUCE))
-   {
-      gallreduce_config.protocol = DCMF_TREE_GLOBALALLREDUCE_PROTOCOL;
-      rc = DCMF_GlobalAllreduce_register(&MPIDI_Protocols.globalallreduce,
-                                         &gallreduce_config);
+  /* ---------------------------------- */
+  /* Register global allreduce          */
+  /* ---------------------------------- */
+  if(DCMF_INFO_ISSET(properties, DCMF_USE_TREE_ALLREDUCE))
+  {
+    gallreduce_config.protocol = DCMF_TREE_GLOBALALLREDUCE_PROTOCOL;
+    rc = DCMF_GlobalAllreduce_register(&MPIDI_Protocols.globalallreduce,
+                                       &gallreduce_config);
 
-      /* most likely, we lack shared memory and therefore can't use this */
-      /* reduce uses the allreduce protocol */
-      if(rc != DCMF_SUCCESS)
-      {
-          /* Try the ccmi tree if we were trying global tree */
-         if (DCMF_INFO_ISSET(properties, DCMF_USE_TREE_ALLREDUCE))
-            DCMF_INFO_SET(properties, DCMF_USE_CCMI_TREE_ALLREDUCE);
-         if (DCMF_INFO_ISSET(properties, DCMF_USE_TREE_REDUCE))
-            DCMF_INFO_SET(properties, DCMF_USE_CCMI_TREE_REDUCE);
+    /* most likely, we lack shared memory and therefore can't use this */
+    /* reduce uses the allreduce protocol */
+    if(rc != DCMF_SUCCESS)
+    {
+      /* Try the ccmi tree if we were trying global tree */
+      if (DCMF_INFO_ISSET(properties, DCMF_USE_TREE_ALLREDUCE))
+        DCMF_INFO_SET(properties, DCMF_USE_CCMI_TREE_ALLREDUCE);
+      if (DCMF_INFO_ISSET(properties, DCMF_USE_TREE_REDUCE))
+        DCMF_INFO_SET(properties, DCMF_USE_CCMI_TREE_REDUCE);
           
-          DCMF_INFO_UNSET(properties, DCMF_USE_TREE_ALLREDUCE);
-          DCMF_INFO_UNSET(properties, DCMF_USE_TREE_REDUCE);
-      }
-   }
-   else /* not registering the global allreduce, so don't use it for reduce 
-         * either. 
-         */
-   {
-      if(DCMF_INFO_ISSET(properties, DCMF_USE_TREE_REDUCE))
-         DCMF_INFO_UNSET(properties, DCMF_USE_TREE_REDUCE);
-   }
+      DCMF_INFO_UNSET(properties, DCMF_USE_TREE_ALLREDUCE);
+      DCMF_INFO_UNSET(properties, DCMF_USE_TREE_REDUCE);
+    }
+  }
+  else /* not registering the global allreduce, so don't use it for reduce 
+        * either. 
+        */
+  {
+    if(DCMF_INFO_ISSET(properties, DCMF_USE_TREE_REDUCE))
+      DCMF_INFO_UNSET(properties, DCMF_USE_TREE_REDUCE);
+  }
       
 
 
-   /* register first barrier protocols now */
-   barrier_config.cb_geometry = getGeometryRequest;
+  /* register first barrier protocols now */
+  barrier_config.cb_geometry = getGeometryRequest;
 
-   /* set the function that will find the [all]reduce geometry on unexpected callbacks*/
-   allreduce_config.cb_geometry = getGeometryRequest;
-   reduce_config.cb_geometry = getGeometryRequest;
+  /* set the function that will find the [all]reduce geometry on unexpected callbacks*/
+  allreduce_config.cb_geometry = getGeometryRequest;
+  reduce_config.cb_geometry = getGeometryRequest;
 
-   /* set configuration flags in the config*/
-   allreduce_config.reuse_storage = 
-     DCMF_INFO_ISSET(properties, DCMF_USE_STORAGE_ALLREDUCE);
+  /* set configuration flags in the config*/
+  allreduce_config.reuse_storage = 
+    DCMF_INFO_ISSET(properties, DCMF_USE_STORAGE_ALLREDUCE);
 
-   reduce_config.reuse_storage = 
-     DCMF_INFO_ISSET(properties, DCMF_USE_STORAGE_REDUCE);
+  reduce_config.reuse_storage = 
+    DCMF_INFO_ISSET(properties, DCMF_USE_STORAGE_REDUCE);
 
-   /* ---------------------------------- */
-   /* Register multi-node barriers       */
-   /* ---------------------------------- */
-   /* Other env vars can be checked at communicator creation time
-    * but barriers are associated with a geometry and this knowledge
-    * isn't available to mpido_barrier
-    * If in single thread mode, register gi, rect (via rectlockbox), bino
-    * else register gi, rect (via rect barrier), bino 
-    */
+  /* ---------------------------------- */
+  /* Register multi-node barriers       */
+  /* ---------------------------------- */
+  /* Other env vars can be checked at communicator creation time
+   * but barriers are associated with a geometry and this knowledge
+   * isn't available to mpido_barrier
+   * If in single thread mode, register gi, rect (via rectlockbox), bino
+   * else register gi, rect (via rect barrier), bino 
+   */
 
-   DCMF_Barrier_Protocol barrier_proto;
-   if (threadrequested != DCMF_THREAD_MULTIPLE)
-      barrier_proto = DCMF_TORUS_RECTANGLELOCKBOX_BARRIER_PROTOCOL_SINGLETH;
-   else
-      barrier_proto = DCMF_TORUS_RECTANGLE_BARRIER_PROTOCOL; 
+  DCMF_Barrier_Protocol barrier_proto;
+  if (threadrequested != DCMF_THREAD_MULTIPLE)
+    barrier_proto = DCMF_TORUS_RECTANGLELOCKBOX_BARRIER_PROTOCOL_SINGLETH;
+  else
+    barrier_proto = DCMF_TORUS_RECTANGLE_BARRIER_PROTOCOL; 
 
-   if (DCMF_INFO_ISSET(properties, DCMF_USE_GI_BARRIER))
-   {
-      if (BARRIER_REGISTER(DCMF_GI_BARRIER_PROTOCOL,
-			    &MPIDI_CollectiveProtocols.gi_barrier,
-			    &barrier_config) != DCMF_SUCCESS)
-         DCMF_INFO_UNSET(properties, DCMF_USE_GI_BARRIER);
-   }
+  if (DCMF_INFO_ISSET(properties, DCMF_USE_GI_BARRIER))
+  {
+    if (BARRIER_REGISTER(DCMF_GI_BARRIER_PROTOCOL,
+                         &MPIDI_CollectiveProtocols.gi_barrier,
+                         &barrier_config) != DCMF_SUCCESS)
+      DCMF_INFO_UNSET(properties, DCMF_USE_GI_BARRIER);
+  }
 
-   if (!DCMF_INFO_ISSET(properties, DCMF_USE_RECT_BARRIER) &&
-       DCMF_INFO_ISSET(properties, DCMF_USE_BINOM_BARRIER))
-     {
-       /*
-	* Always register a binomial barrier for collectives in subcomms, just
-	* choose not to use it at mpido_barrier
-	*/
-       if (BARRIER_REGISTER(DCMF_TORUS_BINOMIAL_BARRIER_PROTOCOL,
-			    &MPIDI_CollectiveProtocols.binomial_barrier,
-			    &barrier_config) != DCMF_SUCCESS)
-	 DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_BARRIER);
+  if (!DCMF_INFO_ISSET(properties, DCMF_USE_RECT_BARRIER) &&
+      DCMF_INFO_ISSET(properties, DCMF_USE_BINOM_BARRIER))
+  {
+    /*
+     * Always register a binomial barrier for collectives in subcomms, just
+     * choose not to use it at mpido_barrier
+     */
+    if (BARRIER_REGISTER(DCMF_TORUS_BINOMIAL_BARRIER_PROTOCOL,
+                         &MPIDI_CollectiveProtocols.binomial_barrier,
+                         &barrier_config) != DCMF_SUCCESS)
+      DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_BARRIER);
 
-     }
+  }
    
-   else if (DCMF_INFO_ISSET(properties, DCMF_USE_RECT_BARRIER) &&
-	    !DCMF_INFO_ISSET(properties, DCMF_USE_BINOM_BARRIER))
-     {
-       if (BARRIER_REGISTER(barrier_proto,
-			    &MPIDI_CollectiveProtocols.rect_barrier,
-			    &barrier_config) != DCMF_SUCCESS)
-	 {
-	   DCMF_INFO_UNSET(properties, DCMF_USE_RECT_BARRIER);
+  else if (DCMF_INFO_ISSET(properties, DCMF_USE_RECT_BARRIER) &&
+           !DCMF_INFO_ISSET(properties, DCMF_USE_BINOM_BARRIER))
+  {
+    if (BARRIER_REGISTER(barrier_proto,
+                         &MPIDI_CollectiveProtocols.rect_barrier,
+                         &barrier_config) != DCMF_SUCCESS)
+    {
+      DCMF_INFO_UNSET(properties, DCMF_USE_RECT_BARRIER);
 
-	   /* if rect barrier does not work, then try binom */
-	   if (BARRIER_REGISTER(DCMF_TORUS_BINOMIAL_BARRIER_PROTOCOL,
-				&MPIDI_CollectiveProtocols.binomial_barrier,
-				&barrier_config) != DCMF_SUCCESS)
-	     DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_BARRIER);
-	 }
-     }
+      /* if rect barrier does not work, then try binom */
+      if (BARRIER_REGISTER(DCMF_TORUS_BINOMIAL_BARRIER_PROTOCOL,
+                           &MPIDI_CollectiveProtocols.binomial_barrier,
+                           &barrier_config) != DCMF_SUCCESS)
+        DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_BARRIER);
+    }
+  }
 
-   else
-     {
-       if (BARRIER_REGISTER(barrier_proto,
-			    &MPIDI_CollectiveProtocols.rect_barrier,
-			    &barrier_config) != DCMF_SUCCESS)
-	 DCMF_INFO_UNSET(properties, DCMF_USE_RECT_BARRIER);
-       if (BARRIER_REGISTER(DCMF_TORUS_BINOMIAL_BARRIER_PROTOCOL,
-			    &MPIDI_CollectiveProtocols.binomial_barrier,
-			    &barrier_config) != DCMF_SUCCESS)
-	 DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_BARRIER);
-     }
+  else
+  {
+    if (BARRIER_REGISTER(barrier_proto,
+                         &MPIDI_CollectiveProtocols.rect_barrier,
+                         &barrier_config) != DCMF_SUCCESS)
+      DCMF_INFO_UNSET(properties, DCMF_USE_RECT_BARRIER);
+    if (BARRIER_REGISTER(DCMF_TORUS_BINOMIAL_BARRIER_PROTOCOL,
+                         &MPIDI_CollectiveProtocols.binomial_barrier,
+                         &barrier_config) != DCMF_SUCCESS)
+      DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_BARRIER);
+  }
 
-   /* if we don't even get a binomial barrier, we are in trouble */
-   MPID_assert_debug(barriers_num >  0);
+  /* if we don't even get a binomial barrier, we are in trouble */
+  MPID_assert_debug(barriers_num >  0);
    
-   /* ---------------------------------- */
-   /* Register local barriers            */
-   /* ---------------------------------- */
-   /*
-    * Register local barriers for the geometry.
-    * Both a true local lockbox barrier and a global binomial
-    * barrier (which can be used non-optimally).  The geometry
-    * will decide internally if/which to use.
-    * They are not used directly by MPICH but must be initialized.
-    */
-   if(DCMF_INFO_ISSET(properties, DCMF_USE_LOCKBOX_LBARRIER))
-     {
-       if(LOCAL_BARRIER_REGISTER(DCMF_LOCKBOX_BARRIER_PROTOCOL,
-				 &MPIDI_CollectiveProtocols.lockbox_localbarrier,
-				 &barrier_config) != DCMF_SUCCESS)
-	 DCMF_INFO_UNSET(properties, DCMF_USE_LOCKBOX_LBARRIER);
-     }
+  /* ---------------------------------- */
+  /* Register local barriers            */
+  /* ---------------------------------- */
+  /*
+   * Register local barriers for the geometry.
+   * Both a true local lockbox barrier and a global binomial
+   * barrier (which can be used non-optimally).  The geometry
+   * will decide internally if/which to use.
+   * They are not used directly by MPICH but must be initialized.
+   */
+  if(DCMF_INFO_ISSET(properties, DCMF_USE_LOCKBOX_LBARRIER))
+  {
+    if(LOCAL_BARRIER_REGISTER(DCMF_LOCKBOX_BARRIER_PROTOCOL,
+                              &MPIDI_CollectiveProtocols.lockbox_localbarrier,
+                              &barrier_config) != DCMF_SUCCESS)
+      DCMF_INFO_UNSET(properties, DCMF_USE_LOCKBOX_LBARRIER);
+  }
 
-   /*
-    * Always register a binomial barrier for collectives in subcomms
-    */
+  /*
+   * Always register a binomial barrier for collectives in subcomms
+   */
   if(LOCAL_BARRIER_REGISTER(DCMF_TORUS_BINOMIAL_BARRIER_PROTOCOL,
 			    &MPIDI_CollectiveProtocols.binomial_localbarrier,
 			    &barrier_config) != DCMF_SUCCESS)
     DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_LBARRIER);
 
 
-   /* MPID doesn't care if this actually works.  Let someone else
-    * handle problems as needed.
-    * MPID_assert_debug(local_barriers_num >  0);
-    */
+  /* MPID doesn't care if this actually works.  Let someone else
+   * handle problems as needed.
+   * MPID_assert_debug(local_barriers_num >  0);
+   */
 
-   /* -------------------------------------------------------------- */
-   /* Register single-thread (memory optimized) protocols if desired */
-   /* -------------------------------------------------------------- */
-   /* Sort out the single thread memory optimizations first. If we
-    * are single threaed, we want to register the single thread versions
-    * to save memory */
-   if(DCMF_INFO_ISSET(properties, DCMF_USE_RECT_DPUT_BCAST) &&
-      threadrequested != DCMF_THREAD_MULTIPLE)
-   {
-      if(BROADCAST_REGISTER(
-            DCMF_TORUS_RECTANGLE_BROADCAST_PROTOCOL_DPUT_SINGLETH,
-            &MPIDI_CollectiveProtocols.rectangle_bcast_dput,
-            &broadcast_config) != DCMF_SUCCESS)
-         DCMF_INFO_UNSET(properties, DCMF_USE_RECT_DPUT_BCAST);
-   }
+  /* -------------------------------------------------------------- */
+  /* Register single-thread (memory optimized) protocols if desired */
+  /* -------------------------------------------------------------- */
+  /* Sort out the single thread memory optimizations first. If we
+   * are single threaed, we want to register the single thread versions
+   * to save memory */
+  if(DCMF_INFO_ISSET(properties, DCMF_USE_RECT_DPUT_BCAST) &&
+     threadrequested != DCMF_THREAD_MULTIPLE)
+  {
+    if(BROADCAST_REGISTER(
+                          DCMF_TORUS_RECTANGLE_BROADCAST_PROTOCOL_DPUT_SINGLETH,
+                          &MPIDI_CollectiveProtocols.rectangle_bcast_dput,
+                          &broadcast_config) != DCMF_SUCCESS)
+      DCMF_INFO_UNSET(properties, DCMF_USE_RECT_DPUT_BCAST);
+  }
 
-   if(DCMF_INFO_ISSET(properties, DCMF_USE_RECT_SINGLETH_BCAST) &&
-      threadrequested != DCMF_THREAD_MULTIPLE)
-   {
-      if(BROADCAST_REGISTER(
-            DCMF_TORUS_RECTANGLE_BROADCAST_PROTOCOL_SINGLETH,
-            &MPIDI_CollectiveProtocols.rectangle_bcast_singleth,
-            &broadcast_config) != DCMF_SUCCESS)
-         DCMF_INFO_UNSET(properties, DCMF_USE_RECT_SINGLETH_BCAST);
-   }
+  if(DCMF_INFO_ISSET(properties, DCMF_USE_RECT_SINGLETH_BCAST) &&
+     threadrequested != DCMF_THREAD_MULTIPLE)
+  {
+    if(BROADCAST_REGISTER(
+                          DCMF_TORUS_RECTANGLE_BROADCAST_PROTOCOL_SINGLETH,
+                          &MPIDI_CollectiveProtocols.rectangle_bcast_singleth,
+                          &broadcast_config) != DCMF_SUCCESS)
+      DCMF_INFO_UNSET(properties, DCMF_USE_RECT_SINGLETH_BCAST);
+  }
 
-   if(DCMF_INFO_ISSET(properties, DCMF_USE_BINOM_SINGLETH_BCAST) &&
-      threadrequested != DCMF_THREAD_MULTIPLE)
-   {
-      if(BROADCAST_REGISTER(
-            DCMF_TORUS_BINOMIAL_BROADCAST_PROTOCOL_SINGLETH,
-            &MPIDI_CollectiveProtocols.binomial_bcast_singleth,
-            &broadcast_config) != DCMF_SUCCESS)
-         DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_SINGLETH_BCAST);
-   }
-   /* --------------------------------------------------- */
-   /* Register all other bcast protocols needed/requested */
-   /* --------------------------------------------------- */
-   if(DCMF_INFO_ISSET(properties, DCMF_USE_TREE_BCAST))
-     {
-       if(BROADCAST_REGISTER(DCMF_TREE_BROADCAST_PROTOCOL,
-			     &MPIDI_CollectiveProtocols.tree_bcast,
-			     &broadcast_config) != DCMF_SUCCESS)
-	 DCMF_INFO_UNSET(properties, DCMF_USE_TREE_BCAST);
-     }
+  if(DCMF_INFO_ISSET(properties, DCMF_USE_BINOM_SINGLETH_BCAST) &&
+     threadrequested != DCMF_THREAD_MULTIPLE)
+  {
+    if(BROADCAST_REGISTER(
+                          DCMF_TORUS_BINOMIAL_BROADCAST_PROTOCOL_SINGLETH,
+                          &MPIDI_CollectiveProtocols.binomial_bcast_singleth,
+                          &broadcast_config) != DCMF_SUCCESS)
+      DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_SINGLETH_BCAST);
+  }
+  /* --------------------------------------------------- */
+  /* Register all other bcast protocols needed/requested */
+  /* --------------------------------------------------- */
+  if(DCMF_INFO_ISSET(properties, DCMF_USE_TREE_BCAST))
+  {
+    if(BROADCAST_REGISTER(DCMF_TREE_BROADCAST_PROTOCOL,
+                          &MPIDI_CollectiveProtocols.tree_bcast,
+                          &broadcast_config) != DCMF_SUCCESS)
+      DCMF_INFO_UNSET(properties, DCMF_USE_TREE_BCAST);
+  }
 
-   if(BROADCAST_REGISTER(DCMF_TORUS_RECTANGLE_BROADCAST_PROTOCOL,
-			 &MPIDI_CollectiveProtocols.rectangle_bcast,
-			 &broadcast_config) != DCMF_SUCCESS)
-     DCMF_INFO_UNSET(properties, DCMF_USE_RECT_BCAST);
+  if(BROADCAST_REGISTER(DCMF_TORUS_RECTANGLE_BROADCAST_PROTOCOL,
+                        &MPIDI_CollectiveProtocols.rectangle_bcast,
+                        &broadcast_config) != DCMF_SUCCESS)
+    DCMF_INFO_UNSET(properties, DCMF_USE_RECT_BCAST);
 
-   if(ASYNC_BROADCAST_REGISTER(DCMF_TORUS_ASYNCBROADCAST_RECTANGLE_PROTOCOL,
-			    &MPIDI_CollectiveProtocols.async_rectangle_bcast,
-			    &a_broadcast_config) != DCMF_SUCCESS)
-      DCMF_INFO_UNSET(properties, DCMF_USE_ARECT_BCAST);
+  if(ASYNC_BROADCAST_REGISTER(DCMF_TORUS_ASYNCBROADCAST_RECTANGLE_PROTOCOL,
+                              &MPIDI_CollectiveProtocols.async_rectangle_bcast,
+                              &a_broadcast_config) != DCMF_SUCCESS)
+    DCMF_INFO_UNSET(properties, DCMF_USE_ARECT_BCAST);
    
 
-   if(BROADCAST_REGISTER(DCMF_TORUS_BINOMIAL_BROADCAST_PROTOCOL,
-			 &MPIDI_CollectiveProtocols.binomial_bcast,
-			 &broadcast_config) != DCMF_SUCCESS)
-     DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_BCAST);
+  if(BROADCAST_REGISTER(DCMF_TORUS_BINOMIAL_BROADCAST_PROTOCOL,
+                        &MPIDI_CollectiveProtocols.binomial_bcast,
+                        &broadcast_config) != DCMF_SUCCESS)
+    DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_BCAST);
 
-   if(ASYNC_BROADCAST_REGISTER(DCMF_TORUS_ASYNCBROADCAST_BINOMIAL_PROTOCOL,
-			    &MPIDI_CollectiveProtocols.async_binomial_bcast,
-			    &a_broadcast_config) != DCMF_SUCCESS)
-      DCMF_INFO_UNSET(properties, DCMF_USE_ABINOM_BCAST);
+  if(ASYNC_BROADCAST_REGISTER(DCMF_TORUS_ASYNCBROADCAST_BINOMIAL_PROTOCOL,
+                              &MPIDI_CollectiveProtocols.async_binomial_bcast,
+                              &a_broadcast_config) != DCMF_SUCCESS)
+    DCMF_INFO_UNSET(properties, DCMF_USE_ABINOM_BCAST);
 
-   /* --------------------------------------------- */
-   /* Register allreduce protocols needed/requested */
-   /* --------------------------------------------- */
-   if(DCMF_INFO_ISSET(properties, DCMF_USE_TREE_ALLREDUCE) ||
-      DCMF_INFO_ISSET(properties, DCMF_USE_CCMI_TREE_ALLREDUCE))
-   {
-      if(ALLREDUCE_REGISTER(DCMF_TREE_ALLREDUCE_PROTOCOL,
-			     &MPIDI_CollectiveProtocols.tree_allreduce,
-			     &allreduce_config) != DCMF_SUCCESS)
-      {
-         DCMF_INFO_UNSET(properties, DCMF_USE_TREE_ALLREDUCE);
-         DCMF_INFO_UNSET(properties, DCMF_USE_CCMI_TREE_ALLREDUCE);
-      }
-   }
+  /* --------------------------------------------- */
+  /* Register allreduce protocols needed/requested */
+  /* --------------------------------------------- */
+  if(DCMF_INFO_ISSET(properties, DCMF_USE_TREE_ALLREDUCE) ||
+     DCMF_INFO_ISSET(properties, DCMF_USE_CCMI_TREE_ALLREDUCE))
+  {
+    if(ALLREDUCE_REGISTER(DCMF_TREE_ALLREDUCE_PROTOCOL,
+                          &MPIDI_CollectiveProtocols.tree_allreduce,
+                          &allreduce_config) != DCMF_SUCCESS)
+    {
+      DCMF_INFO_UNSET(properties, DCMF_USE_TREE_ALLREDUCE);
+      DCMF_INFO_UNSET(properties, DCMF_USE_CCMI_TREE_ALLREDUCE);
+    }
+  }
    
-   if(DCMF_INFO_ISSET(properties, DCMF_USE_PIPELINED_TREE_ALLREDUCE))
-   {
-      if((ALLREDUCE_REGISTER(DCMF_TREE_PIPELINED_ALLREDUCE_PROTOCOL,
-              &MPIDI_CollectiveProtocols.pipelinedtree_allreduce,
-              &allreduce_config) != DCMF_SUCCESS) ||
-         (ALLREDUCE_REGISTER(DCMF_TREE_DPUT_PIPELINED_ALLREDUCE_PROTOCOL,
-              &MPIDI_CollectiveProtocols.pipelinedtree_dput_allreduce,
-              &allreduce_config) != DCMF_SUCCESS) )
-        DCMF_INFO_UNSET(properties, DCMF_USE_PIPELINED_TREE_ALLREDUCE);
-   }
+  if(DCMF_INFO_ISSET(properties, DCMF_USE_PIPELINED_TREE_ALLREDUCE))
+  {
+    if((ALLREDUCE_REGISTER(DCMF_TREE_PIPELINED_ALLREDUCE_PROTOCOL,
+                           &MPIDI_CollectiveProtocols.pipelinedtree_allreduce,
+                           &allreduce_config) != DCMF_SUCCESS) ||
+       (ALLREDUCE_REGISTER(DCMF_TREE_DPUT_PIPELINED_ALLREDUCE_PROTOCOL,
+                           &MPIDI_CollectiveProtocols.pipelinedtree_dput_allreduce,
+                           &allreduce_config) != DCMF_SUCCESS) )
+      DCMF_INFO_UNSET(properties, DCMF_USE_PIPELINED_TREE_ALLREDUCE);
+  }
 
 
-   if(ALLREDUCE_REGISTER(DCMF_TORUS_RECTANGLE_ALLREDUCE_PROTOCOL,
-			 &MPIDI_CollectiveProtocols.rectangle_allreduce,
-			 &allreduce_config) != DCMF_SUCCESS)
-     DCMF_INFO_UNSET(properties, DCMF_USE_RECT_ALLREDUCE);
+  if(ALLREDUCE_REGISTER(DCMF_TORUS_RECTANGLE_ALLREDUCE_PROTOCOL,
+                        &MPIDI_CollectiveProtocols.rectangle_allreduce,
+                        &allreduce_config) != DCMF_SUCCESS)
+    DCMF_INFO_UNSET(properties, DCMF_USE_RECT_ALLREDUCE);
 
-   if(ALLREDUCE_REGISTER(DCMF_TORUS_RECTANGLE_RING_ALLREDUCE_PROTOCOL,
-			 &MPIDI_CollectiveProtocols.rectanglering_allreduce,
-			 &allreduce_config) != DCMF_SUCCESS)
-     DCMF_INFO_UNSET(properties, DCMF_USE_RECTRING_ALLREDUCE);
+  if(ALLREDUCE_REGISTER(DCMF_TORUS_RECTANGLE_RING_ALLREDUCE_PROTOCOL,
+                        &MPIDI_CollectiveProtocols.rectanglering_allreduce,
+                        &allreduce_config) != DCMF_SUCCESS)
+    DCMF_INFO_UNSET(properties, DCMF_USE_RECTRING_ALLREDUCE);
 
-   if(ALLREDUCE_REGISTER(DCMF_TORUS_BINOMIAL_ALLREDUCE_PROTOCOL,
-			 &MPIDI_CollectiveProtocols.binomial_allreduce,
-			 &allreduce_config) != DCMF_SUCCESS)
-     DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_ALLREDUCE);
+  if(ALLREDUCE_REGISTER(DCMF_TORUS_BINOMIAL_ALLREDUCE_PROTOCOL,
+                        &MPIDI_CollectiveProtocols.binomial_allreduce,
+                        &allreduce_config) != DCMF_SUCCESS)
+    DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_ALLREDUCE);
 
-   if (ALLREDUCE_REGISTER(DCMF_TORUS_ASYNC_RECTANGLE_ALLREDUCE_PROTOCOL,
-			  &MPIDI_CollectiveProtocols.async_rectangle_allreduce,
-			  &allreduce_config) != DCMF_SUCCESS)
-     DCMF_INFO_UNSET(properties, DCMF_USE_ARECT_ALLREDUCE);
+  if (ALLREDUCE_REGISTER(DCMF_TORUS_ASYNC_RECTANGLE_ALLREDUCE_PROTOCOL,
+                         &MPIDI_CollectiveProtocols.async_rectangle_allreduce,
+                         &allreduce_config) != DCMF_SUCCESS)
+    DCMF_INFO_UNSET(properties, DCMF_USE_ARECT_ALLREDUCE);
 
-     if (ALLREDUCE_REGISTER(DCMF_TORUS_ASYNC_RECTANGLE_RING_ALLREDUCE_PROTOCOL,
-			    &MPIDI_CollectiveProtocols.async_ringrectangle_allreduce,
-			    &allreduce_config) != DCMF_SUCCESS)
-     DCMF_INFO_UNSET(properties, DCMF_USE_ARECTRING_ALLREDUCE);
+  if (ALLREDUCE_REGISTER(DCMF_TORUS_ASYNC_RECTANGLE_RING_ALLREDUCE_PROTOCOL,
+                         &MPIDI_CollectiveProtocols.async_ringrectangle_allreduce,
+                         &allreduce_config) != DCMF_SUCCESS)
+    DCMF_INFO_UNSET(properties, DCMF_USE_ARECTRING_ALLREDUCE);
      
-     if (ALLREDUCE_REGISTER(DCMF_TORUS_ASYNC_BINOMIAL_ALLREDUCE_PROTOCOL,
-			    &MPIDI_CollectiveProtocols.async_binomial_allreduce,
-			    &allreduce_config) != DCMF_SUCCESS)
-     DCMF_INFO_UNSET(properties, DCMF_USE_ABINOM_ALLREDUCE);
+  if (ALLREDUCE_REGISTER(DCMF_TORUS_ASYNC_BINOMIAL_ALLREDUCE_PROTOCOL,
+                         &MPIDI_CollectiveProtocols.async_binomial_allreduce,
+                         &allreduce_config) != DCMF_SUCCESS)
+    DCMF_INFO_UNSET(properties, DCMF_USE_ABINOM_ALLREDUCE);
      
-   /* ----------------------------------------------- */
-   /* Register alltoallv protocol needed/requested    */
-   /* This also covvers alltoall/alltoallw operations */
-   /* ----------------------------------------------- */
-   if(ALLTOALLV_REGISTER(DCMF_TORUS_ALLTOALLV_PROTOCOL,
-			 &MPIDI_CollectiveProtocols.torus_alltoallv,
-			 &alltoallv_config) != DCMF_SUCCESS)
-     {
-       DCMF_INFO_UNSET(properties, DCMF_USE_TORUS_ALLTOALL);
-       DCMF_INFO_UNSET(properties, DCMF_USE_TORUS_ALLTOALLV);
-       DCMF_INFO_UNSET(properties, DCMF_USE_TORUS_ALLTOALLW);
-     }
+  /* ----------------------------------------------- */
+  /* Register alltoallv protocol needed/requested    */
+  /* This also covvers alltoall/alltoallw operations */
+  /* ----------------------------------------------- */
+  if(ALLTOALLV_REGISTER(DCMF_TORUS_ALLTOALLV_PROTOCOL,
+                        &MPIDI_CollectiveProtocols.torus_alltoallv,
+                        &alltoallv_config) != DCMF_SUCCESS)
+  {
+    DCMF_INFO_UNSET(properties, DCMF_USE_TORUS_ALLTOALL);
+    DCMF_INFO_UNSET(properties, DCMF_USE_TORUS_ALLTOALLV);
+    DCMF_INFO_UNSET(properties, DCMF_USE_TORUS_ALLTOALLW);
+  }
    
-   /* --------------------------------------------- */
-   /* Register reduce protocols needed/requested    */
-   /* --------------------------------------------- */
-   if(DCMF_INFO_ISSET(properties, DCMF_USE_TREE_REDUCE) ||
-      DCMF_INFO_ISSET(properties, DCMF_USE_CCMI_TREE_REDUCE))
-     {
-       if(REDUCE_REGISTER(DCMF_TREE_REDUCE_PROTOCOL,
-			  &MPIDI_CollectiveProtocols.tree_reduce,
-			  &reduce_config) != DCMF_SUCCESS)
-	 {
-	   DCMF_INFO_UNSET(properties, DCMF_USE_TREE_REDUCE);
-	   DCMF_INFO_UNSET(properties, DCMF_USE_CCMI_TREE_REDUCE);
-	 }
-     }
+  /* --------------------------------------------- */
+  /* Register reduce protocols needed/requested    */
+  /* --------------------------------------------- */
+  if(DCMF_INFO_ISSET(properties, DCMF_USE_TREE_REDUCE) ||
+     DCMF_INFO_ISSET(properties, DCMF_USE_CCMI_TREE_REDUCE))
+  {
+    if(REDUCE_REGISTER(DCMF_TREE_REDUCE_PROTOCOL,
+                       &MPIDI_CollectiveProtocols.tree_reduce,
+                       &reduce_config) != DCMF_SUCCESS)
+    {
+      DCMF_INFO_UNSET(properties, DCMF_USE_TREE_REDUCE);
+      DCMF_INFO_UNSET(properties, DCMF_USE_CCMI_TREE_REDUCE);
+    }
+  }
    
-   if(REDUCE_REGISTER(DCMF_TORUS_BINOMIAL_REDUCE_PROTOCOL,
-		      &MPIDI_CollectiveProtocols.binomial_reduce,
-		      &reduce_config) != DCMF_SUCCESS)
-     DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_REDUCE);
+  if(REDUCE_REGISTER(DCMF_TORUS_BINOMIAL_REDUCE_PROTOCOL,
+                     &MPIDI_CollectiveProtocols.binomial_reduce,
+                     &reduce_config) != DCMF_SUCCESS)
+    DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_REDUCE);
    
-   if(REDUCE_REGISTER(DCMF_TORUS_RECTANGLE_REDUCE_PROTOCOL,
-		      &MPIDI_CollectiveProtocols.rectangle_reduce,
-		      &reduce_config) != DCMF_SUCCESS)
-     DCMF_INFO_UNSET(properties, DCMF_USE_RECT_REDUCE);
+  if(REDUCE_REGISTER(DCMF_TORUS_RECTANGLE_REDUCE_PROTOCOL,
+                     &MPIDI_CollectiveProtocols.rectangle_reduce,
+                     &reduce_config) != DCMF_SUCCESS)
+    DCMF_INFO_UNSET(properties, DCMF_USE_RECT_REDUCE);
    
-   if(REDUCE_REGISTER(DCMF_TORUS_RECTANGLE_RING_REDUCE_PROTOCOL,
-		      &MPIDI_CollectiveProtocols.rectanglering_reduce,
-		      &reduce_config) != DCMF_SUCCESS)
-     DCMF_INFO_UNSET(properties, DCMF_USE_RECTRING_REDUCE);
+  if(REDUCE_REGISTER(DCMF_TORUS_RECTANGLE_RING_REDUCE_PROTOCOL,
+                     &MPIDI_CollectiveProtocols.rectanglering_reduce,
+                     &reduce_config) != DCMF_SUCCESS)
+    DCMF_INFO_UNSET(properties, DCMF_USE_RECTRING_REDUCE);
 #endif /* USE_CCMI_COLL */
 }
 
@@ -540,9 +541,9 @@ void MPIDI_Coll_Comm_create (MPID_Comm *comm)
   /* Allocate space for the collective pointers */
   /* ****************************************** */
 
-   comm->coll_fns = (MPID_Collops *)MPIU_Malloc(sizeof(MPID_Collops));
-   MPID_assert(comm->coll_fns != NULL);
-   memset(comm->coll_fns, 0, sizeof(MPID_Collops));
+  comm->coll_fns = (MPID_Collops *)MPIU_Malloc(sizeof(MPID_Collops));
+  MPID_assert(comm->coll_fns != NULL);
+  memset(comm->coll_fns, 0, sizeof(MPID_Collops));
 
 
   /* If we are an intracomm, MPICH should handle */
@@ -550,24 +551,26 @@ void MPIDI_Coll_Comm_create (MPID_Comm *comm)
   /* User may disable all collectives */
   if (!MPIDI_Process.optimized.collectives) return;
 
-   MPID_Comm_get_ptr(MPI_COMM_WORLD, comm_world);
-   MPID_assert_debug(comm_world != NULL);
+  MPID_Comm_get_ptr(MPI_COMM_WORLD, comm_world);
+  MPID_assert_debug(comm_world != NULL);
 
   /* let us assume global context is comm_world */
   global = 1;
   
   if(MPIR_ThreadInfo.thread_provided == MPI_THREAD_MULTIPLE)
-    {
-      DCMF_INFO_SET(comm_prop, DCMF_THREADED_MODE);
-      if(comm != comm_world)
-       global = 0;
-    }
+  {
+    DCMF_INFO_SET(comm_prop, DCMF_THREADED_MODE);
+    if(comm != comm_world)
+      global = 0;
+  }
   else /* single MPI thread. */
-    {
-      /* and if we are not dup of comm_world, global context is not safe */
-      if(comm->local_size != comm_world->local_size)
-       global = 0;
-    }
+  {
+    DCMF_INFO_SET(comm_prop, DCMF_SINGLE_THREAD_MODE);
+
+    /* and if we are not dup of comm_world, global context is not safe */
+    if(comm->local_size != comm_world->local_size)
+      global = 0;
+  }
 
 #ifdef USE_CCMI_COLL
   /* ******************************************************* */
@@ -618,8 +621,8 @@ void MPIDI_Coll_Comm_create (MPID_Comm *comm)
   DCMF_INFO_SET(comm_prop, DCMF_TORUS_COMM);
 
   if (comm -> local_size == DCMF_Messager_size() &&
-   !DCMF_INFO_ISSET(comm_prop, DCMF_USE_NOTREE_OPT_COLLECTIVES))
-      DCMF_INFO_SET(comm_prop, DCMF_TREE_COMM);
+      !DCMF_INFO_ISSET(comm_prop, DCMF_USE_NOTREE_OPT_COLLECTIVES))
+    DCMF_INFO_SET(comm_prop, DCMF_TREE_COMM);
 
   if (global)
     DCMF_INFO_SET(comm_prop, DCMF_GLOBAL_CONTEXT);
@@ -647,24 +650,20 @@ void MPIDI_Coll_Comm_create (MPID_Comm *comm)
   if (x_size * y_size * z_size * t_size == comm -> local_size)
     {
       DCMF_INFO_SET(comm_prop, DCMF_RECT_COMM);
-
-      if (x_size > 1 && y_size > 1 && z_size > 1)
-	DCMF_INFO_SET(comm_prop, DCMF_3D_RECT_COMM);
-      else if ((x_size > 1 && y_size > 1) ||
-	       (x_size > 1 && z_size > 1) ||
-	       (y_size > 1 && z_size > 1))
-	DCMF_INFO_SET(comm_prop, DCMF_2D_RECT_COMM);
-
-      else /* number of dims must be at least 1 if it is a rectangle */
-	DCMF_INFO_SET(comm_prop, DCMF_1D_RECT_COMM);
+      comm->dcmf.comm_shape = 0; /* COMM WORLD */
+      if (!global)
+        comm->dcmf.comm_shape = 1; /* RECT subcomm */
     }
   else if (!global) /* if not rect and not global, it means comm is irreg */
-    DCMF_INFO_SET(comm_prop, DCMF_IRREG_COMM);
+    {
+      DCMF_INFO_SET(comm_prop, DCMF_IRREG_COMM);
+      comm->dcmf.comm_shape = 2; /* IRREG */
+    }
 
   /* end of setting geometric properties of the communicator */
 
   /* quick setting of conditions that results to defaulting to MPICH */
-  if (comm -> comm_kind != MPID_INTRACOMM || comm->local_size <= 4)
+  if (comm -> comm_kind != MPID_INTRACOMM || comm->local_size <= 16)
     DCMF_MSET_INFO(comm_prop,
 		   DCMF_USE_MPICH_BARRIER,
 		   DCMF_USE_MPICH_BCAST,
@@ -682,79 +681,106 @@ void MPIDI_Coll_Comm_create (MPID_Comm *comm)
 		   DCMF_END_ARGS);
 	
   else
+  {
+    /* 
+       we basically be optimistic and assume all conditions are available 
+       for all protocols based on the mpidi_protocol properties. As such, we 
+       copy the informative bits from coll_prop to comm_prop. Then, we check 
+       the geometry bits of the communicator to uncheck any bit for a 
+       protocol 
+    */
+    DCMF_INFO_OR(coll_prop, comm_prop);
+
+    if (!DCMF_INFO_ISSET(comm_prop, DCMF_RECT_COMM))
     {
-      /* 
-	 we basically be optimistic and assume all conditions are available 
-	 for all protocols based on the mpidi_protocol properties. As such, we 
-	 copy the informative bits from coll_prop to comm_prop. Then, we check 
-	 the geometry bits of the communicator to uncheck any bit for a 
-	 protocol 
-      */
-      DCMF_INFO_OR(coll_prop, comm_prop);
-
-      if (!DCMF_INFO_ISSET(comm_prop, DCMF_RECT_COMM))
-	{
-	  DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_BARRIER);
-	  DCMF_INFO_UNSET(comm_prop, DCMF_USE_ARECT_BCAST);
-	  DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_BCAST);
-	  DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_DPUT_BCAST);
-	  DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_SINGLETH_BCAST);
-	  DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_BCAST_ALLGATHER);
-	  DCMF_INFO_UNSET(comm_prop, DCMF_USE_ARECT_BCAST_ALLGATHER);
-	  DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_BCAST_ALLGATHERV);
-	  DCMF_INFO_UNSET(comm_prop, DCMF_USE_ARECT_BCAST_ALLGATHERV);
-	  DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_ALLREDUCE);
-	  DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECTRING_ALLREDUCE);
-	  DCMF_INFO_UNSET(comm_prop, DCMF_USE_ARECT_ALLREDUCE);
-	  DCMF_INFO_UNSET(comm_prop, DCMF_USE_ARECTRING_ALLREDUCE);
-	  DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_REDUCE);
-	  DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECTRING_REDUCE);
-	}
+      DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_BARRIER);
+      DCMF_INFO_UNSET(comm_prop, DCMF_USE_ARECT_BCAST);
+      DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_BCAST);
+      DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_DPUT_BCAST);
+      DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_SINGLETH_BCAST);
+      DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_BCAST_ALLGATHER);
+      DCMF_INFO_UNSET(comm_prop, DCMF_USE_ARECT_BCAST_ALLGATHER);
+      DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_BCAST_ALLGATHERV);
+      DCMF_INFO_UNSET(comm_prop, DCMF_USE_ARECT_BCAST_ALLGATHERV);
+      DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_ALLREDUCE);
+      DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECTRING_ALLREDUCE);
+      DCMF_INFO_UNSET(comm_prop, DCMF_USE_ARECT_ALLREDUCE);
+      DCMF_INFO_UNSET(comm_prop, DCMF_USE_ARECTRING_ALLREDUCE);
+      DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_REDUCE);
+      DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECTRING_REDUCE);
+    }
       
-      if (DCMF_INFO_ISSET(comm_prop, DCMF_THREADED_MODE) && !global)
-	{
-	  DCMF_INFO_UNSET(comm_prop, DCMF_USE_TORUS_ALLTOALL);
-	  DCMF_INFO_UNSET(comm_prop, DCMF_USE_TORUS_ALLTOALLW);
-	  DCMF_INFO_UNSET(comm_prop, DCMF_USE_TORUS_ALLTOALLV);
-	  DCMF_INFO_UNSET(comm_prop, DCMF_USE_ALLTOALL_SCATTERV);
-	  DCMF_INFO_UNSET(comm_prop, DCMF_USE_REDUCESCATTER);
-	}
-
-      if (!DCMF_INFO_ISSET(comm_prop, DCMF_GLOBAL_CONTEXT) ||
-	  !DCMF_INFO_ISSET(comm_prop, DCMF_TREE_COMM) ||
-     DCMF_INFO_ISSET(comm_prop, DCMF_USE_NOTREE_OPT_COLLECTIVES))
-	{
-	  DCMF_INFO_UNSET(comm_prop, DCMF_USE_GI_BARRIER);
-	  DCMF_INFO_UNSET(comm_prop, DCMF_USE_TREE_BCAST);
-	  DCMF_INFO_UNSET(comm_prop, DCMF_USE_TREE_ALLREDUCE);
-	  DCMF_INFO_UNSET(comm_prop, DCMF_USE_CCMI_TREE_ALLREDUCE);
-	  DCMF_INFO_UNSET(comm_prop, DCMF_USE_PIPELINED_TREE_ALLREDUCE);
-	  DCMF_INFO_UNSET(comm_prop, DCMF_USE_TREE_REDUCE);
-	  DCMF_INFO_UNSET(comm_prop, DCMF_USE_CCMI_TREE_REDUCE);
-	  DCMF_INFO_UNSET(comm_prop, DCMF_USE_REDUCE_GATHER);
-	  DCMF_INFO_UNSET(comm_prop, DCMF_USE_BCAST_SCATTER);
-	  DCMF_INFO_UNSET(comm_prop, DCMF_USE_REDUCESCATTER);
-	}
+    if (DCMF_INFO_ISSET(comm_prop, DCMF_THREADED_MODE) && !global)
+    {
+      DCMF_INFO_UNSET(comm_prop, DCMF_USE_TORUS_ALLTOALL);
+      DCMF_INFO_UNSET(comm_prop, DCMF_USE_TORUS_ALLTOALLW);
+      DCMF_INFO_UNSET(comm_prop, DCMF_USE_TORUS_ALLTOALLV);
+      DCMF_INFO_UNSET(comm_prop, DCMF_USE_ALLTOALL_SCATTERV);
+      DCMF_INFO_UNSET(comm_prop, DCMF_USE_REDUCESCATTER);
     }
 
+    if (!DCMF_INFO_ISSET(comm_prop, DCMF_GLOBAL_CONTEXT) ||
+        !DCMF_INFO_ISSET(comm_prop, DCMF_TREE_COMM) ||
+        DCMF_INFO_ISSET(comm_prop, DCMF_USE_NOTREE_OPT_COLLECTIVES))
+    {
+      DCMF_INFO_UNSET(comm_prop, DCMF_USE_GI_BARRIER);
+      DCMF_INFO_UNSET(comm_prop, DCMF_USE_TREE_BCAST);
+      DCMF_INFO_UNSET(comm_prop, DCMF_USE_TREE_ALLREDUCE);
+      DCMF_INFO_UNSET(comm_prop, DCMF_USE_CCMI_TREE_ALLREDUCE);
+      DCMF_INFO_UNSET(comm_prop, DCMF_USE_PIPELINED_TREE_ALLREDUCE);
+      DCMF_INFO_UNSET(comm_prop, DCMF_USE_TREE_REDUCE);
+      DCMF_INFO_UNSET(comm_prop, DCMF_USE_CCMI_TREE_REDUCE);
+      DCMF_INFO_UNSET(comm_prop, DCMF_USE_REDUCE_GATHER);
+      DCMF_INFO_UNSET(comm_prop, DCMF_USE_BCAST_SCATTER);
+      DCMF_INFO_UNSET(comm_prop, DCMF_USE_REDUCESCATTER);
+    }
+  }
+
+  if (STAR_info.enabled && STAR_info.debug && 
+      comm -> comm_kind == MPID_INTRACOMM &&
+      comm -> rank == 0)
+  {
+    static unsigned char opened = 0;
+
+    if (!opened && exec_name)
+    {
+      int length, cw_rank;
+      char * tmp;
+      length = strlen(exec_name) + 25;
+      
+      tmp = (char *) malloc(sizeof(char) * length);
+      
+      MPI_Comm_rank(MPI_COMM_WORLD, &cw_rank);
+      
+      sprintf(tmp, "%s-star-rank%d.log", exec_name, cw_rank);
+      
+      if (!(DCMF_STAR_fd = fopen(tmp, "w")))
+        fprintf(stderr, "Error openning STAR debugging file: %s\n", tmp);
+      else
+        opened = 1;
+      free(tmp);
+    }
+  }
+
+  
 #else /* !USE_CCMI_COLL */
 
-   comm->coll_fns->Barrier        = NULL;
-   comm->coll_fns->Bcast          = NULL;
-   comm->coll_fns->Reduce         = NULL;
-   comm->coll_fns->Allreduce      = NULL;
-   comm->coll_fns->Alltoall       = NULL;
-   comm->coll_fns->Alltoallv      = NULL;
-   comm->coll_fns->Alltoallw       = NULL;
-   comm->coll_fns->Allgather      = NULL;
-   comm->coll_fns->Allgatherv     = NULL;
-   comm->coll_fns->Gather         = NULL;
-   comm->coll_fns->Gatherv        = NULL;
-   comm->coll_fns->Scatter        = NULL;
-   comm->coll_fns->Scatterv       = NULL;
-   comm->coll_fns->Reduce_scatter = NULL;
-   comm->coll_fns->Scan           = NULL;
-   comm->coll_fns->Exscan         = NULL;
+  comm->coll_fns->Barrier        = NULL;
+  comm->coll_fns->Bcast          = NULL;
+  comm->coll_fns->Reduce         = NULL;
+  comm->coll_fns->Allreduce      = NULL;
+  comm->coll_fns->Alltoall       = NULL;
+  comm->coll_fns->Alltoallv      = NULL;
+  comm->coll_fns->Alltoallw       = NULL;
+  comm->coll_fns->Allgather      = NULL;
+  comm->coll_fns->Allgatherv     = NULL;
+  comm->coll_fns->Gather         = NULL;
+  comm->coll_fns->Gatherv        = NULL;
+  comm->coll_fns->Scatter        = NULL;
+  comm->coll_fns->Scatterv       = NULL;
+  comm->coll_fns->Reduce_scatter = NULL;
+  comm->coll_fns->Scan           = NULL;
+  comm->coll_fns->Exscan         = NULL;
 
 #endif /* !USE_CCMI_COLL */
 
@@ -766,15 +792,15 @@ void MPIDI_Coll_Comm_create (MPID_Comm *comm)
   comm -> dcmf.rcvcounters = NULL;
   
   if (DCMF_INFO_ISSET(coll_prop, DCMF_USE_PREMALLOC_ALLTOALL))
-    {
-      int type_sz = sizeof(unsigned);
-      comm -> dcmf.sndlen = MPIU_Malloc(type_sz * comm->local_size);
-      comm -> dcmf.rcvlen = MPIU_Malloc(type_sz * comm->local_size);
-      comm -> dcmf.sdispls = MPIU_Malloc(type_sz * comm->local_size);
-      comm -> dcmf.rdispls = MPIU_Malloc(type_sz * comm->local_size);
-      comm -> dcmf.sndcounters = MPIU_Malloc(type_sz * comm->local_size);
-      comm -> dcmf.rcvcounters = MPIU_Malloc(type_sz * comm->local_size);
-    }
+  {
+    int type_sz = sizeof(unsigned);
+    comm -> dcmf.sndlen = MPIU_Malloc(type_sz * comm->local_size);
+    comm -> dcmf.rcvlen = MPIU_Malloc(type_sz * comm->local_size);
+    comm -> dcmf.sdispls = MPIU_Malloc(type_sz * comm->local_size);
+    comm -> dcmf.rdispls = MPIU_Malloc(type_sz * comm->local_size);
+    comm -> dcmf.sndcounters = MPIU_Malloc(type_sz * comm->local_size);
+    comm -> dcmf.rcvcounters = MPIU_Malloc(type_sz * comm->local_size);
+  }
 
   MPIR_Barrier(comm);
 }
@@ -809,9 +835,9 @@ void MPIDI_Coll_Comm_destroy (MPID_Comm *comm)
     MPIU_Free(comm->dcmf.rcvcounters);
 
   comm->dcmf.sndlen  =
-  comm->dcmf.rcvlen  =
-  comm->dcmf.sdispls =
-  comm->dcmf.rdispls =
-  comm->dcmf.sndcounters =
-  comm->dcmf.rcvcounters = NULL;
+    comm->dcmf.rcvlen  =
+    comm->dcmf.sdispls =
+    comm->dcmf.rdispls =
+    comm->dcmf.sndcounters =
+    comm->dcmf.rcvcounters = NULL;
 }

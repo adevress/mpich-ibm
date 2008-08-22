@@ -32,36 +32,36 @@ int MPIDO_Alltoallw_torus(void *sendbuf,
 			  MPI_Datatype *recvtypes,
 			  MPID_Comm * comm)
 {
-   int rc;
-   DCMF_CollectiveRequest_t request;
-   volatile unsigned active = 1;
-   DCMF_Callback_t callback = { alltoallw_cb_done, (void *) &active };
-   DCMF_Geometry_t * geometry = &(comm->dcmf.geometry);   
+  int rc;
+  DCMF_CollectiveRequest_t request;
+  volatile unsigned active = 1;
+  DCMF_Callback_t callback = { alltoallw_cb_done, (void *) &active };
+  DCMF_Geometry_t * geometry = &(comm->dcmf.geometry);   
 
-   /* ignore some of the args passed in, used the one setup in comm ptr */
-   unsigned * sndlen = comm->dcmf.sndlen;
-   unsigned * sdispls = comm->dcmf.sdispls;
-   unsigned * rcvlen = comm->dcmf.rcvlen;
-   unsigned * rdispls = comm->dcmf.rdispls;
-   unsigned * sndcounters = comm->dcmf.sndcounters;
-   unsigned * rcvcounters = comm->dcmf.rcvcounters;
+  /* ignore some of the args passed in, used the one setup in comm ptr */
+  unsigned * sndlen = comm->dcmf.sndlen;
+  unsigned * sdispls = comm->dcmf.sdispls;
+  unsigned * rcvlen = comm->dcmf.rcvlen;
+  unsigned * rdispls = comm->dcmf.rdispls;
+  unsigned * sndcounters = comm->dcmf.sndcounters;
+  unsigned * rcvcounters = comm->dcmf.rcvcounters;
 
-   rc = DCMF_Alltoallv(&MPIDI_CollectiveProtocols.torus_alltoallv,
-                       &request,
-                       callback,
-                       DCMF_MATCH_CONSISTENCY,
-                       geometry,
-                       sendbuf,
-                       sndlen,
-                       sdispls,
-                       recvbuf,
-                       rcvlen,
-                       rdispls,
-                       sndcounters,
-                       rcvcounters);
+  rc = DCMF_Alltoallv(&MPIDI_CollectiveProtocols.torus_alltoallv,
+                      &request,
+                      callback,
+                      DCMF_MATCH_CONSISTENCY,
+                      geometry,
+                      sendbuf,
+                      sndlen,
+                      sdispls,
+                      recvbuf,
+                      rcvlen,
+                      rdispls,
+                      sndcounters,
+                      rcvcounters);
 
-   MPID_PROGRESS_WAIT_WHILE(active);
-   return rc;
+  MPID_PROGRESS_WAIT_WHILE(active);
+  return rc;
 }
 
 #endif /* USE_CCMI_COLL */

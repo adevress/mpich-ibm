@@ -30,36 +30,36 @@ MPIDO_Alltoall_torus(void * sendbuf,
 		     MPI_Datatype recvtype,
 		     MPID_Comm * comm)
 {
-   int rc;
-   DCMF_CollectiveRequest_t request;
-   volatile unsigned active = 1;
-   DCMF_Geometry_t * geometry = &(comm->dcmf.geometry);
-   DCMF_Callback_t callback = { alltoall_cb_done, (void *) &active };
+  int rc;
+  DCMF_CollectiveRequest_t request;
+  volatile unsigned active = 1;
+  DCMF_Geometry_t * geometry = &(comm->dcmf.geometry);
+  DCMF_Callback_t callback = { alltoall_cb_done, (void *) &active };
 
-   unsigned * sndlen = comm->dcmf.sndlen;
-   unsigned * sdispls = comm->dcmf.sdispls;
-   unsigned * rcvlen = comm->dcmf.rcvlen;
-   unsigned * rdispls = comm->dcmf.rdispls;
-   unsigned * sndcounters = comm->dcmf.sndcounters;
-   unsigned * rcvcounters = comm->dcmf.rcvcounters;
+  unsigned * sndlen = comm->dcmf.sndlen;
+  unsigned * sdispls = comm->dcmf.sdispls;
+  unsigned * rcvlen = comm->dcmf.rcvlen;
+  unsigned * rdispls = comm->dcmf.rdispls;
+  unsigned * sndcounters = comm->dcmf.sndcounters;
+  unsigned * rcvcounters = comm->dcmf.rcvcounters;
 
-   /* uses the alltoallv protocol */
-   rc = DCMF_Alltoallv(&MPIDI_CollectiveProtocols.torus_alltoallv,
-                       &request,
-                       callback,
-                       DCMF_MATCH_CONSISTENCY,
-                       geometry,
-                       sendbuf,
-                       sndlen,
-                       sdispls,
-                       recvbuf,
-                       rcvlen,
-                       rdispls,
-                       sndcounters,
-                       rcvcounters);
+  /* uses the alltoallv protocol */
+  rc = DCMF_Alltoallv(&MPIDI_CollectiveProtocols.torus_alltoallv,
+                      &request,
+                      callback,
+                      DCMF_MATCH_CONSISTENCY,
+                      geometry,
+                      sendbuf,
+                      sndlen,
+                      sdispls,
+                      recvbuf,
+                      rcvlen,
+                      rdispls,
+                      sndcounters,
+                      rcvcounters);
 
-   MPID_PROGRESS_WAIT_WHILE(active);
-   return rc;
+  MPID_PROGRESS_WAIT_WHILE(active);
+  return rc;
 }
 #endif /* USE_CCMI_COLL */
 
@@ -92,11 +92,11 @@ MPIDO_Alltoall_simple(void * send_buff, int send_count,
   req_ptr = req;
 
   if (!req)
-    {
-      if (rank == 0)
-	printf("cannot allocate memory\n");
-      PMPI_Abort(comm->handle, 0);
-    }
+  {
+    if (rank == 0)
+      printf("cannot allocate memory\n");
+    PMPI_Abort(comm->handle, 0);
+  }
 
   /* simple optimization */
   send_ptr = ((char *) send_buff) + (rank * sndinc);
@@ -107,15 +107,15 @@ MPIDO_Alltoall_simple(void * send_buff, int send_count,
   send_ptr = (char *) send_buff;
 
   for (i = 0; i < np; i++)
-    {
-      partner = (rank + i) % np;
-      if (partner == rank) continue;
+  {
+    partner = (rank + i) % np;
+    if (partner == rank) continue;
 
-      MPIC_Irecv(recv_ptr + (partner * rcvinc), recv_count, recv_type, partner,
-		 MPIR_ALLTOALL_TAG, comm->handle, req_ptr++);
-      MPIC_Isend(send_ptr + (partner * sndinc), send_count, send_type, partner,
-		 MPIR_ALLTOALL_TAG, comm->handle, req_ptr++);
-    }
+    MPIC_Irecv(recv_ptr + (partner * rcvinc), recv_count, recv_type, partner,
+               MPIR_ALLTOALL_TAG, comm->handle, req_ptr++);
+    MPIC_Isend(send_ptr + (partner * sndinc), send_count, send_type, partner,
+               MPIR_ALLTOALL_TAG, comm->handle, req_ptr++);
+  }
 
   NMPI_Waitall(nreqs, req, MPI_STATUSES_IGNORE);
 
