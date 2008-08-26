@@ -976,9 +976,6 @@ MPIDI_Env_setup()
     else if(strncasecmp(envopts, "T", 1) == 0) /* Tree */
       DCMF_INFO_SET(properties, DCMF_USE_TREE_ALLREDUCE);
 
-    else if(strncasecmp(envopts, "C", 1) == 0) /* CCMI Tree */
-      DCMF_INFO_SET(properties, DCMF_USE_CCMI_TREE_ALLREDUCE);
-
     else if(strncasecmp(envopts, "P", 1) == 0) /* CCMI Pipelined Tree */
       DCMF_INFO_SET(properties, DCMF_USE_PIPELINED_TREE_ALLREDUCE);
 

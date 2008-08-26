@@ -74,7 +74,9 @@ MPIDO_Allreduce(void * sendbuf,
         func = MPIDO_Allreduce_tree;
 
       else if (DCMF_INFO_ISSET(properties, DCMF_USE_PIPELINED_TREE_ALLREDUCE))
+      {
         func = MPIDO_Allreduce_pipelined_tree;
+      }
     }
     if(!func && (op_type_support == DCMF_TORUS_SUPPORT ||
                  op_type_support == DCMF_TREE_SUPPORT))

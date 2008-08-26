@@ -64,6 +64,7 @@ inline int DCMF_AllocateAlltoallBuffers(MPID_Comm * comm)
     if (comm->dcmf.rcvcounters) MPIU_Free(comm->dcmf.rcvcounters);
     return 0;
   }
+
   return 1;
 }
 

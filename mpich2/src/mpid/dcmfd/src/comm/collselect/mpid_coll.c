@@ -663,7 +663,7 @@ void MPIDI_Coll_Comm_create (MPID_Comm *comm)
   /* end of setting geometric properties of the communicator */
 
   /* quick setting of conditions that results to defaulting to MPICH */
-  if (comm -> comm_kind != MPID_INTRACOMM || comm->local_size <= 16)
+  if (comm -> comm_kind != MPID_INTRACOMM || comm->local_size <= 4)
     DCMF_MSET_INFO(comm_prop,
 		   DCMF_USE_MPICH_BARRIER,
 		   DCMF_USE_MPICH_BCAST,
@@ -771,7 +771,7 @@ void MPIDI_Coll_Comm_create (MPID_Comm *comm)
   comm->coll_fns->Allreduce      = NULL;
   comm->coll_fns->Alltoall       = NULL;
   comm->coll_fns->Alltoallv      = NULL;
-  comm->coll_fns->Alltoallw       = NULL;
+  comm->coll_fns->Alltoallw      = NULL;
   comm->coll_fns->Allgather      = NULL;
   comm->coll_fns->Allgatherv     = NULL;
   comm->coll_fns->Gather         = NULL;

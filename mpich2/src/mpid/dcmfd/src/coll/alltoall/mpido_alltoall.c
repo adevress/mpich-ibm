@@ -38,6 +38,7 @@ MPIDO_Alltoall(void *sendbuf,
 				   sdt_true_lb);
   MPID_Ensure_Aint_fits_in_pointer(MPIR_VOID_PTR_CAST_TO_MPI_AINT recvbuf +
 				   rdt_true_lb);
+  
   if (!snd_contig ||
       !rcv_contig ||
       tsndlen != trcvlen ||
@@ -68,12 +69,13 @@ MPIDO_Alltoall(void *sendbuf,
 
   if (!STAR_info.enabled || STAR_info.internal_control_flow)
   {
+
     if (!DCMF_INFO_ISSET(properties, DCMF_USE_TORUS_ALLTOALL))
       return MPIR_Alltoall(sendbuf, sendcount, sendtype,
                            recvbuf, recvcount, recvtype,
                            comm);
-      
-    rc = MPIDO_Alltoall_torus((char *) sendbuf + sdt_true_lb,
+
+  rc = MPIDO_Alltoall_torus((char *) sendbuf + sdt_true_lb,
                               sendcount,
                               sendtype,
                               (char *) recvbuf + rdt_true_lb,
