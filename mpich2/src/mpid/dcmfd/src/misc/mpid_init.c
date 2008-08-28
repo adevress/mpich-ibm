@@ -52,18 +52,23 @@ int MPID_Init(int * argc,
               int * has_args,
               int * has_env)
 {
-  int rank, size, i, rc;
-  int tempthread;
-  MPID_Comm * comm;
-  DCMF_Result dcmf_rc;
+   int rank, size, i, rc;
+   int tempthread;
+   MPID_Comm * comm;
+   DCMF_Result dcmf_rc;
 
- if (argc)
- {
-   exec_name = NULL;
-   i = strlen(* argv[0]) + 1;
-   exec_name = (char *) malloc(sizeof(char) * i);
-   strcpy(exec_name, *argv[0]);
- }
+   if (argc && *argv != NULL)
+   {
+      exec_name = NULL;
+      i = strlen(* argv[0]) + 1;
+      exec_name = (char *) malloc(sizeof(char) * i);
+      strcpy(exec_name, *argv[0]);
+   }
+   else
+   {
+      exec_name= (char *)malloc(sizeof(char) * 8);
+      strcpy(exec_name, "FORTRAN");
+   }
 
   /* ------------------------- */
   /* initialize the statistics */
@@ -241,7 +246,6 @@ int MPID_Init(int * argc,
 
   return MPI_SUCCESS;
 }
-
 
 /*
  * \brief This is called by MPI to let us know that MPI_Init is done.
