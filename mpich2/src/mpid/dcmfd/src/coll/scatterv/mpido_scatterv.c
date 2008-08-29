@@ -23,106 +23,140 @@ int MPIDO_Scatterv(void *sendbuf,
                    MPID_Comm *comm_ptr)
 {
   DCMF_Embedded_Info_Set * properties = &(comm_ptr->dcmf.properties);
-  int rank = comm_ptr->rank, np = comm_ptr->local_size;
-  int i, nbytes, sum, contig;
+  int rank = comm_ptr->rank, size = comm_ptr->local_size;
+  int i, nbytes, sum=0, contig;
   MPID_Datatype *dt_ptr;
   MPI_Aint true_lb=0;
-  unsigned char alltoall_scatterv = 0, bcast_scatterv = 0;
-  int info[2] = {1, 0}; /* 1: denotes success, 0 to be used in sum */
 
-  for (i = 0; i < np; i++)
-    if (sendcounts[i] > 0)
-      info[1] += sendcounts[i];
+  /* we can't call scatterv-via-bcast unless we know all nodes have
+   * valid sendcount arrays. so the user must explicitly ask for it.
+   */
+
+   /* optscatterv[0] == optscatterv bcast? 
+    * optscatterv[1] == optscatterv alltoall? 
+    *  (having both allows cutoff agreement)
+    * optscatterv[2] == sum of sendcounts 
+    */
+   int optscatterv[3];
+
+   optscatterv[0] = !DCMF_INFO_ISSET(properties, DCMF_USE_ALLTOALL_SCATTERV);
+   optscatterv[1] = !DCMF_INFO_ISSET(properties, DCMF_USE_BCAST_SCATTERV);
+   optscatterv[2] = 1;
+
+   if(comm_ptr->comm_kind != MPID_INTRACOMM)
+   {
+      return MPIR_Scatterv(sendbuf, sendcounts, displs, sendtype,
+                           recvbuf, recvcount, recvtype, 
+                           root, comm_ptr);
+   }
+
+   if(rank == root)
+   {
+      if(!optscatterv[1])
+      {
+         if(sendcounts)
+         {
+            for(i=0;i<size;i++)
+               sum+=sendcounts[i];
+         }
+         optscatterv[2] = sum;
+      }
   
-  sum = info[1];
-  
-  alltoall_scatterv = DCMF_INFO_ISSET(properties, DCMF_USE_ALLTOALL_SCATTERV);
-  bcast_scatterv = DCMF_INFO_ISSET(properties, DCMF_USE_BCAST_SCATTERV);
-  
-  if(rank == root)
-  {
-    MPIDI_Datatype_get_info(1,
+      MPIDI_Datatype_get_info(1,
                             sendtype,
                             contig,
                             nbytes,
                             dt_ptr,
                             true_lb);
-    if(recvtype == MPI_DATATYPE_NULL || recvcount <= 0 || !contig)
-      info[0] = 0;
+      if(recvtype == MPI_DATATYPE_NULL || recvcount <= 0 || !contig)
+      {
+         optscatterv[0] = 1;
+         optscatterv[1] = 1;
+      }
   }
   else
   {
-    MPIDI_Datatype_get_info(1,
+      MPIDI_Datatype_get_info(1,
                             recvtype,
                             contig,
                             nbytes,
                             dt_ptr,
                             true_lb);
-    if(sendtype == MPI_DATATYPE_NULL || !contig)
-      info[0] = 0;
-  }
+      if(sendtype == MPI_DATATYPE_NULL || !contig)
+      {
+         optscatterv[0] = 1;
+         optscatterv[1] = 1;
+      }
+   }
 
   /* Make sure parameters are the same on all the nodes */
   /* specifically, noncontig on the receive */
   /* set the internal control flow to disable internal star tuning */
   STAR_info.internal_control_flow = 1;
 
-  MPIDO_Allreduce(MPI_IN_PLACE,
-		  info,
-		  2,
+   if(DCMF_INFO_ISSET(properties, DCMF_USE_PREALLREDUCE_SCATTERV))
+   {
+      MPIDO_Allreduce(MPI_IN_PLACE,
+		  optscatterv,
+		  3,
 		  MPI_INT,
-		  MPI_BAND,
+		  MPI_BOR,
 		  comm_ptr);
+   }
   /* reset flag */
   STAR_info.internal_control_flow = 0;  
 
-  if (DCMF_INFO_ISSET(properties, DCMF_USE_MPICH_SCATTERV) ||
-      !info[0] ||
-      !alltoall_scatterv ||
-      !bcast_scatterv ||
-      (bcast_scatterv && info[1] != sum))
-    return MPIR_Scatterv(sendbuf, sendcounts, displs, sendtype,
-			 recvbuf, recvcount, recvtype,
-			 root, comm_ptr);
-  
-  
-  if(rank == root)
-  {
-    MPID_Ensure_Aint_fits_in_pointer(MPIR_VOID_PTR_CAST_TO_MPI_AINT
-                                     sendbuf + true_lb);
-    sendbuf = (char *) sendbuf + true_lb;
-  }
-  else
-  {
-    if(recvbuf != MPI_IN_PLACE)
-    {
-      MPID_Ensure_Aint_fits_in_pointer(MPIR_VOID_PTR_CAST_TO_MPI_AINT
-                                       recvbuf + true_lb);
-      recvbuf = (char *) recvbuf + true_lb;
-    }
-  }
-
-  if (alltoall_scatterv)
-    return MPIDO_Scatterv_alltoallv(sendbuf,
-				    sendcounts,
-				    displs,
-				    sendtype,
-				    recvbuf,
-				    recvcount,
-				    recvtype,
-				    root,
-				    comm_ptr);
-  
-  else
-    return MPIDO_Scatterv_bcast(sendbuf,
-				sendcounts,
-				displs,
-				sendtype,
-				recvbuf,
-				recvcount,
-				recvtype,
-				root,
-				comm_ptr);
+   if(!optscatterv[0] || (!optscatterv[1]))
+   {
+      char *newrecvbuf = recvbuf;
+      char *newsendbuf = sendbuf;
+      if(rank == root)
+      {
+         MPID_Ensure_Aint_fits_in_pointer(MPIR_VOID_PTR_CAST_TO_MPI_AINT
+                                          sendbuf + true_lb);
+         newsendbuf = (char *) sendbuf + true_lb;
+      }
+      else
+      {
+         if(recvbuf != MPI_IN_PLACE)
+         {
+            MPID_Ensure_Aint_fits_in_pointer(MPIR_VOID_PTR_CAST_TO_MPI_AINT
+                                             recvbuf + true_lb);
+            newrecvbuf = (char *) recvbuf + true_lb;
+         }
+      }
+      if(!optscatterv[0])
+      {
+         return MPIDO_Scatterv_alltoallv(newsendbuf,
+                                         sendcounts,
+                                         displs,
+                                         sendtype,
+                                         newrecvbuf,
+                                         recvcount,
+                                         recvtype,
+                                         root,
+                                         comm_ptr);
+     
+      }
+      else
+      {
+         return MPIDO_Scatterv_bcast(newsendbuf,
+                                     sendcounts,
+                                     displs,
+                                     sendtype,
+                                     newrecvbuf,
+                                     recvcount,
+                                     recvtype,
+                                     root,
+                                     comm_ptr);
+      }
+   } /* nothing valid to try, go to mpich */
+   else
+   {
+      return MPIR_Scatterv(sendbuf, sendcounts, displs, sendtype,
+                           recvbuf, recvcount, recvtype,
+                           root, comm_ptr);
+   }
 }
 
 #else /* !USE_CCMI_COLL */
