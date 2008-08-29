@@ -26,7 +26,7 @@ int MPIDO_Gather(void *sendbuf,
   MPI_Aint true_lb = 0;
 
   int success = 1, contig, send_bytes=-1, recv_bytes = 0;
-  int rc, rank = comm->rank;
+  int rc = 0, rank = comm->rank;
 
   if (sendtype != MPI_DATATYPE_NULL && sendcount >= 0)
   {

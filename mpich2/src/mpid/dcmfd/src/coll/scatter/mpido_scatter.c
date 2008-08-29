@@ -25,7 +25,7 @@ int MPIDO_Scatter(void *sendbuf,
   MPID_Datatype * data_ptr;
   MPI_Aint true_lb = 0;
 
-  int contig, nbytes, rc;
+  int contig, nbytes = 0, rc = 0;
   int rank = comm->rank;
   int success = 1;
 
@@ -150,4 +150,5 @@ int MPIDO_Scatter(void *sendbuf,
 
     MPIU_Free(tb_ptr);    
   }
+   return rc;
 }

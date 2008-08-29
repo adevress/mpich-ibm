@@ -6,7 +6,7 @@
 #include "mpidimpl.h"
 #include "pmi.h"
 
-extern STAR_FreeMem(MPID_Comm *);
+extern void STAR_FreeMem(MPID_Comm *);
 
 /**
  * \brief Shut down the system

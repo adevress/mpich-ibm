@@ -61,13 +61,11 @@ char comm_shape_str[3][8] = {"COMWRLD", "RECT", "IRREG"};
 void
 STAR_AssignBestAlgorithm(STAR_Tuning_Session * session)
 {
-  DCMF_Embedded_Info_Set * prop = &(session -> comm -> dcmf.properties);
   STAR_MPI_Call call_type;
   int i, np, rank, bytes, total_algs, * best;
   double * algorithms_times;
   double * tmp;
   char * MPI;
-  char comm_str[8];
 
   call_type = session->call_type;
   bytes = session->bytes;
@@ -282,7 +280,7 @@ STAR_NextAlgorithm(STAR_Tuning_Session * session,
 {
   STAR_Algorithm * repository;
   MPID_Comm * comm;
-  int i = 0, np, bytes, op_type_support, alg_op_type_support=0;
+  int i = 0, np, bytes, op_type_support;
   unsigned * alg_bytes, * alg_nprocs;
   unsigned * curr_alg_invoc, * session_total_examined;
   unsigned char * panic, * one_at_least, reset, skip;
@@ -413,14 +411,13 @@ int
 STAR_SortAlgorithms(STAR_Tuning_Session * session)
 {
   char * MPI;
-  int i, j, k, rank, used, total_algs, bytes;
+  int i, j, k, rank, used, total_algs;
   double min, max = 0;
   STAR_MPI_Call call_type;
   
   call_type = session->call_type;
   MPI = STAR_info.mpis[call_type];
   session->total_tuned_algorithms = 0;
-  session -> bytes;
   total_algs = session->total_examined;
   rank = session->comm->rank;
 
@@ -496,7 +493,7 @@ STAR_CheckPerformanceOfBestAlg(STAR_Tuning_Session * session)
 {
   STAR_MPI_Call call_type;
   char * MPI;
-  double tmp[2], best_time;
+  double best_time;
   int second, alg_index, bytes, rank, np;
 
   call_type = session->call_type;
@@ -669,6 +666,8 @@ STAR_ComputePerformance(STAR_Tuning_Session * session,
 int
 STAR_DisplayStatistics(MPID_Comm * comm)
 {
+  STAR_info.internal_control_flow = 1;
+#if 0
   int np, i;
   char * MPI;
   STAR_Algorithm * repository;
@@ -678,8 +677,6 @@ STAR_DisplayStatistics(MPID_Comm * comm)
   double comm_ave, curr_comm_total = 0;
   double post_tuning_ave, monitor_overhead;
 
-  STAR_info.internal_control_flow = 1;
-#if 0
   for (i = 0; i < STAR_ROUTINES; i++)
   {
     /* if we have not tuned the collective i */

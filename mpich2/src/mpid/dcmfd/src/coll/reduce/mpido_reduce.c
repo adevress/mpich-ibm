@@ -22,8 +22,8 @@ int MPIDO_Reduce(void * sendbuf,
 {
   reduce_fptr func = NULL;
   DCMF_Embedded_Info_Set * properties = &(comm->dcmf.properties);
-  int success = 1, rc, op_type_support;
-  int data_contig, data_size;
+  int success = 1, rc = 0, op_type_support;
+  int data_contig, data_size = 0;
   unsigned char reset_sendbuff = 0;
   MPID_Datatype * data_ptr;
   MPI_Aint data_true_lb = 0;
