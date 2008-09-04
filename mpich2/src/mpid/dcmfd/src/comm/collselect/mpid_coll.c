@@ -559,6 +559,9 @@ void MPIDI_Coll_Comm_create (MPID_Comm *comm)
    if(MPIR_ThreadInfo.thread_provided == MPI_THREAD_MULTIPLE)
    {
       DCMF_INFO_SET(comm_prop, DCMF_THREADED_MODE);
+      DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_DPUT_BCAST);
+      DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_SINGLETH_BCAST);
+      DCMF_INFO_UNSET(comm_prop, DCMF_USE_BINOM_SINGLETH_BCAST);
       if(comm != comm_world)
        global = 0;
     }
