@@ -28,7 +28,7 @@ MPIDO_Bcast(void *buffer,
   MPID_Datatype *data_ptr;
   MPID_Segment segment;
 
-  if (!count)
+  if (count==0)
     return MPI_SUCCESS;
 
   if (DCMF_INFO_ISSET(properties, DCMF_USE_MPICH_BCAST))
@@ -43,128 +43,146 @@ MPIDO_Bcast(void *buffer,
 
   data_buffer = (char *) buffer + data_true_lb;
 
-  if (!data_contig)
-  {
-    noncontig_buff = MPIU_Malloc(data_size);
-    data_buffer = noncontig_buff;
-    if (noncontig_buff == NULL)
-    {
-      fprintf(stderr,
-              "Pack: Tree Bcast cannot allocate local non-contig pack"
-              " buffer\n");
-      MPIX_Dump_stacks();
-      MPID_Abort(NULL, MPI_ERR_NO_SPACE, 1,
-                 "Fatal:  Cannot allocate pack buffer");
-    }
+   if (!data_contig)
+   {
+      noncontig_buff = MPIU_Malloc(data_size);
+      data_buffer = noncontig_buff;
+      if (noncontig_buff == NULL)
+      {
+         fprintf(stderr,
+                 "Pack: Tree Bcast cannot allocate local non-contig pack"
+                 " buffer\n");
+         MPIX_Dump_stacks();
+         MPID_Abort(NULL, MPI_ERR_NO_SPACE, 1,
+                    "Fatal:  Cannot allocate pack buffer");
+      }
 
-    if (comm->rank == root)
-    {
-      DLOOP_Offset last = data_size;
-      MPID_Segment_init(buffer, count, datatype, &segment, 0);
-      MPID_Segment_pack(&segment, 0, &last, noncontig_buff);
-    }
-  }
+      if (comm->rank == root)
+      {
+         DLOOP_Offset last = data_size;
+         MPID_Segment_init(buffer, count, datatype, &segment, 0);
+         MPID_Segment_pack(&segment, 0, &last, noncontig_buff);
+      }
+   }
 
 
-  if (!STAR_info.enabled || STAR_info.internal_control_flow)
-  {
-    if (data_size <= 1024 || userenvset)
-    {
-      if (DCMF_INFO_ISSET(properties, DCMF_USE_TREE_BCAST))
-        func = MPIDO_Bcast_tree;
+   if (!STAR_info.enabled || STAR_info.internal_control_flow)
+   {
+      if (data_size <= 1024 || userenvset)
+      {
+         if (DCMF_INFO_ISSET(properties, DCMF_USE_TREE_BCAST))
+            func = MPIDO_Bcast_tree;
       
-      if ((!func || userenvset) &&
-          DCMF_INFO_ISSET(properties, DCMF_USE_RECT_SINGLETH_BCAST) &&
-          data_size > 128)
-        func = MPIDO_Bcast_rect_singleth;
+         if ((!func || userenvset) &&
+               DCMF_INFO_ISSET(properties, DCMF_USE_RECT_SINGLETH_BCAST) &&
+               data_size > 128)
+            func = MPIDO_Bcast_rect_singleth;
       
-      if ((!func || userenvset) &&
-          DCMF_INFO_ISSET(properties, DCMF_USE_ARECT_BCAST))
-        func = MPIDO_Bcast_rect_async;
+         if ((!func || userenvset) &&
+               DCMF_INFO_ISSET(properties, DCMF_USE_ARECT_BCAST))
+            func = MPIDO_Bcast_rect_async;
       
-      if ((!func || userenvset) &&
-          DCMF_INFO_ISSET(properties, DCMF_USE_ABINOM_BCAST))
-        func = MPIDO_Bcast_binom_async;
+         if ((!func || userenvset) &&
+               DCMF_INFO_ISSET(properties, DCMF_USE_ABINOM_BCAST))
+            func = MPIDO_Bcast_binom_async;
 
-    }
+         if ((!func || userenvset) &&
+               DCMF_INFO_ISSET(properties, DCMF_USE_SCATTER_GATHER_BCAST))
+            func = MPIDO_Bcast_scatter_gather;
 
-    else if (data_size <= 8192 || userenvset)
-    {
-      if (DCMF_INFO_ISSET(properties, DCMF_USE_TREE_BCAST))
-        func = MPIDO_Bcast_tree;
+      }
+
+      if(!func && (data_size <= 8192 || userenvset))
+      {
+         if (DCMF_INFO_ISSET(properties, DCMF_USE_TREE_BCAST))
+            func = MPIDO_Bcast_tree;
       
-      if ((!func || userenvset) &&
-          DCMF_INFO_ISSET(properties, DCMF_USE_RECT_SINGLETH_BCAST))
-        func = MPIDO_Bcast_rect_singleth;
+         if ((!func || userenvset) &&
+               DCMF_INFO_ISSET(properties, DCMF_USE_RECT_SINGLETH_BCAST))
+            func = MPIDO_Bcast_rect_singleth;
       
-      if ((!func  || userenvset) &&
-          DCMF_INFO_ISSET(properties, DCMF_USE_RECT_BCAST))
-        func = MPIDO_Bcast_rect_sync;
+         if ((!func  || userenvset) &&
+               DCMF_INFO_ISSET(properties, DCMF_USE_RECT_BCAST))
+            func = MPIDO_Bcast_rect_sync;
       
-      if ((!func || userenvset) &&
-          DCMF_INFO_ISSET(properties, DCMF_USE_ABINOM_BCAST))
-        func = MPIDO_Bcast_binom_async;
-    }
+         if ((!func || userenvset) &&
+               DCMF_INFO_ISSET(properties, DCMF_USE_ABINOM_BCAST))
+            func = MPIDO_Bcast_binom_async;
+
+         if ((!func || userenvset) &&
+               DCMF_INFO_ISSET(properties, DCMF_USE_SCATTER_GATHER_BCAST))
+            func = MPIDO_Bcast_scatter_gather;
+      }
+
+      if(!func && (data_size <= 65536 || userenvset))
+      {
+         if (DCMF_INFO_ISSET(properties, DCMF_USE_TREE_BCAST))
+            func = MPIDO_Bcast_tree;
+      
+         if ((!func  || userenvset) &&
+               DCMF_INFO_ISSET(properties, DCMF_USE_RECT_DPUT_BCAST) &&
+               !((unsigned) data_buffer & 0x0F))
+            func = MPIDO_Bcast_rect_dput;
+
+         if ((!func || userenvset) &&
+               DCMF_INFO_ISSET(properties, DCMF_USE_RECT_BCAST))
+            func = MPIDO_Bcast_rect_sync;
+      
+         if ((!func  || userenvset) &&
+               DCMF_INFO_ISSET(properties, DCMF_USE_BINOM_SINGLETH_BCAST))
+            func = MPIDO_Bcast_binom_singleth;
+
+         if ((!func || userenvset) &&
+               DCMF_INFO_ISSET(properties, DCMF_USE_ABINOM_BCAST) &&
+               data_size < 16384)
+            func = MPIDO_Bcast_binom_async;
+      
+         if ((!func || userenvset) &&
+               DCMF_INFO_ISSET(properties, DCMF_USE_BINOM_BCAST))
+            func = MPIDO_Bcast_binom_sync;      
+
+         if ((!func || userenvset) &&
+               DCMF_INFO_ISSET(properties, DCMF_USE_SCATTER_GATHER_BCAST))
+            func = MPIDO_Bcast_scatter_gather;
+      }
+
+      if(!func && (data_size > 65536 || userenvset))
+      {
+         if (DCMF_INFO_ISSET(properties, DCMF_USE_RECT_DPUT_BCAST) &&
+               !((unsigned) data_buffer & 0x0F))
+            func = MPIDO_Bcast_rect_dput;
+      
+         if ((!func || userenvset) &&
+               DCMF_INFO_ISSET(properties, DCMF_USE_TREE_BCAST))
+            func = MPIDO_Bcast_tree;
+      
+         if ((!func || userenvset) &&
+               DCMF_INFO_ISSET(properties, DCMF_USE_RECT_BCAST))
+            func = MPIDO_Bcast_rect_sync;
+      
+         if ((!func || userenvset) &&
+               DCMF_INFO_ISSET(properties, DCMF_USE_BINOM_SINGLETH_BCAST))
+            func = MPIDO_Bcast_binom_singleth;
+
+         if ((!func || userenvset) &&
+               DCMF_INFO_ISSET(properties, DCMF_USE_BINOM_BCAST))
+            func = MPIDO_Bcast_binom_sync;
+
+         if ((!func || userenvset) &&
+               DCMF_INFO_ISSET(properties, DCMF_USE_SCATTER_GATHER_BCAST))
+            func = MPIDO_Bcast_scatter_gather;
+      }
     
-    else if (data_size <= 65536 || userenvset)
-    {
-      if (DCMF_INFO_ISSET(properties, DCMF_USE_TREE_BCAST))
-        func = MPIDO_Bcast_tree;
-      
-      if ((!func  || userenvset) &&
-          DCMF_INFO_ISSET(properties, DCMF_USE_RECT_DPUT_BCAST) &&
-          !((unsigned) data_buffer & 0x0F))
-        func = MPIDO_Bcast_rect_dput;
-
-      if ((!func || userenvset) &&
-          DCMF_INFO_ISSET(properties, DCMF_USE_RECT_BCAST))
-        func = MPIDO_Bcast_rect_sync;
-      
-      if ((!func  || userenvset) &&
-          DCMF_INFO_ISSET(properties, DCMF_USE_BINOM_SINGLETH_BCAST))
-        func = MPIDO_Bcast_binom_singleth;
-
-      if ((!func || userenvset) &&
-          DCMF_INFO_ISSET(properties, DCMF_USE_ABINOM_BCAST) &&
-          data_size < 16384)
-        func = MPIDO_Bcast_binom_async;
-      
-      if ((!func || userenvset) &&
-          DCMF_INFO_ISSET(properties, DCMF_USE_BINOM_BCAST))
-        func = MPIDO_Bcast_binom_sync;      
-    }
-    
-    else
-    {
-      if (DCMF_INFO_ISSET(properties, DCMF_USE_RECT_DPUT_BCAST) &&
-          !((unsigned) data_buffer & 0x0F))
-          func = MPIDO_Bcast_rect_dput;
-      
-      if ((!func || userenvset) &&
-          DCMF_INFO_ISSET(properties, DCMF_USE_TREE_BCAST))
-        func = MPIDO_Bcast_tree;
-      
-      if ((!func || userenvset) &&
-          DCMF_INFO_ISSET(properties, DCMF_USE_RECT_BCAST))
-        func = MPIDO_Bcast_rect_sync;
-      
-      if ((!func || userenvset) &&
-          DCMF_INFO_ISSET(properties, DCMF_USE_BINOM_SINGLETH_BCAST))
-        func = MPIDO_Bcast_binom_singleth;
-
-      if ((!func || userenvset) &&
-          DCMF_INFO_ISSET(properties, DCMF_USE_BINOM_BCAST))
-        func = MPIDO_Bcast_binom_sync;
-    }
-    
-    if (!func || userenvset)
-      func = MPIDO_Bcast_scatter_gather;
+      if (!func)
+      {
+         return MPIR_Bcast(buffer, count, datatype, root, comm);
+      }
 
     //    if (!func)
     //return MPIR_Bcast(buffer, count, datatype, root, comm);
     
-    rc = (func) (data_buffer, data_size, root, comm);
-  }
+      rc = (func) (data_buffer, data_size, root, comm);
+   }
       
   else
   {
