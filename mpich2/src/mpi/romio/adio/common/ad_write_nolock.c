@@ -92,9 +92,9 @@ void ADIOI_NOLOCK_WriteStrided(ADIO_File fd, void *buf, int count,
 	/* seek to the right spot in the file */
 	if (file_ptr_type == ADIO_EXPLICIT_OFFSET) {
 	    off = fd->disp + etype_size * offset;
-	    lseek64(fd->fd_sys, off, SEEK_SET);
+	    lseek(fd->fd_sys, off, SEEK_SET);
 	}
-	else off = lseek64(fd->fd_sys, fd->fp_ind, SEEK_SET);
+	else off = lseek(fd->fd_sys, fd->fp_ind, SEEK_SET);
 
 	/* loop through all the flattened pieces.  combine into buffer until
 	 * no more will fit, then write.
@@ -139,7 +139,7 @@ void ADIOI_NOLOCK_WriteStrided(ADIO_File fd, void *buf, int count,
 				    flat_buf->blocklens[i]);
 #endif
         ADIOI_Assert(flat_buf->blocklens[i] == (unsigned)flat_buf->blocklens[i]);
-        ADIOI_Assert((((ADIO_Offset)(MPIR_Puint)buf) + (ADIO_Offset)j*(ADIO_Offset)buftype_extent + flat_buf->indices[i]) == (ADIO_Offset)((MPIR_Puint)buf + (ADIO_Offset)j*(ADIO_Offset)buftype_extent + flat_buf->indices[i]));
+        ADIOI_Assert((((ADIO_Offset)(MPIR_Upint)buf) + (ADIO_Offset)j*(ADIO_Offset)buftype_extent + flat_buf->indices[i]) == (ADIO_Offset)((MPIR_Upint)buf + (ADIO_Offset)j*(ADIO_Offset)buftype_extent + flat_buf->indices[i]));
 #ifdef ADIOI_MPE_LOGGING
 		    MPE_Log_event( ADIOI_MPE_write_a, 0, NULL );
 #endif

@@ -49,6 +49,14 @@ typedef struct MPID_nem_lmt_shm_wait_element
 #define LMT_SHM_Q_DEQUEUE(qp, epp) GENERIC_Q_DEQUEUE(qp, epp, next)
 #define LMT_SHM_Q_SEARCH_REMOVE(qp, req_id, epp) GENERIC_Q_SEARCH_REMOVE(qp, _e->req->handle == (req_id), epp, \
                                                                          MPID_nem_lmt_shm_wait_element_t, next)
+/* #define LMT_SHM_Q_EMPTY(qp) GENERIC_Q_EMPTY(qp) */
+/* #define LMT_SHM_Q_HEAD(qp) GENERIC_Q_HEAD(qp) */
+/* #define LMT_SHM_Q_ENQUEUE(qp, ep) do{printf("ENQUEUE(%d) %p\n",__LINE__,ep->req);GENERIC_Q_ENQUEUE(qp, ep, next);} while(0) */
+/* #define LMT_SHM_Q_ENQUEUE_AT_HEAD(qp, ep) do{printf("ENQUEUE_AT_HEAD(%d) %p\n",__LINE__,ep->req);GENERIC_Q_ENQUEUE_AT_HEAD(qp, ep, next);} while(0) */
+/* #define LMT_SHM_Q_DEQUEUE(qp, epp) do{GENERIC_Q_DEQUEUE(qp, epp, next);if(*epp)printf("DEQUEUE(%d) %p\n",__LINE__,(*epp)?(*epp)->req:0);} while(0) */
+/* #define LMT_SHM_Q_SEARCH_REMOVE(qp, req_id, epp) do{GENERIC_Q_SEARCH_REMOVE(qp, _e->req->handle == (req_id), epp, \ */
+/*                                                                             MPID_nem_lmt_shm_wait_element_t, next);\ */
+/*                                                     if(*epp)printf("REMOVE(%d) %p\n",__LINE__,(*epp)?(*epp)->req:0);} while(0) */
 #define CHECK_Q(qp) do{\
     if (LMT_SHM_Q_EMPTY(*(qp))) break;\
     if (LMT_SHM_Q_HEAD(*(qp))->next == NULL && (qp)->head != (qp)->tail)\
@@ -258,6 +266,7 @@ int MPID_nem_lmt_shm_start_send(MPIDI_VC_t *vc, MPID_Request *req, MPID_IOV r_co
         mpi_errno = MPID_nem_attach_shm_region(&vc_ch->lmt_copy_buf, vc_ch->lmt_copy_buf_handle);
         if (mpi_errno) MPIU_ERR_POP(mpi_errno);
 
+        /* put the pending receive req back on the queue to try again later */
         LMT_SHM_Q_ENQUEUE_AT_HEAD(&vc_ch->lmt_queue, vc_ch->lmt_active_lmt); /* MT: not thread safe */
         vc_ch->lmt_active_lmt = NULL;
     }
@@ -316,7 +325,7 @@ static int get_next_req(MPIDI_VC_t *vc)
 
     MPIDI_FUNC_ENTER(MPID_STATE_GET_NEXT_REQ);
 
-    prev_owner_rank = MPID_NEM_CAS_INT(&copy_buf->owner_info.val.rank, NO_OWNER, MPIDI_Process.my_pg_rank);
+    prev_owner_rank = MPIDU_Atomic_cas_int(&copy_buf->owner_info.val.rank, NO_OWNER, MPIDI_Process.my_pg_rank);
 
     if (prev_owner_rank == MPIDI_Process.my_pg_rank)
     {
@@ -328,11 +337,11 @@ static int get_next_req(MPIDI_VC_t *vc)
     {
         int i;
         /* successfully grabbed idle copy buf */
-	MPID_NEM_WRITE_BARRIER();
+        MPIDU_Shm_write_barrier();
         for (i = 0; i < NUM_BUFS; ++i)
             copy_buf->len[i].val = 0;
 
-        MPID_NEM_WRITE_BARRIER();
+        MPIDU_Shm_write_barrier();
 
         LMT_SHM_Q_DEQUEUE(&vc_ch->lmt_queue, &vc_ch->lmt_active_lmt);
         copy_buf->owner_info.val.remote_req_id = vc_ch->lmt_active_lmt->req->ch.lmt_req_id;
@@ -343,7 +352,7 @@ static int get_next_req(MPIDI_VC_t *vc)
         /* remote side chooses next transfer */
         int i = 0;
 
-        MPID_NEM_READ_BARRIER();
+        MPIDU_Shm_read_barrier();
         while (copy_buf->owner_info.val.remote_req_id == MPI_REQUEST_NULL)
         {
             if (i == NUM_BUSY_POLLS)
@@ -354,7 +363,7 @@ static int get_next_req(MPIDI_VC_t *vc)
             ++i;
         }
 
-        MPID_NEM_READ_BARRIER();
+        MPIDU_Shm_read_barrier();
         LMT_SHM_Q_SEARCH_REMOVE(&vc_ch->lmt_queue, copy_buf->owner_info.val.remote_req_id, &vc_ch->lmt_active_lmt);
 
         if (vc_ch->lmt_active_lmt == NULL)
@@ -363,11 +372,16 @@ static int get_next_req(MPIDI_VC_t *vc)
     }
 
     req = vc_ch->lmt_active_lmt->req;
-    req->dev.segment_ptr = MPID_Segment_alloc();
-    /* if (!req->dev.segment_ptr) { MPIU_ERR_POP(); } */
-
-    MPID_Segment_init(req->dev.user_buf, req->dev.user_count, req->dev.datatype, req->dev.segment_ptr, 0);
-    req->dev.segment_first = 0;
+    if (req->dev.segment_ptr == NULL)
+    {
+        /* Check to see if we've already allocated a seg for this req.
+           This can happen if both sides allocated copy buffers, and
+           we decided to use the remote side's buffer. */
+        req->dev.segment_ptr = MPID_Segment_alloc();
+        MPIU_ERR_CHKANDJUMP1((req->dev.segment_ptr == NULL), mpi_errno, MPI_ERR_OTHER, "**nomem", "**nomem %s", "MPID_Segment_alloc");
+        MPID_Segment_init(req->dev.user_buf, req->dev.user_count, req->dev.datatype, req->dev.segment_ptr, 0);
+        req->dev.segment_first = 0;
+    }
     vc_ch->lmt_buf_num = 0;
     vc_ch->lmt_surfeit = 0;
 
@@ -379,6 +393,8 @@ static int get_next_req(MPIDI_VC_t *vc)
  fn_exit:
     MPIDI_FUNC_EXIT(MPID_STATE_GET_NEXT_REQ);
     return mpi_errno;
+ fn_fail:
+    goto fn_exit;
 }
 
 /* The message is copied in a pipelined fashion.  There are NUM_BUFS
@@ -447,7 +463,7 @@ static int lmt_shm_send_progress(MPIDI_VC_t *vc, MPID_Request *req, int *done)
             ++i;
         }
 
-        MPID_NEM_READ_WRITE_BARRIER();
+        MPIDU_Shm_read_write_barrier();
 
 
         /* we have a free buffer, fill it */
@@ -457,7 +473,7 @@ static int lmt_shm_send_progress(MPIDI_VC_t *vc, MPID_Request *req, int *done)
             copy_limit = MPID_NEM_COPY_BUF_LEN;
         last = (data_sz - first <= copy_limit) ? data_sz : first + copy_limit;
 	MPID_Segment_pack(req->dev.segment_ptr, first, &last, (void *)copy_buf->buf[buf_num]); /* cast away volatile */
-        MPID_NEM_WRITE_BARRIER();
+        MPIDU_Shm_write_barrier();
         copy_buf->len[buf_num].val = last - first;
 
         first = last;
@@ -502,7 +518,7 @@ static int lmt_shm_recv_progress(MPIDI_VC_t *vc, MPID_Request *req, int *done)
     MPIDI_STATE_DECL(MPID_STATE_LMT_SHM_RECV_PROGRESS);
 
     MPIDI_FUNC_ENTER(MPID_STATE_LMT_SHM_RECV_PROGRESS);
-
+    
     MPIU_Assert((vc_ch->lmt_copy_buf->owner_info.val.rank == MPIDI_Process.my_pg_rank &&
                  vc_ch->lmt_copy_buf->owner_info.val.remote_req_id == vc_ch->lmt_active_lmt->req->ch.lmt_req_id) ||
                 (vc_ch->lmt_copy_buf->owner_info.val.rank == vc->pg_rank &&
@@ -543,7 +559,7 @@ static int lmt_shm_recv_progress(MPIDI_VC_t *vc, MPID_Request *req, int *done)
             ++i;
         }
 
-        MPID_NEM_READ_BARRIER();
+        MPIDU_Shm_read_barrier();
 
         /* unpack data including any leftover from the previous buffer */
         src_buf = ((char *)copy_buf->buf[buf_num]) - surfeit; /* cast away volatile */
@@ -556,7 +572,7 @@ static int lmt_shm_recv_progress(MPIDI_VC_t *vc, MPID_Request *req, int *done)
             /* we had leftover data from the previous buffer, we can
                now mark that buffer as empty */
 
-            MPID_NEM_READ_WRITE_BARRIER();
+            MPIDU_Shm_read_write_barrier();
             copy_buf->len[(buf_num-1)].val = 0;
             /* Make sure we copied at least the leftover data from last time */
             MPIU_Assert(last - first > surfeit);
@@ -575,7 +591,7 @@ static int lmt_shm_recv_progress(MPIDI_VC_t *vc, MPID_Request *req, int *done)
                 /* if we're wrapping back to buf 0, then we can copy it directly */
                 memcpy(((char *)copy_buf->buf[0]) - surfeit, surfeit_ptr, surfeit);
 
-                MPID_NEM_READ_WRITE_BARRIER();
+                MPIDU_Shm_read_write_barrier();
                 copy_buf->len[buf_num].val = 0;
             }
             else
@@ -590,7 +606,7 @@ static int lmt_shm_recv_progress(MPIDI_VC_t *vc, MPID_Request *req, int *done)
             /* all data was unpacked, we can mark this buffer as empty */
             surfeit = 0;
 
-            MPID_NEM_READ_WRITE_BARRIER();
+            MPIDU_Shm_read_write_barrier();
             copy_buf->len[buf_num].val = 0;	
         }
 
@@ -603,7 +619,7 @@ static int lmt_shm_recv_progress(MPIDI_VC_t *vc, MPID_Request *req, int *done)
         copy_buf->len[i].val = 0;
 
     copy_buf->owner_info.val.remote_req_id = MPI_REQUEST_NULL;
-    MPID_NEM_WRITE_BARRIER();
+    MPIDU_Shm_write_barrier();
     copy_buf->owner_info.val.rank          = NO_OWNER;
 
     *done = TRUE;

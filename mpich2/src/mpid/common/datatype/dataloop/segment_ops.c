@@ -28,7 +28,7 @@ int PREPEND_PREFIX(Segment_contig_m2m)(DLOOP_Offset *blocks_p,
 
 #ifdef MPID_SU_VERBOSE
     dbg_printf("\t[contig unpack: do=" MPI_AINT_FMT_DEC_SPEC ", dp=%x, bp=%x, sz=" MPI_AINT_FMT_DEC_SPEC ", blksz=" MPI_AINT_FMT_DEC_SPEC "]\n",
-	       rel_off, 
+	       rel_off,
 	       (unsigned) bufp,
 	       (unsigned) paramp->u.unpack.unpack_buffer,
 	       el_size,
@@ -36,17 +36,26 @@ int PREPEND_PREFIX(Segment_contig_m2m)(DLOOP_Offset *blocks_p,
 #endif
 
     if (paramp->direction == DLOOP_M2M_TO_USERBUF) {
-	memcpy((char *) MPIR_MPI_AINT_CAST_TO_VOID_PTR ((MPIR_PTR_DISP_CAST_TO_MPI_AINT (paramp->userbuf)) + rel_off), 
-	       paramp->streambuf, 
+	/* Ensure that pointer increment fits in a pointer */
+	/* userbuf is a pointer (not a displacement) since it is being
+	 * used on a memcpy */
+	MPID_Ensure_Aint_fits_in_pointer((MPI_VOID_PTR_CAST_TO_MPI_AINT (paramp->userbuf)) + rel_off);
+	memcpy((char *) MPI_AINT_CAST_TO_VOID_PTR ((MPI_VOID_PTR_CAST_TO_MPI_AINT (paramp->userbuf)) + rel_off),
+	       paramp->streambuf,
 	       size);
     }
     else {
-	memcpy(paramp->streambuf, 
-	       (char *) MPIR_MPI_AINT_CAST_TO_VOID_PTR ((MPIR_PTR_DISP_CAST_TO_MPI_AINT (paramp->userbuf)) + rel_off), 
+	/* Ensure that pointer increment fits in a pointer */
+	/* userbuf is a pointer (not a displacement) since it is being used on a memcpy */
+	MPID_Ensure_Aint_fits_in_pointer((MPI_VOID_PTR_CAST_TO_MPI_AINT (paramp->userbuf)) + rel_off);
+	memcpy(paramp->streambuf,
+	       (char *) (MPI_AINT_CAST_TO_VOID_PTR ((MPI_VOID_PTR_CAST_TO_MPI_AINT (paramp->userbuf)) + rel_off)),
 	       size);
     }
-    paramp->streambuf = (char*) MPIR_MPI_AINT_CAST_TO_VOID_PTR 
-	                        ((MPIR_PTR_DISP_CAST_TO_MPI_AINT (paramp->streambuf)) + size);
+    /* Ensure that pointer increment fits in a pointer */
+    /* streambuf is a pointer (not a displacement) since it was used on a memcpy */
+    MPID_Ensure_Aint_fits_in_pointer((MPI_VOID_PTR_CAST_TO_MPI_AINT (paramp->streambuf)) + size);
+    paramp->streambuf += size;
     return 0;
 }
 
@@ -71,15 +80,17 @@ int PREPEND_PREFIX(Segment_vector_m2m)(DLOOP_Offset *blocks_p,
     struct PREPEND_PREFIX(m2m_params) *paramp = v_paramp;
     char *cbufp;
 
-    cbufp = (char*) MPIR_MPI_AINT_CAST_TO_VOID_PTR 
-	            ( (MPIR_PTR_DISP_CAST_TO_MPI_AINT (paramp->userbuf)) + rel_off );
+    /* Ensure that pointer increment fits in a pointer */
+    /* userbuf is a pointer (not a displacement) since it is being used for a memory copy */
+    MPID_Ensure_Aint_fits_in_pointer((MPI_VOID_PTR_CAST_TO_MPI_AINT (paramp->userbuf)) + rel_off);
+    cbufp = (char*)(MPI_AINT_CAST_TO_VOID_PTR ((MPI_VOID_PTR_CAST_TO_MPI_AINT (paramp->userbuf)) + rel_off));
     DLOOP_Handle_get_size_macro(el_type, el_size);
 
-    whole_count = (blksz > 0) ? (*blocks_p / (DLOOP_Offset)blksz) : 0;
-    blocks_left = (blksz > 0) ? (*blocks_p % (DLOOP_Offset)blksz) : 0;
+    whole_count = (blksz > 0) ? (*blocks_p / (DLOOP_Offset) blksz) : 0;
+    blocks_left = (blksz > 0) ? (*blocks_p % (DLOOP_Offset) blksz) : 0;
 
     if (paramp->direction == DLOOP_M2M_TO_USERBUF) {
-	if (el_size == 8 
+	if (el_size == 8
 	    MPIR_ALIGN8_TEST(paramp->streambuf,cbufp))
 	{
 	    MPIDI_COPY_TO_VEC(paramp->streambuf, cbufp, stride,
@@ -103,26 +114,29 @@ int PREPEND_PREFIX(Segment_vector_m2m)(DLOOP_Offset *blocks_p,
 	}
 	else {
 	    for (i=0; i < whole_count; i++) {
-		memcpy(cbufp, paramp->streambuf, ((DLOOP_Offset)blksz) * el_size);
+		memcpy(cbufp, paramp->streambuf, ((DLOOP_Offset) blksz) * el_size);
+		/* Ensure that pointer increment fits in a pointer */
+		/* streambuf is a pointer (not a displacement) since it is being used for a memory copy */
+		MPID_Ensure_Aint_fits_in_pointer((MPI_VOID_PTR_CAST_TO_MPI_AINT (paramp->streambuf)) +
+						 ((DLOOP_Offset) blksz) * el_size);
+		paramp->streambuf += ((DLOOP_Offset) blksz) * el_size;
 
-		paramp->streambuf = (char*) MPIR_MPI_AINT_CAST_TO_VOID_PTR 
-		                            ( (MPIR_PTR_DISP_CAST_TO_MPI_AINT (paramp->streambuf)) + 
-					      (((DLOOP_Offset)blksz) * el_size) );
-
-		cbufp = (char*) MPIR_MPI_AINT_CAST_TO_VOID_PTR 
-		                ( (MPIR_PTR_DISP_CAST_TO_MPI_AINT (cbufp)) + stride);
+		MPID_Ensure_Aint_fits_in_pointer((MPI_VOID_PTR_CAST_TO_MPI_AINT (cbufp)) + stride);
+		cbufp += stride;
 	    }
 	    if (blocks_left) {
-		memcpy(cbufp, paramp->streambuf, ((DLOOP_Offset)blocks_left) * el_size);
-
-		paramp->streambuf = (char*) MPIR_MPI_AINT_CAST_TO_VOID_PTR 
-		                            ( (MPIR_PTR_DISP_CAST_TO_MPI_AINT (paramp->streambuf)) + 
-					      ((DLOOP_Offset)blocks_left * el_size));
+		memcpy(cbufp, paramp->streambuf, ((DLOOP_Offset) blocks_left) * el_size);
+		/* Ensure that pointer increment fits in a pointer */
+		/* streambuf is a pointer (not a displacement) since
+		 * it is being used for a memory copy */
+		MPID_Ensure_Aint_fits_in_pointer((MPI_VOID_PTR_CAST_TO_MPI_AINT (paramp->streambuf)) +
+						 ((DLOOP_Offset) blocks_left) * el_size);
+		paramp->streambuf += ((DLOOP_Offset) blocks_left) * el_size;
 	    }
 	}
     }
     else /* M2M_FROM_USERBUF */ {
-	if (el_size == 8 
+	if (el_size == 8
 	    MPIR_ALIGN8_TEST(cbufp,paramp->streambuf))
 	{
 	    MPIDI_COPY_FROM_VEC(cbufp, paramp->streambuf, stride,
@@ -146,21 +160,23 @@ int PREPEND_PREFIX(Segment_vector_m2m)(DLOOP_Offset *blocks_p,
 	}
 	else {
 	    for (i=0; i < whole_count; i++) {
-		memcpy(paramp->streambuf, cbufp, (DLOOP_Offset)blksz * el_size);
-
-		paramp->streambuf = (char*) MPIR_MPI_AINT_CAST_TO_VOID_PTR 
-		                            ( (MPIR_PTR_DISP_CAST_TO_MPI_AINT (paramp->streambuf)) + 
-					      (((DLOOP_Offset)blksz) * el_size) );
-
-		cbufp = (char*) MPIR_MPI_AINT_CAST_TO_VOID_PTR 
-		                ( (MPIR_PTR_DISP_CAST_TO_MPI_AINT (cbufp)) + stride);
+		memcpy(paramp->streambuf, cbufp, (DLOOP_Offset) blksz * el_size);
+		/* Ensure that pointer increment fits in a pointer */
+		/* streambuf is a pointer (not a displacement) since
+		 * it is being used for a memory copy */
+		MPID_Ensure_Aint_fits_in_pointer((MPI_VOID_PTR_CAST_TO_MPI_AINT (paramp->streambuf)) +
+						 (DLOOP_Offset) blksz * el_size);
+		paramp->streambuf += (DLOOP_Offset) blksz * el_size;
+		cbufp += stride;
 	    }
 	    if (blocks_left) {
-		memcpy(paramp->streambuf, cbufp, (DLOOP_Offset)blocks_left * el_size);
-
-		paramp->streambuf = (char*) MPIR_MPI_AINT_CAST_TO_VOID_PTR 
-		                            ( (MPIR_PTR_DISP_CAST_TO_MPI_AINT (paramp->streambuf)) + 
-					      ((DLOOP_Offset)blocks_left * el_size));
+		memcpy(paramp->streambuf, cbufp, (DLOOP_Offset) blocks_left * el_size);
+		/* Ensure that pointer increment fits in a pointer */
+		/* streambuf is a pointer (not a displacement) since
+		 * it is being used for a memory copy */
+		MPID_Ensure_Aint_fits_in_pointer((MPI_VOID_PTR_CAST_TO_MPI_AINT (paramp->streambuf)) +
+						 (DLOOP_Offset) blocks_left * el_size);
+		paramp->streambuf += (DLOOP_Offset) blocks_left * el_size;
 	    }
 	}
     }
@@ -192,9 +208,14 @@ int PREPEND_PREFIX(Segment_blkidx_m2m)(DLOOP_Offset *blocks_p,
 
 	DLOOP_Assert(curblock < count);
 
-	cbufp = (char*) MPIR_MPI_AINT_CAST_TO_VOID_PTR
-	                ((MPIR_PTR_DISP_CAST_TO_MPI_AINT (paramp->userbuf)) + 
-			 rel_off + offsetarray[curblock]);
+	/* Ensure that pointer increment fits in a pointer */
+	/* userbuf is a pointer (not a displacement) since it is being
+	 * used for a memory copy */
+	MPID_Ensure_Aint_fits_in_pointer((MPI_VOID_PTR_CAST_TO_MPI_AINT (paramp->userbuf)) +
+					 rel_off + offsetarray[curblock]);
+	cbufp = (char*) MPI_AINT_CAST_TO_VOID_PTR
+	          ((MPI_VOID_PTR_CAST_TO_MPI_AINT (paramp->userbuf)) +
+		   rel_off + offsetarray[curblock]);
 
 	if (blocklen > blocks_left) blocklen = blocks_left;
 
@@ -222,12 +243,15 @@ int PREPEND_PREFIX(Segment_blkidx_m2m)(DLOOP_Offset *blocks_p,
 	    MPIDI_COPY_FROM_VEC(src, dest, 0, int16_t, blocklen, 1);
 	}
 	else {
-	    memcpy(dest, src, (DLOOP_Offset)blocklen * el_size);
+	    memcpy(dest, src, (DLOOP_Offset) blocklen * el_size);
 	}
 
-	paramp->streambuf = (char*) MPIR_MPI_AINT_CAST_TO_VOID_PTR
-	                            ((MPIR_PTR_DISP_CAST_TO_MPI_AINT (paramp->streambuf)) + 
-				     ((DLOOP_Offset)blocklen * el_size));
+	/* Ensure that pointer increment fits in a pointer */
+	/* streambuf is a pointer (not a displacement) since it is
+	 * being used for a memory copy */
+	MPID_Ensure_Aint_fits_in_pointer((MPI_VOID_PTR_CAST_TO_MPI_AINT (paramp->streambuf)) +
+					 (DLOOP_Offset) blocklen * el_size);
+	paramp->streambuf += (DLOOP_Offset) blocklen * el_size;
 	blocks_left -= blocklen;
 	curblock++;
     }
@@ -260,9 +284,14 @@ int PREPEND_PREFIX(Segment_index_m2m)(DLOOP_Offset *blocks_p,
 	DLOOP_Assert(curblock < count);
 	cur_block_sz = blockarray[curblock];
 
-	cbufp = (char*) MPIR_MPI_AINT_CAST_TO_VOID_PTR
-	                ((MPIR_PTR_DISP_CAST_TO_MPI_AINT (paramp->userbuf)) + 
-			 rel_off + offsetarray[curblock]);
+	/* Ensure that pointer increment fits in a pointer */
+	/* userbuf is a pointer (not a displacement) since it is being
+	 * used for a memory copy */
+	MPID_Ensure_Aint_fits_in_pointer((MPI_VOID_PTR_CAST_TO_MPI_AINT (paramp->userbuf)) +
+					 rel_off + offsetarray[curblock]);
+	cbufp = (char*) MPI_AINT_CAST_TO_VOID_PTR
+	          ((MPI_VOID_PTR_CAST_TO_MPI_AINT (paramp->userbuf)) +
+		   rel_off + offsetarray[curblock]);
 
 	if (cur_block_sz > blocks_left) cur_block_sz = blocks_left;
 
@@ -293,9 +322,12 @@ int PREPEND_PREFIX(Segment_index_m2m)(DLOOP_Offset *blocks_p,
 	    memcpy(dest, src, cur_block_sz * el_size);
 	}
 
-	paramp->streambuf = (char*) MPIR_MPI_AINT_CAST_TO_VOID_PTR
- 	                            ((MPIR_PTR_DISP_CAST_TO_MPI_AINT (paramp->streambuf)) +
-				     (cur_block_sz * el_size) );
+	/* Ensure that pointer increment fits in a pointer */
+	/* streambuf is a pointer (not a displacement) since it is
+	 * being used for a memory copy */
+	MPID_Ensure_Aint_fits_in_pointer((MPI_VOID_PTR_CAST_TO_MPI_AINT (paramp->streambuf)) +
+					 cur_block_sz * el_size);
+	paramp->streambuf += cur_block_sz * el_size;
 	blocks_left -= cur_block_sz;
 	curblock++;
     }
@@ -464,7 +496,7 @@ static int DLOOP_Segment_blkidx_count_block(DLOOP_Offset *blocks_p,
     DLOOP_Assert(count > 0 && blksz > 0 && *blocks_p > 0);
 
     DLOOP_Handle_get_size_macro(el_type, el_size);
-    size = el_size * (DLOOP_Offset)blksz;
+    size = el_size * (DLOOP_Offset) blksz;
     new_blk_count = count;
 
     if (paramp->count > 0 && ((rel_off + offsetarray[0]) == paramp->last_loc))
@@ -522,14 +554,14 @@ static int DLOOP_Segment_index_count_block(DLOOP_Offset *blocks_p,
      *       declared above.
      */
 #if 0
-    last_loc = rel_off * offsetarray[0] + ((DLOOP_Offset)blockarray[0]) * el_size;
+    last_loc = rel_off * offsetarray[0] + ((DLOOP_Offset) blockarray[0]) * el_size;
     for (i=1; i < count; i++) {
 	if (last_loc == rel_off + offsetarray[i]) new_blk_count--;
 
-	last_loc = rel_off + offsetarray[i] + ((DLOOP_Offset)blockarray[i]) * el_size;
+	last_loc = rel_off + offsetarray[i] + ((DLOOP_Offset) blockarray[i]) * el_size;
     }
 #else
-    last_loc = rel_off + offsetarray[count-1] + ((DLOOP_Offset)blockarray[count-1]) * el_size;
+    last_loc = rel_off + offsetarray[count-1] + ((DLOOP_Offset) blockarray[count-1]) * el_size;
 #endif
 
     paramp->last_loc = last_loc;
@@ -605,20 +637,21 @@ static int DLOOP_Segment_contig_mpi_flatten(DLOOP_Offset *blocks_p,
 
     DLOOP_Handle_get_size_macro(el_type, el_size);
     size = *blocks_p * el_size;
-    
+
     last_idx = paramp->index - 1;
     if (last_idx >= 0) {
-	/* Since disps can be negative, we cannot use MPID_Ensure_Aint_fits_in_pointer to verify that
-	 * disps + blklens fits in a pointer.  Just let it truncate, if the sizeof a pointer is less 
-	 * than the sizeof an MPI_Aint.
+	/* Since disps can be negative, we cannot use
+	 * MPID_Ensure_Aint_fits_in_pointer to verify that disps +
+	 * blklens fits in a pointer.  Just let it truncate, if the
+	 * sizeof a pointer is less than the sizeof an MPI_Aint.
 	 */
-	last_end = (char*) MPIR_MPI_AINT_CAST_TO_VOID_PTR
-	           (paramp->disps[last_idx] + ((DLOOP_Offset)paramp->blklens[last_idx]));
+	last_end = (char*) MPI_AINT_CAST_TO_VOID_PTR
+	           (paramp->disps[last_idx] + ((DLOOP_Offset) paramp->blklens[last_idx]));
     }
 
-    /* Since bufp can be a displacement and can be negative, we cannot use 
-     * MPID_Ensure_Aint_fits_in_pointer to ensure the sum fits in a pointer.
-     * Just let it truncate.
+    /* Since bufp can be a displacement and can be negative, we cannot
+     * use MPID_Ensure_Aint_fits_in_pointer to ensure the sum fits in
+     * a pointer.  Just let it truncate.
      */
     if ((last_idx == paramp->length-1) &&
         (last_end != ((char *) bufp + rel_off)))
@@ -636,11 +669,11 @@ static int DLOOP_Segment_contig_mpi_flatten(DLOOP_Offset *blocks_p,
 	paramp->blklens[last_idx] += size;
     }
     else {
-	/* Since bufp can be a displacement and can be negative, we cannot use 
-	 * MPIR_VOID_PTR_CAST_TO_MPI_AINT to cast the sum to a pointer.  Just let it
+	/* Since bufp can be a displacement and can be negative, we cannot use
+	 * MPI_VOID_PTR_CAST_TO_MPI_AINT to cast the sum to a pointer.  Just let it
 	 * sign extend.
 	 */
-        paramp->disps[last_idx+1]   = MPIR_PTR_DISP_CAST_TO_MPI_AINT bufp + rel_off;
+        paramp->disps[last_idx+1]   = MPI_PTR_DISP_CAST_TO_MPI_AINT bufp + rel_off;
 	paramp->blklens[last_idx+1] = size;
 	paramp->index++;
     }
@@ -695,16 +728,19 @@ static int DLOOP_Segment_vector_mpi_flatten(DLOOP_Offset *blocks_p,
 
 	last_idx = paramp->index - 1;
 	if (last_idx >= 0) {
-	    /* Since disps can be negative, we cannot use MPID_Ensure_Aint_fits_in_pointer to verify that
-	     * disps + blklens fits in a pointer.  Just let it truncate, if the sizeof a pointer is less 
+	    /* Since disps can be negative, we cannot use
+	     * MPID_Ensure_Aint_fits_in_pointer to verify that disps +
+	     * blklens fits in a pointer.  Nor can we use
+	     * MPI_AINT_CAST_TO_VOID_PTR to cast the sum to a pointer.
+	     * Just let it truncate, if the sizeof a pointer is less
 	     * than the sizeof an MPI_Aint.
 	     */
-	    last_end = (char *) MPIR_MPI_AINT_CAST_TO_VOID_PTR
-		       ( paramp->disps[last_idx] +
-			 (MPI_Aint)(paramp->blklens[last_idx]) );
+	    last_end = (char *) MPI_AINT_CAST_TO_VOID_PTR
+		       (paramp->disps[last_idx] +
+			 (MPI_Aint)(paramp->blklens[last_idx]));
 	}
 
-	/* Since bufp can be a displacement and can be negative, we cannot use 
+	/* Since bufp can be a displacement and can be negative, we cannot use
 	 * MPID_Ensure_Aint_fits_in_pointer to ensure the sum fits in a pointer.
 	 * Just let it truncate.
 	 */
@@ -728,11 +764,11 @@ static int DLOOP_Segment_vector_mpi_flatten(DLOOP_Offset *blocks_p,
 	    paramp->blklens[last_idx] += size;
 	}
 	else {
-	    /* Since bufp can be a displacement and can be negative, we cannot use 
-	     * MPIR_VOID_PTR_CAST_TO_MPI_AINT to cast the sum to a pointer.  Just let it
+	    /* Since bufp can be a displacement and can be negative, we cannot use
+	     * MPI_VOID_PTR_CAST_TO_MPI_AINT to cast the sum to a pointer.  Just let it
 	     * sign extend.
 	     */
-            paramp->disps[last_idx+1]   = MPIR_PTR_DISP_CAST_TO_MPI_AINT bufp + rel_off;
+            paramp->disps[last_idx+1]   = MPI_PTR_DISP_CAST_TO_MPI_AINT bufp + rel_off;
 	    paramp->blklens[last_idx+1] = size;
 	    paramp->index++;
 	}
@@ -786,17 +822,20 @@ static int DLOOP_Segment_blkidx_mpi_flatten(DLOOP_Offset *blocks_p,
 
 	last_idx = paramp->index - 1;
 	if (last_idx >= 0) {
-	    /* Since disps can be negative, we cannot use MPID_Ensure_Aint_fits_in_pointer to verify that
-	     * disps + blklens fits in a pointer.  Just let it truncate, if the sizeof a pointer is less 
+	    /* Since disps can be negative, we cannot use
+	     * MPID_Ensure_Aint_fits_in_pointer to verify that disps +
+	     * blklens fits in a pointer.  Nor can we use
+	     * MPI_AINT_CAST_TO_VOID_PTR to cast the sum to a pointer.
+	     * Just let it truncate, if the sizeof a pointer is less
 	     * than the sizeof an MPI_Aint.
 	     */
-	    last_end = (char*) MPIR_MPI_AINT_CAST_TO_VOID_PTR
-		       (paramp->disps[last_idx] + ((DLOOP_Offset)paramp->blklens[last_idx]));
+	    last_end = (char*) MPI_AINT_CAST_TO_VOID_PTR
+		       (paramp->disps[last_idx] + ((DLOOP_Offset) paramp->blklens[last_idx]));
 	}
 
-	/* Since bufp can be a displacement and can be negative, we cannot use 
-	 * MPID_Ensure_Aint_fits_in_pointer to ensure the sum fits in a pointer.
-	 * Just let it truncate.
+	/* Since bufp can be a displacement and can be negative, we
+	 * cannot use MPID_Ensure_Aint_fits_in_pointer to ensure the
+	 * sum fits in a pointer.  Just let it truncate.
 	 */
         if ((last_idx == paramp->length-1) &&
             (last_end != ((char *) bufp + rel_off)))
@@ -804,7 +843,7 @@ static int DLOOP_Segment_blkidx_mpi_flatten(DLOOP_Offset *blocks_p,
 	    /* we have used up all our entries, and this one doesn't fit on
 	     * the end of the last one.
 	     */
-	    *blocks_p -= ((DLOOP_Offset)blocks_left + (((DLOOP_Offset)size) / el_size));
+	    *blocks_p -= ((DLOOP_Offset) blocks_left + (((DLOOP_Offset) size) / el_size));
 #ifdef MPID_SP_VERBOSE
 	    MPIU_dbg_printf("\t[vector to vec exiting (1): next ind = %d, %d blocks processed.\n",
 			    paramp->u.pack_vector.index,
@@ -818,11 +857,11 @@ static int DLOOP_Segment_blkidx_mpi_flatten(DLOOP_Offset *blocks_p,
 	    paramp->blklens[last_idx] += size;
 	}
 	else {
-	    /* Since bufp can be a displacement and can be negative, we cannot use 
-	     * MPIR_VOID_PTR_CAST_TO_MPI_AINT to cast the sum to a pointer.  Just let it
+	    /* Since bufp can be a displacement and can be negative, we cannot use
+	     * MPI_VOID_PTR_CAST_TO_MPI_AINT to cast the sum to a pointer.  Just let it
 	     * sign extend.
 	     */
-            paramp->disps[last_idx+1]   = MPIR_PTR_DISP_CAST_TO_MPI_AINT bufp + rel_off + offsetarray[last_idx+1];
+            paramp->disps[last_idx+1]   = MPI_PTR_DISP_CAST_TO_MPI_AINT bufp + rel_off + offsetarray[last_idx+1];
 	    paramp->blklens[last_idx+1] = size;
 	    paramp->index++;
 	}
@@ -876,18 +915,21 @@ static int DLOOP_Segment_index_mpi_flatten(DLOOP_Offset *blocks_p,
 
 	last_idx = paramp->index - 1;
 	if (last_idx >= 0) {
-	    /* Since disps can be negative, we cannot use MPID_Ensure_Aint_fits_in_pointer to verify that
-	     * disps + blklens fits in a pointer.  Just let it truncate, if the sizeof a pointer is less 
+	    /* Since disps can be negative, we cannot use
+	     * MPID_Ensure_Aint_fits_in_pointer to verify that disps +
+	     * blklens fits in a pointer.  Nor can we use
+	     * MPI_AINT_CAST_TO_VOID_PTR to cast the sum to a pointer.
+	     * Just let it truncate, if the sizeof a pointer is less
 	     * than the sizeof an MPI_Aint.
 	     */
-	    last_end = (char *) MPIR_MPI_AINT_CAST_TO_VOID_PTR
-		       ( paramp->disps[last_idx] +
-			 (MPI_Aint)(paramp->blklens[last_idx]) );
+	    last_end = (char *) MPI_AINT_CAST_TO_VOID_PTR
+		       (paramp->disps[last_idx] +
+			(MPI_Aint)(paramp->blklens[last_idx]));
 	}
 
-	/* Since bufp can be a displacement and can be negative, we cannot use 
-	 * MPID_Ensure_Aint_fits_in_pointer to ensure the sum fits in a pointer.
-	 * Just let it truncate.
+	/* Since bufp can be a displacement and can be negative, we
+	 * cannot use MPID_Ensure_Aint_fits_in_pointer to ensure the
+	 * sum fits in a pointer.  Just let it truncate.
 	 */
         if ((last_idx == paramp->length-1) &&
             (last_end != ((char *) bufp + rel_off)))
@@ -909,11 +951,11 @@ static int DLOOP_Segment_index_mpi_flatten(DLOOP_Offset *blocks_p,
 	    paramp->blklens[last_idx] += size;
 	}
 	else {
-	    /* Since bufp can be a displacement and can be negative, we cannot use 
-	     * MPIR_VOID_PTR_CAST_TO_MPI_AINT to cast the sum to a pointer.  Just let it
+	    /* Since bufp can be a displacement and can be negative, we cannot use
+	     * MPI_VOID_PTR_CAST_TO_MPI_AINT to cast the sum to a pointer.  Just let it
 	     * sign extend.
 	     */
-            paramp->disps[last_idx+1]   = MPIR_PTR_DISP_CAST_TO_MPI_AINT bufp + rel_off + offsetarray[last_idx+1];
+            paramp->disps[last_idx+1]   = MPI_PTR_DISP_CAST_TO_MPI_AINT bufp + rel_off + offsetarray[last_idx+1];
 	    paramp->blklens[last_idx+1] = size;
 	    paramp->index++;
 	}
@@ -966,11 +1008,11 @@ void PREPEND_PREFIX(Segment_mpi_flatten)(DLOOP_Segment *segp,
 
     PREPEND_PREFIX(Segment_manipulate)(segp,
 				       first,
-				       lastp, 
-				       DLOOP_Segment_contig_mpi_flatten, 
+				       lastp,
+				       DLOOP_Segment_contig_mpi_flatten,
 				       DLOOP_Segment_vector_mpi_flatten,
-				       NULL, /* DLOOP_Segment_blkidx_mpi_flatten, */
-				       NULL, /* DLOOP_Segment_index_mpi_flatten, */
+				       DLOOP_Segment_blkidx_mpi_flatten,
+				       DLOOP_Segment_index_mpi_flatten,
 				       NULL,
 				       &params);
 
@@ -979,7 +1021,7 @@ void PREPEND_PREFIX(Segment_mpi_flatten)(DLOOP_Segment *segp,
     return;
 }
 
-/* 
+/*
  * Local variables:
  * c-indent-tabs-mode: nil
  * End:

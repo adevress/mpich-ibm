@@ -112,7 +112,7 @@ int MPIDO_Scatterv(void *sendbuf,
       char *newsendbuf = sendbuf;
       if(rank == root)
       {
-         MPID_Ensure_Aint_fits_in_pointer(MPIR_VOID_PTR_CAST_TO_MPI_AINT
+         MPID_Ensure_Aint_fits_in_pointer(MPI_VOID_PTR_CAST_TO_MPI_AINT
                                           sendbuf + true_lb);
          newsendbuf = (char *) sendbuf + true_lb;
       }
@@ -120,7 +120,7 @@ int MPIDO_Scatterv(void *sendbuf,
       {
          if(recvbuf != MPI_IN_PLACE)
          {
-            MPID_Ensure_Aint_fits_in_pointer(MPIR_VOID_PTR_CAST_TO_MPI_AINT
+            MPID_Ensure_Aint_fits_in_pointer(MPI_VOID_PTR_CAST_TO_MPI_AINT
                                              recvbuf + true_lb);
             newrecvbuf = (char *) recvbuf + true_lb;
          }

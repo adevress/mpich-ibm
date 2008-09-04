@@ -29,7 +29,7 @@
  *
  * OPTIMIZATIONS:
  *
- * There are spots in the code with OPT tags that indicate where we could 
+ * There are spots in the code with OPT tags that indicate where we could
  * optimize particular calculations or avoid certain checks.
  *
  * NOTES:
@@ -114,7 +114,7 @@ void PREPEND_PREFIX(Dataloop_copy)(void *dest,
      * adding this difference to them. This way we can just copy the
      * structure, including pointers, in one big block.
      */
-    ptrdiff = (DLOOP_Offset) ( (char *) dest - (char *) src );
+    ptrdiff = (DLOOP_Offset) ((char *) dest - (char *) src);
 
     /* traverse structure updating pointers */
     PREPEND_PREFIX(Dataloop_update)(dest, ptrdiff);
@@ -150,16 +150,16 @@ void PREPEND_PREFIX(Dataloop_update)(DLOOP_Dataloop *dataloop,
 	     *
 	     * However, some compilers spit out warnings about casting on the
 	     * LHS, so we get this much nastier form instead (using common
-	     * struct for contig and vector): 
+	     * struct for contig and vector):
 	     */
 
 	    if (dataloop->loop_params.cm_t.dataloop)
 	    {
-		MPID_Ensure_Aint_fits_in_pointer(MPIR_VOID_PTR_CAST_TO_MPI_AINT (char *) dataloop->loop_params.cm_t.dataloop + ptrdiff); 
+		MPID_Ensure_Aint_fits_in_pointer(MPI_VOID_PTR_CAST_TO_MPI_AINT (char *) dataloop->loop_params.cm_t.dataloop + ptrdiff);
 
-		dataloop->loop_params.cm_t.dataloop = 
-		    (DLOOP_Dataloop *) MPIR_MPI_AINT_CAST_TO_VOID_PTR
-		    (MPIR_VOID_PTR_CAST_TO_MPI_AINT (char *) dataloop->loop_params.cm_t.dataloop + ptrdiff);
+		dataloop->loop_params.cm_t.dataloop =
+		    (DLOOP_Dataloop *) MPI_AINT_CAST_TO_VOID_PTR
+		    (MPI_VOID_PTR_CAST_TO_MPI_AINT (char *) dataloop->loop_params.cm_t.dataloop + ptrdiff);
 	    }
 
 	    if (!(dataloop->kind & DLOOP_FINAL_MASK))
@@ -169,18 +169,18 @@ void PREPEND_PREFIX(Dataloop_update)(DLOOP_Dataloop *dataloop,
 	case DLOOP_KIND_BLOCKINDEXED:
 	    if (dataloop->loop_params.bi_t.offset_array)
 	    {
-		MPID_Ensure_Aint_fits_in_pointer(MPIR_VOID_PTR_CAST_TO_MPI_AINT (char *) dataloop->loop_params.bi_t.offset_array + ptrdiff);
-		dataloop->loop_params.bi_t.offset_array = 
-		    (DLOOP_Offset *) MPIR_MPI_AINT_CAST_TO_VOID_PTR
-		    (MPIR_VOID_PTR_CAST_TO_MPI_AINT (char *) dataloop->loop_params.bi_t.offset_array + ptrdiff);
+		MPID_Ensure_Aint_fits_in_pointer(MPI_VOID_PTR_CAST_TO_MPI_AINT (char *) dataloop->loop_params.bi_t.offset_array + ptrdiff);
+		dataloop->loop_params.bi_t.offset_array =
+		    (DLOOP_Offset *) MPI_AINT_CAST_TO_VOID_PTR
+		    (MPI_VOID_PTR_CAST_TO_MPI_AINT (char *) dataloop->loop_params.bi_t.offset_array + ptrdiff);
 	    }
 
 	    if (dataloop->loop_params.bi_t.dataloop)
 	    {
-		MPID_Ensure_Aint_fits_in_pointer(MPIR_VOID_PTR_CAST_TO_MPI_AINT (char *) dataloop->loop_params.bi_t.dataloop + ptrdiff);
-		dataloop->loop_params.bi_t.dataloop = 
-		    (DLOOP_Dataloop *) MPIR_MPI_AINT_CAST_TO_VOID_PTR
-		    (MPIR_VOID_PTR_CAST_TO_MPI_AINT (char *) dataloop->loop_params.bi_t.dataloop + ptrdiff);
+		MPID_Ensure_Aint_fits_in_pointer(MPI_VOID_PTR_CAST_TO_MPI_AINT (char *) dataloop->loop_params.bi_t.dataloop + ptrdiff);
+		dataloop->loop_params.bi_t.dataloop =
+		    (DLOOP_Dataloop *) MPI_AINT_CAST_TO_VOID_PTR
+		    (MPI_VOID_PTR_CAST_TO_MPI_AINT (char *) dataloop->loop_params.bi_t.dataloop + ptrdiff);
 	    }
 
 	    if (!(dataloop->kind & DLOOP_FINAL_MASK))
@@ -190,26 +190,26 @@ void PREPEND_PREFIX(Dataloop_update)(DLOOP_Dataloop *dataloop,
 	case DLOOP_KIND_INDEXED:
 	    if (dataloop->loop_params.i_t.blocksize_array)
 	    {
-		MPID_Ensure_Aint_fits_in_pointer(MPIR_VOID_PTR_CAST_TO_MPI_AINT (char *) dataloop->loop_params.i_t.blocksize_array + ptrdiff);
-		dataloop->loop_params.i_t.blocksize_array = 
-		    (DLOOP_Count *) MPIR_MPI_AINT_CAST_TO_VOID_PTR
-		    (MPIR_VOID_PTR_CAST_TO_MPI_AINT (char *) dataloop->loop_params.i_t.blocksize_array + ptrdiff);
+		MPID_Ensure_Aint_fits_in_pointer(MPI_VOID_PTR_CAST_TO_MPI_AINT (char *) dataloop->loop_params.i_t.blocksize_array + ptrdiff);
+		dataloop->loop_params.i_t.blocksize_array =
+		    (DLOOP_Count *) MPI_AINT_CAST_TO_VOID_PTR
+		    (MPI_VOID_PTR_CAST_TO_MPI_AINT (char *) dataloop->loop_params.i_t.blocksize_array + ptrdiff);
 	    }
 
 	    if (dataloop->loop_params.i_t.offset_array)
 	    {
-		MPID_Ensure_Aint_fits_in_pointer(MPIR_VOID_PTR_CAST_TO_MPI_AINT (char *) dataloop->loop_params.i_t.offset_array + ptrdiff);
-		dataloop->loop_params.i_t.offset_array = 
-		    (DLOOP_Offset *) MPIR_MPI_AINT_CAST_TO_VOID_PTR
-		    (MPIR_VOID_PTR_CAST_TO_MPI_AINT (char *) dataloop->loop_params.i_t.offset_array + ptrdiff);
+		MPID_Ensure_Aint_fits_in_pointer(MPI_VOID_PTR_CAST_TO_MPI_AINT (char *) dataloop->loop_params.i_t.offset_array + ptrdiff);
+		dataloop->loop_params.i_t.offset_array =
+		    (DLOOP_Offset *) MPI_AINT_CAST_TO_VOID_PTR
+		    (MPI_VOID_PTR_CAST_TO_MPI_AINT (char *) dataloop->loop_params.i_t.offset_array + ptrdiff);
 	    }
 
 	    if (dataloop->loop_params.i_t.dataloop)
 	    {
-		MPID_Ensure_Aint_fits_in_pointer(MPIR_VOID_PTR_CAST_TO_MPI_AINT (char *) dataloop->loop_params.i_t.dataloop + ptrdiff);
-		dataloop->loop_params.i_t.dataloop = 
-		    (DLOOP_Dataloop *) MPIR_MPI_AINT_CAST_TO_VOID_PTR
-		    (MPIR_VOID_PTR_CAST_TO_MPI_AINT (char *) dataloop->loop_params.i_t.dataloop + ptrdiff);
+		MPID_Ensure_Aint_fits_in_pointer(MPI_VOID_PTR_CAST_TO_MPI_AINT (char *) dataloop->loop_params.i_t.dataloop + ptrdiff);
+		dataloop->loop_params.i_t.dataloop =
+		    (DLOOP_Dataloop *) MPI_AINT_CAST_TO_VOID_PTR
+		    (MPI_VOID_PTR_CAST_TO_MPI_AINT (char *) dataloop->loop_params.i_t.dataloop + ptrdiff);
 	    }
 
 	    if (!(dataloop->kind & DLOOP_FINAL_MASK))
@@ -219,26 +219,26 @@ void PREPEND_PREFIX(Dataloop_update)(DLOOP_Dataloop *dataloop,
 	case DLOOP_KIND_STRUCT:
 	    if (dataloop->loop_params.s_t.blocksize_array)
 	    {
-		MPID_Ensure_Aint_fits_in_pointer(MPIR_VOID_PTR_CAST_TO_MPI_AINT (char *) dataloop->loop_params.s_t.blocksize_array + ptrdiff);
-		dataloop->loop_params.s_t.blocksize_array = 
-		    (DLOOP_Count *) MPIR_MPI_AINT_CAST_TO_VOID_PTR
-		    (MPIR_VOID_PTR_CAST_TO_MPI_AINT (char *) dataloop->loop_params.s_t.blocksize_array + ptrdiff);
+		MPID_Ensure_Aint_fits_in_pointer(MPI_VOID_PTR_CAST_TO_MPI_AINT (char *) dataloop->loop_params.s_t.blocksize_array + ptrdiff);
+		dataloop->loop_params.s_t.blocksize_array =
+		    (DLOOP_Count *) MPI_AINT_CAST_TO_VOID_PTR
+		    (MPI_VOID_PTR_CAST_TO_MPI_AINT (char *) dataloop->loop_params.s_t.blocksize_array + ptrdiff);
 	    }
 
 	    if (dataloop->loop_params.s_t.offset_array)
 	    {
-		MPID_Ensure_Aint_fits_in_pointer(MPIR_VOID_PTR_CAST_TO_MPI_AINT (char *) dataloop->loop_params.s_t.offset_array + ptrdiff);
-		dataloop->loop_params.s_t.offset_array = 
-		    (DLOOP_Offset *) MPIR_MPI_AINT_CAST_TO_VOID_PTR
-		    (MPIR_VOID_PTR_CAST_TO_MPI_AINT (char *) dataloop->loop_params.s_t.offset_array + ptrdiff);
+		MPID_Ensure_Aint_fits_in_pointer(MPI_VOID_PTR_CAST_TO_MPI_AINT (char *) dataloop->loop_params.s_t.offset_array + ptrdiff);
+		dataloop->loop_params.s_t.offset_array =
+		    (DLOOP_Offset *) MPI_AINT_CAST_TO_VOID_PTR
+		    (MPI_VOID_PTR_CAST_TO_MPI_AINT (char *) dataloop->loop_params.s_t.offset_array + ptrdiff);
 	    }
 
 	    if (dataloop->loop_params.s_t.dataloop_array)
 	    {
-		MPID_Ensure_Aint_fits_in_pointer(MPIR_VOID_PTR_CAST_TO_MPI_AINT (char *) dataloop->loop_params.s_t.dataloop_array + ptrdiff);
-		dataloop->loop_params.s_t.dataloop_array = 
-		    (DLOOP_Dataloop **) MPIR_MPI_AINT_CAST_TO_VOID_PTR
-		    (MPIR_VOID_PTR_CAST_TO_MPI_AINT (char *) dataloop->loop_params.s_t.dataloop_array + ptrdiff);
+		MPID_Ensure_Aint_fits_in_pointer(MPI_VOID_PTR_CAST_TO_MPI_AINT (char *) dataloop->loop_params.s_t.dataloop_array + ptrdiff);
+		dataloop->loop_params.s_t.dataloop_array =
+		    (DLOOP_Dataloop **) MPI_AINT_CAST_TO_VOID_PTR
+		    (MPI_VOID_PTR_CAST_TO_MPI_AINT (char *) dataloop->loop_params.s_t.dataloop_array + ptrdiff);
 	    }
 
 	    /* fix the N dataloop pointers too */
@@ -246,9 +246,9 @@ void PREPEND_PREFIX(Dataloop_update)(DLOOP_Dataloop *dataloop,
 	    for (i=0; i < dataloop->loop_params.s_t.count; i++) {
 		if (looparray[i])
 		{
-		    MPID_Ensure_Aint_fits_in_pointer(MPIR_VOID_PTR_CAST_TO_MPI_AINT (char *) looparray[i] + ptrdiff);
-		    looparray[i] = (DLOOP_Dataloop *) MPIR_MPI_AINT_CAST_TO_VOID_PTR
-			(MPIR_VOID_PTR_CAST_TO_MPI_AINT (char *) looparray[i] + ptrdiff);
+		    MPID_Ensure_Aint_fits_in_pointer(MPI_VOID_PTR_CAST_TO_MPI_AINT (char *) looparray[i] + ptrdiff);
+		    looparray[i] = (DLOOP_Dataloop *) MPI_AINT_CAST_TO_VOID_PTR
+			(MPI_VOID_PTR_CAST_TO_MPI_AINT (char *) looparray[i] + ptrdiff);
 		}
 	    }
 
@@ -608,7 +608,7 @@ void PREPEND_PREFIX(Dataloop_dup)(DLOOP_Dataloop *old_loop,
 
     DLOOP_Assert(old_loop != NULL);
     DLOOP_Assert(old_loop_sz > 0);
-    
+
     new_loop = (DLOOP_Dataloop *) DLOOP_Malloc(old_loop_sz);
     if (new_loop == NULL) {
 	*new_loop_p = NULL;
@@ -634,13 +634,13 @@ PREPEND_PREFIX(Dataloop_stream_size)(struct DLOOP_Dataloop *dl_p,
 				     DLOOP_Offset (*sizefn)(DLOOP_Type el_type))
 {
     DLOOP_Offset tmp_sz, tmp_ct = 1;
- 
+
     for (;;)
     {
         if ((dl_p->kind & DLOOP_KIND_MASK) == DLOOP_KIND_STRUCT)
         {
             int i;
-            
+
             tmp_sz = 0;
             for (i = 0; i < dl_p->loop_params.s_t.count; i++)
             {
@@ -659,7 +659,7 @@ PREPEND_PREFIX(Dataloop_stream_size)(struct DLOOP_Dataloop *dl_p,
 #endif
             break;
         case DLOOP_KIND_VECTOR:
-            tmp_ct *= (DLOOP_Offset)(dl_p->loop_params.v_t.count) * 
+            tmp_ct *= (DLOOP_Offset)(dl_p->loop_params.v_t.count) *
 		      (DLOOP_Offset)(dl_p->loop_params.v_t.blocksize);
 #ifdef DLOOP_DEBUG_SIZE
             DLOOP_dbg_printf("stream_size: vector: ct = %d; blk = %d; new tot_ct = " MPI_AINT_FMT_DEC_SPEC "\n",
@@ -669,7 +669,7 @@ PREPEND_PREFIX(Dataloop_stream_size)(struct DLOOP_Dataloop *dl_p,
 #endif
             break;
         case DLOOP_KIND_BLOCKINDEXED:
-            tmp_ct *= (DLOOP_Offset)(dl_p->loop_params.bi_t.count) * 
+            tmp_ct *= (DLOOP_Offset)(dl_p->loop_params.bi_t.count) *
 		      (DLOOP_Offset)(dl_p->loop_params.bi_t.blocksize);
 #ifdef DLOOP_DEBUG_SIZE
             DLOOP_dbg_printf("stream_size: blkindexed: blks = %d; new tot_ct = " MPI_AINT_FMT_DEC_SPEC "\n",
@@ -730,16 +730,16 @@ void PREPEND_PREFIX(Dataloop_print)(struct DLOOP_Dataloop *dataloop,
 		     dataloop, (int) depth, (int) dataloop->kind, (MPI_Aint) dataloop->el_extent);
     switch(dataloop->kind & DLOOP_KIND_MASK) {
 	case DLOOP_KIND_CONTIG:
-	    DLOOP_dbg_printf("\tCONTIG: count=%d, datatype=%p\n", 
-			     (int) dataloop->loop_params.c_t.count, 
+	    DLOOP_dbg_printf("\tCONTIG: count=%d, datatype=%p\n",
+			     (int) dataloop->loop_params.c_t.count,
 			     dataloop->loop_params.c_t.dataloop);
 	    if (!(dataloop->kind & DLOOP_FINAL_MASK))
 		PREPEND_PREFIX(Dataloop_print)(dataloop->loop_params.c_t.dataloop, depth+1);
 	    break;
 	case DLOOP_KIND_VECTOR:
 	    DLOOP_dbg_printf("\tVECTOR: count=%d, blksz=%d, stride=" MPI_AINT_FMT_DEC_SPEC ", datatype=%p\n",
-			     (int) dataloop->loop_params.v_t.count, 
-			     (int) dataloop->loop_params.v_t.blocksize, 
+			     (int) dataloop->loop_params.v_t.count,
+			     (int) dataloop->loop_params.v_t.blocksize,
 			     (MPI_Aint) dataloop->loop_params.v_t.stride,
 			     dataloop->loop_params.v_t.dataloop);
 	    if (!(dataloop->kind & DLOOP_FINAL_MASK))
@@ -747,8 +747,8 @@ void PREPEND_PREFIX(Dataloop_print)(struct DLOOP_Dataloop *dataloop,
 	    break;
 	case DLOOP_KIND_BLOCKINDEXED:
 	    DLOOP_dbg_printf("\tBLOCKINDEXED: count=%d, blksz=%d, datatype=%p\n",
-			     (int) dataloop->loop_params.bi_t.count, 
-			     (int) dataloop->loop_params.bi_t.blocksize, 
+			     (int) dataloop->loop_params.bi_t.count,
+			     (int) dataloop->loop_params.bi_t.blocksize,
 			     dataloop->loop_params.bi_t.dataloop);
 	    /* print out offsets later */
 	    if (!(dataloop->kind & DLOOP_FINAL_MASK))

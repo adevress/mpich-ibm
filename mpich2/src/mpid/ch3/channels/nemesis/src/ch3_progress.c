@@ -155,6 +155,9 @@ int MPIDI_CH3I_Progress (MPID_Progress_state *progress_state, int is_blocking)
                                 ((MPIDI_CH3I_VC *)vc->channel_private)->pending_pkt_len == 0);
                     vc_ch = (MPIDI_CH3I_VC *)vc->channel_private;
 
+                    /* invalid pkt data will result in unpredictable behavior */
+                    MPIU_Assert(pkt->type >= 0 && pkt->type < MPIDI_NEM_PKT_END);
+
                     mpi_errno = pktArray[pkt->type](vc, pkt, &buflen, &rreq);
                     if (mpi_errno) MPIU_ERR_POP(mpi_errno);
 
@@ -463,6 +466,9 @@ int MPID_nem_handle_pkt(MPIDI_VC_t *vc, char *buf, MPIDI_msg_sz_t buflen)
 
                 MPIU_DBG_MSG(CH3_CHANNEL, VERBOSE, "received new message");
 
+                /* invalid pkt data will result in unpredictable behavior */
+                MPIU_Assert(pkt->type >= 0 && pkt->type < MPIDI_NEM_PKT_END);
+
                 mpi_errno = pktArray[pkt->type](vc, pkt, &len, &rreq);
                 if (mpi_errno) MPIU_ERR_POP(mpi_errno);
                 buflen -= len;
@@ -507,6 +513,9 @@ int MPID_nem_handle_pkt(MPIDI_VC_t *vc, char *buf, MPIDI_msg_sz_t buflen)
 
             buflen -= copylen;
             buf    += copylen;
+
+            /* invalid pkt data will result in unpredictable behavior */
+            MPIU_Assert(pkt->type >= 0 && pkt->type < MPIDI_NEM_PKT_END);
 
             pktlen = sizeof(MPIDI_CH3_Pkt_t);
             mpi_errno = pktArray[pkt->type](vc, pkt, &pktlen, &rreq);
@@ -1816,20 +1825,31 @@ fn_fail:
 int MPIDI_CH3I_Posted_recv_enqueued (MPID_Request *rreq)
 {
     int mpi_errno = MPI_SUCCESS;
+    int local_rank = -1;
+    MPIDI_VC_t *vc;
     MPIDI_STATE_DECL(MPID_STATE_MPIDI_CH3I_POSTED_RECV_ENQUEUED);
 
     MPIDI_FUNC_ENTER(MPID_STATE_MPIDI_CH3I_POSTED_RECV_ENQUEUED);
     /* don't enqueue for anysource */
     if (rreq->dev.match.rank < 0)
 	goto fn_exit;
+
     /* don't enqueue a fastbox for yourself */
-    if (rreq->dev.match.rank == MPIDI_CH3I_my_rank)
+    MPIU_Assert(rreq->comm != NULL);
+    if (rreq->dev.match.rank == rreq->comm->rank)
 	goto fn_exit;
     /* don't enqueue non-local processes */
-    if (!MPID_NEM_IS_LOCAL (rreq->dev.match.rank))
+    MPIDI_Comm_get_vc(rreq->comm, rreq->dev.match.rank, &vc);
+    MPIU_Assert(vc != NULL);
+    if (!((MPIDI_CH3I_VC *)vc->channel_private)->is_local)
 	goto fn_exit;
 
-    mpi_errno = MPID_nem_mpich2_enqueue_fastbox (MPID_NEM_LOCAL_RANK (rreq->dev.match.rank));
+    /* Translate the communicator rank to a local rank.  Note that there is an
+       implicit assumption here that because is_local is true above, that these
+       processes are in the same PG. */
+    local_rank = MPID_NEM_LOCAL_RANK(vc->pg_rank);
+
+    mpi_errno = MPID_nem_mpich2_enqueue_fastbox (local_rank);
     if (mpi_errno) MPIU_ERR_POP (mpi_errno);
 
  fn_exit:
@@ -1846,17 +1866,29 @@ int MPIDI_CH3I_Posted_recv_enqueued (MPID_Request *rreq)
 int MPIDI_CH3I_Posted_recv_dequeued (MPID_Request *rreq)
 {
     int mpi_errno = MPI_SUCCESS;
+    int local_rank = -1;
+    MPIDI_VC_t *vc;
     MPIDI_STATE_DECL(MPID_STATE_MPIDI_CH3I_POSTED_RECV_DEQUEUED);
 
     MPIDI_FUNC_ENTER(MPID_STATE_MPIDI_CH3I_POSTED_RECV_DEQUEUED);
     if (rreq->dev.match.rank < 0)
 	goto fn_exit;
-    if (rreq->dev.match.rank == MPIDI_CH3I_my_rank)
-	goto fn_exit;
-    if (!MPID_NEM_IS_LOCAL (rreq->dev.match.rank))
+
+    if (rreq->dev.match.rank == rreq->comm->rank)
 	goto fn_exit;
 
-    mpi_errno = MPID_nem_mpich2_dequeue_fastbox (MPID_NEM_LOCAL_RANK (rreq->dev.match.rank));
+    /* don't use MPID_NEM_IS_LOCAL, it doesn't handle dynamic processes */
+    MPIDI_Comm_get_vc(rreq->comm, rreq->dev.match.rank, &vc);
+    MPIU_Assert(vc != NULL);
+    if (!((MPIDI_CH3I_VC *)vc->channel_private)->is_local)
+	goto fn_exit;
+
+    /* Translate the communicator rank to a local rank.  Note that there is an
+       implicit assumption here that because is_local is true above, that these
+       processes are in the same PG. */
+    local_rank = MPID_NEM_LOCAL_RANK(vc->pg_rank);
+
+    mpi_errno = MPID_nem_mpich2_dequeue_fastbox (local_rank);
     if (mpi_errno) MPIU_ERR_POP (mpi_errno);
 
  fn_exit:

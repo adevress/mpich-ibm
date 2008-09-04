@@ -48,7 +48,7 @@ static inline void DLOOP_Stackelm_load(struct DLOOP_Dataloop_stackelm *elmp,
  */
 int PREPEND_PREFIX(Segment_init)(const DLOOP_Buffer buf,
 				 DLOOP_Count count,
-				 DLOOP_Handle handle, 
+				 DLOOP_Handle handle,
 				 struct DLOOP_Segment *segp,
 				 int flag)
 {
@@ -58,7 +58,7 @@ int PREPEND_PREFIX(Segment_init)(const DLOOP_Buffer buf,
 
     struct DLOOP_Dataloop_stackelm *elmp;
     struct DLOOP_Dataloop *dlp = 0, *sblp = &segp->builtin_loop;
-    
+
     DLOOP_Assert(flag == DLOOP_DATALOOP_HETEROGENEOUS ||
 		 flag == DLOOP_DATALOOP_HOMOGENEOUS   ||
 		 flag == DLOOP_DATALOOP_ALL_BYTES);
@@ -238,13 +238,13 @@ void PREPEND_PREFIX(Segment_free)(struct DLOOP_Segment *segp)
  * If you think of all the data to be manipulated (packed, unpacked, whatever),
  * as a stream of bytes, it's easier to understand how first and last fit in.
  *
- * This function does all the work, calling the piecefn passed in when it 
+ * This function does all the work, calling the piecefn passed in when it
  * encounters a datatype element which falls into the range of first..(last-1).
  *
  * piecefn can be NULL, in which case this function doesn't do anything when it
  * hits a region.  This is used internally for repositioning within this stream.
  *
- * last is a byte offset to the byte just past the last byte in the stream 
+ * last is a byte offset to the byte just past the last byte in the stream
  * to operate on.  this makes the calculations all over MUCH cleaner.
  *
  * stream_off, stream_el_size, first, and last are all working in terms of the
@@ -322,8 +322,8 @@ void PREPEND_PREFIX(Segment_free)(struct DLOOP_Segment *segp)
 (elmp_)->loop_p->loop_params.s_t.dataloop_array[(curcount_)]
 
 void PREPEND_PREFIX(Segment_manipulate)(struct DLOOP_Segment *segp,
-					DLOOP_Offset first, 
-					DLOOP_Offset *lastp, 
+					DLOOP_Offset first,
+					DLOOP_Offset *lastp,
 					int (*contigfn) (DLOOP_Offset *blocks_p,
 							 DLOOP_Type el_type,
 							 DLOOP_Offset rel_off,
@@ -398,7 +398,7 @@ void PREPEND_PREFIX(Segment_manipulate)(struct DLOOP_Segment *segp,
 					       NULL, /* index fn */
 					       sizefn,
                                                NULL);
-	    
+
 	    /* --BEGIN ERROR HANDLING-- */
 	    /* verify that we're in the right location */
 	    if (tmp_last != first) DLOOP_Assert(0);
@@ -551,7 +551,7 @@ void PREPEND_PREFIX(Segment_manipulate)(struct DLOOP_Segment *segp,
 				 el_type,
 				 cur_elmp->orig_offset, /* blkidxfn adds offset */
 				 segp->ptr,
-				 pieceparams);				 
+				 pieceparams);
 		    break;
 		case PF_INDEXED:
 		    piecefn_indicated_exit =
@@ -580,7 +580,7 @@ void PREPEND_PREFIX(Segment_manipulate)(struct DLOOP_Segment *segp,
 		DLOOP_SEGMENT_SAVE_LOCAL_VALUES;
 		return;
 	    }
-	    else if (myblocks < (DLOOP_Offset)(cur_elmp->curblock) ) {
+	    else if (myblocks < (DLOOP_Offset)(cur_elmp->curblock)) {
 		cur_elmp->curoffset += myblocks * local_el_size;
 		cur_elmp->curblock  -= myblocks;
 
@@ -597,7 +597,7 @@ void PREPEND_PREFIX(Segment_manipulate)(struct DLOOP_Segment *segp,
 
 		switch (cur_elmp->loop_p->kind & DLOOP_KIND_MASK) {
 		    case DLOOP_KIND_INDEXED:
-			while (myblocks > 0 && myblocks >= (DLOOP_Offset)(cur_elmp->curblock) ) {
+			while (myblocks > 0 && myblocks >= (DLOOP_Offset)(cur_elmp->curblock)) {
 			    myblocks -= (DLOOP_Offset)(cur_elmp->curblock);
 			    cur_elmp->curcount--;
 			    DLOOP_Assert(cur_elmp->curcount >= 0);
@@ -619,7 +619,7 @@ void PREPEND_PREFIX(Segment_manipulate)(struct DLOOP_Segment *segp,
 			    cur_elmp->curoffset  = cur_elmp->orig_offset +
 				DLOOP_STACKELM_INDEXED_OFFSET(cur_elmp,
 							      count_index);
-			    
+
 			    cur_elmp->curblock  -= myblocks;
 			    cur_elmp->curoffset += myblocks * local_el_size;
 			}
@@ -636,7 +636,7 @@ void PREPEND_PREFIX(Segment_manipulate)(struct DLOOP_Segment *segp,
 			     * block
 			     */
 			    cur_elmp->curblock = cur_elmp->orig_block -
-				(myblocks % (DLOOP_Offset)(cur_elmp->curblock) );
+				(myblocks % (DLOOP_Offset)(cur_elmp->curblock));
 			    /* new offset = original offset +
 			     *              stride * whole blocks +
 			     *              leftover bytes
@@ -657,7 +657,7 @@ void PREPEND_PREFIX(Segment_manipulate)(struct DLOOP_Segment *segp,
 			DLOOP_SEGMENT_POP_AND_MAYBE_EXIT;
 			break;
 		    case DLOOP_KIND_BLOCKINDEXED:
-			while (myblocks > 0 && myblocks >= (DLOOP_Offset)(cur_elmp->curblock) )
+			while (myblocks > 0 && myblocks >= (DLOOP_Offset)(cur_elmp->curblock))
 			{
 			    myblocks -= (DLOOP_Offset)(cur_elmp->curblock);
 			    cur_elmp->curcount--;
@@ -782,28 +782,28 @@ void PREPEND_PREFIX(Segment_manipulate)(struct DLOOP_Segment *segp,
 	    switch (cur_elmp->loop_p->kind & DLOOP_KIND_MASK) {
 		case DLOOP_KIND_CONTIG:
 		    next_elmp->orig_offset = cur_elmp->curoffset +
-			(DLOOP_Offset)block_index * cur_elmp->loop_p->el_extent;
+			(DLOOP_Offset) block_index * cur_elmp->loop_p->el_extent;
 		    break;
 		case DLOOP_KIND_VECTOR:
 		    /* note: stride is in bytes */
 		    next_elmp->orig_offset = cur_elmp->orig_offset +
-			(DLOOP_Offset)count_index * cur_elmp->loop_p->loop_params.v_t.stride +
-			(DLOOP_Offset)block_index * cur_elmp->loop_p->el_extent;
+			(DLOOP_Offset) count_index * cur_elmp->loop_p->loop_params.v_t.stride +
+			(DLOOP_Offset) block_index * cur_elmp->loop_p->el_extent;
 		    break;
 		case DLOOP_KIND_BLOCKINDEXED:
 		    next_elmp->orig_offset = cur_elmp->orig_offset +
-			(DLOOP_Offset)block_index * cur_elmp->loop_p->el_extent +
+			(DLOOP_Offset) block_index * cur_elmp->loop_p->el_extent +
 			DLOOP_STACKELM_BLOCKINDEXED_OFFSET(cur_elmp,
 							   count_index);
 		    break;
 		case DLOOP_KIND_INDEXED:
 		    next_elmp->orig_offset = cur_elmp->orig_offset +
-			(DLOOP_Offset)block_index * cur_elmp->loop_p->el_extent +
+			(DLOOP_Offset) block_index * cur_elmp->loop_p->el_extent +
 			DLOOP_STACKELM_INDEXED_OFFSET(cur_elmp, count_index);
 		    break;
 		case DLOOP_KIND_STRUCT:
 		    next_elmp->orig_offset = cur_elmp->orig_offset +
-			(DLOOP_Offset)block_index * DLOOP_STACKELM_STRUCT_EL_EXTENT(cur_elmp, count_index) +
+			(DLOOP_Offset) block_index * DLOOP_STACKELM_STRUCT_EL_EXTENT(cur_elmp, count_index) +
 			DLOOP_STACKELM_STRUCT_OFFSET(cur_elmp, count_index);
 		    break;
 		default:
@@ -882,7 +882,7 @@ void PREPEND_PREFIX(Segment_manipulate)(struct DLOOP_Segment *segp,
 static inline DLOOP_Count DLOOP_Stackelm_blocksize(struct DLOOP_Dataloop_stackelm *elmp)
 {
     struct DLOOP_Dataloop *dlp = elmp->loop_p;
-       
+
     switch(dlp->kind & DLOOP_KIND_MASK) {
 	case DLOOP_KIND_CONTIG:
 	    /* NOTE: we're dropping the count into the
@@ -918,14 +918,14 @@ static inline DLOOP_Count DLOOP_Stackelm_blocksize(struct DLOOP_Dataloop_stackel
  * NOTE: loop_p, orig_count, and curcount members of stackelm MUST be correct
  * before this is called!
  *
- * also, this really is only good at init time for vectors and contigs 
+ * also, this really is only good at init time for vectors and contigs
  * (all the time for indexed) at the moment.
  *
  */
 static inline DLOOP_Offset DLOOP_Stackelm_offset(struct DLOOP_Dataloop_stackelm *elmp)
 {
     struct DLOOP_Dataloop *dlp = elmp->loop_p;
-       
+
     switch(dlp->kind & DLOOP_KIND_MASK) {
 	case DLOOP_KIND_VECTOR:
 	case DLOOP_KIND_CONTIG:
@@ -981,7 +981,7 @@ static inline void DLOOP_Stackelm_load(struct DLOOP_Dataloop_stackelm *elmp,
     /* TODO: GO AHEAD AND FILL IN CURBLOCK? */
 }
 
-/* 
+/*
  * Local variables:
  * c-indent-tabs-mode: nil
  * End:

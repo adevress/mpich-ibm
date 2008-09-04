@@ -51,7 +51,7 @@ int MPIDO_Reduce(void * sendbuf,
 
   op_type_support = MPIDI_ConvertMPItoDCMF(op, &dcmf_op, datatype, &dcmf_data);
 
-  MPID_Ensure_Aint_fits_in_pointer(MPIR_VOID_PTR_CAST_TO_MPI_AINT recvbuf +
+  MPID_Ensure_Aint_fits_in_pointer(MPI_VOID_PTR_CAST_TO_MPI_AINT recvbuf +
 				   data_true_lb);
   recvbuf = (char *) recvbuf + data_true_lb;
 
@@ -62,7 +62,7 @@ int MPIDO_Reduce(void * sendbuf,
   }
   else
   {
-    MPID_Ensure_Aint_fits_in_pointer(MPIR_VOID_PTR_CAST_TO_MPI_AINT sendbuf +
+    MPID_Ensure_Aint_fits_in_pointer(MPI_VOID_PTR_CAST_TO_MPI_AINT sendbuf +
                                      data_true_lb);
     sendbuf = (char *) sendbuf + data_true_lb;
   }

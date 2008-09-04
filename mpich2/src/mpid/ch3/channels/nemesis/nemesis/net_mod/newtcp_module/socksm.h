@@ -23,7 +23,7 @@ enum CONSTS {
     CONN_PLFD_TBL_GROW_SIZE = 10,
     CONN_INVALID_FD = -1,
     CONN_INVALID_RANK = -1,
-    NEGOMSG_DATA_LEN = 4, /* Length of data during negotiatiion message exchanges. */
+    NEGOMSG_DATA_LEN = 4, /* Length of data during negotiation message exchanges. */
     SLEEP_INTERVAL = 1500,
     PROGSM_TIMES = 20
 };
@@ -60,8 +60,10 @@ typedef enum {
     M_(CONN_STATE_TC_C_CNTING),                 \
     M_(CONN_STATE_TC_C_CNTD),                   \
     M_(CONN_STATE_TC_C_RANKSENT),               \
+    M_(CONN_STATE_TC_C_TMPVCSENT),               \
     M_(CONN_STATE_TA_C_CNTD),                   \
     M_(CONN_STATE_TA_C_RANKRCVD),               \
+    M_(CONN_STATE_TA_C_TMPVCRCVD),               \
     M_(CONN_STATE_TS_COMMRDY),                  \
     M_(CONN_STATE_TS_D_DCNTING),                \
     M_(CONN_STATE_TS_D_REQSENT),                \
@@ -98,12 +100,32 @@ extern const char *const CONN_STATE_STR[];
 #undef M_
 
 
-#define CHANGE_STATE(_sc, _state) do { \
-    (_sc)->state.cstate = _state; \
-    (_sc)->handler = sc_state_info[_state].sc_state_handler; \
-    g_plfd_tbl[(_sc)->index].events = sc_state_info[_state].sc_state_plfd_events; \
-} while(0);
+#ifdef USE_DBG_LOGGING
+#define CONN_STATE_TO_STRING(_cstate) \
+    (( (_cstate) >= CONN_STATE_TS_CLOSED && (_cstate) < CONN_STATE_SIZE ) ? CONN_STATE_STR[_cstate] : "out_of_range")
 
+#define DBG_CHANGE_STATE(_sc, _cstate) do { \
+    const char *state_str = NULL; \
+    const char *old_state_str = NULL; \
+    if (MPIU_DBG_SELECTED(NEM_SOCK_DET,VERBOSE)) { \
+        if ((_sc)) { \
+            old_state_str = CONN_STATE_TO_STRING((_sc)->state.cstate); \
+            state_str     = CONN_STATE_TO_STRING(_cstate); \
+        } \
+        MPIU_DBG_OUT_FMT(NEM_SOCK_DET, (MPIU_DBG_FDEST, "CHANGE_STATE(_sc=%p, _cstate=%d (%s)) - old_state=%s sc->vc=%p", _sc, _cstate, state_str, old_state_str, (_sc)->vc)); \
+    } \
+} while (0)
+#else
+#  define CONN_STATE_TO_STRING(_cstate) "unavailable"
+#  define DBG_CHANGE_STATE(_sc, _cstate) do { /*nothing*/ } while (0)
+#endif
+
+#define CHANGE_STATE(_sc, _cstate) do { \
+    DBG_CHANGE_STATE(_sc, _cstate); \
+    (_sc)->state.cstate = (_cstate); \
+    (_sc)->handler = sc_state_info[_cstate].sc_state_handler; \
+    MPID_nem_newtcp_module_plfd_tbl[(_sc)->index].events = sc_state_info[_cstate].sc_state_plfd_events; \
+} while(0)
 
 struct MPID_nem_new_tcp_module_sockconn;
 typedef struct MPID_nem_new_tcp_module_sockconn sockconn_t;
@@ -115,9 +137,13 @@ typedef int (*handler_func_t) (pollfd_t *const plfd, sockconn_t *const conn);
 struct MPID_nem_new_tcp_module_sockconn{
     int fd;
     int index;
-    int is_same_pg;  /* TRUE/FALSE -  */
-/*     FIXME: see whether this can be removed, by using only pg_id = NULL or non-NULL */
-/*      NULL = if same_pg and valid pointer if different pgs. */
+
+    /* Used to prevent the usage of uninitialized pg info.  is_same_pg, pg_rank,
+     * and pg_id are _ONLY VALID_ if this (pg_is_set) is true */
+    int pg_is_set;   
+    int is_same_pg; /* boolean, true if the process on the other end of this sc
+                       is in the same PG as us (this process) */
+    int is_tmpvc;
 
     int pg_rank; /*  rank and id cached here to avoid chasing pointers in vc and vc->pg */
     char *pg_id; /*  MUST be used only if is_same_pg == FALSE */
@@ -129,9 +155,6 @@ struct MPID_nem_new_tcp_module_sockconn{
     /* Conn_type_t conn_type;  Probably useful for debugging/analyzing purposes. */
     handler_func_t handler;
     sockconn_event_t pending_event;
-
-    sockconn_t *g_sc_tbl;
-    pollfd_t *g_plfd_tbl;
 };
 
 typedef enum MPIDI_nem_newtcp_module_pkt_type {
@@ -140,7 +163,10 @@ typedef enum MPIDI_nem_newtcp_module_pkt_type {
     MPIDI_NEM_NEWTCP_MODULE_PKT_ID_NAK,
     MPIDI_NEM_NEWTCP_MODULE_PKT_DISC_REQ,
     MPIDI_NEM_NEWTCP_MODULE_PKT_DISC_ACK,
-    MPIDI_NEM_NEWTCP_MODULE_PKT_DISC_NAK
+    MPIDI_NEM_NEWTCP_MODULE_PKT_DISC_NAK,
+    MPIDI_NEM_NEWTCP_MODULE_PKT_TMPVC_INFO, 
+    MPIDI_NEM_NEWTCP_MODULE_PKT_TMPVC_ACK,
+    MPIDI_NEM_NEWTCP_MODULE_PKT_TMPVC_NAK
 } MPIDI_nem_newtcp_module_pkt_type_t;
     
 typedef struct MPIDI_nem_newtcp_module_header {
@@ -157,6 +183,11 @@ typedef struct MPIDI_nem_newtcp_module_idinfo {
 /*      in the future), datalen of header itself is enough to find the offset of pg_id      */
 /*      in the packet to be sent. */
 } MPIDI_nem_newtcp_module_idinfo_t;
+
+/* FIXME: bc actually contains port_name info */
+typedef struct MPIDI_nem_newtcp_module_portinfo {
+    int port_name_tag;
+} MPIDI_nem_newtcp_module_portinfo_t;
 
 
 #define MPID_nem_newtcp_module_vc_is_connected(vc) (VC_FIELD(vc, sc) && VC_FIELD(vc, sc)->state.cstate == CONN_STATE_TS_COMMRDY)

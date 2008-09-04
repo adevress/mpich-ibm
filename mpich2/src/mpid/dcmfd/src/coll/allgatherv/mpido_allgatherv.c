@@ -62,7 +62,7 @@ MPIDO_Allgatherv(void *sendbuf,
                             dt_null,
                             send_true_lb);
       
-    MPID_Ensure_Aint_fits_in_pointer(MPIR_VOID_PTR_CAST_TO_MPI_AINT
+    MPID_Ensure_Aint_fits_in_pointer(MPI_VOID_PTR_CAST_TO_MPI_AINT
                                      sendbuf + send_true_lb);
   }
   
@@ -83,7 +83,7 @@ MPIDO_Allgatherv(void *sendbuf,
   
   buffer_sum *= recv_size;
   
-  MPID_Ensure_Aint_fits_in_pointer(MPIR_VOID_PTR_CAST_TO_MPI_AINT recvbuf +
+  MPID_Ensure_Aint_fits_in_pointer(MPI_VOID_PTR_CAST_TO_MPI_AINT recvbuf +
 				   recv_true_lb + buffer_sum);
   
   if (DCMF_INFO_ISSET(coll_prop, DCMF_USE_PREALLREDUCE_ALLGATHERV))  {

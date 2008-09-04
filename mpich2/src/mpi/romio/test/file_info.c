@@ -12,14 +12,20 @@
 #include <string.h>
 #include <stdlib.h>
 
-#define ON_BGL 1
-#if ON_BGL
+/* this test wants to compare the hints it gets from a file with a set of
+ * default hints.  These hints are specific to the MPI-IO implementation, so
+ * pick one of the following profiles to use */
+
+#if 1  /* hints are for BlueGene */
 #   define DFLT_CB_BUFFER_SIZE     16777216
 #   define DFLT_IND_RD_BUFFER_SIZE 4194304
 #   define DFLT_IND_WR_BUFFER_SIZE 4194304
 #   define DFLT_ROMIO_CB_READ      "enable"
 #   define DFLT_ROMIO_CB_WRITE     "enable"
-#else
+
+#   define SKIP_CB_CONFIG_LIST_TEST     1
+#endif
+#if 0 /* hints for MPICH2 */
 #   define DFLT_CB_BUFFER_SIZE     16777216
 #   define DFLT_IND_RD_BUFFER_SIZE 4194304
 #   define DFLT_IND_WR_BUFFER_SIZE 524288
@@ -161,13 +167,24 @@ int main(int argc, char **argv)
 #endif
 	}
 	else if (!strcmp("cb_config_list", key)) {
-#if !ON_BGL
+#ifndef SKIP_CB_CONFIG_LIST_TEST
 	    if (strcmp("*:1", value)) {
 		errs++;
 		if (verbose) fprintf(stderr, "cb_config_list is set to %s; should be %s\n",
 				     value, "*:1");
 	    }
 #endif
+	}
+	/* don't care about the defaults for these keys */
+	else if (!strcmp("romio_cb_pfr", key)) {
+	}
+	else if (!strcmp("romio_cb_fr_types", key)) {
+	}
+	else if (!strcmp("romio_cb_fr_alignment", key)) {
+	}
+	else if (!strcmp("romio_cb_ds_threshold", key)) {
+	}
+	else if (!strcmp("romio_cb_alltoall", key)) {
 	}
 	else {
 	    if (verbose) fprintf(stderr, "unexpected key %s (not counted as an error)\n", key);
@@ -222,7 +239,7 @@ int main(int argc, char **argv)
     /* the striping unit in bytes */
     MPI_Info_set(info, "striping_unit", "131072");
 
-#if !ON_BGL
+#ifndef SKIP_CB_CONFIG_LIST_TEST
     /* set the cb_config_list so we'll get deterministic cb_nodes output */
     MPI_Info_set(info, "cb_config_list", "*:*");
 #endif
@@ -332,8 +349,7 @@ int main(int argc, char **argv)
 #endif
 	}
 	else if (!strcmp("cb_config_list", key)) {
-	    /* Unreliable test -- value is file system dependent.  Ignore. */
-#if !ON_BGL
+#ifndef SKIP_CB_CONFIG_LIST_TEST
 	    if (strcmp("*:*", value)) {
 		errs++;
 		if (verbose) fprintf(stderr, "cb_config_list is set to %s; should be %s\n",
@@ -341,6 +357,42 @@ int main(int argc, char **argv)
 	    }
 #endif
 	}
+	else if (!strcmp("romio_cb_pfr", key)) {
+   	    if(strcmp("disable", value)) {
+		errs++;
+		if (verbose) fprintf(stderr, "romio_cb_pfr is set to %s; should be %s\n",
+				     value, "automatic");
+	    }
+	}
+	else if (!strcmp("romio_cb_fr_types", key)) {
+   	    if(strcmp("aar", value)) {
+		errs++;
+		if (verbose) fprintf(stderr, "romio_cb_fr_types is set to %s; should be %s\n",
+				     value, "aar");
+	    }
+	}
+	else if (!strcmp("romio_cb_fr_alignment", key)) {
+   	    if(strcmp("1", value)) {
+		errs++;
+		if (verbose) fprintf(stderr, "romio_cb_fr_alignment is set to %s; should be %s\n",
+				     value, "1");
+	    }
+	}
+	else if (!strcmp("romio_cb_ds_threshold", key)) {
+   	    if(strcmp("0", value)) {
+		errs++;
+		if (verbose) fprintf(stderr, "romio_cb_ds_threshold is set to %s; should be %s\n",
+				     value, "0");
+	    }
+	}
+	else if (!strcmp("romio_cb_alltoall", key)) {
+   	    if(strcmp("automatic", value)) {
+		errs++;
+		if (verbose) fprintf(stderr, "romio_cb_alltoall is set to %s; should be %s\n",
+				     value, "automatic");
+	    }
+	}
+
 	else {
 	    if (verbose) fprintf(stderr, "unexpected key %s (not counted as an error)\n", key);
 	}
@@ -359,12 +411,3 @@ int main(int argc, char **argv)
     MPI_Finalize();
     return 0;
 }
-
-
-
-
-
-
-
-
-

@@ -1,4 +1,28 @@
 ===============================================================================
+                               Changes in 1.1a1
+===============================================================================
+
+- OVERALL: Added MPI 2.1 support.
+
+- OVERALL: Nemesis is now the default configuration channel with a
+  completely new TCP communication module.
+
+- OVERALL: Support for BlueGene/P through the DCMF library (thanks to IBM for the patch).
+
+- OVERALL: Added dynamic processes support for Nemesis.
+
+- OVERALL: Added automatic as well as statically runtime configurable
+  receive timeout variation for MPD (thanks to OSU for the patch).
+
+- ROMIO: Added support for MPI_Type_create_resized and MPI_Type_create_indexed_block 
+  datatypes in ROMIO.
+
+- Many other bug fixes, memory leak fixes and code cleanup. A full
+list of changes is available using:
+  svn log -r813:HEAD https://svn.mcs.anl.gov/repos/mpi/mpich2/tags/release/mpich2-1.1.0a1
+
+
+===============================================================================
                                Changes in 1.0.7
 ===============================================================================
 

@@ -261,7 +261,12 @@ void ADIOI_BGL_WriteStridedColl(ADIO_File fd, void *buf, int count,
     else
     ADIOI_Calc_file_domains(st_offsets, end_offsets, nprocs,
 			    nprocs_for_coll, &min_st_offset,
-			    &fd_start, &fd_end, &fd_size);   
+			    &fd_start, &fd_end,
+#warning "complete pointless guess:"
+                            0,
+                            &fd_size,
+#warning "complete pointless guess:"
+                            0);   
 
 #if BGL_PROFILE 
     BGLMPIO_T_CIO_SET_GET( 0, w, 0, 1, 1, BGLMPIO_CIO_MYREQ, BGLMPIO_CIO_FD_PART )

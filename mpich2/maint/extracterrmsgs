@@ -372,7 +372,7 @@ sub AddTestCall {
 		print TESTFD "    int i$narg = $narg;\n";
 		$args[$#args+1] = "i$narg";
 	    }
-	    elsif ($type eq "L")
+	    elsif ($type eq "L") 
 	    {
 		print TESTFD "    long long i$narg = $narg;\n";
 		$args[$#args+1] = "i$narg";

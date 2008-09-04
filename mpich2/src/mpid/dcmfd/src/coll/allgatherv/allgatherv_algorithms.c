@@ -55,7 +55,7 @@ int MPIDO_Allgatherv_bcast_binom_async(void *sendbuf,
                           dt_true_lb);
       
   MPID_Ensure_Aint_fits_in_pointer (
-                                    (MPIR_VOID_PTR_CAST_TO_MPI_AINT recvbuf +
+                                    (MPI_VOID_PTR_CAST_TO_MPI_AINT recvbuf +
                                      displs[comm_ptr->rank] * extent));
    
   if(sendbuf != MPI_IN_PLACE)
@@ -160,7 +160,7 @@ int MPIDO_Allgatherv_bcast_rect_async(void *sendbuf,
                           dt_true_lb);
       
   MPID_Ensure_Aint_fits_in_pointer (
-                                    (MPIR_VOID_PTR_CAST_TO_MPI_AINT recvbuf +
+                                    (MPI_VOID_PTR_CAST_TO_MPI_AINT recvbuf +
                                      displs[comm_ptr->rank] * extent));
    
   if(sendbuf != MPI_IN_PLACE)

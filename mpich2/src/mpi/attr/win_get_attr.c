@@ -82,13 +82,9 @@ int MPI_Win_get_attr(MPI_Win win, int win_keyval, void *attribute_val,
             /* A common user error is to pass the address of a 4-byte
 	       int when the address of a pointer (or an address-sized int)
 	       should have been used.  We can test for this specific
-	       case.  Note that this code assumes sizeof(void*) is 
-	       a power of 2. Note that this formerly used MPI_Aint for the
-               address sized int, but since this is configurable and could
-               be larger than a pointer, we use MPIR_Puint instead, which is
-	       the size of a pointer.
-	    */
-	    if ( (MPIR_Puint) attribute_val & (sizeof(void*)-1)) {
+	       case.  Note that this code assumes sizeof(MPI_Aint) is
+	       a power of 2. */
+	    if ((MPIR_Pint)attribute_val & (sizeof(MPIR_Pint)-1)) {
 		MPIU_ERR_SET(mpi_errno,MPI_ERR_ARG,"**attrnotptr");
 	    }
 #           endif
@@ -138,7 +134,7 @@ int MPI_Win_get_attr(MPI_Win win, int win_keyval, void *attribute_val,
 	/* 
 	 * The C versions of the attributes return the address of a 
 	 * *COPY* of the value (to prevent the user from changing it)
-	 * and the Fortran versions provide the actual value (as an Pint)
+	 * and the Fortran versions provide the actual value (as a Fint)
 	 */
 	switch (attr_idx) {
 	case 1: /* WIN_BASE */
@@ -156,7 +152,7 @@ int MPI_Win_get_attr(MPI_Win win, int win_keyval, void *attribute_val,
 	case 2: /* Fortran BASE */
 	    /* The Fortran routine that matches this routine should
 	       provide an address-sized integer, not an MPI_Fint */
-	    *attr_int = MPIR_VOID_PTR_CAST_TO_MPI_AINT (win_ptr->base);
+	    *attr_int = MPI_VOID_PTR_CAST_TO_MPI_AINT(win_ptr->base);
 	    break;
 	case 4: /* Fortran SIZE */
 	    /* We do not need to copy because we return the value,

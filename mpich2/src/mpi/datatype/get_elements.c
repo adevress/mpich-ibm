@@ -34,9 +34,9 @@ PMPI_LOCAL int MPIR_Type_get_elements(int *bytes_p,
 #undef MPI_Get_elements
 #define MPI_Get_elements PMPI_Get_elements
 
-/* NOTE: I think that this is in here so that we don't get two copies of it
- * in the case where we don't have weak symbols.
- */
+/* Note that all helper routines must be within the
+ * MPICH_MPI_FROM_PMPI ifdef so that we don't get two copies of the
+ * helper routines in the case where we don't have weak symbols. */
 
 /* MPIR_Type_get_basic_type_elements()
  *
@@ -52,7 +52,7 @@ PMPI_LOCAL int MPIR_Type_get_elements(int *bytes_p,
  *
  * Assumptions:
  * - the type passed to this function must be a basic *or* a pairtype
- *   (which aren't 
+ *   (which aren't basic types)
  * - the count is not zero (otherwise we can't tell between a "no more
  *   complete types" case and a "zero count" case)
  *
@@ -163,7 +163,7 @@ PMPI_LOCAL int MPIR_Type_get_elements(int *bytes_p,
 				      MPI_Datatype datatype)
 {
     MPID_Datatype *datatype_ptr = NULL;
-    
+
     MPID_Datatype_get_ptr(datatype, datatype_ptr); /* invalid if builtin */
 
     /* if we have gotten down to a type with only one element type,
@@ -194,20 +194,20 @@ PMPI_LOCAL int MPIR_Type_get_elements(int *bytes_p,
 	/* Establish locations of arrays; perhaps this should be a fn. call or
          * this fn. should be an MPID one?
 	 */
-   if(datatype_ptr->contents == NULL)
-      return MPI_ERR_TYPE;
+	if (datatype_ptr->contents == NULL)
+	    return MPI_ERR_TYPE;
 	types = (MPI_Datatype *) (((char *) datatype_ptr->contents) +
 				  sizeof(MPID_Datatype_contents));
-   if(types == NULL)
-      return MPI_ERR_TYPE;
+	if (types == NULL)
+	    return MPI_ERR_TYPE;
 	ints  = (int *) (((char *) types) +
 			 datatype_ptr->contents->nr_types * sizeof(MPI_Datatype));
-   if(ints == NULL)
-      return MPI_ERR_TYPE;
+	if (ints == NULL)
+	    return MPI_ERR_TYPE;
 	aints = (MPI_Aint *) (((char *) ints) +
 			      datatype_ptr->contents->nr_ints * sizeof(int));
-   if(aints == NULL)
-      return MPI_ERR_TYPE;
+	if (aints == NULL)
+	    return MPI_ERR_TYPE;
 
 	switch (datatype_ptr->contents->combiner) {
 	    case MPI_COMBINER_NAMED:
@@ -294,12 +294,15 @@ PMPI_LOCAL int MPIR_Type_get_elements(int *bytes_p,
 #define FCNAME "MPI_Get_elements"
 
 /*@
-   MPI_Get_elements - get_elements
+   MPI_Get_elements - Returns the number of basic elements
+                      in a datatype
 
-   Arguments:
-+  MPI_Status *status - status
-.  MPI_Datatype datatype - datatype
--  int *elements - elements
+Input Parameters:
++ status - return status of receive operation (Status)
+- datatype - datatype used by receive operation (handle)
+
+Output Parameter:
+. count - number of received basic elements (integer)
 
    Notes:
 
@@ -320,7 +323,7 @@ int MPI_Get_elements(MPI_Status *status, MPI_Datatype datatype, int *elements)
     MPID_MPI_STATE_DECL(MPID_STATE_MPI_GET_ELEMENTS);
 
     MPIR_ERRTEST_INITIALIZED_ORDIE();
-    
+
     MPID_MPI_FUNC_ENTER(MPID_STATE_MPI_GET_ELEMENTS);
 
     /* Validate parameters, especially handles needing to be converted */
@@ -334,10 +337,10 @@ int MPI_Get_elements(MPI_Status *status, MPI_Datatype datatype, int *elements)
         MPID_END_ERROR_CHECKS;
     }
 #   endif
-    
+
     /* Convert MPI object handles to object pointers */
     MPID_Datatype_get_ptr(datatype, datatype_ptr);
-    
+
     /* Validate parameters and objects (post conversion) */
 #   ifdef HAVE_ERROR_CHECKING
     {
@@ -358,7 +361,7 @@ int MPI_Get_elements(MPI_Status *status, MPI_Datatype datatype, int *elements)
         MPID_END_ERROR_CHECKS;
     }
 #   endif
-    
+
     /* ... body of routine ...  */
 
     /* three cases:
@@ -400,7 +403,7 @@ int MPI_Get_elements(MPI_Status *status, MPI_Datatype datatype, int *elements)
 	}
 	else {
 	    /* This is ambiguous.  However, discussions on MPI Forum
-	     * reached a consensus that this is the correct return 
+	     * reached a consensus that this is the correct return
 	     * value
 	     */
 	    (*elements) = 0;
@@ -426,17 +429,12 @@ int MPI_Get_elements(MPI_Status *status, MPI_Datatype datatype, int *elements)
   fn_fail:
     {
 	mpi_errno = MPIR_Err_create_code(
-	    mpi_errno, MPIR_ERR_RECOVERABLE, FCNAME, __LINE__, MPI_ERR_OTHER, 
+	    mpi_errno, MPIR_ERR_RECOVERABLE, FCNAME, __LINE__, MPI_ERR_OTHER,
 	    "**mpi_get_elements",
 	    "**mpi_get_elements %p %D %p", status, datatype, elements);
     }
-    mpi_errno = MPIR_Err_return_comm( 0, FCNAME, mpi_errno );
+    mpi_errno = MPIR_Err_return_comm(0, FCNAME, mpi_errno);
     goto fn_exit;
 #   endif
     /* --END ERROR HANDLING-- */
 }
-
-
-
-
-

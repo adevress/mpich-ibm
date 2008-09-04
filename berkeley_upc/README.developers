@@ -1,0 +1,540 @@
+To build from CVS source:
+-------------------------
+
+1) Check out 'upc_runtime', and enter the directory:
+
+        cvs co upc_runtime
+        cd upc_runtime
+
+2) run 
+
+        './Bootstrap' 
+        
+   (runs autoconf/automake/etc).
+
+3) Follow the instructions in INSTALL to complete building the system.
+
+
+To clean up the temp files that autoconf and make generate:
+-----------------------------------------------------------
+
+'./unBootstrap'  (does 'make distclean', then removes autoconf junk)
+
+
+Checking into CVS:
+------------------
+
+Make sure your code passes all tests, or have a very good reason for breaking
+that rule.  Please test on multiple systems before checking in ('rsync -avz' is
+a convenient way to duplicate your changed tree onto a different system).
+
+Whenever you add _any_ files to the CVS repository, make sure they also get
+added to the appropriate Makefile.am file if they need to be included in the
+public release.
+
+If your checkin fixes a bug reported in Bugzilla, make sure to note the bug
+number in your checkin message.
+
+Runtime Coding Standards
+------------------------
+
+All UPCR code is required to meet the following coding standards. Many of these
+are intended to ensure maximal portability, or consistency with global design
+decisions. No code is permitted to deviate without express permission of the 
+Berkeley UPCR core development team, which will not be granted without a very
+compelling reason.
+
+* Naming Conventions for macros and identifiers:
+  The following naming convention must be strictly adhered to, in order to
+  prevent naming conflicts with end-user code.
+  - All names required by UPCR spec are lower-case identifiers with
+    the prefix upcr_. No other identifiers may use that prefix.
+  - All constants or macros required by UPCR spec are upper-case and preceded
+    with the prefix UPCR_. No other identifiers may use that prefix.
+  - All private symbols used internally by the implementation must be
+    prefixed with upcri_ (or UPCRI_ for macros), unless they are used within a 
+    single C file and declared as static (in which case the upcri_ prefix is 
+    still encouraged, but optional).
+  - All symbols used to interface with the shared memory allocator (eg umalloc) 
+    must be prefixed with upcra_. 
+  - All symbols used to interface with undocumented translator functionality 
+    must be prefixed with upcrt_. 
+
+* UPCR code should be as close to C89 as possible (ie never differing without
+  good reason), because many C compilers still do not provide full C99 support,
+  and differ quite widely in the supported features. Most notably:
+   - Do not use C99-style // comments. Use only /* */.
+   - Do not use mid-block declarations of variables. Place the declarations at
+     the top of the current block or create a nested block.
+   - Do not use variable-length array declarations, zero-length structure fields,
+     trigraphs, or any GNU C extensions
+  Running your code through "gcc -pedantic" is a good way to track down
+  violations of these rules.
+
+* UPCR code should never call any of the following functions directly:
+   malloc, calloc, realloc, free, str(n)dup, assert
+  Instead, you should use the upcri_* wrapper functions of the same name.
+
+* UPCR code should never call any of the following functions directly:
+   sched_yield, getenv, (un)setenv, mmap
+  Instead, you should use the gasnett_* wrapper functions of the same name.
+
+* All UPCR code must be pthread-safe to support upcc -pthreads compilation.
+  All thread-specific data defined by libupcr should go in upcri_auxdata_t, and
+  all thread-specific data in upcr_trans_extra files must use the public
+  UPCR_TLD_DEFINE/UPCR_TLD_ADDR macros. All global data shared between threads
+  on a node (or between app threads and AM handlers) must be protected using
+  gasnet HSL mutexes. Functions requiring thread-specific data (or calling other
+  functions that do) must use the UPCRI_PT_* macros to pass the threadinfo
+  pointer, or UPCR_BEGIN_FUNCTION to perform thread lookup (more expensive).
+
+* Errors and warnings should be signalled using upcri_err, upcri_errno and
+  upcri_warn - the arguments work just like printf. NEVER use "upcri_assert(0)" 
+  (it will be compiled away), and upcri_err() with a useful message is always 
+  preferable to abort().
+
+* Conditional compilation for platform-specific features should be done using
+  the standardized platform macros provided by gasnet/other/portable_platform.h, 
+  not ad-hoc vendor or compiler-provided preprocessor macros.
+
+* UPCR code should never make assumptions about integer data type sizes. In
+  cases that call for a specific size integral type, the (u)int(sz)_t types
+  provided by gasnet/other/portable_inttypes.h should always be used (eg
+  "uint64_t" = unsigned 64-bit int).
+
+* UPCR provides separate client/server operation between the runtime client and
+  a remote translation service. Therefore, any changes which impact the
+  documented UPCR interface must be made in conjunction with a runtime-spec
+  version change (see further info below).  Due to the existing deployment of
+  both translators and runtimes, every effort should be made to provide both
+  forward and backward version compatibility when changing the runtime spec -
+  ie when mixing an old runtime with a new translator, or vice versa, the
+  system should provide at least all the same functionality of a system where
+  all versions match that of the oldest component.  Any version changes which
+  break this rule must be approved by the UPCR core development team.
+
+* Code using shared pointers should utilize the public upcr_* shared pointer
+  manipulation and put/get functions documented in the runtime spec, in
+  accordance with the rules of that spec. Code deviating from that documented
+  interface might break when used on alternate platforms or shared pointer
+  representations.  Note that many of the upcri_ helper functions defined in
+  upcr_sptr.h and upcri_shaccess.h are for exclusive use by that file, because
+  their behavior often differs in subtle ways across shared pointer
+  representations and platform configurations. 
+
+* Experimental features (especially those affecting performance-critical paths) 
+  should generally be bracketed with UPCRI_ conditional compilation directives
+  and given a configure --enable-whatever option - when disabled, any
+  experimental functionality should compile away to empty.
+
+* Calls to GASNet must always use the public gasnet_ and gasnett_ interfaces.
+  UPCR should *never* reference gasneti_, gasnetc_ or gasnete_ interfaces, which
+  are strictly for internal use and often change across conduits and without notice.
+
+* Makefiles should avoid using GNU-make specific features when possible,
+  Makefile commands and configure scripts should adhere strictly to simple 
+  bourne shell usage (not bash).
+
+* Perl code should only use features and modules available in all installations 
+  of Perl 5.005+.
+
+* All AM handlers should be declared in upcr_handler_decls.h, using the rules
+  documented in that file.
+
+* Any Berkeley-specific library extensions for use in UPC code should be named
+  with a bupc_ prefix, declared in upcr_preinclude/bupc_extensions.h and
+  documented in docs/html-src/user/index.shtml 
+
+Official Release Procedure
+--------------------------
+
+- Request and receive an official release of GASNet - note this includes an
+  official, stamped release of the GASNet sources, sub-releases of consitutent
+  libraries (e.g. AMUDP, AMMPI and firehose), and a release of the GASNet spec,
+  along with official archival versions of the document.
+
+- Update upcr version numbering in acinclude.m4
+    1) Release version (UPCR_VERSION_LIT)
+        - this should be 1.3.x for development, then 1.4.0 for release based on
+          1.3.x code (i.e. use odd minor version number for development).
+        - For bug-fix release patches, update the patch number for each (ex: 1.4.1).
+        - For development, update the patch number whenever it's useful (new feature, big
+          bugfix), and/or whenever we put out a new 'stable' release (or hand
+          out a snapshot to a user). The patch-level should be even for beta versions 
+          marked as "stable" for users, or odd for general development.
+    2) Runtime spec version: UPCR_RUNTIME_SPEC_{MAJOR,MINOR} aka RUNTIME_SPEC
+        - make sure it's the same version as the runtime spec (upcr.txt in
+          docs/html-src/system)
+        - make sure the 'upcr.ps' and 'upcr.pdf' files are up to date: run
+          'make' in docs/html-src/system to make sure.
+	- If the RUNTIME_SPEC value is changing, be sure to check the RUNTIME_SPEC
+	  pending items list below.
+	- Update the RUNTIME_SPEC release version history list below
+    3) Language spec version: UPC_SPEC
+        - I.e., version number of latest official UPC spec we support.
+    4) default_translator: if a new translator is being released, change to 
+       "http://upc-translator.lbl.gov/upcc-MAJOR-MINOR-PATCH.cgi" 
+        - we create the cgi script later in this list of steps.
+    5) go into multiconf.conf.in and change BUPC_TRANS to point to the same
+       translator URL as for step 4.
+
+- Review and document the changes since the last release:
+  - review all the checkin messages since the last release and
+    write a ChangeLog entry documenting user-visible changes and major bug fixes
+  - update the online documentation - man pages, user guide, INSTALL, system
+    documentation
+    - go into 'BLD/man' subdirectory, do 'make html', and 
+      'cp *.html SRCDIR/docs/html-src/user'.  Check them into CVS. 
+        - This must be done after the release version number has been finalized,
+          because it embeds the distribution version in the documentation.
+        - TODO: automate?
+  - update the list of supported platforms
+  - add documentation regarding any major/critical known bugs
+  - write the public release announcement summarizing high-level changes
+
+- Update translator version numbering:
+    IFF this release is a full release including an updated translator release, you
+    should advance the release number found in open64/osprey1.0/be/whirl2c/w2c_driver.cxx
+    in the UPC->C translator repository in CVS.  At the moment the major and minor numbers
+    are the same between the runtime and the translator.  If possible it should stay that
+    way to reduce the amount of information a user needs to include in a bug report and to
+    avoid the "what versions work together?" question.  Currently no software cares if these
+    numbers match or not - the RUNTIME_SPEC is the token used verify compatibility.
+	- If the RUNTIME_SPEC value is changing, be sure to check the RUNTIME_SPEC
+	  pending items list below.
+
+- Checkout a completely fresh tree:
+
+        cvs co [-r RELEASE_BRANCH_OR_LABEL] upc_runtime 
+
+- ./Bootstrap the srcdir
+
+- From a separate builddir, do a 
+
+        configure --enable-totalview --without-multiconf
+        gmake all distcheck 
+
+  to build the release candidate archive. Fix any errors that occur and start
+  over from scratch.
+
+- Unpack the archive and diff against the source tree to find missing files that
+  belong there, especially documentation and auxiliary files
+
+- Copy the offical gasnet docs into two places in the runtime tarball:
+    
+    cp -p GASNet-1.6/docs/gasnet.* berkeley_upc-2.2.2/docs/html/system
+    cp -p GASNet-1.6/docs/gasnet.* berkeley_upc-2.2.2/gasnet/docs
+
+- Replace the tarball:
+
+    rm berkeley_upc-2.2.2.tar.gz 
+    tar cvf berkeley_upc-2.2.2.tar berkeley_upc-2.2.2
+    gzip -9 berkeley_upc-2.2.2.tar
+
+- Checkout a fresh copy of translator (using the release branch tag) and run
+  "gmake update-nodist-list" on n2001 to update the list of non-distributed files.
+  Commit updated nodist-list file if it has changed.
+
+- Checkout another fresh copy of the translator release branch (with the updated
+  nodist-list from the previous step) and run "gmake dist" to build a pruned
+  tarball distribution for the translator.
+    - untar the tarball, move "compilers" to "berkeley_upc_translator-2.2.0",
+      and make a tarball with the version number in it:
+        
+            VERSION=2.2.0
+            tar zxvf berkeley_upc_translator.tar.gz
+            mv compilers berkeley_upc_translator-$VERSION
+            tar cvf berkeley_upc_translator-$VERSION.tar \  
+                    berkeley_upc_translator-$VERSION
+            gzip -9 berkeley_upc_translator-$VERSION.tar
+
+    - TODO: fix "make dist" to do this.
+
+- create a CVS tag for the release, and tag the runtime and the translator.
+
+- Create CGI script for "http://aphid.lbl.gov/upcc-MAJOR-MINOR.cgi", and build
+  runtime/translator to go along with it.  Test it from a runtime built from the
+  tarball.
+
+- Update the upcc-stable.cgi translator to point at the release.
+
+- Add new translator URL to mantis:/var/local/html/upc_tests/translate.php.
+  Test that the online interactive translator works with the new URL, and if
+  necessary reinstall the runtime located at mantis:/var/local/pkg/upc/webtrans
+
+- Post the tarball as a release candidate on the internal webpage and email
+  upc@lbl.gov
+
+- Run the tarball on any systems/configurations not tested by nightly build.
+
+- Review status of show-stoppers on bugzilla and declare tarball as released or
+  go back and start from scratch.
+
+- Build binary releases for Mac OSX and Cygwin, following binary release procedure below
+
+- Build customized source bundles for any special machines:
+   - Cray-XT: 
+       - update build instructions in docs/README.CrayXT (CVS tree only)
+       - create a tarball bundle containing README.CrayXT, the translator tarball, 
+         the runtime tarball and the GCCUPC tarball. 
+       - testdrive the bundle on a Cray XT by unpacking the bundle and following
+         the installation instructions in README.CrayXT for both BUPC + GCCUPC+UPCR, 
+	 on both Catamount and CNL (with and without -pthreads)
+
+- Add runtime and translator tarballs to 'download/release' directory of
+  upc-webpage module.
+    - Make sure the runtime is newer than the translator, to preserve directory
+      listing formatting.  Use 'touch' if necessary.
+    - Add the tarballs to CVS and check in.
+        - use 'cvs add -kb' to mark as binary file.
+    - Check 'date_history' to make sure that all releases appear to have the
+      right dates on them (and all translators appear older).
+        - fix with 'touch' if needed.
+    - Do an "ls -l >date_history" to include new release date into history.
+
+- Update download/{index,source}.shtml with new version info.  Also update tarball names,
+  sizes, and MD5 hash (md5sum filename).
+ 
+- unzip berkeley_upc-A.B.C.tar.gz into berkeley_upc-A.B.C
+
+- unzip top-level directory of berkeley_upc_translator-A.B.C.tar.gz 
+  into berkeley_upc_translator-A.B.C
+
+- update 'dist', 'dist-trans' and 'docs' symlinks to point into new release directory.
+
+- If this is a minor version release or more (i.e., 2.4.0 vs. 2.2.x), edit the
+  doc-versions.shtml file, and add a link to the new version.
+
+- Run link valet to verify all the webpage links and software download links are
+  operational (http://www.htmlhelp.com/tools/valet/).
+
+- apply the same CVS tag used for the release to 'upc-webpage'
+
+- Update 'stable' builds on NERSC and other supported machines.
+
+- draft a copy of the exact release announcement you intend to email to the world
+  and send it to upc@lbl.gov, and wait until at least one other pair of eyeballs
+  has proofread it and given it the OK.
+
+- compile the list of people who've submitted UPC/GASNet bugzilla reports:
+  on mantis, do: mysql -p -u bugs -D bugs
+  enter the password from db_pass in mantis:/var/local/html/bugzilla/localconfig
+  then enter:
+ (select distinct profiles.login_name 
+  from bugs join profiles on bugs.reporter = profiles.userid
+  where bugs.product = "GASNet" || bugs.product = "BerkeleyUPC")
+ union
+ (select distinct profiles.login_name
+  from bugs join cc on bugs.bug_id = cc.bug_id
+       join profiles on cc.who = profiles.userid
+  where bugs.product = "GASNet" || bugs.product = "BerkeleyUPC");
+
+- email the release announcement with headers:
+   To: upc@lbl.gov
+   Bcc: UPC@hermes.gwu.edu, upc-devel@lbl.gov, upc-users@lbl.gov, <list of bug reporters>
+   Subject: Berkeley UPC Release A.B.C
+
+- Go back into acinclude.m4, and increment RELEASE numbers:
+    - Runtime head of CVS: bump the 'minor' number up to the next odd number and
+      clear the patch number to '1' (ex: 2.0.0 --> 2.1.1). This ensures that the
+      release doesn't get confused with future checkins.
+    - restore default translator to upcc-nightly.cgi in acinclude.m4 on CVS head
+    - runtime release branch:  bump up to patch '1' (2.0.0 -> 2.0.1).
+    - Also advance the release number found in
+      open64/osprey1.0/be/whirl2c/w2c_driver.cxx for the translator
+        - CVS HEAD of CVS: change as above (2.0.0 -> 2.1.1)
+        - release branch:  change to next unstable patch number (2.0.0 -> 2.0.1)
+    - Notify upc-devel that the head of CVS is back in business for commits.
+
+- Add the released version numbers of BerkeleyUPC and GASNet to Bugzilla, or ask
+  somebody who has the required permissions.
+    - Also update the default milestone for bug reports (change '$milestone' in
+      pushbuild/webreport/index.php.  Make sure mantis sees the change).
+
+- Update Berkeley UPC release announcements at the following sites:
+    upc.gwu.edu 
+        - send updated HTML for http://www.gwu.edu/~upc/download.html to
+          gwu-upc@hermes.gwu.edu).  Also add announcement to their "news" page.
+    www.versiontracker.com (Dan)
+    www.apple.com/downloads/macosx/ (Dan)
+    www.freshmeat.net 
+        - find "Berkeley Unified Parallel C" project, and select "add release"
+          to enter new version and ChangeLog.
+    linux.softpedia.com
+        - find "Berkeley Unified Parallel C" project, and select "send update
+          information" with new version number and ChangeLog.
+
+
+- Add release to download mirror at http://gasnet.sourceforge.net/releases
+
+- Update backup translation servers at http://upc.nersc.gov/upcc*.cgi and 
+  http://gasnet.sourceforge.net/upcc*.cgi
+
+- Update this list with any changes made to the release procedure
+
+RUNTIME_SPEC Pending Items
+--------------------------
+
+Due to the remote http/ssh netcompile features, the translator and runtime
+often run on different machines administered by different people, and therefore
+a version handshake is required to ensure both components are compatible. 
+The runtime advertises the version of the runtime interface it implements 
+(the value RUNTIME_SPEC in acinclude.m4) along with its request to the
+translator, and the translator validates whether that value falls within the
+range of supported versions for which it can generate code (based on the
+settings in common/com/upc_symtab_utils.h), and echoes back the expected version
+as a comment in the generated code (see gccfe/wfe_misc.cxx:429).
+
+In order to minimize user frustration and enable testing and experimentation across
+versions deployed in the field, we attempt to maximize compatibility across
+translator and runtime versions, and only break spec compatibility between the
+components when absolutely necessary. Note the translator now includes a 
+runtime extension mechanism (libupc/upcr_trans_extra.w2c.h) that can be used to
+satisfy many situations where additional runtime support is required, without 
+breaking compatibility for older runtimes.
+
+Below is a list where we collect pending changes that would break compatibility,
+but do not in themselves motivate a compatibility break. These changes should
+be applied whenever we're breaking compatibility for a good reason.
+
+Increasing the translator's minimum required runtime version (incrementing
+minor version number of RUNTIME_SPEC and UPCR_SPEC_MINOR), breaks the use of
+old runtimes with new translators. The following changes should be made together
+with such a change:
+
+ * remove UPCR_EXIT_FUNCTION from libupc/upcr_trans_extra.w2c.h, obsolete as of
+   runtime spec 3.7
+
+Increasing the runtime's minimum required translator version (incrementing
+major version number of RUNTIME_SPEC and UPCR_SPEC_MAJOR), breaks the use of
+new runtimes with old translators. The following changes should be made together
+with such a change:
+
+ * remove upcr_translator_tld.h and associated goop, obsolete as of runtime spec 3.6
+
+ * remove __APPLE__ asm macros from upcc.pl, obsolete as of translator 2.2.1
+
+RUNTIME_SPEC release version history
+------------------------------------
+                               RUNTIME_SPEC
+component   release ver	  provided	required
+------------------------------------------------
+translator	1.0.0			  n/a
+
+UPCR 		1.0.0  	    n/a
+
+translator	1.1.0			  2.0
+
+UPCR 		1.1.0  	    2.0
+
+translator	2.0.0			  3.1 
+
+UPCR 		2.0.0  	    3.2
+
+translator	2.0.1			  3.1
+
+UPCR 		2.0.1  	    3.2
+
+translator	2.1.0			  3.1
+
+UPCR 		2.1.0  	    3.3
+
+translator	2.1.18			  3.1
+
+UPCR 		2.1.18 	    3.5
+
+translator	2.2.0			  3.1
+
+UPCR 		2.2.0  	    3.5
+
+UPCR 		2.2.1  	    3.6
+
+UPCR 		2.2.2  	    3.6
+
+translator	2.2.2			  3.6
+
+UPCR 		2.2.3  	    3.6
+
+translator	2.2.4			  3.6
+
+UPCR 		2.3.16      3.8
+
+translator	2.4.0       		  3.6
+
+UPCR 		2.4.0       3.8
+
+UPCR 		2.5.8       3.9
+
+UPCR 		2.5.10      3.9
+
+UPCR 		2.6.0       3.9
+
+Binary installer release procedure
+----------------------------------
+
+* Prepare Cygwin distribution:
+- If updating cygwin version, download a complete snapshot of the cygwin distribution to local directory
+- Add previous berkeley_upc and berkeley_upc_recommended packages to package directory and setup.ini 
+- Perform a clean cygwin install of berkeley_upc and the minimal berkeley_upc_recommended packages
+- Build the source release candidate in debug and ndebug mode
+- Edit upcc.conf and remove full paths from any binaries in $SYSTEMROOT (nslookup)
+- Run a recursive grep to look for any remaining instances of $HOME or $SYSTEMROOT
+- Run full test harnesses
+- Install to /usr/local/upc/dist-{opt,debug}
+- Copy in upc-examples
+- remove extraneous files from upc-examples:  
+    rm -f `find upc-examples -name harness.conf`
+    rm -Rf `find upc-examples -name CVS` 
+- Copy in previous /usr/local/upc/dist
+- Edit etc\postinstall\berkeley_upc.sh as necessary
+- Create the package:
+ tar cvf berkeley_upc-2.2.2-1.tar etc/postinstall/berkeley_upc.sh usr/local/upc
+ bzip2 berkeley_upc-2.2.2-1.tar
+ md5 berkeley_upc-2.2.2-1.tar.bz2
+ ls -al berkeley_upc-2.2.2-1.tar.bz2
+- Update setup.ini with md5 and file size
+
+
+* Identify OSX target machines - you need one for each distinct Maj.Min.Pack
+version of gcc to be supported (build number is not significant), and one
+IntelMac if you want a native Intel build (required for debugging). On each OSX
+target machine:
+
+ - configure & build OSX runtime binaries, use CC="gcc -arch ppc" and CXX="g++ -arch ppc" to ensure app code built on Intel Macs gets correct ABI to link against binary libs
+ - Run a recursive grep to look for any instances of $HOME, or other system-specific paths
+ - run full test harness on the runtime builds
+ - Install debug runtime: gmake install prefix=/tmp/###BININSTALL_PREFIX###/dist-debug
+ - Install opt runtime:   gmake install prefix=/tmp/###BININSTALL_PREFIX###/dist-opt
+ - Copy upc-examples directory into /tmp/###BININSTALL_PREFIX### 
+ - remove extraneous files from upc-examples:  
+    rm -f `find upc-examples -name harness.conf`
+    rm -Rf `find upc-examples -name CVS`
+ - Copy dist directory from previous release into /tmp/###BININSTALL_PREFIX###/dist
+ - Ensure appropriate permissions: chmod -R a+rX,og-w /tmp/###BININSTALL_PREFIX###
+ - Create runtime tarball:
+   cd /tmp/###BININSTALL_PREFIX###
+   tar -cvf bupc_runtime.tar dist dist-debug dist-opt upc-examples ; gzip -9 bupc_runtime.tar
+   mv bupc_runtime.tar.gz bupc_runtime-archive
+ - build & install translator anywhere, then tar-gz the installed translator with dirname "trans" 
+    and name it bupc_translator-archive (note, we don't use .tar.gz to prevent bug1517)
+ - create full and lite installer tarballs -
+    Copy the install scripts from upcr/contrib/mac-installer and update embedded packageversion and expect_version
+    full installers contain install scripts, runtime archive and translator archive
+    lite installers are the same just without the translator archive
+ - test the installer binaries, with default and non-default paths: 
+     install, verify upcc, upcrun, and man pages work, uninstall
+ 
+* Prepare release CD
+ - start with a copy of previous full download tarball (note CD version might be missing packages)
+ - replace version numbers throughout web pages, update install instructions and cd cover/label in web dir
+ - replace cygwin installer files and setup.exe
+ - place mac installers in mac directory
+ - place final release tarballs in unix dir, untar runtime release into dist directory
+ - run link valet on the web pages
+ - Create a download tarball 
+ - Create an ISO image, removing packages from cygwin/release as necessary to fit CD-R:
+    X11, xemacs, GNOME, gtk2-x11, lilypond, tetex/tetex-doc
+ - Burn the ISO to a CD and test it
+ - upload ISO and tarball to website and post with MD5's
+ - update binary download instructions on website
+

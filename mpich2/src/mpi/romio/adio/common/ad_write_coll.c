@@ -8,6 +8,10 @@
 #include "adio.h"
 #include "adio_extern.h"
 
+#ifdef AGGREGATION_PROFILE
+#include "mpe.h"
+#endif
+
 /* prototypes of functions used for collective writes only. */
 static void ADIOI_Exch_and_write(ADIO_File fd, void *buf, MPI_Datatype
                          datatype, int nprocs, int myrank,
@@ -76,6 +80,11 @@ void ADIOI_GEN_WriteStridedColl(ADIO_File fd, void *buf, int count,
     ADIO_Offset *len_list = NULL;
     int old_error, tmp_error;
 
+    if (fd->hints->cb_pfr != ADIOI_HINT_DISABLE) { 
+	ADIOI_IOStridedColl (fd, buf, count, ADIOI_WRITE, datatype, 
+			file_ptr_type, offset, status, error_code);
+	return;
+    }
 
     MPI_Comm_size(fd->comm, &nprocs);
     MPI_Comm_rank(fd->comm, &myrank);
@@ -157,7 +166,9 @@ void ADIOI_GEN_WriteStridedColl(ADIO_File fd, void *buf, int count,
 
     ADIOI_Calc_file_domains(st_offsets, end_offsets, nprocs,
 			    nprocs_for_coll, &min_st_offset,
-			    &fd_start, &fd_end, &fd_size);   
+			    &fd_start, &fd_end, 
+			    fd->hints->min_fdomain_size, &fd_size, 
+			    fd->hints->striping_unit);   
 
 
 /* calculate what portions of the access requests of this process are
@@ -226,6 +237,9 @@ void ADIOI_GEN_WriteStridedColl(ADIO_File fd, void *buf, int count,
 #ifdef ADIOI_MPE_LOGGING
     MPE_Log_event( ADIOI_MPE_postwrite_b, 0, NULL );
 #endif
+#ifdef AGGREGATION_PROFILE
+	MPE_Log_event (5012, 0, NULL);
+#endif
 
     if ( (old_error != MPI_SUCCESS) && (old_error != MPI_ERR_IO) )
 	    *error_code = old_error;
@@ -265,6 +279,9 @@ void ADIOI_GEN_WriteStridedColl(ADIO_File fd, void *buf, int count,
 #endif
 
     fd->fp_sys_posn = -1;   /* set it to null. */
+#ifdef AGGREGATION_PROFILE
+	MPE_Log_event (5013, 0, NULL);
+#endif
 }
 
 
@@ -447,7 +464,7 @@ static void ADIOI_Exch_and_write(ADIO_File fd, void *buf, MPI_Datatype
 		    }
 		    if (req_off < off + size) {
 			count[i]++;
-      ADIOI_Assert((((ADIO_Offset)(MPIR_Puint)write_buf)+req_off-off) == (ADIO_Offset)(MPIR_Puint)(write_buf+req_off-off));
+      ADIOI_Assert((((ADIO_Offset)(MPIR_Upint)write_buf)+req_off-off) == (ADIO_Offset)(MPIR_Upint)(write_buf+req_off-off));
 			MPI_Address(write_buf+req_off-off, 
                                &(others_req[i].mem_ptrs[j]));
       ADIOI_Assert((off + size - req_off) == (int)(off + size - req_off));
@@ -563,7 +580,7 @@ static void ADIOI_W_Exchange_data(ADIO_File fd, void *buf, char *write_buf,
     MPI_Request *requests, *send_req;
     MPI_Datatype *recv_types;
     MPI_Status *statuses, status;
-    int *srt_len, sum, sum_recv;
+    int *srt_len, sum;
     ADIO_Offset *srt_off;
     static char myname[] = "ADIOI_W_EXCHANGE_DATA";
 
@@ -622,26 +639,26 @@ static void ADIOI_W_Exchange_data(ADIO_File fd, void *buf, char *write_buf,
         }
     ADIOI_Free(tmp_len);
 
-/* check if there are any holes */
+    /* Wei-keng Liao: check holes, if yes, must do read-modify-write */
+
+    /* holes can be in three places.  'middle' is what you'd expect: the
+     * processes are operating on noncontigous data.  But holes can also show
+     * up at the beginning or end of the file domain (see John Bent ROMIO REQ
+     * #835). Missing these holes would result in us writing more data than
+     * recieved by everyone else. */
+
     *hole = 0;
-    for (i=0; i<sum-1; i++)
-	if (srt_off[i]+srt_len[i] < srt_off[i+1]) {
-	    *hole = 1;
-	    break;
-	}
-    /* In some cases (see John Bent ROMIO REQ # 835), an odd interaction
-     * between aggregation, nominally contiguous regions, and cb_buffer_size
-     * should be handled with a read-modify-write (otherwise we will write out
-     * more data than we receive from everyone else (inclusive), so override
-     * hole detection
-     */
-    if (*hole == 0) {
-        sum_recv=0;
-        for (i=0; i<nprocs; i++) {
-	   sum_recv += recv_size[i];
-	   sum_recv += partial_recv[i];
+    if (off != srt_off[0]) /* hole at the front */
+        *hole = 1;
+    else { /* coalesce the sorted offset-length pairs */
+        for (i=1; i<sum; i++) {
+            if (srt_off[i] <= srt_off[0] + srt_len[0])
+                srt_len[0] = srt_off[i] + srt_len[i] - srt_off[0];
+            else
+                break;
         }
-        if (size > sum_recv) *hole = 1;
+        if (i < sum || size != srt_len[0]) /* hole in middle or end */
+            *hole = 1;
     }
 
     ADIOI_Free(srt_off);
@@ -692,6 +709,9 @@ static void ADIOI_W_Exchange_data(ADIO_File fd, void *buf, char *write_buf,
 /* post sends. if buftype_is_contig, data can be directly sent from
    user buf at location given by buf_idx. else use send_buf. */
 
+#ifdef AGGREGATION_PROFILE
+    MPE_Log_event (5032, 0, NULL);
+#endif
     if (buftype_is_contig) {
 	j = 0;
 	for (i=0; i < nprocs; i++) 
@@ -766,6 +786,9 @@ static void ADIOI_W_Exchange_data(ADIO_File fd, void *buf, char *write_buf,
         MPI_Waitall(nprocs_send+nprocs_recv, requests, statuses);
 #endif
 
+#ifdef AGGREGATION_PROFILE
+    MPE_Log_event (5033, 0, NULL);
+#endif
     ADIOI_Free(statuses);
     ADIOI_Free(requests);
     if (!buftype_is_contig && nprocs_send) {
@@ -774,25 +797,6 @@ static void ADIOI_W_Exchange_data(ADIO_File fd, void *buf, char *write_buf,
 	ADIOI_Free(send_buf);
     }
 }
-
-static void ADIOI_Fill_send_buffer(ADIO_File fd, void *buf, ADIOI_Flatlist_node
-                           *flat_buf, char **send_buf, ADIO_Offset 
-                           *offset_list, ADIO_Offset *len_list, int *send_size, 
-                           MPI_Request *requests, int *sent_to_proc, 
-                           int nprocs, int myrank, 
-                           int contig_access_count, 
-                           ADIO_Offset min_st_offset, ADIO_Offset fd_size,
-                           ADIO_Offset *fd_start, ADIO_Offset *fd_end, 
-                           int *send_buf_idx, int *curr_to_proc, 
-                           int *done_to_proc, int iter,
-                           MPI_Aint buftype_extent)
-{
-/* this function is only called if buftype is not contig */
-
-    int i, p, flat_buf_idx;
-    ADIO_Offset flat_buf_sz, size_in_buf, buf_incr, size;
-    int jj, n_buftypes;
-    ADIO_Offset off, len, rem_len, user_buf_idx;
 
 #define ADIOI_BUF_INCR \
 { \
@@ -819,7 +823,7 @@ static void ADIOI_Fill_send_buffer(ADIO_File fd, void *buf, ADIOI_Flatlist_node
 { \
     while (size) { \
         size_in_buf = ADIOI_MIN(size, flat_buf_sz); \
-  ADIOI_Assert((((ADIO_Offset)(MPIR_Puint)buf) + user_buf_idx) == (ADIO_Offset)(MPIR_Puint)(buf + user_buf_idx)); \
+  ADIOI_Assert((((ADIO_Offset)(MPIR_Upint)buf) + user_buf_idx) == (ADIO_Offset)(MPIR_Upint)(buf + user_buf_idx)); \
   ADIOI_Assert(size_in_buf == (size_t)size_in_buf); \
         memcpy(&(send_buf[p][send_buf_idx[p]]), \
                ((char *) buf) + user_buf_idx, size_in_buf); \
@@ -844,6 +848,26 @@ static void ADIOI_Fill_send_buffer(ADIO_File fd, void *buf, ADIOI_Flatlist_node
 
 
 
+
+
+static void ADIOI_Fill_send_buffer(ADIO_File fd, void *buf, ADIOI_Flatlist_node
+                           *flat_buf, char **send_buf, ADIO_Offset 
+                           *offset_list, ADIO_Offset *len_list, int *send_size, 
+                           MPI_Request *requests, int *sent_to_proc, 
+                           int nprocs, int myrank, 
+                           int contig_access_count, 
+                           ADIO_Offset min_st_offset, ADIO_Offset fd_size,
+                           ADIO_Offset *fd_start, ADIO_Offset *fd_end, 
+                           int *send_buf_idx, int *curr_to_proc, 
+                           int *done_to_proc, int iter,
+                           MPI_Aint buftype_extent)
+{
+/* this function is only called if buftype is not contig */
+
+    int i, p, flat_buf_idx;
+    ADIO_Offset flat_buf_sz, size_in_buf, buf_incr, size;
+    int jj, n_buftypes;
+    ADIO_Offset off, len, rem_len, user_buf_idx;
 
 /*  curr_to_proc[p] = amount of data sent to proc. p that has already
     been accounted for so far

@@ -1,0 +1,93 @@
+# Copyright (C) 2001 
+# Written by Gary Funck <gary@intrepid.com>
+# and Nenad Vukicevic <nenad@intrepid.com>
+# 
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+# 
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+# 
+BIN = ../bin
+GCC_BIN = ../../gcc
+IFLAGS = -I../../libupc/include -I/usr/include
+DFLAGS = -g -DDEBUG=1 -UNDEBUG
+OFLAGS =   -v
+
+# Setting UPC_THREADS=-fupc-threads-1 makes the test program easier to debug
+UPC_THREADS =
+CFLAGS = $(IFLAGS) $(OFLAGS) $(DFLAGS)
+
+UPC=$(GCC_BIN)/upc
+CC=$(UPC)
+
+CC1UPC=$(GCC_BIN)/cc1upc
+
+TESTS = test00 test01 test02 test03 test04 test05 test06 test07 test08 \
+	test09 test10 test11 test12
+
+.SUFFIXES: .upc
+.upc.o:
+	$(UPC) $(CFLAGS) $(UPC_THREADS) -c $<
+
+all: chmod_x $(TESTS)
+
+$(TESTS): $(CC1UPC)
+
+test00: test00.upc
+	$(UPC) $(CFLAGS) $(UPC_THREADS) test00.upc -o test00
+
+test01: test01.upc
+	$(UPC) $(CFLAGS) $(UPC_THREADS) test01.upc -o test01
+
+test02: test02.upc
+	$(UPC) $(CFLAGS) $(UPC_THREADS) test02.upc -o test02
+
+test03: test03.upc
+	$(UPC) $(CFLAGS) $(UPC_THREADS) test03.upc -o test03
+
+test04: test04.upc
+	$(UPC) $(CFLAGS) $(UPC_THREADS) test04.upc -o test04
+
+test05: test05.upc
+	$(UPC) $(CFLAGS) $(UPC_THREADS) test05.upc -o test05
+
+test06: test06.upc
+	$(UPC) $(CFLAGS) $(UPC_THREADS) test06.upc -o test06
+
+test07: test07.upc test07_sep.upc
+	$(UPC) $(CFLAGS) $(UPC_THREADS) test07.upc test07_sep.upc -o test07
+
+test08: test08.upc test08_sep.upc
+	$(UPC) $(CFLAGS) $(UPC_THREADS) test08.upc test08_sep.upc -o test08
+
+test09: test09.upc
+	$(UPC) $(CFLAGS) $(UPC_THREADS) test09.upc -o test09
+
+test10: test10.upc
+	$(UPC) $(CFLAGS) $(UPC_THREADS) test10.upc -o test10
+
+test11: test11.upc
+	$(UPC) $(CFLAGS) $(UPC_THREADS) test11.upc -o test11
+
+test12: test12.upc
+	$(UPC) $(CFLAGS) $(UPC_THREADS) test12.upc -o test12
+
+chmod_x:
+	@if [ ! -x run_tests ] ; then chmod +x run_tests; fi
+
+clean:
+	@-rm -f *.o $(TESTS) core *.s *.upci *.upci.* \
+		*.dblog* ./.dbx_cmd *.upci
+
+mostlyclean: clean
+distclean: clean
+realclean: clean

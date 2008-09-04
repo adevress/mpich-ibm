@@ -36,14 +36,22 @@ int MPID_nem_newtcp_module_get_vc_from_conninfo (char *pg_id, int pg_rank, struc
 {
     int mpi_errno = MPI_SUCCESS;
     MPIDI_PG_t *pg;
+    MPIDI_STATE_DECL(MPID_STATE_MPID_NEM_NEWTCP_MODULE_GET_VC_FROM_CONNINFO);
+
+    MPIDI_FUNC_ENTER(MPID_STATE_MPID_NEM_NEWTCP_MODULE_GET_VC_FROM_CONNINFO);
+
+    MPIU_DBG_MSG_FMT(NEM_SOCK_DET, VERBOSE, (MPIU_DBG_FDEST, "pg_id=%s pg_rank=%d", pg_id, pg_rank));
     
     mpi_errno = MPIDI_PG_Find (pg_id, &pg);
     if (mpi_errno) MPIU_ERR_POP (mpi_errno);
+
+    MPIU_ERR_CHKANDJUMP1 (pg == NULL, mpi_errno, MPI_ERR_OTHER, "**intern", "**intern %s", "invalid PG");
     MPIU_ERR_CHKANDJUMP1 (pg_rank < 0 || pg_rank > MPIDI_PG_Get_size (pg), mpi_errno, MPI_ERR_OTHER, "**intern", "**intern %s", "invalid pg_rank");
         
     MPIDI_PG_Get_vc (pg, pg_rank, vc);
     
  fn_exit:
+    MPIDI_FUNC_EXIT(MPID_STATE_MPID_NEM_NEWTCP_MODULE_GET_VC_FROM_CONNINFO);
     return mpi_errno;
  fn_fail:
     goto fn_exit;
@@ -189,3 +197,34 @@ int MPID_nem_newtcp_module_is_sock_connected(int fd)
  fn_exit:
     return rc;
 }
+
+
+/* --BEGIN ERROR HANDLING-- */
+#undef FUNCNAME
+#define FUNCNAME MPID_nem_dbg_print_all_sendq
+#undef FCNAME
+#define FCNAME MPIDI_QUOTE(FUNCNAME)
+void MPID_nem_newtcp_module_vc_dbg_print_sendq(FILE *stream, MPIDI_VC_t *vc)
+{
+    int i;
+    MPID_Request *sreq;
+    MPIDI_CH3I_VC *vc_ch = (MPIDI_CH3I_VC *)vc->channel_private;
+
+    fprintf(stream, "..   sc=%p fd=%d vc_ch->state=%d\n", VC_FIELD(vc, sc), (VC_FIELD(vc, sc) ? VC_FIELD(vc,sc)->fd : -1), vc_ch->state);
+
+    /* This function violates any abstraction in the queues, since there's no
+       good way to print them without inspecting the internals. */
+    sreq = VC_FIELD(vc, send_queue).head;
+    i = 0;
+    while (sreq)
+    {
+        fprintf(stream, "....[%d] sreq=%p ctx=%#x rank=%d tag=%d\n", i, sreq,
+                        sreq->dev.match.context_id,
+                        sreq->dev.match.rank,
+                        sreq->dev.match.tag);
+        ++i;
+        sreq = sreq->dev.next;
+    }
+}
+/* --END ERROR HANDLING-- */
+

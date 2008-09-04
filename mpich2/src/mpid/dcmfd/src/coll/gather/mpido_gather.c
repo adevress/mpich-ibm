@@ -56,7 +56,7 @@ int MPIDO_Gather(void *sendbuf,
 
   STAR_info.internal_control_flow = 0;
 
-  MPID_Ensure_Aint_fits_in_pointer(MPIR_VOID_PTR_CAST_TO_MPI_AINT recvbuf +
+  MPID_Ensure_Aint_fits_in_pointer(MPI_VOID_PTR_CAST_TO_MPI_AINT recvbuf +
 				   true_lb);
 
   recvbuf = (char *) recvbuf + true_lb;

@@ -8,12 +8,6 @@
 #include "adio.h"
 #include "adio_extern.h"
 
-void ADIOI_GEN_ReadStrided(ADIO_File fd, void *buf, int count,
-                       MPI_Datatype datatype, int file_ptr_type,
-                       ADIO_Offset offset, ADIO_Status *status, int
-                       *error_code)
-{
-
 #define ADIOI_BUFFERED_READ \
 { \
     if (req_off >= readbuf_off + readbuf_len) { \
@@ -45,11 +39,18 @@ void ADIOI_GEN_ReadStrided(ADIO_File fd, void *buf, int count,
 }
 
 
+void ADIOI_GEN_ReadStrided(ADIO_File fd, void *buf, int count,
+                       MPI_Datatype datatype, int file_ptr_type,
+                       ADIO_Offset offset, ADIO_Status *status, int
+                       *error_code)
+{
+
+
 /* offset is in units of etype relative to the filetype. */
 
     ADIOI_Flatlist_node *flat_buf, *flat_file;
     ADIO_Offset i_offset, new_brd_size, brd_size, size;
-    int j, k, st_index=0;
+    int i, j, k, st_index=0;
     unsigned num, bufsize; 
     int n_etypes_in_filetype;
     ADIO_Offset n_filetypes, etype_in_filetype, st_n_filetypes, size_in_filetype;
@@ -60,7 +61,6 @@ void ADIOI_GEN_ReadStrided(ADIO_File fd, void *buf, int count,
     ADIO_Offset userbuf_off, req_len, sum;
     ADIO_Offset off, req_off, disp, end_offset=0, readbuf_off, start_off;
     char *readbuf, *tmp_buf, *value;
-    int flag;
     int info_flag;
     unsigned max_bufsize, readbuf_len;
     ADIO_Status status1;
@@ -160,26 +160,29 @@ void ADIOI_GEN_ReadStrided(ADIO_File fd, void *buf, int count,
 	disp = fd->disp;
 
 	if (file_ptr_type == ADIO_INDIVIDUAL) {
-	    offset = fd->fp_ind; /* in bytes */
-	    n_filetypes = -1;
-	    flag = 0;
-	    while (!flag) {
-        int i;
-                n_filetypes++;
-		for (i=0; i<flat_file->count; i++) {
-		    if (disp + flat_file->indices[i] + 
-                        n_filetypes*(ADIO_Offset)filetype_extent + flat_file->blocklens[i] 
-                            >= offset) {
-			st_index = i;
-			frd_size = disp + flat_file->indices[i] + 
-			        n_filetypes* (ADIO_Offset)filetype_extent
-			         + flat_file->blocklens[i] - offset;
-			flag = 1;
+	    /* wei-keng reworked type processing to be a bit more efficient */
+            offset = fd->fp_ind - disp; /* in bytes */
+            n_filetypes = offset / filetype_extent;  /* no. filetypes */
+            offset %= filetype_extent;   /* local offset in a filetype */
+
+	    /* Wei-keng Liao: find contiguous block where offset is located */
+
+            for (i=0; i<flat_file->count; i++) {/*bin. search would be better */
+		ADIO_Offset rem_len = offset - flat_file->indices[i];
+		if (rem_len >= 0) {
+		    /* skip over zero length blocklens */
+		    if (rem_len == flat_file->blocklens[i])
+		        offset = flat_file->indices[i+1];
+		    else if (rem_len < flat_file->blocklens[i]) {
+		        /* frd_size is from offset to the end of block i */
+			frd_size = flat_file->blocklens[i] - rem_len;
 			break;
 		    }
 		}
 	    }
-	}
+            st_index = i;  /* starting index in flat_file->indices[] */
+            offset += disp + (ADIO_Offset)n_filetypes*filetype_extent; /*bytes*/
+        }
 	else {
     int i;
 	    n_etypes_in_filetype = filetype_size/etype_size;
@@ -200,10 +203,24 @@ void ADIOI_GEN_ReadStrided(ADIO_File fd, void *buf, int count,
 	    }
 
 	    /* abs. offset in bytes in the file */
-	    offset = disp + n_filetypes* (ADIO_Offset)filetype_extent + abs_off_in_filetype;
+	    offset = disp + (ADIO_Offset) n_filetypes*filetype_extent + 
+		    abs_off_in_filetype;
 	}
 
         start_off = offset;
+
+        /* Wei-keng Liao: read request within single flat_file contig block */
+	/* e.g. with subarray types that actually describe the whole array */
+        if (buftype_is_contig && bufsize <= frd_size) {
+            ADIO_ReadContig(fd, buf, bufsize, MPI_BYTE, ADIO_EXPLICIT_OFFSET,
+                             offset, status, error_code);
+	    if (file_ptr_type == ADIO_INDIVIDUAL) fd->fp_ind = offset + bufsize;
+	    fd->fp_sys_posn = -1;   /* set it to null. */ 
+#ifdef HAVE_STATUS_SET_BYTES
+	    MPIR_Status_set_bytes(status, datatype, bufsize);
+#endif 
+            return;
+	}
 
        /* Calculate end_offset, the last byte-offset that will be accessed.
          e.g., if start_offset=0 and 100 bytes to be read, end_offset=99*/

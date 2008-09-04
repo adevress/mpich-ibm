@@ -39,7 +39,7 @@ int MPIDI_CH3_Init(int has_parent, MPIDI_PG_t *pg_p, int pg_rank)
     */
     MPIU_Assert (sizeof(MPIDI_CH3_Pkt_t) >= 32 && sizeof(MPIDI_CH3_Pkt_t) <= 40);
 
-    mpi_errno = MPID_nem_init (pg_rank, pg_p);
+    mpi_errno = MPID_nem_init (pg_rank, pg_p, has_parent);
     if (mpi_errno) MPIU_ERR_POP (mpi_errno);
 
     nemesis_initialized = 1;
@@ -105,7 +105,6 @@ int MPIDI_CH3_RMAFnsInit( MPIDI_RMAFns *a )
 int MPIDI_CH3_VC_Init( MPIDI_VC_t *vc )
 {
     int mpi_errno = MPI_SUCCESS;
-    char bc[MPID_NEM_MAX_KEY_VAL_LEN];
     MPIDI_STATE_DECL(MPID_STATE_MPIDI_CH3_VC_INIT);
 
     MPIDI_FUNC_ENTER(MPID_STATE_MPIDI_CH3_VC_INIT);
@@ -135,12 +134,10 @@ int MPIDI_CH3_VC_Init( MPIDI_VC_t *vc )
         goto fn_exit;
 
     ((MPIDI_CH3I_VC *)vc->channel_private)->recv_active = NULL;
+    MPIU_DBG_VCSTATECHANGE(vc,VC_STATE_ACTIVE);
     vc->state = MPIDI_VC_STATE_ACTIVE;
 
-    mpi_errno = vc->pg->getConnInfo (vc->pg_rank, bc, MPID_NEM_MAX_KEY_VAL_LEN, vc->pg);
-    if (mpi_errno) MPIU_ERR_POP (mpi_errno);
-
-    mpi_errno = MPID_nem_vc_init (vc, bc);
+    mpi_errno = MPID_nem_vc_init (vc);
     if (mpi_errno) MPIU_ERR_POP (mpi_errno);
 
  fn_exit:
@@ -155,12 +152,23 @@ int MPIDI_CH3_VC_Init( MPIDI_VC_t *vc )
 #define FCNAME MPIDI_QUOTE(FUNCNAME)
 int MPIDI_CH3_VC_Destroy(MPIDI_VC_t *vc )
 {
+    int mpi_errno = MPI_SUCCESS;
     MPIDI_STATE_DECL(MPID_STATE_MPIDI_CH3_VC_DESTROY);
 
     MPIDI_FUNC_ENTER(MPID_STATE_MPIDI_CH3_VC_DESTROY);
 
+    /* no need to destroy vc to self, this corresponds to the optimization above
+     * in MPIDI_CH3_VC_Init */
+    if (vc->pg == MPIDI_CH3I_my_pg && vc->pg_rank == MPIDI_CH3I_my_rank) {
+        MPIU_DBG_MSG_P(NEM_SOCK_DET, VERBOSE, "skipping self vc=%p", vc);
+        goto fn_exit;
+    }
+
+    mpi_errno = MPID_nem_vc_destroy(vc);
+
+fn_exit:
     MPIDI_FUNC_EXIT(MPID_STATE_MPIDI_CH3_VC_DESTROY);
-    return MPID_nem_vc_destroy(vc);
+    return mpi_errno;
 }
 
 /* MPIDI_CH3_Connect_to_root() create a new vc, and connect it to the process listening on port_name */
@@ -176,22 +184,24 @@ int MPIDI_CH3_Connect_to_root (const char *port_name, MPIDI_VC_t **new_vc)
     MPIDI_STATE_DECL(MPID_STATE_MPIDI_CH3_CONNECT_TO_ROOT);
 
     MPIDI_FUNC_ENTER(MPID_STATE_MPIDI_CH3_CONNECT_TO_ROOT);
-    MPIU_CHKPMEM_MALLOC (vc, MPIDI_VC_t *, sizeof(MPIDI_VC_t), mpi_errno, "vc");
-    /* FIXME - where does this vc get freed? */
 
-    *new_vc = vc;
+    *new_vc = NULL; /* so that the err handling knows to cleanup */
+
+    MPIU_CHKPMEM_MALLOC (vc, MPIDI_VC_t *, sizeof(MPIDI_VC_t), mpi_errno, "vc");
+    /* FIXME - where does this vc get freed?
+       ANSWER (goodell@) - ch3u_port.c FreeNewVC
+                           (but the VC_Destroy is in this file) */
 
     /* init ch3 portion of vc */
     MPIDI_VC_Init (vc, NULL, 0);
 
     /* init channel portion of vc */
     MPIU_ERR_CHKANDJUMP (!nemesis_initialized, mpi_errno, MPI_ERR_OTHER, "**intern");
-
     ((MPIDI_CH3I_VC *)vc->channel_private)->recv_active = NULL;
+    MPIU_DBG_VCSTATECHANGE(vc,VC_STATE_ACTIVE);
     vc->state = MPIDI_VC_STATE_ACTIVE;
 
-    mpi_errno = MPID_nem_vc_init (vc, port_name);
-    if (mpi_errno) MPIU_ERR_POP (mpi_errno);
+    *new_vc = vc; /* we now have a valid, disconnected, temp VC */
 
     mpi_errno = MPID_nem_connect_to_root (port_name, vc);
     if (mpi_errno) MPIU_ERR_POP (mpi_errno);
@@ -201,6 +211,10 @@ int MPIDI_CH3_Connect_to_root (const char *port_name, MPIDI_VC_t **new_vc)
     MPIDI_FUNC_EXIT(MPID_STATE_MPIDI_CH3_CONNECT_TO_ROOT);
     return mpi_errno;
  fn_fail:
+    /* freeing without giving the lower layer a chance to cleanup can lead to
+       leaks on error */
+    if (*new_vc)
+        MPIDI_CH3_VC_Destroy(*new_vc);
     MPIU_CHKPMEM_REAP();
     goto fn_exit;
 }

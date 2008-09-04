@@ -225,7 +225,8 @@ MPID_Request * MPIDI_CH3U_Recvq_FDU(MPI_Request sreq_id,
 #undef FCNAME
 #define FCNAME MPIDI_QUOTE(FUNCNAME)
 MPID_Request * MPIDI_CH3U_Recvq_FDU_or_AEP(int source, int tag, 
-					   int context_id, int * foundp)
+                                           int context_id, MPID_Comm *comm, void *user_buf,
+                                           int user_count, MPI_Datatype datatype, int * foundp)
 {
     int found;
     MPID_Request *rreq, *prev_rreq;
@@ -251,6 +252,11 @@ MPID_Request * MPIDI_CH3U_Recvq_FDU_or_AEP(int source, int tag,
 		    if (rreq->dev.next == NULL) {
 			recvq_unexpected_tail = prev_rreq;
 		    }
+                    rreq->comm                 = comm;
+                    MPIR_Comm_add_ref(comm);
+                    rreq->dev.user_buf         = user_buf;
+                    rreq->dev.user_count       = user_count;
+                    rreq->dev.datatype         = datatype;
 		    found = TRUE;
 		    goto lock_exit;
 		} 
@@ -295,6 +301,11 @@ MPID_Request * MPIDI_CH3U_Recvq_FDU_or_AEP(int source, int tag,
 		    if (rreq->dev.next == NULL) {
 			recvq_unexpected_tail = prev_rreq;
 		    }
+                    rreq->comm                 = comm;
+                    MPIR_Comm_add_ref(comm);
+                    rreq->dev.user_buf         = user_buf;
+                    rreq->dev.user_count       = user_count;
+                    rreq->dev.datatype         = datatype;
 		    found = TRUE;
 		    goto lock_exit;
 		}
@@ -315,6 +326,11 @@ MPID_Request * MPIDI_CH3U_Recvq_FDU_or_AEP(int source, int tag,
 	rreq->dev.match.tag	   = tag;
 	rreq->dev.match.rank	   = source;
 	rreq->dev.match.context_id = context_id;
+        rreq->comm                 = comm;
+        MPIR_Comm_add_ref(comm);
+        rreq->dev.user_buf         = user_buf;
+        rreq->dev.user_count       = user_count;
+        rreq->dev.datatype         = datatype;
 	rreq->dev.next		   = NULL;
 	if (recvq_posted_tail != NULL) {
 	    recvq_posted_tail->dev.next = rreq;
@@ -460,3 +476,87 @@ MPID_Request * MPIDI_CH3U_Recvq_FDP_or_AEU(MPIDI_Message_match * match,
     MPIDI_FUNC_EXIT(MPID_STATE_MPIDI_CH3U_RECVQ_FDP_OR_AEU);
     return rreq;
 }
+
+/* --BEGIN ERROR HANDLING-- */
+/* pretty prints tag, returns out for calling convenience */
+static char *tag_val_to_str(int tag, char *out, int max)
+{
+    if (tag == MPI_ANY_TAG) {
+        MPIU_Strncpy(out, "MPI_ANY_TAG", max);
+    }
+    else {
+        MPIU_Snprintf(out, max, "%d", tag);
+    }
+    return out;
+}
+
+/* pretty prints rank, returns out for calling convenience */
+static char *rank_val_to_str(int rank, char *out, int max)
+{
+    if (rank == MPI_ANY_SOURCE) {
+        MPIU_Strncpy(out, "MPI_ANY_SOURCE", max);
+    }
+    else {
+        MPIU_Snprintf(out, max, "%d", rank);
+    }
+    return out;
+}
+
+/* satisfy the compiler */
+void MPIDI_CH3U_Dbg_print_recvq(FILE *stream);
+
+/* This function can be called by a debugger to dump the recvq state to the
+ * given stream. */
+#undef FUNCNAME
+#define FUNCNAME MPIDI_CH3U_Dbg_print_recvq
+#undef FCNAME
+#define FCNAME MPIDI_QUOTE(FUNCNAME)
+void MPIDI_CH3U_Dbg_print_recvq(FILE *stream)
+{
+    MPID_Request * rreq;
+    int i;
+    char tag_buf[128];
+    char rank_buf[128];
+
+    fprintf(stream, "========================================\n");
+    fprintf(stream, "MPI_COMM_WORLD  ctx=%#x rank=%d\n", MPIR_Process.comm_world->context_id, MPIR_Process.comm_world->rank);
+    fprintf(stream, "MPI_COMM_SELF   ctx=%#x\n", MPIR_Process.comm_self->context_id);
+    if (MPIR_Process.comm_parent) {
+        fprintf(stream, "MPI_COMM_PARENT ctx=%#x recvctx=%#x\n",
+                MPIR_Process.comm_self->context_id,
+                MPIR_Process.comm_parent->recvcontext_id);
+    }
+    else {
+        fprintf(stream, "MPI_COMM_PARENT (NULL)\n");
+    }
+
+    fprintf(stream, "CH3 Posted RecvQ:\n");
+    rreq = recvq_posted_head;
+    i = 0;
+    while (rreq != NULL) {
+        fprintf(stream, "..[%d] rreq=%p ctx=%#x rank=%s tag=%s\n", i, rreq,
+                        rreq->dev.match.context_id,
+                        rank_val_to_str(rreq->dev.match.rank, rank_buf, sizeof(rank_buf)),
+                        tag_val_to_str(rreq->dev.match.tag, tag_buf, sizeof(tag_buf)));
+        ++i;
+        rreq = rreq->dev.next;
+    }
+
+    fprintf(stream, "CH3 Unexpected RecvQ:\n");
+    rreq = recvq_unexpected_head;
+    i = 0;
+    while (rreq != NULL) {
+        fprintf(stream, "..[%d] rreq=%p ctx=%#x rank=%s tag=%s\n", i, rreq,
+                        rreq->dev.match.context_id,
+                        rank_val_to_str(rreq->dev.match.rank, rank_buf, sizeof(rank_buf)),
+                        tag_val_to_str(rreq->dev.match.tag, tag_buf, sizeof(tag_buf)));
+        fprintf(stream, "..    status.src=%s status.tag=%s\n",
+                        rank_val_to_str(rreq->status.MPI_SOURCE, rank_buf, sizeof(rank_buf)),
+                        tag_val_to_str(rreq->status.MPI_TAG, tag_buf, sizeof(tag_buf)));
+        ++i;
+        rreq = rreq->dev.next;
+    }
+    fprintf(stream, "========================================\n");
+}
+/* --END ERROR HANDLING-- */
+

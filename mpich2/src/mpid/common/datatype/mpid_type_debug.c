@@ -11,7 +11,7 @@
 #include <limits.h>
 
 /* MPI datatype debugging helper routines.
- * 
+ *
  * The one you want to call is:
  *   MPIDU_Datatype_debug(MPI_Datatype type, int array_ct)
  *
@@ -74,7 +74,7 @@ void MPIDI_Dataloop_dot_printf(MPID_Dataloop *loop_p,
 	    "      dl%d [shape = record, label = \"contig |{ ct = %d; el_sz = " MPI_AINT_FMT_DEC_SPEC "; el_ext = " MPI_AINT_FMT_DEC_SPEC " }\"];",
 			    depth,
 			    (int) loop_p->loop_params.c_t.count,
-			    (MPI_Aint)loop_p->el_size,
+			    (MPI_Aint) loop_p->el_size,
 			    (MPI_Aint) loop_p->el_extent));
 	    break;
 	case DLOOP_KIND_VECTOR:
@@ -93,7 +93,7 @@ void MPIDI_Dataloop_dot_printf(MPID_Dataloop *loop_p,
 			    depth,
 			    (int) loop_p->loop_params.i_t.count,
 			    (int) loop_p->loop_params.i_t.total_blocks));
-	    
+
 	    /* 3 picked as arbitrary cutoff */
 	    for (i=0; i < 3 && i < loop_p->loop_params.i_t.count; i++) {
 		if (i + 1 < loop_p->loop_params.i_t.count) {
@@ -125,7 +125,7 @@ void MPIDI_Dataloop_dot_printf(MPID_Dataloop *loop_p,
 			    depth,
 			    (int) loop_p->loop_params.bi_t.count,
 			    (int) loop_p->loop_params.bi_t.blocksize));
-	    
+
 	    /* 3 picked as arbitrary cutoff */
 	    for (i=0; i < 3 && i < loop_p->loop_params.bi_t.count; i++) {
 		if (i + 1 < loop_p->loop_params.bi_t.count) {
@@ -237,7 +237,7 @@ void MPIDI_Datatype_printf(MPI_Datatype type,
     int size;
     MPI_Aint extent, true_lb, true_ub, lb, ub, sticky_lb, sticky_ub;
     MPIU_THREADPRIV_DECL;
-    
+
     MPIU_THREADPRIV_GET;
 
     if (HANDLE_GET_KIND(type) == HANDLE_KIND_BUILTIN) {
@@ -373,7 +373,7 @@ char *MPIDU_Datatype_builtin_to_string(MPI_Datatype type)
     if (type == MPI_2REAL)             return t_2real;
     if (type == MPI_2DOUBLE_PRECISION) return t_2doubleprecision;
     if (type == MPI_CHARACTER)         return t_character;
-    
+
     return NULL;
 }
 
@@ -422,7 +422,7 @@ char *MPIDU_Datatype_combiner_to_string(int combiner)
     if (combiner == MPI_COMBINER_F90_COMPLEX)      return c_f90_complex;
     if (combiner == MPI_COMBINER_F90_INTEGER)      return c_f90_integer;
     if (combiner == MPI_COMBINER_RESIZED)          return c_resized;
-    
+
     return NULL;
 }
 
@@ -501,6 +501,12 @@ static char *MPIDI_Datatype_depth_spacing(int depth)
  if (cp->nr_types > 0) MPIU_Free(types);   \
  return;                                 }
 
+#define __mpidi_datatype_free_and_return { \
+ if (cp->nr_ints  > 0) MPIU_Free(ints);   \
+ if (cp->nr_aints > 0) MPIU_Free(aints);   \
+ if (cp->nr_types > 0) MPIU_Free(types);   \
+ return;                                 }
+
 void MPIDI_Datatype_contents_printf(MPI_Datatype type,
 				    int depth,
 				    int acount)
@@ -530,17 +536,17 @@ void MPIDI_Datatype_contents_printf(MPI_Datatype type,
 
     if (cp->nr_ints > 0)
     {
-      ints = (int*) MPIU_Malloc(cp->nr_ints * sizeof(int));
+      ints = (int *) MPIU_Malloc(cp->nr_ints * sizeof(int));
       MPIDI_Datatype_get_contents_ints(cp, ints);
     }
 
     if (cp->nr_aints > 0) {
-      aints = (MPI_Aint*) MPIU_Malloc(cp->nr_aints * sizeof(MPI_Aint));
+      aints = (MPI_Aint *) MPIU_Malloc(cp->nr_aints * sizeof(MPI_Aint));
       MPIDI_Datatype_get_contents_aints(cp, aints);
     }
 
     if (cp->nr_types > 0) {
-      types = (MPI_Datatype*) MPIU_Malloc(cp->nr_types * sizeof(MPI_Datatype));
+      types = (MPI_Datatype *) MPIU_Malloc(cp->nr_types * sizeof(MPI_Datatype));
       MPIDI_Datatype_get_contents_types(cp, types);
     }
 
@@ -557,7 +563,7 @@ void MPIDI_Datatype_contents_printf(MPI_Datatype type,
 	    /* not done */
 	    __mpidi_datatype_free_and_return;
 	case MPI_COMBINER_CONTIGUOUS:
-	    MPIU_DBG_OUT_FMT(DATATYPE,(MPIU_DBG_FDEST,"# %scontig ct = %d\n", 
+	    MPIU_DBG_OUT_FMT(DATATYPE,(MPIU_DBG_FDEST,"# %scontig ct = %d\n",
 			    MPIDI_Datatype_depth_spacing(depth),
 				       *ints));
 	    MPIDI_Datatype_contents_printf(*types,
@@ -567,7 +573,7 @@ void MPIDI_Datatype_contents_printf(MPI_Datatype type,
 	case MPI_COMBINER_VECTOR:
 	    MPIU_DBG_OUT_FMT(DATATYPE,(MPIU_DBG_FDEST,
 	                "# %svector ct = %d, blk = %d, str = %d\n",
-			MPIDI_Datatype_depth_spacing(depth), 
+			MPIDI_Datatype_depth_spacing(depth),
 			    ints[0],
 			    ints[1],
 			    ints[2]));

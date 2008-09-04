@@ -1,0 +1,89 @@
+This is the UPC-to-C translator component of the Berkeley UPC system.  
+
+Note that you do not need to build this code to use Berkeley UPC. Our runtime
+system by default uses a public translator (built from this source code) that we
+provide on our website, via HTTP.
+
+The translator code is derived from the Open64 compiler, open-sourced by Silicon
+Graphics, and now largely maintained by the open source community and Intel.
+
+-------------
+Prerequisites
+-------------
+
+Unfortunately, due to C++ portability issues the translator currently builds on
+a limited number of systems and compilers.  The only configurations that have
+been extensively tested are:
+
+	- Linux x86
+	- Linux IA64
+	- Linux Opteron 		(32- or 64-bit)
+	- Linux PowerPC 		(64-bit only)
+	- Compaq/HP Tru64/Alpha 
+	- IBM AIX 5.2+ PowerPC 		(32-bit only)
+	- Apple OSX 10.3+ PowerPC 	(32-bit only)
+	- Apple OSX 10.4+ Intel x86
+
+   (Note bit width refers to the ABI of the translator binaries only - 
+    all translators can generate code for any supported runtime platform)
+
+On all of these platforms, g++ version 3.4 or above was used.  Success has been
+reported using older versions of g++, but this has not been regularly tested.  
+
+You must have GNU 'make' on your system, and (depending on your systems's
+version of 'yacc') you may also need GNU 'bison'.
+
+----------------------------------------
+Building and "installing" the translator
+----------------------------------------
+
+To facilitate eventually merging our UPC-specific changes into the general
+Open64 code base, we have changed as little as possible about the Open64 build
+system.  
+
+1) You must use GNU 'make' to build the translator (on some systems it will be
+   called 'gmake', on others, just 'make':  try 'make --version' to determine).
+
+2) Run GNU make to build the translator:
+
+    make    // or 'gmake', if that is what GNU make is called on your system
+
+   You must make sure that the versions of gcc/g++/bison that you wish to use
+   are in your $PATH. The build tree will occupy approximately 600 Megabytes of
+   disk space, and can safely be moved after build without any side effects.
+
+   The top of Makefile contains a few tweakable settings, but in most cases you
+   probably want to keep the defaults.
+
+3) (Optional) Install the translator
+   
+   To install the translator to a selected location after the build step above
+   completes, run GNU make as follows:
+
+     make install PREFIX=/path/to/install
+
+   The install tree will occupy approximately 200 Megabytes of disk space, 
+   and can safely be moved after build without any side effects.
+
+In order to invoke the translator, you need to provide the upcc compiler driver 
+in runtime distribution with the appropriate pathname for where you have placed
+the translator. If you plan to run the translator directly from the build tree
+created in step 2, the correct path to use is:
+
+  (path to your BUILD tree)/open64/osprey1.0/$(BUILDDIR)
+
+If you want to use the translator installed in step 3, the correct path is: 
+
+  (path provided as PREFIX)/targ
+  
+You should provide the appropriate path to the runtime in the 'translator'
+setting of the 'upcc.conf' file in the runtime's build/install tree. Examples
+are provided in upcc.conf.  Users can also select alternate translators in a
+~/.upccrc file or with 'upcc -translator=path'.
+
+See the runtime's INSTALL documentation for information on how to point the
+'upcc' Berkeley UPC front-end at a translator that resides on a remote machine,
+using HTTP or ssh.  Any translator can support any UPC runtime on any
+architecture, and so this is our current method for supporting UPC on systems
+where the translator will not build.
+

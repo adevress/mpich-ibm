@@ -84,7 +84,7 @@ static int MPID_Type_struct_alignsize(int count,
 #elif defined(HAVE_MAX_FP_ALIGNMENT)
 		    if (tmp_alignsize > HAVE_MAX_FP_ALIGNMENT)
 			tmp_alignsize = HAVE_MAX_FP_ALIGNMENT;
-#endif		    
+#endif
 #ifdef HAVE_DOUBLE_POS_ALIGNMENT
 		    /* sort of a hack, but so is this rule */
 		    if (oldtype_array[i] == MPI_DOUBLE &&
@@ -111,7 +111,7 @@ static int MPID_Type_struct_alignsize(int count,
 	}
 	else
 	{
-	    MPID_Datatype *dtp;	    
+	    MPID_Datatype *dtp;
 
 	    MPID_Datatype_get_ptr(oldtype_array[i], dtp);
 	    tmp_alignsize = dtp->alignsize;
@@ -128,7 +128,7 @@ static int MPID_Type_struct_alignsize(int count,
 
 /*@
   MPID_Type_struct - create a struct datatype
- 
+
   Input Parameters:
 + count - number of blocks in vector
 . blocklength_array - number of elements in each block
@@ -248,12 +248,12 @@ int MPID_Type_struct(int count,
 	    MPID_Datatype_get_ptr(oldtype_array[i], old_dtp);
 
 	    /* Ensure that "element_size" fits into an int datatype. */
-	    MPID_Ensure_Aint_fits_in_int( old_dtp->element_size );
+	    MPID_Ensure_Aint_fits_in_int(old_dtp->element_size);
 
 	    tmp_el_sz   = old_dtp->element_size;
 	    tmp_el_type = old_dtp->eltype;
 
-	    MPID_DATATYPE_BLOCK_LB_UB((MPI_Aint)blocklength_array[i],
+	    MPID_DATATYPE_BLOCK_LB_UB((MPI_Aint) blocklength_array[i],
 				      displacement_array[i],
 				      old_dtp->lb,
 				      old_dtp->ub,
@@ -305,7 +305,7 @@ int MPID_Type_struct(int count,
 	}
 
 	/* keep highest sticky ub */
-	if ((oldtype_array[i] == MPI_UB) || 
+	if ((oldtype_array[i] == MPI_UB) ||
 	    (!is_builtin && old_dtp->has_sticky_ub))
 	{
 	    if (!found_sticky_ub)
@@ -320,7 +320,7 @@ int MPID_Type_struct(int count,
 	}
 
 	/* keep lowest true lb and highest true ub
-	 * 
+	 *
 	 * note: checking for contiguity at the same time, to avoid
 	 *       yet another pass over the arrays
 	 */
@@ -395,7 +395,7 @@ int MPID_Type_struct(int count,
      * same, and the old type was also contiguous, and we didn't see
      * something noncontiguous based on true ub/ub.
      */
-    if (((MPI_Aint)(new_dtp->size) == new_dtp->extent) && 
+    if (((MPI_Aint)(new_dtp->size) == new_dtp->extent) &&
 	old_are_contig && (! definitely_not_contig))
     {
 	new_dtp->is_contig = 1;

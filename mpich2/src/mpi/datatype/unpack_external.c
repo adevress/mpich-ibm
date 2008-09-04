@@ -29,21 +29,21 @@
 #define FUNCNAME MPI_Unpack_external
 
 /*@
-   MPI_Unpack_external - Unpack a buffer (packed with MPI_Pack_external) 
+   MPI_Unpack_external - Unpack a buffer (packed with MPI_Pack_external)
    according to a datatype into contiguous memory
 
    Input Parameters:
-+ datarep - data representation (string)  
-. inbuf - input buffer start (choice)  
-. insize - input buffer size, in bytes (address integer)  
-. outcount - number of output data items (integer)  
-. datatype - datatype of output data item (handle)  
++ datarep - data representation (string)
+. inbuf - input buffer start (choice)
+. insize - input buffer size, in bytes (address integer)
+. outcount - number of output data items (integer)
+. datatype - datatype of output data item (handle)
 
    Input/Output Parameter:
-. position - current position in buffer, in bytes (address integer)  
+. position - current position in buffer, in bytes (address integer)
 
    Output Parameter:
-. outbuf - output buffer start (choice)  
+. outbuf - output buffer start (choice)
 
 .N ThreadSafe
 
@@ -69,7 +69,7 @@ int MPI_Unpack_external(char *datarep,
     MPID_MPI_STATE_DECL(MPID_STATE_MPI_UNPACK_EXTERNAL);
 
     MPIR_ERRTEST_INITIALIZED_ORDIE();
-    
+
     MPID_MPI_FUNC_ENTER(MPID_STATE_MPI_UNPACK_EXTERNAL);
 
     /* Validate parameters, especially handles needing to be converted */
@@ -86,7 +86,7 @@ int MPI_Unpack_external(char *datarep,
 
 	    MPIR_ERRTEST_DATATYPE(datatype, "datatype", mpi_errno);
 	    if (mpi_errno != MPI_SUCCESS) goto fn_fail;
-	    
+
 	    if (datatype != MPI_DATATYPE_NULL && HANDLE_GET_KIND(datatype) != HANDLE_KIND_BUILTIN) {
 		MPID_Datatype *datatype_ptr = NULL;
 
@@ -106,7 +106,7 @@ int MPI_Unpack_external(char *datarep,
     if (insize == 0) {
 	goto fn_exit;
     }
-    
+
     segp = MPID_Segment_alloc();
     MPIU_ERR_CHKANDJUMP1((segp == NULL), mpi_errno, MPI_ERR_OTHER, "**nomem", "**nomem %s", "MPID_Segment_alloc");
     mpi_errno = MPID_Segment_init(outbuf, outcount, datatype, segp, 1);
@@ -119,7 +119,7 @@ int MPI_Unpack_external(char *datarep,
     last  = SEGMENT_IGNORE_LAST;
 
     /* Ensure that pointer increment fits in a pointer */
-    MPID_Ensure_Aint_fits_in_pointer( (MPIR_VOID_PTR_CAST_TO_MPI_AINT inbuf) + *position );
+    MPID_Ensure_Aint_fits_in_pointer((MPI_VOID_PTR_CAST_TO_MPI_AINT inbuf) + *position);
 
     MPID_Segment_unpack_external32(segp,
 				   first,
@@ -148,7 +148,7 @@ int MPI_Unpack_external(char *datarep,
 	    position, outbuf, outcount, datatype);
     }
 #   endif
-    mpi_errno = MPIR_Err_return_comm( NULL, FCNAME, mpi_errno );
+    mpi_errno = MPIR_Err_return_comm(NULL, FCNAME, mpi_errno);
     goto fn_exit;
     /* --END ERROR HANDLING-- */
 }

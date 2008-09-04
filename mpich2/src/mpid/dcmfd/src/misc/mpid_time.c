@@ -32,9 +32,15 @@ void MPID_Wtime_acc( MPID_Time_t *t1, MPID_Time_t *t2, MPID_Time_t *t3 )
 {
   *t3 += *t1 - *t2;
 }
-void MPID_Wtime_init()
+/*
+  Return Values:
+  0 on success.  -1 on Failure.  1 means that the timer may not be used
+  until after MPID_Init completes.  This allows the device to set up the
+  timer (first needed for Blue Gene support).
+*/
+int MPID_Wtime_init()
 {
-  /* We used to call DCMF_Timer() here, but the messager wasn't created yet */
+  return 1;
 }
 
 #endif

@@ -38,7 +38,7 @@ MPIDO_Bcast(void *buffer,
                           datatype,
                           data_contig, data_size, data_ptr, data_true_lb);
 
-  MPID_Ensure_Aint_fits_in_pointer(MPIR_VOID_PTR_CAST_TO_MPI_AINT buffer +
+  MPID_Ensure_Aint_fits_in_pointer(MPI_VOID_PTR_CAST_TO_MPI_AINT buffer +
                                    data_true_lb);
 
   data_buffer = (char *) buffer + data_true_lb;

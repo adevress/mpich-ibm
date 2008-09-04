@@ -1,0 +1,20 @@
+--------------------------------------------------------------------------------
+Berkeley UPC: runtime package
+--------------------------------------------------------------------------------
+
+This is the runtime component of the Berkeley UPC compiler.  It also contains
+the 'upcc' front end to the UPC compilation system (like 'gcc' is the front end
+to the GNU C compiler).
+
+To use this code, you need to build this package, and then configure it to point
+to an instance of our UPC-to-C translator (which comes as a separate package:
+see http://upc.lbl.gov/download), or the GCC UPC binary UPC compiler (see
+http://www.intrepid.com/upc/).  See the INSTALL file in this directory for
+instructions on building/installing/configuring.
+
+For a list of the platforms currently supported by Berkeley UPC, see
+gasnet/README. 
+
+For user documentation, and information on some of the internals of the Berkeley
+UPC runtime implementation, see the files in the 'docs' directory.  
+

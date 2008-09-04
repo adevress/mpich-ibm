@@ -35,6 +35,12 @@
    do not want mpi.h to depend on any other files or configure flags */
 #include "mpichconf.h"
 
+/* Adding the 32-bit compute/64-bit I/O related type-casts in here as
+ * they are not a part of the MPI standard yet. */
+#define MPI_AINT_CAST_TO_VOID_PTR (void *)(MPIR_Pint)
+#define MPI_VOID_PTR_CAST_TO_MPI_AINT (MPI_Aint)(MPIR_Upint)
+#define MPI_PTR_DISP_CAST_TO_MPI_AINT (MPI_Aint)(MPIR_Pint)
+
 #ifdef STDC_HEADERS
 #include <stdlib.h>
 #include <stdarg.h>
@@ -65,6 +71,16 @@
 #define PMPI_LOCAL 
 #endif
 
+/* Fix for universal endianess added in autoconf 2.62 */
+#ifdef WORDS_UNIVERSAL_ENDIAN
+#if defined(__BIG_ENDIAN__)
+#elif defined(__LITTLE_ENDIAN__)
+#define WORDS_LITTLEENDIAN
+#else
+#error 'Universal endianess defined without __BIG_ENDIAN__ or __LITTLE_ENDIAN__'
+#endif
+#endif
+
 /* Include some basic (and easily shared) definitions */
 #include "mpibase.h"
 
@@ -87,7 +103,6 @@
 #define MPIDI_QUOTE2(A) #A
 #endif
 
-
 /* 
    Include the implementation definitions (e.g., error reporting, thread
    portability)
@@ -97,11 +112,18 @@
 #include "mpitypedefs.h"
 
 #include "mpiimplthread.h"
-#include "mpiatomic.h"
+
+/* Include definitions from the device which must exist before items in this
+   file (mpiimpl.h) can be defined. mpidpre.h must be included before any
+   files that allow the device to override or extend any terms; this includes
+   mpiimplthread.h and mpiutil.h */
+/* ------------------------------------------------------------------------- */
+#include "mpidpre.h"
+/* ------------------------------------------------------------------------- */
+
 /* #include "mpiu_monitors.h" */
 
 #include "mpiutil.h"
-
 
 
 /* ------------------------------------------------------------------------- */
@@ -181,8 +203,6 @@ void MPIU_dump_dbg_memlog(FILE * fp);
 /* The follow is temporarily provided for backward compatibility.  Any code
    using dbg_printf should be updated to use MPIU_DBG_PRINTF. */
 #define dbg_printf MPIU_dbg_printf
-
-void MPIU_Exit(int);
 
 /* MPIR_IDebug withdrawn because the MPIU_DBG_MSG interface provides 
    a more flexible, integrated, and documented mechanism */
@@ -1367,6 +1387,7 @@ typedef struct MPID_Request {
     MPID_DEV_REQUEST_DECL
 #endif
 } MPID_Request;
+
 extern MPIU_Object_alloc_t MPID_Request_mem;
 /* Preallocated request objects */
 extern MPID_Request MPID_Request_direct[];
@@ -1431,6 +1452,36 @@ MPID_Progress_state;
 /* ------------------------------------------------------------------------- */
 
 /* Windows */
+#ifdef USE_MPID_RMA_TABLE
+struct MPID_Win;
+typedef struct MPIRI_RMA_Ops {
+    int (*Win_free)(struct MPID_Win **);
+    int (*Put)(void *, int, MPI_Datatype, int, MPI_Aint, int, MPI_Datatype, 
+		struct MPID_Win *);
+    int (*Get)(void *, int, MPI_Datatype, int, MPI_Aint, int, MPI_Datatype, 
+		struct MPID_Win *);
+    int (*Accumulate)(void *, int, MPI_Datatype, int, MPI_Aint, int, 
+		       MPI_Datatype, MPI_Op, struct MPID_Win *);
+    int (*Win_fence)(int, struct MPID_Win *);
+    int (*Win_post)(MPID_Group *, int, struct MPID_Win *);
+    int (*Win_start)(MPID_Group *, int, struct MPID_Win *);
+    int (*Win_complete)(struct MPID_Win *);
+    int (*Win_wait)(struct MPID_Win *);
+    int (*Win_test)(struct MPID_Win *, int *);
+    int (*Win_lock)(int, int, int, struct MPID_Win *);
+    int (*Win_unlock)(int, struct MPID_Win *);
+} MPIRI_RMAFns;
+#define MPIRI_RMAFNS_VERSION 2
+/* Note that the memory allocation/free routines do not take a window, 
+   so they must be initialized separately, and are a per-run, not per-window
+   object.  If the device can manage different kinds of memory allocations,
+   these routines must internally provide that flexibility. */
+/* 
+    void *(*Alloc_mem)(size_t, MPID_Info *);
+    int (*Free_mem)(void *);
+*/
+#endif
+
 /*S
   MPID_Win - Description of the Window Object data structure.
 
@@ -1488,6 +1539,10 @@ typedef struct MPID_Win {
     HANDLE passive_target_thread_id;
 #endif
 #endif
+    /* */
+#ifdef USE_MPID_RMA_TABLE
+    MPIRI_RMAFns RMAFns;
+#endif    
     /* These are COPIES of the values so that addresses to them
        can be returned as attributes.  They are initialized by the
        MPI_Win_get_attr function */
@@ -1503,6 +1558,7 @@ typedef struct MPID_Win {
 extern MPIU_Object_alloc_t MPID_Win_mem;
 /* Preallocated win objects */
 extern MPID_Win MPID_Win_direct[];
+
 
 /* ------------------------------------------------------------------------- */
 /* also in mpirma.h ?*/
@@ -1563,11 +1619,6 @@ void *MPID_Alloc_mem( size_t size, MPID_Info *info );
   Win
   @*/
 int MPID_Free_mem( void *ptr );
-
-/* brad : added as means to cleanup.  default implementation does nothing.  sshm
- *         uses this within finalize (and potentially abort?)
- */
-void MPID_Cleanup_mem( void );
 
 /*@
   MPID_Mem_was_alloced - Return true if this memory was allocated with 
@@ -2254,7 +2305,7 @@ int MPIR_Grequest_free(MPID_Request * request_ptr);
  * for generalized requests */
 int MPIR_Grequest_progress_poke(int count, MPID_Request **request_ptrs, 
 		MPI_Status array_of_statuses[] );
-int MPIR_Grequest_waitall(int count, MPID_Request **request_ptrs, MPI_Status array_of_statuses[] );
+int MPIR_Grequest_waitall(int count, MPID_Request * const *  request_ptrs);
 
 /* ------------------------------------------------------------------------- */
 /* Prototypes for language-specific routines, such as routines to set

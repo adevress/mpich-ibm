@@ -67,7 +67,7 @@ int MPIDO_Reduce_scatter(void *sendbuf,
   
   memset(displs, 0, size*sizeof(int));
   
-  MPID_Ensure_Aint_fits_in_pointer(MPIR_VOID_PTR_CAST_TO_MPI_AINT sendbuf+ 
+  MPID_Ensure_Aint_fits_in_pointer(MPI_VOID_PTR_CAST_TO_MPI_AINT sendbuf+ 
 				   dt_lb);
   sendbuf = (char *)sendbuf + dt_lb;
   

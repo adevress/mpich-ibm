@@ -160,8 +160,7 @@ static void *MPIU_Handle_indirect_init( void *(**indirect)[],
     /* Create the table */
     if (!*indirect) {
 	/* printf( "Creating indirect table\n" ); */
-	*indirect = (void *)MPIU_Calloc( indirect_max_size, 
-					      sizeof(void *) );
+	*indirect = (void *)MPIU_Calloc(indirect_max_size, sizeof(void *));
 	if (!*indirect) {
 	    return 0;
 	}
