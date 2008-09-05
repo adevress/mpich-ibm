@@ -68,7 +68,6 @@ int ADIOI_cb_bcast_rank_map(ADIO_File fd)
     char *value;
 
     MPI_Bcast(&(fd->hints->cb_nodes), 1, MPI_INT, 0, fd->comm);
-/* printf( "\tHao, ADIOI_cb_bcast_rank_map, cb_nodes = %d\n", fd->hints->cb_nodes ); */
     if (fd->hints->cb_nodes > 0) {
 	MPI_Comm_rank(fd->comm, &my_rank);
 	if (my_rank != 0) {

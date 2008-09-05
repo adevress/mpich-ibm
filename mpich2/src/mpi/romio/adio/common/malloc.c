@@ -79,14 +79,12 @@ void *ADIOI_Realloc_fn(void *ptr, size_t size, int lineno, char *fname)
 	FPRINTF(stderr, "realloc failed in file %s, line %d\n", fname, lineno);
 	MPI_Abort(MPI_COMM_WORLD, 1);
     }
-    DBG_FPRINTF(stderr, "ADIOI_Realloc %s:<%d> %#.8X\n", fname, lineno, (int)new);
     return new;
 }
 
 
 void ADIOI_Free_fn(void *ptr, int lineno, char *fname)
 {
-    DBG_FPRINTF(stderr, "ADIOI_Free %s:<%d> %#.8X\n", fname, lineno, (int)ptr);
     if (!ptr) {
 	FPRINTF(stderr, "Attempt to free null pointer in file %s, line %d\n", fname, lineno);
 	MPI_Abort(MPI_COMM_WORLD, 1);

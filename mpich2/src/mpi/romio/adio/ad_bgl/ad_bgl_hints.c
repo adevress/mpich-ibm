@@ -39,7 +39,7 @@ void ADIOI_BGL_SetInfo(ADIO_File fd, MPI_Info users_info, int *error_code)
     MPI_Info info;
     char *value;
     int flag, intval, tmp_val, nprocs, nprocs_is_valid = 0;
-    static char myname[] = "ADIOI_GEN_SETINFO";
+    static char myname[] = "ADIOI_BGL_SETINFO";
 
     int did_anything = 0;
 
@@ -78,7 +78,7 @@ void ADIOI_BGL_SetInfo(ADIO_File fd, MPI_Info users_info, int *error_code)
 	/* number of processes that perform I/O in collective I/O */
 	MPI_Comm_size(fd->comm, &nprocs);
 	nprocs_is_valid = 1;
-	sprintf(value, "%d", nprocs);
+	ADIOI_Snprintf(value, MPI_MAX_INFO_VAL+1, "%d", nprocs);
 	MPI_Info_set(info, "cb_nodes", value);
 	fd->hints->cb_nodes = -1;
 
@@ -114,6 +114,11 @@ void ADIOI_BGL_SetInfo(ADIO_File fd, MPI_Info users_info, int *error_code)
     MPI_Info_set(info, "romio_ds_write", "automatic"); 
     fd->hints->ds_write = ADIOI_HINT_AUTO;
   }
+
+	/* still to do: tune this a bit for a variety of file systems. there's
+	 * no good default value so just leave it unset */
+	fd->hints->min_fdomain_size = 0;
+  fd->hints->striping_unit = 0;
 
 	fd->hints->initialized = 1;
     }
@@ -298,7 +303,22 @@ void ADIOI_BGL_SetInfo(ADIO_File fd, MPI_Info users_info, int *error_code)
 	}
 
 	memset( value, 0, MPI_MAX_INFO_VAL+1 );
-	MPI_Info_get(users_info, ADIOI_BGL_NAGG_IN_PSET_HINT_NAME, MPI_MAX_INFO_VAL,
+	MPI_Info_get(users_info, "romio_min_fdomain_size", MPI_MAX_INFO_VAL,
+			value, &flag);
+	if ( flag && ((intval = atoi(value)) > 0) ) {
+		MPI_Info_set(info, "romio_min_fdomain_size", value);
+		fd->hints->min_fdomain_size = intval;
+	}
+  /* Now we use striping unit in common code so we should
+     process hints for it. */
+	MPI_Info_get(users_info, "striping_unit", MPI_MAX_INFO_VAL,
+			value, &flag);
+	if ( flag && ((intval = atoi(value)) > 0) ) {
+		MPI_Info_set(info, "striping_unit", value);
+		fd->hints->striping_unit = intval;
+	}
+
+  MPI_Info_get(users_info, ADIOI_BGL_NAGG_IN_PSET_HINT_NAME, MPI_MAX_INFO_VAL,
 		     value, &flag);
 	if (flag && ((intval = atoi(value)) > 0)) {
 

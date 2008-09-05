@@ -4,6 +4,12 @@
 /**
  * \file ad_bgl_tuning.c
  * \brief defines ad_bgl performance tuning
+  */
+
+/* -*- Mode: C; c-basic-offset:4 ; -*- */
+/* 
+ *   Copyright (C) 2008 University of Chicago. 
+ *   See COPYRIGHT notice in top-level directory.
  */
 
 /*---------------------------------------------------------------------
