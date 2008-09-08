@@ -276,40 +276,39 @@ void           MPID_Request_release       (MPID_Request *req);
 /* completion count */
 void           MPID_Request_complete      (MPID_Request *req);
 void           MPID_Request_set_completed (MPID_Request *req);
-
-#define MPID_Request_decrement_cc(_req, _inuse) { *(_inuse) = --(*(_req)->cc_ptr)  ; }
-#define MPID_Request_increment_cc(_req)         {               (*(_req)->cc_ptr)++; }
-
 #define MPID_Request_add_ref(_req)                                      \
-{                                                                       \
+({                                                                      \
   MPID_assert(HANDLE_GET_MPI_KIND((_req)->handle) == MPID_REQUEST);     \
   MPIU_Object_add_ref(_req);                                            \
-}
+})
 
-#define MPID_Request_setCA(_req, _ca)        { (_req)->dcmf.ca                     = (_ca);                   }
-#define MPID_Request_setPeerRank(_req,_r)    { (_req)->dcmf.peerrank               = (_r);                    }
-#define MPID_Request_setPeerRequest(_req,_r) { (_req)->dcmf.envelope.envelope.msginfo.msginfo.req    = (_r);  }
-#define MPID_Request_setType(_req,_t)        { (_req)->dcmf.envelope.envelope.msginfo.msginfo.type   = (_t);  }
-#define MPID_Request_setSelf(_req,_t)        { (_req)->dcmf.envelope.envelope.msginfo.msginfo.isSelf = (_t);  }
-#define MPID_Request_setSync(_req,_t)        { (_req)->dcmf.envelope.envelope.msginfo.msginfo.isSync = (_t);  }
-#define MPID_Request_setRzv(_req,_t)         { (_req)->dcmf.envelope.envelope.msginfo.msginfo.isRzv  = (_t);  }
+#define MPID_Request_decrement_cc(_req, _inuse) ({ *(_inuse) = --(*(_req)->cc_ptr)  ;                             })
+#define MPID_Request_increment_cc(_req)         ({               (*(_req)->cc_ptr)++;                             })
+
+#define MPID_Request_getCA(_req)                ({ (_req)->dcmf.ca;                                               })
+#define MPID_Request_getPeerRank(_req)          ({ (_req)->dcmf.peerrank;                                         })
+#define MPID_Request_getPeerRequest(_req)       ({ (_req)->dcmf.envelope.envelope.msginfo.msginfo.req;            })
+#define MPID_Request_getType(_req)              ({ (_req)->dcmf.envelope.envelope.msginfo.msginfo.type;           })
+#define MPID_Request_isSelf(_req)               ({ (_req)->dcmf.envelope.envelope.msginfo.msginfo.isSelf;         })
+#define MPID_Request_isSync(_req)               ({ (_req)->dcmf.envelope.envelope.msginfo.msginfo.isSync;         })
+#define MPID_Request_isRzv(_req)                ({ (_req)->dcmf.envelope.envelope.msginfo.msginfo.isRzv;          })
+#define MPID_Request_getMatchTag(_req)          ({ (_req)->dcmf.envelope.envelope.msginfo.msginfo.MPItag;         })
+#define MPID_Request_getMatchRank(_req)         ({ (_req)->dcmf.envelope.envelope.msginfo.msginfo.MPIrank;        })
+#define MPID_Request_getMatchCtxt(_req)         ({ (_req)->dcmf.envelope.envelope.msginfo.msginfo.MPIctxt;        })
+
+#define MPID_Request_setCA(_req, _ca)           ({ (_req)->dcmf.ca                                       = (_ca); })
+#define MPID_Request_setPeerRank(_req,_r)       ({ (_req)->dcmf.peerrank                                 = (_r);  })
+#define MPID_Request_setPeerRequest(_req,_r)    ({ (_req)->dcmf.envelope.envelope.msginfo.msginfo.req    = (_r);  })
+#define MPID_Request_setType(_req,_t)           ({ (_req)->dcmf.envelope.envelope.msginfo.msginfo.type   = (_t);  })
+#define MPID_Request_setSelf(_req,_t)           ({ (_req)->dcmf.envelope.envelope.msginfo.msginfo.isSelf = (_t);  })
+#define MPID_Request_setSync(_req,_t)           ({ (_req)->dcmf.envelope.envelope.msginfo.msginfo.isSync = (_t);  })
+#define MPID_Request_setRzv(_req,_t)            ({ (_req)->dcmf.envelope.envelope.msginfo.msginfo.isRzv  = (_t);  })
 #define MPID_Request_setMatch(_req,_tag,_rank,_ctxtid)                  \
-{                                                                       \
+({                                                                      \
   (_req)->dcmf.envelope.envelope.msginfo.msginfo.MPItag=(_tag);         \
   (_req)->dcmf.envelope.envelope.msginfo.msginfo.MPIrank=(_rank);       \
   (_req)->dcmf.envelope.envelope.msginfo.msginfo.MPIctxt=(_ctxtid);     \
-}
-
-#define MPID_Request_getCA(_req)          ( (_req)->dcmf.ca                                        )
-#define MPID_Request_getType(_req)        ( (_req)->dcmf.envelope.envelope.msginfo.msginfo.type    )
-#define MPID_Request_isSelf(_req)         ( (_req)->dcmf.envelope.envelope.msginfo.msginfo.isSelf  )
-#define MPID_Request_isSync(_req)         ( (_req)->dcmf.envelope.envelope.msginfo.msginfo.isSync  )
-#define MPID_Request_isRzv(_req)          ( (_req)->dcmf.envelope.envelope.msginfo.msginfo.isRzv   )
-#define MPID_Request_getMatchTag(_req)    ( (_req)->dcmf.envelope.envelope.msginfo.msginfo.MPItag  )
-#define MPID_Request_getMatchRank(_req)   ( (_req)->dcmf.envelope.envelope.msginfo.msginfo.MPIrank )
-#define MPID_Request_getMatchCtxt(_req)   ( (_req)->dcmf.envelope.envelope.msginfo.msginfo.MPIctxt )
-#define MPID_Request_getPeerRequest(_req) ( (_req)->dcmf.envelope.envelope.msginfo.msginfo.req     )
-#define MPID_Request_getPeerRank(_req)    ( (_req)->dcmf.peerrank                                  )
+})
 /**\}*/
 
 

@@ -420,9 +420,7 @@ MPID_Request * MPIDI_Recvq_FDU_or_AEP(int source, int tag, int context_id, int *
         {
             MPIU_Object_set_ref(rreq, 2);
             rreq->kind = MPID_REQUEST_RECV;
-            MPID_Request_getMatchTag(rreq)  = tag;
-            MPID_Request_getMatchRank(rreq) = source;
-            MPID_Request_getMatchCtxt(rreq) = context_id;
+            MPID_Request_setMatch(rreq, tag, source, context_id);
             rreq->dcmf.next = NULL;
 
             if (recvq.posted_tail != NULL)
