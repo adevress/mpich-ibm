@@ -1,0 +1,50 @@
+#ifndef _IN_UPCR_STDARG_H
+#define _IN_UPCR_STDARG_H
+
+#if !@HAVE_STDARG_H@
+  /* no native support and no good way to fake it */
+  #error "No stdarg.h available on this platform"
+#endif
+
+#if __BERKELEY_UPC_FIRST_PREPROCESS__ && \
+    defined(__xlC__) && defined(__64BIT__)
+  /* bug1462: workaround a definition in xlc7-64/Linux stdarg.h header 
+     that makes our translator unhappy */
+  #define __BUILTIN_VA_LIST
+#endif
+
+@UPCR_INCLUDE_NEXT_STDARG_H@
+
+#ifndef _UPCR_STDARG_H
+#define _UPCR_STDARG_H
+  #if __BERKELEY_UPC_FIRST_PREPROCESS__
+    #undef	va_start
+    #define	va_start(ap, last)	bupc_mangled_va_start(ap, #last)
+    #undef	va_arg
+    #define va_arg(ap,type) \
+	({type _bupc_vaarg_tmp; \
+	  bupc_mangled_va_arg(ap, #type, &_bupc_vaarg_tmp);\
+	  _bupc_vaarg_tmp;})	/* whirl2c generates ISO C for this GNU C construct */
+    #undef	va_end
+    #define	va_end	bupc_mangled_va_end
+    #undef	va_copy
+    #define	va_copy	bupc_mangled_va_copy
+    #undef	va_list
+    #define	va_list	struct bupc_mangled_va_list *
+    /* bug 1503: try to ensure that any subsequent system headers don't attempt to redefine va_list */
+    #ifdef __xlC__
+      #undef     _VA_LIST
+      #define    _VA_LIST
+    #endif
+    struct bupc_mangled_va_list;
+    extern void bupc_mangled_va_start(va_list, const char *);
+    extern void bupc_mangled_va_arg(va_list, const char *, void *);
+    extern void bupc_mangled_va_end(va_list);
+    extern void bupc_mangled_va_copy(va_list, va_list);
+  #else
+    /* Reverse name shifting and destringification done in upcc.pl */
+  #endif
+#endif
+
+#undef _IN_UPCR_STDARG_H
+#endif

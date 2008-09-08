@@ -1,0 +1,25 @@
+#ifndef _IN_UPCR_SYS_STAT_H
+#define _IN_UPCR_SYS_STAT_H
+
+#ifndef __restrict
+/* On some glibc systems sys/stat.h contain inconsistent use of __restrict.
+ * We work around that here (at an insignificant cost in lost optimization.)
+ */
+  #define __restrict /**/
+  #define _UPCRI_RESTRICT_WORKAROUND
+#endif
+
+@UPCR_INCLUDE_NEXT_SYS_STAT_H@
+
+#ifdef _UPCRI_RESTRICT_WORKAROUND
+  #undef _UPCRI_RESTRICT_WORKAROUND
+  #undef __restrict
+#endif
+
+#ifndef _UPCR_SYS_STAT_H
+#define _UPCR_SYS_STAT_H
+
+#endif
+
+#undef _IN_UPCR_SYS_STAT_H
+#endif

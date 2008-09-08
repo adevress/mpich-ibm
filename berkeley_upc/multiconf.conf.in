@@ -1,0 +1,117 @@
+# Configuration file for Berkeley UPC multiplexing compiler driver
+#
+# Berkeley UPC supports a wide variety of mutually-exclusive configure
+# time settings (eg debug vs ndebug mode, performance instrumentation vs not, etc).
+# It is often desirable to install multiple such configurations on one system and select
+# between them at application compile time based on the provided compilation options.
+# This file specifies the different configurations of Berkeley UPC
+# to create during the multiconf configure process, and the logic for choosing
+# between the configurations at application compile time.
+#
+# Alternate versions of this file can be selected at configure time using --with-multiconf-file=<filename>
+# At application compile time, the first enabled, matching configuration will be selected.
+# This file is copied to multiconf.conf in $TOP_BUILDDIR and $PREFIX/etc during build/install.
+# Settings may be altered after configure, but changes to conf-options and any new confs will be ignored.
+
+# --- Global settings ---
+# Global configure options:
+# configure options to apply for every conf specified below
+CONFIGURE_OPTIONS= 
+
+# Global environment settings:
+# environment variables which apply for every conf specified below, one per line in the format:
+#   KEYNAME=VALUE...   (without leading #)
+# Note that any values set here provide *default* global environment variable settings,
+# and the user can set these environment variables explicitly before invoking multiconf configure
+# to override any defaults specified here.
+
+# Enabled conf list: comma-separated list of which confs described below are enabled by default
+# All specified configurations will be built and installed. 
+# Can be overridded on the configure command line via --with-multiconf (see configure --help)
+ENABLED_CONFS= dbg, opt
+
+# Change this line to point at the default BUPC translator installation to use
+# use the internet-based public 2.4.0 release translator: (internet connection required)
+BUPC_TRANS=http://upc-translator.lbl.gov/upcc-2.6.0.cgi
+# use a local BUPC translator installation, if you have one:
+#BUPC_TRANS=/usr/local/berkeley_upc_translator/targ
+
+# Change this line to point at your GCCUPC translator installation 
+# (if you have one -- required for *_gccupc configs)
+GCCUPC_TRANS=/usr/local/gccupc-3.4.4.1-xt3-inst/bin/upc
+
+# end of global section:
+;;;
+# --- Conf settings ---
+# Each configuration is specified in the following format:
+#
+#  conf-name ; conf-options ; upcc-select-expr ; upcc-arg-strip 
+#
+# conf-name : unique name for the configuration. Special characters are prohibited 
+#  (must match pattern [A-Za-z0-9_-]+), as are names that conflict with top-level
+#  names in the install tree (bin, man, etc). 
+#
+# conf-options : configure options to use for this configuration. Normal shell variable
+#  expansion will be performed. May be empty for default settings.
+#
+# upcc-select-expr : boolean perl expression defining the condition under which this
+#  configuration will be selected at compile time. The expression should rely only 
+#  upon the user-provided command-line arguments (available in %opt), and possibly 
+#  environment variables in %ENV. Note selection arguments should only be boolean
+#  arguments (ie present or absent) and may not have require a helper value argument.
+#
+# upcc-arg-strip : an optional, comma-delimited list of arguments to strip from the
+#  user-provided compile line before invoking the upcc of the current conf. 
+#  This is primarily intended to strip selection options used in upcc-select-expr
+#  which are not recognized by the base upcc script. Should not strip normal
+#  upcc options, as that would lead to non-intuitive behavior.
+#  May be omitted to indicate no change.
+#
+# Each conf spec may be preceded by one or more lines of the form:
+#  KEYNAME=VALUE...
+# which specify environment variables to set when configuring that conf,
+# in addition to those specified above in the global section or already present in the user's environment.
+# Note that unlike the global section, per-conf environment variables take highest priority,
+# overridding any in the user's environment and/or specified in the global section above.
+
+
+# GCC/UPC + UPCR mode
+dbg_gccupc ; --with-gccupc=$GCCUPC_TRANS --enable-debug ; $opt{'g'} && $opt{'gccupc'} ; -gccupc,-trace
+
+# GCC/UPC + UPCR mode
+opt_gccupc ; --with-gccupc=$GCCUPC_TRANS ; $opt{'gccupc'} ; -gccupc 
+
+# Debug configuration - enables system-wide sanity checks and globally disables backend optimization
+# also enables tracing and stats
+dbg ; --with-translator=$BUPC_TRANS --enable-debug ; $opt{'g'} ; -trace,-bupc
+
+# alternate debug version that enables Totalview debugger support: (requires Totalview 7+ and libtool)
+dbg_tv ; --with-translator=$BUPC_TRANS --enable-debug --enable-totalview ; $opt{'g'} || $opt{'tv'} ; -trace,-bupc
+
+# optimized tracing mode
+opt_trace ; --with-translator=$BUPC_TRANS --enable-trace --enable-stats ; $opt{'trace'} ; -trace,-bupc
+
+# instrumented mode (for use with GASP-enabled performance tools)
+opt_inst ; --with-translator=$BUPC_TRANS --enable-inst ; $opt{'inst'} || $opt{'inst-functions'} || $opt{'inst-local'} || $opt{'inst-toolname'} ; -bupc
+
+# Example alternate ABI configurations
+#CC=xlc -q64
+#CXX=xlC -q64
+#MPI_CC=mpcc -q64
+#opt_64 ; --with-translator=$BUPC_TRANS ; $opt{'64'} ; -64
+
+# Default conf (should come last) - regular optimized mode
+opt ; --with-translator=$BUPC_TRANS ; 1 ; -bupc
+
+# end of config section 
+# everything below the following line is upcc -help output for the above options
+;;;
+
+Multiconf options: 
+   -show-confs        Show the multiconf variations which are installed
+(availability of following options varies based on configure-time decisions)
+   -bupc              Enable use of the Berkeley UPC translator [default]
+   -gccupc            Enable use of the Intrepid GCC/UPC translator
+   -g                 Enable system-wide debugging symbols and assertions
+   -trace             Enable communication tracing & statistics for use with upc_trace
+   -inst              Enable GASP-compliant instrumentation for 3rd party performance tools

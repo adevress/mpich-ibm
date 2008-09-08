@@ -1,0 +1,27 @@
+#ifndef _IN_UPCR_STDIO_H
+#define _IN_UPCR_STDIO_H
+
+#if defined(__linux__) && !defined(__restrict)
+/* On some glibc systems stdio.h and bits/stdio.h contain inconsistent use of __restrict.
+ * We work around that here (at an insignificant cost in lost optimization.)
+ * bug1502: the fix is constrained to Linux where it's needed, because the fact we apply this fix to a 
+ *  subset of the system headers creates inconsistent defs on MacOS (and possibly elsewhere as well)
+ */
+  #define __restrict /**/
+  #define _UPCRI_RESTRICT_WORKAROUND
+#endif
+
+@UPCR_INCLUDE_NEXT_STDIO_H@
+
+#ifdef _UPCRI_RESTRICT_WORKAROUND
+  #undef _UPCRI_RESTRICT_WORKAROUND
+  #undef __restrict
+#endif
+
+#ifndef _UPCR_STDIO_H
+#define _UPCR_STDIO_H
+
+#endif
+
+#undef _IN_UPCR_STDIO_H
+#endif
