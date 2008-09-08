@@ -509,6 +509,8 @@ int main(int argc, char **argv)
     datasize = iters * (3 + 4 * images);
 
     GASNET_Safe(gasnet_attach(NULL, 0, TEST_SEGSZ_REQUEST, TEST_MINHEAPOFFSET));
+
+
     test_init("testcoll",0,"(iters) (threadcnt)");
     if (argc > 3) test_usage();
     

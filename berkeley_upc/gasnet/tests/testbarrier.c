@@ -30,13 +30,14 @@ int main(int argc, char **argv) {
       fflush(stdout);
   }
   BARRIER();
-
+#if 1
   start = TIME();
   for (i=0; i < iters; i++) {
     gasnet_barrier_notify(i, 0);            
     GASNET_Safe(gasnet_barrier_wait(i, 0)); 
   }
   total = TIME() - start;
+
 
   BARRIER();
 
@@ -45,7 +46,9 @@ int main(int argc, char **argv) {
         ((float)total)/1000000, ((float)total)/iters);
       fflush(stdout);
   }
+
   BARRIER();
+#endif 
 
   start = TIME();
   for (i=0; i < iters; i++) {

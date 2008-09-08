@@ -38,7 +38,7 @@ perl_libs = \
 	upcr_ctuple.pl \
 	upcr_getopt.pl \
 	upcr_util.pl
-	
+
 libupcr_hdrs= upcr.h upcr_alloc.h upcr_barrier.h                    	\
                  upcr_err.h upcr_handler_decls.h upcr_handlers.h       	\
                  upcr_init.h upcr_internal.h upcr_locks.h              	\
@@ -94,7 +94,8 @@ EXTRA_LIBRARIES     = libupcr-mpi-seq.a   libupcr-mpi-par.a  libupcr-mpi-tv.a   
                       libupcr-shmem-seq.a                                       \
                       libupcr-sci-seq.a   libupcr-sci-par.a  libupcr-sci-tv.a   \
                       libupcr-smp-seq.a   libupcr-smp-par.a  libupcr-smp-tv.a   \
-                      libupcr-portals-seq.a libupcr-portals-par.a libupcr-portals-tv.a
+                      libupcr-portals-seq.a libupcr-portals-par.a libupcr-portals-tv.a \
+                      libupcr-dcmf-seq.a libupcr-dcmf-par.a 
 
 # list of libraries to actually build, determined at configure time
 lib_LIBRARIES       = @TARGETLIBS@
@@ -227,6 +228,16 @@ libupcr-portals-par.a: $(libupcr_deps)
 libupcr_portals_tv_a_SOURCES   = $(libupcr_srcs) $(libupcr_hdrs)
 libupcr-portals-tv.a: $(libupcr_deps) 
 	$(MAKE) UPCR_CONDUIT=portals UPCR_PARSEQ=tv build_lib
+
+libupcr_dcmf_seq_a_SOURCES   = $(libupcr_srcs) $(libupcr_hdrs)
+libupcr-dcmf-seq.a: $(libupcr_deps) 
+	$(MAKE) UPCR_CONDUIT=dcmf UPCR_PARSEQ=seq build_lib
+
+libupcr_dcmf_par_a_SOURCES   = $(libupcr_srcs) $(libupcr_hdrs)
+libupcr-dcmf-par.a: $(libupcr_deps) 
+	$(MAKE) UPCR_CONDUIT=dcmf UPCR_PARSEQ=par build_lib
+
+
 
 if UPCR_OBJECT_STRINGS
 else

@@ -1007,6 +1007,7 @@ UPCR_CONDUIT(shmem, [support running over SHMEM ])
 UPCR_CONDUIT(vapi, [support running over Mellanox VAPI ])
 UPCR_CONDUIT(ibv, [support running over OpenIB/OpenFabrics IB Verbs ])
 UPCR_CONDUIT(portals, [support running over Cray Portals ])
+UPCR_CONDUIT(dcmf, [support running over IBM DCMF ])
 
 echo "--------------------- Configuring GASNet -------------------------"
 CONDUIT_LIST=$TOP_BUILDDIR/.upcr-conduit-list.tmp
@@ -1041,8 +1042,8 @@ TARGETLIBS=
 ASSISTANTLIBS=
 for conduit in $CONDUITS; do
     if test $conduit = "shmem"; then
-        TARGETLIBS="libupcr-$conduit-seq.a $TARGETLIBS"
-    else
+			 TARGETLIBS="libupcr-$conduit-seq.a $TARGETLIBS"
+		else
         for parseq in $PARSEQ; do
             TARGETLIBS="libupcr-$conduit-$parseq.a $TARGETLIBS"
         done

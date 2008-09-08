@@ -1,6 +1,6 @@
 /* $Source: /var/local/cvs/gasnet/gm-conduit/gasnet_core.c,v $
- * $Date: 2007/10/14 14:23:06 $
- * $Revision: 1.114 $
+ * $Date: 2008/04/29 19:12:29 $
+ * $Revision: 1.122.4.1 $
  * Description: GASNet GM conduit Implementation
  * Copyright 2002, Christian Bell <csbell@cs.berkeley.edu>
  * Copyright 2002, Dan Bonachea <bonachea@cs.berkeley.edu>
@@ -20,6 +20,8 @@ GASNETI_IDENT(gasnetc_IdentString_Version, "$GASNetCoreLibraryVersion: " GASNET_
 GASNETI_IDENT(gasnetc_IdentString_Name,    "$GASNetCoreLibraryName: " GASNET_CORE_NAME_STR " $");
 
 uintptr_t	gasnetc_MaxPinnableMemory = 0;
+static size_t	gasnetc_packed_long_limit = 0;
+#define		GASNETC_PACKEDLONG_LIMIT_DEFAULT	(2*1024)
 
 firehose_info_t	  gasnetc_firehose_info;
 
@@ -93,6 +95,13 @@ gasnetc_init(int *argc, char ***argv)
 							GASNETC_DEFAULT_EXITTIMEOUT_MIN,
 							GASNETC_DEFAULT_EXITTIMEOUT_FACTOR,
 							GASNETC_DEFAULT_EXITTIMEOUT_MIN);
+
+	/* Upper bound on "packed long" */
+	gasnetc_packed_long_limit = gasneti_getenv_int_withdefault("GASNET_PACKEDLONG_LIMIT", GASNETC_PACKEDLONG_LIMIT_DEFAULT, 1);
+	if (gasnetc_packed_long_limit > GASNETC_AM_LEN-GASNETC_LONG_OFFSET) {
+	    fprintf(stderr, "WARNING: GASNET_PACKEDLONG_LIMIT reduced from requested value %d to maximum supported value %d.\n", (int)gasnetc_packed_long_limit, (int)(GASNETC_AM_LEN-GASNETC_LONG_OFFSET));
+	    gasnetc_packed_long_limit = GASNETC_AM_LEN-GASNETC_LONG_OFFSET;
+	}
 
 	/* 
 	 * Find the upper bound on pinnable memory for firehose algorithm.
@@ -418,7 +427,7 @@ gasnetc_attach(gasnet_handlerentry_t *table, int numentries, uintptr_t segsize,
 			preg = &prereg;
 		}
 
-		firehose_init(gasnetc_MaxPinnableMemory, 0, preg, pnum,
+		firehose_init(gasnetc_MaxPinnableMemory, 0, 0, preg, pnum,
 					0, &gasnetc_firehose_info);
 	}
 	#else /* GASNET_SEGMENT_EVERYTHING | GASNET_SEGMENT_LARGE */
@@ -435,7 +444,7 @@ gasnetc_attach(gasnet_handlerentry_t *table, int numentries, uintptr_t segsize,
 		    }
 		#endif
 
-		firehose_init(gasnetc_MaxPinnableMemory, 0, NULL, 0,
+		firehose_init(gasnetc_MaxPinnableMemory, 0, 0, NULL, 0,
 			0, &gasnetc_firehose_info);
 	}
 	#endif
@@ -1326,7 +1335,7 @@ extern int gasnetc_AMRequestMediumM(
 
 /* 
  * DMA_inner allows to DMA an AMLong when the local buffer isn't pinned and the
- * remote buffer is
+ * remote buffer is (or when single-copy is needed for non-async semantic).
  */
 GASNETI_INLINE(gasnetc_AMRequestLongM_DMA_inner)
 void
@@ -1340,7 +1349,11 @@ gasnetc_AMRequestLongM_DMA_inner(gasnet_node_t node, gasnet_handler_t handler,
 	gasnetc_bufdesc_t	*bufd;
 
 	gasneti_assert(nbytes > 0);
+#if defined(GASNET_SEGMENT_FAST)
+	gasneti_assert(req == NULL);
+#else
 	gasneti_assert(req != NULL);
+#endif
 
 	psrc  = (uint8_t *) source_addr;
 	pdest = (uint8_t *) dest_addr;
@@ -1351,15 +1364,16 @@ gasnetc_AMRequestLongM_DMA_inner(gasnet_node_t node, gasnet_handler_t handler,
 	 * buffers and DMA out of them.  This assumes the remote destination is
 	 * pinned and the local is not */
 	while (bytes_left >GASNETC_AM_LEN-GASNETC_LONG_OFFSET) {
+		int tmp = MIN(GASNETC_AM_LEN, bytes_left);
 		bufd = gasnetc_AMRequestPool_block();
 		gasnetc_write_AMBufferBulk(bufd->buf, 
-			psrc, GASNETC_AM_LEN);
+			psrc, tmp);
 		gasnetc_GMSend_AMRequest(bufd->buf, 
-		   GASNETC_AM_LEN, id, port, gasnetc_callback_lo,
+		   tmp, id, port, gasnetc_callback_lo,
 		   (void *) bufd, (uintptr_t) pdest);
-		psrc += GASNETC_AM_LEN;
-		pdest += GASNETC_AM_LEN;
-		bytes_left -= GASNETC_AM_LEN;
+		psrc += tmp;
+		pdest += tmp;
+		bytes_left -= tmp;
 	}
 	/* Write the header for the AM long buffer */
 	bufd = gasnetc_AMRequestPool_block();
@@ -1370,7 +1384,8 @@ gasnetc_AMRequestLongM_DMA_inner(gasnet_node_t node, gasnet_handler_t handler,
 		(uintptr_t) dest_addr, GASNETC_AM_REQUEST);
 
 	/* If bytes are left, write them in the remainder of the AM buffer */
-	if (bytes_left > 0) {
+	if (bytes_left > gasnetc_packed_long_limit) {
+		/* single-copy, using separate gm-level messages for payload and header */
 		gasnetc_write_AMBufferBulk(
 			(uint8_t *)bufd->buf+GASNETC_LONG_OFFSET, 
 			psrc, (size_t) bytes_left);
@@ -1379,12 +1394,24 @@ gasnetc_AMRequestLongM_DMA_inner(gasnet_node_t node, gasnet_handler_t handler,
 		    bytes_left, id, port, gasnetc_callback_lo, NULL,
 		    (uintptr_t) pdest);
 	}
+	else if (bytes_left) {
+		/* two-copy, but with only a single gm-level message for both payload and header */
+		gasnetc_write_AMBufferBulk(
+			(uint8_t *)bufd->buf+len,
+			psrc, (size_t) bytes_left);
+		len += bytes_left;
+	}
 
 	/* Set the firehose request type in the last bufd, so it may be
-	 * released once the last AMRequest receives its reply */
+	 * released (if non-NULL) once the last AMRequest receives its reply */
 	bufd->remote_req = req;
+#if defined(GASNET_SEGMENT_FAST)
+	gasnetc_GMSend_AMRequest(bufd->buf, len, id, 
+	    port, gasnetc_callback_lo, (void *)bufd, 0);
+#else
 	gasnetc_GMSend_AMRequest(bufd->buf, len, id, 
 	    port, gasnetc_callback_lo_rdma, (void *)bufd, 0);
+#endif
 }
 
 /* When the local and remote regions are not pinned, AM buffers are used and
@@ -1411,15 +1438,16 @@ gasnetc_AMRequestLongM_inner(gasnet_node_t node, gasnet_handler_t handler,
 	/* If the length is greater than what we can fit in an AMLong buffer,
 	 * send AM Mediums until that threshold is reached */
 	while (bytes_left >GASNETC_AM_LEN-GASNETC_LONG_OFFSET) {
+		int tmp = MIN(GASNETC_AM_MEDIUM_MAX, bytes_left);
 		bufd = gasnetc_AMRequestPool_block();
 		len = gasnetc_write_AMBufferMediumMedcopy(bufd->buf,
-			(void *) psrc, gasnet_AMMaxMedium(), (void *) pdest, 
+			(void *) psrc, tmp, (void *) pdest, 
 			GASNETC_AM_REQUEST);
 		gasnetc_GMSend_AMRequest(bufd->buf, len, id, 
 		    port, gasnetc_callback_lo, (void *) bufd, 0);
-		psrc += gasnet_AMMaxMedium();
-		pdest += gasnet_AMMaxMedium();
-		bytes_left -= gasnet_AMMaxMedium();
+		psrc += tmp;
+		pdest += tmp;
+		bytes_left -= tmp;
 	}
 	bufd = gasnetc_AMRequestPool_block();
 	long_len =
@@ -1427,16 +1455,12 @@ gasnetc_AMRequestLongM_inner(gasnet_node_t node, gasnet_handler_t handler,
 	        handler, numargs, argptr, nbytes, source_addr, 
 		(uintptr_t) dest_addr, GASNETC_AM_REQUEST);
 
-	if (bytes_left > 0) {
-		uintptr_t	pbuf;
-		pbuf = (uintptr_t) bufd->buf + (uintptr_t) long_len;
-
-		len = gasnetc_write_AMBufferMediumMedcopy((void *)pbuf,
-			(void *) psrc, bytes_left, (void *) pdest, 
-			GASNETC_AM_REQUEST);
-
-		gasnetc_GMSend_AMRequest((void *)pbuf, len, id, port,
-		    gasnetc_callback_lo, NULL, 0);
+	/* Since we must 2-copy anyway, always send remainder as a "packed" long */
+	if (bytes_left) {
+		gasnetc_write_AMBufferBulk(
+			(uint8_t *)bufd->buf+long_len, 
+			psrc, (size_t) bytes_left);
+		long_len += bytes_left;
 	}
 	gasnetc_GMSend_AMRequest(bufd->buf, long_len, id, port, 
 	    gasnetc_callback_lo, (void *)bufd, 0);
@@ -1469,6 +1493,13 @@ extern int gasnetc_AMRequestLongM( gasnet_node_t dest,        /* destination nod
 		if_pt (nbytes > 0) { /* Handle zero-length messages */
 			const firehose_request_t	*req;
 			
+		    #if defined(GASNET_SEGMENT_FAST)
+			/* Remote is always pinned */
+	                GASNETI_TRACE_EVENT_VAL(C, AMREQUESTLONG_ONECOPY, nbytes);
+			gasnetc_AMRequestLongM_DMA_inner(dest, handler, 
+			    source_addr, nbytes, NULL, 
+			    (uintptr_t) dest_addr, numargs, argptr);
+		    #else
 			req = firehose_try_remote_pin(dest, 
 				(uintptr_t) dest_addr, nbytes, 0, NULL);
 
@@ -1483,6 +1514,7 @@ extern int gasnetc_AMRequestLongM( gasnet_node_t dest,        /* destination nod
 				    source_addr, nbytes, dest_addr, numargs, 
 				    argptr);
                         }
+		    #endif
 		}
 		else {
 			gasnetc_AMRequestLongM_inner(dest, handler, source_addr, 
@@ -1504,7 +1536,7 @@ gasnetc_AMRequestLongAsyncM(
 {
 	va_list	argptr;
 
-	const firehose_request_t	*reql, *reqr;
+	const firehose_request_t	*reql, *reqr = NULL;
 
 	gasnetc_bufdesc_t	*bufd;
         GASNETI_COMMON_AMREQUESTLONGASYNC(dest,handler,source_addr,nbytes,dest_addr,numargs);
@@ -1522,11 +1554,13 @@ gasnetc_AMRequestLongAsyncM(
 		return GASNET_OK;
 	}
 
-	/* If length is 0 or the remote local is not pinned, send using
-	 * AMMedium payloads */
-	if (nbytes == 0 || 
-	    !(reqr = firehose_try_remote_pin(dest, (uintptr_t) dest_addr, 
-            nbytes, 0, NULL))) {
+	/* If length is below the packed long limit, or the remote local is not pinned,
+	 * then we send using packed longs, or AMMedium payloads, respectively */
+	if (nbytes <= gasnetc_packed_long_limit 
+#if !defined(GASNET_SEGMENT_FAST)
+	    || !(reqr = firehose_try_remote_pin(dest, (uintptr_t) dest_addr, nbytes, 0, NULL))
+#endif
+	    ) {
 	        GASNETI_TRACE_EVENT_VAL(C, AMREQUESTLONGASYNC_TWOCOPY, nbytes);
 		gasnetc_AMRequestLongM_inner(dest, handler, source_addr, 
 		    nbytes, dest_addr, numargs, argptr);
@@ -1546,7 +1580,12 @@ gasnetc_AMRequestLongAsyncM(
 		uint16_t port, id;
 		int	 len;
 
-		gasneti_assert(reql != NULL && reqr != NULL);
+		gasneti_assert(reql != NULL);
+#if defined(GASNET_SEGMENT_FAST)
+		gasneti_assert(reqr == NULL);
+#else
+		gasneti_assert(reqr != NULL);
+#endif
 
 	        GASNETI_TRACE_EVENT_VAL(C, AMREQUESTLONGASYNC_ZEROCOPY, nbytes);
 		port = gasnetc_portid(dest);
@@ -1641,7 +1680,7 @@ gasnetc_GMSend_bufd(gasnetc_bufdesc_t *bufd)
 
 	gasneti_assert(BUFD_ISSET(bufd, BUFD_REPLY));
 
-	if (BUFD_ISSET(bufd, BUFD_PAYLOAD) && BUFD_ISSET(bufd, BUFD_DMA)) {
+	if (BUFD_ISSET(bufd, BUFD_PAYLOAD)) {
 		gasneti_assert(bufd->dest_addr > 0);
 		gasneti_assert(bufd->payload_len > 0);
 
@@ -1649,7 +1688,7 @@ gasnetc_GMSend_bufd(gasnetc_bufdesc_t *bufd)
 			send_ptr = bufd->source_addr;
 		else
 			send_ptr = (uintptr_t) 
-				   bufd->buf + bufd->payload_off;
+				   bufd->buf + GASNETC_LONG_OFFSET;
 
 		GASNETI_TRACE_PRINTF(C, ("gm_put (%d,%p <- %p,%d bytes)",
 		    bufd->node, (void *) bufd->dest_addr, (void *) send_ptr,
@@ -1666,20 +1705,8 @@ gasnetc_GMSend_bufd(gasnetc_bufdesc_t *bufd)
 		    (void *) bufd);
 	}
 	else {
-		void	*context;
-
-		if (BUFD_ISSET(bufd, BUFD_PAYLOAD)) {
-			len = bufd->payload_len;
-			context = NULL;
-			send_ptr = 
-				(uintptr_t) bufd->buf + 
-				(uintptr_t) bufd->payload_off;
-		}
-		else {
-			len = bufd->len;
-			send_ptr = (uintptr_t) bufd->buf;
-			context = (void *)bufd;
-		}
+		len = bufd->len;
+		send_ptr = (uintptr_t) bufd->buf;
 
 		GASNETI_TRACE_PRINTF(C, ("gm_send (gm id %d <- %p,%d bytes) %s",
 		    (unsigned) bufd->gm_id, (void *) send_ptr, len,
@@ -1696,7 +1723,7 @@ gasnetc_GMSend_bufd(gasnetc_bufdesc_t *bufd)
 			GM_HIGH_PRIORITY,
 			(uint32_t) bufd->gm_id,
 			gasnetc_callback_hi,
-			context);
+			(void *) bufd);
 		else
 		gm_send_with_callback(_gmc.port, 
 			(void *) send_ptr,
@@ -1706,7 +1733,7 @@ gasnetc_GMSend_bufd(gasnetc_bufdesc_t *bufd)
 			(uint32_t) bufd->gm_id,
 			(uint32_t) bufd->gm_port,
 			gasnetc_callback_hi,
-			context);
+			(void *) bufd);
 	}
 	return;
 }
@@ -1721,11 +1748,12 @@ gasnetc_AMReplyLongTrySend(gasnetc_bufdesc_t *bufd)
 	gasneti_assert(BUFD_ISSET(bufd, BUFD_REPLY));
 
 	if (gasnetc_token_hi_acquire()) {
-		/* First send the payload */
+		/* First send : the payload if present, header otherwise */
 		gasnetc_GMSend_bufd(bufd);
 		sends++;
 
 		if_pt (BUFD_ISSET(bufd, BUFD_PAYLOAD)) { 
+			/* payload was sent, now worry about the header */
 			BUFD_UNSET(bufd, BUFD_PAYLOAD);
 
 			if (gasnetc_token_hi_acquire()) {
@@ -1852,15 +1880,18 @@ extern int gasnetc_AMReplyLongM(
 		uintptr_t	pbuf;
 		unsigned int	len;
 
-		const firehose_request_t	*req;
+		const firehose_request_t	*req = NULL;
 	
     		bufd            = gasnetc_bufdesc_from_token(token);
 		bufd->dest_addr = (uintptr_t) dest_addr;
 		bufd->node      = dest;
 
-		if (nbytes > 0 &&
-		   (req = firehose_try_remote_pin(dest, (uintptr_t) dest_addr, 
-	    	            nbytes, 0,  NULL)) != NULL) {
+		if (nbytes > gasnetc_packed_long_limit
+#if !defined(GASNET_SEGMENT_FAST)
+		   && (req = firehose_try_remote_pin(dest, (uintptr_t) dest_addr, 
+	    	            nbytes, 0,  NULL)) != NULL
+#endif
+		   ) {
 
 			pbuf = (uintptr_t) bufd->buf + 
 			    (uintptr_t) GASNETC_LONG_OFFSET;
@@ -1876,10 +1907,9 @@ extern int gasnetc_AMReplyLongM(
 			bufd->local_req = NULL;
 			bufd->source_addr = 0;
 
-			bufd->payload_off = GASNETC_LONG_OFFSET;
 			bufd->payload_len = nbytes;
 
-    			BUFD_SET(bufd, BUFD_PAYLOAD | BUFD_DMA);
+    			BUFD_SET(bufd, BUFD_PAYLOAD);
 	                GASNETI_TRACE_EVENT_VAL(C, AMREPLYLONG_ONECOPY, nbytes);
 		}
 		else {
@@ -1889,25 +1919,19 @@ extern int gasnetc_AMReplyLongM(
 			bufd->remote_req = NULL;
 			bufd->local_req = NULL;
 
-			bufd->len = header_len = 
+			header_len = 
 			    gasnetc_write_AMBufferLong(bufd->buf, 
 			        handler, numargs, argptr, nbytes, source_addr, 
 				(uintptr_t) dest_addr, GASNETC_AM_REPLY);
-			pbuf = (uintptr_t)bufd->buf + (uintptr_t) header_len;
 
 			if_pt (nbytes > 0) { /* Handle zero-length messages */
-				len = gasnetc_write_AMBufferMediumMedcopy(
-					(void *)pbuf, (void *)source_addr, nbytes,
-					(void *)dest_addr, GASNETC_AM_REPLY);
-
-				BUFD_SET(bufd, BUFD_PAYLOAD);
-
-				bufd->payload_off = header_len;
-				bufd->payload_len = len;
+				pbuf = (uintptr_t)bufd->buf + (uintptr_t) header_len;
+				gasnetc_write_AMBufferBulk((void *)pbuf,
+				    (void *)source_addr, nbytes);
 	                        GASNETI_TRACE_EVENT_VAL(C, AMREPLYLONG_TWOCOPY, nbytes);
 			}
 
-			bufd->len = header_len;
+			bufd->len = header_len + nbytes;
 		}
 
 		#if !GASNET_TRACE
@@ -1968,7 +1992,6 @@ gasnetc_AMReplyLongAsyncM(
 
 	bufd->len = len;
 	bufd->node = dest;
-	bufd->payload_off = 0;
 	bufd->payload_len = nbytes;
 	bufd->dest_addr = (uintptr_t) dest_addr;
 	bufd->source_addr = (uintptr_t) source_addr;
@@ -1985,7 +2008,7 @@ gasnetc_AMReplyLongAsyncM(
 			    dest_addr, source_addr, nbytes);
 		}
 		else {
-			BUFD_SET(bufd, BUFD_PAYLOAD | BUFD_DMA);
+			BUFD_SET(bufd, BUFD_PAYLOAD);
 	                GASNETI_TRACE_EVENT_VAL(C, AMREPLYLONGASYNC_ZEROCOPY, nbytes);
 		}
 	}
@@ -2221,7 +2244,7 @@ gasnetc_GMSend_AMRequest(void *buf, uint32_t len,
 	while (!sent) {
 		/* don't force locking when polling */
 		while (!GASNETC_TOKEN_LO_AVAILABLE())
-			gasneti_AMPoll();
+			gasnetc_AMPoll();
 
 		gasneti_mutex_lock(&gasnetc_lock_gm);
 		/* assure last poll was successful */
@@ -2292,7 +2315,7 @@ gasnetc_AMRequestPool_block()
 
 	while (bufd_idx < 0) {
 		while (_gmc.reqs_pool_cur < 0)
-			gasneti_AMPoll();
+			gasnetc_AMPoll();
 
 		gasneti_mutex_lock(&gasnetc_lock_reqpool);
 		if_pt (_gmc.reqs_pool_cur >= 0) {

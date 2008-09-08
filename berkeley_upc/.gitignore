@@ -1,0 +1,5 @@
+.multiconf_configure_warnings.tmp
+Makefile.in
+aclocal.m4
+configure
+totalview/config-aux/ltmain.sh

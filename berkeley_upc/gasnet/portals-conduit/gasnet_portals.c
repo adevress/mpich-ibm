@@ -71,6 +71,10 @@ gasnetc_PtlBuffer_t gasnetc_RAR;
 gasnetc_PtlBuffer_t gasnetc_RARAM;
 gasnetc_PtlBuffer_t gasnetc_RARSRC;
 
+/* Max size of a bounced put or get (differ by space for bounce addr in the get) */
+size_t gasnetc_put_bounce_limit;
+size_t gasnetc_get_bounce_limit;
+
 ptl_handle_ni_t gasnetc_ni_h;              /* the network interface handle */
 gasnetc_eq_t *gasnetc_AM_EQ = NULL;        /* The AM Event Queue */
 gasnetc_eq_t *gasnetc_SAFE_EQ = NULL;      /* The SAFE Event Queue */
@@ -163,6 +167,10 @@ uint32_t gasnetc_amseqno = 0;
 
 /* Forward reference for ReqRB event handler */
 static void ReqRB_event(ptl_event_t *ev);
+
+/* Forward declarations for event queue alloc/free */
+static gasnetc_eq_t* gasnetc_eq_alloc(long num_events, const char* name, ptl_eq_handler_t hndlr);
+static void gasnetc_eq_free(gasnetc_eq_t *eq);
 
 /* ------------------------------------------------------------------------------------
  * Search the lid cache for this object.
@@ -845,20 +853,16 @@ static void gasnetc_buf_init(gasnetc_PtlBuffer_t *buf, const char *name, size_t 
 
 /* ------------------------------------------------------------------------------------
  * Trivial chunk allocator for bounce buffer and Msg Send buffers.
- * (1) WARNING WARNING WARNING!
- *     Not a thread-safe freelist implementation!!!
- *     Can easily have one thread pulling something off the list while a portals
- *     event handler, executing in another thread is putting a chunk back on the list.
- *     Must change for multi-threaded implementation.
+ * (1) Just a simple mutex-protected freelist implementation.
  * (2) What we really should have is an efficient buddy-buffer implementation so that
- *     small messages dont have to allocate a full KB.  Concern that this will be expensive
- *     and even more expensive in multi-threaded environment.
+ *     small messages don't have to allocate a full KB.  Concern that this will be expensive
+ *     and even more expensive in multi-threaded environment (larger critical section).
  * --------------------------------------------------------------------------------- */
 static void gasnetc_chunk_init(gasnetc_PtlBuffer_t *buf, const char *name, size_t nchunks)
 {
   int i;
   size_t nbytes = nchunks * GASNETC_CHUNKSIZE;
-  gasnetc_chunk_t *p;
+  void **p;
 
   GASNETI_TRACE_PRINTF(C,("gasnetc_chunk_init for %s with %lu chunks",name,(ulong)nchunks));
   buf->name = gasneti_strdup(name);
@@ -872,14 +876,14 @@ static void gasnetc_chunk_init(gasnetc_PtlBuffer_t *buf, const char *name, size_
   buf->hwm = 0;
   buf->freelist = NULL;
   GASNETI_TRACE_PRINTF(C,("CHUNK_INIT: %s nchunks=%i, nbytes=%i, start=0x%p",name,(int)nchunks,(int)nbytes,buf->start));
-  p = (gasnetc_chunk_t*) buf->start;
+  p = (void **)buf->start;
   if (p == NULL) {
     gasneti_fatalerror("failed to alloc %i bytes for chunk allocator %s at %s",(int)nbytes,name,gasneti_current_loc);
   }
   for (i = 0; i < nchunks; i++) {
-    p->next = buf->freelist;
+    *p = buf->freelist;
     buf->freelist = p;
-    p++;
+    p = (void**)((uint8_t*)p + GASNETC_CHUNKSIZE);
   }
 }
 
@@ -1050,7 +1054,10 @@ static void RARSRC_event(ptl_event_t *ev)
       if (amflag & GASNETC_PTL_AM_SYNC) {
 	gasnetc_threaddata_t *th = gasnete_threadtable[GASNETE_THREADID(threadid)]->gasnetc_threaddata;
 	/* caller is AMLong (sync, not async), and is waiting for this counter to decrement */
-	gasneti_weakatomic_decrement(&th->amlong_data_inflight, 0);
+	gasneti_weakatomic_t *counter = (amflag & GASNETC_PTL_AM_REQUEST) ? &th->amlongReq_data_inflight
+									  : &th->amlongRep_data_inflight;
+	gasneti_assert(gasneti_weakatomic_read(counter, 0) != 0);
+	gasneti_weakatomic_decrement(counter, 0);
       }
     }
     break;
@@ -1131,7 +1138,10 @@ static void TMPMD_event(ptl_event_t *ev)
       if (amflag & GASNETC_PTL_AM_SYNC) {
 	gasnetc_threaddata_t *th = gasnete_threadtable[GASNETE_THREADID(threadid)]->gasnetc_threaddata;
 	/* caller is AMLong (sync, not async), and is waiting for this counter to decrement */
-	gasneti_weakatomic_decrement(&th->amlong_data_inflight, 0);
+	gasneti_weakatomic_t *counter = (amflag & GASNETC_PTL_AM_REQUEST) ? &th->amlongReq_data_inflight
+									  : &th->amlongRep_data_inflight;
+	gasneti_assert(gasneti_weakatomic_read(counter, 0) != 0);
+	gasneti_weakatomic_decrement(counter, 0);
       }
       /* unlink the tmp MD used in the AM Long data put */
       gasnetc_free_tmpmd(ev->md_handle);
@@ -2948,7 +2958,7 @@ extern uintptr_t gasnetc_portalsMaxPinMem(void)
  * --------------------------------------------------------------------------------- */
 extern int gasnetc_chunk_alloc(gasnetc_PtlBuffer_t *buf, size_t nbytes, ptl_size_t *offset)
 {
-    gasnetc_chunk_t *p;
+    void **p;
     
     gasneti_assert(buf->use_chunks);
 
@@ -2960,6 +2970,8 @@ extern int gasnetc_chunk_alloc(gasnetc_PtlBuffer_t *buf, size_t nbytes, ptl_size
      * gain lock to check if freelist is empty.  It would be last var set before unlock
      * and membar would insure reads would reflect it.  Of course, would still have to
      * check freelist condition when lock is gotten
+     * PHH: But why optimize for the empty case?  If we have no chunks left then we
+     * are going to spin-poll anyway, unless we are already in gasnetc_portals_poll().
      */
     gasneti_mutex_lock(&buf->lock);
     if (buf->freelist == NULL) {
@@ -2967,7 +2979,7 @@ extern int gasnetc_chunk_alloc(gasnetc_PtlBuffer_t *buf, size_t nbytes, ptl_size
       return 0;
     }
     p = buf->freelist;
-    buf->freelist = p->next;
+    buf->freelist = *p;
     *offset = ((uint8_t*)p - (uint8_t*)(buf->start));
 #if GASNETI_STATS_OR_TRACE
     buf->inuse++;
@@ -2987,7 +2999,6 @@ extern int gasnetc_chunk_alloc(gasnetc_PtlBuffer_t *buf, size_t nbytes, ptl_size
 extern int gasnetc_chunk_alloc_withpoll(gasnetc_PtlBuffer_t *buf, size_t nbytes, ptl_size_t *offset,
 					int pollmax, gasnetc_pollflag_t poll_type)
 {
-    gasnetc_chunk_t *p;
     int cnt = 0;
     int gotone = 0;
     
@@ -3023,11 +3034,11 @@ extern int gasnetc_chunk_alloc_withpoll(gasnetc_PtlBuffer_t *buf, size_t nbytes,
  * --------------------------------------------------------------------------------- */
 extern void gasnetc_chunk_free(gasnetc_PtlBuffer_t *buf, ptl_size_t offset)
 {
-    gasnetc_chunk_t *p = (gasnetc_chunk_t*)((uint8_t*)buf->start + offset);
+    void **p = (void**)((uint8_t*)buf->start + offset);
     gasneti_assert(buf->use_chunks);
     
     gasneti_mutex_lock(&buf->lock);
-    p->next = buf->freelist;
+    *p = buf->freelist;
     buf->freelist = p;
 #if GASNETI_STATS_OR_TRACE
     buf->inuse--;
@@ -3037,26 +3048,24 @@ extern void gasnetc_chunk_free(gasnetc_PtlBuffer_t *buf, ptl_size_t offset)
     gasneti_mutex_unlock(&buf->lock);
 }
 
-/* bug 2102: PtlEQAlloc/PtlEQFree are not thread-safe */
-static gasneti_mutex_t gasnetc_eqalloc_lock = GASNETI_MUTEX_INITIALIZER;
+/* bug 2102: PtlEQAlloc/PtlEQFree are not thread-safe.
+ * However, we no longer perform these dynamically (only at startup and cleanup now).
+ * So, we don't need the mutex introduced for bug 2102.
+ */
 
-extern gasnetc_eq_t* gasnetc_eq_alloc(long num_events, const char* name, ptl_eq_handler_t hndlr)
+static gasnetc_eq_t* gasnetc_eq_alloc(long num_events, const char* name, ptl_eq_handler_t hndlr)
 {
   gasnetc_eq_t *eq = (gasnetc_eq_t*)gasneti_malloc(sizeof(gasnetc_eq_t));
   eq->num_events = num_events;
-  gasneti_mutex_lock(&gasnetc_eqalloc_lock);
-    GASNETC_PTLSAFE(PtlEQAlloc(gasnetc_ni_h, num_events, hndlr, &eq->eq_h));
-  gasneti_mutex_unlock(&gasnetc_eqalloc_lock);
+  GASNETC_PTLSAFE(PtlEQAlloc(gasnetc_ni_h, num_events, hndlr, &eq->eq_h));
   gasneti_mutex_init(&eq->lock);
   eq->name = gasneti_strdup(name);
   GASNETI_TRACE_PRINTF(C,("gasnetc_eq_alloc %s with %ld events (%i)",eq->name,num_events,(int)eq->eq_h));
   return eq;
 }
-extern void gasnetc_eq_free(gasnetc_eq_t *eq)
+static void gasnetc_eq_free(gasnetc_eq_t *eq)
 {
-  gasneti_mutex_lock(&gasnetc_eqalloc_lock);
-    GASNETC_PTLSAFE(PtlEQFree(eq->eq_h));
-  gasneti_mutex_unlock(&gasnetc_eqalloc_lock);
+  GASNETC_PTLSAFE(PtlEQFree(eq->eq_h));
   GASNETI_TRACE_PRINTF(C,("gasnetc_eq_free %s with %ld events (%i)",eq->name,eq->num_events,(int)eq->eq_h));
   gasneti_free(eq->name);
   gasneti_free(eq);
@@ -3069,10 +3078,9 @@ extern void gasnetc_eq_free(gasnetc_eq_t *eq)
  * of a Get operation.  MD to be free floating, not target of remote op.
  * Associated with eq_h Event Queue (usually the SAFE_EQ).
  * NOTE:  Assumes caller has already allocated a tmpmd ticket
- * See gasnetc_try_alloc_tmpmd or gasnetc_alloc_tmpmd_withpoll for interfaces
- * that do not already have a ticket.
+ * Use gasnetc_alloc_tmpmd_withpoll for a caller that does not already have a ticket.
  * --------------------------------------------------------------------------------- */
-extern ptl_handle_md_t gasnetc_alloc_tmpmd(void* start, size_t nbytes, ptl_handle_eq_t eq_h)
+extern ptl_handle_md_t gasnetc_alloc_tmpmd(void* start, size_t nbytes)
 {
   ptl_md_t md;
   ptl_handle_md_t md_h;
@@ -3089,7 +3097,7 @@ extern ptl_handle_md_t gasnetc_alloc_tmpmd(void* start, size_t nbytes, ptl_handl
 #else
   md.user_ptr = (void*)TMPMD_event;
 #endif
-  md.eq_handle = eq_h;
+  md.eq_handle = gasnetc_SAFE_EQ->eq_h;
 
   GASNETC_PTLSAFE(PtlMDBind(gasnetc_ni_h, md, PTL_UNLINK, &md_h));
 
@@ -3320,6 +3328,17 @@ extern void gasnetc_init_portals_resources(void)
   int64_t cred_per_buffer = cred_bytes_per_buffer/GASNETC_BYTES_PER_CREDIT;
   
   /* read Portals specific env vars */
+  gasnetc_put_bounce_limit = (int64_t)gasneti_getenv_int_withdefault("GASNET_PORTAL_PUTGET_BOUNCE_LIMIT",
+				(int64_t)GASNETC_PUTGET_BOUNCE_LIMIT_DFLT,1);
+  if (gasnetc_put_bounce_limit > GASNETC_CHUNKSIZE) {
+    if (!gasneti_mynode) {
+      fprintf(stderr,
+		"WARNING: Requested GASNET_PORTAL_PUTGET_BOUNCE_LIMIT %u reduced to chunksize %u\n",
+		(unsigned int)gasnetc_put_bounce_limit, (unsigned int)GASNETC_CHUNKSIZE);
+    }
+    gasnetc_put_bounce_limit = GASNETC_CHUNKSIZE;
+  }
+  gasnetc_get_bounce_limit = GASNETC_MIN(gasnetc_put_bounce_limit, GASNETC_CHUNKSIZE - sizeof(void *));
   gasnetc_dump_stats = (int)gasneti_getenv_int_withdefault("GASNET_PORTAL_STATS",
 				 (int64_t)gasnetc_dump_stats,0);
   gasnetc_ReqSB_numchunk = (int)gasneti_getenv_int_withdefault("GASNET_PORTAL_SB_CHUNKS",
@@ -3880,7 +3899,7 @@ extern void gasnetc_portals_poll(gasnetc_pollflag_t poll_type)
   poll_level--;
 #endif
 
-  GASNETI_TRACE_EVENT_VAL(C, EVENT_CNT, processed);
+  GASNETI_TRACE_EVENT_VAL(C, EVENT_REAP, processed);
 }
 
 /* ------------------------------------------------------------------------------------
@@ -3982,7 +4001,7 @@ void gasnetc_getmsg(void *dest, gasnet_node_t node, void *src, size_t nbytes,
     md_h = gasnetc_RARSRC.md_h;
     local_offset = GASNETC_PTL_OFFSET(gasneti_mynode,dest);
     GASNETI_TRACE_EVENT(C, GET_RAR);
-  } else if ( (nbytes <= (GASNETC_PUTGET_BOUNCE_SIZE - (sizeof(void*))))  &&
+  } else if ( (nbytes <= gasnetc_get_bounce_limit)  &&
 	      gasnetc_chunk_alloc_withpoll(&gasnetc_ReqSB, nbytes, &local_offset, 1, GASNETC_SAFE_POLL) ) {
     /* Encode dest addr in BB chunk for later copy */
     void* bb;
@@ -3997,7 +4016,7 @@ void gasnetc_getmsg(void *dest, gasnet_node_t node, void *src, size_t nbytes,
     GASNETI_TRACE_EVENT(C, GET_BB);
   } else {
     /* alloc a temp md for the destination region */
-    md_h = gasnetc_alloc_tmpmd_withpoll(dest, nbytes, gasnetc_SAFE_EQ->eq_h);
+    md_h = gasnetc_alloc_tmpmd_withpoll(dest, nbytes);
     local_offset = 0;
     GASNETI_TRACE_EVENT(C, GET_TMPMD);
   }
@@ -4058,7 +4077,7 @@ void gasnetc_putmsg(void *dest, gasnet_node_t node, void *src, size_t nbytes,
     local_offset = GASNETC_PTL_OFFSET(gasneti_mynode,src);
     if (! isbulk) *wait_lcc = 1;
     GASNETI_TRACE_EVENT(C, PUT_RAR);
-  } else if ( (nbytes <= GASNETC_PUTGET_BOUNCE_SIZE)  &&
+  } else if ( (nbytes <= gasnetc_put_bounce_limit)  &&
 	      gasnetc_chunk_alloc_withpoll(&gasnetc_ReqSB,nbytes, &local_offset, 1, GASNETC_SAFE_POLL) ) {
     void* bb;
     md_h = gasnetc_ReqSB.md_h;
@@ -4071,7 +4090,7 @@ void gasnetc_putmsg(void *dest, gasnet_node_t node, void *src, size_t nbytes,
     GASNETI_TRACE_EVENT(C, PUT_BB);
   } else {
     /* alloc a temp md for the source region */
-    md_h = gasnetc_alloc_tmpmd_withpoll(src, nbytes, gasnetc_SAFE_EQ->eq_h);
+    md_h = gasnetc_alloc_tmpmd_withpoll(src, nbytes);
     local_offset = 0;
     if (! isbulk) *wait_lcc = 1;
     GASNETI_TRACE_EVENT(C, PUT_TMPMD);

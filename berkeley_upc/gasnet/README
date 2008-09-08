@@ -1,6 +1,6 @@
 README file for GASNet
 by: Dan Bonachea <bonachea@cs.berkeley.edu>
-$Revision: 1.101 $
+$Revision: 1.105.2.1 $
 
 This is a combination user manual and design document for GASNet. Anyone
 planning on using, modifying or adding to the GASNet code base should read this
@@ -144,6 +144,7 @@ Platforms where GASNet and Berkeley UPC have been successfully tested:
     * Linux/Alpha/gcc/64:            smp, udp, #
     * Linux/PowerPC-Myrinet/gcc/32:  smp, mpi, udp, gm
     * Linux/PowerPC-Ethernet/gcc/64: smp, mpi, udp
+    * Linux/MIPS-SiCortex/{gcc,pathcc}/64: smp, mpi, udp
 
     * Linux/SGI-Altix-Itanium/{gcc,IntelC}/64: smp, mpi, udp, shmem
 
@@ -170,6 +171,7 @@ Platforms where GASNet and Berkeley UPC have been successfully tested:
 
     * MacOSX/PowerPC/{gcc,xlc}/32,64: smp, udp, mpi, vapi
     * MacOSX/x86/{gcc,icc}/32,64: smp, udp, mpi
+    * MacOSX/x86/{PGI}/32,64: smp, udp, #
 
     * Unicos/Cray-T3e/CrayC/64: smp, udp, mpi %&
  
@@ -187,6 +189,8 @@ Platforms where GASNet and Berkeley UPC have been successfully tested:
     * SuperUX/SX-6/NEC-C/64: smp, udp, mpi %&
 
     * ucLinux/Microblaze/gcc/32: smp, udp, #%
+
+    * Linux/ARM/gcc/32: smp, udp, #	- EXPERIMENTAL (see bug 2116)
 
 # = No working MPI implementation available, although we have every reason to
 believe mpi conduit would work if one was available.
@@ -331,7 +335,7 @@ application-specific support.
  Setting GASNET_EXITTIMEOUT provides a specific value, ignoring this formula.
  Setting one or more of the others will compute a value for GASNET_EXITTIMEOUT using
  the formula above (and defaults for any variables not set in the environment).
- Currently vapi-, ibv-, gm- and portals-conduits honor these settings.
+ Currently vapi-, ibv-, gm-, lapi- and portals-conduits honor these settings.
  Default values differ among these conduits.
 
 * see conduit-specific documentation in conduit directories for more settings

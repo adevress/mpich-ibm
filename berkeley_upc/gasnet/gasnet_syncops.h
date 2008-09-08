@@ -1,6 +1,6 @@
 /*   $Source: /var/local/cvs/gasnet/gasnet_syncops.h,v $
- *     $Date: 2007/10/02 08:08:07 $
- * $Revision: 1.40 $
+ *     $Date: 2008/04/29 19:12:25 $
+ * $Revision: 1.44.2.1 $
  * Description: GASNet header for synchronization operations used in GASNet implementation
  * Copyright 2006, Dan Bonachea <bonachea@cs.berkeley.edu>
  * Terms of use are as specified in license.txt
@@ -404,91 +404,6 @@ gasneti_atomic_val_t gasneti_semaphore_trydown_partial(gasneti_semaphore_t *s, g
 }
 
 /* ------------------------------------------------------------------------------------ */
-/* gasneti_cond_t Condition variables - 
-   Provides pthread_cond-like functionality, with error checking
-  GASNETI_COND_INITIALIZER - value to statically initialize a gasneti_cond_t
-  gasneti_cond_init(gasneti_cond_t *pc) - dynamically initialize a gasneti_cond_t   
-  gasneti_cond_destroy(gasneti_cond_t *pc) - reclaim a gasneti_cond_t
-  gasneti_cond_signal(gasneti_cond_t *pc) - 
-    signal at least one waiter on a gasneti_cond_t, while holding the associated mutex
-  gasneti_cond_broadcast(gasneti_cond_t *pc) - 
-    signal all current waiters on a gasneti_cond_t, while holding the associated mutex
-  gasneti_cond_wait(gasneti_cond_t *pc, gasneti_mutex_t *pl) - 
-    release gasneti_mutex_t pl (which must be held) and block WITHOUT POLLING 
-    until gasneti_cond_t pc is signalled by another thread, or until the system
-    decides to wake this thread for no good reason (which it may or may not do).
-    Upon wakeup for any reason, the mutex will be reacquired before returning.
-
-    It's an error to wait if there is only one thread, and can easily lead to 
-    deadlock if the last thread goes to sleep. No thread may call wait unless it
-    can guarantee that (A) some other thread is still polling and (B) some other
-    thread will eventually signal it to wake up. The system may or may not also 
-    randomly signal threads to wake up for no good reason, so upon awaking the thread
-    MUST verify using its own means that the condition it was waiting for 
-    has actually been signalled (ie that the client-level "outer" condition has been set).
-
-    In order to prevent races leading to missed signals and deadlock, signaling
-    threads must always hold the associated mutex while signaling, and ensure the
-    outer condition is set *before* releasing the mutex. Additionally, all waiters
-    must check the outer condition *after* acquiring the same mutex and *before*
-    calling wait (which atomically releases the lock and puts the thread to sleep).
-*/
-
-#if GASNETI_USE_TRUE_MUTEXES
-  typedef pthread_cond_t            gasneti_cond_t;
-
-  #define GASNETI_COND_INITIALIZER    PTHREAD_COND_INITIALIZER
-  #define gasneti_cond_init(pc) do {                       \
-      GASNETI_MUTEX_INITCLEAR(pc);                         \
-      gasneti_assert_zeroret(pthread_cond_init((pc), NULL)); \
-  } while (0)
-  #define gasneti_cond_destroy(pc)    gasneti_assert_zeroret(pthread_cond_destroy(pc))
-
-  #if PLATFORM_ARCH_CRAYX1 /* bug 993 - workaround for buggy pthread library */
-    static gasneti_cond_t const gasneti_cond_staticinitialized = GASNETI_COND_INITIALIZER;
-    #define GASNETI_COND_INIT_CHECK(pc) \
-      (!memcmp(&gasneti_cond_staticinitialized,(pc),sizeof(gasneti_cond_t)) ? \
-        (void)pthread_cond_init((pc), NULL) : (void)0 )
-  #else
-    #define GASNETI_COND_INIT_CHECK(pc) ((void)0)
-  #endif
-
-  #define gasneti_cond_signal(pc) do {                 \
-      GASNETI_COND_INIT_CHECK(pc);                     \
-      gasneti_assert_zeroret(pthread_cond_signal(pc)); \
-    } while (0)
-  #define gasneti_cond_broadcast(pc) do {                 \
-      GASNETI_COND_INIT_CHECK(pc);                        \
-      gasneti_assert_zeroret(pthread_cond_broadcast(pc)); \
-    } while (0)
-
-  #if GASNET_DEBUG
-    #define gasneti_cond_wait(pc,pl)  do {                          \
-      gasneti_assert((pl)->owner == GASNETI_THREADIDQUERY());       \
-      (pl)->owner = GASNETI_MUTEX_NOOWNER;                          \
-      GASNETI_COND_INIT_CHECK(pc);                                  \
-      gasneti_assert_zeroret(pthread_cond_wait(pc, &((pl)->lock))); \
-      gasneti_assert((pl)->owner == GASNETI_MUTEX_NOOWNER);         \
-      (pl)->owner = GASNETI_THREADIDQUERY();                        \
-    } while (0)
-  #else
-    #define gasneti_cond_wait(pc,pl)  do {               \
-      GASNETI_COND_INIT_CHECK(pc);                       \
-      gasneti_assert_zeroret(pthread_cond_wait(pc, pl)); \
-    } while (0)
-  #endif
-#else
-  typedef char           gasneti_cond_t;
-  #define GASNETI_COND_INITIALIZER  '\0'
-  #define gasneti_cond_init(pc)       ((void)0)
-  #define gasneti_cond_destroy(pc)    ((void)0)
-  #define gasneti_cond_signal(pc)     ((void)0)
-  #define gasneti_cond_broadcast(pc)  ((void)0)
-  #define gasneti_cond_wait(pc,pl) \
-      gasneti_fatalerror("There's only one thread: waiting on condition variable => deadlock")
-#endif
-
-/* ------------------------------------------------------------------------------------ */
 /* Optional atomic operations for pointer-sized data.
  * FOR USE IN THIS FILE ONLY, UNTIL THIS IS MORE STABLE/COMPLETE.
  *
@@ -502,7 +417,7 @@ gasneti_atomic_val_t gasneti_semaphore_trydown_partial(gasneti_semaphore_t *s, g
  * If GASNETI_HAVE_ATOMIC_DBLPTR_CAS is defined:
  *	gasneti_atomic_dblptr_t
  *	gasneti_atomic_dblptr_init(hi, lo)
- *	gasneti_atomic_dblptr_set(ptr, hi, lo)
+ *	gasneti_atomic_dblptr_set(ptr, hi, lo) // NON atomic
  *	gasneti_atomic_dblptr_set_hi(ptr, hi)
  *	gasneti_atomic_dblptr_set_lo(ptr, lo)
  *	gasneti_atomic_dblptr_read_lo(ptr)
@@ -543,56 +458,100 @@ gasneti_atomic_val_t gasneti_semaphore_trydown_partial(gasneti_semaphore_t *s, g
 #if defined(GASNETI_HAVE_ATOMIC_DBLPTR_CAS)
   /* Use platform-specific version */
 #elif PLATFORM_ARCH_32 && defined(GASNETI_HAVE_ATOMIC_PTR_CAS) && !defined(GASNETI_USE_GENERIC_ATOMIC64)
-  #if WORDS_BIGENDIAN
+  #if PLATFORM_ARCH_BIG_ENDIAN
     typedef union {
       struct { gasneti_atomic_ptr_t hi_ptr, lo_ptr; } ptrs;	/* must be first for initializer */
       gasneti_atomic64_t a64;
     } gasneti_atomic_dblptr_t;
-    #define gasneti_atomic_dblptr_init(hi,lo)     { { gasneti_atomic_ptr_init((uintptr_t)(hi)), \
-                                                      gasneti_atomic_ptr_init((uintptr_t)(lo)) } }
-    #define gasneti_atomic_dblptr_set(p,hi,lo)    do {                                        \
-                                                    gasneti_atomic_ptr_set(&(p)->ptrs.hi_ptr, \
-                                                                         (uintptr_t)(hi));    \
-                                                    gasneti_atomic_ptr_set(&(p)->ptrs.lo_ptr, \
-                                                                         (uintptr_t)(lo));    \
-                                                  } while (0)
   #else
     typedef union {
       struct { gasneti_atomic_ptr_t lo_ptr, hi_ptr; } ptrs;	/* must be first for initializer */
       gasneti_atomic64_t a64;
     } gasneti_atomic_dblptr_t;
-    #define gasneti_atomic_dblptr_init(hi,lo)     { { gasneti_atomic_ptr_init((uintptr_t)(lo)), \
-                                                      gasneti_atomic_ptr_init((uintptr_t)(hi)) } }
-    #define gasneti_atomic_dblptr_set(p,hi,lo)    do {                                        \
+  #endif
+
+  GASNETI_INLINE(gasneti_atomic_dblptr_cas2)
+  int gasneti_atomic_dblptr_cas2(gasneti_atomic_dblptr_t *v, uintptr_t oldhi, uintptr_t oldlo, uintptr_t newhi, uintptr_t newlo, int flags) {
+     uint64_t oldval = GASNETI_MAKEWORD(oldhi, oldlo);
+     uint64_t newval = GASNETI_MAKEWORD(newhi, newlo);
+     return gasneti_atomic64_compare_and_swap(&(v->a64), oldval, newval, flags);
+  }
+  #define GASNETI_GEN_ATOMIC_DBLPTR_CAS 1 /* Causes default version to be constructed below */
+#elif PLATFORM_ARCH_64 && defined(GASNETI_HAVE_ATOMIC_PTR_CAS) && defined(GASNETI_HAVE_ATOMIC128_T)
+  #if PLATFORM_ARCH_BIG_ENDIAN
+    typedef union {
+      struct { gasneti_atomic_ptr_t hi_ptr, lo_ptr; } ptrs;	/* must be first for initializer */
+      gasneti_atomic128_t a128;
+    } gasneti_atomic_dblptr_t;
+  #else
+    typedef union {
+      struct { gasneti_atomic_ptr_t lo_ptr, hi_ptr; } ptrs;	/* must be first for initializer */
+      gasneti_atomic128_t a128;
+    } gasneti_atomic_dblptr_t;
+  #endif
+
+  GASNETI_INLINE(gasneti_atomic_dblptr_cas2)
+  int gasneti_atomic_dblptr_cas2(gasneti_atomic_dblptr_t *v, uintptr_t oldhi, uintptr_t oldlo, uintptr_t newhi, uintptr_t newlo, int flags) {
+     return gasneti_atomic128_compare_and_swap(&(v->a128), oldhi, oldlo, newhi, newlo, flags);
+  }
+  #define GASNETI_GEN_ATOMIC_DBLPTR_CAS 1 /* Causes default version to be constructed below */
+#endif
+#ifdef GASNETI_GEN_ATOMIC_DBLPTR_CAS
+  #define GASNETI_HAVE_ATOMIC_DBLPTR_CAS 1
+  /* Defaults in terms of the hi and lo halves */
+  #if PLATFORM_ARCH_BIG_ENDIAN
+    #ifndef gasneti_atomic_dblptr_init
+      #define gasneti_atomic_dblptr_init(hi,lo)     { { gasneti_atomic_ptr_init((uintptr_t)(hi)), \
+                                                        gasneti_atomic_ptr_init((uintptr_t)(lo)) } }
+    #endif
+    #ifndef gasneti_atomic_dblptr_set
+      #define gasneti_atomic_dblptr_set(p,hi,lo)    do {                                        \
+                                                      gasneti_atomic_ptr_set(&(p)->ptrs.hi_ptr, \
+                                                                           (uintptr_t)(hi));    \
+                                                      gasneti_atomic_ptr_set(&(p)->ptrs.lo_ptr, \
+                                                                           (uintptr_t)(lo));    \
+                                                    } while (0)
+    #endif
+  #else
+    #ifndef gasneti_atomic_dblptr_init
+      #define gasneti_atomic_dblptr_init(hi,lo)     { { gasneti_atomic_ptr_init((uintptr_t)(lo)), \
+                                                        gasneti_atomic_ptr_init((uintptr_t)(hi)) } }
+    #endif
+    #ifndef gasneti_atomic_dblptr_set
+      #define gasneti_atomic_dblptr_set(p,hi,lo)    do {                                        \
+                                                      gasneti_atomic_ptr_set(&(p)->ptrs.lo_ptr, \
+                                                                           (uintptr_t)(lo));    \
+                                                      gasneti_atomic_ptr_set(&(p)->ptrs.hi_ptr, \
+                                                                           (uintptr_t)(hi));    \
+                                                    } while (0)
+    #endif
+  #endif
+  #ifndef gasneti_atomic_dblptr_set_lo
+    #define gasneti_atomic_dblptr_set_lo(p,lo)    do {                                        \
                                                     gasneti_atomic_ptr_set(&(p)->ptrs.lo_ptr, \
                                                                          (uintptr_t)(lo));    \
+                                                  } while (0)
+  #endif
+  #ifndef gasneti_atomic_dblptr_set_hi
+    #define gasneti_atomic_dblptr_set_hi(p,hi)    do {                                        \
                                                     gasneti_atomic_ptr_set(&(p)->ptrs.hi_ptr, \
                                                                          (uintptr_t)(hi));    \
                                                   } while (0)
   #endif
-
-  #define gasneti_atomic_dblptr_set_lo(p,lo)    do {                                        \
-                                                  gasneti_atomic_ptr_set(&(p)->ptrs.lo_ptr, \
-                                                                       (uintptr_t)(lo));    \
-                                                } while (0)
-  #define gasneti_atomic_dblptr_set_hi(p,hi)    do {                                        \
-                                                  gasneti_atomic_ptr_set(&(p)->ptrs.hi_ptr, \
-                                                                       (uintptr_t)(hi));    \
-                                                } while (0)
-  #define gasneti_atomic_dblptr_read_lo(p)      gasneti_atomic_ptr_read(&(p)->ptrs.lo_ptr)
-  #define gasneti_atomic_dblptr_read_hi(p)      gasneti_atomic_ptr_read(&(p)->ptrs.hi_ptr)
-
-  GASNETI_INLINE(gasneti_atomic_dblptr_cas2)
-  int gasneti_atomic_dblptr_cas2(gasneti_atomic_dblptr_t *v, uintptr_t oldhi, uintptr_t oldlo, uintptr_t newhi, uintptr_t newlo, int flags) {
-     uint64_t oldval = ((uint64_t)oldhi << 32) | oldlo;
-     uint64_t newval = ((uint64_t)newhi << 32) | newlo;
-     return gasneti_atomic64_compare_and_swap(&(v->a64), oldval, newval, flags);
-  }
-  #define gasneti_atomic_dblptr_cas_lo(v,oldlo,newlo,flags) \
-			gasneti_atomic_ptr_cas(&(v)->ptrs.lo_ptr,oldlo,newlo,flags)
-  #define gasneti_atomic_dblptr_cas_hi(v,oldhi,newhi,flags) \
-			gasneti_atomic_ptr_cas(&(v)->ptrs.hi_ptr,oldhi,newhi,flags)
-  #define GASNETI_HAVE_ATOMIC_DBLPTR_CAS 1
+  #ifndef gasneti_atomic_dblptr_read_lo
+    #define gasneti_atomic_dblptr_read_lo(p)      gasneti_atomic_ptr_read(&(p)->ptrs.lo_ptr)
+  #endif
+  #ifndef gasneti_atomic_dblptr_read_hi
+    #define gasneti_atomic_dblptr_read_hi(p)      gasneti_atomic_ptr_read(&(p)->ptrs.hi_ptr)
+  #endif
+  #ifndef gasneti_atomic_dblptr_cas_lo
+    #define gasneti_atomic_dblptr_cas_lo(v,oldlo,newlo,flags) \
+                         gasneti_atomic_ptr_cas(&(v)->ptrs.lo_ptr,oldlo,newlo,flags)
+  #endif
+  #ifndef gasneti_atomic_dblptr_cas_hi
+    #define gasneti_atomic_dblptr_cas_hi(v,oldhi,newhi,flags) \
+                         gasneti_atomic_ptr_cas(&(v)->ptrs.hi_ptr,oldhi,newhi,flags)
+  #endif
 #endif
 
 
@@ -829,23 +788,124 @@ gasneti_atomic_val_t gasneti_semaphore_trydown_partial(gasneti_semaphore_t *s, g
     }
     #define GASNETI_LIFO_INITIALIZER	{{0,}, gasneti_atomic_dblptr_init(0,0),}
     #define GASNETI_HAVE_ARCH_LIFO	1
+#elif PLATFORM_ARCH_IA64 && PLATFORM_ARCH_64 && GASNETI_HAVE_IA64_CMP8XCHG16
+    /* Use the SCDS (Single-compare, double-swap) cmp8xchg16 instruction added to
+     * the Montecito processors.  The algorithm is essentially the same as w/ CAS,
+     * but the TAG is advanced/checked on both Push and Pop operations.  Note that
+     * we also need the "ld16" (128-bit atomic read) to ensure "tag" and "head" match
+     * (since we only compare on tag).
+     *
+     * We use compiler-specific code for:
+     *   _gasneti_lifo_store16(): cmp8xchg16 w/ tag++ and return 0 on success
+     *   _gasneti_lifo_load16(_addr, _tag, _addr): 16-byte atomic read macro
+     *   _gasneti_lifo_st8_rel(): st8.rel instruction
+     * and implement push/pop in terms of those using compiler-independent code.
+     */
+    #if PLATFORM_COMPILER_HP
+      #include <machine/sys/inline.h>
+	
+      GASNETI_INLINE(_gasneti_lifo_store16)
+      int _gasneti_lifo_store16(void volatile *ptr, uint64_t oldtag, void *newval) {
+	_Asm_mov_to_ar(_AREG_CSD, (int64_t)newval);
+	_Asm_mov_to_ar(_AREG_CCV, (int64_t)oldtag);
+	return oldtag != _Asm_cmp8xchg16(_SEM_ACQ, ptr, (oldtag+1), _LDHINT_NONE, _UNGUARDED,
+                                         (_Asm_fence)(_UP_MEM_FENCE | _DOWN_MEM_FENCE));
+      }
+      #define _gasneti_lifo_load16(_addr, _tag, _head) do { \
+        (_tag) = _Asm_ld16(_LDHINT_NONE, (void *)(_addr), _UNGUARDED); \
+        (_head) = _Asm_mov_from_ar(_AREG_CSD); \
+      } while (0)
+      #define _gasneti_lifo_st8_rel(_addr, _val) \
+	_Asm_st_volatile(_SZ_D, _LDHINT_NONE, (void *)(_addr), (int64_t)(_val))
+
+      #define GASNETI_HAVE_ARCH_LIFO	1
+    #elif PLATFORM_COMPILER_INTEL
+      #include <ia64intrin.h>
+      GASNETI_INLINE(_gasneti_lifo_store16)
+      int _gasneti_lifo_store16(void volatile *ptr, uint64_t oldtag, void *newval) {
+        return oldtag != _InterlockedCompare64Exchange128_acq(ptr, (uint64_t)newval, oldtag+1, oldtag);
+      }
+      #define _gasneti_lifo_load16(_addr, _tag, _head) \
+	((_tag) = __load128((_addr), &(_head)))
+      #define _gasneti_lifo_st8_rel(_addr, _val) \
+	__st8_rel((_addr), (_val))
+
+      #if 0/* XXX: DISABLED UNTIL THIS CAN BE TESTED */
+      #define GASNETI_HAVE_ARCH_LIFO	1
+      #endif
+    #elif PLATFORM_COMPILER_GNU
+      GASNETI_INLINE(_gasneti_lifo_store16)
+      int _gasneti_lifo_store16(void volatile *ptr, uint64_t oldtag, void *newval) {
+	register uint64_t tmp = oldtag + 1;
+        __asm__ __volatile__ (
+          "mov			ar.ccv=%1		\n\t"
+          "mov			ar.csd=%2;;		\n\t"
+          "cmp8xchg16.acq	%0=[%3],%0,ar.csd,ar.ccv\n"
+          : "+r"(tmp) : "r"(oldtag), "r"(newval), "r"(ptr) : "memory" );
+        return tmp != oldtag;
+      }
+      #define _gasneti_lifo_load16(_addr, _tag, _head)        \
+        __asm__ __volatile__ (                                \
+          "ld16		%0,ar.csd=[%2];;\n\t"                 \
+          "mov		%1=ar.csd	\n"                   \
+          : "=r"(_tag), "=r"(_head) : "r"(_addr) : "memory" )
+      #define _gasneti_lifo_st8_rel(_addr, _val) \
+	__asm__ __volatile__ ( "st8.rel [%0]=%1" : : "r"(_addr), "r"(_val) : "memory")
+
+      #define GASNETI_HAVE_ARCH_LIFO	1
+    #else
+      /* Unknown/unsupported compiler - mutexes will be used */
+    #endif
+
+    /* Here are the compiler-independent parts */
+    #ifdef GASNETI_HAVE_ARCH_LIFO /* Only true if compiler-specific parts defined above */
+      typedef struct {
+        void 			*array[3]; /* for 16-byte aligment use either 0+1 or 1+2 */
+        char			_pad[GASNETI_CACHE_PAD(3*sizeof(void *))];
+      } gasneti_lifo_head_t;
+
+      GASNETI_INLINE(_gasneti_lifo_push)
+      void _gasneti_lifo_push(gasneti_lifo_head_t *p, void **head, void **tail) {
+        uint64_t tag, old_head;
+        void *q = (void *)GASNETI_ALIGNUP(p, 16);
+        do {
+          _gasneti_lifo_load16(q, tag, old_head);
+          _gasneti_lifo_st8_rel(tail, old_head);
+        } while (_gasneti_lifo_store16(q, tag, head));
+      }
+      GASNETI_INLINE(_gasneti_lifo_pop)
+      void *_gasneti_lifo_pop(gasneti_lifo_head_t *p) {
+        uint64_t tag, old_head;
+        void *q = (void *)GASNETI_ALIGNUP(p, 16);
+        do {
+          _gasneti_lifo_load16(q, tag, old_head);
+	  if (!old_head) break;
+        } while (_gasneti_lifo_store16(q, tag, *(void **)old_head));
+        return (void *)old_head;
+      }
+      GASNETI_INLINE(_gasneti_lifo_init)
+      void _gasneti_lifo_init(gasneti_lifo_head_t *p) {
+        void **q = (void **)GASNETI_ALIGNUP(p, 16);
+        q[0] = q[1] = NULL;
+      }
+      GASNETI_INLINE(_gasneti_lifo_destroy)
+      void _gasneti_lifo_destroy(gasneti_lifo_head_t *p) {
+        /* NOTHING */
+      }
+      #define GASNETI_LIFO_INITIALIZER	{ { NULL, NULL, NULL} }
+    #endif /* Compiler-independent portion of 64-bit ia64 support */
 #else
   /* The LL/SC algorithm used on the PPC will not work on the Alpha or MIPS, which don't
    * allow for the load we perform between the ll and the sc.  More complex algorithms are
    * probably possible.  I'll continue to look into this.  -PHH 2006.04.19
    *
-   * No Opteron or Itanium support yet because there is no CAS2 or DCSS (double-compare single-swap)
-   * support for 8-byte pointers.  While the x86_64 architecture includes an optional cmpxchg16b
-   * (CAS2), no current CPU implements it.  For ia64, we lack even an optional CAS2 or DCSS.
-   * The CS literature offers many ways to simulate CAS2 or DCSS using just CAS (cmpxchg8b), but
-   * they all are either very complex and/or require thread-specific data to help resolve the ABA
-   * problem.  I'll continue to look into this.  -PHH 2006.01.19
+   * No Itanium support yet because there is no CAS2 or DCSS (double-compare single-swap)
+   * support for 8-byte pointers.  However there are optional ld16, st16 and cmp8xchg16
+   * instructions.  The cmp8xchg16 instruction is a "SCDS" (single-compare double-swap)
+   * that can implement a stack by performing the comparison on the tag (which must be
+   * updated on both PUSH and POP).
    *
-   * Update: Recent Opteron CPUs are implementing their optional CAS2 (cmpxchg16b) instruction,
-   * and recent Itaniums are implementing their optional ld16, st16 and cmp8xchg16 instructions.
-   * The Itanium instruction is a "SCDS" (single-compare double-swap) that can implement a stack
-   * by performing the comparison on the tag (which must now be updated on both PUSH and POP).
-   * -PHH 2007.10.02
+   * We do support x86-64 CPUs which implement their optional CAS2 (cmpxchg16b) instruction.
    *
    * One possible solution for all remaining platforms is "software ll/sc".  Using just pointer
    * CAS, one can implement an ideal LL/SC which allows for arbitrary loads and stores between

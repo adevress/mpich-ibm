@@ -90,15 +90,16 @@
  * Pinning costs under Catamount are minimal and the switch is at about 1KB.
  * Finally, this value must be <= GASNETC_CHUNKSIZE.
  * We check this in an assertion at job startup time.
+ * This is the *default* value, which can be overridden by env var.
  */
 #if PLATFORM_OS_CATAMOUNT
-#define GASNETC_PUTGET_BOUNCE_SIZE 1024
+#define GASNETC_PUTGET_BOUNCE_LIMIT_DFLT 1024
 #else
 /* Under CNL, this value is not yet known.  Assume as large as a CHUNK */
-#define GASNETC_PUTGET_BOUNCE_SIZE GASNETC_CHUNKSIZE
+#define GASNETC_PUTGET_BOUNCE_LIMIT_DFLT GASNETC_CHUNKSIZE
 #endif
-#if (GASNETC_PUTGET_BOUNCE_SIZE > GASNETC_CHUNKSIZE)
-#error "GASNETC_PUTGET_BOUNCE_SIZE MUST BE <= GASNETC_CHUNKSIZE"
+#if (GASNETC_PUTGET_BOUNCE_LIMIT_DFLT > GASNETC_CHUNKSIZE)
+#error "GASNETC_PUTGET_BOUNCE_LIMIT_DFLT MUST BE <= GASNETC_CHUNKSIZE"
 #endif
 
 /* Do we register an EQ handler with a queue or just poll ourselves */
@@ -679,18 +680,6 @@ extern char* ptl_event_str[];
 #endif
 
 /* -----------------------------------------------------------------------------------
- * Used in simple chunk allocator for gasnetc_PtlBuffer_t objects below.
- * The buffer space is decomposed into disjoint chunks.  A chunk on the
- * free list has its first sizeof(void*) bytes, the location of the next
- * chunk on the list.
- * Access to the free list is controlled by a mutex.
- * NOTE: Only ReqSB and RplSB objects are controlled by
- * chunk allocation, others are not.
- */
-typedef union _gasnetc_chunk {
-    uint8_t chunk[GASNETC_CHUNKSIZE];
-    union _gasnetc_chunk *next;
-} gasnetc_chunk_t;
 
 /* The RAR, RARAM, and the AM request/reply send/receive buffers are described by */
 typedef struct {
@@ -706,11 +695,12 @@ typedef struct {
 					* actively using buffer */
 
   /* The following fields are only used in the case of a chunk allocator */
+  /* NOTE: Only ReqSB and RplSB objects are controlled by chunk allocation, others are not. */
   gasneti_mutex_t      lock;           /* locks access to chunk allocator freelist */
   int numchunks;                       /* number of chunks in buffer */
   int inuse;                           /* number of chunks currently in use */
   int hwm;                             /* High water mark of chunk use */
-  gasnetc_chunk_t *freelist;           /* chunk freelist */
+  void **freelist;                     /* chunk freelist */
 } gasnetc_PtlBuffer_t;
 
 /* Thread local data
@@ -731,7 +721,11 @@ typedef struct _gasnetc_threaddata_t {
    * poll on this variable until cleared.  Thread processing the SEND_END event
    * will decrement the count.  Issuing thread ID must be sent in match_bits.
    * Each thread allowed to issue one non-async amlong at a time.  */
-  gasneti_weakatomic_t amlong_data_inflight;
+  gasneti_weakatomic_t amlongReq_data_inflight;
+
+  /* like amlongReq_data_inflight, but for replies (which are always non-async).
+   * A separate counter is required because both may be in flight simultaneously */
+  gasneti_weakatomic_t amlongRep_data_inflight;
 
   /* When (flags & GASNETC_THREAD_HAVE_RPLSB)
    * rplsb_off contains offset of cached request send buffer  */
@@ -822,7 +816,7 @@ extern int gasnetc_chunk_alloc(gasnetc_PtlBuffer_t *buf, size_t nbytes, ptl_size
 extern int gasnetc_chunk_alloc_withpoll(gasnetc_PtlBuffer_t *buf, size_t nbytes, ptl_size_t *offset,
 					int pollcnt, gasnetc_pollflag_t poll_type);
 extern void gasnetc_chunk_free(gasnetc_PtlBuffer_t *buf, ptl_size_t offset);
-extern ptl_handle_md_t gasnetc_alloc_tmpmd(void* dest, size_t nbytes, ptl_handle_eq_t eq_h);
+extern ptl_handle_md_t gasnetc_alloc_tmpmd(void* dest, size_t nbytes);
 extern void gasnetc_free_tmpmd(ptl_handle_md_t md_h);
 extern void gasnetc_init_portals_network(int *argc, char ***argv);
 extern uintptr_t gasnetc_portalsMaxPinMem(void);
@@ -860,8 +854,6 @@ extern void gasnetc_dump_credits(int epoch_count);
 extern void gasnetc_print_scavenge_list(void);
 extern void gasnetc_scavenge_list_remove(gasnet_node_t node);
 extern void gasnetc_scavenge_list_add(gasnet_node_t node, int locked);
-extern gasnetc_eq_t* gasnetc_eq_alloc(long num_events, const char* name, ptl_eq_handler_t hndlr);
-extern void gasnetc_eq_free(gasnetc_eq_t *eq);
 
 /* Inline Function Definitions */
 GASNETI_INLINE(gasnetc_compute_credits)
@@ -924,23 +916,13 @@ int gasnetc_in_local_rar(uint8_t* pstart, size_t n)
   return (pstart >= start) && (pend <= end);
 }
 
-GASNETI_INLINE(gasnetc_try_alloc_tmpmd)
-int gasnetc_try_alloc_tmpmd(void* start, size_t nbytes, ptl_handle_eq_t eq_h, ptl_handle_md_t *md_h)
-{
-  if (gasnetc_alloc_ticket(&gasnetc_tmpmd_tickets)) {
-    *md_h = gasnetc_alloc_tmpmd(start,nbytes,eq_h);
-    return 1;
-  }
-  return 0;
-}
-
 GASNETI_INLINE(gasnetc_alloc_tmpmd_withpoll)
-ptl_handle_md_t gasnetc_alloc_tmpmd_withpoll(void* start, size_t nbytes, ptl_handle_eq_t eq_h)
+ptl_handle_md_t gasnetc_alloc_tmpmd_withpoll(void* start, size_t nbytes)
 {
   while (! gasnetc_alloc_ticket(&gasnetc_tmpmd_tickets)) {
     gasnetc_portals_poll(GASNETC_SAFE_POLL);
   }
-  return gasnetc_alloc_tmpmd(start, nbytes, eq_h);
+  return gasnetc_alloc_tmpmd(start, nbytes);
 }
 
 GASNETI_INLINE(gasnetc_get_event)
@@ -985,7 +967,8 @@ gasnetc_threaddata_t* gasnetc_new_threaddata(gasnete_threadidx_t idx)
   th->tmpmd_tickets = 0;
   th->snd_credits = 0;
   th->rplsb_off = -9999;     /* bogus value */
-  gasneti_weakatomic_set(&th->amlong_data_inflight, 0, 0);
+  gasneti_weakatomic_set(&th->amlongReq_data_inflight, 0, 0);
+  gasneti_weakatomic_set(&th->amlongRep_data_inflight, 0, 0);
   return th;
 }
 

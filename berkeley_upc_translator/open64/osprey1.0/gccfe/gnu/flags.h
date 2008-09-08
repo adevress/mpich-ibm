@@ -19,6 +19,10 @@ along with GNU CC; see the file COPYING.  If not, write to
 the Free Software Foundation, 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
 /* Name of the input .c file being compiled.  */
 extern const char *main_input_filename;
 
@@ -580,5 +584,9 @@ extern enum graph_dump_types graph_dump_format;
 /* Nonzero means ignore `#ident' directives.  0 means handle them.
    On SVR4 targets, it also controls whether or not to emit a
    string identifying the compiler.  */
+
+#if defined(__cplusplus)
+};
+#endif
 
 extern int flag_no_ident;

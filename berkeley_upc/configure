@@ -951,6 +951,8 @@ Optional Features:
   --disable-ibv               support running over OpenIB/OpenFabrics IB Verbs
   --enable-portals            support running over Cray Portals
   --disable-portals           support running over Cray Portals
+  --enable-dcmf               support running over IBM DCMF
+  --disable-dcmf              support running over IBM DCMF
 
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
@@ -2266,7 +2268,7 @@ ac_configure_args="$ac_configure_args --prefix="$ac_default_prefix""
    # ensure we report the correct target tuple
    *-apple-darwin*)
      _GASNET_GCCVER=`${CC:-gcc} -v 2>&1`
-     _GASNET_GCCISAPPLE=`echo "$_GASNET_GCCVER" | grep 'gcc version' | grep 'Apple Computer'`
+     _GASNET_GCCISAPPLE=`echo "$_GASNET_GCCVER" | grep 'gcc version' | grep 'Apple '`
      _GASNET_GCCTARGET=`echo "$_GASNET_GCCVER" | /usr/bin/perl -ne 'print \$1 if (m/--target=(\S+)/);'`
      _GASNET_GCCCPU=`echo "$_GASNET_GCCVER" | /usr/bin/perl -ne 'print \$1 if (m/--target=([^-]+)/);'`
      if test "$_GASNET_GCCISAPPLE" -a "$_GASNET_GCCTARGET" -a "$_GASNET_GCCCPU" ; then
@@ -36149,6 +36151,33 @@ esac
 
 
 
+
+
+
+# vvvvvvvvvvvvvvvvvvvvvv GASNET_IF_ENABLED_WITH_AUTO(dcmf,...) vvvvvvvvvvvvvvvvvvvvvv (L:1)
+
+# Check whether --enable-dcmf or --disable-dcmf was given.
+if test "${enable_dcmf+set}" = set; then
+  enableval="$enable_dcmf"
+
+fi;
+# Check whether --enable-dcmf or --disable-dcmf was given.
+if test "${enable_dcmf+set}" = set; then
+  enableval="$enable_dcmf"
+
+fi;
+case "$enable_dcmf" in
+  no)   ;;
+  yes)  ;;
+  *)    ;;
+esac
+
+# ^^^^^^^^^^^^^^^^^^^^^^ GASNET_IF_ENABLED_WITH_AUTO(dcmf,...) ^^^^^^^^^^^^^^^^^^^^^^ (L:1)
+
+
+
+
+
 echo "--------------------- Configuring GASNet -------------------------"
 CONDUIT_LIST=$TOP_BUILDDIR/.upcr-conduit-list.tmp
 CONDUIT_LIST_SUPPRESS=yes
@@ -36353,8 +36382,8 @@ TARGETLIBS=
 ASSISTANTLIBS=
 for conduit in $CONDUITS; do
     if test $conduit = "shmem"; then
-        TARGETLIBS="libupcr-$conduit-seq.a $TARGETLIBS"
-    else
+			 TARGETLIBS="libupcr-$conduit-seq.a $TARGETLIBS"
+		else
         for parseq in $PARSEQ; do
             TARGETLIBS="libupcr-$conduit-$parseq.a $TARGETLIBS"
         done

@@ -28,7 +28,7 @@ typedef enum {
 /* UPC specific */
 extern TY_IDX shared_ptr_idx;
 extern TY_IDX pshared_ptr_idx;
-extern int compiling_upc;
+extern "C" int compiling_upc;
 
 
 /* synchronization */

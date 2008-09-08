@@ -1,6 +1,6 @@
 /*   $Source: /var/local/cvs/gasnet/gasnet_timer.h,v $
- *     $Date: 2007/06/11 20:00:22 $
- * $Revision: 1.82 $
+ *     $Date: 2008/01/29 05:46:36 $
+ * $Revision: 1.86 $
  * Description: GASNet Timer library (Internal code, not for client use)
  * Copyright 2002, Dan Bonachea <bonachea@cs.berkeley.edu>
  * Terms of use are as specified in license.txt
@@ -238,6 +238,56 @@ GASNETI_BEGIN_EXTERNC
     gasneti_assert(gasneti_tick_p);
     return (uint64_t)(st * gasneti_timer_tick);
   }
+/* ------------------------------------------------------------------------------------ */
+#elif GASNETI_ARCH_SICORTEX && 0
+ #if 0
+  /* this unfortunately does not currently work because the cycle counters 
+   * are apparently not synchronized across CPUs, so process migration across cores breaks it */
+  typedef uint64_t gasneti_tick_t;
+  GASNETI_INLINE(gasneti_ticks_now)
+  gasneti_tick_t gasneti_ticks_now() {
+    gasneti_tick_t _count = 0;
+    __asm__ __volatile__(".set push \n"
+                         ".set mips32r2\n"
+                         "rdhwr $3, $30 \n"
+                         "move %0, $3 \n"
+                         ".set pop" : "=r"(_count) : : "$3");
+    return _count;
+  }
+
+  GASNETI_INLINE(gasneti_ticks_to_ns)
+  uint64_t gasneti_ticks_to_ns(gasneti_tick_t ticks) {
+    static int firsttime = 1;
+    static double adjust;
+    if_pf(firsttime) {
+      /* hard-coded frequency for now */
+      #ifndef GASNETI_CPU_CLOCK_MHZ
+      #define GASNETI_CPU_CLOCK_MHZ 500
+      #endif
+      double freq = GASNETI_CPU_CLOCK_MHZ;
+      /* cycle counter runs at half of core clock speed */
+      adjust = 2.0E3/freq;
+      gasneti_sync_writes();
+      firsttime = 0;
+    } else gasneti_sync_reads();
+    return (uint64_t)(((double)ticks) * adjust);
+  }
+ #else /* this works, but performs no better than gettimeofday and seems less robust */
+  #include <asm/unistd.h>
+  #include <time.h>
+  typedef uint64_t gasneti_tick_t;
+  GASNETI_INLINE(gasneti_ticks_now)
+  gasneti_tick_t gasneti_ticks_now() {
+    gasneti_tick_t retval;
+    struct timespec foo;
+    syscall(__NR_clock_gettime,CLOCK_REALTIME,&foo);
+    retval = (gasneti_tick_t)foo.tv_sec*(gasneti_tick_t)1000000000;
+    retval += (gasneti_tick_t)foo.tv_nsec;
+    return retval;
+  }   
+  #define gasneti_ticks_to_ns(x) (x)
+ #endif
+/* ------------------------------------------------------------------------------------ */
 #elif (PLATFORM_OS_LINUX || PLATFORM_OS_CNL || PLATFORM_OS_CATAMOUNT || PLATFORM_OS_OPENBSD || \
        (PLATFORM_OS_FREEBSD && GASNETI_HAVE_SYSCTL_MACHDEP_TSC_FREQ)) && \
      (PLATFORM_COMPILER_GNU || PLATFORM_COMPILER_INTEL || PLATFORM_COMPILER_SUN || \
@@ -363,7 +413,7 @@ GASNETI_BEGIN_EXTERNC
 /* ------------------------------------------------------------------------------------ */
 #elif PLATFORM_ARCH_POWERPC && \
       ( PLATFORM_COMPILER_GNU || PLATFORM_COMPILER_XLC ) && \
-      ( PLATFORM_OS_LINUX || PLATFORM_OS_BLRTS )
+      ( PLATFORM_OS_LINUX || PLATFORM_OS_BLRTS || PLATFORM_OS_BGP )
   /* Use the 64-bit "timebase" register on both 32- and 64-bit PowerPC CPUs */
   #include <sys/types.h>
   #include <dirent.h>
@@ -436,6 +486,9 @@ GASNETI_BEGIN_EXTERNC
      #if PLATFORM_OS_BLRTS
       /* don't know how to query this, so hard-code it for now */
       freq = 700000000;
+     #elif PLATFORM_OS_BGP
+      /* don't know how to query this, so hard-code it for now */
+      freq = 850000000;
      #else 
       DIR *dp = opendir("/proc/device-tree/cpus");
       struct dirent *de = NULL;
@@ -537,20 +590,32 @@ GASNETI_BEGIN_EXTERNC
     return (uint64_t)(st * freq);
   }
 /* ------------------------------------------------------------------------------------ */
-#elif PLATFORM_ARCH_MICROBLAZE && defined(MB_CC)
+#elif PLATFORM_ARCH_MICROBLAZE && (defined(MB_CC) || defined(MB_FSL_CC))
   typedef uint64_t gasneti_tick_t;
   GASNETI_INLINE(gasneti_ticks_now)
   gasneti_tick_t gasneti_ticks_now() {
     unsigned int msr, tmp;
     gasneti_tick_t retval;
 
-    asm volatile ("mfs %0, rmsr\n\t"
-                  "andi %1, %0, ~2\n\t"
-                  "mts rmsr, %1\n\t"
-                  "mfchl %M2\n\t"
-                  "mfccl %L2\n\t"
-                  "mts rmsr, %0\n\t"
-                  : "=r"(msr), "=r"(tmp), "=r"(retval));
+    #if defined(MB_CC)
+      __asm__ __volatile__("mfs %0, rmsr\n\t"
+                           "andi %1, %0, ~2\n\t"
+                           "mts rmsr, %1\n\t"
+                           "mfchl %M2\n\t"
+                           "mfccl %L2\n\t"
+                           "mts rmsr, %0\n\t"
+                           : "=r"(msr), "=r"(tmp), "=r"(retval)
+                           : /* no inputs */);
+    #elif defined(MB_FSL_CC)
+      __asm__ __volatile__("mfs %0, rmsr\n\t"
+                           "andi %1, %0, ~2\n\t"
+                           "mts rmsr, %1\n\t"
+                           "get %M2, rfsl6\n\t"
+                           "cget %L2, rfsl7\n\t"
+                           "mts rmsr, %0\n\t"
+                           : "=r"(msr), "=r"(tmp), "=r"(retval)
+                           : /* no inputs */);
+    #endif
     return retval;
   }
 
@@ -559,8 +624,8 @@ GASNETI_BEGIN_EXTERNC
     unsigned int h0 = (unsigned int) (st >> 32);
     unsigned int l0 = (unsigned int) (st >>  0);
 
-    if (h0 == 0) return (((gasneti_tick_t) l0) / 100);
-    else return (st / 100);
+    if (h0 == 0) return (((gasneti_tick_t) l0) / MB_TICKS_PER_US);
+    else return (st / MB_TICKS_PER_US);
   }
 
   GASNETI_INLINE(gasneti_ticks_to_ns)
@@ -568,8 +633,8 @@ GASNETI_BEGIN_EXTERNC
     unsigned int h0 = (unsigned int) (st >> 32);
     unsigned int l0 = (unsigned int) (st >>  0);
 
-    if (h0 == 0) return (((gasneti_tick_t) l0) * 10);
-    else return (st * 10);
+    if (h0 == 0) return (((gasneti_tick_t) l0) * (1000 / MB_TICKS_PER_US));
+    else return (st * (1000 / MB_TICKS_PER_US));
   }
 /* ------------------------------------------------------------------------------------ */
 #elif defined(_POSIX_TIMERS) && 0
