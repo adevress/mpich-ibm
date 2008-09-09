@@ -14,6 +14,8 @@ MPIDI_CollectiveProtocol_t MPIDI_CollectiveProtocols;
 #warning reasonable hack for now
 #define MAXGEOMETRIES 65536
 
+int dcmf_thread_level = -1;
+
 static DCMF_Geometry_t *mpid_geometrytable[MAXGEOMETRIES];
 
 /*
@@ -555,16 +557,23 @@ void MPIDI_Coll_Comm_create (MPID_Comm *comm)
 
   /* let us assume global context is comm_world */
   global = 1;
-  
-   if(MPIR_ThreadInfo.thread_provided == MPI_THREAD_MULTIPLE)
-   {
-      DCMF_INFO_SET(comm_prop, DCMF_THREADED_MODE);
-      DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_DPUT_BCAST);
-      DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_SINGLETH_BCAST);
-      DCMF_INFO_UNSET(comm_prop, DCMF_USE_BINOM_SINGLETH_BCAST);
-      if(comm != comm_world)
-       global = 0;
-    }
+
+
+  /* initial value is -1 to indicate this variable has not been set yet */
+  if (dcmf_thread_level < 0)
+  {
+    if (MPIR_ThreadInfo.thread_provided == MPI_THREAD_MULTIPLE)
+      dcmf_thread_level = 1; /* it is multi threaded */
+    else
+      dcmf_thread_level = 0; 
+  }
+
+  if (dcmf_thread_level > 0)
+  {
+    DCMF_INFO_SET(comm_prop, DCMF_THREADED_MODE);
+    if(comm != comm_world)
+      global = 0;
+  }
   else /* single MPI thread. */
   {
     DCMF_INFO_SET(comm_prop, DCMF_SINGLE_THREAD_MODE);
@@ -693,7 +702,7 @@ void MPIDI_Coll_Comm_create (MPID_Comm *comm)
     */
     DCMF_INFO_OR(coll_prop, comm_prop);
 
-   if(MPIR_ThreadInfo.thread_provided == MPI_THREAD_MULTIPLE)
+   if(dcmf_thread_level > 0)
    {
       DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_DPUT_BCAST);
       DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_SINGLETH_BCAST);
