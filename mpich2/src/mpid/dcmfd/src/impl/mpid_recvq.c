@@ -421,7 +421,6 @@ MPID_Request * MPIDI_Recvq_FDU_or_AEP(int source, int tag, int context_id, int *
         rreq = MPID_Request_create();
         if (rreq != NULL)
         {
-            MPIU_Object_set_ref(rreq, 2);
             rreq->kind = MPID_REQUEST_RECV;
             MPID_Request_setMatch(rreq, tag, source, context_id);
             rreq->dcmf.next = NULL;
@@ -563,7 +562,6 @@ MPID_Request * MPIDI_Recvq_FDP_or_AEU(int source, int tag, int context_id, int *
         rreq = MPID_Request_create();
         if (rreq != NULL)
         {
-            MPIU_Object_set_ref(rreq, 2);
             rreq->kind = MPID_REQUEST_RECV;
             MPID_Request_setMatch(rreq, tag, source, context_id);
             rreq->dcmf.next = NULL;

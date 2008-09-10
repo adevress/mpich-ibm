@@ -269,7 +269,6 @@ _dt_contig_out, _data_sz_out, _dt_ptr, _dt_true_lb)             \
  */
 
 MPID_Request * MPID_Request_create        ();
-MPID_Request * MPID_SendRequest_create    ();
 void           MPID_Request_release       (MPID_Request *req);
 
 /* completion count */

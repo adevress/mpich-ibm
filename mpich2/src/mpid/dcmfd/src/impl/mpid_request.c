@@ -74,13 +74,6 @@ MPID_Request * MPID_Request_create()
   return req;
 }
 
-MPID_Request * MPID_SendRequest_create()
-{
-  MPID_Request *sreq = MPID_Request_create();
-  MPIU_Object_set_ref(sreq, 2);
-  return sreq;
-}
-
 /* *********************************************************************** */
 /*           destroy a request                                             */
 /* *********************************************************************** */
@@ -108,11 +101,8 @@ void MPID_Request_complete (MPID_Request *req)
   int cc;
   MPID_Request_decrement_cc(req, &cc);
   MPID_assert(cc >= 0);
-  if (cc == 0) /* decrement completion count; if 0, release request */
-    {
-      MPID_Request_release(req);
+  if (cc == 0) /* decrement completion count; if 0, signal progress engine */
       MPID_Progress_signal();
-    }
 }
 
 void MPID_Request_set_completed (MPID_Request *req)

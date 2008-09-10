@@ -80,8 +80,7 @@ MPIDI_Irecv_rsm(void          * buf,
                                 datatype,
                                 (MPIDI_msg_sz_t*)&rreq->status.count,
                                 &rreq->status.MPI_ERROR);
-          MPID_Request_set_completed(sreq);
-          MPID_Request_release(sreq);
+          MPID_Request_complete(sreq);
           /* no other thread can possibly be waiting on rreq,
              so it is safe to reset ref_count and cc */
           rreq->cc = 0;

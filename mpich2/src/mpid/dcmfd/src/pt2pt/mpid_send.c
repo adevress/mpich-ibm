@@ -75,7 +75,7 @@ int MPID_Send(const void    * buf,
   /* create a send request */
   /* --------------------- */
 
-  if (!(sreq = MPID_SendRequest_create ()))
+  if (!(sreq = MPID_Request_create ()))
     {
       *request = NULL;
       int mpi_errno = MPIR_Err_create_code(MPI_SUCCESS,
