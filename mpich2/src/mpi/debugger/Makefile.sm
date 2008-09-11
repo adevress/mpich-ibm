@@ -10,13 +10,19 @@ tvtest_LDADD = -L../../../lib -l$(MPILIBNAME)
 qdemo_SOURCES = qdemo.c
 EXTRA_PROGRAMS = tvtest qdemo
 
+ifeq ($(shell gcc -dumpmachine|sed 's/-.*//'),powerpc64)
+  MACH_64 = -m64
+else
+  MACH_64 =
+endif
+
 lib${MPILIBNAME}_a_SOURCES = dbginit.c
 # There is no static debugger interface library
 ## note: simplemake needs to see a literal "lib" here...
 lib@debugger_lib@_so_SOURCES = dll_mpich2.c
 # Force a custom target
 ./lib@debugger_lib@.@SHLIB_EXT@: ./lib@debugger_lib@.la
-	(cd . && $(CREATESHLIB) --mode=link -cc="@CC_SHL_DBG@" -clink="@C_LINK_SHL_DBG@" -o lib@debugger_lib@.la  -rpath $(libdir) )
+	(cd . && $(CREATESHLIB) --mode=link -cc="gcc -fpic $(MACH_64)" -clink="gcc -shared $(MACH_64)" -o lib@debugger_lib@.la  -rpath $(libdir) )
 
 INCLUDES = -I../../include -I${top_srcdir}/src/include
 profilelib_${MPILIBNAME} = ${PMPILIBNAME}
@@ -31,7 +37,7 @@ dbginit.o: $(srcdir)/dbginit.c
 #
 # We require special steps to compile the debugger interface library.
 dll_mpich2.lo: $(srcdir)/dll_mpich2.c $(srcdir)/mpich2_dll_defs.h
-	@CC_SHL_DBG@ $(DEFS) $(INCLUDES) $(CFLAGS) $(CPPFLAGS) -g -c $(srcdir)/dll_mpich2.c -o _sdll_mpich2.o
+	gcc -fpic $(MACH_64) $(DEFS) $(INCLUDES) $(CPPFLAGS) -g -O3 -c $(srcdir)/dll_mpich2.c -o _sdll_mpich2.o
 	@mv -f _sdll_mpich2.o dll_mpich2.lo
 #
 # We may want to add some documentation on using the various debugger
