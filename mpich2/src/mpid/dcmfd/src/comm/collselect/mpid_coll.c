@@ -9,12 +9,12 @@
 
 MPIDI_CollectiveProtocol_t MPIDI_CollectiveProtocols;
 
+int dcmf_thread_level = -1;
+
 #ifdef USE_CCMI_COLL
 
 #warning reasonable hack for now
 #define MAXGEOMETRIES 65536
-
-int dcmf_thread_level = -1;
 
 static DCMF_Geometry_t *mpid_geometrytable[MAXGEOMETRIES];
 
