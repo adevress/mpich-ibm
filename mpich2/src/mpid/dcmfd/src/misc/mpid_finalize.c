@@ -19,7 +19,8 @@ int MPID_Finalize()
   MPID_Comm * comm;
   MPID_Comm_get_ptr(MPI_COMM_WORLD, comm);
 
-  MPIR_Barrier(comm);
+  PMPI_Barrier(MPI_COMM_WORLD);
+  //  MPIR_Barrier(comm);
 
   STAR_FreeMem(comm);
 

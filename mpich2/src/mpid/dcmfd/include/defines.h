@@ -325,6 +325,12 @@ extern int DCMF_INFO_MET(DCMF_Embedded_Info_Set *s, DCMF_Embedded_Info_Set *d);
 
 #define DCMF_USE_RECT_DPUT_ALLGATHERV                                    111
 
+#define DCMF_ALLGATHER_ENVVAR                                            112
+
+#define DCMF_ALLGATHERV_ENVVAR                                           113
+
+#define DCMF_REDUCE_ENVVAR                                               114
+
 
 
 enum DCMF_SUPPORTED {

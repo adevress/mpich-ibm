@@ -35,6 +35,7 @@ MPIDO_Allreduce(void * sendbuf,
     return MPI_SUCCESS;
   /* quick exit conditions */
   if (DCMF_INFO_ISSET(properties, DCMF_USE_MPICH_ALLREDUCE) ||
+      DCMF_INFO_ISSET(properties, DCMF_IRREG_COMM) ||
       HANDLE_GET_KIND(op) != HANDLE_KIND_BUILTIN)
     return MPIR_Allreduce(sendbuf, recvbuf, count, datatype, op, comm);
 
@@ -77,41 +78,32 @@ MPIDO_Allreduce(void * sendbuf,
       {
         func = MPIDO_Allreduce_pipelined_tree;
       }
+
     }
     if(!func && (op_type_support == DCMF_TORUS_SUPPORT ||
                  op_type_support == DCMF_TREE_SUPPORT))
     {
-      if (data_size < 128 || userenvset)
+      if (data_size <= 128 || userenvset)
       {
         if (DCMF_INFO_ISSET(properties, DCMF_USE_ABINOM_ALLREDUCE))
         {
           func = MPIDO_Allreduce_async_binom;
         }
-        else if (DCMF_INFO_ISSET(properties, DCMF_USE_BINOM_ALLREDUCE))
-        {
-          func = MPIDO_Allreduce_binom;
-        }
       }
-      if(!func && (data_size < 32768 || userenvset))
+      
+      if(!func && (data_size <= 16384 || userenvset))
       {
         if (DCMF_INFO_ISSET(properties, DCMF_USE_ARECT_ALLREDUCE))
         {
           func = MPIDO_Allreduce_async_rect;
         }
-        else if (DCMF_INFO_ISSET(properties, DCMF_USE_RECT_ALLREDUCE))
-        {
-          func = MPIDO_Allreduce_rect;
-        }
       }
+      
       if(!func)
       {
         if (DCMF_INFO_ISSET(properties, DCMF_USE_ARECTRING_ALLREDUCE))
         {
           func = MPIDO_Allreduce_async_rectring;
-        }
-        else if (DCMF_INFO_ISSET(properties, DCMF_USE_RECTRING_ALLREDUCE))
-        {
-          func = MPIDO_Allreduce_rectring;
         }
       }
     }

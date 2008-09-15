@@ -26,7 +26,7 @@ MPIDO_Allgather(void *sendbuf,
    * *********************************
    */
   
-  allgather_fptr func;
+  allgather_fptr func = NULL;
   DCMF_Embedded_Info_Set * coll_prop = &MPIDI_CollectiveProtocols.properties;
   DCMF_Embedded_Info_Set * comm_prop = &(comm->dcmf.properties);
   MPIDO_Coll_config config = {1,1,1,1};
@@ -36,6 +36,9 @@ MPIDO_Allgather(void *sendbuf,
   size_t send_size = 0;
   size_t recv_size = 0;
 
+  unsigned char userenvset = DCMF_INFO_ISSET(comm_prop,
+                                             DCMF_ALLGATHER_ENVVAR);
+
   char use_tree_reduce, use_tree_bcast, use_alltoall; 
   char use_rect_async, use_binom_async;
 
@@ -43,11 +46,12 @@ MPIDO_Allgather(void *sendbuf,
   int rc;
 
   /* no optimized allgather, punt to mpich */
+  
   if (DCMF_INFO_ISSET(comm_prop, DCMF_USE_MPICH_ALLGATHER))
     return MPIR_Allgather(sendbuf, sendcount, sendtype,
 			  recvbuf, recvcount, recvtype,
 			  comm);
-
+  
   if ((sendcount < 1 && sendbuf != MPI_IN_PLACE) || recvcount < 1)
     return MPI_SUCCESS;
    
@@ -88,74 +92,50 @@ MPIDO_Allgather(void *sendbuf,
   /* Here is the Default code path or if coming from within another coll */
   if (!STAR_info.enabled || STAR_info.internal_control_flow) 
   {
-    config.largecount = (sendcount > 32768);  
-    
-    use_tree_reduce = DCMF_INFO_ISSET(comm_prop, DCMF_USE_TREE_ALLREDUCE) &&
-      DCMF_INFO_ISSET(comm_prop, DCMF_USE_ALLREDUCE_ALLGATHER)&&
-      config.recv_contig &&
-      config.send_contig &&
-      config.recv_continuous &&
-      recv_size % sizeof(int) == 0;
-
-
-    use_tree_bcast = DCMF_INFO_ISSET(comm_prop, DCMF_USE_TREE_BCAST) &&
-      DCMF_INFO_ISSET(comm_prop, DCMF_USE_BCAST_ALLGATHER);
-  
     use_alltoall = DCMF_INFO_ISSET(comm_prop, DCMF_USE_TORUS_ALLTOALL) &&
-      DCMF_INFO_ISSET(comm_prop, DCMF_USE_ALLTOALL_ALLGATHER) &&
-      config.recv_contig && config.send_contig;
-  
-    use_binom_async = DCMF_INFO_ISSET(comm_prop,
-                                      DCMF_USE_ABINOM_BCAST_ALLGATHER) &&
-      DCMF_INFO_ISSET(comm_prop, DCMF_USE_ABINOM_BCAST) &&
-      config.recv_contig &&
-      config.send_contig;
+                   DCMF_INFO_ISSET(comm_prop, DCMF_USE_ALLTOALL_ALLGATHER) &&
+                   config.recv_contig && config.send_contig;
+
+    use_tree_reduce = DCMF_INFO_ISSET(comm_prop,
+                                      DCMF_USE_TREE_ALLREDUCE) &&
+                      DCMF_INFO_ISSET(comm_prop,
+                                      DCMF_USE_ALLREDUCE_ALLGATHER)&&
+                      config.recv_contig &&
+                      config.send_contig &&
+                      config.recv_continuous &&
+                      recv_size % sizeof(int) == 0;
 
     use_rect_async = DCMF_INFO_ISSET(comm_prop, 
                                      DCMF_USE_ARECT_BCAST_ALLGATHER) &&
-      DCMF_INFO_ISSET(comm_prop, DCMF_USE_ARECT_BCAST) &&
-      config.recv_contig &&
-      config.send_contig;
-    
-    /*
-      Benchmark data shows bcast is faster for larger messages, so if
-      both bcast and reduce are available, use bcast >32768
-    */
-    if (use_tree_reduce && use_tree_bcast)
-      if (config.largecount)
-        func = MPIDO_Allgather_bcast;
-      else
+                     DCMF_INFO_ISSET(comm_prop, DCMF_USE_ARECT_BCAST) &&
+                     config.recv_contig &&
+                     config.send_contig;
+
+    if (sendcount <= 512 || userenvset)
+    {
+      if (use_alltoall && !use_tree_reduce)
+        func = MPIDO_Allgather_alltoall;
+      if (!func && use_tree_reduce)
         func = MPIDO_Allgather_allreduce;
-    
-    /* we only can use allreduce, so use it regardless of size */
-    else if (use_tree_reduce)
-      func = MPIDO_Allgather_allreduce;
-    
-    /* or, we can only use tree, or sync version of rect and binom */
-    else if (use_tree_bcast && !use_rect_async && !use_binom_async)
-      func = MPIDO_Allgather_bcast;
-    
-    /* no tree protocols (probably not comm_world) so use alltoall */
-    else if (use_alltoall)
-      func = MPIDO_Allgather_alltoall;
-    
-    else if (use_rect_async)
-      if (!config.largecount)
+    }
+
+    if (!func && (sendcount <= 1024 || userenvset))
+    {
+      if (use_tree_reduce)
+        func = MPIDO_Allgather_allreduce;
+      if (!func && use_rect_async)
         func = MPIDO_Allgather_bcast_rect_async;
-      else
-        func = MPIDO_Allgather_bcast;
-    
-    else if(use_binom_async)
-      if (!config.largecount)
-        func = MPIDO_Allgather_bcast_binom_async;
-      else
-        func = MPIDO_Allgather_bcast;
-    
-    else
+    }
+
+    if (!func && sendcount > 1024)
+      if (use_rect_async)
+        func = MPIDO_Allgather_bcast_rect_async;
+
+    if (!func)
       return MPIR_Allgather(sendbuf, sendcount, sendtype,
                             recvbuf, recvcount, recvtype,
                             comm);
-  
+
     rc = (func)(sendbuf, sendcount, sendtype, recvbuf, recvcount, recvtype,
                 send_true_lb, recv_true_lb, send_size, recv_size, comm);
   }  

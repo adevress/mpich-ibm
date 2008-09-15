@@ -483,7 +483,7 @@ void STAR_InitRepositories()
 			    "gather_reduce",
 			    DCMF_USE_REDUCE_GATHER, DCMF_END_ARGS);
 
-  /* algorithms for gather */
+  /* algorithms for scatter */
   curr = 0;
   num = 1;
   STAR_info.scatter_algorithms = num;

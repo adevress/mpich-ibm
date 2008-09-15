@@ -25,6 +25,7 @@ int MPIDO_Reduce(void * sendbuf,
   int success = 1, rc = 0, op_type_support;
   int data_contig, data_size = 0;
   unsigned char reset_sendbuff = 0;
+  int userenvset = DCMF_INFO_ISSET(properties, DCMF_REDUCE_ENVVAR);
   MPID_Datatype * data_ptr;
   MPI_Aint data_true_lb = 0;
 
@@ -71,7 +72,6 @@ int MPIDO_Reduce(void * sendbuf,
   {
     extern int DCMF_TREE_SMP_SHORTCUT;
 
-  
     if (op_type_support == DCMF_TREE_SUPPORT &&
         DCMF_INFO_ISSET(properties, DCMF_USE_TREE_REDUCE))
     {
@@ -81,28 +81,27 @@ int MPIDO_Reduce(void * sendbuf,
 	func = MPIDO_Reduce_tree;
     }
   
-    else if (op_type_support == DCMF_TORUS_SUPPORT ||
-             op_type_support == DCMF_TREE_SUPPORT)
+    if (!func &&
+        (op_type_support == DCMF_TORUS_SUPPORT ||
+         op_type_support == DCMF_TREE_SUPPORT))
     {
-      if (DCMF_INFO_ISSET(properties, DCMF_USE_RECT_REDUCE))
-	func = MPIDO_Reduce_rect;
+      if (data_size <= 32768 || userenvset)
+      {
+        if (DCMF_INFO_ISSET(properties, DCMF_USE_BINOM_REDUCE))
+          func = MPIDO_Reduce_binom;
+      }
       
-      else if (DCMF_INFO_ISSET(properties, DCMF_USE_RECTRING_REDUCE) &&
-	       count > 16384)
-	func = MPIDO_Reduce_rectring;
-      
-      else if (DCMF_INFO_ISSET(properties, DCMF_USE_BINOM_REDUCE))
-	func = MPIDO_Reduce_binom;
+      if (!func && (data_size > 32768 || userenvset))
+      {
+        if (DCMF_INFO_ISSET(properties, DCMF_USE_RECTRING_REDUCE))
+          func = MPIDO_Reduce_rectring;
+      }
     }
   
     if (func)
       rc = (func)(sendbuf, recvbuf, count, dcmf_data,
                   dcmf_op, datatype, root, comm);      
-  
-    /* 
-       if datatype or op are not device specific, or no func was found,
-       default to mpich 
-    */
+
     else
     {
       if (reset_sendbuff) sendbuf = MPI_IN_PLACE;

@@ -23,7 +23,7 @@ MPIDO_Allgatherv(void *sendbuf,
 		 MPID_Comm * comm)
 {
   /* function pointer to be used to point to approperiate algorithm */
-  allgatherv_fptr func;
+  allgatherv_fptr func = NULL;
 
   /* Check the nature of the buffers */
   MPID_Datatype *dt_null = NULL;
@@ -39,6 +39,9 @@ MPIDO_Allgatherv(void *sendbuf,
 
   DCMF_Embedded_Info_Set * comm_prop = &(comm->dcmf.properties);
   DCMF_Embedded_Info_Set * coll_prop = &MPIDI_CollectiveProtocols.properties;
+
+  unsigned char userenvset = DCMF_INFO_ISSET(comm_prop,
+                                             DCMF_ALLGATHERV_ENVVAR);
 
   if (DCMF_INFO_ISSET(comm_prop, DCMF_USE_MPICH_ALLGATHERV))
     return MPIR_Allgatherv(sendbuf, sendcount, sendtype,
@@ -94,34 +97,69 @@ MPIDO_Allgatherv(void *sendbuf,
 
   if (!STAR_info.enabled || STAR_info.internal_control_flow)
   {
-    config.largecount = (sendcount > 65536);
-    
     use_tree_reduce = DCMF_INFO_ISSET(comm_prop, DCMF_USE_TREE_ALLREDUCE) &&
-      DCMF_INFO_ISSET(comm_prop, DCMF_USE_ALLREDUCE_ALLGATHERV)&&
-      config.recv_contig &&
-      config.send_contig &&
-      config.recv_continuous &&
-      buffer_sum % sizeof(int) == 0;
-    
-    
-    use_tree_bcast = DCMF_INFO_ISSET(comm_prop, DCMF_USE_TREE_BCAST) &&
-      DCMF_INFO_ISSET(comm_prop, DCMF_USE_BCAST_ALLGATHERV);
+                      DCMF_INFO_ISSET(comm_prop,
+                                      DCMF_USE_ALLREDUCE_ALLGATHERV) &&
+                      config.recv_contig &&
+                      config.send_contig &&
+                      config.recv_continuous &&
+                      buffer_sum % sizeof(int) == 0;
     
     use_alltoall = DCMF_INFO_ISSET(comm_prop, DCMF_USE_TORUS_ALLTOALL) &&
-      DCMF_INFO_ISSET(comm_prop, DCMF_USE_ALLTOALL_ALLGATHERV) &&
-      config.recv_contig && config.send_contig;
+                   DCMF_INFO_ISSET(comm_prop, DCMF_USE_ALLTOALL_ALLGATHERV) &&
+                   config.recv_contig &&
+                   config.send_contig;
+
+    use_rect_async = DCMF_INFO_ISSET(comm_prop,
+                                     DCMF_USE_ARECT_BCAST_ALLGATHERV) &&
+                     DCMF_INFO_ISSET(comm_prop, DCMF_USE_ARECT_BCAST) &&
+                     config.recv_contig &&
+                     config.send_contig;
+    /*
+    config.largecount = (sendcount > 65536); 
+    use_tree_bcast = DCMF_INFO_ISSET(comm_prop, DCMF_USE_TREE_BCAST) &&
+                     DCMF_INFO_ISSET(comm_prop, DCMF_USE_BCAST_ALLGATHERV);
     
     use_binom_async = DCMF_INFO_ISSET(comm_prop,
                                       DCMF_USE_ABINOM_BCAST_ALLGATHERV) &&
       DCMF_INFO_ISSET(comm_prop, DCMF_USE_ABINOM_BCAST) &&
       config.recv_contig &&
       config.send_contig;
+    */
+
+    if (buffer_sum <= 512 || userenvset)
+    {
+      if (use_alltoall && !use_tree_reduce)
+        func = MPIDO_Allgatherv_alltoall;
+      if (!func && use_tree_reduce)
+        func = MPIDO_Allgatherv_allreduce;
+    }
+
+    if (!func && (buffer_sum <= 1024 || userenvset))
+    {
+      if (use_tree_reduce)
+        func = MPIDO_Allgatherv_allreduce;
+      if (!func && use_rect_async)
+        func = MPIDO_Allgatherv_bcast_rect_async;
+    }
+
+    if (!func && buffer_sum > 1024)
+      if (use_rect_async)
+        func = MPIDO_Allgatherv_bcast_rect_async;
+
+    if (!func)
+      return MPIR_Allgatherv(sendbuf, sendcount, sendtype,
+                             recvbuf, recvcounts, displs, recvtype,
+                             comm);
+
+    rc = (func)(sendbuf, sendcount, sendtype,
+                recvbuf, recvcounts, buffer_sum, displs, recvtype,
+                send_true_lb, recv_true_lb, send_size, recv_size,
+                comm);
     
-    use_rect_async = DCMF_INFO_ISSET(comm_prop, 
-                                     DCMF_USE_ARECT_BCAST_ALLGATHERV) &&
-      DCMF_INFO_ISSET(comm_prop, DCMF_USE_ARECT_BCAST) &&
-      config.recv_contig &&
-      config.send_contig;
+    
+#if 0
+
     /*
       if (comm->rank == 0) printf("tree red %d tree bcast %d alltoall %d abino %d arect %d :%d %d\n",
       use_tree_reduce,use_tree_bcast , use_alltoall,use_binom_async,use_rect_async,
@@ -197,11 +235,11 @@ MPIDO_Allgatherv(void *sendbuf,
 
       }
     */
-
     rc = (func)(sendbuf, sendcount, sendtype,
                 recvbuf, recvcounts, buffer_sum, displs, recvtype,
                 send_true_lb, recv_true_lb, send_size, recv_size,
                 comm);
+#endif 
   }
   else
   {

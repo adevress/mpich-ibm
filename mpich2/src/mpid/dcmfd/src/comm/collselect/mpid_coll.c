@@ -708,7 +708,7 @@ void MPIDI_Coll_Comm_create (MPID_Comm *comm)
       DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_SINGLETH_BCAST);
       DCMF_INFO_UNSET(comm_prop, DCMF_USE_BINOM_SINGLETH_BCAST);
    }
-      if (!DCMF_INFO_ISSET(comm_prop, DCMF_RECT_COMM))
+   if (!DCMF_INFO_ISSET(comm_prop, DCMF_RECT_COMM))
 	{
 	  DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_BARRIER);
 	  DCMF_INFO_UNSET(comm_prop, DCMF_USE_ARECT_BCAST);

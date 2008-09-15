@@ -64,7 +64,7 @@ int MPIDO_Gather(void *sendbuf,
   if (!STAR_info.enabled || STAR_info.internal_control_flow)
   {
     if (!success || 
-        sendcount < 2048 ||
+        /*sendcount < 2048 || */
         DCMF_INFO_ISSET(properties, DCMF_USE_MPICH_GATHER) || 
         !DCMF_INFO_ISSET(properties, DCMF_USE_REDUCE_GATHER))
       return MPIR_Gather(sendbuf, sendcount, sendtype,
