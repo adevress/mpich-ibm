@@ -39,8 +39,7 @@ MPIDO_Allgather(void *sendbuf,
   unsigned char userenvset = DCMF_INFO_ISSET(comm_prop,
                                              DCMF_ALLGATHER_ENVVAR);
 
-  char use_tree_reduce, use_tree_bcast, use_alltoall; 
-  char use_rect_async, use_binom_async;
+  char use_tree_reduce, use_alltoall, use_rect_async;
 
   
   int rc;

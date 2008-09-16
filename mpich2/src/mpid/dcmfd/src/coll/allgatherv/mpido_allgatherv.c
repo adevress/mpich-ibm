@@ -34,8 +34,7 @@ MPIDO_Allgatherv(void *sendbuf,
   MPIDO_Coll_config config = {1,1,1,1};
 
   int i, rc, buffer_sum = 0;
-  char use_tree_reduce, use_tree_bcast, use_alltoall;
-  char use_binom_async, use_rect_async;
+  char use_tree_reduce, use_alltoall, use_rect_async;
 
   DCMF_Embedded_Info_Set * comm_prop = &(comm->dcmf.properties);
   DCMF_Embedded_Info_Set * coll_prop = &MPIDI_CollectiveProtocols.properties;
