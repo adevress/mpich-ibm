@@ -36308,7 +36308,7 @@ echo $ECHO_N "checking for CONDUITS in gasnet... $ECHO_C" >&6
 echo "$as_me: error: failed to open $_subconfig_extract_file - file not found" >&2;}
    { (exit 1); exit 1; }; }
   fi
-  _subconfig_extract_result=`$PERL -ne 'if (m/^s(.)\@('CONDUITS')\@\1([^\1]*)\1/) { my ($var,$val) = ($2,$3); $val =~ s/\|#_!!_#\|//g; print "$var='"'"'$val'"'"'"; }' $_subconfig_extract_file`
+  _subconfig_extract_result=`$PERL -n -e 'if (m/^S\["('CONDUITS')"\]="(.*)"/) { print "$1='"'"'$2'"'"'"; };' -e 'if (m/^s(.)\@('CONDUITS')\@\1([^\1]*)\1/) { my ($var,$val) = ($2,$3); $val =~ s/\|#_!!_#\|//g; print "$var='"'"'$val'"'"'"; };' $_subconfig_extract_file`
   if test -n "$_subconfig_extract_result" ; then
     eval $_subconfig_extract_result
     echo "$as_me:$LINENO: result: $CONDUITS" >&5
@@ -36339,7 +36339,7 @@ echo $ECHO_N "checking for PTHREADS in gasnet... $ECHO_C" >&6
 echo "$as_me: error: failed to open $_subconfig_extract_file - file not found" >&2;}
    { (exit 1); exit 1; }; }
   fi
-  _subconfig_extract_result=`$PERL -ne 'if (m/^s(.)\@('PTHREADS')\@\1([^\1]*)\1/) { my ($var,$val) = ($2,$3); $val =~ s/\|#_!!_#\|//g; print "$var='"'"'$val'"'"'"; }' $_subconfig_extract_file`
+  _subconfig_extract_result=`$PERL -n -e 'if (m/^S\["('PTHREADS')"\]="(.*)"/) { print "$1='"'"'$2'"'"'"; };' -e 'if (m/^s(.)\@('PTHREADS')\@\1([^\1]*)\1/) { my ($var,$val) = ($2,$3); $val =~ s/\|#_!!_#\|//g; print "$var='"'"'$val'"'"'"; };' $_subconfig_extract_file`
   if test -n "$_subconfig_extract_result" ; then
     eval $_subconfig_extract_result
     echo "$as_me:$LINENO: result: $PTHREADS" >&5
@@ -36428,7 +36428,7 @@ echo $ECHO_N "checking for POE_RDMA_ARGS in gasnet... $ECHO_C" >&6
 echo "$as_me: error: failed to open $_subconfig_extract_file - file not found" >&2;}
    { (exit 1); exit 1; }; }
   fi
-  _subconfig_extract_result=`$PERL -ne 'if (m/^s(.)\@('POE_RDMA_ARGS')\@\1([^\1]*)\1/) { my ($var,$val) = ($2,$3); $val =~ s/\|#_!!_#\|//g; print "$var='"'"'$val'"'"'"; }' $_subconfig_extract_file`
+  _subconfig_extract_result=`$PERL -n -e 'if (m/^S\["('POE_RDMA_ARGS')"\]="(.*)"/) { print "$1='"'"'$2'"'"'"; };' -e 'if (m/^s(.)\@('POE_RDMA_ARGS')\@\1([^\1]*)\1/) { my ($var,$val) = ($2,$3); $val =~ s/\|#_!!_#\|//g; print "$var='"'"'$val'"'"'"; };' $_subconfig_extract_file`
   if test -n "$_subconfig_extract_result" ; then
     eval $_subconfig_extract_result
     echo "$as_me:$LINENO: result: $POE_RDMA_ARGS" >&5

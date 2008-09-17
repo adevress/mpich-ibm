@@ -535,7 +535,7 @@ void MPIDI_Coll_Comm_create (MPID_Comm *comm)
 
   /* unset all properties of a comm by default */
   DCMF_INFO_ZERO(comm_prop);
-  
+  comm -> dcmf.tuning_session = NULL;
   comm -> dcmf.bcast_iter = 0;
 
   /* ****************************************** */
@@ -634,7 +634,7 @@ void MPIDI_Coll_Comm_create (MPID_Comm *comm)
   if (comm -> local_size == DCMF_Messager_size() &&
       !DCMF_INFO_ISSET(comm_prop, DCMF_USE_NOTREE_OPT_COLLECTIVES))
     DCMF_INFO_SET(comm_prop, DCMF_TREE_COMM);
-
+  
   if (global)
     DCMF_INFO_SET(comm_prop, DCMF_GLOBAL_CONTEXT);
   else
@@ -701,32 +701,33 @@ void MPIDI_Coll_Comm_create (MPID_Comm *comm)
        protocol 
     */
     DCMF_INFO_OR(coll_prop, comm_prop);
-
-   if(dcmf_thread_level > 0)
-   {
+    
+    if(dcmf_thread_level > 0)
+    {
       DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_DPUT_BCAST);
       DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_SINGLETH_BCAST);
       DCMF_INFO_UNSET(comm_prop, DCMF_USE_BINOM_SINGLETH_BCAST);
-   }
-   if (!DCMF_INFO_ISSET(comm_prop, DCMF_RECT_COMM))
-	{
-	  DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_BARRIER);
-	  DCMF_INFO_UNSET(comm_prop, DCMF_USE_ARECT_BCAST);
-	  DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_BCAST);
-	  DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_DPUT_BCAST);
-	  DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_SINGLETH_BCAST);
-	  DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_BCAST_ALLGATHER);
-	  DCMF_INFO_UNSET(comm_prop, DCMF_USE_ARECT_BCAST_ALLGATHER);
-	  DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_BCAST_ALLGATHERV);
-	  DCMF_INFO_UNSET(comm_prop, DCMF_USE_ARECT_BCAST_ALLGATHERV);
-	  DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_ALLREDUCE);
-	  DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECTRING_ALLREDUCE);
-	  DCMF_INFO_UNSET(comm_prop, DCMF_USE_ARECT_ALLREDUCE);
-	  DCMF_INFO_UNSET(comm_prop, DCMF_USE_ARECTRING_ALLREDUCE);
-	  DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_REDUCE);
-	  DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECTRING_REDUCE);
-	}
-      
+    }
+    
+    if (!DCMF_INFO_ISSET(comm_prop, DCMF_RECT_COMM))
+    {
+      DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_BARRIER);
+      DCMF_INFO_UNSET(comm_prop, DCMF_USE_ARECT_BCAST);
+      DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_BCAST);
+      DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_DPUT_BCAST);
+      DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_SINGLETH_BCAST);
+      DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_BCAST_ALLGATHER);
+      DCMF_INFO_UNSET(comm_prop, DCMF_USE_ARECT_BCAST_ALLGATHER);
+      DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_BCAST_ALLGATHERV);
+      DCMF_INFO_UNSET(comm_prop, DCMF_USE_ARECT_BCAST_ALLGATHERV);
+      DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_ALLREDUCE);
+      DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECTRING_ALLREDUCE);
+      DCMF_INFO_UNSET(comm_prop, DCMF_USE_ARECT_ALLREDUCE);
+      DCMF_INFO_UNSET(comm_prop, DCMF_USE_ARECTRING_ALLREDUCE);
+      DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_REDUCE);
+      DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECTRING_REDUCE);
+    }
+   
     if (DCMF_INFO_ISSET(comm_prop, DCMF_THREADED_MODE) && !global)
     {
       DCMF_INFO_UNSET(comm_prop, DCMF_USE_TORUS_ALLTOALL);
@@ -735,30 +736,30 @@ void MPIDI_Coll_Comm_create (MPID_Comm *comm)
       DCMF_INFO_UNSET(comm_prop, DCMF_USE_ALLTOALL_SCATTERV);
       DCMF_INFO_UNSET(comm_prop, DCMF_USE_REDUCESCATTER);
     }
-
+    
     if (!DCMF_INFO_ISSET(comm_prop, DCMF_GLOBAL_CONTEXT) ||
         !DCMF_INFO_ISSET(comm_prop, DCMF_TREE_COMM) ||
         DCMF_INFO_ISSET(comm_prop, DCMF_USE_NOTREE_OPT_COLLECTIVES))
-    {
-      DCMF_INFO_UNSET(comm_prop, DCMF_USE_GI_BARRIER);
-      DCMF_INFO_UNSET(comm_prop, DCMF_USE_TREE_BCAST);
-      DCMF_INFO_UNSET(comm_prop, DCMF_USE_TREE_ALLREDUCE);
-      DCMF_INFO_UNSET(comm_prop, DCMF_USE_CCMI_TREE_ALLREDUCE);
-      DCMF_INFO_UNSET(comm_prop, DCMF_USE_PIPELINED_TREE_ALLREDUCE);
-      DCMF_INFO_UNSET(comm_prop, DCMF_USE_TREE_REDUCE);
-      DCMF_INFO_UNSET(comm_prop, DCMF_USE_CCMI_TREE_REDUCE);
-      DCMF_INFO_UNSET(comm_prop, DCMF_USE_REDUCE_GATHER);
-      /*      DCMF_INFO_UNSET(comm_prop, DCMF_USE_BCAST_SCATTER); */
-      DCMF_INFO_UNSET(comm_prop, DCMF_USE_REDUCESCATTER);
-    }
-  }
-
+   {
+     DCMF_INFO_UNSET(comm_prop, DCMF_USE_GI_BARRIER);
+     DCMF_INFO_UNSET(comm_prop, DCMF_USE_TREE_BCAST);
+     DCMF_INFO_UNSET(comm_prop, DCMF_USE_TREE_ALLREDUCE);
+     DCMF_INFO_UNSET(comm_prop, DCMF_USE_CCMI_TREE_ALLREDUCE);
+     DCMF_INFO_UNSET(comm_prop, DCMF_USE_PIPELINED_TREE_ALLREDUCE);
+     DCMF_INFO_UNSET(comm_prop, DCMF_USE_TREE_REDUCE);
+     DCMF_INFO_UNSET(comm_prop, DCMF_USE_CCMI_TREE_REDUCE);
+     DCMF_INFO_UNSET(comm_prop, DCMF_USE_REDUCE_GATHER);
+     /*      DCMF_INFO_UNSET(comm_prop, DCMF_USE_BCAST_SCATTER); */
+     DCMF_INFO_UNSET(comm_prop, DCMF_USE_REDUCESCATTER);
+   }
+  } 
+ 
   if (STAR_info.enabled && STAR_info.debug && 
       comm -> comm_kind == MPID_INTRACOMM &&
       comm -> rank == 0)
   {
     static unsigned char opened = 0;
-
+    
     if (!opened && exec_name)
     {
       int length, cw_rank;
