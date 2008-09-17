@@ -28,11 +28,9 @@ MPID_Cancel_send_rsm(MPID_Request * sreq)
       if (rreq)
         {
           MPID_assert(rreq->partner_request == sreq);
-          MPIU_Object_set_ref(rreq, 1);
           MPID_Request_release(rreq);
           sreq->status.cancelled = TRUE;
           sreq->cc = 0;
-          MPIU_Object_set_ref(sreq, 1);
         }
       return MPI_SUCCESS;
     }

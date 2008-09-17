@@ -84,8 +84,8 @@ MPIDI_Irecv_rsm(void          * buf,
           /* no other thread can possibly be waiting on rreq,
              so it is safe to reset ref_count and cc */
           rreq->cc = 0;
-          MPIU_Object_set_ref(rreq, 1);
-          if (status != MPI_STATUS_IGNORE) *status = rreq->status;
+          if (status != MPI_STATUS_IGNORE)
+            *status = rreq->status;
           *request = rreq;
           return rreq->status.MPI_ERROR;
         }

@@ -93,7 +93,6 @@ int MPID_Isend(const void    * buf,
   /* ------------------------------ */
   if (rank == MPI_PROC_NULL)
     {
-      MPIU_Object_set_ref(sreq, 1);
       sreq->cc = 0;
       *request = sreq;
       return MPI_SUCCESS;
