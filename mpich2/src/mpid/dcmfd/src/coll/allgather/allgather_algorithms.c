@@ -331,7 +331,8 @@ int MPIDO_Allgather_bcast(void *sendbuf,
                    recvtype);
   }
 
-#warning this code should either abort on first error or somehow aggregate error codes
+/* this code should either abort on first error or somehow aggregate 
+ * error codes, esp since it calls internal routines */
   for (i = 0; i < np; i++)
   {
     void *destbuf = recvbuf + i * recvcount * extent;

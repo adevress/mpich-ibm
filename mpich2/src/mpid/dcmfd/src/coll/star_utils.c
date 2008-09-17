@@ -54,6 +54,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   */
 
 #include "mpidi_star.h"
+#include "mpidi_coll_prototypes.h"
 
 FILE * DCMF_STAR_fd = NULL;
 char comm_shape_str[3][8] = {"COMWRLD", "RECT", "IRREG"};

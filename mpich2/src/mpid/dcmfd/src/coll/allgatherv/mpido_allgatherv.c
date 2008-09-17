@@ -31,10 +31,10 @@ MPIDO_Allgatherv(void *sendbuf,
   MPI_Aint recv_true_lb  = 0;
   size_t   send_size     = 0;
   size_t   recv_size     = 0;
-  MPIDO_Coll_config config = {1,1,1,1};
+  MPIDO_Coll_config config = {1,1,1,1,1};
 
   int i, rc, buffer_sum = 0;
-  char use_tree_reduce, use_alltoall, use_rect_async;
+  char use_tree_reduce, use_alltoall, use_rect_async, use_tree_bcast;
 
   DCMF_Embedded_Info_Set * comm_prop = &(comm->dcmf.properties);
   DCMF_Embedded_Info_Set * coll_prop = &MPIDI_CollectiveProtocols.properties;
@@ -84,13 +84,19 @@ MPIDO_Allgatherv(void *sendbuf,
   buffer_sum += recvcounts[comm->local_size - 1];
   
   buffer_sum *= recv_size;
+
+   /* these are reasonable cutoffs at 512 nodes. Have to see if that holds
+    * up for larger partitions too. */
+   config.largecount = (buffer_sum >= 16384*comm->local_size); 
+   config.mediumcount = (buffer_sum >= 64*comm->local_size && 
+                        buffer_sum < 16384*comm->local_size);
   
-  MPID_Ensure_Aint_fits_in_pointer(MPIR_VOID_PTR_CAST_TO_MPI_AINT recvbuf +
+   MPID_Ensure_Aint_fits_in_pointer(MPIR_VOID_PTR_CAST_TO_MPI_AINT recvbuf +
 				   recv_true_lb + buffer_sum);
   
   if (DCMF_INFO_ISSET(coll_prop, DCMF_USE_PREALLREDUCE_ALLGATHERV))  {
     STAR_info.internal_control_flow = 1;
-    MPIDO_Allreduce(MPI_IN_PLACE, &config, 4, MPI_INT, MPI_BAND, comm);
+    MPIDO_Allreduce(MPI_IN_PLACE, &config, 5, MPI_INT, MPI_BAND, comm);
     STAR_info.internal_control_flow = 0;
   }
 
@@ -114,39 +120,38 @@ MPIDO_Allgatherv(void *sendbuf,
                      DCMF_INFO_ISSET(comm_prop, DCMF_USE_ARECT_BCAST) &&
                      config.recv_contig &&
                      config.send_contig;
-    /*
-    config.largecount = (sendcount > 65536); 
     use_tree_bcast = DCMF_INFO_ISSET(comm_prop, DCMF_USE_TREE_BCAST) &&
                      DCMF_INFO_ISSET(comm_prop, DCMF_USE_BCAST_ALLGATHERV);
     
-    use_binom_async = DCMF_INFO_ISSET(comm_prop,
-                                      DCMF_USE_ABINOM_BCAST_ALLGATHERV) &&
-      DCMF_INFO_ISSET(comm_prop, DCMF_USE_ABINOM_BCAST) &&
-      config.recv_contig &&
-      config.send_contig;
-    */
+   if(userenvset)
+   {
+      if(use_tree_bcast)
+         func = MPIDO_Allgatherv_bcast;
+      if(use_tree_reduce)
+         func = MPIDO_Allgatherv_allreduce;
+      if(use_alltoall)
+         func = MPIDO_Allgatherv_alltoall;
+      if(use_rect_async)
+         func = MPIDO_Allgatherv_bcast_rect_async;
+   }
+   else
+   {
+      if(use_tree_reduce && use_tree_bcast && config.largecount)
+         func = MPIDO_Allgatherv_bcast;
+      if(!func && use_tree_reduce && use_tree_bcast)
+         func = MPIDO_Allgatherv_allreduce;
+      if(!func && use_tree_reduce)
+         func = MPIDO_Allgatherv_allreduce;
+      if(!func && use_tree_bcast)
+         func = MPIDO_Allgatherv_bcast;
+      if(!func && use_alltoall && config.mediumcount)
+         func = MPIDO_Allgatherv_alltoall;
+      if(!func && use_rect_async && config.largecount)
+         func = MPIDO_Allgatherv_bcast_rect_async;
+   }
 
-    if (buffer_sum <= 512 || userenvset)
-    {
-      if (use_alltoall && !use_tree_reduce)
-        func = MPIDO_Allgatherv_alltoall;
-      if (!func && use_tree_reduce)
-        func = MPIDO_Allgatherv_allreduce;
-    }
 
-    if (!func && (buffer_sum <= 1024 || userenvset))
-    {
-      if (use_tree_reduce)
-        func = MPIDO_Allgatherv_allreduce;
-      if (!func && use_rect_async)
-        func = MPIDO_Allgatherv_bcast_rect_async;
-    }
-
-    if (!func && buffer_sum > 1024)
-      if (use_rect_async)
-        func = MPIDO_Allgatherv_bcast_rect_async;
-
-    if (!func)
+   if(!func)
       return MPIR_Allgatherv(sendbuf, sendcount, sendtype,
                              recvbuf, recvcounts, displs, recvtype,
                              comm);

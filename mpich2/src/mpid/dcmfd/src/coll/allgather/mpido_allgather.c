@@ -29,7 +29,7 @@ MPIDO_Allgather(void *sendbuf,
   allgather_fptr func = NULL;
   DCMF_Embedded_Info_Set * coll_prop = &MPIDI_CollectiveProtocols.properties;
   DCMF_Embedded_Info_Set * comm_prop = &(comm->dcmf.properties);
-  MPIDO_Coll_config config = {1,1,1,1};
+  MPIDO_Coll_config config = {1,1,1,1,1};
   MPID_Datatype * dt_null = NULL;
   MPI_Aint send_true_lb = 0;
   MPI_Aint recv_true_lb = 0;
@@ -39,7 +39,8 @@ MPIDO_Allgather(void *sendbuf,
   unsigned char userenvset = DCMF_INFO_ISSET(comm_prop,
                                              DCMF_ALLGATHER_ENVVAR);
 
-  char use_tree_reduce, use_alltoall, use_rect_async;
+   char use_tree_reduce, use_alltoall, use_rect_async, use_tree_bcast;
+
 
   
   int rc;
@@ -83,59 +84,91 @@ MPIDO_Allgather(void *sendbuf,
   if (DCMF_INFO_ISSET(coll_prop, DCMF_USE_PREALLREDUCE_ALLGATHER))
   {
     STAR_info.internal_control_flow = 1;
-    MPIDO_Allreduce(MPI_IN_PLACE, &config, 4, MPI_INT, MPI_BAND, comm);
+    MPIDO_Allreduce(MPI_IN_PLACE, &config, 5, MPI_INT, MPI_BAND, comm);
     STAR_info.internal_control_flow = 0;
   }
 
   
   /* Here is the Default code path or if coming from within another coll */
-  if (!STAR_info.enabled || STAR_info.internal_control_flow) 
-  {
-    use_alltoall = DCMF_INFO_ISSET(comm_prop, DCMF_USE_TORUS_ALLTOALL) &&
-                   DCMF_INFO_ISSET(comm_prop, DCMF_USE_ALLTOALL_ALLGATHER) &&
-                   config.recv_contig && config.send_contig;
+   if (!STAR_info.enabled || STAR_info.internal_control_flow) 
+   {
+      use_alltoall = 
+                  DCMF_INFO_ISSET(comm_prop, DCMF_USE_TORUS_ALLTOALL) &&
+                  DCMF_INFO_ISSET(comm_prop, DCMF_USE_ALLTOALL_ALLGATHER) &&
+                  config.recv_contig && config.send_contig;
+      /* The tree doesn't support reduce of chars for the operation we need,
+       * so we change to ints. Therefore the size needs to be a multiple of
+       * sizeof(int) */
+      use_tree_bcast = DCMF_INFO_ISSET(comm_prop, DCMF_USE_TREE_BCAST) &&
+                     DCMF_INFO_ISSET(comm_prop, DCMF_USE_BCAST_ALLGATHER); 
 
-    use_tree_reduce = DCMF_INFO_ISSET(comm_prop,
-                                      DCMF_USE_TREE_ALLREDUCE) &&
-                      DCMF_INFO_ISSET(comm_prop,
-                                      DCMF_USE_ALLREDUCE_ALLGATHER)&&
-                      config.recv_contig &&
-                      config.send_contig &&
-                      config.recv_continuous &&
-                      recv_size % sizeof(int) == 0;
+      use_tree_reduce = 
+                  DCMF_INFO_ISSET(comm_prop, DCMF_USE_TREE_ALLREDUCE) &&
+                  DCMF_INFO_ISSET(comm_prop, DCMF_USE_ALLREDUCE_ALLGATHER) &&
+                  config.recv_contig && config.send_contig && 
+                  config.recv_continuous && (recv_size % sizeof(int) == 0);
+      use_rect_async = 
+                  DCMF_INFO_ISSET(comm_prop, DCMF_USE_ARECT_BCAST_ALLGATHER) &&
+                  DCMF_INFO_ISSET(comm_prop, DCMF_USE_ARECT_BCAST) &&
+                  config.recv_contig && config.send_contig;
 
-    use_rect_async = DCMF_INFO_ISSET(comm_prop, 
-                                     DCMF_USE_ARECT_BCAST_ALLGATHER) &&
-                     DCMF_INFO_ISSET(comm_prop, DCMF_USE_ARECT_BCAST) &&
-                     config.recv_contig &&
-                     config.send_contig;
+      if(userenvset)
+      {
+         if(use_tree_reduce)
+            func = MPIDO_Allgather_allreduce;
+         if(use_alltoall)
+            func = MPIDO_Allgather_alltoall;
+         if(use_rect_async)
+            func = MPIDO_Allgather_bcast_rect_async;
+         if(use_tree_bcast)
+            func = MPIDO_Allgather_bcast;
+      }
+      else
+      {
+         /* Tree bcast is faster for large messages */
+         if(use_tree_reduce && use_tree_bcast && sendcount > 65536)
+            func = MPIDO_Allgather_bcast;
+         if(!func && use_tree_reduce && use_tree_bcast)
+            func = MPIDO_Allgather_allreduce;
+         if(!func && use_tree_reduce)
+            func = MPIDO_Allgather_allreduce;
+         if(!func && use_tree_bcast)
+            func = MPIDO_Allgather_bcast;
+         /* No tree, so need to use torus protocols. alltoall is good for
+          * medium sized messages. MPICH is good for small messages. Async
+          * bcast is best for larger messages */
+         if(!func && use_alltoall && (sendcount > 128 && sendcount <= 8192))
+            func = MPIDO_Allgather_alltoall;
+         if(!func && use_rect_async && (sendcount > 8192))
+            func = MPIDO_Allgather_bcast_rect_async;
+      }
+      #if 0
+         if(sendcount <= 512 )
+         {
+            if(use_tree_reduce)
+               func = MPIDO_Allgather_allreduce;
+            if(!func && use_alltoall)
+               func = MPIDO_Allgather_alltoall;
+         }
+         /* tree reduce smokes async bcast */
+         else if(sendcount <= 1024)
+         {
+            if(use_tree_reduce)
+               func = MPIDO_Allgather_allreduce;
+            if(!func && use_rect_async)
+               func = MPIDO_Allgather_bcast_rect_async;
+            if(!func && use_alltoall)
+               func = MPIDO_Allgather_alltoall;
+         }
+      }
+      #endif 
+         
+      if (!func)
+         return MPIR_Allgather(sendbuf, sendcount, sendtype,
+                               recvbuf, recvcount, recvtype,
+                               comm);
 
-    if (sendcount <= 512 || userenvset)
-    {
-      if (use_alltoall && !use_tree_reduce)
-        func = MPIDO_Allgather_alltoall;
-      if (!func && use_tree_reduce)
-        func = MPIDO_Allgather_allreduce;
-    }
-
-    if (!func && (sendcount <= 1024 || userenvset))
-    {
-      if (use_tree_reduce)
-        func = MPIDO_Allgather_allreduce;
-      if (!func && use_rect_async)
-        func = MPIDO_Allgather_bcast_rect_async;
-    }
-
-    if (!func && sendcount > 1024)
-      if (use_rect_async)
-        func = MPIDO_Allgather_bcast_rect_async;
-
-    if (!func)
-      return MPIR_Allgather(sendbuf, sendcount, sendtype,
-                            recvbuf, recvcount, recvtype,
-                            comm);
-
-    rc = (func)(sendbuf, sendcount, sendtype, recvbuf, recvcount, recvtype,
+      rc = (func)(sendbuf, sendcount, sendtype, recvbuf, recvcount, recvtype,
                 send_true_lb, recv_true_lb, send_size, recv_size, comm);
   }  
   else
