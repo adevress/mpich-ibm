@@ -271,10 +271,9 @@ _dt_contig_out, _data_sz_out, _dt_ptr, _dt_true_lb)             \
 MPID_Request * MPID_Request_create        ();
 void           MPID_Request_release       (MPID_Request *req);
 
-/* completion count */
 void           MPID_Request_complete      (MPID_Request *req);
 void           MPID_Request_set_completed (MPID_Request *req);
-#define MPID_Request_add_ref(_req)                                      \
+#define        MPID_Request_add_ref(_req)                               \
 ({                                                                      \
   MPID_assert(HANDLE_GET_MPI_KIND((_req)->handle) == MPID_REQUEST);     \
   MPIU_Object_add_ref(_req);                                            \
@@ -282,6 +281,7 @@ void           MPID_Request_set_completed (MPID_Request *req);
 
 #define MPID_Request_decrement_cc(_req, _inuse) ({ *(_inuse) = --(*(_req)->cc_ptr)  ;                             })
 #define MPID_Request_increment_cc(_req)         ({               (*(_req)->cc_ptr)++;                             })
+#define MPID_Request_get_cc(_req)               ({                *(_req)->cc_ptr;                                })
 
 #define MPID_Request_getCA(_req)                ({ (_req)->dcmf.ca;                                               })
 #define MPID_Request_getPeerRank(_req)          ({ (_req)->dcmf.peerrank;                                         })
