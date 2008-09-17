@@ -151,45 +151,50 @@ void MPIDI_DCMF_procCancelReq(const MPIDI_DCMF_MsgInfo *info, unsigned peer)
  */
 static inline void MPIDI_DCMF_procCanelAck(MPIDI_DCMF_MsgInfo *info, unsigned peer)
 {
-  MPID_Request *infoRequest = (MPID_Request *)info->msginfo.req;
-  MPID_assert(infoRequest != NULL);
+  MPID_Request *req = (MPID_Request *)info->msginfo.req;
+  MPID_assert(req != NULL);
 
-  if(info->msginfo.type == MPIDI_DCMF_REQUEST_TYPE_CANCEL_ACKNOWLEDGE)
-    infoRequest->status.cancelled = TRUE;
-  else if(info->msginfo.type == MPIDI_DCMF_REQUEST_TYPE_CANCEL_NOT_ACKNOWLEDGE)
+  if(info->msginfo.type == MPIDI_DCMF_REQUEST_TYPE_CANCEL_NOT_ACKNOWLEDGE)
     {
-      int inuse;
-      infoRequest->dcmf.cancel_pending = FALSE;
-      MPID_Request_decrement_cc(infoRequest, &inuse);
+      req->dcmf.cancel_pending = FALSE;
+      MPID_Request_complete(req);
       return;
     }
-  else
-    MPID_abort();
 
-  MPID_assert(infoRequest->dcmf.cancel_pending == TRUE);
-  if(
-     (infoRequest->dcmf.state==MPIDI_DCMF_REQUEST_DONE_CANCELLED) ||
-     (infoRequest->dcmf.state==MPIDI_DCMF_SEND_COMPLETE)          ||
-     (infoRequest->dcmf.state==MPIDI_DCMF_ACKNOWLEGED)
-    )
-    {
-      infoRequest->dcmf.state=MPIDI_DCMF_REQUEST_DONE_CANCELLED;
-      MPID_Request_complete(infoRequest);
-    }
-  else if (info->msginfo.type == MPIDI_DCMF_REQUEST_TYPE_CANCEL_ACKNOWLEDGE)
-    {
-      infoRequest->dcmf.state=MPIDI_DCMF_REQUEST_DONE_CANCELLED;
-      if (MPID_Request_isRzv(infoRequest))
-        {
-          /*
-           * Rendezvous Sends wait until a rzv ack is received to complete the
-           * send. Since this request was canceled, no rzv ack will be sent
-           * from the target node, and the send done callback must be
-           * explicitly called here.
-           */
-          MPIDI_DCMF_SendDoneCB(infoRequest, NULL);
-        }
-    }
+  MPID_assert(info->msginfo.type == MPIDI_DCMF_REQUEST_TYPE_CANCEL_ACKNOWLEDGE);
+  MPID_assert(req->dcmf.cancel_pending == TRUE);
+
+  req->status.cancelled = TRUE;
+
+  /*
+   * Rendezvous Sends wait until a rzv ack is received to complete the
+   * send. Since this request was canceled, no rzv ack will be sent
+   * from the target node, and the send done callback must be
+   * explicitly called here.
+   */
+  if (MPID_Request_isRzv(req))
+    MPIDI_DCMF_SendDoneCB(req, NULL);
+  /*
+   * This checks for a Sync-Send that hasn't been ACKed (and now will
+   * never be acked), but has transfered the data.  When
+   * MPIDI_DCMF_SendDoneCB() was called for this one, it wouldn't have
+   * called MPID_Request_complete() to decrement the CC.  Therefore,
+   * we call it now to simulate an ACKed message.
+   */
+  if ( (MPID_Request_getType(req) == MPIDI_DCMF_REQUEST_TYPE_SSEND) &&
+       (req->dcmf.state           == MPIDI_DCMF_SEND_COMPLETE) )
+    MPID_Request_complete(req);
+
+  /*
+   * Finally, this request has been faux-Sync-ACKed and
+   * faux-RZV-ACKed.  We just set the state and do a normal
+   * completion.  This will set the completion to 0, so that the user
+   * can call MPI_Wait()/MPI_Test() to finish it off (unless the
+   * message is still in the MPIDI_DCMF_INITIALIZED state, in which
+   * case the done callback will finish it off).
+   */
+  req->dcmf.state=MPIDI_DCMF_REQUEST_DONE_CANCELLED;
+  MPID_Request_complete(req);
 }
 
 
