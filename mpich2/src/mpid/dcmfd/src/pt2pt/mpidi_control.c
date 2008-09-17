@@ -160,7 +160,6 @@ static inline void MPIDI_DCMF_procCanelAck(MPIDI_DCMF_MsgInfo *info, unsigned pe
     {
       int inuse;
       infoRequest->dcmf.cancel_pending = FALSE;
-      MPIU_Object_release_ref(infoRequest, &inuse);
       MPID_Request_decrement_cc(infoRequest, &inuse);
       return;
     }

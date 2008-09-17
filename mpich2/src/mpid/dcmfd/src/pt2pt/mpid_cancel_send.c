@@ -41,7 +41,6 @@ MPID_Cancel_send_rsm(MPID_Request * sreq)
       if (sreq->dcmf.state == MPIDI_DCMF_ACKNOWLEGED)
         {
           MPID_assert(0 == *sreq->cc_ptr);
-          MPIU_Object_add_ref(sreq);
           MPID_Request_increment_cc(sreq);
         }
 
