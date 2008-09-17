@@ -59,15 +59,15 @@ int MPID_Init(int * argc,
 
    if (argc && *argv != NULL)
    {
-      exec_name = NULL;
+      dcmf_executable_name = NULL;
       i = strlen(* argv[0]) + 1;
-      exec_name = (char *) malloc(sizeof(char) * i);
-      strcpy(exec_name, *argv[0]);
+      dcmf_executable_name = (char *) malloc(sizeof(char) * i);
+      strcpy(dcmf_executable_name, *argv[0]);
    }
    else
    {
-      exec_name= (char *)malloc(sizeof(char) * 8);
-      strcpy(exec_name, "FORTRAN");
+      dcmf_executable_name= (char *)malloc(sizeof(char) * 8);
+      strcpy(dcmf_executable_name, "FORTRAN");
    }
 
   /* ------------------------- */

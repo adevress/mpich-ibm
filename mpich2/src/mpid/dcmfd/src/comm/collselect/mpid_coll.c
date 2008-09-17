@@ -760,17 +760,17 @@ void MPIDI_Coll_Comm_create (MPID_Comm *comm)
   {
     static unsigned char opened = 0;
     
-    if (!opened && exec_name)
+    if (!opened && dcmf_executable_name)
     {
       int length, cw_rank;
       char * tmp;
-      length = strlen(exec_name) + 25;
+      length = strlen(dcmf_executable_name) + 25;
       
       tmp = (char *) malloc(sizeof(char) * length);
       
       MPI_Comm_rank(MPI_COMM_WORLD, &cw_rank);
       
-      sprintf(tmp, "%s-star-rank%d.log", exec_name, cw_rank);
+      sprintf(tmp, "%s-star-rank%d.log", dcmf_executable_name, cw_rank);
       
       if (!(DCMF_STAR_fd = fopen(tmp, "w")))
         fprintf(stderr, "Error openning STAR debugging file: %s\n", tmp);
