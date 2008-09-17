@@ -61,6 +61,7 @@ MPIDO_Alltoall_torus(void * sendbuf,
   MPID_PROGRESS_WAIT_WHILE(active);
   return rc;
 }
+
 #endif /* USE_CCMI_COLL */
 
 int
@@ -124,3 +125,4 @@ MPIDO_Alltoall_simple(void * send_buff, int send_count,
 
   return MPI_SUCCESS;
 }
+

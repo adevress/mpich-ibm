@@ -10,6 +10,8 @@
 
 #pragma weak PMPIDO_Scatter = MPIDO_Scatter
 
+#ifdef USE_CCMI_COLL
+
 /* works for simple data types, assumes fast bcast is available */
 
 int MPIDO_Scatter(void *sendbuf,
@@ -86,10 +88,13 @@ int MPIDO_Scatter(void *sendbuf,
   if (!STAR_info.enabled || STAR_info.internal_control_flow)
   {
     if (!success || DCMF_INFO_ISSET(properties, DCMF_USE_MPICH_SCATTER) ||
-        !DCMF_INFO_ISSET(properties, DCMF_USE_BCAST_SCATTER))
+        !DCMF_INFO_ISSET(properties, DCMF_USE_BCAST_SCATTER) ||
+        DCMF_INFO_ISSET(properties, DCMF_IRREG_COMM))
+    {
       return MPIR_Scatter(sendbuf, sendcount, sendtype,
                           recvbuf, recvcount, recvtype,
                           root, comm);
+    }
     else
       return MPIDO_Scatter_bcast(sendbuf, sendcount, sendtype,
                                  recvbuf, recvcount, recvtype,
@@ -152,3 +157,5 @@ int MPIDO_Scatter(void *sendbuf,
   }
    return rc;
 }
+
+#endif

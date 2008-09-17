@@ -19,8 +19,7 @@ int MPID_Finalize()
   MPID_Comm * comm;
   MPID_Comm_get_ptr(MPI_COMM_WORLD, comm);
 
-  PMPI_Barrier(MPI_COMM_WORLD);
-  //  MPIR_Barrier(comm);
+  MPIR_Barrier(comm);
 
   STAR_FreeMem(comm);
 
@@ -36,6 +35,8 @@ int MPID_Finalize()
   /* shutdown request queues   */
   /* ------------------------- */
   MPIDI_Recvq_finalize();
-
+  
+  DCMF_Messager_finalize();
+  
   return MPI_SUCCESS;
 }

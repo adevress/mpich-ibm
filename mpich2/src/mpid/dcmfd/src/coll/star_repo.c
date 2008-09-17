@@ -517,23 +517,14 @@ void STAR_InitRepositories()
 			    "barrier_dcmf",
 			    DCMF_TORUS_COMM, DCMF_END_ARGS);
 #else /* !USE_CCMI_COLL */
-  STAR_info.bcast_algorithms = 0;
   STAR_bcast_repository = NULL;
-  STAR_info.allreduce_algorithms = 0;
   STAR_allreduce_repository = NULL;
-  STAR_info.reduce_algorithms = 0;
   STAR_reduce_repository = NULL;
-  STAR_info.alltoall_algorithms = 0;
   STAR_alltoall_repository = NULL;
-  STAR_info.allgather_algorithms = 0;
   STAR_allgather_repository = NULL;
-  STAR_info.allgatherv_algorithms = 0;
   STAR_allgatherv_repository = NULL;
-  STAR_info.gather_algorithms = 0;
   STAR_gather_repository = NULL;
-  STAR_info.scatter_algorithms = 0;
   STAR_scatter_repository = NULL;
-  STAR_info.barrier_algorithms = 0;
   STAR_barrier_repository = NULL;
 #endif /* !USE_CCMI_COLL */
 }

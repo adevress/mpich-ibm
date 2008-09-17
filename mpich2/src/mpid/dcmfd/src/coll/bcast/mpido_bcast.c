@@ -177,9 +177,6 @@ MPIDO_Bcast(void *buffer,
       {
          return MPIR_Bcast(buffer, count, datatype, root, comm);
       }
-
-    //    if (!func)
-    //return MPIR_Bcast(buffer, count, datatype, root, comm);
     
       rc = (func) (data_buffer, data_size, root, comm);
    }

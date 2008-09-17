@@ -10,6 +10,8 @@
 
 #pragma weak PMPIDO_Gather = MPIDO_Gather
 
+#ifdef USE_CCMI_COLL
+
 /* works for simple data types, assumes fast reduce is available */
 
 int MPIDO_Gather(void *sendbuf,
@@ -61,16 +63,26 @@ int MPIDO_Gather(void *sendbuf,
 
   recvbuf = (char *) recvbuf + true_lb;
 
+  if (sendbuf != MPI_IN_PLACE)
+  {
+    MPID_Ensure_Aint_fits_in_pointer(MPIR_VOID_PTR_CAST_TO_MPI_AINT sendbuf +
+                                     true_lb);
+    sendbuf = (char *) sendbuf + true_lb;
+  }
+  
   if (!STAR_info.enabled || STAR_info.internal_control_flow)
   {
-    if (!success || 
+    if (!success ||
+        DCMF_INFO_ISSET(properties, DCMF_IRREG_COMM) ||
         /*sendcount < 2048 || */
         DCMF_INFO_ISSET(properties, DCMF_USE_MPICH_GATHER) || 
-        !DCMF_INFO_ISSET(properties, DCMF_USE_REDUCE_GATHER))
+        !DCMF_INFO_ISSET(properties, DCMF_USE_REDUCE_GATHER)||
+        mpid_hw.tSize > 1 /* non SMP mode */)
+    {
       return MPIR_Gather(sendbuf, sendcount, sendtype,
                          recvbuf, recvcount, recvtype,
                          root, comm);
-
+    }
     else
       return MPIDO_Gather_reduce(sendbuf, sendcount, sendtype,
                                  recvbuf, recvcount, recvtype,
@@ -134,3 +146,5 @@ int MPIDO_Gather(void *sendbuf,
     return rc;    
   }
 }
+
+#endif

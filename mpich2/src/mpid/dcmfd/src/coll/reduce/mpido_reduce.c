@@ -98,7 +98,7 @@ int MPIDO_Reduce(void * sendbuf,
       }
     }
   
-    if (func)
+    if (func && !DCMF_INFO_ISSET(properties, DCMF_IRREG_COMM))
       rc = (func)(sendbuf, recvbuf, count, dcmf_data,
                   dcmf_op, datatype, root, comm);      
 

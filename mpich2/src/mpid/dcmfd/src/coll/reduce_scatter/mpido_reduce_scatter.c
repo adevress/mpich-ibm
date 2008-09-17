@@ -8,6 +8,8 @@
 
 #pragma weak PMPIDO_Reduce_scatter = MPIDO_Reduce_scatter
 
+#ifdef USE_CCMI_COLL
+
 /* Call optimized reduce+scatterv - should be faster than pt2pt on
  * larger partitions 
  */
@@ -100,3 +102,5 @@ int MPIDO_Reduce_scatter(void *sendbuf,
   return rc;
 }
   
+
+#endif

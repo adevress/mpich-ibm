@@ -6,6 +6,7 @@
 
 #include "mpido_coll.h"
 
+
 int MPIDO_Gather_reduce(void * sendbuf,
 			int sendcount,
 			MPI_Datatype sendtype,
@@ -172,3 +173,4 @@ int MPIDO_Gather_reduce(void * sendbuf,
 
   return rc;
 }
+

@@ -235,8 +235,8 @@ int MPIDO_Bcast_rect_async(void * buffer,
 
   return rc;
 }
-#endif /* USE_CCMI_COLL */
 
+#endif
 
 int
 MPIDO_Bcast_scatter_gather(void * buffer,

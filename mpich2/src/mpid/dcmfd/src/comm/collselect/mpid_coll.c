@@ -748,7 +748,7 @@ void MPIDI_Coll_Comm_create (MPID_Comm *comm)
       DCMF_INFO_UNSET(comm_prop, DCMF_USE_TREE_REDUCE);
       DCMF_INFO_UNSET(comm_prop, DCMF_USE_CCMI_TREE_REDUCE);
       DCMF_INFO_UNSET(comm_prop, DCMF_USE_REDUCE_GATHER);
-      DCMF_INFO_UNSET(comm_prop, DCMF_USE_BCAST_SCATTER);
+      /*      DCMF_INFO_UNSET(comm_prop, DCMF_USE_BCAST_SCATTER); */
       DCMF_INFO_UNSET(comm_prop, DCMF_USE_REDUCESCATTER);
     }
   }
