@@ -11,7 +11,6 @@
 
 //#include <dcmf_impl.h>
 #include <dcmf.h>
-#include <dcmf_collectives.h>
 #include <dcmf_globalcollectives.h>
 #include <gasnet_internal.h>
 

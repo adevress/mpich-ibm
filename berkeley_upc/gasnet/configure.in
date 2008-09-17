@@ -2992,7 +2992,6 @@ if test $enabled_dcmf = yes; then
    	    #include <stdio.h>
         #include <stdlib.h>
 				#include <dcmf.h>
-				#include <dcmf_collectives.h>
       ], [
         DCMF_Messager_initialize();
 				      
