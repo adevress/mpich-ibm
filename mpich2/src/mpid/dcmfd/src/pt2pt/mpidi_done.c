@@ -54,7 +54,7 @@ void MPIDI_DCMF_RecvDoneCB (void *clientdata, DCMF_Error_t *err)
 {
   MPID_Request * rreq = (MPID_Request *)clientdata;
   MPID_assert(rreq != NULL);
-  switch (rreq->dcmf.ca)
+  switch (MPID_Request_getCA(rreq))
     {
     case MPIDI_DCMF_CA_UNPACK_UEBUF_AND_COMPLETE:
       {
