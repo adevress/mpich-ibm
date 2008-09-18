@@ -7,7 +7,7 @@
 #include "mpido_coll.h"
 
 #ifdef USE_CCMI_COLL
-void allgather_async_done(void *clientdata, DCMF_Error_t *err)
+static void allgather_async_done(void *clientdata, DCMF_Error_t *err)
 {
   volatile unsigned *work_left = (unsigned *)clientdata;
   (*work_left)--;
