@@ -276,6 +276,9 @@ STAR_NextAlgorithm(STAR_Tuning_Session * session,
   DCMF_INFO_ZERO(&tmp_comm);
   DCMF_INFO_OR(comm_info, &tmp_comm);
 
+  /* because we torus algorithms can handle irreg comms */
+  DCMF_INFO_SET(&tmp_comm, DCMF_IRREG_COMM);
+
   if (DCMF_INFO_ISSET(&tmp_comm, DCMF_USE_NOTREE_OPT_COLLECTIVES))
     DCMF_INFO_UNSET(&tmp_comm, DCMF_TREE_COMM);
   
@@ -329,11 +332,12 @@ STAR_NextAlgorithm(STAR_Tuning_Session * session,
         (alg_nprocs[1] && alg_nprocs[1] < np) || (alg_nprocs[0] > np))
       skip = 1;
 
+    /*
     if (!skip)
       if (call_type == BCAST_CALL && strstr(alg_name, "asyn"))
         if (comm -> dcmf.bcast_iter > 31)
           skip = 1;
-
+    */
     if (!skip)
     {
       if (DCMF_INFO_ISSET(alg_info, DCMF_TORUS_OP_TYPE) &&
@@ -653,7 +657,7 @@ STAR_DisplayStatistics(MPID_Comm * comm)
   ptr = comm->dcmf.tuning_session;
   np = comm -> local_size;
 
-  STAR_info.internal_control_flow = 1;
+  //STAR_info.internal_control_flow = 1;
   while (ptr)
   {
     repository = ptr->repository;
@@ -661,9 +665,10 @@ STAR_DisplayStatistics(MPID_Comm * comm)
     MPI = STAR_info.mpis[call_type];
     bytes = ptr->bytes;
     total_algs = ptr->total_examined;
-    
+
     if (ptr->monitor_overhead)
     {
+
       fprintf(DCMF_STAR_fd,
               "\nComm: %s np: %d msize: %d #Tuning calls %d"
               " #Monitor calls %d Best-Algorithm: %s\n\n",
@@ -699,7 +704,7 @@ STAR_DisplayStatistics(MPID_Comm * comm)
   if (comm -> handle == MPI_COMM_WORLD)
     fclose(DCMF_STAR_fd);
   
-  STAR_info.internal_control_flow = 0;
+  //STAR_info.internal_control_flow = 0;
   return 0;
 }
 

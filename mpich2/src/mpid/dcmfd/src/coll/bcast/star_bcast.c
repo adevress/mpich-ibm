@@ -52,13 +52,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "mpidi_coll_prototypes.h"
 
 
-  int
-    STAR_BestBcast(char * buff,
-                   int bytes,
-                   int root,
-                   MPID_Comm * comm,
-                   int index)
-
+int
+STAR_BestBcast(char * buff,
+               int bytes,
+               int root,
+               MPID_Comm * comm,
+               int index)
+     
 {
   /* load the right algorithm in the function pointer and execute */
   bcast_fptr best_func = STAR_bcast_repository[index].func.bcast_func;
@@ -95,7 +95,6 @@ STAR_Bcast(char * buffer, int root,
       we are now in monitoring phase:
       execute best algorithm and measure its performance.
     */
-
     start = DCMF_Timer();
     rc = STAR_BestBcast(buffer, bytes, root, comm, best_alg);
     elapsed = DCMF_Timer() - start;

@@ -29,7 +29,7 @@ int MPIDO_Gather(void *sendbuf,
 
   int success = 1, contig, send_bytes=-1, recv_bytes = 0;
   int rc = 0, rank = comm->rank;
-
+  
   if (sendtype != MPI_DATATYPE_NULL && sendcount >= 0)
   {
     MPIDI_Datatype_get_info(sendcount, sendtype, contig,
@@ -51,6 +51,15 @@ int MPIDO_Gather(void *sendbuf,
       success = 0;
   }
 
+  if (DCMF_INFO_ISSET(properties, DCMF_IRREG_COMM) ||
+      DCMF_INFO_ISSET(properties, DCMF_USE_MPICH_GATHER) ||
+      !DCMF_INFO_ISSET(properties, DCMF_TREE_COMM) ||
+      mpid_hw.tSize > 1)
+    return MPIR_Gather(sendbuf, sendcount, sendtype,
+                       recvbuf, recvcount, recvtype,
+                       root, comm);
+  
+
   /* set the internal control flow to disable internal star tuning */
   STAR_info.internal_control_flow = 1;
 
@@ -60,7 +69,12 @@ int MPIDO_Gather(void *sendbuf,
 
   MPID_Ensure_Aint_fits_in_pointer(MPIR_VOID_PTR_CAST_TO_MPI_AINT recvbuf +
 				   true_lb);
+  if (!success)
+    return MPIR_Gather(sendbuf, sendcount, sendtype,
+                       recvbuf, recvcount, recvtype,
+                       root, comm);
 
+  
   recvbuf = (char *) recvbuf + true_lb;
 
   if (sendbuf != MPI_IN_PLACE)
@@ -72,18 +86,7 @@ int MPIDO_Gather(void *sendbuf,
   
   if (!STAR_info.enabled || STAR_info.internal_control_flow)
   {
-    if (!success ||
-        DCMF_INFO_ISSET(properties, DCMF_IRREG_COMM) ||
-        /*sendcount < 2048 || */
-        DCMF_INFO_ISSET(properties, DCMF_USE_MPICH_GATHER) || 
-        !DCMF_INFO_ISSET(properties, DCMF_USE_REDUCE_GATHER)||
-        mpid_hw.tSize > 1 /* non SMP mode */)
-    {
-      return MPIR_Gather(sendbuf, sendcount, sendtype,
-                         recvbuf, recvcount, recvtype,
-                         root, comm);
-    }
-    else
+    if (DCMF_INFO_ISSET(properties, DCMF_USE_REDUCE_GATHER))
       return MPIDO_Gather_reduce(sendbuf, sendcount, sendtype,
                                  recvbuf, recvcount, recvtype,
                                  root, comm);    

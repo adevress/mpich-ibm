@@ -837,6 +837,7 @@ void MPIDI_Coll_Comm_destroy (MPID_Comm *comm)
   if (comm->coll_fns)
     MPIU_Free(comm->coll_fns);
 #ifdef USE_CCMI_COLL
+  STAR_FreeMem(comm);
   DCMF_Geometry_free(&comm->dcmf.geometry);
 #endif /* USE_CCMI_COLL */
   if(comm->dcmf.sndlen)

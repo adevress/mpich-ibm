@@ -186,7 +186,7 @@ void STAR_InitRepositories()
 			    0, 0,
 			    0, 0,
 			    "bcast_scatter_gather",
-			    DCMF_IRREG_COMM,
+			    DCMF_TORUS_COMM,
 			    DCMF_END_ARGS);
 			    
 

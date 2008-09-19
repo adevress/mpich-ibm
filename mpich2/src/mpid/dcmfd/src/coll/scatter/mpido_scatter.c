@@ -66,6 +66,13 @@ int MPIDO_Scatter(void *sendbuf,
       success = 0;
   }
 
+  if (DCMF_INFO_ISSET(properties, DCMF_USE_MPICH_SCATTER) ||
+      DCMF_INFO_ISSET(properties, DCMF_IRREG_COMM) ||
+      (!DCMF_INFO_ISSET(properties, DCMF_TREE_COMM) && nbytes <= 64))
+    return MPIR_Scatter(sendbuf, sendcount, sendtype,
+                        recvbuf, recvcount, recvtype,
+                        root, comm);
+  
   /* set the internal control flow to disable internal star tuning */
   STAR_info.internal_control_flow = 1;
 
@@ -73,6 +80,11 @@ int MPIDO_Scatter(void *sendbuf,
 
   /* reset flag */
   STAR_info.internal_control_flow = 0;
+
+  if (!success)
+    return MPIR_Scatter(sendbuf, sendcount, sendtype,
+                        recvbuf, recvcount, recvtype,
+                        root, comm);
 
   MPID_Ensure_Aint_fits_in_pointer (MPIR_VOID_PTR_CAST_TO_MPI_AINT sendbuf +
 				    true_lb);
@@ -87,18 +99,12 @@ int MPIDO_Scatter(void *sendbuf,
 
   if (!STAR_info.enabled || STAR_info.internal_control_flow)
   {
-    if (!success || DCMF_INFO_ISSET(properties, DCMF_USE_MPICH_SCATTER) ||
-        !DCMF_INFO_ISSET(properties, DCMF_USE_BCAST_SCATTER) ||
-        DCMF_INFO_ISSET(properties, DCMF_IRREG_COMM))
+    if (DCMF_INFO_ISSET(properties, DCMF_USE_BCAST_SCATTER))
     {
-      return MPIR_Scatter(sendbuf, sendcount, sendtype,
-                          recvbuf, recvcount, recvtype,
-                          root, comm);
+        return MPIDO_Scatter_bcast(sendbuf, sendcount, sendtype,
+                                   recvbuf, recvcount, recvtype,
+                                   root, comm);
     }
-    else
-      return MPIDO_Scatter_bcast(sendbuf, sendcount, sendtype,
-                                 recvbuf, recvcount, recvtype,
-                                 root, comm);
   }
   else
   {
