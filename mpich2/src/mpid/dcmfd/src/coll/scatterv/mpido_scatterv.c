@@ -8,9 +8,10 @@
 #include "mpidi_star.h"
 #include "mpidi_coll_prototypes.h"
 
-#pragma weak PMPIDO_Scatterv = MPIDO_Scatterv
 
 #ifdef USE_CCMI_COLL
+
+#pragma weak PMPIDO_Scatterv = MPIDO_Scatterv
 
 int MPIDO_Scatterv(void *sendbuf,
                    int *sendcounts,

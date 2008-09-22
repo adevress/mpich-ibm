@@ -8,9 +8,10 @@
 #include "mpido_coll.h"
 #include "mpidi_coll_prototypes.h"
 
-#pragma weak PMPIDO_Reduce = MPIDO_Reduce
 
 #ifdef USE_CCMI_COLL
+
+#pragma weak PMPIDO_Reduce = MPIDO_Reduce
 
 int MPIDO_Reduce(void * sendbuf,
                  void * recvbuf,

@@ -9,9 +9,10 @@
 #include "mpidi_coll_prototypes.h"
 #include "mpix.h"
 
-#pragma weak PMPIDO_Bcast = MPIDO_Bcast
 
 #ifdef USE_CCMI_COLL
+
+#pragma weak PMPIDO_Bcast = MPIDO_Bcast
 
 int
 MPIDO_Bcast(void *buffer,

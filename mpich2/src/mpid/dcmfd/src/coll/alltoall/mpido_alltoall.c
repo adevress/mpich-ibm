@@ -8,9 +8,9 @@
 #include "mpidi_star.h"
 #include "mpidi_coll_prototypes.h"
 
-#pragma weak PMPIDO_Alltoall = MPIDO_Alltoall
-
 #ifdef USE_CCMI_COLL
+
+#pragma weak PMPIDO_Alltoall = MPIDO_Alltoall
 
 int
 MPIDO_Alltoall(void *sendbuf,
