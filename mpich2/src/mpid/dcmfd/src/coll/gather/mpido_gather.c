@@ -148,6 +148,8 @@ int MPIDO_Gather(void *sendbuf,
 
     return rc;    
   }
+  /* this should never be reached, but we don't want compiler warnings either*/
+   return rc;
 }
 
 #endif
