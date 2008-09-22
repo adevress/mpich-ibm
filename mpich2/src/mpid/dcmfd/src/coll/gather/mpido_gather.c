@@ -8,9 +8,9 @@
 #include "mpidi_star.h"
 #include "mpidi_coll_prototypes.h"
 
-#pragma weak PMPIDO_Gather = MPIDO_Gather
-
 #ifdef USE_CCMI_COLL
+
+#pragma weak PMPIDO_Gather = MPIDO_Gather
 
 /* works for simple data types, assumes fast reduce is available */
 

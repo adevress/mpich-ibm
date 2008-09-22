@@ -8,10 +8,10 @@
 #include "mpidi_star.h"
 #include "mpidi_coll_prototypes.h"
 
-#pragma weak PMPIDO_Scatter = MPIDO_Scatter
-
 #ifdef USE_CCMI_COLL
 
+
+#pragma weak PMPIDO_Scatter = MPIDO_Scatter
 /* works for simple data types, assumes fast bcast is available */
 
 int MPIDO_Scatter(void *sendbuf,

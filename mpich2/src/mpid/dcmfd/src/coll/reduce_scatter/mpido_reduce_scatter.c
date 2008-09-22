@@ -6,9 +6,9 @@
 
 #include "mpido_coll.h"
 
-#pragma weak PMPIDO_Reduce_scatter = MPIDO_Reduce_scatter
-
 #ifdef USE_CCMI_COLL
+
+#pragma weak PMPIDO_Reduce_scatter = MPIDO_Reduce_scatter
 
 /* Call optimized reduce+scatterv - should be faster than pt2pt on
  * larger partitions 
