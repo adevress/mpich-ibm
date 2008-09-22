@@ -50,10 +50,10 @@ int MPIDO_Gather(void *sendbuf,
     else
       success = 0;
   }
-
+  
   if (DCMF_INFO_ISSET(properties, DCMF_IRREG_COMM) ||
       DCMF_INFO_ISSET(properties, DCMF_USE_MPICH_GATHER) ||
-      !DCMF_INFO_ISSET(properties, DCMF_TREE_COMM) ||
+      !DCMF_INFO_ISSET(properties, DCMF_USE_REDUCE_GATHER) ||
       mpid_hw.tSize > 1)
     return MPIR_Gather(sendbuf, sendcount, sendtype,
                        recvbuf, recvcount, recvtype,

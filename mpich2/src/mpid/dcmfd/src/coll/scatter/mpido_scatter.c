@@ -68,7 +68,7 @@ int MPIDO_Scatter(void *sendbuf,
 
   if (DCMF_INFO_ISSET(properties, DCMF_USE_MPICH_SCATTER) ||
       DCMF_INFO_ISSET(properties, DCMF_IRREG_COMM) ||
-      (!DCMF_INFO_ISSET(properties, DCMF_TREE_COMM) && nbytes <= 64))
+      (!DCMF_INFO_ISSET(properties, DCMF_USE_BCAST_SCATTER) && nbytes <= 64))
     return MPIR_Scatter(sendbuf, sendcount, sendtype,
                         recvbuf, recvcount, recvtype,
                         root, comm);

@@ -276,7 +276,7 @@ STAR_NextAlgorithm(STAR_Tuning_Session * session,
   DCMF_INFO_ZERO(&tmp_comm);
   DCMF_INFO_OR(comm_info, &tmp_comm);
 
-  /* because we torus algorithms can handle irreg comms */
+  /* because torus algorithms can handle irreg comms */
   DCMF_INFO_SET(&tmp_comm, DCMF_IRREG_COMM);
 
   if (DCMF_INFO_ISSET(&tmp_comm, DCMF_USE_NOTREE_OPT_COLLECTIVES))

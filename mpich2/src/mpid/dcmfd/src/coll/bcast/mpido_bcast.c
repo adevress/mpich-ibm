@@ -162,8 +162,8 @@ MPIDO_Bcast(void *buffer,
             func = MPIDO_Bcast_rect_sync;
       
          if ((!func || userenvset) &&
-               DCMF_INFO_ISSET(properties, DCMF_USE_BINOM_SINGLETH_BCAST))
-            func = MPIDO_Bcast_binom_singleth;
+             DCMF_INFO_ISSET(properties, DCMF_USE_BINOM_SINGLETH_BCAST))
+           func = MPIDO_Bcast_binom_singleth;
 
          if ((!func || userenvset) &&
                DCMF_INFO_ISSET(properties, DCMF_USE_BINOM_BCAST))
