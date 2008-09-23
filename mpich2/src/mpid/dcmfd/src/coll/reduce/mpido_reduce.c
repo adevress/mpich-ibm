@@ -86,7 +86,10 @@ int MPIDO_Reduce(void * sendbuf,
         (op_type_support == DCMF_TORUS_SUPPORT ||
          op_type_support == DCMF_TREE_SUPPORT))
     {
-      if (data_size <= 32768 || userenvset)
+      if (DCMF_INFO_ISSET(properties, DCMF_IRREG_COMM))
+        func = MPIDO_Reduce_binom;
+      
+      if (!func && (data_size <= 32768 || userenvset))
       {
         if (DCMF_INFO_ISSET(properties, DCMF_USE_BINOM_REDUCE))
           func = MPIDO_Reduce_binom;
