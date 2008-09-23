@@ -34,7 +34,6 @@ MPIDO_Allgather(void *sendbuf,
   MPID_Datatype * dt_null = NULL;
   MPI_Aint send_true_lb = 0;
   MPI_Aint recv_true_lb = 0;
-  int comm_size = comm->local_size;
   size_t send_size = 0;
   size_t recv_size = 0;
 
@@ -64,10 +63,11 @@ MPIDO_Allgather(void *sendbuf,
 			  dt_null,
 			  recv_true_lb);
   send_size = recv_size;
-  recv_size *= comm_size;
+  recv_size *= comm->local_size;
   
   MPID_Ensure_Aint_fits_in_pointer(MPIR_VOID_PTR_CAST_TO_MPI_AINT recvbuf
-				   + recv_true_lb + comm_size * send_size);
+				   + recv_true_lb + comm->local_size *
+				   send_size);
   
   if (sendbuf != MPI_IN_PLACE)
   {
@@ -127,7 +127,7 @@ MPIDO_Allgather(void *sendbuf,
       else
       {
          /* Tree bcast is faster for large messages */
-         if(use_tree_reduce && use_tree_bcast && sendcount > 128*comm_size)
+         if(use_tree_reduce && use_tree_bcast && sendcount > 131072)
             func = MPIDO_Allgather_bcast;
          if(!func && use_tree_reduce && use_tree_bcast)
             func = MPIDO_Allgather_allreduce;
@@ -138,10 +138,9 @@ MPIDO_Allgather(void *sendbuf,
          /* No tree, so need to use torus protocols. alltoall is good for
           * medium sized messages. MPICH is good for small messages. Async
           * bcast is best for larger messages */
-         if(!func && use_alltoall && 
-               (sendcount > 128 && sendcount <= 16*comm_size))
+         if(!func && use_alltoall && (sendcount > 128 && sendcount <= 8192))
             func = MPIDO_Allgather_alltoall;
-         if(!func && use_rect_async && (sendcount > 16*comm_size))
+         if(!func && use_rect_async && (sendcount > 8192))
             func = MPIDO_Allgather_bcast_rect_async;
       }
       #if 0
