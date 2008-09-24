@@ -18,6 +18,7 @@ extern "C" {
 
 
 #include <stdint.h>
+#include "mpido_properties.h"
 
 /**
  * \defgroup MPIX IBM Blue Gene extensions to MPICH2

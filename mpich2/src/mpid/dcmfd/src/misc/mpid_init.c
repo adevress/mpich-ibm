@@ -173,11 +173,14 @@ int MPID_Init(int * argc,
     };
   DCMF_Control_register (&MPIDI_Protocols.control, &control_config);
 
+/* Set up interrupts and thread level before protocol registration */
+  MPIDI_DCMF_Configure(requested, provided);
+
 #ifdef USE_CCMI_COLL
   /* ---------------------------------- */
   /* Register the collectives           */
   /* ---------------------------------- */
-  MPIDI_Coll_register(requested);
+  MPIDI_Coll_register();
 #endif /* USE_CCMI_COLL */
 
   /* ------------------------------------------------------ */
@@ -242,7 +245,6 @@ int MPID_Init(int * argc,
   *has_args = TRUE;
   *has_env  = TRUE;
 
-  MPIDI_DCMF_Configure(requested, provided);
 
   return MPI_SUCCESS;
 }

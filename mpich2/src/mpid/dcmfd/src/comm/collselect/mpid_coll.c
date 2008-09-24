@@ -117,7 +117,7 @@ static inline int REDUCE_REGISTER(DCMF_Reduce_Protocol proto,
 
 
 /** \brief Helper used to register all the collective protocols at initialization */
-void MPIDI_Coll_register(int threadrequested)
+void MPIDI_Coll_register(void)
 {
 #ifdef USE_CCMI_COLL
   DCMF_Embedded_Info_Set * properties = &MPIDI_CollectiveProtocols.properties;
@@ -132,6 +132,10 @@ void MPIDI_Coll_register(int threadrequested)
   DCMF_GlobalAllreduce_Configuration_t gallreduce_config;
 
   DCMF_Result rc;
+
+  DCMF_Configure_t messager_config;
+
+  DCMF_Messager_configure(NULL, &messager_config);
 
   /* Register the global functions first */
    
@@ -245,9 +249,9 @@ void MPIDI_Coll_register(int threadrequested)
    * If in single thread mode, register gi, rect (via rectlockbox), bino
    * else register gi, rect (via rect barrier), bino 
    */
-
   DCMF_Barrier_Protocol barrier_proto;
-  if (threadrequested != DCMF_THREAD_MULTIPLE)
+
+  if(messager_config.thread_level != DCMF_THREAD_MULTIPLE)
     barrier_proto = DCMF_TORUS_RECTANGLELOCKBOX_BARRIER_PROTOCOL_SINGLETH;
   else
     barrier_proto = DCMF_TORUS_RECTANGLE_BARRIER_PROTOCOL; 
@@ -345,7 +349,7 @@ void MPIDI_Coll_register(int threadrequested)
     * to save memory */
 
    if(DCMF_INFO_ISSET(properties, DCMF_USE_RECT_DPUT_BCAST) &&
-      threadrequested != DCMF_THREAD_MULTIPLE)
+  messager_config.thread_level != DCMF_THREAD_MULTIPLE)
    {
       if(BROADCAST_REGISTER(
             DCMF_TORUS_RECTANGLE_BROADCAST_PROTOCOL_DPUT_SINGLETH,
@@ -355,7 +359,7 @@ void MPIDI_Coll_register(int threadrequested)
    }
 
    if(DCMF_INFO_ISSET(properties, DCMF_USE_RECT_SINGLETH_BCAST) &&
-      threadrequested != DCMF_THREAD_MULTIPLE)
+  messager_config.thread_level != DCMF_THREAD_MULTIPLE)
    {
       if(BROADCAST_REGISTER(
             DCMF_TORUS_RECTANGLE_BROADCAST_PROTOCOL_SINGLETH,
@@ -365,7 +369,7 @@ void MPIDI_Coll_register(int threadrequested)
    }
 
    if(DCMF_INFO_ISSET(properties, DCMF_USE_BINOM_SINGLETH_BCAST) &&
-      threadrequested != DCMF_THREAD_MULTIPLE)
+  messager_config.thread_level != DCMF_THREAD_MULTIPLE)
    {
       if(BROADCAST_REGISTER(
             DCMF_TORUS_BINOMIAL_BROADCAST_PROTOCOL_SINGLETH,
@@ -558,6 +562,8 @@ void MPIDI_Coll_Comm_create (MPID_Comm *comm)
   /* let us assume global context is comm_world */
   global = 1;
 
+   /* assume single threaded mode until we find out differently */
+   DCMF_INFO_SET(comm_prop, DCMF_SINGLE_THREAD_MODE);
 
   /* initial value is -1 to indicate this variable has not been set yet */
   if (dcmf_thread_level < 0)
@@ -570,14 +576,12 @@ void MPIDI_Coll_Comm_create (MPID_Comm *comm)
 
   if (dcmf_thread_level > 0)
   {
-    DCMF_INFO_SET(comm_prop, DCMF_THREADED_MODE);
+   DCMF_INFO_UNSET(comm_prop, DCMF_SINGLE_THREAD_MODE);
     if(comm != comm_world)
       global = 0;
   }
   else /* single MPI thread. */
   {
-    DCMF_INFO_SET(comm_prop, DCMF_SINGLE_THREAD_MODE);
-
     /* and if we are not dup of comm_world, global context is not safe */
     if(comm->local_size != comm_world->local_size)
       global = 0;
@@ -626,9 +630,6 @@ void MPIDI_Coll_Comm_create (MPID_Comm *comm)
   if (DCMF_ISPOF2(comm->local_size))
     DCMF_INFO_SET(comm_prop, DCMF_POF2_COMM);
 
-  if (DCMF_ISEVEN(comm->local_size))
-    DCMF_INFO_SET(comm_prop, DCMF_EVEN_COMM);
-
   DCMF_INFO_SET(comm_prop, DCMF_TORUS_COMM);
 
   if (comm -> local_size == DCMF_Messager_size() &&
@@ -637,8 +638,6 @@ void MPIDI_Coll_Comm_create (MPID_Comm *comm)
   
   if (global)
     DCMF_INFO_SET(comm_prop, DCMF_GLOBAL_CONTEXT);
-  else
-    DCMF_INFO_SET(comm_prop, DCMF_SUB_COMM);
 
   MPIR_Barrier(comm);
 
@@ -728,31 +727,34 @@ void MPIDI_Coll_Comm_create (MPID_Comm *comm)
       DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECTRING_REDUCE);
     }
    
-    if (DCMF_INFO_ISSET(comm_prop, DCMF_THREADED_MODE) && !global)
-    {
+   if(!global && !DCMF_INFO_ISSET(comm_prop, DCMF_SINGLE_THREAD_MODE))
+   {
       DCMF_INFO_UNSET(comm_prop, DCMF_USE_TORUS_ALLTOALL);
       DCMF_INFO_UNSET(comm_prop, DCMF_USE_TORUS_ALLTOALLW);
       DCMF_INFO_UNSET(comm_prop, DCMF_USE_TORUS_ALLTOALLV);
       DCMF_INFO_UNSET(comm_prop, DCMF_USE_ALLTOALL_SCATTERV);
       DCMF_INFO_UNSET(comm_prop, DCMF_USE_REDUCESCATTER);
     }
-    
-    if (!DCMF_INFO_ISSET(comm_prop, DCMF_GLOBAL_CONTEXT) ||
-        !DCMF_INFO_ISSET(comm_prop, DCMF_TREE_COMM) ||
-        DCMF_INFO_ISSET(comm_prop, DCMF_USE_NOTREE_OPT_COLLECTIVES))
+   if(!DCMF_INFO_ISSET(comm_prop, DCMF_GLOBAL_CONTEXT))
    {
-     DCMF_INFO_UNSET(comm_prop, DCMF_USE_GI_BARRIER);
-     DCMF_INFO_UNSET(comm_prop, DCMF_USE_TREE_BCAST);
-     DCMF_INFO_UNSET(comm_prop, DCMF_USE_TREE_ALLREDUCE);
-     DCMF_INFO_UNSET(comm_prop, DCMF_USE_CCMI_TREE_ALLREDUCE);
-     DCMF_INFO_UNSET(comm_prop, DCMF_USE_PIPELINED_TREE_ALLREDUCE);
-     DCMF_INFO_UNSET(comm_prop, DCMF_USE_TREE_REDUCE);
-     DCMF_INFO_UNSET(comm_prop, DCMF_USE_CCMI_TREE_REDUCE);
-     DCMF_INFO_UNSET(comm_prop, DCMF_USE_REDUCE_GATHER);
-     /*      DCMF_INFO_UNSET(comm_prop, DCMF_USE_BCAST_SCATTER); */
-     DCMF_INFO_UNSET(comm_prop, DCMF_USE_REDUCESCATTER);
+      DCMF_INFO_UNSET(comm_prop, DCMF_USE_GI_BARRIER);
    }
-  } 
+    
+      if (!DCMF_INFO_ISSET(comm_prop, DCMF_GLOBAL_CONTEXT) ||
+          !DCMF_INFO_ISSET(comm_prop, DCMF_TREE_COMM) ||
+          DCMF_INFO_ISSET(comm_prop, DCMF_USE_NOTREE_OPT_COLLECTIVES))
+      {
+         DCMF_INFO_UNSET(comm_prop, DCMF_USE_TREE_BCAST);
+         DCMF_INFO_UNSET(comm_prop, DCMF_USE_TREE_ALLREDUCE);
+         DCMF_INFO_UNSET(comm_prop, DCMF_USE_CCMI_TREE_ALLREDUCE);
+         DCMF_INFO_UNSET(comm_prop, DCMF_USE_PIPELINED_TREE_ALLREDUCE);
+         DCMF_INFO_UNSET(comm_prop, DCMF_USE_TREE_REDUCE);
+         DCMF_INFO_UNSET(comm_prop, DCMF_USE_CCMI_TREE_REDUCE);
+         DCMF_INFO_UNSET(comm_prop, DCMF_USE_REDUCE_GATHER);
+         /*      DCMF_INFO_UNSET(comm_prop, DCMF_USE_BCAST_SCATTER); */
+         DCMF_INFO_UNSET(comm_prop, DCMF_USE_REDUCESCATTER);
+      }
+   } 
  
   if (STAR_info.enabled && STAR_info.debug && 
       comm -> comm_kind == MPID_INTRACOMM &&
