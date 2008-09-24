@@ -196,3 +196,48 @@ void MPIX_Dump_stacks()
 
   free(strings); /* Since this is not allocated by MPIU_Malloc, do not use MPIU_Free */
 }
+
+#pragma weak PMI_Get_property = MPIX_Get_property
+int MPIX_Get_property(MPI_Comm comm, int prop, int * result)
+{
+  MPID_Comm * comm_ptr;
+  MPID_Comm_get_ptr(comm, comm_ptr);
+  if (prop < 0 && prop > DCMF_MAX_NUM_BITS)
+  {
+    if (comm_ptr -> rank == 0)
+      fprintf(stderr, "invalid property to set\n");
+    return DCMF_INVAL;
+  }
+
+  *result = DCMF_INFO_ISSET(&(comm_ptr->dcmf.properties), prop);
+  return DCMF_SUCCESS;
+}
+
+#pragma weak PMI_Set_property = MPIX_Set_property
+int MPIX_Set_property(MPI_Comm comm, int prop, int value)
+{
+  MPID_Comm * comm_ptr;
+  MPID_Comm_get_ptr(comm, comm_ptr);
+  if (prop < 0 && prop > DCMF_MAX_NUM_BITS)
+  {
+    if (comm_ptr -> rank == 0)
+      fprintf(stderr, "invalid property to set\n");
+    return DCMF_INVAL;
+  }
+  if (value != 0 && value != 1)
+  {
+    if (comm_ptr -> rank == 0)
+      fprintf(stderr, "%d is invalid value to set (use 0 or 1)\n", value);
+    return DCMF_INVAL;
+  }
+
+  if (!value)
+    DCMF_INFO_UNSET(&(comm_ptr->dcmf.properties), prop);
+  else
+    DCMF_INFO_SET(&(comm_ptr->dcmf.properties), prop);
+
+  if (prop == DCMF_TREE_COMM || prop == DCMF_RECT_COMM)
+    MPIDI_Comm_setup_properties(comm_ptr, 0);
+
+  return DCMF_SUCCESS;
+}

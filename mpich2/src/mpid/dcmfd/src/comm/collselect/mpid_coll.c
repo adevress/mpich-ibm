@@ -672,90 +672,10 @@ void MPIDI_Coll_Comm_create (MPID_Comm *comm)
 
   /* end of setting geometric properties of the communicator */
 
-  /* quick setting of conditions that results to defaulting to MPICH */
-  if (comm -> comm_kind != MPID_INTRACOMM || comm->local_size <= 4)
-    DCMF_MSET_INFO(comm_prop,
-		   DCMF_USE_MPICH_BARRIER,
-		   DCMF_USE_MPICH_BCAST,
-		   DCMF_USE_MPICH_ALLTOALL,
-		   DCMF_USE_MPICH_ALLTOALLW,
-		   DCMF_USE_MPICH_ALLTOALLV,
-		   DCMF_USE_MPICH_ALLGATHER,
-		   DCMF_USE_MPICH_ALLGATHERV,
-		   DCMF_USE_MPICH_ALLREDUCE,
-		   DCMF_USE_MPICH_REDUCE,
-		   DCMF_USE_MPICH_GATHER,
-		   DCMF_USE_MPICH_SCATTER,
-		   DCMF_USE_MPICH_SCATTERV,
-		   DCMF_USE_MPICH_REDUCESCATTER,
-		   DCMF_END_ARGS);
-	
-  else
-  {
-    /* 
-       we basically be optimistic and assume all conditions are available 
-       for all protocols based on the mpidi_protocol properties. As such, we 
-       copy the informative bits from coll_prop to comm_prop. Then, we check 
-       the geometry bits of the communicator to uncheck any bit for a 
-       protocol 
-    */
-    DCMF_INFO_OR(coll_prop, comm_prop);
-    
-    if(dcmf_thread_level > 0)
-    {
-      DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_DPUT_BCAST);
-      DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_SINGLETH_BCAST);
-      DCMF_INFO_UNSET(comm_prop, DCMF_USE_BINOM_SINGLETH_BCAST);
-    }
-    
-    if (!DCMF_INFO_ISSET(comm_prop, DCMF_RECT_COMM))
-    {
-      DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_BARRIER);
-      DCMF_INFO_UNSET(comm_prop, DCMF_USE_ARECT_BCAST);
-      DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_BCAST);
-      DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_DPUT_BCAST);
-      DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_SINGLETH_BCAST);
-      DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_BCAST_ALLGATHER);
-      DCMF_INFO_UNSET(comm_prop, DCMF_USE_ARECT_BCAST_ALLGATHER);
-      DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_BCAST_ALLGATHERV);
-      DCMF_INFO_UNSET(comm_prop, DCMF_USE_ARECT_BCAST_ALLGATHERV);
-      DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_ALLREDUCE);
-      DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECTRING_ALLREDUCE);
-      DCMF_INFO_UNSET(comm_prop, DCMF_USE_ARECT_ALLREDUCE);
-      DCMF_INFO_UNSET(comm_prop, DCMF_USE_ARECTRING_ALLREDUCE);
-      DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_REDUCE);
-      DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECTRING_REDUCE);
-    }
-   
-   if(!global && !DCMF_INFO_ISSET(comm_prop, DCMF_SINGLE_THREAD_MODE))
-   {
-      DCMF_INFO_UNSET(comm_prop, DCMF_USE_TORUS_ALLTOALL);
-      DCMF_INFO_UNSET(comm_prop, DCMF_USE_TORUS_ALLTOALLW);
-      DCMF_INFO_UNSET(comm_prop, DCMF_USE_TORUS_ALLTOALLV);
-      DCMF_INFO_UNSET(comm_prop, DCMF_USE_ALLTOALL_SCATTERV);
-      DCMF_INFO_UNSET(comm_prop, DCMF_USE_REDUCESCATTER);
-    }
-   if(!DCMF_INFO_ISSET(comm_prop, DCMF_GLOBAL_CONTEXT))
-   {
-      DCMF_INFO_UNSET(comm_prop, DCMF_USE_GI_BARRIER);
-   }
-    
-      if (!DCMF_INFO_ISSET(comm_prop, DCMF_GLOBAL_CONTEXT) ||
-          !DCMF_INFO_ISSET(comm_prop, DCMF_TREE_COMM) ||
-          DCMF_INFO_ISSET(comm_prop, DCMF_USE_NOTREE_OPT_COLLECTIVES))
-      {
-         DCMF_INFO_UNSET(comm_prop, DCMF_USE_TREE_BCAST);
-         DCMF_INFO_UNSET(comm_prop, DCMF_USE_TREE_ALLREDUCE);
-         DCMF_INFO_UNSET(comm_prop, DCMF_USE_CCMI_TREE_ALLREDUCE);
-         DCMF_INFO_UNSET(comm_prop, DCMF_USE_PIPELINED_TREE_ALLREDUCE);
-         DCMF_INFO_UNSET(comm_prop, DCMF_USE_TREE_REDUCE);
-         DCMF_INFO_UNSET(comm_prop, DCMF_USE_CCMI_TREE_REDUCE);
-         DCMF_INFO_UNSET(comm_prop, DCMF_USE_REDUCE_GATHER);
-         /*      DCMF_INFO_UNSET(comm_prop, DCMF_USE_BCAST_SCATTER); */
-         DCMF_INFO_UNSET(comm_prop, DCMF_USE_REDUCESCATTER);
-      }
-   } 
- 
+  /* now set the protocols and algorithms based on geometry bits info */
+  
+  MPIDI_Comm_setup_properties(comm, 1); /* 1 means this is initial setup */
+
   if (STAR_info.enabled && STAR_info.debug && 
       comm -> comm_kind == MPID_INTRACOMM &&
       comm -> rank == 0)
@@ -861,4 +781,99 @@ void MPIDI_Coll_Comm_destroy (MPID_Comm *comm)
     comm->dcmf.rdispls =
     comm->dcmf.sndcounters =
     comm->dcmf.rcvcounters = NULL;
+}
+
+void MPIDI_Comm_setup_properties(MPID_Comm * comm, int initial_setup)
+{
+  DCMF_Embedded_Info_Set * comm_prop, * coll_prop;
+
+  comm_prop = &(comm -> dcmf.properties);
+  coll_prop = &MPIDI_CollectiveProtocols.properties;
+
+  if (comm->comm_kind != MPID_INTRACOMM || comm->local_size <= 4)
+    DCMF_MSET_INFO(comm_prop,
+		   DCMF_USE_MPICH_BARRIER,
+		   DCMF_USE_MPICH_BCAST,
+		   DCMF_USE_MPICH_ALLTOALL,
+		   DCMF_USE_MPICH_ALLTOALLW,
+		   DCMF_USE_MPICH_ALLTOALLV,
+		   DCMF_USE_MPICH_ALLGATHER,
+		   DCMF_USE_MPICH_ALLGATHERV,
+		   DCMF_USE_MPICH_ALLREDUCE,
+		   DCMF_USE_MPICH_REDUCE,
+		   DCMF_USE_MPICH_GATHER,
+		   DCMF_USE_MPICH_SCATTER,
+		   DCMF_USE_MPICH_SCATTERV,
+		   DCMF_USE_MPICH_REDUCESCATTER,
+		   DCMF_END_ARGS);
+	
+  else
+  {
+    /* 
+       we basically be optimistic and assume all conditions are available 
+       for all protocols based on the mpidi_protocol properties. As such, we 
+       copy the informative bits from coll_prop to comm_prop. Then, we check 
+       the geometry bits of the communicator to uncheck any bit for a 
+       protocol 
+    */
+
+    if (initial_setup)
+      DCMF_INFO_OR(coll_prop, comm_prop);
+    
+    if(dcmf_thread_level > 0)
+    {
+      DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_DPUT_BCAST);
+      DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_SINGLETH_BCAST);
+      DCMF_INFO_UNSET(comm_prop, DCMF_USE_BINOM_SINGLETH_BCAST);
+    }
+    
+    if (!DCMF_INFO_ISSET(comm_prop, DCMF_RECT_COMM))
+    {
+      DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_BARRIER);
+      DCMF_INFO_UNSET(comm_prop, DCMF_USE_ARECT_BCAST);
+      DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_BCAST);
+      DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_DPUT_BCAST);
+      DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_SINGLETH_BCAST);
+      DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_BCAST_ALLGATHER);
+      DCMF_INFO_UNSET(comm_prop, DCMF_USE_ARECT_BCAST_ALLGATHER);
+      DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_BCAST_ALLGATHERV);
+      DCMF_INFO_UNSET(comm_prop, DCMF_USE_ARECT_BCAST_ALLGATHERV);
+      DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_ALLREDUCE);
+      DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECTRING_ALLREDUCE);
+      DCMF_INFO_UNSET(comm_prop, DCMF_USE_ARECT_ALLREDUCE);
+      DCMF_INFO_UNSET(comm_prop, DCMF_USE_ARECTRING_ALLREDUCE);
+      DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_REDUCE);
+      DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECTRING_REDUCE);
+    }
+   
+   if(!DCMF_INFO_ISSET(comm_prop, DCMF_GLOBAL_CONTEXT) &&
+      !DCMF_INFO_ISSET(comm_prop, DCMF_SINGLE_THREAD_MODE))
+   {
+      DCMF_INFO_UNSET(comm_prop, DCMF_USE_TORUS_ALLTOALL);
+      DCMF_INFO_UNSET(comm_prop, DCMF_USE_TORUS_ALLTOALLW);
+      DCMF_INFO_UNSET(comm_prop, DCMF_USE_TORUS_ALLTOALLV);
+      DCMF_INFO_UNSET(comm_prop, DCMF_USE_ALLTOALL_SCATTERV);
+      DCMF_INFO_UNSET(comm_prop, DCMF_USE_REDUCESCATTER);
+    }
+   if(!DCMF_INFO_ISSET(comm_prop, DCMF_GLOBAL_CONTEXT))
+   {
+     DCMF_INFO_UNSET(comm_prop, DCMF_USE_GI_BARRIER);
+   }
+   
+   if (!DCMF_INFO_ISSET(comm_prop, DCMF_GLOBAL_CONTEXT) ||
+       !DCMF_INFO_ISSET(comm_prop, DCMF_TREE_COMM) ||
+       DCMF_INFO_ISSET(comm_prop, DCMF_USE_NOTREE_OPT_COLLECTIVES))
+   {
+     DCMF_INFO_UNSET(comm_prop, DCMF_USE_TREE_BCAST);
+     DCMF_INFO_UNSET(comm_prop, DCMF_USE_TREE_ALLREDUCE);
+     DCMF_INFO_UNSET(comm_prop, DCMF_USE_CCMI_TREE_ALLREDUCE);
+     DCMF_INFO_UNSET(comm_prop, DCMF_USE_PIPELINED_TREE_ALLREDUCE);
+     DCMF_INFO_UNSET(comm_prop, DCMF_USE_TREE_REDUCE);
+     DCMF_INFO_UNSET(comm_prop, DCMF_USE_CCMI_TREE_REDUCE);
+     DCMF_INFO_UNSET(comm_prop, DCMF_USE_REDUCE_GATHER);
+     /*      DCMF_INFO_UNSET(comm_prop, DCMF_USE_BCAST_SCATTER); */
+     DCMF_INFO_UNSET(comm_prop, DCMF_USE_REDUCESCATTER);
+   }
+  } 
+  
 }

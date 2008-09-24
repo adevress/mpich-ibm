@@ -404,6 +404,7 @@ void MPIDI_DCMF_RendezvousTransfer (MPID_Request * rreq);
 
 void MPIDI_Comm_create       (MPID_Comm *comm);
 void MPIDI_Comm_destroy      (MPID_Comm *comm);
+void MPIDI_Comm_setup_properties(MPID_Comm *comm, int initial_setup);
 void MPIDI_Env_setup         ();
 
 void MPIDI_Topo_Comm_create  (MPID_Comm *comm);

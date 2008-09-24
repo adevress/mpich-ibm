@@ -34,7 +34,7 @@ MPIDO_Allreduce(void * sendbuf,
 
   if(count == 0)
     return MPI_SUCCESS;
-  
+
   /* quick exit conditions */
   if (DCMF_INFO_ISSET(properties, DCMF_USE_MPICH_ALLREDUCE) ||
       DCMF_INFO_ISSET(properties, DCMF_IRREG_COMM) ||
