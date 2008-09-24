@@ -1436,8 +1436,16 @@ int MPIDU_proto_send(MPID_Win *win, MPID_Group *grp, int type) {
                         ctl.mpid_ctl_w3 = win->_dev.coll_info[comm_rank].rma_sends;
                         win->_dev.coll_info[comm_rank].rma_sends = 0;
                 }
-                mpi_errno = DCMF_Control(&bg1s_ct_proto, consistency, lpid, &ctl.ctl);
-                if (mpi_errno) { break; }
+		if (lpid == mpid_my_lpid) {
+			if (type == MPID_MSGTYPE_POST) {
+				++win->_dev.my_sync_begin;
+			} else if (type == MPID_MSGTYPE_COMPLETE) {
+				++win->_dev.my_sync_done;
+			}
+		} else {
+                	mpi_errno = DCMF_Control(&bg1s_ct_proto, consistency, lpid, &ctl.ctl);
+                	if (mpi_errno) { break; }
+		}
         }
         return mpi_errno;
 }
