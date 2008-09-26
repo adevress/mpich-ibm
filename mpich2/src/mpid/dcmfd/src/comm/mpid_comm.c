@@ -939,55 +939,45 @@ MPIDI_Env_setup()
       fprintf(stderr,"Invalid DCMF_ALLREDUCE_REUSE_STORAGE option\n");
   }
   
-  envopts = getenv("DCMF_REDUCE");
-  if(envopts != NULL)
-  {
-    if(strncasecmp(envopts, "M", 1) == 0) /* MPICH */
-    {
-      DCMF_INFO_SET(properties, DCMF_USE_MPICH_REDUCE);
+   envopts = getenv("DCMF_REDUCE");
+   if(envopts != NULL)
+   {
+      DCMF_INFO_SET(properties, DCMF_REDUCE_ENVVAR);
       DCMF_INFO_UNSET(properties, DCMF_USE_TREE_REDUCE);
       DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_REDUCE);
       DCMF_INFO_UNSET(properties, DCMF_USE_RECTRING_REDUCE);
       DCMF_INFO_UNSET(properties, DCMF_USE_RECT_REDUCE);
-    }
-    else if(strncasecmp(envopts, "RI", 2) == 0) /* Rectangle Ring*/
-    {
-      DCMF_INFO_UNSET(properties, DCMF_USE_TREE_REDUCE);
-      DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_REDUCE);
-      DCMF_INFO_SET(properties, DCMF_USE_RECTRING_REDUCE);
-      DCMF_INFO_UNSET(properties, DCMF_USE_RECT_REDUCE);
-    }
-    else if(strncasecmp(envopts, "R", 1) == 0) /* Rectangle */
-    {
-      DCMF_INFO_UNSET(properties, DCMF_USE_TREE_REDUCE);
-      DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_REDUCE);
-      DCMF_INFO_UNSET(properties, DCMF_USE_RECTRING_REDUCE);
-      DCMF_INFO_SET(properties, DCMF_USE_RECT_REDUCE);
-    }
-    else if(strncasecmp(envopts, "B", 1) == 0) /* Binomial */
-    {
-      DCMF_INFO_UNSET(properties, DCMF_USE_TREE_REDUCE);
-      DCMF_INFO_SET(properties, DCMF_USE_BINOM_REDUCE);
-      DCMF_INFO_UNSET(properties, DCMF_USE_RECTRING_REDUCE);
-      DCMF_INFO_UNSET(properties, DCMF_USE_RECT_REDUCE);
-    }
-    else if(strncasecmp(envopts, "T", 1) == 0) /* Tree */
-    {
-      DCMF_INFO_SET(properties, DCMF_USE_TREE_REDUCE);
-      DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_REDUCE);
-      DCMF_INFO_UNSET(properties, DCMF_USE_RECTRING_REDUCE);
-      DCMF_INFO_UNSET(properties, DCMF_USE_RECT_REDUCE);
-    }
-    else if(strncasecmp(envopts, "C", 1) == 0) /* CCMI Tree */
-    {
-      DCMF_INFO_SET(properties, DCMF_USE_CCMI_TREE_REDUCE);
-      DCMF_INFO_UNSET(properties, DCMF_USE_TREE_REDUCE);
-      DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_REDUCE);
-      DCMF_INFO_UNSET(properties, DCMF_USE_RECTRING_REDUCE);
-      DCMF_INFO_UNSET(properties, DCMF_USE_RECT_REDUCE);
-    }
-    else
-      fprintf(stderr,"Invalid DCMF_REDUCE option\n");
+      DCMF_INFO_UNSET(properties, DCMF_USE_CCMI_TREE_REDUCE);
+
+      if(strncasecmp(envopts, "M", 1) == 0) /* MPICH */
+      {
+         DCMF_INFO_SET(properties, DCMF_USE_MPICH_REDUCE);
+      }
+      else if(strncasecmp(envopts, "RI", 2) == 0) /* Rectangle Ring*/
+      {
+         DCMF_INFO_SET(properties, DCMF_USE_RECTRING_REDUCE);
+      }
+      else if(strncasecmp(envopts, "R", 1) == 0) /* Rectangle */
+      {
+         DCMF_INFO_SET(properties, DCMF_USE_RECT_REDUCE);
+      }
+      else if(strncasecmp(envopts, "B", 1) == 0) /* Binomial */
+      {
+         DCMF_INFO_SET(properties, DCMF_USE_BINOM_REDUCE);
+      }
+      else if(strncasecmp(envopts, "T", 1) == 0) /* Tree */
+      {
+         DCMF_INFO_SET(properties, DCMF_USE_TREE_REDUCE);
+      }
+      else if(strncasecmp(envopts, "C", 1) == 0) /* CCMI Tree */
+      {
+         DCMF_INFO_SET(properties, DCMF_USE_CCMI_TREE_REDUCE);
+      }
+      else
+      {
+         fprintf(stderr,"Invalid DCMF_REDUCE option. Defaulting to MPICH\n");
+         DCMF_INFO_SET(properties, DCMF_USE_MPICH_REDUCE);
+      }
   }
   
   envopts = getenv("DCMF_REDUCE_REUSE_STORAGE");
