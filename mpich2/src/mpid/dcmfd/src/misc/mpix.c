@@ -202,11 +202,10 @@ int MPIX_Get_property(MPI_Comm comm, int prop, int * result)
 {
   MPID_Comm * comm_ptr;
   MPID_Comm_get_ptr(comm, comm_ptr);
-  
-  if (!comm_ptr ||(prop < 0 && prop > DCMF_MAX_NUM_BITS))
+  if (prop < 0 && prop > DCMF_MAX_NUM_BITS)
   {
     if (comm_ptr -> rank == 0)
-      fprintf(stderr, "invalid property to check or bad communicator\n");
+      fprintf(stderr, "invalid property to set\n");
     return DCMF_INVAL;
   }
 
@@ -219,10 +218,10 @@ int MPIX_Set_property(MPI_Comm comm, int prop, int value)
 {
   MPID_Comm * comm_ptr;
   MPID_Comm_get_ptr(comm, comm_ptr);
-  if (!comm_ptr ||(prop < 0 && prop > DCMF_MAX_NUM_BITS))
+  if (prop < 0 && prop > DCMF_MAX_NUM_BITS)
   {
     if (comm_ptr -> rank == 0)
-      fprintf(stderr, "invalid property to set or bad communicator\n");
+      fprintf(stderr, "invalid property to set\n");
     return DCMF_INVAL;
   }
   if (value != 0 && value != 1)
