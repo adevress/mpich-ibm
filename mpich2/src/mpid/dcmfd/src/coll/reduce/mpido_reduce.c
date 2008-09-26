@@ -107,13 +107,15 @@ int MPIDO_Reduce(void * sendbuf,
       {
          if(DCMF_INFO_ISSET(properties, DCMF_USE_BINOM_REDUCE))
             func = MPIDO_Reduce_binom;
-         if(DCMF_INFO_ISSET(properties, DCMF_USE_TREE_REDUCE && 
+         if(DCMF_INFO_ISSET(properties, DCMF_USE_TREE_REDUCE) && 
                                  DCMF_TREE_SMP_SHORTCUT && 
-                                 op_type_support == DCMF_TREE_SUPPORT))
+                                 op_type_support == DCMF_TREE_SUPPORT)
+         {
             func = MPIDO_Reduce_global_tree;
-         if(DCMF_INFO_ISSET(properties, DCMF_USE_TREE_REDUCE && 
+         }
+         if(DCMF_INFO_ISSET(properties, DCMF_USE_TREE_REDUCE) && 
                                  !DCMF_TREE_SMP_SHORTCUT && 
-                                 op_type_support == DCMF_TREE_SUPPORT))
+                                 op_type_support == DCMF_TREE_SUPPORT)
             func = MPIDO_Reduce_tree;
          if(DCMF_INFO_ISSET(properties, DCMF_USE_RECTRING_REDUCE))
             func = MPIDO_Reduce_rectring;
