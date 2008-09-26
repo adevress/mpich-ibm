@@ -28,7 +28,7 @@ MPIDO_Allreduce(void * sendbuf,
   MPID_Datatype * data_ptr;
   MPI_Aint data_true_lb = 0;
   int rc, op_type_support, data_contig, data_size;
-  unsigned char reset_sendbuff = 0;
+  char *sbuf;
   /* Did the user want to force a specific algorithm? */
   int userenvset = DCMF_INFO_ISSET(properties, DCMF_ALLREDUCE_ENVVAR);
 
@@ -47,15 +47,12 @@ MPIDO_Allreduce(void * sendbuf,
   MPID_Ensure_Aint_fits_in_pointer(MPIR_VOID_PTR_CAST_TO_MPI_AINT recvbuf +
 				   data_true_lb);
   if (sendbuf == MPI_IN_PLACE)
-  {
-    sendbuf = recvbuf;
-    reset_sendbuff = 1;
-  }
+    sbuf = recvbuf;
   else
   {
     MPID_Ensure_Aint_fits_in_pointer(MPIR_VOID_PTR_CAST_TO_MPI_AINT sendbuf +
                                      data_true_lb);
-    sendbuf = ((char *) sendbuf + data_true_lb);
+    sbuf = ((char *) sendbuf + data_true_lb);
   }
 
   op_type_support = MPIDI_ConvertMPItoDCMF(op, &dcmf_op, datatype, &dcmf_data);
@@ -64,55 +61,58 @@ MPIDO_Allreduce(void * sendbuf,
 
   recvbuf = ((char *) recvbuf + data_true_lb);
 
-  if (!STAR_info.enabled || STAR_info.internal_control_flow)
-  {
-    if (op_type_support == DCMF_TREE_SUPPORT &&
-        DCMF_INFO_ISSET(properties, DCMF_TREE_COMM))
-    {
-      if (DCMF_INFO_ISSET(properties, DCMF_USE_TREE_ALLREDUCE) &&
-          DCMF_TREE_SMP_SHORTCUT)
-        func = MPIDO_Allreduce_global_tree;
-
-      else if (DCMF_INFO_ISSET(properties, DCMF_USE_CCMI_TREE_ALLREDUCE))
-        func = MPIDO_Allreduce_tree;
-
-      else if (DCMF_INFO_ISSET(properties, DCMF_USE_PIPELINED_TREE_ALLREDUCE))
+   if (!STAR_info.enabled || STAR_info.internal_control_flow)
+   {
+      if(!userenvset)
       {
-        func = MPIDO_Allreduce_pipelined_tree;
+         if (op_type_support == DCMF_TREE_SUPPORT &&
+                  DCMF_INFO_ISSET(properties, DCMF_TREE_COMM))
+         {
+            if (DCMF_INFO_ISSET(properties, DCMF_USE_TREE_ALLREDUCE) &&
+                  DCMF_TREE_SMP_SHORTCUT)
+               func = MPIDO_Allreduce_global_tree;
+
+            else if (DCMF_INFO_ISSET(properties, DCMF_USE_CCMI_TREE_ALLREDUCE))
+               func = MPIDO_Allreduce_tree;
+
+            else if (DCMF_INFO_ISSET(properties, DCMF_USE_PIPELINED_TREE_ALLREDUCE))
+            {
+               func = MPIDO_Allreduce_pipelined_tree;
+            }
+
+         }
+         if(!func && (op_type_support == DCMF_TORUS_SUPPORT ||
+                      op_type_support == DCMF_TREE_SUPPORT))
+         {
+            if (data_size <= 128)
+            {
+               if (DCMF_INFO_ISSET(properties, DCMF_USE_ABINOM_ALLREDUCE))
+               {
+                  func = MPIDO_Allreduce_async_binom;
+               }
+            }
+         
+            if(!func && (data_size <= 16384))
+            {
+               if (DCMF_INFO_ISSET(properties, DCMF_USE_ARECT_ALLREDUCE))
+               {
+                  func = MPIDO_Allreduce_async_rect;
+               }
+            }
+         
+            if(!func)
+            {
+               if (DCMF_INFO_ISSET(properties, DCMF_USE_ARECTRING_ALLREDUCE))
+               {
+                  func = MPIDO_Allreduce_async_rectring;
+               }
+            }
+         }
       }
 
-    }
-    if(!func && (op_type_support == DCMF_TORUS_SUPPORT ||
-                 op_type_support == DCMF_TREE_SUPPORT))
-    {
-      if (data_size <= 128 || userenvset)
-      {
-        if (DCMF_INFO_ISSET(properties, DCMF_USE_ABINOM_ALLREDUCE))
-        {
-          func = MPIDO_Allreduce_async_binom;
-        }
-      }
-      
-      if(!func && (data_size <= 16384 || userenvset))
-      {
-        if (DCMF_INFO_ISSET(properties, DCMF_USE_ARECT_ALLREDUCE))
-        {
-          func = MPIDO_Allreduce_async_rect;
-        }
-      }
-      
-      if(!func)
-      {
-        if (DCMF_INFO_ISSET(properties, DCMF_USE_ARECTRING_ALLREDUCE))
-        {
-          func = MPIDO_Allreduce_async_rectring;
-        }
-      }
-    }
 
-
-    if (func)
-      rc = (func)(sendbuf,
+      if (func)
+         rc = (func)(sbuf,
                   recvbuf,
                   count,
                   dcmf_data,
@@ -124,13 +124,11 @@ MPIDO_Allreduce(void * sendbuf,
       punt to MPICH in the case no optimized func is found or in the case
       generic op/type is used
     */
-    else
-    {
-      if (reset_sendbuff) 
-        sendbuf = MPI_IN_PLACE;
-      rc = MPIR_Allreduce(sendbuf, recvbuf, count, datatype, op, comm);
-    }
-  }
+      else
+      {
+         rc = MPIR_Allreduce(sendbuf, recvbuf, count, datatype, op, comm);
+      }
+   }
 
   else
   {
@@ -153,14 +151,13 @@ MPIDO_Allreduce(void * sendbuf,
     collective_site.id = (int) tb_ptr[STAR_info.traceback_levels - 1];
     collective_site.op_type_support = op_type_support;
 
-    rc = STAR_Allreduce(sendbuf, recvbuf, count, dcmf_data, dcmf_op,
+    rc = STAR_Allreduce(sbuf, recvbuf, count, dcmf_data, dcmf_op,
                         datatype, &collective_site,
                         STAR_allreduce_repository,
                         STAR_info.allreduce_algorithms);
 
     if (rc == STAR_FAILURE)
     {
-      if (reset_sendbuff) sendbuf = MPI_IN_PLACE;
       rc = MPIR_Allreduce(sendbuf, recvbuf, count, datatype, op, comm);
     }
 
@@ -170,8 +167,6 @@ MPIDO_Allreduce(void * sendbuf,
     STAR_info.internal_control_flow = 0;
   }
 
-  if (reset_sendbuff)
-    sendbuf = MPI_IN_PLACE;
 
   return rc;
 }

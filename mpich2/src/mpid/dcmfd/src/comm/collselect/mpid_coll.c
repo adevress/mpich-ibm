@@ -423,6 +423,20 @@ void MPIDI_Coll_register(void)
       DCMF_INFO_UNSET(properties, DCMF_USE_CCMI_TREE_ALLREDUCE);
     }
   }
+   if(DCMF_INFO_ISSET(properties, DCMF_USE_SHORT_ASYNC_RECT_ALLREDUCE))
+   {
+   if(ALLREDUCE_REGISTER(DCMF_TORUS_ASYNC_SHORT_RECTANGLE_ALLREDUCE_PROTOCOL,
+                         &MPIDI_CollectiveProtocols.short_async_rect_allreduce,
+                         &allreduce_config) != DCMF_SUCCESS)
+         DCMF_INFO_UNSET(properties, DCMF_USE_SHORT_ASYNC_RECT_ALLREDUCE);
+   }
+   if(DCMF_INFO_ISSET(properties, DCMF_USE_RRING_DPUT_ALLREDUCE_SINGLETH))
+   {
+      if(ALLREDUCE_REGISTER(DCMF_TORUS_RRING_DPUT_ALLREDUCE_PROTOCOL_SINGLETH,
+                            &MPIDI_CollectiveProtocols.rring_dput_allreduce_singleth,
+                            &allreduce_config) != DCMF_SUCCESS)
+         DCMF_INFO_UNSET(properties, DCMF_USE_RRING_DPUT_ALLREDUCE_SINGLETH);
+   }
    
   if(DCMF_INFO_ISSET(properties, DCMF_USE_PIPELINED_TREE_ALLREDUCE))
   {

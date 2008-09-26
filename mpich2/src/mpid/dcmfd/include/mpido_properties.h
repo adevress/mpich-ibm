@@ -110,13 +110,13 @@
 #define DCMF_USE_ARECT_ALLREDUCE                                          56
 #define DCMF_USE_ARECTRING_ALLREDUCE                                      57
 #define DCMF_USE_ABINOM_ALLREDUCE                                         58
+#define DCMF_USE_SHORT_ASYNC_RECT_ALLREDUCE                               59
+#define DCMF_USE_RRING_DPUT_ALLREDUCE_SINGLETH                            60
 /* Controls whether or not we reuse storage in allreduce */
-#define DCMF_USE_STORAGE_ALLREDUCE                                        59
-#define DCMF_USE_MPICH_ALLREDUCE                                          60  
-#define DCMF_ALLREDUCE_RESERVED1                                          61
-#define DCMF_ALLREDUCE_RESERVED2                                          62
-#define DCMF_ALLREDUCE_RESERVED3                                          63
-#define DCMF_ALLREDUCE_RESERVED4                                          64
+#define DCMF_USE_STORAGE_ALLREDUCE                                        61
+#define DCMF_USE_MPICH_ALLREDUCE                                          62  
+#define DCMF_ALLREDUCE_RESERVED1                                          63
+#define DCMF_ALLREDUCE_RESERVED2                                          64
 
 
 /* Alltoall(vw) protocols */

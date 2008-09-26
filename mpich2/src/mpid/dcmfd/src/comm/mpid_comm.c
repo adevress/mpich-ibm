@@ -526,6 +526,7 @@ MPIDI_Env_setup()
 		 DCMF_USE_SCATTER_GATHER_BCAST,
 		 DCMF_USE_STORAGE_ALLREDUCE,
 		 DCMF_USE_RECT_ALLREDUCE,
+       DCMF_USE_SHORT_ASYNC_RECT_ALLREDUCE,
 		 DCMF_USE_RECTRING_ALLREDUCE,
 		 DCMF_USE_BINOM_ALLREDUCE,
 		 DCMF_USE_ARECT_ALLREDUCE,
@@ -892,6 +893,7 @@ MPIDI_Env_setup()
       DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_ALLREDUCE);
       DCMF_INFO_UNSET(properties, DCMF_USE_RECTRING_ALLREDUCE);
       DCMF_INFO_UNSET(properties, DCMF_USE_RECT_ALLREDUCE);
+      DCMF_INFO_UNSET(properties, DCMF_USE_SHORT_ASYNC_RECT_ALLREDUCE);
       DCMF_INFO_UNSET(properties, DCMF_USE_CCMI_TREE_ALLREDUCE);
       DCMF_INFO_UNSET(properties, DCMF_USE_PIPELINED_TREE_ALLREDUCE);
       DCMF_INFO_SET(properties, DCMF_ALLREDUCE_ENVVAR);
@@ -918,6 +920,10 @@ MPIDI_Env_setup()
          DCMF_INFO_SET(properties, DCMF_USE_TREE_ALLREDUCE);
       else if(strncasecmp(envopts, "P", 1) == 0) /* CCMI Pipelined Tree */
          DCMF_INFO_SET(properties, DCMF_USE_PIPELINED_TREE_ALLREDUCE);
+      else if(strncasecmp(envopts, "S", 1) == 0) /* Short async rect */
+         DCMF_INFO_SET(properties, DCMF_USE_SHORT_ASYNC_RECT_ALLREDUCE);
+      else if(strncasecmp(envopts, "D", 1) == 0) /* Rect dput */
+         DCMF_INFO_SET(properties, DCMF_USE_RRING_DPUT_ALLREDUCE_SINGLETH);
       else
       {
          fprintf(stderr,
