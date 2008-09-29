@@ -4,6 +4,7 @@
  * \brief Normal job startup code
  */
 #include "mpidimpl.h"
+#include "mpidi_star.h"
 #include <limits.h>
 
 MPIDI_Protocol_t MPIDI_Protocols;
@@ -57,18 +58,9 @@ int MPID_Init(int * argc,
    MPID_Comm * comm;
    DCMF_Result dcmf_rc;
 
-   if (argc && *argv != NULL)
-   {
-      dcmf_executable_name = NULL;
-      i = strlen(* argv[0]) + 1;
-      dcmf_executable_name = (char *) malloc(sizeof(char) * i);
-      strcpy(dcmf_executable_name, *argv[0]);
-   }
-   else
-   {
-      dcmf_executable_name= (char *)malloc(sizeof(char) * 8);
-      strcpy(dcmf_executable_name, "FORTRAN");
-   }
+   MPID_Executable_name = "FORTRAN";
+   if (argc && *argv != NULL && *argv[0] != NULL)
+      MPID_Executable_name = *argv[0];
 
   /* ------------------------- */
   /* initialize the statistics */

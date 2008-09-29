@@ -273,7 +273,7 @@ typedef struct
 
 extern STAR_Info STAR_info;
 extern FILE * DCMF_STAR_fd;
-extern char * dcmf_executable_name;
+extern char * MPID_Executable_name;
 
 extern STAR_Algorithm * repository_ptr;
 extern STAR_Algorithm * STAR_bcast_repository;

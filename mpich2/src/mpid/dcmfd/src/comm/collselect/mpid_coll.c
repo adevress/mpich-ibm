@@ -8,6 +8,7 @@
 #include "mpix.h"
 
 MPIDI_CollectiveProtocol_t MPIDI_CollectiveProtocols;
+char* MPID_Executable_name = NULL;
 
 int dcmf_thread_level = -1;
 
@@ -682,17 +683,17 @@ void MPIDI_Coll_Comm_create (MPID_Comm *comm)
   {
     static unsigned char opened = 0;
     
-    if (!opened && dcmf_executable_name)
+    if (!opened && MPID_Executable_name)
     {
       int length, cw_rank;
       char * tmp;
-      length = strlen(dcmf_executable_name) + 25;
+      length = strlen(MPID_Executable_name) + 25;
       
       tmp = (char *) malloc(sizeof(char) * length);
       
       MPI_Comm_rank(MPI_COMM_WORLD, &cw_rank);
       
-      sprintf(tmp, "%s-star-rank%d.log", dcmf_executable_name, cw_rank);
+      sprintf(tmp, "%s-star-rank%d.log", MPID_Executable_name, cw_rank);
       
       if (!(DCMF_STAR_fd = fopen(tmp, "w")))
         fprintf(stderr, "Error openning STAR debugging file: %s\n", tmp);
