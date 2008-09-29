@@ -99,7 +99,7 @@ int MPIDO_Reduce(void * sendbuf,
             if (!func && (data_size > 32768))
             {
                if (DCMF_INFO_ISSET(properties, DCMF_USE_RECTRING_REDUCE))
-               func = MPIDO_Reduce_rectring;
+                  func = MPIDO_Reduce_rectring;
             }
          }
       }
