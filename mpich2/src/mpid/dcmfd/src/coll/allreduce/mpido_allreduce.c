@@ -29,6 +29,7 @@ MPIDO_Allreduce(void * sendbuf,
   MPI_Aint data_true_lb = 0;
   int rc, op_type_support, data_contig, data_size;
   char *sbuf;
+  int rank = comm->rank;
   /* Did the user want to force a specific algorithm? */
   int userenvset = DCMF_INFO_ISSET(properties, DCMF_ALLREDUCE_ENVVAR);
 
@@ -81,8 +82,7 @@ MPIDO_Allreduce(void * sendbuf,
             }
 
          }
-         if(!func && (op_type_support == DCMF_TORUS_SUPPORT ||
-                      op_type_support == DCMF_TREE_SUPPORT))
+         if(!func && (op_type_support != DCMF_NOT_SUPPORTED))
          {
             if (data_size <= 208)
             {
@@ -96,7 +96,7 @@ MPIDO_Allreduce(void * sendbuf,
                }
             }
          
-            if(!func && (data_size <= 16384))
+            if(!func && data_size <= 16384)
             {
                if (DCMF_INFO_ISSET(properties, DCMF_USE_ARECT_ALLREDUCE))
                {
@@ -104,10 +104,11 @@ MPIDO_Allreduce(void * sendbuf,
                }
             }
          
-            if((!func && data_size > 16384))
+            if(!func && data_size > 16384)
             {
                if(DCMF_INFO_ISSET(properties, 
-                     DCMF_USE_RRING_DPUT_ALLREDUCE_SINGLETH))
+                     DCMF_USE_RRING_DPUT_ALLREDUCE_SINGLETH) &&
+                     !((unsigned)sbuf & 0x0F))
                {
                   func = MPIDO_Allreduce_rring_dput_singleth;
                }
