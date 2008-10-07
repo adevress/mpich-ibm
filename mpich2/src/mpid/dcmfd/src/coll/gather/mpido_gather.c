@@ -85,7 +85,8 @@ int MPIDO_Gather(void *sendbuf,
     sendbuf = (char *) sendbuf + true_lb;
   }
   
-  if (!STAR_info.enabled || STAR_info.internal_control_flow)
+  if (!STAR_info.enabled || STAR_info.internal_control_flow ||
+      STAR_info.gather_algorithms == 1)
   {
     if (DCMF_INFO_ISSET(properties, DCMF_USE_REDUCE_GATHER))
       return MPIDO_Gather_reduce(sendbuf, sendcount, sendtype,

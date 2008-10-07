@@ -372,7 +372,7 @@ ac_init_help=
 ac_init_version=false
 # The variables have the same names as the options, with
 # dashes changed to underlines.
-cache_file=./config.cache
+cache_file=/dev/null
 exec_prefix=NONE
 no_create=
 no_recursion=
@@ -1069,7 +1069,7 @@ esac
     else
       echo "$as_me: WARNING: no configuration information is in $ac_dir" >&2
     fi
-    cd "$ac_popdir"
+    cd $ac_popdir
   done
 fi
 

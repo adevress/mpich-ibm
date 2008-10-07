@@ -70,6 +70,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 {
   /* load the right algorithm in the function pointer and execute */
   allgatherv_fptr func = STAR_allgatherv_repository[index].func.allgatherv_func;
+  if (!comm->rank) printf("using %s\n", STAR_allgatherv_repository[index].name);
   return (func)(sendbuf, sendcount, sendtype,
 		recvbuf, recvcounts, buffer_sum, displs, recvtype,
 		send_true_lb, recv_true_lb, send_size, recv_size, comm);
@@ -93,7 +94,7 @@ STAR_Allgatherv(void * sendbuf,
                 int total_algs)
 {
   STAR_Tuning_Session * session;
-  allgatherv_fptr func;
+  allgatherv_fptr func = NULL;
   MPID_Comm * comm;
   double start, elapsed;
   int bytes, best_alg, rc;
@@ -112,7 +113,6 @@ STAR_Allgatherv(void * sendbuf,
       we are now in monitoring phase:
       execute best algorithm and measure its performance.
     */
-
     start = DCMF_Timer();
     rc = STAR_BestAllgatherv(sendbuf, sendcount, sendtype,
                              recvbuf, recvcounts, buffer_sum, displs,

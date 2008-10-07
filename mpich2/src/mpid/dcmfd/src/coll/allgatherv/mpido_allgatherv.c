@@ -86,165 +86,92 @@ MPIDO_Allgatherv(void *sendbuf,
   
   buffer_sum *= recv_size;
 
-   /* these are reasonable cutoffs at 512 nodes. Have to see if that holds
-    * up for larger partitions too. */
-   config.largecount = (buffer_sum >= 16384*comm->local_size); 
-   config.mediumcount = (buffer_sum >= 64*comm->local_size && 
+  /* these are reasonable cutoffs at 512 nodes. Have to see if that holds
+   * up for larger partitions too. */
+  config.largecount = (buffer_sum >= 16384*comm->local_size); 
+  config.mediumcount = (buffer_sum >= 64*comm->local_size && 
                         buffer_sum < 16384*comm->local_size);
   
-   MPID_Ensure_Aint_fits_in_pointer(MPIR_VOID_PTR_CAST_TO_MPI_AINT recvbuf +
+  MPID_Ensure_Aint_fits_in_pointer(MPIR_VOID_PTR_CAST_TO_MPI_AINT recvbuf +
 				   recv_true_lb + buffer_sum);
   
-  if (DCMF_INFO_ISSET(coll_prop, DCMF_USE_PREALLREDUCE_ALLGATHERV))  {
+  if (DCMF_INFO_ISSET(coll_prop, DCMF_USE_PREALLREDUCE_ALLGATHERV))
+  {
     STAR_info.internal_control_flow = 1;
     MPIDO_Allreduce(MPI_IN_PLACE, &config, 5, MPI_INT, MPI_BAND, comm);
     STAR_info.internal_control_flow = 0;
   }
 
+  /* quick decision making if star is enabled for short messages */
+
+  if (STAR_info.enabled)
+  {
+    if ((buffer_sum / comm->local_size) <= 2048)
+      goto NON_STAR;
+  } 
+  
+
   if (!STAR_info.enabled || STAR_info.internal_control_flow)
   {
+  NON_STAR:
     use_tree_reduce = DCMF_INFO_ISSET(comm_prop, DCMF_USE_TREE_ALLREDUCE) &&
-                      DCMF_INFO_ISSET(comm_prop,
-                                      DCMF_USE_ALLREDUCE_ALLGATHERV) &&
-                      config.recv_contig &&
-                      config.send_contig &&
-                      config.recv_continuous &&
-                      buffer_sum % sizeof(int) == 0;
+      DCMF_INFO_ISSET(comm_prop,
+                      DCMF_USE_ALLREDUCE_ALLGATHERV) &&
+      config.recv_contig &&
+      config.send_contig &&
+      config.recv_continuous &&
+      buffer_sum % sizeof(int) == 0;
     
     use_alltoall = DCMF_INFO_ISSET(comm_prop, DCMF_USE_TORUS_ALLTOALL) &&
-                   DCMF_INFO_ISSET(comm_prop, DCMF_USE_ALLTOALL_ALLGATHERV) &&
-                   config.recv_contig &&
-                   config.send_contig;
+      DCMF_INFO_ISSET(comm_prop, DCMF_USE_ALLTOALL_ALLGATHERV) &&
+      config.recv_contig &&
+      config.send_contig;
 
     use_rect_async = DCMF_INFO_ISSET(comm_prop,
                                      DCMF_USE_ARECT_BCAST_ALLGATHERV) &&
-                     DCMF_INFO_ISSET(comm_prop, DCMF_USE_ARECT_BCAST) &&
-                     config.recv_contig &&
-                     config.send_contig;
-    use_tree_bcast = DCMF_INFO_ISSET(comm_prop, DCMF_USE_TREE_BCAST) &&
-                     DCMF_INFO_ISSET(comm_prop, DCMF_USE_BCAST_ALLGATHERV);
+      DCMF_INFO_ISSET(comm_prop, DCMF_USE_ARECT_BCAST) &&
+      config.recv_contig &&
+      config.send_contig;
     
-   if(userenvset)
-   {
+    use_tree_bcast = //DCMF_INFO_ISSET(comm_prop, DCMF_USE_TREE_BCAST) &&
+      DCMF_INFO_ISSET(comm_prop, DCMF_USE_BCAST_ALLGATHERV);
+
+    if(userenvset)
+    {
       if(use_tree_bcast)
-         func = MPIDO_Allgatherv_bcast;
+        func = MPIDO_Allgatherv_bcast;
       if(use_tree_reduce)
-         func = MPIDO_Allgatherv_allreduce;
-      if(use_alltoall)
-         func = MPIDO_Allgatherv_alltoall;
-      if(use_rect_async)
-         func = MPIDO_Allgatherv_bcast_rect_async;
-   }
-   else
-   {
-      if(use_tree_reduce && use_tree_bcast && config.largecount)
-         func = MPIDO_Allgatherv_bcast;
-      if(!func && use_tree_reduce && use_tree_bcast)
-         func = MPIDO_Allgatherv_allreduce;
-      if(!func && use_tree_reduce)
-         func = MPIDO_Allgatherv_allreduce;
-      if(!func && use_tree_bcast)
-         func = MPIDO_Allgatherv_bcast;
-      if(!func && use_alltoall && config.mediumcount)
-         func = MPIDO_Allgatherv_alltoall;
-      if(!func && use_rect_async && config.largecount)
-         func = MPIDO_Allgatherv_bcast_rect_async;
-   }
-
-
-   if(!func)
-      return MPIR_Allgatherv(sendbuf, sendcount, sendtype,
-                             recvbuf, recvcounts, displs, recvtype,
-                             comm);
-
-    rc = (func)(sendbuf, sendcount, sendtype,
-                recvbuf, recvcounts, buffer_sum, displs, recvtype,
-                send_true_lb, recv_true_lb, send_size, recv_size,
-                comm);
-    
-    
-#if 0
-
-    /*
-      if (comm->rank == 0) printf("tree red %d tree bcast %d alltoall %d abino %d arect %d :%d %d\n",
-      use_tree_reduce,use_tree_bcast , use_alltoall,use_binom_async,use_rect_async,
-      config.recv_contig ,config.send_contig);
-      char name[256];
-    */
-  
-  
-    if (use_tree_reduce && use_tree_bcast)
-      if (config.largecount)
-      {
-        //strcpy(name, "bcast");
-        func = MPIDO_Allgatherv_bcast;
-      }
-      else
-      {
         func = MPIDO_Allgatherv_allreduce;
-        //strcpy(name, "allred");
-      }
-    /* we only can use allreduce, so use it regardless of size */
-    else if (use_tree_reduce)
-    {
-      func = MPIDO_Allgatherv_allreduce;
-      //strcpy(name, "allreduce2");
-
-    }
-    /* or, we can only use bcast, so use it regardless of size */
-    else if (use_tree_bcast && !use_binom_async && !use_rect_async)
-    {
-      func = MPIDO_Allgatherv_bcast;
-      //strcpy(name, "bcast2");
-    }
-    /* no tree protocols (probably not comm_world) so use alltoall */
-    else if (use_alltoall)
-    {
-      func = MPIDO_Allgatherv_alltoall;
-      //strcpy(name, "alltoall");
-    }
-    else if (use_rect_async)
-      if (!config.largecount)
-      {
+      if(use_alltoall)
+        func = MPIDO_Allgatherv_alltoall;
+      if(use_rect_async)
         func = MPIDO_Allgatherv_bcast_rect_async;
-        //strcpy(name, "arect");
-      }
-      else
-      {
-        func = MPIDO_Allgatherv_bcast;
-        //strcpy(name, "bcast3");
-      }
-    else if (use_binom_async)
-      if (!config.largecount)
-      {
-        func = MPIDO_Allgatherv_bcast_binom_async;
-        //strcpy(name, "abinom");
-      }
-      else
-      {
-        func = MPIDO_Allgatherv_bcast;
-        //strcpy(name, "bcast4");
-      }
+    }
     else
+    {
+      if(use_tree_reduce && use_tree_bcast && config.largecount)
+        func = MPIDO_Allgatherv_bcast;
+      if(!func && use_tree_reduce && use_tree_bcast)
+        func = MPIDO_Allgatherv_allreduce;
+      if(!func && use_tree_reduce)
+        func = MPIDO_Allgatherv_allreduce;
+      if(!func && use_tree_bcast)
+        func = MPIDO_Allgatherv_bcast;
+      if(!func && use_alltoall && config.mediumcount)
+        func = MPIDO_Allgatherv_alltoall;
+      if(!func && use_rect_async && config.largecount)
+        func = MPIDO_Allgatherv_bcast_rect_async;
+    }
+
+    if(!func)
       return MPIR_Allgatherv(sendbuf, sendcount, sendtype,
                              recvbuf, recvcounts, displs, recvtype,
                              comm);
-    /*
-      MPI_Barrier(comm->handle);
-      int j;
-      for (j = 0; j < comm->local_size; j++)
-      {
-      MPI_Barrier(comm->handle);
-      if (j == comm->rank)
-      printf("%d using %s %d\n", comm->rank, name, comm->handle);
 
-      }
-    */
     rc = (func)(sendbuf, sendcount, sendtype,
                 recvbuf, recvcounts, buffer_sum, displs, recvtype,
                 send_true_lb, recv_true_lb, send_size, recv_size,
                 comm);
-#endif 
   }
   else
   {
@@ -273,7 +200,7 @@ MPIDO_Allgatherv(void *sendbuf,
       collective_site.buff_attributes[3] = 0; /* set to not aligned */
       
     collective_site.id = (int) tb_ptr[STAR_info.traceback_levels - 1];
-      
+
     rc = STAR_Allgatherv(sendbuf,
                          sendcount,
                          sendtype,

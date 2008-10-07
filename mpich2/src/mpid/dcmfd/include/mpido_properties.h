@@ -49,7 +49,7 @@
 /* is buff size multiple of 4? */
 #define DCMF_BUFF_SIZE_MUL4                                               13
 #define DCMF_BUFF_ALIGNED                                                 14
-#define DCMF_COMM_RESERVED1                                               15
+#define DCMF_THREADED_MODE                                                15
 #define DCMF_COMM_RESERVED2                                               16
 #define DCMF_COMM_RESERVED3
 

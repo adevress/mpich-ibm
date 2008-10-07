@@ -97,7 +97,8 @@ int MPIDO_Scatter(void *sendbuf,
     recvbuf = (char *) recvbuf + true_lb;
   }
 
-  if (!STAR_info.enabled || STAR_info.internal_control_flow)
+  if (!STAR_info.enabled || STAR_info.internal_control_flow ||
+      STAR_info.scatter_algorithms == 1)
   {
     if (DCMF_INFO_ISSET(properties, DCMF_USE_BCAST_SCATTER))
     {

@@ -526,13 +526,13 @@ MPIDI_Env_setup()
 		 DCMF_USE_SCATTER_GATHER_BCAST,
 		 DCMF_USE_STORAGE_ALLREDUCE,
 		 DCMF_USE_RECT_ALLREDUCE,
-       DCMF_USE_SHORT_ASYNC_RECT_ALLREDUCE,
+                 DCMF_USE_SHORT_ASYNC_RECT_ALLREDUCE,
 		 DCMF_USE_RECTRING_ALLREDUCE,
 		 DCMF_USE_BINOM_ALLREDUCE,
 		 DCMF_USE_ARECT_ALLREDUCE,
 		 DCMF_USE_ARECTRING_ALLREDUCE,
 		 DCMF_USE_ABINOM_ALLREDUCE,
-       DCMF_USE_RRING_DPUT_ALLREDUCE_SINGLETH,
+                 DCMF_USE_RRING_DPUT_ALLREDUCE_SINGLETH,
 		 DCMF_USE_STORAGE_REDUCE,
 		 DCMF_USE_RECT_REDUCE,
 		 DCMF_USE_RECTRING_REDUCE,
@@ -897,10 +897,13 @@ MPIDI_Env_setup()
       DCMF_INFO_UNSET(properties, DCMF_USE_SHORT_ASYNC_RECT_ALLREDUCE);
       DCMF_INFO_UNSET(properties, DCMF_USE_CCMI_TREE_ALLREDUCE);
       DCMF_INFO_UNSET(properties, DCMF_USE_PIPELINED_TREE_ALLREDUCE);
+      DCMF_INFO_UNSET(properties, DCMF_USE_RRING_DPUT_ALLREDUCE_SINGLETH);
       DCMF_INFO_SET(properties, DCMF_ALLREDUCE_ENVVAR);
 
       if(strncasecmp(envopts, "ARI", 3) == 0)
          DCMF_INFO_SET(properties, DCMF_USE_ARECTRING_ALLREDUCE);
+      else if(strncasecmp(envopts, "DRI", 3) == 0)
+         DCMF_INFO_SET(properties, DCMF_USE_RRING_DPUT_ALLREDUCE_SINGLETH);
       else if(strncasecmp(envopts, "AR", 2) == 0)
          DCMF_INFO_SET(properties, DCMF_USE_ARECT_ALLREDUCE);
       else if(strncasecmp(envopts, "AB", 2) == 0)
@@ -1057,7 +1060,7 @@ MPIDI_Env_setup()
     /* initialize the repositories of STAR */
     STAR_InitRepositories();
   }
-  
+
   dval = 0;
   ENV_Int(getenv("DCMF_STAR_NUM_INVOCS"), &dval);
   if (dval > 0 )

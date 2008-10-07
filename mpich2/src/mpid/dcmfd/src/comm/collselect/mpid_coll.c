@@ -257,14 +257,6 @@ void MPIDI_Coll_register(void)
   else
     barrier_proto = DCMF_TORUS_RECTANGLE_BARRIER_PROTOCOL; 
 
-  if (DCMF_INFO_ISSET(properties, DCMF_USE_GI_BARRIER))
-  {
-    if (BARRIER_REGISTER(DCMF_GI_BARRIER_PROTOCOL,
-                         &MPIDI_CollectiveProtocols.gi_barrier,
-                         &barrier_config) != DCMF_SUCCESS)
-      DCMF_INFO_UNSET(properties, DCMF_USE_GI_BARRIER);
-  }
-
   if (!DCMF_INFO_ISSET(properties, DCMF_USE_RECT_BARRIER) &&
       DCMF_INFO_ISSET(properties, DCMF_USE_BINOM_BARRIER))
   {

@@ -28,7 +28,7 @@ MPIDO_Bcast(void *buffer,
   MPI_Aint data_true_lb = 0;
   MPID_Datatype *data_ptr;
   MPID_Segment segment;
-
+     
   if (count==0)
     return MPI_SUCCESS;
 
@@ -65,10 +65,16 @@ MPIDO_Bcast(void *buffer,
          MPID_Segment_pack(&segment, 0, &last, noncontig_buff);
       }
    }
-
-
+   
+   if (STAR_info.enabled)
+   {
+     if (DCMF_INFO_ISSET(properties, DCMF_TREE_COMM) && data_size <= 65536)
+       goto NON_STAR;
+   }
+   
    if (!STAR_info.enabled || STAR_info.internal_control_flow)
    {
+   NON_STAR:
       if (data_size <= 1024 || userenvset)
       {
          if (DCMF_INFO_ISSET(properties, DCMF_USE_TREE_BCAST))
@@ -232,8 +238,10 @@ MPIDO_Bcast(void *buffer,
     }
 
     if (rc == STAR_FAILURE || !same_callsite)
+    {
       rc = MPIR_Bcast(buffer, count, datatype, root, comm);
-
+    }
+    
     /* unset the internal control flow */
     STAR_info.internal_control_flow = 0;
 

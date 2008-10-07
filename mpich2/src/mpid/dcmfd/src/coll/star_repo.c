@@ -144,7 +144,7 @@ void STAR_InitRepositories()
   STAR_SetRepositoryElement(&STAR_bcast_repository[curr++],
 			    (STAR_Func_Ptr) (&MPIDO_Bcast_tree),
 			    0, 0,
-			    1, 0,
+			    1, 65536,
 			    "bcast_tree",
 			    DCMF_TREE_COMM,
 			    DCMF_END_ARGS);
@@ -160,7 +160,7 @@ void STAR_InitRepositories()
   STAR_SetRepositoryElement(&STAR_bcast_repository[curr++],
 			    (STAR_Func_Ptr) (&MPIDO_Bcast_rect_async),
 			    0, 0,
-			    0, 0,
+			    0, 1024,
 			    "bcast_async_rect",
 			    DCMF_RECT_COMM,
 			    DCMF_END_ARGS);
@@ -170,7 +170,7 @@ void STAR_InitRepositories()
 			    0, 0,
 			    0, 0,
 			    "bcast_binom",
-			    DCMF_TORUS_COMM,
+			    DCMF_IRREG_COMM,
 			    DCMF_END_ARGS);
   
   STAR_SetRepositoryElement(&STAR_bcast_repository[curr++],
@@ -178,7 +178,7 @@ void STAR_InitRepositories()
 			    0, 0,
 			    0, 0,
 			    "bcast_async_binom",
-			    DCMF_TORUS_COMM,
+			    DCMF_IRREG_COMM,
 			    DCMF_END_ARGS);
 			    
   STAR_SetRepositoryElement(&STAR_bcast_repository[curr++],
@@ -186,7 +186,7 @@ void STAR_InitRepositories()
 			    0, 0,
 			    0, 0,
 			    "bcast_scatter_gather",
-			    DCMF_TORUS_COMM,
+			    DCMF_IRREG_COMM,
 			    DCMF_END_ARGS);
 			    
 
@@ -205,14 +205,14 @@ void STAR_InitRepositories()
 			    0, 0,
 			    0, 0,
 			    "bcast_binom_single_thread",
-			    DCMF_TORUS_COMM,
+			    DCMF_IRREG_COMM,
 			    DCMF_SINGLE_THREAD_MODE,
 			    DCMF_END_ARGS);
   
   STAR_SetRepositoryElement(&STAR_bcast_repository[curr++],
 			    (STAR_Func_Ptr) (&MPIDO_Bcast_rect_singleth),
 			    0, 0,
-			    0, 0,
+			    0, 8192,
 			    "bcast_rect_single_thread",
 			    DCMF_RECT_COMM,
 			    DCMF_SINGLE_THREAD_MODE,
@@ -230,7 +230,7 @@ void STAR_InitRepositories()
 
   /* algorithms for Allreduce */
   curr = 0;
-  num = 7; 
+  num = 5; 
   STAR_info.allreduce_algorithms = num;
   STAR_allreduce_repository = malloc(alg_size * num);
   /*
@@ -254,50 +254,74 @@ void STAR_InitRepositories()
 			    0, 0,
 			    0, 0,
 			    "allreduce_global_tree",
-			    DCMF_TREE_COMM, DCMF_TREE_OP_TYPE, DCMF_END_ARGS);
+			    DCMF_TREE_COMM,
+                            DCMF_TREE_OP_TYPE,
+                            DCMF_END_ARGS);
     
-
+  /*
   STAR_SetRepositoryElement(&STAR_allreduce_repository[curr++],
 			    (STAR_Func_Ptr) (&MPIDO_Allreduce_binom),
 			    0, 0,
 			    0, 0,
 			    "allreduce_binom",
-			    DCMF_TORUS_COMM, DCMF_TORUS_OP_TYPE,DCMF_END_ARGS);
-
+			    DCMF_IRREG_COMM,
+                            DCMF_TORUS_OP_TYPE,
+                            DCMF_END_ARGS);
+  
   STAR_SetRepositoryElement(&STAR_allreduce_repository[curr++],
 			    (STAR_Func_Ptr) (&MPIDO_Allreduce_rect),
 			    0, 0,
 			    0, 0,
 			    "allreduce_rect",
-			    DCMF_RECT_COMM, DCMF_TORUS_OP_TYPE, DCMF_END_ARGS);
+			    DCMF_RECT_COMM,
+                            DCMF_TORUS_OP_TYPE,
+                            DCMF_END_ARGS);
 
   STAR_SetRepositoryElement(&STAR_allreduce_repository[curr++],
 			    (STAR_Func_Ptr) (&MPIDO_Allreduce_rectring),
 			    0, 0,
 			    0, 0,
 			    "allreduce_rectring",
-			    DCMF_RECT_COMM, DCMF_TORUS_OP_TYPE, DCMF_END_ARGS);
-
+			    DCMF_RECT_COMM,
+                            DCMF_TORUS_OP_TYPE,
+                            DCMF_END_ARGS);
+  */
   STAR_SetRepositoryElement(&STAR_allreduce_repository[curr++],
 			    (STAR_Func_Ptr) (&MPIDO_Allreduce_async_binom),
 			    0, 0,
 			    0, 0,
 			    "allreduce_async_binom",
-			    DCMF_TORUS_COMM, DCMF_TORUS_OP_TYPE,DCMF_END_ARGS);
+			    DCMF_IRREG_COMM,
+                            DCMF_TORUS_OP_TYPE,
+                            DCMF_END_ARGS);
   
   STAR_SetRepositoryElement(&STAR_allreduce_repository[curr++],
 			    (STAR_Func_Ptr) (&MPIDO_Allreduce_async_rect),
 			    0, 0,
-			    0, 0,
+			    0, 16384,
 			    "allreduce_async_rect",
-			    DCMF_RECT_COMM, DCMF_TORUS_OP_TYPE, DCMF_END_ARGS);
+			    DCMF_RECT_COMM,
+                            DCMF_TORUS_OP_TYPE,
+                            DCMF_END_ARGS);
+  STAR_SetRepositoryElement(&STAR_allreduce_repository[curr++],
+			    (STAR_Func_Ptr) (&MPIDO_Allreduce_rring_dput_singleth),
+			    0, 0,
+			    0, 0,
+			    "allreduce_rring_dput",
+			    DCMF_RECT_COMM,
+			    DCMF_SINGLE_THREAD_MODE,
+			    DCMF_BUFF_ALIGNED,
+			    DCMF_END_ARGS);
+
   
   STAR_SetRepositoryElement(&STAR_allreduce_repository[curr++],
 			    (STAR_Func_Ptr) (&MPIDO_Allreduce_async_rectring),
 			    0, 0,
 			    0, 0,
 			    "allreduce_async_rectring",
-			    DCMF_RECT_COMM, DCMF_TORUS_OP_TYPE, DCMF_END_ARGS);
+			    DCMF_RECT_COMM,
+                            DCMF_TORUS_OP_TYPE,
+                            DCMF_END_ARGS);
 
   /* algorithms for Reduce */
   curr = 0;
@@ -310,7 +334,9 @@ void STAR_InitRepositories()
 			    0, 0,
 			    0, 0,
 			    "reduce_global_tree",
-			    DCMF_TREE_COMM, DCMF_TREE_OP_TYPE, DCMF_END_ARGS);
+			    DCMF_TREE_COMM,
+                            DCMF_TREE_OP_TYPE,
+                            DCMF_END_ARGS);
 
   /*
     STAR_SetRepositoryElement(&STAR_reduce_repository[curr++],
@@ -326,21 +352,27 @@ void STAR_InitRepositories()
 			    0, 0,
 			    0, 0,
 			    "reduce_binom",
-			    DCMF_TORUS_COMM, DCMF_TORUS_OP_TYPE, DCMF_END_ARGS);
+			    DCMF_IRREG_COMM,
+                            DCMF_TORUS_OP_TYPE,
+                            DCMF_END_ARGS);
   
   STAR_SetRepositoryElement(&STAR_reduce_repository[curr++],
 			    (STAR_Func_Ptr) (&MPIDO_Reduce_rect),
 			    0, 0,
 			    0, 0,
 			    "reduce_rect",
-			    DCMF_RECT_COMM, DCMF_TORUS_OP_TYPE, DCMF_END_ARGS);
+			    DCMF_RECT_COMM,
+                            DCMF_TORUS_OP_TYPE,
+                            DCMF_END_ARGS);
 
   STAR_SetRepositoryElement(&STAR_reduce_repository[curr++],
 			    (STAR_Func_Ptr) (&MPIDO_Reduce_rectring),
 			    0, 0,
 			    0, 0,
 			    "reduce_rectring",
-			    DCMF_RECT_COMM, DCMF_TORUS_OP_TYPE, DCMF_END_ARGS);
+			    DCMF_RECT_COMM,
+                            DCMF_TORUS_OP_TYPE,
+                            DCMF_END_ARGS);
   
   /* algorithms for alltoall */
   curr = 0;
@@ -353,14 +385,17 @@ void STAR_InitRepositories()
 			    0, 0,
 			    0, 0,
 			    "alltoall_torus",
-			    DCMF_USE_TORUS_ALLTOALL, DCMF_END_ARGS);
+			    DCMF_USE_TORUS_ALLTOALL,
+                            DCMF_END_ARGS);
 
   STAR_SetRepositoryElement(&STAR_alltoall_repository[curr++],
 			    (STAR_Func_Ptr) (&MPIDO_Alltoall_simple),
 			    0, 0,
 			    0, 0,
 			    "alltoall_simple",
-			    DCMF_TORUS_COMM, DCMF_END_ARGS);
+                            DCMF_TORUS_COMM,
+                            DCMF_THREADED_MODE,
+                            DCMF_END_ARGS);
 
   /* algorithms for allgather */
   curr = 0;
@@ -405,7 +440,7 @@ void STAR_InitRepositories()
 
 
   STAR_SetRepositoryElement(&STAR_allgather_repository[curr++],
-                            (STAR_Func_Ptr) (&MPIDO_Allgather_bcast_rect_async),
+                            (STAR_Func_Ptr)(&MPIDO_Allgather_bcast_rect_async),
 			    0, 0,
 			    0, 0,
 			    "allgather_bcast_rect_async",
@@ -413,11 +448,12 @@ void STAR_InitRepositories()
 
 
   STAR_SetRepositoryElement(&STAR_allgather_repository[curr++],
-                            (STAR_Func_Ptr)(&MPIDO_Allgather_bcast_binom_async),
-			    0, 0,
+                            (STAR_Func_Ptr)(&MPIDO_Allgather_bcast_binom_async),			    0, 0,
 			    0, 0,
 			    "allgather_bcast_binom_async",
-			    DCMF_USE_ABINOM_BCAST, DCMF_END_ARGS);
+                            DCMF_IRREG_COMM, 
+			    DCMF_USE_ABINOM_BCAST,
+                            DCMF_END_ARGS);
   
 
   /* algorithms for allgatherv */
@@ -431,7 +467,8 @@ void STAR_InitRepositories()
 			    0, 0,
 			    0, 0,
 			    "allgatherv_bcast",
-			    DCMF_USE_BCAST_ALLGATHERV, DCMF_END_ARGS);
+			    DCMF_USE_BCAST_ALLGATHERV,
+                            DCMF_END_ARGS);
 
 
   STAR_SetRepositoryElement(&STAR_allgatherv_repository[curr++],
@@ -444,24 +481,26 @@ void STAR_InitRepositories()
 			    DCMF_SBUFF_CONTIG,
 			    DCMF_RBUFF_CONTIG,
 			    DCMF_RBUFF_CONTIN,
-			    DCMF_BUFF_SIZE_MUL4, DCMF_END_ARGS);
+			    DCMF_BUFF_SIZE_MUL4,
+                            DCMF_END_ARGS);
 
   STAR_SetRepositoryElement(&STAR_allgatherv_repository[curr++],
-                            (STAR_Func_Ptr)(&MPIDO_Allgatherv_bcast_rect_async),
-			    0, 0,
+                            (STAR_Func_Ptr)(&MPIDO_Allgatherv_bcast_rect_async),			    0, 0,
 			    0, 0,
 			    "allgatherv_bcast_rect_async",
 			    DCMF_USE_ARECT_BCAST_ALLGATHERV,
-			    DCMF_USE_ARECT_BCAST, DCMF_END_ARGS);
+			    DCMF_USE_ARECT_BCAST,
+                            DCMF_END_ARGS);
 
 
   STAR_SetRepositoryElement(&STAR_allgatherv_repository[curr++],
-                            (STAR_Func_Ptr)(&MPIDO_Allgatherv_bcast_binom_async),
-			    0, 0,
+                            (STAR_Func_Ptr)(&MPIDO_Allgatherv_bcast_binom_async),			    0, 0,
 			    0, 0,
 			    "allgatherv_bcast_binom_async",
+                            DCMF_IRREG_COMM,
 			    DCMF_USE_ABINOM_BCAST_ALLGATHERV,
-			    DCMF_USE_ABINOM_BCAST, DCMF_END_ARGS);
+			    DCMF_USE_ABINOM_BCAST,
+                            DCMF_END_ARGS);
 
   STAR_SetRepositoryElement(&STAR_allgatherv_repository[curr++],
 			    (STAR_Func_Ptr) (&MPIDO_Allgatherv_alltoall),
@@ -469,7 +508,8 @@ void STAR_InitRepositories()
 			    0, 0,
 			    "allgatherv_alltoall",
 			    DCMF_USE_TORUS_ALLTOALL,
-			    DCMF_USE_ALLTOALL_ALLGATHERV, DCMF_END_ARGS);
+			    DCMF_USE_ALLTOALL_ALLGATHERV,
+                            DCMF_END_ARGS);
 
   /* algorithms for gather */
   curr = 0;
@@ -482,7 +522,8 @@ void STAR_InitRepositories()
 			    0, 0,
 			    0, 0,
 			    "gather_reduce",
-			    DCMF_USE_REDUCE_GATHER, DCMF_END_ARGS);
+			    DCMF_USE_REDUCE_GATHER,
+                            DCMF_END_ARGS);
 
   /* algorithms for scatter */
   curr = 0;
@@ -495,7 +536,8 @@ void STAR_InitRepositories()
 			    0, 0,
 			    0, 0,
 			    "scatter_bcast",
-			    DCMF_USE_BCAST_SCATTER, DCMF_END_ARGS);
+			    DCMF_USE_BCAST_SCATTER,
+                            DCMF_END_ARGS);
 
   /* algorithms for barrier */
   curr = 0;

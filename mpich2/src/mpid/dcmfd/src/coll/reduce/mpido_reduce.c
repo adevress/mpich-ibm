@@ -68,6 +68,16 @@ int MPIDO_Reduce(void * sendbuf,
       sbuf = (char *) sendbuf + data_true_lb;
    }
 
+   
+   if (STAR_info.enabled)
+   {
+     if (op_type_support == DCMF_TREE_SUPPORT &&
+         DCMF_INFO_ISSET(properties, DCMF_TREE_COMM))
+       goto TREE;
+     else if (data_size <= 2048)
+       goto TORUS;
+   }      
+
    if (!STAR_info.enabled || STAR_info.internal_control_flow)
    {
       extern int DCMF_TREE_SMP_SHORTCUT;
@@ -77,15 +87,15 @@ int MPIDO_Reduce(void * sendbuf,
          if (op_type_support == DCMF_TREE_SUPPORT &&
                DCMF_INFO_ISSET(properties, DCMF_USE_TREE_REDUCE))
          {
+         TREE:
             if (DCMF_TREE_SMP_SHORTCUT)
                func = MPIDO_Reduce_global_tree;
             else
                func = MPIDO_Reduce_tree;
          }
-     
-         if (!func &&
-               (op_type_support == DCMF_TORUS_SUPPORT ||
-                op_type_support == DCMF_TREE_SUPPORT))
+
+      TORUS:
+         if (!func && op_type_support != DCMF_NOT_SUPPORTED)
          {
             if (DCMF_INFO_ISSET(properties, DCMF_IRREG_COMM))
                func = MPIDO_Reduce_binom;

@@ -97,11 +97,12 @@ STAR_AssignBestAlgorithm(STAR_Tuning_Session * session)
     /* these are precautions steps :) */
     best[i] = -1;
     algorithms_times[i] = 0.0;
-
     
 #ifdef VBL2
     if (DCMF_STAR_fd)
+    {
       fprintf(DCMF_STAR_fd, "\n\n");
+    }
 #endif
     
     /* compute the performance of this algorithm */
@@ -167,7 +168,7 @@ STAR_CreateTuningSession(STAR_Tuning_Session ** ptr,
   {
     (*ptr) -> curr_invoc[i] = 0;
     for (j = 0; j < STAR_info.invocs_per_algorithm; j++)
-      (*ptr) -> time[i * STAR_info.invocs_per_algorithm + j] = 0;
+      (*ptr) -> time[i * STAR_info.invocs_per_algorithm + j] = 0.0;
   }
 
   (*ptr) -> repository = repo;
@@ -277,7 +278,7 @@ STAR_NextAlgorithm(STAR_Tuning_Session * session,
   DCMF_INFO_OR(comm_info, &tmp_comm);
 
   /* because torus algorithms can handle irreg comms */
-  DCMF_INFO_SET(&tmp_comm, DCMF_IRREG_COMM);
+  /* DCMF_INFO_SET(&tmp_comm, DCMF_IRREG_COMM);*/
 
   if (DCMF_INFO_ISSET(&tmp_comm, DCMF_USE_NOTREE_OPT_COLLECTIVES))
     DCMF_INFO_UNSET(&tmp_comm, DCMF_TREE_COMM);
@@ -454,7 +455,7 @@ STAR_SortAlgorithms(STAR_Tuning_Session * session)
     fprintf(DCMF_STAR_fd, "\nCurrent sorting\n");
     for (i = 0; i < total_algs; i++)
       if (session -> best[i] > -1)
-        fprintf(DCMF_STAR_fd, "%-39s best time %.2lfus\n",
+        fprintf(DCMF_STAR_fd, "%-39s best time %lfus\n",
                 session->repository[session->best[i]].name,
                 1.0E6 * session->algorithms_times[session->best[i]]);
     fflush(DCMF_STAR_fd);
@@ -487,6 +488,7 @@ STAR_CheckPerformanceOfBestAlg(STAR_Tuning_Session * session)
   session->max[1] /= STAR_info.invocs_per_algorithm;
 
   /* reduce ave0 and ave1 over all processes using the max operation */
+  
   MPIDO_Allreduce(MPI_IN_PLACE, session->max, 2, MPI_DOUBLE, MPI_MAX,
 		  session->comm);
 
@@ -586,7 +588,7 @@ STAR_ComputePerformance(STAR_Tuning_Session * session,
 {
   char * MPI;
   int i, j, rank, np, bytes;
-  double sum = 0, hold;
+  double sum = 0.0, hold;
 
   np = session->comm->local_size;
   rank = session->comm->rank;
@@ -630,8 +632,8 @@ STAR_ComputePerformance(STAR_Tuning_Session * session,
     sum += elapsed[alg_index * STAR_info.invocs_per_algorithm + i];
 
 #ifdef VBL2
-    if (DCMF_STAR_fd && sum)
-      fprintf(DCMF_STAR_fd, "%-39s invoc %2d elapsed %.2lfus\n",
+    if (DCMF_STAR_fd && (sum > 0.0))
+      fprintf(DCMF_STAR_fd, "%-39s invoc %2d elapsed %lfus\n",
               session->repository[alg_index].name, i,
               1.0E6 * elapsed[alg_index * STAR_info.invocs_per_algorithm+i]);
 #endif
@@ -671,12 +673,13 @@ STAR_DisplayStatistics(MPID_Comm * comm)
 
       fprintf(DCMF_STAR_fd,
               "\nComm: %s np: %d msize: %d #Tuning calls %d"
-              " #Monitor calls %d Best-Algorithm: %s\n\n",
+              " #Monitor calls %d Best-Algorithm: %s callsite: %x\n\n",
               comm_shape_str[ptr->comm->dcmf.comm_shape],
               np,
               bytes,
               ptr->tuning_calls, ptr->post_tuning_calls,
-              ptr->repository[ptr->best_alg_index].name);
+              ptr->repository[ptr->best_alg_index].name,
+              ptr->callsite_id);
       
       fprintf(DCMF_STAR_fd, "Statistics\n");
       for (i = 0; i < total_algs; i++)
