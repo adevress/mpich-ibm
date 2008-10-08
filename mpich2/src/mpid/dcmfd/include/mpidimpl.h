@@ -146,6 +146,7 @@ typedef struct
   DCMF_CollectiveProtocol_t async_rectangle_allreduce;
   DCMF_CollectiveProtocol_t async_ringrectangle_allreduce;
   DCMF_CollectiveProtocol_t short_async_rect_allreduce;
+  DCMF_CollectiveProtocol_t short_async_binom_allreduce;
   DCMF_CollectiveProtocol_t rring_dput_allreduce_singleth;
   
   /* Optimized reduce protocols and usage flags */

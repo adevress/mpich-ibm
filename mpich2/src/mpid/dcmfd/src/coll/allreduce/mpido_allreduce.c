@@ -104,6 +104,9 @@ MPIDO_Allreduce(void * sendbuf,
           if(DCMF_INFO_ISSET(properties, 
                              DCMF_USE_SHORT_ASYNC_RECT_ALLREDUCE))
             func = MPIDO_Allreduce_short_async_rect;
+          if(!func && DCMF_INFO_ISSET(properties, 
+                             DCMF_USE_SHORT_ASYNC_BINOM_ALLREDUCE))
+            func = MPIDO_Allreduce_short_async_binom;
           if (!func && DCMF_INFO_ISSET(properties, 
                                        DCMF_USE_ABINOM_ALLREDUCE))
           {
@@ -154,6 +157,9 @@ MPIDO_Allreduce(void * sendbuf,
       if(DCMF_INFO_ISSET(properties, DCMF_USE_SHORT_ASYNC_RECT_ALLREDUCE) &&
          data_size <= 208)
         func = MPIDO_Allreduce_short_async_rect;
+      if(DCMF_INFO_ISSET(properties, DCMF_USE_SHORT_ASYNC_BINOM_ALLREDUCE) &&
+         data_size <= 208)
+        func = MPIDO_Allreduce_short_async_binom;
       
       if(DCMF_INFO_ISSET(properties, DCMF_USE_RRING_DPUT_ALLREDUCE_SINGLETH) &&
          !((unsigned)sbuf & 0x0F))

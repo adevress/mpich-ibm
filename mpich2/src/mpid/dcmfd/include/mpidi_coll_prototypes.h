@@ -45,6 +45,8 @@ int MPIDO_Allreduce_rring_dput_singleth(void *, void *, int, DCMF_Dt, DCMF_Op,
 				   MPI_Datatype, MPID_Comm *);
 int MPIDO_Allreduce_short_async_rect(void *, void *, int, DCMF_Dt, DCMF_Op,
 				   MPI_Datatype, MPID_Comm *);
+int MPIDO_Allreduce_short_async_binom(void *, void *, int, DCMF_Dt, DCMF_Op,
+				   MPI_Datatype, MPID_Comm *);
 
 
 
