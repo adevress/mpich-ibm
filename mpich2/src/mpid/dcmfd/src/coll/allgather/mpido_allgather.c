@@ -43,8 +43,6 @@ MPIDO_Allgather(void *sendbuf,
 
   char use_tree_reduce, use_alltoall, use_rect_async, use_tree_bcast;
 
-
-  
   int rc;
 
   /* no optimized allgather, punt to mpich */
@@ -89,17 +87,10 @@ MPIDO_Allgather(void *sendbuf,
     STAR_info.internal_control_flow = 0;
   }
 
-  /* quick decision making if star is enabled for short messages */  
-  if (STAR_info.enabled)
-  {
-    if (send_size <= 2048)
-      goto NON_STAR;
-  }
-  
   /* Here is the Default code path or if coming from within another coll */
-  if (!STAR_info.enabled || STAR_info.internal_control_flow) 
+  if (!STAR_info.enabled || STAR_info.internal_control_flow ||
+      send_size <= STAR_info.threshold) 
   {
-  NON_STAR:
     use_alltoall = 
       DCMF_INFO_ISSET(comm_prop, DCMF_USE_TORUS_ALLTOALL) &&
       DCMF_INFO_ISSET(comm_prop, DCMF_USE_ALLTOALL_ALLGATHER) &&

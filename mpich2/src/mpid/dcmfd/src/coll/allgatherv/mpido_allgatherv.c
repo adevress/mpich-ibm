@@ -102,18 +102,9 @@ MPIDO_Allgatherv(void *sendbuf,
     STAR_info.internal_control_flow = 0;
   }
 
-  /* quick decision making if star is enabled for short messages */
-
-  if (STAR_info.enabled)
+  if (!STAR_info.enabled || STAR_info.internal_control_flow ||
+      (buffer_sum / comm->local_size) <= STAR_info.threshold)
   {
-    if ((buffer_sum / comm->local_size) <= 2048)
-      goto NON_STAR;
-  } 
-  
-
-  if (!STAR_info.enabled || STAR_info.internal_control_flow)
-  {
-  NON_STAR:
     use_tree_reduce = DCMF_INFO_ISSET(comm_prop, DCMF_USE_TREE_ALLREDUCE) &&
       DCMF_INFO_ISSET(comm_prop,
                       DCMF_USE_ALLREDUCE_ALLGATHERV) &&

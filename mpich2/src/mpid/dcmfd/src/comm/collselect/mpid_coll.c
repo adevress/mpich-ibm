@@ -700,13 +700,16 @@ void MPIDI_Coll_Comm_create (MPID_Comm *comm)
     
     if (!opened && MPID_Executable_name)
     {
+      MPID_Comm * comm_world;
+      
       int length, cw_rank;
       char * tmp;
       length = strlen(MPID_Executable_name) + 25;
       
       tmp = (char *) malloc(sizeof(char) * length);
       
-      MPI_Comm_rank(MPI_COMM_WORLD, &cw_rank);
+      MPID_Comm_get_ptr(MPI_COMM_WORLD, comm_world);
+      cw_rank = comm_world -> rank;
       
       sprintf(tmp, "%s-star-rank%d.log", MPID_Executable_name, cw_rank);
       

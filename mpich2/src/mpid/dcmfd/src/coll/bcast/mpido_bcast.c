@@ -66,15 +66,9 @@ MPIDO_Bcast(void *buffer,
       }
    }
    
-   if (STAR_info.enabled)
+   if (!STAR_info.enabled || STAR_info.internal_control_flow ||
+       data_size <= STAR_info.threshold)
    {
-     if (DCMF_INFO_ISSET(properties, DCMF_TREE_COMM) && data_size <= 65536)
-       goto NON_STAR;
-   }
-   
-   if (!STAR_info.enabled || STAR_info.internal_control_flow)
-   {
-   NON_STAR:
       if (data_size <= 1024 || userenvset)
       {
          if (DCMF_INFO_ISSET(properties, DCMF_USE_TREE_BCAST))

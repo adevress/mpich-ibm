@@ -903,8 +903,6 @@ MPIDI_Env_setup()
 
       if(strncasecmp(envopts, "ARI", 3) == 0)
          DCMF_INFO_SET(properties, DCMF_USE_ARECTRING_ALLREDUCE);
-      else if(strncasecmp(envopts, "DRI", 3) == 0)
-         DCMF_INFO_SET(properties, DCMF_USE_RRING_DPUT_ALLREDUCE_SINGLETH);
       else if(strncasecmp(envopts, "AR", 2) == 0)
          DCMF_INFO_SET(properties, DCMF_USE_ARECT_ALLREDUCE);
       else if(strncasecmp(envopts, "SR", 2) == 0) /* Short async rect */

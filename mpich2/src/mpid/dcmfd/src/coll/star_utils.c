@@ -78,7 +78,7 @@ STAR_AssignBestAlgorithm(STAR_Tuning_Session * session)
   MPI = STAR_info.mpis[call_type];
 
   STAR_ALLOC(tmp, double, total_algs * STAR_info.invocs_per_algorithm);
-
+  
   /* compute the max of all algorithms time among all processes */
   MPIDO_Allreduce(session->time, tmp,
 		  STAR_info.invocs_per_algorithm * total_algs,
@@ -91,13 +91,13 @@ STAR_AssignBestAlgorithm(STAR_Tuning_Session * session)
 	    MPI, comm_shape_str[session -> comm -> dcmf.comm_shape],
             np, bytes);
 #endif
-  
+
   for (i = 0; i < total_algs; i++)
   {
     /* these are precautions steps :) */
     best[i] = -1;
     algorithms_times[i] = 0.0;
-    
+
 #ifdef VBL2
     if (DCMF_STAR_fd)
     {
@@ -131,7 +131,7 @@ STAR_AssignBestAlgorithm(STAR_Tuning_Session * session)
             1.0E6 * session->algorithms_times[session->best[0]]);
   }
 #endif
-  
+
   MPIU_Free(tmp);
 }
 
@@ -191,13 +191,15 @@ STAR_GetTuningSession(STAR_Callsite * collective_site,
 		      STAR_Algorithm * repo, int total_algs)
 {
   int rank;
-  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  MPID_Comm * comm_world, * comm;
   STAR_Tuning_Session * reset_ptr, * return_ptr;
   STAR_MPI_Call call_type;
-  MPID_Comm * comm;
 
   int bytes, id, op_type_support, np;
 
+  MPID_Comm_get_ptr(MPI_COMM_WORLD, comm_world);
+  rank = comm_world -> rank;
+  
   call_type = collective_site -> call_type;
   bytes = collective_site -> bytes;
   comm = collective_site -> comm;
@@ -292,7 +294,7 @@ STAR_NextAlgorithm(STAR_Tuning_Session * session,
   if (buff_attributes[2]) 
     DCMF_INFO_SET(&tmp_comm, DCMF_RBUFF_CONTIN);
 
-  if (buff_attributes[3]) 
+  if (buff_attributes[3])
     DCMF_INFO_SET(&tmp_comm, DCMF_BUFF_ALIGNED);
 
   if (!(bytes % sizeof(int))) 

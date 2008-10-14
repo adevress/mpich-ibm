@@ -197,8 +197,7 @@ int MPIDO_Allreduce_rring_dput_singleth(void *sendbuf,
    volatile unsigned active = 1;
    DCMF_Callback_t callback = { allreduce_cb_done, (void *) &active };
    DCMF_Geometry_t * geometry = &(comm->dcmf.geometry);
-  
-  
+   
    rc = DCMF_Allreduce(
       &MPIDI_CollectiveProtocols.rring_dput_allreduce_singleth,
       &request,

@@ -246,6 +246,7 @@ typedef struct
   /* env variable setting the use of STAR */
   int enabled;
 
+  int threshold; /* min message size to have star kick in */
   /* flag to indicate where is the control coming from, App or within BG lib */
   unsigned char internal_control_flow;
 

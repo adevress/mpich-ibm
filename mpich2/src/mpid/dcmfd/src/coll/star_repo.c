@@ -70,6 +70,7 @@ STAR_Algorithm * STAR_barrier_repository;
 STAR_Info STAR_info =
   {
     enabled: 0,
+    threshold: 2048,
     internal_control_flow: 0,
     agree_on_callsite: 1,
     traceback_levels: 3,

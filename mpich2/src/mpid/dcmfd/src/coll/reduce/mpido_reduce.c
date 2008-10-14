@@ -67,34 +67,25 @@ int MPIDO_Reduce(void * sendbuf,
                                      data_true_lb);
       sbuf = (char *) sendbuf + data_true_lb;
    }
-
    
-   if (STAR_info.enabled)
+   if (!STAR_info.enabled || STAR_info.internal_control_flow ||
+       ((op_type_support == DCMF_TREE_SUPPORT &&
+         DCMF_INFO_ISSET(properties, DCMF_TREE_COMM)) ||
+        data_size <= STAR_info.threshold))
    {
-     if (op_type_support == DCMF_TREE_SUPPORT &&
-         DCMF_INFO_ISSET(properties, DCMF_TREE_COMM))
-       goto TREE;
-     else if (data_size <= 2048)
-       goto TORUS;
-   }      
-
-   if (!STAR_info.enabled || STAR_info.internal_control_flow)
-   {
-      extern int DCMF_TREE_SMP_SHORTCUT;
+     extern int DCMF_TREE_SMP_SHORTCUT;
       if(!userenvset)
       {
 
          if (op_type_support == DCMF_TREE_SUPPORT &&
                DCMF_INFO_ISSET(properties, DCMF_USE_TREE_REDUCE))
          {
-         TREE:
             if (DCMF_TREE_SMP_SHORTCUT)
                func = MPIDO_Reduce_global_tree;
             else
                func = MPIDO_Reduce_tree;
          }
 
-      TORUS:
          if (!func && op_type_support != DCMF_NOT_SUPPORTED)
          {
             if (DCMF_INFO_ISSET(properties, DCMF_IRREG_COMM))
