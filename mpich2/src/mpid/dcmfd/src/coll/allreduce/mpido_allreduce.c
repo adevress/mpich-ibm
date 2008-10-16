@@ -93,11 +93,20 @@ MPIDO_Allreduce(void * sendbuf,
 
       if(!func && (op_type_support != DCMF_NOT_SUPPORTED))
       {
-        if (data_size <= 208)
+        if (data_size < 208)
         {
           if(DCMF_INFO_ISSET(properties, 
                              DCMF_USE_SHORT_ASYNC_RECT_ALLREDUCE))
-            func = MPIDO_Allreduce_short_async_rect;
+          {
+            /* MPIDI_Datatype_get_info doesn't account for padding in data_size.
+               Simplest thing to do is hardcode the count limit for a couple padded datatypes
+               so that we don't attempt short async rectangle with 208 or more bytes */
+            if(((datatype == MPI_DOUBLE_INT) && (count >= 13)) || // 13 * 16 = 208
+               ((datatype == MPI_SHORT_INT) && (count >= 26)))    // 26 * 8  = 208
+              ;
+            else
+              func = MPIDO_Allreduce_short_async_rect;
+          }
           if(!func && DCMF_INFO_ISSET(properties, 
                              DCMF_USE_SHORT_ASYNC_BINOM_ALLREDUCE))
             func = MPIDO_Allreduce_short_async_binom;
@@ -149,10 +158,19 @@ MPIDO_Allreduce(void * sendbuf,
         func = MPIDO_Allreduce_async_binom;
       
       if(DCMF_INFO_ISSET(properties, DCMF_USE_SHORT_ASYNC_RECT_ALLREDUCE) &&
-         data_size <= 208)
-        func = MPIDO_Allreduce_short_async_rect;
+         data_size < 208)
+      {  
+        /* MPIDI_Datatype_get_info doesn't account for padding in data_size.
+           Simplest thing to do is hardcode the count limit for a couple padded datatypes
+           so that we don't attempt short async rectangle with 208 or more bytes */
+        if(((datatype == MPI_DOUBLE_INT) && (count >= 13)) || // 13 * 16 = 208
+           ((datatype == MPI_SHORT_INT) && (count >= 26)))    // 26 * 8  = 208
+          ;
+        else
+          func = MPIDO_Allreduce_short_async_rect;
+      }
       if(DCMF_INFO_ISSET(properties, DCMF_USE_SHORT_ASYNC_BINOM_ALLREDUCE) &&
-         data_size <= 208)
+         data_size < 208)
         func = MPIDO_Allreduce_short_async_binom;
       
       if(DCMF_INFO_ISSET(properties, DCMF_USE_RRING_DPUT_ALLREDUCE_SINGLETH) &&
