@@ -98,9 +98,10 @@ MPIDO_Allreduce(void * sendbuf,
           if(DCMF_INFO_ISSET(properties, 
                              DCMF_USE_SHORT_ASYNC_RECT_ALLREDUCE))
           {
-            /* MPIDI_Datatype_get_info doesn't account for padding in data_size.
-               Simplest thing to do is hardcode the count limit for a couple padded datatypes
-               so that we don't attempt short async rectangle with 208 or more bytes */
+            /* MPIDI_Datatype_get_info doesn't account for padding in data_size
+               Simplest thing to do is hardcode the count limit for a couple
+               padded datatypes so that we don't attempt short async rectangle
+               with 208 or more bytes */
             if(((datatype == MPI_DOUBLE_INT) && (count >= 13)) || // 13 * 16 = 208
                ((datatype == MPI_SHORT_INT) && (count >= 26)))    // 26 * 8  = 208
               ;
@@ -161,8 +162,9 @@ MPIDO_Allreduce(void * sendbuf,
          data_size < 208)
       {  
         /* MPIDI_Datatype_get_info doesn't account for padding in data_size.
-           Simplest thing to do is hardcode the count limit for a couple padded datatypes
-           so that we don't attempt short async rectangle with 208 or more bytes */
+           Simplest thing to do is hardcode the count limit for a couple padded
+           datatypes so that we don't attempt short async rectangle with 208 or
+           more bytes */
         if(((datatype == MPI_DOUBLE_INT) && (count >= 13)) || // 13 * 16 = 208
            ((datatype == MPI_SHORT_INT) && (count >= 26)))    // 26 * 8  = 208
           ;

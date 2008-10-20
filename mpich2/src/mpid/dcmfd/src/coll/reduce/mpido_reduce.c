@@ -28,7 +28,7 @@ int MPIDO_Reduce(void * sendbuf,
   int userenvset = DCMF_INFO_ISSET(properties, DCMF_REDUCE_ENVVAR);
   MPID_Datatype * data_ptr;
   MPI_Aint data_true_lb = 0;
-  char *sbuf;
+  char *sbuf, *rbuf;
 
   DCMF_Dt dcmf_data = DCMF_UNDEFINED_DT;
   DCMF_Op dcmf_op = DCMF_UNDEFINED_OP;
@@ -55,84 +55,84 @@ int MPIDO_Reduce(void * sendbuf,
 
   MPID_Ensure_Aint_fits_in_pointer(MPIR_VOID_PTR_CAST_TO_MPI_AINT recvbuf +
 				   data_true_lb);
-  recvbuf = (char *) recvbuf + data_true_lb;
+  rbuf = (char *) recvbuf + data_true_lb;
 
-   if (sendbuf == MPI_IN_PLACE)
-   {
-      sbuf = recvbuf;
-   }
-   else
-   {
-      MPID_Ensure_Aint_fits_in_pointer(MPIR_VOID_PTR_CAST_TO_MPI_AINT sendbuf +
+  if (sendbuf == MPI_IN_PLACE)
+  {
+    sbuf = rbuf;
+  }
+  else
+  {
+    MPID_Ensure_Aint_fits_in_pointer(MPIR_VOID_PTR_CAST_TO_MPI_AINT sendbuf +
                                      data_true_lb);
-      sbuf = (char *) sendbuf + data_true_lb;
-   }
+    sbuf = (char *) sendbuf + data_true_lb;
+  }
    
-   if (!STAR_info.enabled || STAR_info.internal_control_flow ||
-       ((op_type_support == DCMF_TREE_SUPPORT &&
-         DCMF_INFO_ISSET(properties, DCMF_TREE_COMM)) ||
-        data_size <= STAR_info.threshold))
-   {
-     extern int DCMF_TREE_SMP_SHORTCUT;
-      if(!userenvset)
+  if (!STAR_info.enabled || STAR_info.internal_control_flow ||
+      ((op_type_support == DCMF_TREE_SUPPORT &&
+        DCMF_INFO_ISSET(properties, DCMF_TREE_COMM)) ||
+       data_size <= STAR_info.threshold))
+  {
+    extern int DCMF_TREE_SMP_SHORTCUT;
+    if(!userenvset)
+    {
+       
+      if (op_type_support == DCMF_TREE_SUPPORT &&
+          DCMF_INFO_ISSET(properties, DCMF_USE_TREE_REDUCE))
       {
-
-         if (op_type_support == DCMF_TREE_SUPPORT &&
-               DCMF_INFO_ISSET(properties, DCMF_USE_TREE_REDUCE))
-         {
-            if (DCMF_TREE_SMP_SHORTCUT)
-               func = MPIDO_Reduce_global_tree;
-            else
-               func = MPIDO_Reduce_tree;
-         }
-
-         if (!func && op_type_support != DCMF_NOT_SUPPORTED)
-         {
-            if (DCMF_INFO_ISSET(properties, DCMF_IRREG_COMM))
-               func = MPIDO_Reduce_binom;
-         
-            if (!func && (data_size <= 32768))
-            {
-               if (DCMF_INFO_ISSET(properties, DCMF_USE_BINOM_REDUCE))
-                  func = MPIDO_Reduce_binom;
-            }
-         
-            if (!func && (data_size > 32768))
-            {
-               if (DCMF_INFO_ISSET(properties, DCMF_USE_RECTRING_REDUCE))
-                  func = MPIDO_Reduce_rectring;
-            }
-         }
+        if (DCMF_TREE_SMP_SHORTCUT)
+          func = MPIDO_Reduce_global_tree;
+        else
+          func = MPIDO_Reduce_tree;
       }
-      else
+       
+      if (!func && op_type_support != DCMF_NOT_SUPPORTED)
       {
-         if(DCMF_INFO_ISSET(properties, DCMF_USE_BINOM_REDUCE))
+        if (DCMF_INFO_ISSET(properties, DCMF_IRREG_COMM))
+          func = MPIDO_Reduce_binom;
+         
+        if (!func && (data_size <= 32768))
+        {
+          if (DCMF_INFO_ISSET(properties, DCMF_USE_BINOM_REDUCE))
             func = MPIDO_Reduce_binom;
-         if(DCMF_INFO_ISSET(properties, DCMF_USE_TREE_REDUCE) && 
-                                 DCMF_TREE_SMP_SHORTCUT && 
-                                 op_type_support == DCMF_TREE_SUPPORT)
-         {
-            func = MPIDO_Reduce_global_tree;
-         }
-         if(DCMF_INFO_ISSET(properties, DCMF_USE_TREE_REDUCE) && 
-                                 !DCMF_TREE_SMP_SHORTCUT && 
-                                 op_type_support == DCMF_TREE_SUPPORT)
-            func = MPIDO_Reduce_tree;
-         if(DCMF_INFO_ISSET(properties, DCMF_USE_RECTRING_REDUCE))
+        }
+         
+        if (!func && (data_size > 32768))
+        {
+          if (DCMF_INFO_ISSET(properties, DCMF_USE_RECTRING_REDUCE))
             func = MPIDO_Reduce_rectring;
+        }
       }
-  
-      if (func && !DCMF_INFO_ISSET(properties, DCMF_IRREG_COMM))
-         rc = (func)(sbuf, recvbuf, count, dcmf_data,
-                     dcmf_op, datatype, root, comm);      
-
-      else
+    }
+    else
+    {
+      if(DCMF_INFO_ISSET(properties, DCMF_USE_BINOM_REDUCE))
+        func = MPIDO_Reduce_binom;
+      if(DCMF_INFO_ISSET(properties, DCMF_USE_TREE_REDUCE) && 
+         DCMF_TREE_SMP_SHORTCUT && 
+         op_type_support == DCMF_TREE_SUPPORT)
       {
-         rc = MPIR_Reduce(sendbuf, recvbuf, count, datatype, op, root, comm);
+        func = MPIDO_Reduce_global_tree;
       }
-   }
-   else
-   {
+      if(DCMF_INFO_ISSET(properties, DCMF_USE_TREE_REDUCE) && 
+         !DCMF_TREE_SMP_SHORTCUT && 
+         op_type_support == DCMF_TREE_SUPPORT)
+        func = MPIDO_Reduce_tree;
+      if(DCMF_INFO_ISSET(properties, DCMF_USE_RECTRING_REDUCE))
+        func = MPIDO_Reduce_rectring;
+    }
+     
+    if (func && !DCMF_INFO_ISSET(properties, DCMF_IRREG_COMM))
+      rc = (func)(sbuf, rbuf, count, dcmf_data,
+                  dcmf_op, datatype, root, comm);      
+      
+    else
+    {
+      rc = MPIR_Reduce(sendbuf, recvbuf, count, datatype, op, root, comm);
+    }
+  }
+  else
+  {
     int id;
     unsigned char same_callsite = 1;
 
@@ -169,7 +169,7 @@ int MPIDO_Reduce(void * sendbuf,
       collective_site.op_type_support = op_type_support;
 
 
-      rc = STAR_Reduce(sbuf, recvbuf, count, dcmf_data, dcmf_op,
+      rc = STAR_Reduce(sbuf, rbuf, count, dcmf_data, dcmf_op,
                        datatype, root, &collective_site,
                        STAR_reduce_repository,
                        STAR_info.reduce_algorithms);
