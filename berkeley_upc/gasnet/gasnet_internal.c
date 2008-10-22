@@ -316,7 +316,8 @@ void gasneti_defaultSignalHandler(int sig) {
   gasneti_sighandlerfn_t oldhandler = NULL;
   const char *signame = NULL;
   int i;
-  for (i = 0; i < sizeof(gasneti_signals)/sizeof(gasneti_signals[0]); i++) {
+	sigset_t unblock_signals;
+	for (i = 0; i < sizeof(gasneti_signals)/sizeof(gasneti_signals[0]); i++) {
     if (gasneti_signals[i].signum == sig) {
       oldhandler = gasneti_signals[i].oldhandler;
       signame = gasneti_signals[i].signame;
@@ -340,12 +341,13 @@ void gasneti_defaultSignalHandler(int sig) {
       fflush(stderr);
 
       gasnett_freezeForDebuggerErr(); /* allow freeze */
+			
 
       gasneti_print_backtrace_ifenabled(STDERR_FILENO); /* try to print backtrace */
 
       signal(sig, SIG_DFL); /* restore default core-dumping handler and re-raise */
       #if 1
-        raise(sig);
+			  raise(sig);
       #elif 0
         kill(getpid(),sig);
       #else

@@ -345,7 +345,7 @@ extern size_t gasneti_format_putsgets(char *buf, void *_pstats,
   /* format and return a string result
      caller should not deallocate string, they are recycled automatically
   */
-  extern char *gasneti_dynsprintf(const char *format, ...) {
+ extern char *gasneti_dynsprintf(const char *format, ...) {
     va_list argptr;
     char *output = gasneti_getbuf();
 

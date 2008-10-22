@@ -459,7 +459,7 @@
   #define PLATFORM_OS_BLRTS 1
   #define PLATFORM_OS_FAMILYNAME BLRTS
 
-#elif defined(__bgp__)
+#elif defined(GASNETI_ARCH_BGP)
   #define PLATFORM_OS_BGP 1
   #define PLATFORM_OS_FAMILYNAME BGP
 

@@ -99,6 +99,8 @@ sub gasnet_encode($) {
     my $is_yod      = ($mpirun_help =~ m| yod |);
     my $is_bgl_mpi  = ($mpirun_help =~ m|COprocessor or VirtualNode mode|);
     my $is_bgl_cqsub = ($mpirun_help =~ m| cqsub .*?co/vn|s);
+    my $is_bgp_mpi  = ($mpirun_help =~ m|SMP, DUAL, or Virtual Node|);
+    my $is_bgp_qsub = ($mpirun_help =~ m|--mode <mode co/vn>|s);
     my $is_hp_mpi  = ($mpirun_help =~ m|-universe_size|);
     my $is_elan_mpi  = ($mpirun_help =~ m|MPIRUN_ELANIDMAP_FILE|);
     my $is_jacquard = ($mpirun_help =~ m| \[-noenv\] |) && !$is_elan_mpi;
@@ -213,10 +215,28 @@ sub gasnet_encode($) {
 	$group_join_argv = 1;
 	$env_before_exe = 1;
 	@verbose_opt = ("-verbose", "2");
-    } elsif ($is_bgl_cqsub) {
+     }elsif ($is_bgl_cqsub) {
 	$spawner_desc = "IBM BG/L cqsub";
 	# pass as: -e A=val:B=val
 	%envfmt = ( 'pre' => '-e',
+		    'join' => ':',
+		    'val' => ''
+		  );
+        $encode_env = 1; # botches spaces in environment values
+        $encode_args = 1; # and in arguments
+    } elsif ($is_bgp_mpi) {
+	$spawner_desc = "IBM BG/P mpirun";
+	# pass as: -e A=val:B=val
+	%envfmt = ( 'pre' => '-env',
+		    'join' => ':',
+		    'val' => ''
+		  );
+        $encode_env = 1; # botches spaces in environment values
+        $encode_args = 1; # and in arguments
+    } elsif ($is_bgp_qsub) {
+	$spawner_desc = "IBM BG/P qsub";
+	# pass as: -e A=val:B=val
+	%envfmt = ( 'pre' => '-env',
 		    'join' => ':',
 		    'val' => ''
 		  );
@@ -584,6 +604,36 @@ if ($numnode && ($is_aprun || $is_yod)) {
       @numprocargs = ($numproc, '-VN');
     } else {
       die "yod does not support more than 2 processes per node.\n";
+    }
+  }
+  $dashN_ok = 1;
+}
+
+if ($numnode && ($is_bgp_mpi || $is_bgp_qsub)) { 
+  my $ppn = int( ( $numproc + $numnode - 1 ) / $numnode );
+  if ($ppn * $numnode != $numproc) {
+	warn "WARNING: cobalt-mpirun does not fully support non-uniform process distribution\n";
+	warn "WARNING: PROCESS LAYOUT MIGHT NOT MATCH YOUR REQUEST\n";
+  }
+  if ($is_bgp_mpi) { # mpirun requires --mode <vn, dual, smp>
+    if ($ppn == 1) {
+      @numprocargs = ($numproc, '-mode', 'smp');
+    } elsif ($ppn == 2) {
+      @numprocargs = ($numproc, '-mode', 'dual');
+    } elsif ($ppn == 4) {
+      @numprocargs = ($numproc, '-mode', 'vn');
+    } else {
+      die "BG/P only supports 1, 2 or 4 ppn";
+    }
+  } else { # qsub requires 
+    if ($ppn == 1) {
+      @numprocargs = ($numproc, '--mode', 'smp');
+    } elsif ($ppn == 2) {
+      @numprocargs = ($numproc/2, '--mode', 'dual');
+    } elsif ($ppn == 4) {
+      @numprocargs = ($numproc/4, '--mode', 'vn');
+    } else {
+      die "BG/P only supports 1, 2 or 4 ppn";
     }
   }
   $dashN_ok = 1;

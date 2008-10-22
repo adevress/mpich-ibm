@@ -2000,7 +2000,7 @@ GASNET_FUN_BEGIN([$0($1)])
   if test ! -f $_subconfig_extract_file; then
      AC_MSG_ERROR([failed to open $_subconfig_extract_file - file not found])
   fi
-  _subconfig_extract_result=`$PERL -n -e 'if (m/^S\[["('$2')"\]]="(.*)"/) { print "[$]1='"'"'[$]2'"'"'"; };' -e 'if (m/^s(.)\@('$2')\@\1([[^\1]]*)\1/) { my ($var,$val) = ([$]2,[$]3); $val =~ s/\|#_!!_#\|//g; print "$var='"'"'$val'"'"'"; };' $_subconfig_extract_file`
+  _subconfig_extract_result=`$PERL -ne 'if (m/^s(.)\@('$2')\@\1([[^\1]]*)\1/) { my ($var,$val) = ([$]2,[$]3); $val =~ s/\|#_!!_#\|//g; print "$var='"'"'$val'"'"'"; }' $_subconfig_extract_file`
   if test -n "$_subconfig_extract_result" ; then
     eval $_subconfig_extract_result
     AC_MSG_RESULT($[$2])

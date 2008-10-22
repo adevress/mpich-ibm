@@ -1,6 +1,6 @@
 /*   $Source: /var/local/cvs/gasnet/dcmf-conduit/Attic/gasnet_core_fwd.h,v $
- *     $Date: 2008/08/22 22:28:45 $
- * $Revision: 1.1.2.6 $
+ *     $Date: 2008/10/07 20:45:41 $
+ * $Revision: 1.1.2.8 $
  * Description: GASNet header for dcmf conduit core (forward definitions)
  * Copyright 2002, Dan Bonachea <bonachea@cs.berkeley.edu>
  * Terms of use are as specified in license.txt
@@ -29,6 +29,10 @@
   #define GASNET_ALIGNED_SEGMENTS   1 
 #endif
 
+/* conduit allows internal GASNet fns to issue put/get for remote addrs out of segment */
+#define GASNETI_SUPPORTS_OUTOFSEGMENT_PUTGET 1
+
+
   /* conduits should define GASNETI_CONDUIT_THREADS to 1 if they have one or more 
      "private" threads which may be used to run AM handlers, even under GASNET_SEQ
      this ensures locking is still done correctly, etc
@@ -40,9 +44,12 @@
   /* define to 1 if your conduit may interrupt an application thread 
      (e.g. with a signal) to run AM handlers (interrupt-based handler dispatch)
    */
-#if 0
+/*#if 0
 #define GASNETC_USE_INTERRUPTS 1
 #endif
+*/
+void gasnetc_myFatalSignalCallback(int id);
+#define GASNETC_FATALSIGNAL_CALLBACK(SIG) gasnetc_myFatalSignalCallback((SIG))
 
   /* this can be used to add conduit-specific 
      statistical collection values (see gasnet_trace.h) */
