@@ -133,5 +133,7 @@ void MPIDI_DCMF_RecvRzvDoneCB (void *clientdata, DCMF_Error_t *err)
                 &rreq->dcmf.envelope.envelope.msginfo.quad);
   MPID_Request_setType(rreq, original_value);
 
+  DCMF_Memregion_destroy(&rreq->dcmf.memregion);
+
   MPIDI_DCMF_RecvDoneCB (rreq, NULL);
 }

@@ -209,6 +209,8 @@ static inline void MPIDI_DCMF_procCanelAck(MPIDI_DCMF_MsgInfo *info, unsigned pe
 static inline void MPIDI_DCMF_procRzvAck(MPIDI_DCMF_MsgInfo *info, unsigned peer)
 {
   MPID_assert(info->msginfo.req != NULL);
+  MPID_Request  * sreq = ((MPID_Request *)info->msginfo.req);
+  DCMF_Memregion_destroy(&sreq->dcmf.envelope.envelope.memregion);
   MPIDI_DCMF_SendDoneCB((MPID_Request *)info->msginfo.req, NULL);
 }
 
