@@ -79,8 +79,8 @@ static char *rcs_id = "$Source: /var/local/cvs/compilers/open64/osprey1.0/gccfe/
 #include "srcpos.h"
 #include "symtab.h"
 #include "gnu_config.h"
-#include "gnu/flags.h"
 extern "C" {
+#include "gnu/flags.h"
 #include "gnu/system.h"
 #include "gnu/tree.h"
 #include "gnu/input.h"

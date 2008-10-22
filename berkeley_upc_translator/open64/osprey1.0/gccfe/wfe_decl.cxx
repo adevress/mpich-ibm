@@ -43,8 +43,8 @@
 #include "defs.h"
 #include "errors.h"
 #include "gnu_config.h"
-#include "gnu/flags.h"
 extern "C" {
+#include "gnu/flags.h"
 #include "gnu/system.h"
 #include "gnu/tree.h"
 #include "gnu/toplev.h"
@@ -95,8 +95,6 @@ static int __dtors = 0;
 
 extern "C" tree lookup_name (tree);
 extern WN *last_ptr_arith_wn;
-
-extern int compiling_upc;
 
 /* Generate WHIRL representing an asm at file scope (between
   functions). This is an awful hack. */

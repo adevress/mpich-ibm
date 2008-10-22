@@ -24,10 +24,6 @@ Boston, MA 02111-1307, USA.  */
 
 #include "c-common.h"
 
-#if defined(__cplusplus)
-extern "C" {
-#endif
-
 /* Language-dependent contents of an identifier.  */
 
 /* The limbo_value is used for block level extern declarations, which need
@@ -505,9 +501,5 @@ extern int compiling_upc;
 
 /* In c-decl.c */
 extern void finish_incomplete_decl PARAMS ((tree));
-
-#if defined(__cplusplus)
-};
-#endif
 
 #endif /* not _C_TREE_H */

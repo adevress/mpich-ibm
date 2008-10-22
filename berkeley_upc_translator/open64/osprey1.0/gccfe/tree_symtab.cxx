@@ -43,8 +43,8 @@
 #include "defs.h"
 #include "errors.h"
 #include "gnu_config.h"
-#include "gnu/flags.h"
 extern "C" {
+#include "gnu/flags.h"
 #include "gnu/system.h"
 #include "gnu/tree.h"
 #include "gnu/toplev.h"
@@ -102,7 +102,6 @@ BOOL psptr_inner_exception = FALSE;
 BOOL sptr_align_exception = FALSE;
 BOOL psptr_align_exception  = FALSE;
 BOOL struct_align_promote = FALSE;
-extern int compiling_upc;
 
 
 //store the shared variables.  This is processed at the end of every PU

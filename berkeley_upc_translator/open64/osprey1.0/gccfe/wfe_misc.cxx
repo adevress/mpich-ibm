@@ -82,7 +82,6 @@ extern int      snprintf(char *__restrict__, size_t, const char *__restrict__, .
 int WFE_Keep_Zero_Length_Structs = FALSE;
 
 extern int optimize;
-extern int compiling_upc;
 
 //Stores a list of upc system header directories
 //Functions from these directories will not have their prototypes emitted in whirl2c.

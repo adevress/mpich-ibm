@@ -45,11 +45,11 @@
 
 // #include "gnu/MIPS/config.h"
 #include "gnu_config.h"
-#include "gnu/flags.h"
 #include "gnu/system.h"
 #include "gnu/machmode.h"
 
 extern "C" {
+#include "gnu/flags.h"
 #include "gnu/tree.h"
 #include "gnu/c-tree.h"
 extern void warning (char*,...);	// from gnu

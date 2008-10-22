@@ -50,6 +50,8 @@
 extern int Scope_level;
 extern int For_scope;
 
+extern int compiling_upc;
+
 /* mark the "char" type, which should be distinct from MTYPE_I1 or MTYPE_U1 */
 extern TY_IDX char_ty;
 
