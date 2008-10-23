@@ -447,12 +447,12 @@ else
 
 if($nodemapflag==1)
 {
-   $ciorunflags.=" --nodeRankMap $nodemap --timeout $timeout --machine $machine --block $block --silent --home $stagingdir $ciorunoptions";
+   $ciorunflags.=" --jobid 0 --nodeRankMap $nodemap --timeout $timeout --machine $machine --block $block --silent --home $stagingdir $ciorunoptions";
    $mpirunflags.=" -mapfile ".$nodemap;
 }
 else
 {
-   $ciorunflags.=" --timeout $timeout --machine $machine --block $block --silent --home $stagingdir $ciorunoptions";
+   $ciorunflags.=" --jobid 0 --timeout $timeout --machine $machine --block $block --silent --home $stagingdir $ciorunoptions";
 }
 
 if($mpiexecflag==0)
