@@ -28,8 +28,8 @@ MPIDO_Allreduce(void * sendbuf,
   MPID_Datatype * data_ptr;
   MPI_Aint data_true_lb = 0;
   int rc, op_type_support, data_contig, data_size;
-  char *sbuf;
-  char *rbuf;
+  char *sbuf = sendbuf;
+  char *rbuf = recvbuf;
   int rank = comm->rank;
   /* Did the user want to force a specific algorithm? */
   int userenvset = DCMF_INFO_ISSET(properties, DCMF_ALLREDUCE_ENVVAR);

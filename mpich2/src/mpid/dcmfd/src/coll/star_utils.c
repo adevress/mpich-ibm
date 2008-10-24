@@ -670,17 +670,20 @@ STAR_DisplayStatistics(MPID_Comm * comm)
     bytes = ptr->bytes;
     total_algs = ptr->total_examined;
 
+    if (call_type == ALLGATHER_CALL) bytes /= np;
     if (ptr->monitor_overhead)
     {
 
       fprintf(DCMF_STAR_fd,
               "\nComm: %s np: %d msize: %d #Tuning calls %d"
-              " #Monitor calls %d Best-Algorithm: %s callsite: %x\n\n",
+              " #Monitor calls %d Best-Algorithm: %s elapsed %.2lfus"
+              " callsite: %x\n\n",
               comm_shape_str[ptr->comm->dcmf.comm_shape],
               np,
               bytes,
               ptr->tuning_calls, ptr->post_tuning_calls,
               ptr->repository[ptr->best_alg_index].name,
+              1.0E6 * ptr->algorithms_times[ptr->best[0]],
               ptr->callsite_id);
       
       fprintf(DCMF_STAR_fd, "Statistics\n");

@@ -28,7 +28,7 @@ int MPIDO_Reduce(void * sendbuf,
   int userenvset = DCMF_INFO_ISSET(properties, DCMF_REDUCE_ENVVAR);
   MPID_Datatype * data_ptr;
   MPI_Aint data_true_lb = 0;
-  char *sbuf, *rbuf;
+  char *sbuf = sendbuf, *rbuf = recvbuf;
 
   DCMF_Dt dcmf_data = DCMF_UNDEFINED_DT;
   DCMF_Op dcmf_op = DCMF_UNDEFINED_OP;

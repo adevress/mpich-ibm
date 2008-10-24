@@ -26,7 +26,6 @@ MPIDO_Allgather(void *sendbuf,
    * Check the nature of the buffers
    * *********************************
    */
-  
   allgather_fptr func = NULL;
   DCMF_Embedded_Info_Set * coll_prop = &MPIDI_CollectiveProtocols.properties;
   DCMF_Embedded_Info_Set * comm_prop = &(comm->dcmf.properties);
@@ -41,7 +40,7 @@ MPIDO_Allgather(void *sendbuf,
   unsigned char userenvset = DCMF_INFO_ISSET(comm_prop,
                                              DCMF_ALLGATHER_ENVVAR);
 
-  char use_tree_reduce, use_alltoall, use_rect_async, use_tree_bcast;
+  char use_tree_reduce, use_alltoall, use_rect_async, use_bcast;
 
   int rc;
 
@@ -89,7 +88,7 @@ MPIDO_Allgather(void *sendbuf,
 
   /* Here is the Default code path or if coming from within another coll */
   if (!STAR_info.enabled || STAR_info.internal_control_flow ||
-      send_size <= STAR_info.threshold) 
+      send_size < STAR_info.threshold) 
   {
     use_alltoall = 
       DCMF_INFO_ISSET(comm_prop, DCMF_USE_TORUS_ALLTOALL) &&
@@ -98,8 +97,7 @@ MPIDO_Allgather(void *sendbuf,
     /* The tree doesn't support reduce of chars for the operation we need,
      * so we change to ints. Therefore the size needs to be a multiple of
      * sizeof(int) */
-    use_tree_bcast = //DCMF_INFO_ISSET(comm_prop, DCMF_USE_TREE_BCAST) &&
-      DCMF_INFO_ISSET(comm_prop, DCMF_USE_BCAST_ALLGATHER); 
+    use_bcast = DCMF_INFO_ISSET(comm_prop, DCMF_USE_BCAST_ALLGATHER); 
 
     use_tree_reduce = 
       DCMF_INFO_ISSET(comm_prop, DCMF_USE_TREE_ALLREDUCE) &&
@@ -120,16 +118,39 @@ MPIDO_Allgather(void *sendbuf,
         func = MPIDO_Allgather_alltoall;
       if(use_rect_async)
         func = MPIDO_Allgather_bcast_rect_async;
-      if(use_tree_bcast)
+      if(use_bcast)
         func = MPIDO_Allgather_bcast;
     }
     else
     {
+      if (comm_size <= 512)
+      {
+        if (use_tree_reduce && sendcount < 128 * comm_size)
+          func = MPIDO_Allgather_allreduce;
+        if (!func && use_bcast && sendcount >= 128 * comm_size)
+          func = MPIDO_Allgather_bcast;
+        if (!func && use_alltoall &&
+            sendcount > 128 && sendcount <= 8*comm_size)
+          func = MPIDO_Allgather_alltoall;
+        if (!func && use_rect_async && sendcount > 8*comm_size)
+          func = MPIDO_Allgather_bcast_rect_async;
+      }
+      else
+      {
+        if (use_tree_reduce && sendcount <= 1024)
+          func = MPIDO_Allgather_allreduce;
+        if (!func && use_alltoall && sendcount > 128 * (512 / comm_size) &&
+            sendcount <= 128)
+          func = MPIDO_Allgather_alltoall;
+        if (!func && use_rect_async && sendcount > 1024 && sendcount <= 65536)
+          func = MPIDO_Allgather_bcast_rect_async;
+        if (!func && use_bcast && sendcount > 65536)
+          func = MPIDO_Allgather_bcast;
+      }
+#if 0
       /* Tree bcast is faster for large messages */
       if(use_tree_reduce && use_tree_bcast && sendcount > 128*comm_size)
         func = MPIDO_Allgather_bcast;
-      if(!func && use_tree_reduce && use_tree_bcast)
-        func = MPIDO_Allgather_allreduce;
       if(!func && use_tree_reduce)
         func = MPIDO_Allgather_allreduce;
       if(!func && use_tree_bcast)
@@ -142,6 +163,7 @@ MPIDO_Allgather(void *sendbuf,
         func = MPIDO_Allgather_alltoall;
       if(!func && use_rect_async && (sendcount > 16*comm_size))
         func = MPIDO_Allgather_bcast_rect_async;
+#endif
     }
          
   if (!func)

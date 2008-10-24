@@ -26,7 +26,7 @@ int MPIDO_Gather(void *sendbuf,
   DCMF_Embedded_Info_Set * properties = &(comm->dcmf.properties);
   MPID_Datatype * data_ptr;
   MPI_Aint true_lb = 0;
-  char *sbuf, *rbuf;
+  char *sbuf =sendbuf, *rbuf=recvbuf;
   int success = 1, contig, send_bytes=-1, recv_bytes = 0;
   int rc = 0, rank = comm->rank;
   

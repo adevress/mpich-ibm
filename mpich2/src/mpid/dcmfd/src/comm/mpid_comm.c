@@ -1064,7 +1064,7 @@ MPIDI_Env_setup()
 
   dval = 0;
   ENV_Int(getenv("DCMF_STAR_THRESHOLD"), &dval);
-  if (dval > 0 )
+  if (dval >= 0 )
     STAR_info.threshold = dval;
   
   dval = 0;

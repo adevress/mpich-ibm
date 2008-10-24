@@ -26,7 +26,7 @@ int MPIDO_Scatter(void *sendbuf,
   DCMF_Embedded_Info_Set * properties = &(comm->dcmf.properties);
   MPID_Datatype * data_ptr;
   MPI_Aint true_lb = 0;
-  char *sbuf, *rbuf;
+  char *sbuf = sendbuf, *rbuf = recvbuf;
   int contig, nbytes = 0, rc = 0;
   int rank = comm->rank;
   int success = 1;

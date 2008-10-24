@@ -585,7 +585,10 @@ void MPIDI_Coll_Comm_create (MPID_Comm *comm)
   if (dcmf_thread_level < 0)
   {
     if (MPIR_ThreadInfo.thread_provided == MPI_THREAD_MULTIPLE)
+    {
       dcmf_thread_level = 1; /* it is multi threaded */
+      STAR_info.enabled = 0;
+    }
     else
       dcmf_thread_level = 0; 
   }
