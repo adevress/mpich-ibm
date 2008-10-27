@@ -74,7 +74,7 @@ int MPIDO_Reduce_scatter(void *sendbuf,
 				   dt_lb);
   sbuf = (char *)sendbuf + dt_lb;
   
-  rc = MPIDO_Reduce(sbuf, 
+  rc = MPIDO_Reduce(sbuf,
 		    tempbuf, 
 		    tcount, 
 		    datatype, 
