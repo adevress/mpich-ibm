@@ -1,6 +1,6 @@
-/*   $Source: /var/local/cvs/gasnet/extended-ref/gasnet_extended_refcoll.h,v $
- *     $Date: 2007/10/15 20:00:19 $
- * $Revision: 1.2 $
+/*   $Source$
+ *     $Date$
+ * $Revision$
  * Description: GASNet Collectives conduit header
  * Copyright 2002, Dan Bonachea <bonachea@cs.berkeley.edu>
  * Terms of use are as specified in license.txt

@@ -1,6 +1,6 @@
-/*   $Source: /var/local/cvs/gasnet/gm-conduit/firehose_fwd.h,v $
- *     $Date: 2004/08/26 04:53:36 $
- * $Revision: 1.3 $
+/*   $Source$
+ *     $Date$
+ * $Revision$
  * Description: 
  * Copyright 2004, Christian Bell <csbell@cs.berkeley.edu>
  * Terms of use are as specified in license.txt

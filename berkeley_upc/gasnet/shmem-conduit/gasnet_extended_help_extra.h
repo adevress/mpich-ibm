@@ -1,6 +1,6 @@
-/*   $Source: /var/local/cvs/gasnet/shmem-conduit/gasnet_extended_help_extra.h,v $
- *     $Date: 2006/05/23 12:42:37 $
- * $Revision: 1.6 $
+/*   $Source$
+ *     $Date$
+ * $Revision$
  * Description: GASNet Extended Shmem-specific Header 
  * Copyright 2005, Christian Bell <csbell@cs.berkeley.edu>
  * Terms of use are as specified in license.txt

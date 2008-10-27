@@ -1,6 +1,6 @@
-//   $Source: /var/local/cvs/gasnet/other/amudp/exc.h,v $
-//     $Date: 2006/04/10 04:20:12 $
-// $Revision: 1.3 $
+//   $Source$
+//     $Date$
+// $Revision$
 // Description: Exception handlers for fserver
 // Copyright 1999, Dan Bonachea & Scott McPeak
 

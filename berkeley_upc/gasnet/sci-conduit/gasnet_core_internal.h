@@ -1,6 +1,6 @@
-/*   $Source: /var/local/cvs/gasnet/sci-conduit/gasnet_core_internal.h,v $
- *     $Date: 2006/05/23 12:42:35 $
- * $Revision: 1.14 $
+/*   $Source$
+ *     $Date$
+ * $Revision$
  * Description: GASNet sci conduit header for internal definitions in Core API
  * Copyright 2002, Dan Bonachea <bonachea@cs.berkeley.edu>
  *				   Hung-Hsun Su <su@hcs.ufl.edu>

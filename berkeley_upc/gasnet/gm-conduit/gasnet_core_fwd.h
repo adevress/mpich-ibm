@@ -1,6 +1,6 @@
-/* $Source: /var/local/cvs/gasnet/gm-conduit/gasnet_core_fwd.h,v $
- * $Date: 2007/10/31 05:13:55 $
- * $Revision: 1.34 $
+/* $Source$
+ * $Date$
+ * $Revision$
  * Description: GASNet header for GM conduit core (forward definitions)
  * Copyright 2002, Christian Bell <csbell@cs.berkeley.edu>
  * Copyright 2002, Dan Bonachea <bonachea@cs.berkeley.edu>

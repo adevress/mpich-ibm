@@ -1,6 +1,6 @@
-/*   $Source: /var/local/cvs/gasnet/template-conduit/gasnet_core_fwd.h,v $
- *     $Date: 2006/08/30 11:46:15 $
- * $Revision: 1.13 $
+/*   $Source$
+ *     $Date$
+ * $Revision$
  * Description: GASNet header for <conduitname> conduit core (forward definitions)
  * Copyright 2002, Dan Bonachea <bonachea@cs.berkeley.edu>
  * Terms of use are as specified in license.txt

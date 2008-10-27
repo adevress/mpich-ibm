@@ -1,6 +1,6 @@
-/*   $Source: /var/local/cvs/gasnet/dcmf-conduit/Attic/gasnet_core_help.h,v $
- *     $Date: 2008/02/28 23:25:03 $
- * $Revision: 1.1.2.1 $
+/*   $Source$
+ *     $Date$
+ * $Revision$
  * Description: GASNet dcmf conduit core Header Helpers (Internal code, not for client use)
  * Copyright 2002, Dan Bonachea <bonachea@cs.berkeley.edu>
  * Terms of use are as specified in license.txt

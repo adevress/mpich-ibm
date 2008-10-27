@@ -1,6 +1,6 @@
-/*   $Source: /var/local/cvs/gasnet/gm-conduit/gasnet_extended.c,v $
- *     $Date: 2007/08/17 06:08:42 $
- * $Revision: 1.43 $
+/*   $Source$
+ *     $Date$
+ * $Revision$
  * Description: GASNet Extended API GM Implementation
  * Copyright 2002, Dan Bonachea <bonachea@cs.berkeley.edu>
  * Terms of use are as specified in license.txt

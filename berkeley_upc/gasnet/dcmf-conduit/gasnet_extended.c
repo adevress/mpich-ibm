@@ -1,6 +1,6 @@
-/*   $Source: /var/local/cvs/gasnet/dcmf-conduit/Attic/gasnet_extended.c,v $
- *     $Date: 2008/10/10 17:18:50 $
- * $Revision: 1.1.2.13 $
+/*   $Source$
+ *     $Date$
+ * $Revision$
  * Description: GASNet Extended API Reference Implementation
  * Copyright 2002, Dan Bonachea <bonachea@cs.berkeley.edu>
  * Terms of use are as specified in license.txt
@@ -164,7 +164,7 @@ extern void gasnete_init() {
    DCMF_Put_Configuration_t put_config;
    DCMF_Get_Configuration_t get_config;
    size_t bytes_out;
-   size_t bytes_in = 2*1024*1024*1024;
+   size_t bytes_in;
    
    DCMF_Hardware_t hw;
    size_t memsize;
@@ -184,12 +184,14 @@ extern void gasnete_init() {
    GASNETI_TRACE_PRINTF(C, ("Trying to pin %d bytes\n", bytes_in));
    DCMF_SAFE(DCMF_Memregion_create(&gasnete_dcmf_my_mem_region, &bytes_out, bytes_in, 0, 0));
    GASNETI_TRACE_PRINTF(C, ("Bytes Pinned: %d\n", bytes_out));
+   GASNETC_DCMF_CHECK_PTR(&gasnete_dcmf_put_registration);
    DCMF_SAFE(DCMF_Put_register(&gasnete_dcmf_put_registration, &put_config));
+   GASNETC_DCMF_CHECK_PTR(&gasnete_dcmf_get_registration);
    DCMF_SAFE(DCMF_Get_register(&gasnete_dcmf_get_registration, &get_config));
    GASNETC_DCMF_UNLOCK();
    
    /*make srue everyone knows about everybody elses memory*/
-   gasnete_dcmf_all_mem_regions = gasneti_malloc(sizeof(DCMF_Memregion_t)*gasneti_nodes);
+   gasnete_dcmf_all_mem_regions = gasneti_malloc_aligned(16, sizeof(DCMF_Memregion_t)*gasneti_nodes);
 
    gasnetc_dcmf_bootstrapExchange(gasnete_dcmf_my_mem_region, sizeof(DCMF_Memregion_t), gasnete_dcmf_all_mem_regions);
    
@@ -230,6 +232,8 @@ gasnete_eop_t *gasnete_eop_new(gasnete_threaddata_t * const thread) {
     if (bufidx == 256) gasneti_fatalerror("GASNet Extended API: Ran out of explicit handles (limit=65535)");
     thread->eop_num_bufs++;
     buf = (gasnete_eop_t *)gasneti_calloc(256,sizeof(gasnete_eop_t));
+    // buf = (gasnete_eop_t *)gasneti_malloc_aligned(16,256*sizeof(gasnete_eop_t));
+    // bzero(buf, sizeof(gasnete_eop_t)*256);
     for (i=0; i < 256; i++) {
       gasnete_eopaddr_t addr;
       addr.bufferidx = bufidx;
@@ -379,12 +383,12 @@ void gasnete_op_free(gasnete_op_t *op) {
     thread->iop_free = iop;
 
     /*go through and add all the dcmf requests back onto the free list*/
-/*     while(iop->dcmf_req_head) { */
-/*       gasnetc_dcmf_req_t *req = iop->dcmf_req_head; */
-/*       iop->dcmf_req_head = iop->dcmf_req_head->next; */
-/*       gasnetc_free_dcmf_req(req); */
-/*     } */
-/*     gasneti_assert(iop->dcmf_req_head ==NULL); */
+    /*     while(iop->dcmf_req_head) { */
+    /*       gasnetc_dcmf_req_t *req = iop->dcmf_req_head; */
+    /*       iop->dcmf_req_head = iop->dcmf_req_head->next; */
+    /*       gasnetc_free_dcmf_req(req); */
+    /*     } */
+    /*     gasneti_assert(iop->dcmf_req_head ==NULL); */
   }
 }
 /* ------------------------------------------------------------------------------------ */
@@ -605,6 +609,7 @@ extern gasnet_handle_t gasnete_get_nb_bulk (void *dest, gasnet_node_t node, void
   done_cb.clientdata = (void*) op;
 
   GASNETC_DCMF_LOCK();
+  GASNETC_DCMF_CHECK_PTR(&op->dcmf_req);
   DCMF_SAFE(DCMF_Get(&gasnete_dcmf_get_registration,
                      &op->dcmf_req, done_cb,
                      DCMF_RELAXED_CONSISTENCY, node,
@@ -643,8 +648,9 @@ gasnet_handle_t gasnete_put_nb_inner(gasnet_node_t node, void *dest, void *src, 
   
   remote_done_cb.function = gasnete_mark_dcmf_put_done;
   remote_done_cb.clientdata = (void*) op;
-
+  
   GASNETC_DCMF_LOCK();
+  GASNETC_DCMF_CHECK_PTR(&op->dcmf_req);
   DCMF_SAFE(DCMF_Put(&gasnete_dcmf_put_registration, &op->dcmf_req,
                      local_done_cb,
                      DCMF_RELAXED_CONSISTENCY, node, nbytes,
@@ -652,12 +658,10 @@ gasnet_handle_t gasnete_put_nb_inner(gasnet_node_t node, void *dest, void *src, 
                      (size_t)src, (size_t)dest, remote_done_cb));
   GASNETC_DCMF_UNLOCK();
   if(!isbulk) {
-    while(local_put_done == 0) {
-      gasnetc_AMPoll();
-    /*   GASNETC_DCMF_CYCLE(); /\*exit and enter the critical section to give someone else a shot at hte lock*\/ */
-/*       DCMF_MESSAGER_POLL(); */
-/*       /\*if(!local_put_done) gasneti_yield();*\/ */
-    }
+    gasneti_polluntil(local_put_done!=0);
+    /*while(local_put_done == 0) {
+      gasneti_AMPoll();
+      }*/
   }
   
   return (gasnet_handle_t)op;
@@ -814,28 +818,34 @@ extern int  gasnete_try_syncnb_all (gasnet_handle_t *phandle, size_t numhandles)
     by piggybacking them on other messages (like get replies) or simply aggregating them
     the target until the source tries to synchronize
 */
+
 #if GASNETE_DIRECT_PUT_GET
 static gasneti_lifo_head_t gasnete_iop_dcmf_req_free_list = GASNETI_LIFO_INITIALIZER;
 
 GASNETI_INLINE(gasnete_get_iop_dcmf_req)
 gasnete_iop_dcmf_req_t *gasnete_get_iop_dcmf_req(gasnete_iop_t * const op) {
   gasnete_iop_dcmf_req_t *ret;
+  gasnete_iop_check(op);
+
   ret = gasneti_lifo_pop(&gasnete_iop_dcmf_req_free_list);
   if(!ret) {
-    /*assume taht we'll need a few more of these so just go ahead and allocate 256 and push them on to the free list*/
+
+   /*assume taht we'll need a few more of these so just go ahead and allocate 256 and push them on to the free list*/
     int i=0;
-    gasnete_iop_dcmf_req_t *tail, *head, *temp;
+    gasnete_iop_dcmf_req_t *tail, *head;
     /*XXX: fix alignment to make sure that the requests are separated by cachelines*/
-    temp = head = (gasnete_iop_dcmf_req_t*) gasneti_malloc(sizeof(gasnete_iop_dcmf_req_t)*256);
+    ret =  (gasnete_iop_dcmf_req_t*) gasneti_malloc_aligned(GASNETI_CACHE_LINE_BYTES, sizeof(gasnete_iop_dcmf_req_t)*256);
+    head = ret+1; /*link the rest on the free list*/
+    tail = head; /*start at ret[1]*/
     for(i=1; i<255; i++) {
-      gasneti_lifo_link(temp, &head[i+1]);
-      temp = &head[i+1];
+      gasneti_lifo_link(tail, tail+1); /*link to the next one*/
+      tail = tail+1; /*set to the next one*/
     }
-    tail = head+255;
+    
     gasneti_lifo_push_many(&gasnete_iop_dcmf_req_free_list, (void*) head, (void*) tail);
-    /*now pop one off the free list to use it*/
-    ret = gasneti_lifo_pop(&gasnete_iop_dcmf_req_free_list);
   }
+  
+
   ret->ptr = op;
   return ret;
 }
@@ -843,23 +853,22 @@ gasnete_iop_dcmf_req_t *gasnete_get_iop_dcmf_req(gasnete_iop_t * const op) {
 GASNETI_INLINE(gasnete_free_iop_dcmf_req)
 void gasnete_free_iop_dcmf_req (gasnete_iop_dcmf_req_t* req) {
   req->ptr = NULL;
-  gasneti_lifo_push(&gasnete_iop_dcmf_req_free_list, (void*) req);
-}
 
+  gasneti_lifo_push(&gasnete_iop_dcmf_req_free_list, (void*) req);
+
+
+}
+#endif
+
+#if GASNETE_DIRECT_PUT_GET 
 static void gasnete_mark_iop_put_done(void *arg, DCMF_Error_t *error) {
   gasnete_iop_dcmf_req_t *in = (gasnete_iop_dcmf_req_t*) arg;
   
+  gasneti_assert(arg!=0);
+  gasneti_assert(in->ptr!=0);
   gasnete_op_markdone((gasnete_op_t*) in->ptr, 0);
   gasnete_free_iop_dcmf_req(in);
-  return ;
-}
-
-static void gasnete_mark_iop_get_done(void *arg, DCMF_Error_t *error) {
-  gasnete_iop_dcmf_req_t *in = (gasnete_iop_dcmf_req_t*) arg;
-  
-  gasnete_op_markdone((gasnete_op_t*) in->ptr, 1);
-  gasnete_free_iop_dcmf_req(in);
-  return ;
+  return;
 }
 
 GASNETI_INLINE(gasnete_put_nbi_inner)
@@ -881,8 +890,9 @@ void gasnete_put_nbi_inner(gasnet_node_t node, void *dest, void *src, size_t nby
     local_done_cb.function = increment_value;
     local_done_cb.clientdata = (void*) &local_put_done;
   }
-  
+  gasnete_iop_check(op);
   req = gasnete_get_iop_dcmf_req(op);
+  gasneti_assert(req);
   remote_done_cb.function = gasnete_mark_iop_put_done;
   remote_done_cb.clientdata = (void*) req;
 
@@ -892,20 +902,22 @@ void gasnete_put_nbi_inner(gasnet_node_t node, void *dest, void *src, size_t nby
   
   GASNETC_DCMF_LOCK();
   op->initiated_put_cnt++;
+  GASNETC_DCMF_CHECK_PTR(&req->dcmf_req);
   DCMF_SAFE(DCMF_Put(&gasnete_dcmf_put_registration, &req->dcmf_req,
                      local_done_cb,
                      DCMF_RELAXED_CONSISTENCY, node, nbytes,
                      &gasnete_dcmf_my_mem_region, gasnete_dcmf_all_mem_regions+node,
                      (size_t)src, (size_t)dest, remote_done_cb));
   
-
-  if(!isbulk) {
-    while(local_put_done == 0) {
-      GASNETC_DCMF_CYCLE(); /*exit the critical section and give another thread a chacne at the lock*/
-      DCMF_MESSAGER_POLL();
-    }
-  }
   GASNETC_DCMF_UNLOCK();
+  
+  if(!isbulk) {
+    gasneti_polluntil(local_put_done!=0);
+    /*while(local_put_done == 0) {
+      gasneti_AMPoll();
+      }*/
+  }
+
   return;
 }
 #else
@@ -982,6 +994,17 @@ void gasnete_put_nbi_inner(gasnet_node_t node, void *dest, void *src, size_t nby
 
 
 #if GASNETE_DIRECT_PUT_GET
+static void gasnete_mark_iop_get_done(void *arg, DCMF_Error_t *error) {
+  gasnete_iop_dcmf_req_t *in = (gasnete_iop_dcmf_req_t*) arg;
+  
+  gasneti_assert(arg);
+  gasneti_assert(in->ptr);
+  
+  gasnete_op_markdone((gasnete_op_t*) in->ptr, 1);
+  gasnete_free_iop_dcmf_req(in);
+  return ;
+}
+
 extern void gasnete_get_nbi_bulk (void *dest, gasnet_node_t node, void *src, size_t nbytes GASNETE_THREAD_FARG) {
   gasnete_threaddata_t * const mythread = GASNETE_MYTHREAD;
   gasnete_iop_t * const op = mythread->current_iop;
@@ -994,12 +1017,14 @@ extern void gasnete_get_nbi_bulk (void *dest, gasnet_node_t node, void *src, siz
   }
   
   req = gasnete_get_iop_dcmf_req(op);
+  gasneti_assert(req);
   done_cb.function = gasnete_mark_iop_get_done;
   done_cb.clientdata = (void*) req;
 
   
   GASNETC_DCMF_LOCK();
   op->initiated_get_cnt++;
+  GASNETC_DCMF_CHECK_PTR(&req->dcmf_req);
   DCMF_SAFE(DCMF_Get(&gasnete_dcmf_get_registration,
                      &req->dcmf_req, done_cb,
                      DCMF_RELAXED_CONSISTENCY, node,
@@ -1144,7 +1169,7 @@ extern int  gasnete_try_syncnbi_puts(GASNETE_THREAD_FARG_ALONE) {
 */
 /*  This implementation allows recursive access regions, although the spec does not require that */
 /*  operations are associated with the most immediately enclosing access region */
-extern void            gasnete_begin_nbi_accessregion(int allowrecursion GASNETE_THREAD_FARG) {
+extern void  gasnete_begin_nbi_accessregion(int allowrecursion GASNETE_THREAD_FARG) {
   gasnete_threaddata_t * const mythread = GASNETE_MYTHREAD;
   gasnete_iop_t *iop = gasnete_iop_new(mythread); /*  push an iop  */
   GASNETI_TRACE_PRINTF(S,("BEGIN_NBI_ACCESSREGION"));
@@ -1228,7 +1253,7 @@ static void gasnete_dcmfbarrier_init();
 static void gasnete_dcmfbarrier_notify(int id, int flags);
 static int gasnete_dcmfbarrier_wait(int id, int flags);
 static int gasnete_dcmfbarrier_try(int id, int flags);
-int gasnete_elanbarrier_fast = 0;
+int gasnete_dcmfbarrier_fast = 0;
 
 #define GASNETE_BARRIER_DEFAULT "DCMF_BARRIER"
 #define GASNETE_BARRIER_INIT() do {                         \
@@ -1288,6 +1313,7 @@ static void gasnete_dcmfbarrier_init() {
     /*for now just sticked w/ a single barrier protocol that we pick*/
     const char *barrier_protocol = gasneti_getenv_withdefault("GASNET_DCMF_ANONBARRIER_PROTOCOL", "DEFAULT");
     bzero(&config, sizeof(DCMF_GlobalBarrier_Configuration_t));
+    gasnete_dcmfbarrier_fast = 1;
     if(!strcmp(barrier_protocol, "DEFAULT")) {
       config.protocol = DCMF_DEFAULT_GLOBALBARRIER_PROTOCOL;
     } else if(!strcmp(barrier_protocol, "GLOBAL_INTERRUPT")) {
@@ -1295,7 +1321,7 @@ static void gasnete_dcmfbarrier_init() {
     } else {
       gasneti_fatalerror("unknown dcmf barrier protocol: %s", barrier_protocol);
     }
-
+    
     /*tested both DCMF_GI_GLOBALBARRIER_PROTOCOL and DEFAULT_PROTOCOL*/
     /*default performacne @ 256 nodes was 1.3us 
       GI perforamance @ 256 nodes was us 1.308 
@@ -1303,6 +1329,7 @@ static void gasnete_dcmfbarrier_init() {
     */
 
     GASNETC_DCMF_LOCK();
+    GASNETC_DCMF_CHECK_PTR(&anon_barrier_registration);
     DCMF_SAFE(DCMF_GlobalBarrier_register(&anon_barrier_registration, &config));
     GASNETC_DCMF_UNLOCK();
   }
@@ -1328,6 +1355,7 @@ static void gasnete_dcmfbarrier_init() {
     }
 
     GASNETC_DCMF_LOCK();
+    GASNETC_DCMF_CHECK_PTR(&named_barrier_registration);
     DCMF_SAFE(DCMF_GlobalAllreduce_register(&named_barrier_registration, &config));
     named_barrier_source[0] = -1; named_barrier_source[1]=0;
     named_barrier_result[0] = -1; named_barrier_result[1]=1;
@@ -1364,6 +1392,7 @@ static void gasnete_dcmfbarrier_notify(int id, int flags) {
     GASNETI_TRACE_PRINTF(B, ("running annoymous barrier notify"));
     /*run anonymous barrier*/
     GASNETC_DCMF_LOCK();
+    GASNETC_DCMF_CHECK_PTR(&barrier_req);
     DCMF_SAFE(DCMF_GlobalBarrier(&anon_barrier_registration, &barrier_req, cb_done));
     GASNETC_DCMF_UNLOCK();
     current_barrier_flags = flags;
@@ -1398,7 +1427,7 @@ static void gasnete_dcmfbarrier_notify(int id, int flags) {
 
       on a normal barrier where everything matches these two values should be equal to each ohter
       more details on how this is handled in finish barrier*/
-    
+    GASNETC_DCMF_CHECK_PTR(&barrier_req);
     DCMF_SAFE(DCMF_GlobalAllreduce(&named_barrier_registration, &barrier_req, 
                                    cb_done, DCMF_MATCH_CONSISTENCY,
                                    -1, (char*) &named_barrier_source, 
@@ -1466,12 +1495,15 @@ static inline int finish_barrier(int id, int flags) {
       cb_done.clientdata = (void*) &barrier_rerun_done;
     
       GASNETC_DCMF_LOCK();
+      GASNETC_DCMF_CHECK_PTR(&barrier_req);
       DCMF_SAFE(DCMF_GlobalAllreduce(&named_barrier_registration, &barrier_req, 
                                      cb_done, DCMF_MATCH_CONSISTENCY,
                                      -1, (char*) &named_barrier_source, 
                                      (char*) &named_barrier_result, 2, DCMF_SIGNED_LONG_LONG, 
                                      DCMF_MIN));
-      /*XXX: Factor out to macros*/
+      /*all the nodes are rerunning the barrier so it should be a fairly quick operation
+        so just call messager poll instead*/
+       
       while(barrier_rerun_done == 0) {
         GASNETC_DCMF_CYCLE(); /*cycle the lock to give another thread a chance*/
         DCMF_MESSAGER_POLL();
@@ -1510,8 +1542,11 @@ static int gasnete_dcmfbarrier_wait(int id, int flags) {
   /*wait for whatever barrier we executed to be done*/
 
   /*ampoll calls DCMF Messager advance and will make progress on outstanding AMs*/
-  while(barrier_done == 0) GASNETI_SAFE(gasneti_AMPoll()); /*XXX: GASNET POLL UNTIL*/
-
+  
+  gasneti_polluntil(barrier_done!=0);
+  /*while(barrier_done == 0) GASNETI_SAFE(gasneti_AMPoll());*/
+  
+  
   
   GASNETI_TRACE_PRINTF(B, ("finish barrier wait named barrier res:(0x%llx,0x%llx) (%d,%d)", named_barrier_source[1], named_barrier_result[1], id, flags));
   ret = finish_barrier(id, flags);

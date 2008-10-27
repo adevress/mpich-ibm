@@ -1,6 +1,6 @@
-/*   $Source: /var/local/cvs/gasnet/dcmf-conduit/Attic/gasnet_core_fwd.h,v $
- *     $Date: 2008/10/07 20:45:41 $
- * $Revision: 1.1.2.8 $
+/*   $Source$
+ *     $Date$
+ * $Revision$
  * Description: GASNet header for dcmf conduit core (forward definitions)
  * Copyright 2002, Dan Bonachea <bonachea@cs.berkeley.edu>
  * Terms of use are as specified in license.txt

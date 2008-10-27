@@ -1,6 +1,6 @@
-/*   $Source: /var/local/cvs/gasnet/udp-conduit/gasnet_core.h,v $
- *     $Date: 2006/04/18 04:37:30 $
- * $Revision: 1.13 $
+/*   $Source$
+ *     $Date$
+ * $Revision$
  * Description: GASNet header for UDP conduit core
  * Copyright 2002, Dan Bonachea <bonachea@cs.berkeley.edu>
  * Terms of use are as specified in license.txt

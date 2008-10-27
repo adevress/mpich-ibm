@@ -1,6 +1,6 @@
-/*   $Source: /var/local/cvs/gasnet/other/ammpi/ammpi.h,v $
- *     $Date: 2007/10/31 05:28:08 $
- * $Revision: 1.42 $
+/*   $Source$
+ *     $Date$
+ * $Revision$
  * Description: AMMPI Header
  * Copyright 2000, Dan Bonachea <bonachea@cs.berkeley.edu>
  */

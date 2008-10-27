@@ -1,7 +1,7 @@
 ## Process this file with automake to produce Makefile.in       -*- makefile -*-
-#   $Source: /var/local/cvs/gasnet/mpi-conduit/contrib/Makefile.am,v $
-#     $Date: 2006/06/26 08:31:49 $
-# $Revision: 1.13 $
+#   $Source$
+#     $Date$
+# $Revision$
 # Description: Makefile for GASNet MPI spawner
 # Terms of use are as specified in license.txt
 

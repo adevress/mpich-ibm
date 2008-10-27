@@ -1,6 +1,6 @@
-//   $Source: /var/local/cvs/gasnet/other/amudp/sig.h,v $
-//     $Date: 2006/05/23 12:42:29 $
-// $Revision: 1.3 $
+//   $Source$
+//     $Date$
+// $Revision$
 // Description: signal handling module
 // Copyright 1999, Dan Bonachea
 

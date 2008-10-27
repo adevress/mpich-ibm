@@ -1,6 +1,6 @@
-/*   $Source: /var/local/cvs/gasnet/elan-conduit/gasnet_extended_fwd.h,v $
- *     $Date: 2006/07/10 05:56:21 $
- * $Revision: 1.25 $
+/*   $Source$
+ *     $Date$
+ * $Revision$
  * Description: GASNet Extended API Header (forward decls)
  * Copyright 2002, Dan Bonachea <bonachea@cs.berkeley.edu>
  * Terms of use are as specified in license.txt

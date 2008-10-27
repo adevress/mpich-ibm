@@ -1,6 +1,6 @@
-#   $Source: /var/local/cvs/gasnet/other/amudp/Makefile.standalone,v $
-#     $Date: 2006/06/06 16:03:30 $
-# $Revision: 1.26 $
+#   $Source$
+#     $Date$
+# $Revision$
 # Description: Makefile for AMUDP
 # Copyright 2000, Dan Bonachea <bonachea@cs.berkeley.edu>
 srcdir = .

@@ -1,6 +1,6 @@
-//   $Source: /var/local/cvs/gasnet/other/amudp/sockutil.h,v $
-//     $Date: 2006/04/16 09:28:42 $
-// $Revision: 1.5 $
+//   $Source$
+//     $Date$
+// $Revision$
 // Description: Simple sock utils
 // Copyright 1999, Dan Bonachea
 

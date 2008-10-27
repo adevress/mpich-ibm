@@ -1,6 +1,6 @@
-/*   $Source: /var/local/cvs/gasnet/elan-conduit/gasnet_core_fwd.h,v $
- *     $Date: 2006/08/30 12:27:28 $
- * $Revision: 1.29 $
+/*   $Source$
+ *     $Date$
+ * $Revision$
  * Description: GASNet header for elan conduit core (forward definitions)
  * Copyright 2002, Dan Bonachea <bonachea@cs.berkeley.edu>
  * Terms of use are as specified in license.txt

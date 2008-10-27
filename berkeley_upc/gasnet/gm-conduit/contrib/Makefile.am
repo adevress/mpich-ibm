@@ -1,7 +1,7 @@
 ## Process this file with automake to produce Makefile.in       -*- makefile -*-
-#   $Source: /var/local/cvs/gasnet/gm-conduit/contrib/Makefile.am,v $
-#     $Date: 2005/05/22 13:01:50 $
-# $Revision: 1.17 $
+#   $Source$
+#     $Date$
+# $Revision$
 # Description: Makefile for GASNet gm conduit
 # Copyright 2002, Christian Bell <csbell@cs.berkeley.edu>
 # Copyright 2002, Dan Bonachea <bonachea@cs.berkeley.edu>

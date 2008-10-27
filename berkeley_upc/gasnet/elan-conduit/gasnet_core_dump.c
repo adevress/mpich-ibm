@@ -1,6 +1,6 @@
-/*   $Source: /var/local/cvs/gasnet/elan-conduit/gasnet_core_dump.c,v $
- *     $Date: 2006/05/28 08:32:21 $
- * $Revision: 1.19 $
+/*   $Source$
+ *     $Date$
+ * $Revision$
  * Description: GASNet elan conduit - elan informational dumps
  * Copyright 2002, Dan Bonachea <bonachea@cs.berkeley.edu>
  * Terms of use are as specified in license.txt

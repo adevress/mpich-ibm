@@ -1,7 +1,7 @@
 ## Process this file with automake to produce Makefile.in	-*- makefile -*-
-#   $Source: /var/local/cvs/gasnet/other/amudp/Makefile.am,v $
-#     $Date: 2006/06/08 18:31:59 $
-# $Revision: 1.41 $
+#   $Source$
+#     $Date$
+# $Revision$
 # Description: Makefile for AMUDP/GASNet 
 # Copyright 2004, Dan Bonachea <bonachea@cs.berkeley.edu>
 # Terms of use are as specified in license.txt

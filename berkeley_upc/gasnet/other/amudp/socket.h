@@ -1,6 +1,6 @@
-/*    $Source: /var/local/cvs/gasnet/other/amudp/socket.h,v $
- *      $Date: 2007/06/11 20:00:26 $
- *  $Revision: 1.14 $
+/*    $Source$
+ *      $Date$
+ *  $Revision$
  *  Description: portable header socket functions
  *  (c) Scott McPeak, 1998-1999, Modified by Dan Bonachea
  */

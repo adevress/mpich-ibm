@@ -1,6 +1,6 @@
-/*   $Source: /var/local/cvs/gasnet/portals-conduit/gasnet_extended_internal.h,v $
- *     $Date: 2008/02/19 03:43:49 $
- * $Revision: 1.6 $
+/*   $Source$
+ *     $Date$
+ * $Revision$
  * Description: GASNet header for internal definitions in Extended API
  * Copyright 2002, Dan Bonachea <bonachea@cs.berkeley.edu>
  * Terms of use are as specified in license.txt

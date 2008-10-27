@@ -1,6 +1,6 @@
-/* $Source: /var/local/cvs/gasnet/gm-conduit/gasnet_core.c,v $
- * $Date: 2008/04/29 19:12:29 $
- * $Revision: 1.122.4.1 $
+/* $Source$
+ * $Date$
+ * $Revision$
  * Description: GASNet GM conduit Implementation
  * Copyright 2002, Christian Bell <csbell@cs.berkeley.edu>
  * Copyright 2002, Dan Bonachea <bonachea@cs.berkeley.edu>

@@ -1,6 +1,6 @@
-/*   $Source: /var/local/cvs/gasnet/extended-ref/gasnet_coll_eager.c,v $
- *     $Date: 2007/10/15 20:00:18 $
- * $Revision: 1.65 $
+/*   $Source$
+ *     $Date$
+ * $Revision$
  * Description: Reference implemetation of GASNet Collectives team
  * Copyright 2004, Dan Bonachea <bonachea@cs.berkeley.edu>
  * Terms of use are as specified in license.txt

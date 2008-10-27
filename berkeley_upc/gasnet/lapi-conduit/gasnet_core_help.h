@@ -1,6 +1,6 @@
-/*   $Source: /var/local/cvs/gasnet/lapi-conduit/gasnet_core_help.h,v $
- *     $Date: 2008/04/29 19:12:31 $
- * $Revision: 1.26.34.1 $
+/*   $Source$
+ *     $Date$
+ * $Revision$
  * Description: GASNet lapi conduit core Header Helpers (Internal code, not for client use)
  * Copyright 2002, Dan Bonachea <bonachea@cs.berkeley.edu>
  * Terms of use are as specified in license.txt

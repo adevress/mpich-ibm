@@ -1,6 +1,6 @@
-/*   $Source: /var/local/cvs/gasnet/lapi-conduit/gasnet_firehose.c,v $
- *     $Date: 2007/10/15 21:06:16 $
- * $Revision: 1.2 $
+/*   $Source$
+ *     $Date$
+ * $Revision$
  * Description: Client-specific firehose code
  * Copyright 2007, E. O. Lawrence Berekely National Laboratory
  * Terms of use are as specified in license.txt

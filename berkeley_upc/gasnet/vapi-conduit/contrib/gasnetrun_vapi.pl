@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
-#   $Source: /var/local/cvs/gasnet/vapi-conduit/contrib/gasnetrun_vapi.pl,v $
-#     $Date: 2007/03/14 22:58:29 $
-# $Revision: 1.9 $
+#   $Source$
+#     $Date$
+# $Revision$
 # Description: GASNet VAPI and IBV spawner
 # Terms of use are as specified in license.txt
 

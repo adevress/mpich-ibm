@@ -1,6 +1,6 @@
-/*   $Source: /var/local/cvs/gasnet/gasnet_toolhelp.h,v $
- *     $Date: 2008/02/03 04:31:08 $
- * $Revision: 1.35 $
+/*   $Source$
+ *     $Date$
+ * $Revision$
  * Description: misc declarations needed by both gasnet_tools and libgasnet
  * Copyright 2002, Dan Bonachea <bonachea@cs.berkeley.edu>
  * Terms of use are as specified in license.txt

@@ -1,6 +1,6 @@
-//   $Source: /var/local/cvs/gasnet/other/amudp/sockutil.cpp,v $
-//     $Date: 2006/05/23 12:42:29 $
-// $Revision: 1.16 $
+//   $Source$
+//     $Date$
+// $Revision$
 // Description: Simple sock utils
 // Copyright 1999, Dan Bonachea
 

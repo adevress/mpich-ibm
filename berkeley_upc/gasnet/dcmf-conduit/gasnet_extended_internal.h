@@ -1,6 +1,6 @@
-/*   $Source: /var/local/cvs/gasnet/dcmf-conduit/Attic/gasnet_extended_internal.h,v $
- *     $Date: 2008/10/10 03:06:45 $
- * $Revision: 1.1.2.7 $
+/*   $Source$
+ *     $Date$
+ * $Revision$
  * Description: GASNet header for internal definitions in Extended API
  * Copyright 2002, Dan Bonachea <bonachea@cs.berkeley.edu>
  * Terms of use are as specified in license.txt
@@ -39,12 +39,14 @@ typedef union _gasnete_eopaddr_t {
 #define gasnete_eopaddr_isnil(addr) ((addr).fulladdr == EOPADDR_NIL.fulladdr)
 
 typedef struct _gasnete_eop_t {
+
   uint8_t flags;                  /*  state flags */
   gasnete_threadidx_t threadidx;  /*  thread that owns me */
   gasnete_eopaddr_t addr;         /*  next cell while in free list, my own eopaddr_t while in use */
-  /*  gasnetc_dcmf_req_t *dcmf_req; */
+  /*make sure the eops are sep. by atleast one cacheline*/
+  char _pad[GASNETI_CACHE_LINE_BYTES - sizeof(uint8_t) - sizeof(gasnete_threadidx_t) - sizeof(gasnete_eopaddr_t)];
   DCMF_Request_t dcmf_req;
-} gasnete_eop_t;
+} gasnete_eop_t; 
 
 
 typedef struct _gasnete_iop_t {
@@ -63,12 +65,14 @@ typedef struct _gasnete_iop_t {
   gasneti_weakatomic_t completed_put_cnt;     /*  count of put ops completed */
 } gasnete_iop_t;
 
+
 typedef struct _gasnete_iop_dcmf_req_t{
   void *ptr;
-
+  uint8_t _pad1[GASNETI_CACHE_LINE_BYTES - sizeof(void*)];
+  /*all dcmf requrests are multiple of 128 bytes*/
   DCMF_Request_t dcmf_req;
-
-} gasnete_iop_dcmf_req_t;
+  
+} gasnete_iop_dcmf_req_t; 
 
 
 /* ------------------------------------------------------------------------------------ */
@@ -142,10 +146,12 @@ void gasnete_op_free(gasnete_op_t *op);
     _th = gasnete_threadtable[(eop)->threadidx];                     \
     gasneti_assert(GASNETE_EOPADDR_TO_PTR(_th, (eop)->addr) == eop); \
   } while (0)
+
   #define gasnete_iop_check(iop) do {                         \
-    int _temp;                                                \
+    int _temp;  gasnete_iop_t *_tmp_next;                     \
     gasneti_memcheck(iop);                                    \
-    if ((iop)->next != NULL) _gasnete_iop_check((iop)->next); \
+    _tmp_next = (iop)->next;                                  \
+    if (_tmp_next != NULL) _gasnete_iop_check(_tmp_next);     \
     gasneti_assert(OPTYPE(iop) == OPTYPE_IMPLICIT);           \
     gasneti_assert((iop)->threadidx < gasnete_numthreads);    \
     gasneti_memcheck(gasnete_threadtable[(iop)->threadidx]);  \
@@ -156,6 +162,8 @@ void gasnete_op_free(gasnete_op_t *op);
     if (_temp <= 65000) /* prevent race condition on reset */ \
       gasneti_assert((iop)->initiated_get_cnt >= _temp);      \
   } while (0)
+
+
   extern void _gasnete_iop_check(gasnete_iop_t *iop);
 #else
   #define gasnete_eop_check(eop)   ((void)0)

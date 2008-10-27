@@ -1,5 +1,5 @@
 ## Process this file with automake to produce Makefile.in	-*- makefile -*-
-# $Header: /var/local/cvs/gasnet/shmem-conduit/Makefile.am,v 1.7 2007/01/05 10:40:32 bonachea Exp $
+# $Header$
 # Description: Makefile for GASNet shmem conduit
 # Copyright 2002, Dan Bonachea <bonachea@cs.berkeley.edu>
 # Terms of use are as specified in license.txt

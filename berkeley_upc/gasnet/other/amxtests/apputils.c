@@ -1,6 +1,6 @@
-/*   $Source: /var/local/cvs/gasnet/other/amxtests/apputils.c,v $
- *     $Date: 2006/05/31 08:17:44 $
- * $Revision: 1.17 $
+/*   $Source$
+ *     $Date$
+ * $Revision$
  * Description: AMX Application utilities
  * Copyright 2000, Dan Bonachea <bonachea@cs.berkeley.edu>
  */

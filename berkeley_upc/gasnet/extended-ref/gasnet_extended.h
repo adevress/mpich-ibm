@@ -1,6 +1,6 @@
-/*   $Source: /var/local/cvs/gasnet/extended-ref/gasnet_extended.h,v $
- *     $Date: 2007/01/03 17:12:28 $
- * $Revision: 1.41 $
+/*   $Source$
+ *     $Date$
+ * $Revision$
  * Description: GASNet Extended API Header
  * Copyright 2002, Dan Bonachea <bonachea@cs.berkeley.edu>
  * Terms of use are as specified in license.txt
@@ -814,7 +814,7 @@ void gasnet_barrier_notify(int id, int flags) {
 GASNETI_INLINE(gasnet_barrier_wait)
 int gasnet_barrier_wait(int id, int flags) {
   #if GASNETI_STATS_OR_TRACE
-  gasneti_tick_t wait_start = GASNETI_TICKS_NOW_IFENABLED(B);
+    gasneti_tick_t wait_start = GASNETI_TICKS_NOW_IFENABLED(B);
   #endif
   int retval;
   GASNETI_TRACE_EVENT_TIME(B,BARRIER_NOTIFYWAIT,GASNETI_TICKS_NOW_IFENABLED(B)-gasnete_barrier_notifytime);

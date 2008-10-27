@@ -1,6 +1,6 @@
-/*   $Source: /var/local/cvs/gasnet/extended-ref/gasnet_vis_strided.c,v $
- *     $Date: 2006/07/07 22:03:57 $
- * $Revision: 1.25 $
+/*   $Source$
+ *     $Date$
+ * $Revision$
  * Description: GASNet Strided implementation
  * Copyright 2002, Dan Bonachea <bonachea@cs.berkeley.edu>
  * Terms of use are as specified in license.txt

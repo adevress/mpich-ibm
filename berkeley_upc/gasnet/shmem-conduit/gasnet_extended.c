@@ -1,6 +1,6 @@
-/*   $Source: /var/local/cvs/gasnet/shmem-conduit/gasnet_extended.c,v $
- *     $Date: 2007/01/03 17:12:32 $
- * $Revision: 1.23 $
+/*   $Source$
+ *     $Date$
+ * $Revision$
  * Description: GASNet Extended API SHMEM Implementation
  * Copyright 2003, Christian Bell <csbell@cs.berkeley.edu>
  * Terms of use are as specified in license.txt

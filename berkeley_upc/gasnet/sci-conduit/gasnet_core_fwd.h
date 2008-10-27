@@ -1,6 +1,6 @@
-/*   $Source: /var/local/cvs/gasnet/sci-conduit/gasnet_core_fwd.h,v $
- *     $Date: 2006/08/30 11:46:09 $
- * $Revision: 1.10 $
+/*   $Source$
+ *     $Date$
+ * $Revision$
  * Description: GASNet header for sci conduit core (forward definitions)
  * Copyright 2002, Dan Bonachea <bonachea@cs.berkeley.edu>
  * Terms of use are as specified in license.txt

@@ -1,6 +1,6 @@
-/*   $Source: /var/local/cvs/gasnet/gasnet_atomicops.h,v $
- *     $Date: 2006/12/07 18:07:58 $
- * $Revision: 1.203 $
+/*   $Source$
+ *     $Date$
+ * $Revision$
  * Description: GASNet header for portable atomic memory operations
  * Copyright 2002, Dan Bonachea <bonachea@cs.berkeley.edu>
  * Terms of use are as specified in license.txt

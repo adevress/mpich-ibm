@@ -1,7 +1,7 @@
 GASNet-LAPI README file
 =======================
 Mike Welcome <mlwelcome@lbl.gov>
-$Revision: 1.11.6.1 $
+$Revision$
 
 This is an implementation of the GASNet CORE and EXTENDED
 API using the IBM LAPI communication protocol.

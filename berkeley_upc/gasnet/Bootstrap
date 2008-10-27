@@ -1,7 +1,7 @@
 #!/bin/sh
-#   $Source: /var/local/cvs/gasnet/Bootstrap,v $
-#     $Date: 2008/04/29 19:12:25 $
-# $Revision: 1.24.16.1 $
+#   $Source$
+#     $Date$
+# $Revision$
 # Description: GASNet developer Bootstrap script
 # Copyright 2004,  Dan Bonachea <bonachea@cs.berkeley.edu>
 # Terms of use are as specified in license.txt

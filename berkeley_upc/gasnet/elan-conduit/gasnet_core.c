@@ -1,6 +1,6 @@
-/*   $Source: /var/local/cvs/gasnet/elan-conduit/gasnet_core.c,v $
- *     $Date: 2007/04/10 01:21:13 $
- * $Revision: 1.76 $
+/*   $Source$
+ *     $Date$
+ * $Revision$
  * Description: GASNet elan conduit Implementation
  * Copyright 2002, Dan Bonachea <bonachea@cs.berkeley.edu>
  * Terms of use are as specified in license.txt

@@ -1,6 +1,6 @@
-/*   $Source: /var/local/cvs/gasnet/lapi-conduit/firehose_fwd.h,v $
- *     $Date: 2008/04/29 19:12:31 $
- * $Revision: 1.2.8.1 $
+/*   $Source$
+ *     $Date$
+ * $Revision$
  * Description: Firehose forward declarations
  * Copyright 2004, Christian Bell <csbell@cs.berkeley.edu>
  * Terms of use are as specified in license.txt
