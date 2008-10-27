@@ -200,9 +200,6 @@
 /* platform is an SGI Altix multiprocessor */
 #undef GASNETI_ARCH_ALTIX
 
-/* platform is an IBM BlueGene/P multiprocessor */
-#undef GASNETI_ARCH_BGP
-
 /* platform is a SiCortex multiprocessor */
 #undef GASNETI_ARCH_SICORTEX
 
