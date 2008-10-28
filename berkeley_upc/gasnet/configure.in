@@ -83,7 +83,7 @@ AC_PROG_AWK
 GASNET_IF_ENABLED_WITH_AUTO(pthreads, [enable use of pthreads (required to support pthreaded GASNet clients)],
                  [use_pthreads="yes"], [use_pthreads="no"], [use_pthreads="try"])
 
-GASNET_FORBID_PROGRAM_TRANSFORM
+# GASNET_FORBID_PROGRAM_TRANSFORM
 
 # This is to support a very conservative implementation of
 # GASNETE_FAST_ALIGNED_MEMCPY and other type-punning operations.
