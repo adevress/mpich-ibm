@@ -203,19 +203,13 @@ int MPIX_Get_property(MPI_Comm comm, int prop, int * result)
   MPID_Comm * comm_ptr;
   MPID_Comm_get_ptr(comm, comm_ptr);
   if (!comm_ptr)
-  {
-    fprintf(stderr, "bad communicator\n");
     return MPI_ERR_COMM;
-  }
-  if (prop < 0 && prop > DCMF_MAX_NUM_BITS)
-  {
-    if (comm_ptr -> rank == 0)
-      fprintf(stderr, "invalid property to check\n");
+
+  if (prop < 0 || prop > DCMF_MAX_NUM_BITS)
     return MPI_ERR_ARG;
-  }
 
   *result = DCMF_INFO_ISSET(&(comm_ptr->dcmf.properties), prop);
-  return DCMF_SUCCESS; 
+  return MPI_SUCCESS; 
 }
 
 #pragma weak PMI_Set_property = MPIX_Set_property
@@ -225,25 +219,19 @@ int MPIX_Set_property(MPI_Comm comm, int prop, int value)
   MPID_Comm_get_ptr(comm, comm_ptr);
   
   if (!comm_ptr)
-  {
-    fprintf(stderr, "bad communicator\n");
     return MPI_ERR_COMM;
-  }
   
-  if (prop < 0 && prop > DCMF_MAX_NUM_BITS)
-  {
-    if (comm_ptr -> rank == 0)
-      fprintf(stderr, "invalid property to set\n");
+  if (prop < 0 || prop > DCMF_MAX_NUM_BITS)
     return MPI_ERR_ARG;
-  }
 
   if (!value)
     DCMF_INFO_UNSET(&(comm_ptr->dcmf.properties), prop);
   else
     DCMF_INFO_SET(&(comm_ptr->dcmf.properties), prop);
 
-  if (prop == DCMF_TREE_COMM || prop == DCMF_RECT_COMM)
+  if (prop == DCMF_TREE_COMM || prop == DCMF_RECT_COMM ||
+      prop == DCMF_IRREG_COMM)
     MPIDI_Comm_setup_properties(comm_ptr, 0);
 
-  return DCMF_SUCCESS;
+  return MPI_SUCCESS;
 }
