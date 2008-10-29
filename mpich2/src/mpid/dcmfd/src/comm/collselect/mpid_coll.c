@@ -595,7 +595,7 @@ void MPIDI_Coll_Comm_create (MPID_Comm *comm)
 
   if (dcmf_thread_level > 0)
   {
-   DCMF_INFO_UNSET(comm_prop, DCMF_SINGLE_THREAD_MODE);
+    DCMF_INFO_UNSET(comm_prop, DCMF_SINGLE_THREAD_MODE);
     if(comm != comm_world)
       global = 0;
   }

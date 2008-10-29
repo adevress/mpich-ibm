@@ -34,7 +34,7 @@ int MPIDO_Gather(void *sendbuf,
   {
     MPIDI_Datatype_get_info(sendcount, sendtype, contig,
                             send_bytes, data_ptr, true_lb);
-    if (!contig || !((send_bytes * comm->local_size) % sizeof(int)))
+    if (!contig || ((send_bytes * comm->local_size) % sizeof(int)))
       success = 0;
   }
   else

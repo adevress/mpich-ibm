@@ -45,7 +45,6 @@ MPIDO_Allgather(void *sendbuf,
   int rc;
 
   /* no optimized allgather, punt to mpich */
-  
   if (DCMF_INFO_ISSET(comm_prop, DCMF_USE_MPICH_ALLGATHER))
     return MPIR_Allgather(sendbuf, sendcount, sendtype,
 			  recvbuf, recvcount, recvtype,
@@ -123,47 +122,40 @@ MPIDO_Allgather(void *sendbuf,
     }
     else
     {
-      if (comm_size <= 512)
+      if (!DCMF_INFO_ISSET(comm_prop, DCMF_IRREG_COMM))
       {
-        if (use_tree_reduce && sendcount < 128 * comm_size)
-          func = MPIDO_Allgather_allreduce;
-        if (!func && use_bcast && sendcount >= 128 * comm_size)
-          func = MPIDO_Allgather_bcast;
-        if (!func && use_alltoall &&
-            sendcount > 128 && sendcount <= 8*comm_size)
-          func = MPIDO_Allgather_alltoall;
-        if (!func && use_rect_async && sendcount > 8*comm_size)
-          func = MPIDO_Allgather_bcast_rect_async;
+       if (comm_size <= 512)
+        {
+          if (use_tree_reduce && sendcount < 128 * comm_size)
+            func = MPIDO_Allgather_allreduce;
+          if (!func && use_bcast && sendcount >= 128 * comm_size)
+            func = MPIDO_Allgather_bcast;
+          if (!func && use_alltoall &&
+              sendcount > 128 && sendcount <= 8*comm_size)
+            func = MPIDO_Allgather_alltoall;
+          if (!func && use_rect_async && sendcount > 8*comm_size)
+            func = MPIDO_Allgather_bcast_rect_async;
+        }
+        else
+        {
+          if (use_tree_reduce && sendcount < 512)
+            func = MPIDO_Allgather_allreduce;
+          if (!func && use_alltoall &&
+              sendcount > 128 * (512.0 / (float) comm_size) &&
+              sendcount <= 128)
+            func = MPIDO_Allgather_alltoall;
+          if (!func && use_rect_async &&
+              sendcount >= 512 && sendcount <= 65536)
+            func = MPIDO_Allgather_bcast_rect_async;
+          if (!func && use_bcast && sendcount > 65536)
+            func = MPIDO_Allgather_bcast;
+        }
       }
       else
       {
-        if (use_tree_reduce && sendcount <= 1024)
-          func = MPIDO_Allgather_allreduce;
-        if (!func && use_alltoall && sendcount > 128 * (512 / comm_size) &&
-            sendcount <= 128)
+        if (sendcount >= 64 && use_alltoall)
           func = MPIDO_Allgather_alltoall;
-        if (!func && use_rect_async && sendcount > 1024 && sendcount <= 65536)
-          func = MPIDO_Allgather_bcast_rect_async;
-        if (!func && use_bcast && sendcount > 65536)
-          func = MPIDO_Allgather_bcast;
       }
-#if 0
-      /* Tree bcast is faster for large messages */
-      if(use_tree_reduce && use_tree_bcast && sendcount > 128*comm_size)
-        func = MPIDO_Allgather_bcast;
-      if(!func && use_tree_reduce)
-        func = MPIDO_Allgather_allreduce;
-      if(!func && use_tree_bcast)
-        func = MPIDO_Allgather_bcast;
-      /* No tree, so need to use torus protocols. alltoall is good for
-       * medium sized messages. MPICH is good for small messages. Async
-       * bcast is best for larger messages */
-      if(!func && use_alltoall && 
-         (sendcount > 128 && sendcount <= 16*comm_size))
-        func = MPIDO_Allgather_alltoall;
-      if(!func && use_rect_async && (sendcount > 16*comm_size))
-        func = MPIDO_Allgather_bcast_rect_async;
-#endif
     }
          
   if (!func)

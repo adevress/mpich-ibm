@@ -34,8 +34,10 @@ MPIDO_Allgatherv(void *sendbuf,
   size_t   recv_size     = 0;
   MPIDO_Coll_config config = {1,1,1,1,1};
 
-  int i, rc, buffer_sum = 0;
-  char use_tree_reduce, use_alltoall, use_rect_async, use_tree_bcast;
+  double msize;
+  
+  int i, rc, buffer_sum = 0, np = comm->local_size;
+  char use_tree_reduce, use_alltoall, use_rect_async, use_bcast;
 
   DCMF_Embedded_Info_Set * comm_prop = &(comm->dcmf.properties);
   DCMF_Embedded_Info_Set * coll_prop = &MPIDI_CollectiveProtocols.properties;
@@ -72,7 +74,7 @@ MPIDO_Allgatherv(void *sendbuf,
   if (displs[0])
     config.recv_continuous = 0;
   
-  for (i = 1; i < comm->local_size; i++)
+  for (i = 1; i < np; i++)
   {
     buffer_sum += recvcounts[i - 1];
     if (buffer_sum != displs[i])
@@ -82,15 +84,10 @@ MPIDO_Allgatherv(void *sendbuf,
     }
   }
   
-  buffer_sum += recvcounts[comm->local_size - 1];
+  buffer_sum += recvcounts[np - 1];
   
   buffer_sum *= recv_size;
-
-  /* these are reasonable cutoffs at 512 nodes. Have to see if that holds
-   * up for larger partitions too. */
-  config.largecount = (buffer_sum >= 16384*comm->local_size); 
-  config.mediumcount = (buffer_sum >= 64*comm->local_size && 
-                        buffer_sum < 16384*comm->local_size);
+  msize = (double)buffer_sum / (double)np; 
   
   MPID_Ensure_Aint_fits_in_pointer(MPIR_VOID_PTR_CAST_TO_MPI_AINT recvbuf +
 				   recv_true_lb + buffer_sum);
@@ -103,7 +100,7 @@ MPIDO_Allgatherv(void *sendbuf,
   }
 
   if (!STAR_info.enabled || STAR_info.internal_control_flow ||
-      (buffer_sum / comm->local_size) <= STAR_info.threshold)
+      ((double)buffer_sum / (double)np) <= STAR_info.threshold)
   {
     use_tree_reduce = DCMF_INFO_ISSET(comm_prop, DCMF_USE_TREE_ALLREDUCE) &&
       DCMF_INFO_ISSET(comm_prop,
@@ -124,12 +121,12 @@ MPIDO_Allgatherv(void *sendbuf,
       config.recv_contig &&
       config.send_contig;
     
-    use_tree_bcast = //DCMF_INFO_ISSET(comm_prop, DCMF_USE_TREE_BCAST) &&
+    use_bcast = //DCMF_INFO_ISSET(comm_prop, DCMF_USE_TREE_BCAST) &&
       DCMF_INFO_ISSET(comm_prop, DCMF_USE_BCAST_ALLGATHERV);
 
     if(userenvset)
     {
-      if(use_tree_bcast)
+      if(use_bcast)
         func = MPIDO_Allgatherv_bcast;
       if(use_tree_reduce)
         func = MPIDO_Allgatherv_allreduce;
@@ -140,18 +137,40 @@ MPIDO_Allgatherv(void *sendbuf,
     }
     else
     {
-      if(use_tree_reduce && use_tree_bcast && config.largecount)
-        func = MPIDO_Allgatherv_bcast;
-      if(!func && use_tree_reduce && use_tree_bcast)
-        func = MPIDO_Allgatherv_allreduce;
-      if(!func && use_tree_reduce)
-        func = MPIDO_Allgatherv_allreduce;
-      if(!func && use_tree_bcast)
-        func = MPIDO_Allgatherv_bcast;
-      if(!func && use_alltoall && config.mediumcount)
-        func = MPIDO_Allgatherv_alltoall;
-      if(!func && use_rect_async && config.largecount)
-        func = MPIDO_Allgatherv_bcast_rect_async;
+      if (!DCMF_INFO_ISSET(comm_prop, DCMF_IRREG_COMM))
+      {
+        if (np <= 512)
+        {
+          if (use_tree_reduce && msize < 128 * np)
+            func = MPIDO_Allgatherv_allreduce;
+          if (!func && use_bcast && msize >= 128 * np)
+            func = MPIDO_Allgatherv_bcast;
+          if (!func && use_alltoall &&
+              msize > 128 && msize <= 8*np)
+            func = MPIDO_Allgatherv_alltoall;
+          if (!func && use_rect_async && msize > 8*np)
+            func = MPIDO_Allgatherv_bcast_rect_async;
+        }
+        else
+        {
+          if (use_tree_reduce && msize < 512)
+            func = MPIDO_Allgatherv_allreduce;
+          if (!func && use_alltoall &&
+              msize > 128 * (512.0 / (float) np) &&
+              msize <= 128)
+            func = MPIDO_Allgatherv_alltoall;
+          if (!func && use_rect_async &&
+              msize >= 512 && msize <= 65536)
+            func = MPIDO_Allgatherv_bcast_rect_async;
+          if (!func && use_bcast && msize > 65536)
+            func = MPIDO_Allgatherv_bcast;
+        }
+      }
+      else
+      {
+        if (msize >= 64 && use_alltoall)
+          func = MPIDO_Allgatherv_alltoall;
+      }
     }
 
     if(!func)
