@@ -538,6 +538,8 @@ void MPIDI_Coll_Comm_create (MPID_Comm *comm)
   unsigned my_coords[4], min_coords[4], max_coords[4];
   DCMF_Embedded_Info_Set * comm_prop, * coll_prop;
   MPID_Comm *comm_world;
+  DCMF_Configure_t dcmf_config;
+
 
   MPID_assert (comm!= NULL);
 
@@ -552,6 +554,7 @@ void MPIDI_Coll_Comm_create (MPID_Comm *comm)
 
   comm_prop = &(comm -> dcmf.properties);
   coll_prop = &MPIDI_CollectiveProtocols.properties;
+  DCMF_Messager_configure(NULL, &dcmf_config);
 
   /* unset all properties of a comm by default */
   DCMF_INFO_ZERO(comm_prop);
@@ -581,30 +584,19 @@ void MPIDI_Coll_Comm_create (MPID_Comm *comm)
    /* assume single threaded mode until we find out differently */
    DCMF_INFO_SET(comm_prop, DCMF_SINGLE_THREAD_MODE);
 
-  /* initial value is -1 to indicate this variable has not been set yet */
-  if (dcmf_thread_level < 0)
-  {
-    if (MPIR_ThreadInfo.thread_provided == MPI_THREAD_MULTIPLE)
-    {
-      dcmf_thread_level = 1; /* it is multi threaded */
+   if(dcmf_config.thread_level == MPI_THREAD_MULTIPLE)
+   {
       STAR_info.enabled = 0;
-    }
-    else
-      dcmf_thread_level = 0; 
-  }
-
-  if (dcmf_thread_level > 0)
-  {
-    DCMF_INFO_UNSET(comm_prop, DCMF_SINGLE_THREAD_MODE);
-    if(comm != comm_world)
-      global = 0;
-  }
-  else /* single MPI thread. */
-  {
-    /* and if we are not dup of comm_world, global context is not safe */
-    if(comm->local_size != comm_world->local_size)
-      global = 0;
-  }
+      DCMF_INFO_UNSET(comm_prop, DCMF_SINGLE_THREAD_MODE);
+      if(comm!= comm_world)
+         global = 0;
+   }
+   else /* single MPI thread. */
+   {
+      /* and if we are not dup of comm_world, global context is not safe */
+      if(comm->local_size != comm_world->local_size)
+         global = 0;
+   }
 
 #ifdef USE_CCMI_COLL
   /* ******************************************************* */
