@@ -55,6 +55,15 @@
  *   message sizes. 
  *   - Default is 32.
  *
+ * - DCMF_TREE_SMP_SHORTCUT -
+ * Boolean indicating that a collective capable of using the
+ * collective network should bypass the CCMI layer and call 
+ *      the Collective Network Device directly.
+ *      Possible values:
+ *      - 0 (false) - The CCMI layer will be used.
+ *      - 1 (true)  - The CCMI layer will be bypassed.
+ *      - Default is 1.
+ *
  * - DCMF_INTERRUPT -
  * - DCMF_INTERRUPTS - Turns on interrupt driven communications. This
  *   can be beneficial to some applications and is required if you are
@@ -512,6 +521,7 @@ MPIDI_Env_setup()
   /* default setting of flags for the mpidi_coll_protocol object */
   DCMF_MSET_INFO(properties, 
 		 DCMF_USE_GI_BARRIER,
+       DCMF_USE_SMP_TREE_SHORTCUT,
 		 DCMF_USE_RECT_BARRIER,
 		 DCMF_USE_BINOM_BARRIER,
 		 DCMF_USE_LOCKBOX_LBARRIER,
@@ -526,13 +536,13 @@ MPIDI_Env_setup()
 		 DCMF_USE_SCATTER_GATHER_BCAST,
 		 DCMF_USE_STORAGE_ALLREDUCE,
 		 DCMF_USE_RECT_ALLREDUCE,
-                 DCMF_USE_SHORT_ASYNC_RECT_ALLREDUCE,
+       DCMF_USE_SHORT_ASYNC_RECT_ALLREDUCE,
 		 DCMF_USE_RECTRING_ALLREDUCE,
 		 DCMF_USE_BINOM_ALLREDUCE,
 		 DCMF_USE_ARECT_ALLREDUCE,
 		 DCMF_USE_ARECTRING_ALLREDUCE,
 		 DCMF_USE_ABINOM_ALLREDUCE,
-                 DCMF_USE_RRING_DPUT_ALLREDUCE_SINGLETH,
+       DCMF_USE_RRING_DPUT_ALLREDUCE_SINGLETH,
 		 DCMF_USE_STORAGE_REDUCE,
 		 DCMF_USE_RECT_REDUCE,
 		 DCMF_USE_RECTRING_REDUCE,
@@ -542,13 +552,13 @@ MPIDI_Env_setup()
 		 DCMF_USE_ABCAST_ALLGATHER,
 		 DCMF_USE_ALLTOALL_ALLGATHER,
 		 DCMF_USE_PREALLREDUCE_ALLGATHER,
-                 DCMF_USE_ARECT_BCAST_ALLGATHER,
+       DCMF_USE_ARECT_BCAST_ALLGATHER,
 		 DCMF_USE_ALLREDUCE_ALLGATHERV,
 		 DCMF_USE_BCAST_ALLGATHERV,
 		 DCMF_USE_ABCAST_ALLGATHERV,
 		 DCMF_USE_ALLTOALL_ALLGATHERV,
 		 DCMF_USE_PREALLREDUCE_ALLGATHERV,
-                 DCMF_USE_ARECT_BCAST_ALLGATHERV,
+       DCMF_USE_ARECT_BCAST_ALLGATHERV,
 		 DCMF_USE_ALLTOALL_SCATTERV,
 		 DCMF_USE_PREALLREDUCE_SCATTERV,
 		 DCMF_USE_BCAST_SCATTER,
@@ -585,6 +595,12 @@ MPIDI_Env_setup()
     }
   }
 
+   int smp_shortcut=1;
+   ENV_Int(getenv("DCMF_TREE_SMP_SHORTCUT"), &smp_shortcut);
+   if(!smp_shortcut)
+      DCMF_INFO_UNSET(properties, DCMF_USE_SMP_TREE_SHORTCUT);
+
+      
   envopts = getenv("DCMF_SCATTERV");
   if(envopts != NULL)
   {

@@ -30,7 +30,6 @@ MPIDO_Allreduce(void * sendbuf,
   int rc, op_type_support, data_contig, data_size;
   char *sbuf = sendbuf;
   char *rbuf = recvbuf;
-  int rank = comm->rank;
   /* Did the user want to force a specific algorithm? */
   int userenvset = DCMF_INFO_ISSET(properties, DCMF_ALLREDUCE_ENVVAR);
 
@@ -62,7 +61,6 @@ MPIDO_Allreduce(void * sendbuf,
 
   op_type_support = MPIDI_ConvertMPItoDCMF(op, &dcmf_op, datatype, &dcmf_data);
 
-  extern int DCMF_TREE_SMP_SHORTCUT;
 
   if (!STAR_info.enabled || STAR_info.internal_control_flow)// ||
     /*      ((op_type_support == DCMF_TREE_SUPPORT &&
@@ -76,8 +74,6 @@ MPIDO_Allreduce(void * sendbuf,
       {
 
         if (DCMF_INFO_ISSET(properties, DCMF_USE_TREE_ALLREDUCE))
-          //&&
-          //DCMF_TREE_SMP_SHORTCUT)
           func = MPIDO_Allreduce_global_tree;
         
         else if (DCMF_INFO_ISSET(properties, DCMF_USE_CCMI_TREE_ALLREDUCE))
@@ -147,7 +143,7 @@ MPIDO_Allreduce(void * sendbuf,
       if (op_type_support == DCMF_TREE_SUPPORT)
       {
         if (DCMF_INFO_ISSET(properties, DCMF_USE_TREE_ALLREDUCE) &&
-            DCMF_TREE_SMP_SHORTCUT)
+            DCMF_INFO_ISSET(properties, DCMF_USE_SMP_TREE_SHORTCUT))
           func = MPIDO_Allreduce_global_tree;
         if (DCMF_INFO_ISSET(properties, DCMF_USE_CCMI_TREE_ALLREDUCE))
           func = MPIDO_Allreduce_tree;

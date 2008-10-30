@@ -71,8 +71,15 @@ MPIDO_Bcast(void *buffer,
    {
       if (data_size <= 1024 || userenvset)
       {
-         if (DCMF_INFO_ISSET(properties, DCMF_USE_TREE_BCAST))
+         if (DCMF_INFO_ISSET(properties, DCMF_USE_TREE_BCAST) &&
+             DCMF_INFO_ISSET(properties, DCMF_USE_SMP_TREE_SHORTCUT))
             func = MPIDO_Bcast_tree;
+         /* There isn't an explicit env var option for this. it's never
+          * used anyway though, so next release we should kill it off */
+         if(!func &&
+            DCMF_INFO_ISSET(properties, DCMF_USE_TREE_BCAST) &&
+            !DCMF_INFO_ISSET(properties, DCMF_USE_SMP_TREE_SHORTCUT))
+            func = MPIDO_Bcast_CCMI_tree;
       
          if ((!func || userenvset) &&
                DCMF_INFO_ISSET(properties, DCMF_USE_RECT_SINGLETH_BCAST) &&

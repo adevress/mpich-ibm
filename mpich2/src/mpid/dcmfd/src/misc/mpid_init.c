@@ -55,7 +55,6 @@ int MPID_Init(int * argc,
               int * has_env)
 {
    int rank, size, i, rc;
-   int tempthread;
    MPID_Comm * comm;
    DCMF_Result dcmf_rc;
 

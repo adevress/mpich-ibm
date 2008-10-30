@@ -21,6 +21,35 @@ bcast_cb_done(void *clientdata, DCMF_Error_t *err)
   MPID_Progress_signal();
 }
 
+
+int MPIDO_Bcast_CCMI_tree(void *buffer,
+                           int bytes,
+                           int root,
+                           MPID_Comm *comm)
+{
+  if (!bytes) return MPI_SUCCESS;
+  
+  int rc, hw_root;
+  DCMF_CollectiveRequest_t request;
+  volatile unsigned active = 1;
+  DCMF_Callback_t callback = { bcast_cb_done, (void *) &active };
+  DCMF_Geometry_t * geometry = &(comm->dcmf.geometry);
+
+  hw_root = comm->vcr[root];
+
+    rc = DCMF_Broadcast(&MPIDI_CollectiveProtocols.tree_bcast,
+			&request,
+			callback,
+			DCMF_MATCH_CONSISTENCY,
+			geometry,
+			hw_root,
+			buffer,
+			bytes);
+  MPID_PROGRESS_WAIT_WHILE(active);
+  return rc;
+}
+
+
 int MPIDO_Bcast_tree(void * buffer,
 		     int bytes,
 		     int root,
@@ -32,12 +61,9 @@ int MPIDO_Bcast_tree(void * buffer,
   DCMF_CollectiveRequest_t request;
   volatile unsigned active = 1;
   DCMF_Callback_t callback = { bcast_cb_done, (void *) &active };
-  extern int DCMF_TREE_SMP_SHORTCUT;
-  DCMF_Geometry_t * geometry = &(comm->dcmf.geometry);
 
   hw_root = comm->vcr[root];
 
-  if (DCMF_TREE_SMP_SHORTCUT) {
     rc = DCMF_GlobalBcast(&MPIDI_Protocols.globalbcast,
 			  (DCMF_Request_t *)&request,
 			  callback,
@@ -45,16 +71,6 @@ int MPIDO_Bcast_tree(void * buffer,
 			  hw_root,
 			  buffer,
 			  bytes);
-  } else {
-    rc = DCMF_Broadcast(&MPIDI_CollectiveProtocols.tree_bcast,
-			&request,
-			callback,
-			DCMF_MATCH_CONSISTENCY,
-			geometry,
-			hw_root,
-			buffer,
-			bytes);
-  }
   MPID_PROGRESS_WAIT_WHILE(active);
   return rc;
 }
