@@ -33,6 +33,7 @@ void MPIDI_DCMF_Configure(int requested,
   // Get the actual values back
   DCMF_Messager_configure(&dcmf_config, &dcmf_config);
   *provided = dcmf_config.thread_level;
+  MPIR_ThreadInfo.thread_provided = *provided;
 }
 
 
@@ -210,10 +211,7 @@ int MPID_Init(int * argc,
    * We don't get the thread_provided updated until AFTER MPID_Init is
    * finished so we need to know the requested thread level in comm_create
    */
-  tempthread = MPIR_ThreadInfo.thread_provided;
-  MPIR_ThreadInfo.thread_provided = requested;
   MPIDI_Comm_create(comm);
-  MPIR_ThreadInfo.thread_provided = tempthread;
 
   /* ------------------------------- */
   /* Initialize MPI_COMM_SELF object */
