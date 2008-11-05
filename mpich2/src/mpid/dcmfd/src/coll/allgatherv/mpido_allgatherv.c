@@ -100,7 +100,7 @@ MPIDO_Allgatherv(void *sendbuf,
   }
 
   if (!STAR_info.enabled || STAR_info.internal_control_flow ||
-      ((double)buffer_sum / (double)np) <= STAR_info.threshold)
+      ((double)buffer_sum / (double)np) < STAR_info.threshold)
   {
     use_tree_reduce = DCMF_INFO_ISSET(comm_prop, DCMF_USE_TREE_ALLREDUCE) &&
       DCMF_INFO_ISSET(comm_prop,

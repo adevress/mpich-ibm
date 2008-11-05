@@ -67,7 +67,7 @@ MPIDO_Bcast(void *buffer,
    }
    
    if (!STAR_info.enabled || STAR_info.internal_control_flow ||
-       data_size <= STAR_info.threshold)
+       data_size < STAR_info.threshold)
    {
       if (data_size <= 1024 || userenvset)
       {

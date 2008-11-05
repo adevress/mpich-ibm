@@ -68,10 +68,10 @@ int MPIDO_Reduce(void * sendbuf,
     sbuf = (char *) sendbuf + data_true_lb;
   }
    
-  if (!STAR_info.enabled || STAR_info.internal_control_flow)// ||
-    //      ((op_type_support == DCMF_TREE_SUPPORT &&
-    //  DCMF_INFO_ISSET(properties, DCMF_TREE_COMM)) ||
-    // data_size <= STAR_info.threshold))
+  if (!STAR_info.enabled || STAR_info.internal_control_flow ||
+      ((op_type_support == DCMF_TREE_SUPPORT &&
+        DCMF_INFO_ISSET(properties, DCMF_TREE_COMM)) ||
+       data_size < STAR_info.threshold))
   {
     if(!userenvset)
     {

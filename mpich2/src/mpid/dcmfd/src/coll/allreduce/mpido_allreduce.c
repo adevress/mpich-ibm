@@ -70,7 +70,7 @@ MPIDO_Allreduce(void * sendbuf,
   extern int DCMF_TREE_SMP_SHORTCUT;
 
   if (!STAR_info.enabled || STAR_info.internal_control_flow ||
-      data_size <= STAR_info.threshold)
+      data_size < STAR_info.threshold)
   {
     if(!userenvset)
     {
