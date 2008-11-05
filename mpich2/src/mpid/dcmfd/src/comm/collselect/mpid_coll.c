@@ -10,7 +10,6 @@
 MPIDI_CollectiveProtocol_t MPIDI_CollectiveProtocols;
 char* MPID_Executable_name = NULL;
 
-int dcmf_thread_level = -1;
 
 #ifdef USE_CCMI_COLL
 
@@ -800,6 +799,9 @@ void MPIDI_Coll_Comm_destroy (MPID_Comm *comm)
 void MPIDI_Comm_setup_properties(MPID_Comm * comm, int initial_setup)
 {
   DCMF_Embedded_Info_Set * comm_prop, * coll_prop;
+  DCMF_Configure_t messager_config;
+
+  DCMF_Messager_configure(NULL, &messager_config);
 
   comm_prop = &(comm -> dcmf.properties);
   coll_prop = &MPIDI_CollectiveProtocols.properties;
@@ -833,13 +835,14 @@ void MPIDI_Comm_setup_properties(MPID_Comm * comm, int initial_setup)
 
     if (initial_setup)
       DCMF_INFO_OR(coll_prop, comm_prop);
-    
-    if(dcmf_thread_level > 0)
-    {
-      DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_DPUT_BCAST);
-      DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_SINGLETH_BCAST);
-      DCMF_INFO_UNSET(comm_prop, DCMF_USE_BINOM_SINGLETH_BCAST);
-    }
+
+      if(messager_config.thread_level == DCMF_THREAD_MULTIPLE)
+      {
+         DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_DPUT_BCAST);
+         DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_SINGLETH_BCAST);
+         DCMF_INFO_UNSET(comm_prop, DCMF_USE_BINOM_SINGLETH_BCAST);
+         DCMF_INFO_UNSET(comm_prop, DCMF_USE_RRING_DPUT_ALLREDUCE_SINGLETH);
+      }
     
     if (!DCMF_INFO_ISSET(comm_prop, DCMF_RECT_COMM))
     {
