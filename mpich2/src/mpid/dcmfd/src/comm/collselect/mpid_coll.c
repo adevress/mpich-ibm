@@ -430,12 +430,12 @@ void MPIDI_Coll_register(void)
          DCMF_INFO_UNSET(properties, DCMF_USE_SHORT_ASYNC_BINOM_ALLREDUCE);
    }
 
-   if(DCMF_INFO_ISSET(properties, DCMF_USE_RRING_DPUT_ALLREDUCE_SINGLETH))
+   if(DCMF_INFO_ISSET(properties, DCMF_USE_RRING_DPUT_SINGLETH_ALLREDUCE))
    {
       if(ALLREDUCE_REGISTER(DCMF_TORUS_RRING_DPUT_ALLREDUCE_PROTOCOL_SINGLETH,
                             &MPIDI_CollectiveProtocols.rring_dput_allreduce_singleth,
                             &allreduce_config) != DCMF_SUCCESS)
-         DCMF_INFO_UNSET(properties, DCMF_USE_RRING_DPUT_ALLREDUCE_SINGLETH);
+         DCMF_INFO_UNSET(properties, DCMF_USE_RRING_DPUT_SINGLETH_ALLREDUCE);
    }
    
   if(DCMF_INFO_ISSET(properties, DCMF_USE_PIPELINED_TREE_ALLREDUCE))
@@ -836,13 +836,13 @@ void MPIDI_Comm_setup_properties(MPID_Comm * comm, int initial_setup)
     if (initial_setup)
       DCMF_INFO_OR(coll_prop, comm_prop);
 
-      if(messager_config.thread_level == DCMF_THREAD_MULTIPLE)
-      {
-         DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_DPUT_BCAST);
-         DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_SINGLETH_BCAST);
-         DCMF_INFO_UNSET(comm_prop, DCMF_USE_BINOM_SINGLETH_BCAST);
-         DCMF_INFO_UNSET(comm_prop, DCMF_USE_RRING_DPUT_ALLREDUCE_SINGLETH);
-      }
+    if(messager_config.thread_level == DCMF_THREAD_MULTIPLE)
+    {
+      DCMF_INFO_UNSET(comm_prop, DCMF_USE_RRING_DPUT_SINGLETH_ALLREDUCE);
+      DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_DPUT_BCAST);
+      DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_SINGLETH_BCAST);
+      DCMF_INFO_UNSET(comm_prop, DCMF_USE_BINOM_SINGLETH_BCAST);
+    }
     
     if (!DCMF_INFO_ISSET(comm_prop, DCMF_RECT_COMM))
     {

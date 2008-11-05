@@ -534,6 +534,7 @@ MPIDI_Env_setup()
 		 DCMF_USE_BINOM_BCAST,
 		 DCMF_USE_ABINOM_BCAST,
 		 DCMF_USE_SCATTER_GATHER_BCAST,
+                 DCMF_USE_TREE_BCAST, 
 		 DCMF_USE_STORAGE_ALLREDUCE,
 		 DCMF_USE_RECT_ALLREDUCE,
        DCMF_USE_SHORT_ASYNC_RECT_ALLREDUCE,
@@ -542,11 +543,15 @@ MPIDI_Env_setup()
 		 DCMF_USE_ARECT_ALLREDUCE,
 		 DCMF_USE_ARECTRING_ALLREDUCE,
 		 DCMF_USE_ABINOM_ALLREDUCE,
-       DCMF_USE_RRING_DPUT_ALLREDUCE_SINGLETH,
+                 DCMF_USE_RRING_DPUT_SINGLETH_ALLREDUCE,
+                 DCMF_USE_TREE_ALLREDUCE,
+                 DCMF_USE_PIPELINED_TREE_ALLREDUCE,
+                 DCMF_USE_CCMI_TREE_ALLREDUCE,                 
 		 DCMF_USE_STORAGE_REDUCE,
 		 DCMF_USE_RECT_REDUCE,
 		 DCMF_USE_RECTRING_REDUCE,
 		 DCMF_USE_BINOM_REDUCE,
+                 DCMF_USE_TREE_REDUCE, 
 		 DCMF_USE_ALLREDUCE_ALLGATHER,
 		 DCMF_USE_BCAST_ALLGATHER,
 		 DCMF_USE_ABCAST_ALLGATHER,
@@ -569,13 +574,6 @@ MPIDI_Env_setup()
 		 DCMF_USE_TORUS_ALLTOALLW,
 		 DCMF_USE_PREMALLOC_ALLTOALL,
 		 DCMF_END_ARGS);
-  
-  if (MPIDI_Process.optimized.tree)
-    DCMF_MSET_INFO(properties, 
-		   DCMF_USE_TREE_BCAST, 
-		   DCMF_USE_TREE_ALLREDUCE,
-		   DCMF_USE_TREE_REDUCE, 
-		   DCMF_END_ARGS);
   
   MPIDI_CollectiveProtocols.bcast_asynccutoff = 8192;
   MPIDI_CollectiveProtocols.allreduce_asynccutoff = 131072;
@@ -914,7 +912,7 @@ MPIDI_Env_setup()
       DCMF_INFO_UNSET(properties, DCMF_USE_SHORT_ASYNC_BINOM_ALLREDUCE);
       DCMF_INFO_UNSET(properties, DCMF_USE_CCMI_TREE_ALLREDUCE);
       DCMF_INFO_UNSET(properties, DCMF_USE_PIPELINED_TREE_ALLREDUCE);
-      DCMF_INFO_UNSET(properties, DCMF_USE_RRING_DPUT_ALLREDUCE_SINGLETH);
+      DCMF_INFO_UNSET(properties, DCMF_USE_RRING_DPUT_SINGLETH_ALLREDUCE);
       DCMF_INFO_SET(properties, DCMF_ALLREDUCE_ENVVAR);
 
       if(strncasecmp(envopts, "ARI", 3) == 0)
@@ -944,7 +942,7 @@ MPIDI_Env_setup()
       else if(strncasecmp(envopts, "P", 1) == 0) /* CCMI Pipelined Tree */
          DCMF_INFO_SET(properties, DCMF_USE_PIPELINED_TREE_ALLREDUCE);
       else if(strncasecmp(envopts, "D", 1) == 0) /* Rect dput */
-         DCMF_INFO_SET(properties, DCMF_USE_RRING_DPUT_ALLREDUCE_SINGLETH);
+         DCMF_INFO_SET(properties, DCMF_USE_RRING_DPUT_SINGLETH_ALLREDUCE);
       else
       {
          fprintf(stderr,

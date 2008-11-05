@@ -30,9 +30,11 @@ MPIDO_Allreduce(void * sendbuf,
   int rc, op_type_support, data_contig, data_size;
   char *sbuf = sendbuf;
   char *rbuf = recvbuf;
+
   /* Did the user want to force a specific algorithm? */
   int userenvset = DCMF_INFO_ISSET(properties, DCMF_ALLREDUCE_ENVVAR);
-
+  int dput_available;
+  
   if(count == 0)
     return MPI_SUCCESS;
 
@@ -61,18 +63,21 @@ MPIDO_Allreduce(void * sendbuf,
 
   op_type_support = MPIDI_ConvertMPItoDCMF(op, &dcmf_op, datatype, &dcmf_data);
 
+  dput_available = (op_type_support != DCMF_NOT_SUPPORTED) &&
+    DCMF_INFO_ISSET(properties, DCMF_USE_RRING_DPUT_SINGLETH_ALLREDUCE) &&
+    !((unsigned)sbuf & 0x0F) && !((unsigned)rbuf & 0x0F);
 
-  if (!STAR_info.enabled || STAR_info.internal_control_flow)// ||
-    /*      ((op_type_support == DCMF_TREE_SUPPORT &&
-       DCMF_INFO_ISSET(properties, DCMF_TREE_COMM)) ||
-       data_size <= STAR_info.threshold))*/
+  extern int DCMF_TREE_SMP_SHORTCUT;
+
+  if (!STAR_info.enabled || STAR_info.internal_control_flow ||
+      data_size <= STAR_info.threshold)
   {
     if(!userenvset)
     {
-      if (op_type_support == DCMF_TREE_SUPPORT &&
+      if ((op_type_support == DCMF_TREE_SUPPORT ||
+           op_type_support == DCMF_TREE_MIN_SUPPORT) &&
           DCMF_INFO_ISSET(properties, DCMF_TREE_COMM))
       {
-
         if (DCMF_INFO_ISSET(properties, DCMF_USE_TREE_ALLREDUCE))
           func = MPIDO_Allreduce_global_tree;
         
@@ -81,10 +86,11 @@ MPIDO_Allreduce(void * sendbuf,
         
         else if (DCMF_INFO_ISSET(properties,
                                  DCMF_USE_PIPELINED_TREE_ALLREDUCE))
-        {
           func = MPIDO_Allreduce_pipelined_tree;
-        }
-        
+
+        if (dput_available && data_size >= 32768 &&
+            op_type_support != DCMF_TREE_SUPPORT)
+          func = NULL;
       }
 
       if(!func && (op_type_support != DCMF_NOT_SUPPORTED))
@@ -105,7 +111,7 @@ MPIDO_Allreduce(void * sendbuf,
               func = MPIDO_Allreduce_short_async_rect;
           }
           if(!func && DCMF_INFO_ISSET(properties, 
-                             DCMF_USE_SHORT_ASYNC_BINOM_ALLREDUCE))
+                                      DCMF_USE_SHORT_ASYNC_BINOM_ALLREDUCE))
             func = MPIDO_Allreduce_short_async_binom;
           if (!func && DCMF_INFO_ISSET(properties, 
                                        DCMF_USE_ABINOM_ALLREDUCE))
@@ -113,7 +119,7 @@ MPIDO_Allreduce(void * sendbuf,
             func = MPIDO_Allreduce_async_binom;
           }
         }
-
+        
         if(!func && data_size <= 16384)
         {
           if (DCMF_INFO_ISSET(properties, DCMF_USE_ARECT_ALLREDUCE))
@@ -125,7 +131,7 @@ MPIDO_Allreduce(void * sendbuf,
         if(!func && data_size > 16384)
         {
           if(DCMF_INFO_ISSET(properties, 
-                             DCMF_USE_RRING_DPUT_ALLREDUCE_SINGLETH) &&
+                             DCMF_USE_RRING_DPUT_SINGLETH_ALLREDUCE) &&
              !((unsigned)sbuf & 0x0F) && !((unsigned)rbuf & 0x0F))
           {
             func = MPIDO_Allreduce_rring_dput_singleth;
@@ -140,21 +146,24 @@ MPIDO_Allreduce(void * sendbuf,
     }
     else
     {
-      if (op_type_support == DCMF_TREE_SUPPORT)
+      if (op_type_support == DCMF_TREE_SUPPORT ||
+          op_type_support == DCMF_TREE_MIN_SUPPORT)
       {
         if (DCMF_INFO_ISSET(properties, DCMF_USE_TREE_ALLREDUCE) &&
             DCMF_INFO_ISSET(properties, DCMF_USE_SMP_TREE_SHORTCUT))
           func = MPIDO_Allreduce_global_tree;
-        if (DCMF_INFO_ISSET(properties, DCMF_USE_CCMI_TREE_ALLREDUCE))
+        if (!func && DCMF_INFO_ISSET(properties, DCMF_USE_CCMI_TREE_ALLREDUCE))
           func = MPIDO_Allreduce_tree;
-        if (DCMF_INFO_ISSET(properties, DCMF_USE_PIPELINED_TREE_ALLREDUCE))
+        if (!func &&
+            DCMF_INFO_ISSET(properties, DCMF_USE_PIPELINED_TREE_ALLREDUCE))
           func = MPIDO_Allreduce_pipelined_tree;
       }
       
-      if(DCMF_INFO_ISSET(properties, DCMF_USE_ABINOM_ALLREDUCE))
+      if(!func && DCMF_INFO_ISSET(properties, DCMF_USE_ABINOM_ALLREDUCE))
         func = MPIDO_Allreduce_async_binom;
       
-      if(DCMF_INFO_ISSET(properties, DCMF_USE_SHORT_ASYNC_RECT_ALLREDUCE) &&
+      if(!func &&
+         DCMF_INFO_ISSET(properties, DCMF_USE_SHORT_ASYNC_RECT_ALLREDUCE) &&
          data_size < 208)
       {  
         /* MPIDI_Datatype_get_info doesn't account for padding in data_size.
@@ -167,15 +176,18 @@ MPIDO_Allreduce(void * sendbuf,
         else
           func = MPIDO_Allreduce_short_async_rect;
       }
-      if(DCMF_INFO_ISSET(properties, DCMF_USE_SHORT_ASYNC_BINOM_ALLREDUCE) &&
+      if(!func &&
+         DCMF_INFO_ISSET(properties, DCMF_USE_SHORT_ASYNC_BINOM_ALLREDUCE) &&
          data_size < 208)
         func = MPIDO_Allreduce_short_async_binom;
       
-      if(DCMF_INFO_ISSET(properties, DCMF_USE_RRING_DPUT_ALLREDUCE_SINGLETH) &&
+      if(!func &&
+         DCMF_INFO_ISSET(properties, DCMF_USE_RRING_DPUT_SINGLETH_ALLREDUCE) &&
          !((unsigned)sbuf & 0x0F) && !((unsigned)rbuf & 0x0F))
         func = MPIDO_Allreduce_rring_dput_singleth;
       
-      if(DCMF_INFO_ISSET(properties, DCMF_USE_ARECTRING_ALLREDUCE))
+      if(!func &&
+         DCMF_INFO_ISSET(properties, DCMF_USE_ARECTRING_ALLREDUCE))
         func = MPIDO_Allreduce_async_rectring;
 
     }

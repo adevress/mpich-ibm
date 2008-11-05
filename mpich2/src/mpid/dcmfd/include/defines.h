@@ -75,6 +75,7 @@ extern int DCMF_INFO_MET(DCMF_Embedded_Info_Set *s, DCMF_Embedded_Info_Set *d);
 enum DCMF_SUPPORTED {
   DCMF_TREE_SUPPORT        =  0,
   DCMF_TORUS_SUPPORT       =  1,
+  DCMF_TREE_MIN_SUPPORT    =  2,
   DCMF_NOT_SUPPORTED       = -1,
   DCMF_SUPPORT_NOT_NEEDED  = -2
 };
