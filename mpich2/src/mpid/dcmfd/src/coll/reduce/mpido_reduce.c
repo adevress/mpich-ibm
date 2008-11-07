@@ -67,19 +67,21 @@ int MPIDO_Reduce(void * sendbuf,
                                      data_true_lb);
     sbuf = (char *) sendbuf + data_true_lb;
   }
-   
+  
   if (!STAR_info.enabled || STAR_info.internal_control_flow ||
-      ((op_type_support == DCMF_TREE_SUPPORT &&
+      (((op_type_support == DCMF_TREE_SUPPORT ||
+         op_type_support == DCMF_TREE_MIN_SUPPORT) &&
         DCMF_INFO_ISSET(properties, DCMF_TREE_COMM)) ||
        data_size < STAR_info.threshold))
   {
     if(!userenvset)
     {
-       
-      if (op_type_support == DCMF_TREE_SUPPORT &&
+      if ((op_type_support == DCMF_TREE_SUPPORT ||
+           op_type_support == DCMF_TREE_MIN_SUPPORT) &&
           DCMF_INFO_ISSET(properties, DCMF_USE_TREE_REDUCE))
       {
-         if(DCMF_INFO_ISSET(properties, DCMF_USE_SMP_TREE_SHORTCUT))
+
+        if(DCMF_INFO_ISSET(properties, DCMF_USE_SMP_TREE_SHORTCUT))
           func = MPIDO_Reduce_global_tree;
         else
           func = MPIDO_Reduce_tree;
@@ -124,7 +126,7 @@ int MPIDO_Reduce(void * sendbuf,
         func = MPIDO_Reduce_rectring;
     }
      
-    if (func && !DCMF_INFO_ISSET(properties, DCMF_IRREG_COMM))
+    if (func)
       rc = (func)(sbuf, rbuf, count, dcmf_data,
                   dcmf_op, datatype, root, comm);      
       

@@ -29,7 +29,7 @@ int MPIDO_Gather(void *sendbuf,
   char *sbuf =sendbuf, *rbuf=recvbuf;
   int success = 1, contig, send_bytes=-1, recv_bytes = 0;
   int rc = 0, rank = comm->rank;
-  
+
   if (sendtype != MPI_DATATYPE_NULL && sendcount >= 0)
   {
     MPIDI_Datatype_get_info(sendcount, sendtype, contig,
