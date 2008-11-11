@@ -27,7 +27,7 @@ int MPIDO_Reduce_scatter(void *sendbuf,
   
   int contig, nbytes;
   MPID_Datatype *dt_ptr;
-  MPI_Aint dt_lb=0;
+  MPI_Aint dt_lb=0, extent=0;
   
   char *tempbuf;
   char *sbuf = sendbuf;
@@ -51,11 +51,15 @@ int MPIDO_Reduce_scatter(void *sendbuf,
 			  nbytes, 
 			  dt_ptr, 
 			  dt_lb);
+
+   NMPI_Type_get_true_extent(datatype, &dt_lb, &extent);
+   MPID_Ensure_Aint_fits_in_int(extent);
+
   
   for(i = 0; i < size; i++)
     tcount += recvcounts[i];
   
-  tempbuf = MPIU_Malloc(nbytes * sizeof(char) * tcount);
+  tempbuf = MPIU_Malloc(extent * sizeof(char) * tcount);
   displs = MPIU_Malloc(size * sizeof(int));
   
   if (!tempbuf || !displs)
