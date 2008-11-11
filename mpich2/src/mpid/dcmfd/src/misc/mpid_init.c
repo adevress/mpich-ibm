@@ -89,7 +89,7 @@ int MPID_Init(int * argc,
 
   if (MPIDI_Process.use_ssm)
     {
-      DCMF_Put_Configuration_t ssm_put_config = { DCMF_DEFAULT_PUT_PROTOCOL };
+      DCMF_Put_Configuration_t ssm_put_config = { DCMF_DEFAULT_PUT_PROTOCOL, DCMF_DefaultNetwork };
       DCMF_Put_register (&MPIDI_Protocols.ssm_put, &ssm_put_config);
       DCMF_Send_Configuration_t ssm_msg_config =
         {
@@ -151,7 +151,7 @@ int MPID_Init(int * argc,
   /* --------------------------- */
   /* Register point-to-point get */
   /* --------------------------- */
-  DCMF_Get_Configuration_t get_config = { DCMF_DEFAULT_GET_PROTOCOL };
+  DCMF_Get_Configuration_t get_config = { DCMF_DEFAULT_GET_PROTOCOL, DCMF_DefaultNetwork };
   DCMF_Get_register (&MPIDI_Protocols.get, &get_config);
 
   /* ---------------------------------- */
