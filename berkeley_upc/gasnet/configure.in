@@ -829,9 +829,11 @@ case "$target_os" in
 	      GASNET_MSG_ERROR([Compiling for a catamount target, but __LIBCATAMOUNT__ is not predefined! Are you using the right compiler? (perhaps try mpicc)])
 	    ])
           ;;
-          powerpc-bgp-linux*) # apparently lacks any identifying preprocessor macro
-	    AC_DEFINE(GASNETI_ARCH_BGP)
-	    ;;
+          powerpc-bgp-linux*)
+	    GASNET_IFDEF(__bgp__,[],[
+		GASNET_MSG_ERROR([Compiling for a BG/P target, but __bgp__ is not predefined! (Check that you have the right compiler, or perhaps try appending ' -D__bgp__' to CC, CXX and MPI_CC for older compilers.)])
+	    ])
+	  ;;
         esac
         # Defining _GNU_SOURCE gives us accesss to the "adaptive"
         # implementation of pthread_mutex_t, which is faster then

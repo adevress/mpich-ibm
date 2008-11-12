@@ -396,7 +396,7 @@ void gasneti_segmentInit(uintptr_t localSegmentLimit,
       gasneti_maxheapend = maxheapend;
       gasneti_maxbase = maxbase;
       #if GASNET_ALIGNED_SEGMENTS
-       #if !defined(GASNETI_ARCH_BGP) /* BG/P would incorrectly probe the I/O node */
+       #if !defined(PLATFORM_OS_BGP) /* BG/P would incorrectly probe the I/O node */
         if (gasneti_nodes > 1) { 
           /* bug 2067 - detect if the compute nodes are using Linux's 'intentional VM space randomization'
            * security feature, which is known to break GASNET_ALIGNED_SEGMENTS, esp at large scale
