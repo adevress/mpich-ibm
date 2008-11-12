@@ -39,9 +39,9 @@
  * ====================================================================
  *
  * Module: lnopt_main.c
- * $Revision: 1.22 $
- * $Date: 2006/10/09 19:12:32 $
- * $Author: wychen $
+ * $Revision: 1.24 $
+ * $Date: 2008/10/15 02:08:32 $
+ * $Author: ciancu $
  * $Source: /var/local/cvs/compilers/open64/osprey1.0/be/lno/lnopt_main.cxx,v $
  *
  * Revision history:
@@ -548,10 +548,13 @@ extern WN * Lnoptimizer(PU_Info* current_pu,
 	    ("Ran out of mappings in Lnoptimizer"));
 
 
+ 
   Start_Timer ( T_LNOParentize_CU );
   LWN_Parentize (func_nd);
   Stop_Timer ( T_LNOParentize_CU );
   Prompf_Init(); 
+
+  Du_Sanity_Check(func_nd);
   WB_Set_Sanity_Check_Level(WBC_DU_ONLY); 
 
 
@@ -796,7 +799,7 @@ extern WN * Lnoptimizer(PU_Info* current_pu,
 	if (!Get_Trace(TP_LNOPT, TT_LNO_NORENAME))
 	    if (Scalar_Variable_Renaming(func_nd))
 	    LNO_Build_Access(func_nd,&LNO_default_pool);
-	
+
 	early_exit = Phase_123(current_pu, func_nd, do_fiz_fuse, do_p25, 
 			       do_inner_fission);
 	
@@ -1330,13 +1333,13 @@ extern BOOL Phase_123(PU_Info* current_pu, WN* func_nd,
   Finalize_Loops(func_nd); 
   Parallel_And_Padding_Phase(current_pu, func_nd);
   // Run the shackling phase
+  
   SHACKLE_Phase(func_nd);
-
   SNL_Phase(func_nd);
-   
-
-//  void Hoist_Outer_Invar(WN *func_nd);
-//  Hoist_Outer_Invar(func_nd);
+  
+  
+ //  void Hoist_Outer_Invar(WN *func_nd);
+//   Hoist_Outer_Invar(func_nd);
 
 #ifdef Is_True_On
   if (LNO_Verbose) {

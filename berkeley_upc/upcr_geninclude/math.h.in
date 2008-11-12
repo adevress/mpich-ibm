@@ -256,7 +256,7 @@ long double	truncl(long double _x);
 #else /* __BERKELEY_UPC_FIRST_PREPROCESS__ */
 /* Thinnest possible wrapper... */
 
-#if __APPLE_CC__ > 1 && __APPLE_CC__ <= 5341 && !__DARWIN_UNIX03
+#if __APPLE_CC__ > 1 && __APPLE_CC__ <= 5341 && !__DARWIN_UNIX03 && __POWERPC__
   /* workaround an OSX 10.4 warning caused by a bug in /usr/include/architecture/ppc/math.h,
      which gcc hides when math.h is in a system dir, but fails to hide
      when we include it by full path in the wrapper below.
@@ -271,5 +271,15 @@ long double	truncl(long double _x);
 #define _IN_UPCR_MATH_H
 @UPCR_INCLUDE_NEXT_MATH_H@
 #undef _IN_UPCR_MATH_H
+#elif !defined(_IN_UPCR_MATH_H_AGAIN)
+  /* There is a known gcc bug with regards to #include_next not starting its
+   * search at the next directory in the path as is documented.  This causes
+   * some problems with gcc's private header's use of #include_next finding
+   * THIS header rather than the system one (see Berkeley UPC bug #2118).
+   * A similar bug is present in some xlc versions (see Berkeley UPC bug #2133).
+   * Here we just allow the #include_next to pass through one extra time.
+   */
+  #define _IN_UPCR_MATH_H_AGAIN
+@UPCR_INCLUDE_NEXT_MATH_H@
 #endif
 #endif /* __BERKELEY_UPC_FIRST_PREPROCESS__ */

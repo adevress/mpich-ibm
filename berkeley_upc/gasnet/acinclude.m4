@@ -1,6 +1,6 @@
-dnl   $Source$
-dnl     $Date$
-dnl $Revision$
+dnl   $Source: /var/local/cvs/gasnet/acinclude.m4,v $
+dnl     $Date: 2008/10/08 02:20:09 $
+dnl $Revision: 1.132 $
 dnl Description: m4 macros
 dnl Copyright 2004,  Dan Bonachea <bonachea@cs.berkeley.edu>
 dnl Terms of use are as specified in license.txt

@@ -1,6 +1,6 @@
-//   $Source$
-//     $Date$
-// $Revision$
+//   $Source: /var/local/cvs/gasnet/other/amudp/sockaddr.h,v $
+//     $Date: 2006/05/15 04:03:24 $
+// $Revision: 1.9 $
 // Description: Objects for encapsulating and hashing SockAddr's
 // Copyright 1998, Dan Bonachea
 

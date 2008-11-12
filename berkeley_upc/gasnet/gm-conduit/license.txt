@@ -1,4 +1,4 @@
-$Header$
+$Header: /var/local/cvs/gasnet/gm-conduit/license.txt,v 1.2 2004/08/26 04:53:36 bonachea Exp $
 All files in this directory (except where otherwise noted) are subject to the
 following licensing terms: 
 

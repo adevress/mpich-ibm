@@ -1,9 +1,9 @@
 #! /usr/bin/env perl
 
 #############################################################
-#   $Source$
-#     $Date$
-# $Revision$
+#   $Source: /var/local/cvs/gasnet/other/contrib/gasnet_trace.pl,v $
+#     $Date: 2008/10/11 22:41:47 $
+# $Revision: 1.37 $
 #
 # All files in this directory (except where otherwise noted) are subject to the
 #following licensing terms:

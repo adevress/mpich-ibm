@@ -1,6 +1,6 @@
-/*   $Source$
- *     $Date$
- * $Revision$
+/*   $Source: /var/local/cvs/gasnet/other/amudp/ufxp.h,v $
+ *     $Date: 2004/08/26 04:53:50 $
+ * $Revision: 1.2 $
  * Description: 
  * Copyright 2004, Dan Bonachea <bonachea@cs.berkeley.edu>
  * Terms of use are as specified in license.txt

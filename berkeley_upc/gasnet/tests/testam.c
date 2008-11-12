@@ -1,6 +1,6 @@
 /*   $Source: /var/local/cvs/gasnet/tests/testam.c,v $
- *     $Date: 2008/08/04 17:23:34 $
- * $Revision: 1.26.40.1 $
+ *     $Date: 2008/10/28 05:43:47 $
+ * $Revision: 1.27 $
  * Description: GASNet Active Messages performance test
  * Copyright 2002, Dan Bonachea <bonachea@cs.berkeley.edu>
  * Terms of use are as specified in license.txt
@@ -62,10 +62,10 @@ gasnet_hsl_t inchsl = GASNET_HSL_INITIALIZER;
 volatile int flag = 0;
 
 void ping_shorthandler(gasnet_token_t token) {
-    GASNET_Safe(gasnet_AMReplyShort0(token, hidx_pong_shorthandler));
+  GASNET_Safe(gasnet_AMReplyShort0(token, hidx_pong_shorthandler));
 }
 void pong_shorthandler(gasnet_token_t token) {
-    flag++;
+  flag++;
 }
 
 
@@ -86,10 +86,10 @@ void pong_longhandler(gasnet_token_t token, void *buf, size_t nbytes) {
 }
 /* ------------------------------------------------------------------------------------ */
 void ping_shorthandler_flood(gasnet_token_t token) {
-    GASNET_Safe(gasnet_AMReplyShort0(token, hidx_pong_shorthandler_flood));
+  GASNET_Safe(gasnet_AMReplyShort0(token, hidx_pong_shorthandler_flood));
 }
 void pong_shorthandler_flood(gasnet_token_t token) {
-    INC(flag);
+  INC(flag);
 }
 
 
@@ -276,20 +276,6 @@ void doAMShort() {
       if (mynode == 0) { printf("\n"); fflush(stdout); }
     }
     BARRIER();
-		if (TEST_SECTION_ENABLED()) {
-      int64_t start;
-      flag = 0;
-      BARRIER();
-			start = TIME();
-			for (i=0; i < iters; i++) {
-        GASNET_Safe(gasnet_AMRequestShort0(peer, hidx_pong_shorthandler_flood));
-      }
-      GASNET_BLOCKUNTIL(flag == iters);
-      report("        AMShort     flood     roundtrip ReqReq",TIME() - start, iters, 0, 1);
-			
-      if (mynode == 0) { printf("\n"); fflush(stdout); }
-    }
-    BARRIER();
 }
 
 /* ------------------------------------------------------------------------------------ */
@@ -429,27 +415,28 @@ void doAMShort() {
       if (mynode == 0) { printf("\n"); fflush(stdout); }                         \
     }                                                                            \
     BARRIER();                                                                   \
-		/* ---------------------------------------------------------- */             \
-		if (TEST_SECTION_BEGIN_ENABLED()) {                                          \
-			uintptr_t sz; int64_t start;                                               \
-			char msg[255];                                                             \
-			for (sz = 0; sz <= MAXREQREP; ) {                                          \
-				sprintf(msg, "%7llu "DESC_STR" flood     roundtrip ReqReq",              \
-										 (unsigned long long)sz);                                    \
-				flag = 0;                                                                \
-				BARRIER();                                                               \
+    /* ---------------------------------------------------------- */             \
+    if (TEST_SECTION_BEGIN_ENABLED()) {                                          \
+      uintptr_t sz; int64_t start;                                               \
+      char msg[255];                                                             \
+      for (sz = 0; sz <= MAXREQREP; ) {                                          \
+        sprintf(msg, "%7llu "DESC_STR" flood     roundtrip ReqReq",              \
+                     (unsigned long long)sz);                                    \
+        flag = 0;                                                                \
+        BARRIER();                                                               \
         start = TIME();                                                          \
         for (i=0; i < iters; i++) {                                              \
-        	GASNET_Safe(AMREQUEST(peer, PONG_HIDX##_flood, myseg, sz DEST));       \
-				}                                                                        \
-				BARRIER();                                                               \
-				GASNET_BLOCKUNTIL(flag == iters);                                        \
-				report(msg,TIME() - start, iters, sz, 1);                                \
-				ADVANCESZ(sz, MAXREQREP);                                                \
-			}                                                                          \
-			if (mynode == 0) { printf("\n"); fflush(stdout); }                         \
-		}                                                                            \
-		BARRIER();                                                                   \
+          GASNET_Safe(AMREQUEST(peer, PONG_HIDX##_flood, myseg, sz DEST));       \
+        }                                                                        \
+        GASNET_BLOCKUNTIL(flag == iters);                                        \
+        report(msg,TIME() - start, iters, sz, 1);                                \
+                                                                                 \
+        BARRIER();                                                               \
+        ADVANCESZ(sz, MAXREQREP);                                                \
+      }                                                                          \
+      if (mynode == 0) { printf("\n"); fflush(stdout); }                         \
+    }                                                                            \
+    BARRIER();                                                                   \
   } while (0)
 
   #define MEDDEST

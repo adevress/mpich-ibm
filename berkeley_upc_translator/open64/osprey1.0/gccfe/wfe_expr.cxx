@@ -47,12 +47,13 @@
 #include "gnu_config.h"
 #include "gnu/system.h"
 #include "gnu/machmode.h"
-
+#include <setjmp.h>
 extern "C" {
+#include "gnu/toplev.h"
 #include "gnu/flags.h"
 #include "gnu/tree.h"
 #include "gnu/c-tree.h"
-extern void warning (char*,...);	// from gnu
+  //extern void warning (char*,...);	// from gnu
 extern tree c_strlen_exported (tree);
 #include "gnu/function.h"
 }
@@ -1061,9 +1062,19 @@ WFE_Lhs_Of_Modify_Expr(tree_code assign_code,
 	    result_preg_st = Gen_Temp_Symbol(desc_ty_idx, 
 					     Index_To_Str(Save_Str2((char*)".Mspillpost.", (char*)"")));
 	    
-	  } else 
+	  } else { 
+	    if(TY_is_shared(idx)) {
+	      //shared ptr - bug 2306 
+	      if(TY_kind(idx) == KIND_POINTER) {
+		idx = Make_Pointer_Type(TY_pointed(idx));
+	      } else {
+		Fail_FmtAssertion("Postincrement on array variable\n");
+	      }		
+	    }
 	    result_preg_st = Gen_Temp_Symbol(idx, 
 					     Index_To_Str(Save_Str2((char*)".Mspillpost.", (char*)"")));
+	   
+	  }
 	  result_preg = 0;
 	   
 	   
@@ -1091,7 +1102,8 @@ WFE_Lhs_Of_Modify_Expr(tree_code assign_code,
 	//adjusted size for local pointers
 	if(TY_kind(hi_ty_idx) == KIND_POINTER && !Type_Is_Shared_Ptr(hi_ty_idx, TRUE)) {
 	  Is_True(WN_operator(rhs_wn) == OPR_INTCONST, ("",""));
-	  WN_const_val(rhs_wn) = Adjusted_Type_Size(TY_pointed(hi_ty_idx));
+	  if(TY_kind(TY_pointed(hi_ty_idx)) != KIND_STRUCT)
+	    WN_const_val(rhs_wn) = Adjusted_Type_Size(TY_pointed(hi_ty_idx));
 	}
         rhs_wn = WN_Binary(Operator_From_Tree [assign_code].opr,
 		           rtype, result_wn, rhs_wn);
@@ -1112,13 +1124,16 @@ WFE_Lhs_Of_Modify_Expr(tree_code assign_code,
 	 !Type_Is_Shared_Ptr(WN_ty(rhs_wn)) && 
 	 (field_id ? TY_mtype(component_ty_idx) != MTYPE_M :
 	  TY_mtype(hi_ty_idx) != MTYPE_M))  {
-	wn  = WN_Create(OPR_TAS, 
-			field_id ? TY_mtype(component_ty_idx) :
-			TY_mtype(hi_ty_idx), 
-			MTYPE_V, 1);
-	WN_kid0(wn) = rhs_wn;
-	WN_set_ty(wn,field_id ? component_ty_idx : hi_ty_idx);
-	rhs_wn = wn;
+	//bug 1937 - TAS on scalars confuses the optimizer opt_emit_template.h (l 367)
+	if(TY_kind(hi_ty_idx) != KIND_SCALAR) {
+	  wn  = WN_Create(OPR_TAS, 
+			  field_id ? TY_mtype(component_ty_idx) :
+			  TY_mtype(hi_ty_idx), 
+			  MTYPE_V, 1);
+	  WN_kid0(wn) = rhs_wn;
+	  WN_set_ty(wn,field_id ? component_ty_idx : hi_ty_idx);
+	  rhs_wn = wn;
+	}
       } 
       wn = WN_Stid (desc, ST_ofst(st) + component_offset + lhs_preg_num, st,
 		    hi_ty_idx, rhs_wn, field_id);
@@ -2512,7 +2527,7 @@ WFE_Expand_Expr (tree exp,
               WFE_Stmt_Append (wn0, Get_Srcpos ());
               wn = WN_Ldid(Pointer_Mtype, 0, temp, ltit);
 	    } else if((lti & 0xff) != (rti & 0xff) || 
-		      (((TY_pointed(lti)&0xff) != (TY_pointed(rti)&0xff)) &&
+		      (((TY_pointed(lti)&0xe0) != (TY_pointed(rti)&0xe0)) &&
 		       !TY_is_const(TY_pointed(lti)) || TY_is_const(TY_pointed(rti))) ) {
 	      //bug670. bug1804 - we should not generate TAS for T*  to const T*
 	      
@@ -2956,6 +2971,17 @@ WFE_Expand_Expr (tree exp,
 	BOOL fold_lda;
 	BOOL shared_args = WN_Type_Is_Shared_Ptr(wn0) || WN_Type_Is_Shared_Ptr(wn1);
 	
+	if(WN_Type_Is_Shared_Ptr(wn0) && TY_kind(WN_ty(wn0)) == KIND_POINTER && 
+	   TY_kind(TY_pointed(WN_ty(wn0))) == KIND_VOID) {
+	  Fail_FmtAssertion("");
+	   error_with_file_and_line(input_filename, lineno, "Pointer arithmetic on shared void*");
+	} 
+	
+	if(WN_Type_Is_Shared_Ptr(wn1) && TY_kind(WN_ty(wn1)) == KIND_POINTER && 
+	   TY_kind(TY_pointed(WN_ty(wn1))) == KIND_VOID) {
+	   error_with_file_and_line(input_filename, lineno, "Pointer arithmetic on shared void*");
+	} 
+	
 	if(shared_args) {
 	  if(WN_operator(wn0) == OPR_LDID && 
 	     WN_operator(wn1) == OPR_INTCONST &&
@@ -2970,7 +2996,9 @@ WFE_Expand_Expr (tree exp,
 	//&s->a[i] gets expanded into add(add(ldid,off),mpy(i,sz)) 
 	//spill the inner add  to make sure that const folding does not move the offset
 	// away from the base pointer
-	if(WN_operator(wn0) == OPR_LDID && 
+	if((WN_operator(wn0) == OPR_LDID ||
+	    (WN_operator(wn0) == OPR_TAS && WN_operator(WN_kid0(wn0)) == OPR_LDID)
+	    ) && 
 	   WN_operator(wn1) == OPR_INTCONST &&
 	   TREE_CODE(TREE_OPERAND(exp,0)) == NOP_EXPR) 
 	  {
@@ -2983,8 +3011,6 @@ WFE_Expand_Expr (tree exp,
 	      WN_kid0(wn1) = wn0;
 	      WN_set_ty(wn1, Make_Pointer_Type(MTYPE_To_TY(MTYPE_I1)));
 	      WN_kid0(wn) = wn1;
-	      
-	      
 
 	      TY_IDX spill_ty = Get_TY(TREE_TYPE(TREE_OPERAND(exp,0)));
 	      ST *st =  Gen_Temp_Symbol(spill_ty,
@@ -4378,7 +4404,6 @@ WFE_Expand_Expr (tree exp,
       break;
 
     case ERROR_MARK:
-
       exit (RC_USER_ERROR);
       break;
 
@@ -4475,7 +4500,8 @@ Get_Integer_Value (tree exp)
   //Instead of crashing, we lie about its block size so the compiler 
   //can continue to run, since this error
   //should be reported in upc-share.c (set_upc_blocksize)
-  if (TREE_CODE(exp) != INTEGER_CST) {
+  //ditto for a null exp, which should've been caught elsewhere
+  if (exp == NULL || TREE_CODE(exp) != INTEGER_CST) {
     return 1;
   }
 

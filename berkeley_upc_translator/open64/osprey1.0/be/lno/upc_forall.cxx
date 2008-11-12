@@ -170,27 +170,30 @@ static WN* Get_GCD_Call(int x) {
 }
 
 //Get the starting iteration for a thread.
-static WN* Get_My_Start(WN* lo, int scale, WN* start_thread) {
+static WN* Get_My_Start(WN* lo, int step, int scale, WN* start_thread) {
 
   WN* threads = LWN_Get_Threads();
   WN* mythread = WN_Ldid(TY_mtype(ST_type(upc_mythread_st)), 0, upc_mythread_st, ST_type(upc_mythread_st));
-  if (scale == 1 || scale == -1) {
-    WN* my_start = (scale > 0) ? WN_Sub(Integer_type, mythread, start_thread) :
+  int aff_incr = step * scale;
+  if (aff_incr == 1 || aff_incr == -1) {
+    WN* my_start = (aff_incr > 0) ? WN_Sub(Integer_type, mythread, start_thread) :
       WN_Sub(Integer_type, start_thread, mythread);
     my_start = WN_CreateExp2(OPC_I4MOD, my_start, threads);
-    return (scale > 0) ? WN_Add(Integer_type, WN_COPY_Tree(lo), my_start) :
+    return (aff_incr > 0) ? WN_Add(Integer_type, WN_COPY_Tree(lo), my_start) :
       WN_Sub(Integer_type, WN_COPY_Tree(lo), my_start);
   }
 
   //call forall_start(start_thread, step, upper_bnd)
   //where start_thread is the thread executing the first iteration,
   //step is the amount the induction variable is incremented by every iteration
-  WN* call = WN_Create(OPR_INTRINSIC_CALL, Integer_type, MTYPE_V, 3);
+  WN* call = WN_Create(OPR_INTRINSIC_CALL, Integer_type, MTYPE_V, 4);
   WN_intrinsic(call) = INTRN_FORALL_START;
   WN_kid0(call) = WN_CreateParm(Integer_type, start_thread, MTYPE_To_TY(Integer_type), WN_PARM_BY_VALUE);
-  WN_kid1(call) = WN_CreateParm(Integer_type, WN_Intconst(Integer_type, scale), MTYPE_To_TY(Integer_type), 
+  WN_kid1(call) = WN_CreateParm(Integer_type, WN_Intconst(Integer_type, step), MTYPE_To_TY(Integer_type), 
 				WN_PARM_BY_VALUE);
   WN_kid2(call) = WN_CreateParm(Integer_type, WN_COPY_Tree(lo), MTYPE_To_TY(Integer_type), 
+				WN_PARM_BY_VALUE);
+  WN_kid3(call) = WN_CreateParm(Integer_type, WN_Intconst(Integer_type, scale), MTYPE_To_TY(Integer_type), 
 				WN_PARM_BY_VALUE);
   WN* tmp_block = WN_CreateBlock();
   WN_INSERT_BlockLast(tmp_block, call);
@@ -470,7 +473,6 @@ static void Upc_Forall_Opt(WN* loop, WN* aff_test, UPC_AFF_EXP* aff_exp) {
   //aff_exp->Print();
 
   int step_val = WN_const_val(step);
-  int scale = aff_exp->Scale() * step_val;
   WN* threads = LWN_Get_Threads();
   WN* mythread = WN_Ldid(TY_mtype(ST_type(upc_mythread_st)), 0, upc_mythread_st, ST_type(upc_mythread_st));
 
@@ -518,7 +520,6 @@ static void Upc_Forall_Opt(WN* loop, WN* aff_test, UPC_AFF_EXP* aff_exp) {
     forall (i = L; i < U; i += S; ai + b) 
     
     Define the following symbols:
-    scale = S * a  -- This is the amount i is incremented by every iteration
     start_thread = (a*L + b) % Threads  -- This is the thread executing the first iteration
     gcd (x, y)  -- A runtime function computing the GCD of two (possibly negative?) integers
     forall_start() -- Another runtime function computing the starting iteration for MYTHREAD.
@@ -526,15 +527,14 @@ static void Upc_Forall_Opt(WN* loop, WN* aff_test, UPC_AFF_EXP* aff_exp) {
     
     Equipped by the above definition, we can rewrite the above loop into an equivalent for loop:
 
-    int gcd = gcd (scale, THREADS);
-    int my_start = forall_start(start_thread, scale, L, U);
-    for (i = my_start; i < U; i += THREADS * scale / gcd) 
+    int gcd = gcd (S*a, THREADS);
+    int my_start = forall_start(start_thread, S, a, L);
+    for (i = my_start; i < U; i += THREADS * step / gcd) 
 
-    Note the new step of the loop is in fact lcm (THREADS, scale)
   */
   
   ST* gcd = Gen_Temp_Symbol(MTYPE_To_TY(Integer_type), "gcd");
-  WN* gcd_val = WN_Stid(Integer_type, 0, gcd, ST_type(gcd), Get_GCD_Call(scale));
+  WN* gcd_val = WN_Stid(Integer_type, 0, gcd, ST_type(gcd), Get_GCD_Call(step_val * aff_exp->Scale()));
   WN_INSERT_BlockBefore(block, loop, gcd_val);
   //must initialize induction var to the lower bound for new_start to take right value
   WN* init_ind = WN_Stid(Integer_type, aff_exp->Ind_var_ofst(), aff_exp->Ind_var(), 
@@ -546,14 +546,14 @@ static void Upc_Forall_Opt(WN* loop, WN* aff_test, UPC_AFF_EXP* aff_exp) {
   WN_INSERT_BlockBefore(block, loop, WN_Stid(Integer_type, 0, start_th, ST_type(start_th), start_thread));
   
   ST* new_start = Gen_Temp_Symbol(MTYPE_To_TY(Integer_type), "new_start");
-  WN* my_start = Get_My_Start(lower_bnd, scale, 
+  WN* my_start = Get_My_Start(lower_bnd, step_val, aff_exp->Scale(), 
 			      WN_Ldid(Integer_type, 0, start_th, ST_type(start_th)));
   my_start = WN_Stid(Integer_type, 0, new_start, ST_type(new_start), my_start);
   WN_INSERT_BlockBefore(block, loop, my_start);
   
   WN* new_step = LWN_Get_Threads();
   new_step = WN_Div(Integer_type, new_step, WN_Ldid(Integer_type, 0, gcd, ST_type(gcd)));
-  new_step = WN_Mpy(Integer_type, new_step, WN_Intconst(Integer_type, scale));
+  new_step = WN_Mpy(Integer_type, new_step, WN_Intconst(Integer_type, step_val));
 
   WN_kid0(WN_start(loop)) = WN_Ldid(Integer_type, 0, new_start, ST_type(new_start));
   WN_kid1(WN_kid0(WN_step(loop))) = new_step;

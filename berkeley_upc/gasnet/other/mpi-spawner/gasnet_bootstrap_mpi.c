@@ -1,6 +1,6 @@
-/*   $Source$
- *     $Date$
- * $Revision$
+/*   $Source: /var/local/cvs/gasnet/other/mpi-spawner/gasnet_bootstrap_mpi.c,v $
+ *     $Date: 2006/05/11 09:43:44 $
+ * $Revision: 1.17 $
  * Description: GASNet conduit-independent mpi-based spawner
  * Copyright 2003, The Regents of the University of California
  * Terms of use are as specified in license.txt

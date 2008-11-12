@@ -2,7 +2,7 @@
  * UPC Runtime startup (and exit) functions
  *
  * Jason Duell <jcduell@lbl.gov>
- * $Id: upcr_init.h,v 1.24 2006/07/23 21:34:06 bonachea Exp $
+ * $Id: upcr_init.h,v 1.25 2008/10/30 20:11:00 nenadv Exp $
  */
 
 #ifndef UPCR_INIT_H
@@ -288,8 +288,8 @@ extern uintptr_t	UPCRL_default_shared_offset;
  * 'last.o' object files that are then passed to the linker as the first and
  * last objects on the linker command line).
  */
-#ifdef UPCR_USING_LINKADDRS
-  extern char UPCRL_shared_begin[1];
+#if UPCR_USING_LINKADDRS || UPCRI_USING_GCCUPC
+  extern char UPCRL_shared_begin[0x10000];
   extern char UPCRL_shared_end[1];
 #endif
 

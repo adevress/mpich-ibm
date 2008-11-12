@@ -46,8 +46,7 @@ test06()
 	  got = (shared int *)&array[i];
 	  if (*got != expected)
 	    {
-	      fprintf(stderr,
-		"test06: error at element %d. Expected %d, got %d\n",
+	      fprintf(stderr, "test06: error at element %d. Expected %d, got %d\n",
 		i, expected, *got);
 	      abort ();
 	    }

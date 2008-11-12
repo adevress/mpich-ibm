@@ -56,8 +56,15 @@ Follow these steps to build the runtime:
         cd /my/build/directory
         <path-to-src>/configure CC=<C compiler> CXX=<C++ compiler> \
                                 MPI_CC=<MPI compiler> [options] 
+
+   Note that any setting of CFLAGS or CXXFLAGS will be ignored/discarded by
+   configure.  Any flags that are required (e.g. for the correct ABI) must
+   be included in the values of CC, CXX and MPI_CC.
    
-   You need to be careful to select the correct options for your system:
+   You need to be careful to select the correct options for your system.  The
+   various types of options you need to consider are descibed in the sections
+   that follow.  The final section, TROUBLESHOOTING CONFIGURE, includes info
+   on resolving problems that may occur at configure time.
    
    INSTALLATION LOCATION
 
@@ -169,6 +176,8 @@ Follow these steps to build the runtime:
                 |        Cray X1)    |             |
                 +--------------------+-------------+
                 | Portals (Cray XT3) |  portals    |
+                +--------------------+-------------+
+                | DCMF (IBM BG/P)    |  dcmf       |
                 +--------------------+-------------+
                 | Dolphin SCI        |  sci        |
                 +--------------------+-------------+
@@ -359,27 +368,66 @@ Follow these steps to build the runtime:
 
    GCC UPC BINARY COMPILER SUPPORT
 
-   The Berkeley UPC runtime now works with the GCC UPC compiler
+   The Berkeley UPC runtime also works with the GCC UPC compiler
    (http://www.intrepid.com), versions 3.3.2.6 or above.   Unlike Berkeley UPC's
    UPC-to-C translator, which translates UPC into C code, GCC UPC compiles
    directly to object code.  To use the GCC UPC compiler, first download,
-   compile, and install it.  Then pass '--with-gccupc=/gccupc_install/bin/upc'
-   to configure, providing a full absolute path to the installed 'upc'
-   executable.  Also, if you wish to use the 'gcc' that is installed as part of
+   compile, and install it.  Then, run configure with the environment variable
+   GCCUPC_TRANS set to the full absolute path to the installed 'upc' executable,
+   and a --with-multiconf option as follows:
+
+   To enable both the BUPC and GCC UPC translators, invoke configure as
+
+       env GCCUPC_TRANS=<PATH_TO_UPC> <path-to-src>/configure \
+                     --with-multiconf=+dbg_gccupc,+opt_gccupc [options]
+
+   OR, to build for GCC UPC only use the following:
+
+       env GCCUPC_TRANS=<PATH_TO_UPC> <path-to-src>/configure \
+                     --with-multiconf=dbg_gccupc,opt_gccupc [options]
+
+   Additionally, it is recommended to use the 'gcc' that is installed with
    GCC UPC (this is not always necessary, but it may be required for pthreads
-   support if your system copy of 'gcc' is less recent than the GCC UPC one),
-   set "CC=/gccupc_install/bin/gcc" in the configure command.  GCC UPC supports
-   building pthreaded UPC applications, but only on systems where the recent
+   support if your system copy of 'gcc' is less recent than the GCC UPC one).
+   To do so, set "CC=/gccupc_install/bin/gcc" in the configure command.  GCC UPC
+   supports building pthreaded UPC applications only on systems where the recent
    '__thread' attribute is supported by gcc (this includes recent versions of
    Linux on x86 processors).  Although GCC UPC works on several architectures,
    it has primarily been tested with Berkeley UPC as its runtime on x86/Linux,
    Opteron/Linux, Itanium/Linux and Cray XT-3 systems.
 
-   CROSS-COMPILATION (experimental)
+   CROSS-COMPILATION (Cray XT, IBM BlueGene, and others)
 
-   UPCR now has some initial support for cross-compilation, on systems where the
+   UPCR has support for cross-compilation, on systems where the
    target nodes are unable to run the configure script and/or C compiler.
-   Instructions:
+
+   * Cray XT Systems:
+
+   Link the appropriate cross-configure script into your top-level source directory:
+
+     cd <path-to-src>
+     ln -s gasnet/other/contrib/cross-configure-crayxt-cnl .  (for Compute-Node Linux)
+        - or -
+     ln -s gasnet/other/contrib/cross-configure-crayxt-catamount .  (for Catamount)
+
+   Then invoke cross-configure-crayxt-* in the same way you'd invoke configure,
+   according to the directions in the previous sections.  See docs/README.CrayXT
+   for detailed instructions on building for the Cray XT platform.
+
+   * IBM BlueGene/P: 
+
+   Link the appropriate cross-configure script into your top-level source directory:
+
+     cd <path-to-src>
+     ln -s gasnet/other/contrib/cross-configure-bgp .
+     
+   Then invoke cross-configure-bgp in the same way you'd invoke configure,
+   according to the directions in the previous sections.  See gasnet/dcmf-conduit/README
+   for detailed instructions on building for the BlueGene/P platform and 
+   utilizing the DCMF-based high-performance network.
+   
+   * Generic Instructions (other platforms):
+
      1. Build the program 'gasnet/other/cross-configure-help.c' using the target
 	compiler (the one that builds executables for your compute nodes). If
 	compilation fails, try tweaking one of the test control variables in
@@ -394,6 +442,42 @@ Follow these steps to build the runtime:
         full path to your target compilers.
      5. Run cross-configure with the same options you'd pass to configure, as
         documented above (eg. see cross-configure --help).
+
+   TROUBLESHOOTING CONFIGURE
+
+   Here are some problems that users have reported encountering in the configure
+   step and their recommended solutions.
+
+   a) If you see the following
+        configure error: User requested --enable-debug but MPI_CC or MPI_CFLAGS has
+        enabled optimization (-O) or disabled assertions (-DNDEBUG). Try setting
+        MPI_CC='[SOMETHING]  -O0 -UNDEBUG' or changing MPI_CFLAGS
+      please resist the urge to add --disable-debug, because that will not work.
+
+      The Berkeley UPC configure is attempting to build both normal (optimized)
+      and debugging (assertions enabled) versions of the GASNet libraries.
+      The recommended course of action is to set MPI_CC (but not MPI_CFLAGS) as
+      described in the error message.
+
+      However, if for some reason you cannot do so, or if you want or need to
+      disable building or debugging libraries, the correct method is to add
+           --with-multiconf=-dbg,-dbg_tv,-dbg_gccupc
+      to your configure arguments to disable all of the debug configurations.
+
+   b) While less common than (a), it is possible to see a similar message for
+      CC/CFLAGS or CXX/CXXFLAGS.  The same recomendations in (a) hold in these
+      cases as well.
+
+   c) Configure appears to ignore my CFLAGS and/or CXXFLAGS.
+      Yes, that is by design.  Any options required for the correct ABI must
+      be included in CC, CXX and MPI_CC.
+
+   d) If you see
+        configure: error: cannot use both --with-gccupc and --with-translator!
+      then please see the "GCC UPC BINARY COMPILER SUPPORT" section above.
+
+      The --with-gccupc configure option from previous releases is no longer
+      supported.  Passing --without-translator will not resolve this.
 
 2) Build the release via
 

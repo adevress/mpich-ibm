@@ -114,6 +114,7 @@ static int count_cond		PARAMS ((tree, int));
 #endif
 
 extern int compiling_upc;
+#include "upc-share.h"
 
 /* We know that A1 + B1 = SUM1, using 2's complement arithmetic and ignoring
    overflow.  Suppose A, B and SUM have the same respective signs as A1, B1,
@@ -5579,6 +5580,7 @@ fold (expr)
 
 	  /* Only do something if we found more than two objects.  Otherwise,
 	     nothing has changed and we risk infinite recursion.  */
+	  if(code == MINUS_EXPR && var0 && var1 && x_x_simp_safe(var0,var1))
 	  if (2 < ((var0 != 0) + (var1 != 0) + (con0 != 0) + (con1 != 0)
 		   + (lit0 != 0) + (lit1 != 0)))
 	    {
@@ -5657,9 +5659,10 @@ fold (expr)
 	 In IEEE, it is unsafe because it does wrong for NaNs.
 	 Also note that operand_equal_p is always false if an operand
 	 is volatile.  */
-
-      if ((! FLOAT_TYPE_P (type) || flag_fast_math) 
-	  && operand_equal_p (arg0, arg1, 0) 
+      
+	if ((! FLOAT_TYPE_P (type) || flag_fast_math) 
+	  && operand_equal_p (arg0, arg1, 0) && 
+	  x_x_simp_safe(arg0, arg1)
 	  /* if arg0/arg1 are ptrs to structs disable for upc 
 	     because of wrong size info for structs - bug595/64bits */
 	  /*  &&  !(compiling_upc && TREE_CODE(arg0) == VAR_DECL && 

@@ -1,14 +1,14 @@
 <html>
 <head>
-<!--#set var="VERSION" value="2.6.0" -->
-<title>Berkeley UPC User's Guide, v2.6.0</title>
+<!--#set var="VERSION" value="2.8.0" -->
+<title>Berkeley UPC User's Guide, v2.8.0</title>
 </head>
 <body bgcolor="#ffffff">
 
 <!--#include virtual="/header.html" -->
 
 <table border=0 cellpadding=0 cellspacing=0 width=100%><tr><td>
-<h1>Berkeley UPC User's Guide <small>version 2.6.0</small></h1>
+<h1>Berkeley UPC User's Guide <small>version 2.8.0</small></h1>
 </td><td align=right>
 <!-- SiteSearch Google -->
 <FORM method=GET action="http://www.google.com/search">
@@ -184,8 +184,12 @@ with one of the following values:
         <td>elan API for Quadrics networks</td>
     </tr>
     <tr>
+        <td>ibv</td>
+        <td>OpenFabrics (aka OpenIB) InfiniBand Verbs for most InfiniBand networks</td>
+    </tr>
+    <tr>
         <td>vapi</td>
-        <td>API for Mellanox-based Infiniband networks</td>
+        <td>(older) Verbs API for Mellanox-based InfiniBand networks</td>
     </tr>
     <tr>
         <td>sci</td>
@@ -206,6 +210,10 @@ with one of the following values:
         <td>
             Portals API for Cray XT systems running Catamount or CNL.
         </td>
+    </tr>
+    <tr>
+        <td>dcmf</td>
+        <td>Deep Computing Messaging Framework for IBM BlueGene/P systems</td>
     </tr>
     <tr>
         <td>udp</td>
@@ -451,7 +459,7 @@ error if any thread tries to allocate more shared memory than it reserved at
 startup.
 
 <p>The default amount of shared memory to reserve per UPC thread on a
-system is chosen at configure time (see the INSTALL document in the runtime
+system is chosen at configure time (see the INSTALL.TXT document in the runtime
 distribution for details), but you can override that value for a particular
 application either at compile time, or at startup.  Generally this is only
 needed if you observe that your application is running out of either shared or
@@ -1345,21 +1353,26 @@ launcher may be propagated, but it is not portable to rely on this.
 <p>The '<tt>setenv()</tt>' and '<tt>unsetenv</tt>' functions are not guaranteed
 to work in a Berkeley UPC runtime environment, and should be avoided.
 
-<h3>Correctness when using GCC 4.x as the C compiler</h3>
+<h3>Correctness when using GCC 4.x (x&lt;3) as the C compiler</h3>
 
-There is a known correctness problem in the gcc 4.x optimizer that may affect
+There is a known correctness problem in the optimizer in gcc 4.0.x through 4.2.x that may affect
 correctness of shared-local accesses in UPC (i.e., shared accesses that result in
 node-local accesses at runtime). In a nutshell, it's possible that in rare cases
-gcc 4.x may misoptimize a shared-local access such that it deterministically
-reads or writes an incorrect value. If you suspect you may be encountering this
+these compilers may misoptimize a shared-local access such that it deterministically
+read or write an incorrect value. For this reason, configure will not allow you
+to use one of these compilers without an explicit option: '<tt>--enable-allow-gcc4</tt>'.
+
+If you do configure with '<tt>--enable-allow-gcc4</tt>', then you may encounter the
+optimizer bug.
+If you suspect you may be encountering this
 issue, the following actions are recommended for diagnosis:
 
 <ol>
 
-    <li> Try compiling your code in debug mode (ie with 'upcc -g'). If the
+    <li> Try compiling your code in debug mode (ie with '<tt>upcc -g</tt>'). If the
     problem persists, then this issue is *not* the culprit.
 
-    <li> Try compiling your code using the flag 'upcc -Wc,-fno-strict-aliasing'.
+    <li> Try compiling your code using the flag '<tt>upcc -Wc,-fno-strict-aliasing</tt>'.
     If the problem persists, then this issue is *not* the culprit.
 
     <li> Run your code several times. If the problem is intermittent, then this
@@ -1374,14 +1387,14 @@ recommended workarounds:
 
     <li> Configure BUPC to use a different backend C compiler. If you have a
     non-gcc vendor C compiler available, this may actually be a better choice
-    for performance anyhow. Failing that, using gcc 3.x should also resolve the
-    issue, as the bug is only believed to be present in gcc 4.x.
+    for performance anyhow. Failing that, using gcc &gt;= 4.3 (or gcc 3.x) should also resolve the
+    issue, as the bug is only believed to be present in gcc 4.0.x through 4.2.x.
 
-    <li> Build the affected modules using the flag 'upcc
-    -Wc,-fno-strict-aliasing'.  This makes the gcc 4.x optimizer more
+    <li> Build the affected modules using the flag '<tt>upcc
+    -Wc,-fno-strict-aliasing</tt>'.  This makes the gcc 4.x optimizer more
     conservative, and also inhibits the illegal optimization.
 
-    <li> Reconfigure BUPC using 'configure --enable-conservative-local-copy'.
+    <li> Reconfigure BUPC using '<tt>configure --enable-conservative-local-copy</tt>'.
     This globally activates a more conservative implementation of shared-local
     accesses that also prevents the illegal optimization.
 
@@ -1390,7 +1403,7 @@ recommended workarounds:
 The performance impact of the workarounds above is expected to be
 application-dependent.
 
-<p> The next version of BUPC will include a restructuring of the way shared-local
+<p> A future version of BUPC will include a restructuring of the way shared-local
 accesses are performed at the C code level. This restructuring is motivated by
 performance concerns, but we expect that as a side-effect it will also
 workaround this gcc optimizer bug.
@@ -1534,7 +1547,7 @@ or to set GASNET_LAPI_USE_RDMA=0 in the environment to disable the RDMA support.
     implementation), Berkeley UPC users are encouraged to build 64-bit UPC
     programs on IBM SP systems, in which case these memory segment limits are
     not an issue.  Instructions on how to build a 64-bit Berkeley UPC compiler
-    on the IBM SP are available in the INSTALL document that comes with the
+    on the IBM SP are available in the INSTALL.TXT document that comes with the
     distribution.  To see if the copy of upcc you're running is 32/64 bit, check
     the 'Binary interface' field in the output of '<tt>upcc -version</tt>'.
 

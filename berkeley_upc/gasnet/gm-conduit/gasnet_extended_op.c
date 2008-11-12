@@ -1,6 +1,6 @@
-/* $Source$
- * $Date$
- * $Revision$
+/* $Source: /var/local/cvs/gasnet/gm-conduit/gasnet_extended_op.c,v $
+ * $Date: 2006/04/05 23:13:25 $
+ * $Revision: 1.17 $
  * Description: GASNet Extended API OPs interface
  * Copyright 2002, Christian Bell <csbell@cs.berkeley.edu>
  * Copyright 2002, Dan Bonachea <bonachea@cs.berkeley.edu>

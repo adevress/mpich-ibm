@@ -21,6 +21,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 #include <upc_strict.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 
 #define DIM1 1024
@@ -28,12 +29,12 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 shared int array[DIM1][THREADS];
 
 void
-test02()
+test02 ()
 {
   int i, j;
   for (i = 0; i < DIM1; ++i)
     {
-      array[i][MYTHREAD] = (i+1)*(MYTHREAD + 1);
+      array[i][MYTHREAD] = (i + 1) * (MYTHREAD + 1);
     }
   upc_barrier;
   if (MYTHREAD == 0)
@@ -42,18 +43,14 @@ test02()
 	{
 	  for (j = 0; j < THREADS; ++j)
 	    {
-	      
 	      int got = array[i][j];
 	      int expected = (i + 1) * (j + 1);
 	      if (got != expected)
 		{
-		 
-		  fprintf(stderr,
-		    "test02: error at element [%d,%d]. Expected %d, got %d\n",
-		    i, j, expected, got);
-		  upc_global_exit(1);
+		  fprintf (stderr, "test02: Error at element [%d,%d]. Expected %d, got %d\n",
+			   i, j, expected, got);
+		  abort ();
 		}
-	     
 	    }
 	}
       printf ("test02: simple 2-dimensional array test - passed.\n");
@@ -61,7 +58,7 @@ test02()
 }
 
 int
-main()
+main ()
 {
   test02 ();
   return 0;

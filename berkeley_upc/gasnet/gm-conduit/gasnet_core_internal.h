@@ -1,6 +1,6 @@
-/* $Source$
- * $Date$
- * $Revision$
+/* $Source: /var/local/cvs/gasnet/gm-conduit/gasnet_core_internal.h,v $
+ * $Date: 2007/12/19 22:33:09 $
+ * $Revision: 1.76 $
  * Description: GASNet gm conduit header for internal definitions in Core API
  * Copyright 2002, Christian Bell <csbell@cs.berkeley.edu>
  * Copyright 2002, Dan Bonachea <bonachea@cs.berkeley.edu>

@@ -1,3 +1,4 @@
+#include <ctype.h>
 #include <symtab.h>
 #include <symtab_utils.h>
 #include <upc_symtab_utils.h>
@@ -19,7 +20,7 @@ char *hsync_mem_name;
 
 int run_pre_add = 1;
 int run_split_phase = 1;
-int run_forall_opt = 1;
+int run_forall_opt = 0;
 int run_msg_vect = 0;  
 int trace_msg_vect = 0;
 int run_ptr_coalescing = 1;

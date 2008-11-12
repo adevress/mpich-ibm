@@ -9,7 +9,12 @@
 #include <omp.h>
 #endif /* _OPENMP */
 
+#if defined(__CYGWIN__) && defined(__RPCNDR_H__)
+/* bug 2419 : workaround a typedef of bool in the cygwin headers */
+#define boolean int
+#else
 typedef int boolean;
+#endif
 typedef struct { double real; double imag; } dcomplex;
 
 #ifndef TRUE

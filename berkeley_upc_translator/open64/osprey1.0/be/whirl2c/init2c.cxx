@@ -37,9 +37,9 @@
  * ====================================================================
  *
  * Module: init2c.c
- * $Revision: 1.5 $
- * $Date: 2005/12/13 09:43:17 $
- * $Author: wychen $
+ * $Revision: 1.6 $
+ * $Date: 2008/10/15 02:08:38 $
+ * $Author: ciancu $
  * $Source: /var/local/cvs/compilers/open64/osprey1.0/be/whirl2c/init2c.cxx,v $
  *
  * Revision history:
@@ -56,7 +56,7 @@
  * ====================================================================
  */
 #ifdef _KEEP_RCS_ID
-static char *rcs_id = "$Source: /var/local/cvs/compilers/open64/osprey1.0/be/whirl2c/init2c.cxx,v $ $Revision: 1.5 $";
+static char *rcs_id = "$Source: /var/local/cvs/compilers/open64/osprey1.0/be/whirl2c/init2c.cxx,v $ $Revision: 1.6 $";
 #endif /* _KEEP_RCS_ID */
 
 #include "whirl2c_common.h"
@@ -542,6 +542,8 @@ INITV2C_block_struct(TOKEN_BUFFER tokens,
    /* Walk through the list of (comma separated) initializers 
     * for the aggregate initializer, ignoring padding.
     */
+
+	
    Append_Token_Special(tokens, '{');
    if (first_inv != 0 && 
        INITV_kind(Initv_Table[first_inv]) == INITVKIND_PAD &&

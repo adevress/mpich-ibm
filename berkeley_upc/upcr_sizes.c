@@ -276,3 +276,14 @@ UPCRI_IDENT_CHAR_ARRAY(upcri_IdentString_alignof_upcr_pshared_ptr_t_innerstruct)
 	  'p','s','p','t','r','_','i','n','n','e','r','s','t','r','u','c','t','=',
 	  UPCRI_ALIGNOF_INNERSTRUCT(upcr_pshared_ptr_t) + UPCRI_IDENT_MAGIC_OFFSET, ' ','$','\0' };
 
+/* bug1452: Even MORE Power oddities: an exception to the previous rule may exist for
+ * nested structs in which we use the strictest alignment of any type involved.
+ */
+struct _upcri_structpromote {
+  char   __f1;
+  struct _upcri_typechar_int64_t __f2;
+};
+UPCRI_IDENT_CHAR_ARRAY(upcri_IdentString_sizeof_structpromote) = 
+	{ UPCRI_IDENT_START_CHARS, 
+          's','t','r','u','c','t','_','p','r','o','m','o','t','e','=',
+	  sizeof(struct _upcri_structpromote) + UPCRI_IDENT_MAGIC_OFFSET, ' ','$','\0' };

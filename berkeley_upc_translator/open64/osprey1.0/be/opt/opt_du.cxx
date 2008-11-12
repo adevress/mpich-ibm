@@ -3,9 +3,9 @@
 // ====================================================================
 //
 // Module: opt_du.cxx
-// $Revision: 1.4 $
-// $Date: 2006/03/16 07:05:44 $
-// $Author: wychen $
+// $Revision: 1.5 $
+// $Date: 2008/10/14 22:56:10 $
+// $Author: ciancu $
 // $Source: /var/local/cvs/compilers/open64/osprey1.0/be/opt/opt_du.cxx,v $
 //
 // Revision history:
@@ -59,7 +59,7 @@
 
 #ifdef _KEEP_RCS_ID
 #define opt_du_CXX	"opt_du.cxx"
-static char *rcs_id = 	opt_du_CXX"$Revision: 1.4 $";
+static char *rcs_id = 	opt_du_CXX"$Revision: 1.5 $";
 #endif /* _KEEP_RCS_ID */
 
 #include "defs.h"
@@ -817,9 +817,14 @@ void
 EMITTER::Compute_use_def_var( DU_MANAGER *du_mgr, CODEREP *cr, WN *wn,
                               BB_NODE *wn_bb)
 {
-  if (cr->Kind() != CK_VAR) 
+  if (cr->Kind() != CK_VAR) {
+    if(WN_operator(wn) == OPR_LDID) {
+      //bug 1937
+      fprintf(stderr, "WARNING: suspicious association LDID to !CK_VAR");
+      fdump_tree(stderr, wn);
+    }
     return;
-
+  }
   // We don't need special handling here for dedicated PREGs because
   // alias analysis maintains the invariant that they are in the Chi
   // list of every call that may affect them.
@@ -1217,9 +1222,10 @@ EMITTER::Compute_use_def(DU_MANAGER *du_mgr)
 #ifdef Is_True_On
   if ( du_mgr->Du_built() && !du_mgr->Verify() ) {
     DevWarn( "DU_MANAGER::Verify() returned FALSE" );
+    du_mgr->Print_Du_Info(stderr);
   }
 #endif // is_true_on
-
+  
 }
 
 // ====================================================================

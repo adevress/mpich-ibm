@@ -37,8 +37,25 @@
 #ifndef SGI_misc_extension_h_INCLUDED
 #define SGI_misc_extension_h_INCLUDED
 
-#include <iterator.h>
+#if(__GNUC__ == 4 && __GNUC_MINOR__ == 2)
+#include <backward/iterator.h>
+#else
+#if(__GNUC__ == 4 && __GNUC_MINOR__ == 3)
+#include <iterator>
 
+struct output_iterator {
+  typedef output_iterator_tag iterator_category;
+  typedef void                value_type;
+  typedef void                difference_type;
+  typedef void                pointer;
+  typedef void                reference;
+}
+  ;
+
+#else
+#include <iterator.h>
+#endif
+#endif
 namespace SGI {
 
 template <class T1, class T2, class T3>
@@ -186,7 +203,8 @@ operator>=(const int_iterator<Integer>& x, const int_iterator<Integer>& y) {
 #endif /* __STL_FUNCTION_TMPL_PARTIAL_ORDER */
 
 template <class Container>
-class push_iterator : public output_iterator {
+class push_iterator : public  output_iterator
+ {
 protected:
   Container& container;
 public:
@@ -203,7 +221,7 @@ public:
 
 
 template <class Indexable, class IndexFunction>
-class index_iterator : public output_iterator {
+class index_iterator : public  output_iterator {
 protected:
   typedef index_iterator<Indexable, IndexFunction> self;
   Indexable& p;

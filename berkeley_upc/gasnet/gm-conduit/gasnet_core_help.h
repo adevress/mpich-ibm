@@ -1,6 +1,6 @@
-/* $Source$
- * $Date$
- * $Revision$
+/* $Source: /var/local/cvs/gasnet/gm-conduit/gasnet_core_help.h,v $
+ * $Date: 2006/05/23 12:42:21 $
+ * $Revision: 1.44 $
  * Description: GASNet gm conduit core Header Helpers (Internal code, not for client use)
  * Copyright 2002, Christian Bell <csbell@cs.berkeley.edu>
  * Copyright 2002, Dan Bonachea <bonachea@cs.berkeley.edu>

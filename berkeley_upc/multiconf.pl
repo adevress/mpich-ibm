@@ -31,8 +31,10 @@ close CONFWARN;
 $ENV{'GASNET_SUPPRESS_DEBUG_WARNING'} = 1;
 
 # shared functions
-use vars qw($debug $disable_upcc);
+use vars qw($debug $disable_upcc $debuglog);
 $disable_upcc = 1;
+my $debuglog_file = "$top_builddir/config.log";
+open $debuglog,">$debuglog_file" or die "failed to create $debuglog_file: $!";
 require "upcc_multi.pl";
 
 my %opt;
@@ -101,6 +103,10 @@ multiconf options:
   [args]                Any other args are passed through to configure
 
 EOF
+  # dont leave junk laying around for a --help invocation
+  close $debuglog;
+  unlink $debuglog_file;
+  unlink $configure_warn_file;
   exit 1;
 }
 
@@ -110,6 +116,10 @@ if ($opt{reboot}) {
 
 if ($opt{'without-multiconf'}) { # used for non-multiconf reboot
   my @args = grep !/^-?-reboot/, @ARGV;
+  close $debuglog;
+  unlink $debuglog_file;
+  unlink $configure_warn_file;
+  undef $ENV{'GASNET_CONFIGURE_WARNING_GLOBAL'};
   run_command("$top_srcdir/configure ".join(' ',@args),"configure");
   exit 0;
 }
@@ -129,6 +139,22 @@ debugmsg("Enabled confs ($numconfs): $conf_names\nDefault conf: $default_conf_na
 
 # copy conffile to builddir
 copy_file($multiconf_spec, "$top_builddir/multiconf.conf", sub { s/^\s*ENABLED_CONFS=.*$/ENABLED_CONFS=$conf_names/; });
+
+my @badopts;
+foreach my $badopt ( ( map { ("enable-$_","disable-$_") } split(/,/,$ENV{BLACKLISTED_ENABLE_OPTIONS}) ),
+                     ( map { ("with-$_","without-$_") }   split(/,/,$ENV{BLACKLISTED_WITH_OPTIONS}  ) ) ) {
+  push(@badopts, "--$badopt") if ($opt{$badopt});
+}
+if (@badopts && !$opt{"enable-blacklisted-options"}) {
+  die "multiconf error: You passed the following configure options which are " .
+      "blacklisted by the current multiconf configuration script:\n" . 
+      "  " . join(" ",@badopts) . "\n" .
+      "These options are incorporated by the multiplexing nature of the config script " .
+      "and should be handled using --with-multiconf= options appropriate to the script. " .
+      "See the section 'BLACKLISTED TOP-LEVEL CONFIGURE OPTIONS' in $multiconf_spec for " .
+      "more detailed usage information to solve this problem.\n";
+}
+
 
 # create top-level Makefile in builddir
 my $makefile = "Makefile";
@@ -188,7 +214,7 @@ EOF
   # run configure for this conf
   my $cmd = "cd $conf_name && $top_srcdir/configure $conf_options --prefix='$top_prefix/$conf_name' --with-multiconf-magic=$conf_name";
   if ($opt{'dry-run'}) { 
-    debugmsg("Skipping: $cmd");
+    debugmsg("Skipping $conf_name configure:\n$cmd");
     system("cd $conf_name && touch config.status && mkdir -p gasnet/other");
     copy_file("$top_srcdir/gasnet/other/perlstart.in", "$conf_name/gasnet/other/perlstart");
     open MAKEFILE,">$conf_name/Makefile";
@@ -203,19 +229,22 @@ EOF
 }
 
 if (-s $configure_warn_file) { # non-empty warning file
-  print <<EOF;
+  for my $FH ($debuglog, *STDOUT) {
+    print $FH <<EOF;
 --------------------------------------------------------------------
            === Multiconf configure warning summary ===
 --------------------------------------------------------------------
 EOF
-  open CONFWARN,"$configure_warn_file";
-  while (<CONFWARN>) { print; }
-  close CONFWARN;
-  print <<EOF;
+    open CONFWARN,"$configure_warn_file";
+    while (<CONFWARN>) { print $FH $_; }
+    close CONFWARN;
+    print $FH <<EOF;
 --------------------------------------------------------------------
 EOF
+  }
 }
 unlink $configure_warn_file;
+close $debuglog;
 
 print "\n\nSUCCESS! The configure step is now complete. You should now proceed with:\n make ; make install\n";
 exit 0;

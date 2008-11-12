@@ -57,8 +57,7 @@ test10()
 	      int expected = (i + 1) * (j + 1);
 	      if (got != expected)
 		{
-		  fprintf(stderr,
-		  "test10: error at element [%d,%d]. Expected %d, got %d\n",
+		  fprintf(stderr, "test10: error at element [%d,%d]. Expected %d, got %d\n",
 		    i, j, expected, got);
 		  abort ();
 		}

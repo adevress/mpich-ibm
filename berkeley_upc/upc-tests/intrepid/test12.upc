@@ -51,8 +51,7 @@ test12 ()
       expected = MYTHREAD;
       if (got != MYTHREAD)
 	{
-	   fprintf (stderr,
-	     "Error at element [%d,%d]."
+	   fprintf (stderr, "Error at element [%d,%d]."
 	     " Address of array element has affinity %d,"
 	     " but should have affinity to this thread (%d).\n",
 	     i, MYTHREAD, got, expected);
@@ -71,9 +70,8 @@ test12 ()
 	      got = a[i][j];
 	      if (got != expected)
 		{
-		  fprintf (stderr,
-		    "Error at element [%d,%d]."
-		    " Expected `%d', got `%d'.\n",
+		  fprintf (stderr, "Error at element [%d,%d]."
+		    " Got `%d', expected `%d'.\n",
 		    i, j, got, expected);
 		  abort ();
 		}

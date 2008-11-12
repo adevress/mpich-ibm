@@ -1,6 +1,6 @@
 /*   $Source: /var/local/cvs/upcr/upcr_locks.c,v $
- *     $Date: 2007/09/08 19:51:26 $
- * $Revision: 1.49 $
+ *     $Date: 2008/09/24 23:49:07 $
+ * $Revision: 1.53 $
  * Description: UPC lock implementation on GASNet
  * Copyright 2002, Dan Bonachea <bonachea@cs.berkeley.edu>
  */
@@ -21,15 +21,17 @@
      this is *only* safe because smp-conduit has a no-op AMPoll
    */
   #if UPCRI_SUPPORT_PTHREADS
-    #define UPCRI_MUTEX_LOCKT               pthread_mutex_t
-    #define _UPCRI_MUTEX_LOCKINIT(pmutex)    (memset(pmutex,0,sizeof(*(pmutex))), \
-                                              pthread_mutex_init((pmutex),NULL))
+    #define UPCRI_MUTEX_LOCKT               gasnett_mutex_t
+    #define _UPCRI_MUTEX_LOCKINIT(pmutex)   do {  \
+            memset((pmutex),0,sizeof(*(pmutex))); \
+            gasnett_mutex_init(pmutex);           \
+      } while (0)
     #define _UPCRI_MUTEX_LOCK(pmutex) do {                                \
-      if_pf (upcri_polite_wait) pthread_mutex_lock(pmutex);               \
-      else while (pthread_mutex_trylock(pmutex)) gasnett_spinloop_hint(); \
+      if_pf (upcri_polite_wait) gasnett_mutex_lock(pmutex);               \
+      else while (gasnett_mutex_trylock(pmutex)) gasnett_spinloop_hint(); \
     } while (0)
-    #define _UPCRI_MUTEX_TRYLOCK(pmutex)     (!pthread_mutex_trylock(pmutex))
-    #define _UPCRI_MUTEX_UNLOCK(pmutex)      pthread_mutex_unlock(pmutex)
+    #define _UPCRI_MUTEX_TRYLOCK(pmutex)     (!gasnett_mutex_trylock(pmutex))
+    #define _UPCRI_MUTEX_UNLOCK(pmutex)      gasnett_mutex_unlock(pmutex)
     #if PLATFORM_OS_NETBSD
       /* bug 1476: destroying a locked mutex has undefined effects by POSIX, and some
        * systems whine about it. So instead use the following sequence which
@@ -37,16 +39,16 @@
        * thread (unlocking another thread's held lock also has undefined effects). 
        */
       #define _UPCRI_MUTEX_DESTROY(pmutex)     do {       \
-          pthread_mutex_t *_pm = (pmutex);                \
-          if (!pthread_mutex_trylock(_pm)) { /* got it */ \
-            pthread_mutex_unlock(_pm);                    \
-            pthread_mutex_destroy(_pm);                   \
+          gasnett_mutex_t *_pm = (pmutex);                \
+          if (!gasnett_mutex_trylock(_pm)) { /* got it */ \
+            gasnett_mutex_unlock(_pm);                    \
+            gasnett_mutex_destroy_ignoreerr(_pm);         \
           } else { /* already held by someone */          \
            memset(_pm,0,sizeof(*_pm)); /* clobber */      \
           }                                               \
         } while (0)
     #else
-      #define _UPCRI_MUTEX_DESTROY(pmutex)     pthread_mutex_destroy(pmutex)
+      #define _UPCRI_MUTEX_DESTROY(pmutex)     gasnett_mutex_destroy_ignoreerr(pmutex)
     #endif
   #else
     #undef UPCRI_CACHEPAD_SMPLOCKS
@@ -100,7 +102,8 @@
       } while (0)
     #define UPCRI_MUTEX_DESTROY(lockptr, lockaddr) do {                  \
         upcr_thread_t _tmp;                                              \
-        _UPCRI_MUTEX_TRYLOCK(&((lockaddr)->mutex)); /* reduce races */   \
+        if ((lockaddr)->owner_thread_id != upcr_mythread())              \
+          _UPCRI_MUTEX_TRYLOCK(&((lockaddr)->mutex)); /* reduce races */ \
         _tmp = (lockaddr)->owner_thread_id;                              \
         if (_tmp != (upcr_thread_t)-1)                                   \
           upcri_lock_unlink(upcri_getlockinfo(_tmp), lockptr, 1);        \
@@ -109,6 +112,7 @@
                     " while one or more threads were blocked trying to " \
                     "acquire it in upc_lock()");                         \
         _UPCRI_MUTEX_DESTROY(&((lockaddr)->mutex));                      \
+        memset((void*)&((lockaddr)->num_waiters),0,sizeof(gasnett_atomic_t));\
       } while (0)
   #else
     #if UPCRI_CACHEPAD_SMPLOCKS

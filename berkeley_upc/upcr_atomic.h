@@ -1,6 +1,6 @@
 /*   $Source: /var/local/cvs/upcr/upcr_atomic.h,v $
- *     $Date: 2006/12/20 18:46:06 $
- * $Revision: 1.15 $
+ *     $Date: 2008/10/27 20:06:53 $
+ * $Revision: 1.16 $
  * Description:
  *  Berkeley UPC atomic extensions - types and prototypes 
  *
@@ -32,7 +32,7 @@ struct upcri_atomic_result {
 };
 
 /*---------------------------------------------------------------------------------*/
-/* Convenience macros */
+/* Atomic ops */
 
 /* Flags to apply to local atomics based on strictness */
 #define _bupc_atomic_read_flags(isstrict) \
@@ -41,6 +41,27 @@ struct upcri_atomic_result {
   (isstrict ? (GASNETT_ATOMIC_WMB_PRE|GASNETT_ATOMIC_MB_POST) : 0)
 #define _bupc_atomic_cas_flags(isstrict) \
   (isstrict ? (GASNETT_ATOMIC_MB_PRE|GASNETT_ATOMIC_MB_POST) : 0)
+
+#if (GASNET_CONDUIT_SHMEM && (PLATFORM_ARCH_CRAYX1 || GASNETI_ARCH_ALTIX))
+  /* Bug 2391 - Need strong atomics w/ SHMEM */
+  #define upcri_atomic32_t      gasnett_strongatomic32_t
+  #define upcri_atomic32_read   gasnett_strongatomic32_read
+  #define upcri_atomic32_set    gasnett_strongatomic32_set
+  #define upcri_atomic32_cas    gasnett_strongatomic32_compare_and_swap
+  #define upcri_atomic64_t      gasnett_strongatomic64_t
+  #define upcri_atomic64_read   gasnett_strongatomic64_read
+  #define upcri_atomic64_set    gasnett_strongatomic64_set
+  #define upcri_atomic64_cas    gasnett_strongatomic64_compare_and_swap
+#else
+  #define upcri_atomic32_t      gasnett_atomic32_t
+  #define upcri_atomic32_read   gasnett_atomic32_read
+  #define upcri_atomic32_set    gasnett_atomic32_set
+  #define upcri_atomic32_cas    gasnett_atomic32_compare_and_swap
+  #define upcri_atomic64_t      gasnett_atomic64_t
+  #define upcri_atomic64_read   gasnett_atomic64_read
+  #define upcri_atomic64_set    gasnett_atomic64_set
+  #define upcri_atomic64_cas    gasnett_atomic64_compare_and_swap
+#endif
 
 /*---------------------------------------------------------------------------------*/
 /* Enum for naming types (not all implemented yet) */
@@ -142,8 +163,8 @@ enum {
   
     /* See comments in upcr_shaccess.h for description of fencing a "strict_GET()" */
     if_pt (local) {
-      gasnett_atomic32_t * const p = (gasnett_atomic32_t *)upcri_s2local(local,src);
-      retval = gasnett_atomic32_read(p, _bupc_atomic_read_flags(isstrict));
+      upcri_atomic32_t * const p = (upcri_atomic32_t *)upcri_s2local(local,src);
+      retval = upcri_atomic32_read(p, _bupc_atomic_read_flags(isstrict));
     } else {
       struct upcri_atomic_result result;
       void* srcaddr = upcri_shared_to_remote(src);
@@ -170,8 +191,8 @@ enum {
   
     /* See comments in upcr_shaccess.h for description of fencing a "strict_PUT()" */
     if_pt (local) {
-      gasnett_atomic32_t * const p = (gasnett_atomic32_t *)upcri_s2local(local,dest);
-      gasnett_atomic32_set(p, val, _bupc_atomic_set_flags(isstrict));
+      upcri_atomic32_t * const p = (upcri_atomic32_t *)upcri_s2local(local,dest);
+      upcri_atomic32_set(p, val, _bupc_atomic_set_flags(isstrict));
     } else {
       struct upcri_atomic_result result;
       void* destaddr = upcri_shared_to_remote(dest);
@@ -197,8 +218,8 @@ enum {
   
     /* See comments in upcr_shaccess.h for description of fencing a "strict_GET()" */
     if_pt (local) {
-      gasnett_atomic64_t * const p = (gasnett_atomic64_t *)upcri_s2local(local,src);
-      retval = gasnett_atomic64_read(p, _bupc_atomic_read_flags(isstrict));
+      upcri_atomic64_t * const p = (upcri_atomic64_t *)upcri_s2local(local,src);
+      retval = upcri_atomic64_read(p, _bupc_atomic_read_flags(isstrict));
     } else {
       struct upcri_atomic_result result;
       void* srcaddr = upcri_shared_to_remote(src);
@@ -225,8 +246,8 @@ enum {
   
     /* See comments in upcr_shaccess.h for description of fencing a "strict_PUT()" */
     if_pt (local) {
-      gasnett_atomic64_t * const p = (gasnett_atomic64_t *)upcri_s2local(local,dest);
-      gasnett_atomic64_set(p, val, _bupc_atomic_set_flags(isstrict));
+      upcri_atomic64_t * const p = (upcri_atomic64_t *)upcri_s2local(local,dest);
+      upcri_atomic64_set(p, val, _bupc_atomic_set_flags(isstrict));
     } else {
       struct upcri_atomic_result result;
       void* destaddr = upcri_shared_to_remote(dest);
@@ -286,11 +307,11 @@ enum {
 GASNETT_INLINE(_bupc_atomicU64_fetchadd_local)
 uint64_t
 _bupc_atomicU64_fetchadd_local(void *addr, uint64_t op, int flags) {
-  gasnett_atomic64_t * const p = (gasnett_atomic64_t *)addr;
+  upcri_atomic64_t * const p = (upcri_atomic64_t *)addr;
   uint64_t oldval, newval;
   do {
-    newval = (oldval = gasnett_atomic64_read(p, 0)) + op;
-  } while(!gasnett_atomic64_compare_and_swap(p, oldval, newval, flags));
+    newval = (oldval = upcri_atomic64_read(p, 0)) + op;
+  } while(!upcri_atomic64_cas(p, oldval, newval, flags));
   return oldval;
 }
 

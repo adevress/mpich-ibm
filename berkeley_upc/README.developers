@@ -12,7 +12,7 @@ To build from CVS source:
         
    (runs autoconf/automake/etc).
 
-3) Follow the instructions in INSTALL to complete building the system.
+3) Follow the instructions in INSTALL.TXT to complete building the system.
 
 
 To clean up the temp files that autoconf and make generate:
@@ -102,6 +102,11 @@ compelling reason.
   provided by gasnet/other/portable_inttypes.h should always be used (eg
   "uint64_t" = unsigned 64-bit int).
 
+* Do NOT use tab characters in UPCR code files. Use spaces to ensure correct 
+  formatting in any editor.
+    Emacs users should: (setq-default indent-tabs-mode nil)
+    Vim users should: :set expandtab
+
 * UPCR provides separate client/server operation between the runtime client and
   a remote translation service. Therefore, any changes which impact the
   documented UPCR interface must be made in conjunction with a runtime-spec
@@ -173,7 +178,7 @@ Official Release Procedure
     3) Language spec version: UPC_SPEC
         - I.e., version number of latest official UPC spec we support.
     4) default_translator: if a new translator is being released, change to 
-       "http://upc-translator.lbl.gov/upcc-MAJOR-MINOR-PATCH.cgi" 
+       "http://upc-translator.lbl.gov/upcc-MAJOR.MINOR.PATCH.cgi" 
         - we create the cgi script later in this list of steps.
     5) go into multiconf.conf.in and change BUPC_TRANS to point to the same
        translator URL as for step 4.
@@ -181,14 +186,17 @@ Official Release Procedure
 - Review and document the changes since the last release:
   - review all the checkin messages since the last release and
     write a ChangeLog entry documenting user-visible changes and major bug fixes
-  - update the online documentation - man pages, user guide, INSTALL, system
+  - update the online documentation - man pages, user guide, INSTALL.TXT, system
     documentation
     - go into 'BLD/man' subdirectory, do 'make html', and 
       'cp *.html SRCDIR/docs/html-src/user'.  Check them into CVS. 
         - This must be done after the release version number has been finalized,
           because it embeds the distribution version in the documentation.
         - TODO: automate?
-  - update the list of supported platforms
+  - update the tables of supported platforms in:
+      1) SRCDIR/docs/html-src/user/index.html
+      2) SRCDIR/INSTALL.TXT
+      3) index.shtml in the upc-webpage CVS module
   - add documentation regarding any major/critical known bugs
   - write the public release announcement summarizing high-level changes
 
@@ -233,26 +241,19 @@ Official Release Procedure
 
 - Checkout a fresh copy of translator (using the release branch tag) and run
   "gmake update-nodist-list" on n2001 to update the list of non-distributed files.
+  Diff the generated nodist-list against the version in cvs and sanity check that
+  no important files (especially recently created ones) have been omitted -- 
+  update EXTRA_DIST in the top-level Makefile if necessary.
   Commit updated nodist-list file if it has changed.
 
 - Checkout another fresh copy of the translator release branch (with the updated
-  nodist-list from the previous step) and run "gmake dist" to build a pruned
-  tarball distribution for the translator.
-    - untar the tarball, move "compilers" to "berkeley_upc_translator-2.2.0",
-      and make a tarball with the version number in it:
-        
-            VERSION=2.2.0
-            tar zxvf berkeley_upc_translator.tar.gz
-            mv compilers berkeley_upc_translator-$VERSION
-            tar cvf berkeley_upc_translator-$VERSION.tar \  
-                    berkeley_upc_translator-$VERSION
-            gzip -9 berkeley_upc_translator-$VERSION.tar
-
-    - TODO: fix "make dist" to do this.
+  nodist-list from the previous step) and run
+    gmake dist TRANS_VERSION=2.2.2
+  to create a tarball distribution for the translator.
 
 - create a CVS tag for the release, and tag the runtime and the translator.
 
-- Create CGI script for "http://aphid.lbl.gov/upcc-MAJOR-MINOR.cgi", and build
+- Create CGI script for "http://aphid.lbl.gov/upcc-MAJOR.MINOR.PATCH.cgi", and build
   runtime/translator to go along with it.  Test it from a runtime built from the
   tarball.
 
@@ -300,10 +301,18 @@ Official Release Procedure
 - unzip top-level directory of berkeley_upc_translator-A.B.C.tar.gz 
   into berkeley_upc_translator-A.B.C
 
-- update 'dist', 'dist-trans' and 'docs' symlinks to point into new release directory.
+- update 'dist' and 'dist-trans' symlinks to point into new release directory.
 
 - If this is a minor version release or more (i.e., 2.4.0 vs. 2.2.x), edit the
   doc-versions.shtml file, and add a link to the new version.
+
+- Update binaries.shtml with new version information
+    - Place new CD ISO in download/berkeley_upc-A.B.C-bin.iso
+    - Place new Cygwin tarball in download/berkeley_upc-A.B.C-bin.tar.gz
+    - Update MD5 for both downloads
+    - Extract the mac_osx directory from berkeley_upc-A.B.C-bin.tar.gz and 
+      place it in download/berkeley_upc-A.B.C-bin_osx 
+    - Update the mac_osx symlink to point at berkeley_upc-A.B.C-bin_osx 
 
 - Run link valet to verify all the webpage links and software download links are
   operational (http://www.htmlhelp.com/tools/valet/).
@@ -469,6 +478,15 @@ UPCR 		2.5.10      3.9
 
 UPCR 		2.6.0       3.9
 
+translator      2.8.0                     3.6 (*)
+
+UPCR            2.8.0       3.10
+
+(*) = translator 2.8.0 introduced optimizations (msg-vect) that require
+trans_extra support added in 3.10, but that dependency is not yet enforced
+because earlier versions of UPCR lack the upcc-side options to enable those
+optimizations. 
+
 Binary installer release procedure
 ----------------------------------
 
@@ -476,16 +494,16 @@ Binary installer release procedure
 - If updating cygwin version, download a complete snapshot of the cygwin distribution to local directory
 - Add previous berkeley_upc and berkeley_upc_recommended packages to package directory and setup.ini 
 - Perform a clean cygwin install of berkeley_upc and the minimal berkeley_upc_recommended packages
-- Build the source release candidate in debug and ndebug mode
+- Build the source release candidate (with multiconf, to get both debug and ndebug)
+  configure --enable-pthreads --enable-smp --enable-udp --disable-mpi --prefix=/usr/local/upc
 - Edit upcc.conf and remove full paths from any binaries in $SYSTEMROOT (nslookup)
 - Run a recursive grep to look for any remaining instances of $HOME or $SYSTEMROOT
 - Run full test harnesses
-- Install to /usr/local/upc/dist-{opt,debug}
+- Install to /usr/local/upc/
 - Copy in upc-examples
 - remove extraneous files from upc-examples:  
     rm -f `find upc-examples -name harness.conf`
     rm -Rf `find upc-examples -name CVS` 
-- Copy in previous /usr/local/upc/dist
 - Edit etc\postinstall\berkeley_upc.sh as necessary
 - Create the package:
  tar cvf berkeley_upc-2.2.2-1.tar etc/postinstall/berkeley_upc.sh usr/local/upc
@@ -503,22 +521,21 @@ target machine:
  - configure & build OSX runtime binaries, use CC="gcc -arch ppc" and CXX="g++ -arch ppc" to ensure app code built on Intel Macs gets correct ABI to link against binary libs
  - Run a recursive grep to look for any instances of $HOME, or other system-specific paths
  - run full test harness on the runtime builds
- - Install debug runtime: gmake install prefix=/tmp/###BININSTALL_PREFIX###/dist-debug
- - Install opt runtime:   gmake install prefix=/tmp/###BININSTALL_PREFIX###/dist-opt
+ - Install runtime: gmake install prefix=/tmp/###BININSTALL_PREFIX###
  - Copy upc-examples directory into /tmp/###BININSTALL_PREFIX### 
  - remove extraneous files from upc-examples:  
     rm -f `find upc-examples -name harness.conf`
     rm -Rf `find upc-examples -name CVS`
- - Copy dist directory from previous release into /tmp/###BININSTALL_PREFIX###/dist
  - Ensure appropriate permissions: chmod -R a+rX,og-w /tmp/###BININSTALL_PREFIX###
  - Create runtime tarball:
    cd /tmp/###BININSTALL_PREFIX###
-   tar -cvf bupc_runtime.tar dist dist-debug dist-opt upc-examples ; gzip -9 bupc_runtime.tar
+   tar -cvf bupc_runtime.tar * ; gzip -9 bupc_runtime.tar
    mv bupc_runtime.tar.gz bupc_runtime-archive
  - build & install translator anywhere, then tar-gz the installed translator with dirname "trans" 
     and name it bupc_translator-archive (note, we don't use .tar.gz to prevent bug1517)
  - create full and lite installer tarballs -
-    Copy the install scripts from upcr/contrib/mac-installer and update embedded packageversion and expect_version
+    Copy the install scripts from upcr/contrib/mac-installer 
+    Update embedded version information in install.command appropriately for each installer
     full installers contain install scripts, runtime archive and translator archive
     lite installers are the same just without the translator archive
  - test the installer binaries, with default and non-default paths: 
@@ -532,9 +549,35 @@ target machine:
  - place final release tarballs in unix dir, untar runtime release into dist directory
  - run link valet on the web pages
  - Create a download tarball 
- - Create an ISO image, removing packages from cygwin/release as necessary to fit CD-R:
+ - Create and burn a CD, removing packages from cygwin/release as necessary to fit CD-R:
     X11, xemacs, GNOME, gtk2-x11, lilypond, tetex/tetex-doc
- - Burn the ISO to a CD and test it
+ - Test the CD - check autoplay and install with defaults on a windows machine
+ - Rip an ISO image of the CD, burn it to a second CD, and run a file compare on the CDs
  - upload ISO and tarball to website and post with MD5's
  - update binary download instructions on website
+
+* Apple Xcode version table:
+  The xcode version can be uniquely identified by the full version number of /usr/bin/gcc.
+  The table below shows the correspondence for all known releases and the release dates:
+
+xcode tools 3.0+ requires Mac OSX 10.5.x (Leopard) Darwin Kernel Version 9.0.0
+  3.1.1 gcc 4.0.1b5488		12 Sep 2008
+  3.0   gcc 4.0.1b5465		Sep 23 2007
+xcode tools 2.0+ require Mac OSX 10.4.x (Tiger), provide gcc3.3 and gcc4.0, Darwin Kernel Version 8.10.3
+  2.5   gcc 4.0.1b5370          Apr 20 2007 - can be installed on Leopard, but only codegens for Tiger
+  2.4.1 gcc 4.0.1b5367          31 Oct 2006
+  2.4   gcc 4.0.1b5363		07 Aug 2006
+  2.3   gcc 4.0.1b5341		23 May 2006
+  2.2.1 gcc 4.0.1b5250		12 Jan 2006
+  2.2   gcc 4.0.1b5247		10 Nov 2005
+  2.1   gcc 4.0.0b5026		06 Jun 2005
+  2.0   gcc 4.0.0b4061          20 Mar 2005
+xcode 1.0...1.2 requires 10.3.x (Panther), is gcc 3.3 codegens for 10.2+
+  1.5   gcc 3.3 build 1666, gdb 330	06 Aug 2004
+  1.2   gcc 3.3 build 1640, gdb 309	22 Apr 2004
+  rumored 1.1.1 build 1636
+  1.1   gcc 3.3 build 			19 Dec 2003
+  1.0   gcc 3.3 build 			11 Dec 2002 >= ? >= 19 Dec 2003
+Dec02 Dev tools, 10.2 (Jaguar)		11 Dec 2002
+
 

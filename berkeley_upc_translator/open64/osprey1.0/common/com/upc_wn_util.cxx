@@ -404,16 +404,22 @@ WN_Type_To_Intrinsic(OPERATOR opr, int mtype, int strict, BOOL phaseless, BOOL i
 
 // For opr == OPR_EQ, bsize and idx1 are either shared_ptr_idx or pshared 
 INTRINSIC
-WN_Operator_To_Intrinsic (OPERATOR opr, INT bsize  = 0, INT idx1 = 0)
+WN_Operator_To_Intrinsic (OPERATOR opr, INT bsize  = 0, INT idx1 = 0, INT esize = -1)
 {  
   switch (opr) {
   case OPR_ADD:
   case OPR_SUB:
     switch(bsize) {
     case 0:
-      return INTRN_ADD_PI;
+      if(esize == 0)
+	 return INTRN_SPTRADD;
+      else 
+	return INTRN_ADD_PI;
     case 1:
-      return INTRN_ADD_P1;
+      if(esize == 0)
+	 return INTRN_SPTRADD;
+      else
+	return INTRN_ADD_P1;
     default:
       return INTRN_SPTRADD;
     }
@@ -783,27 +789,47 @@ WN_Create_Shared_Store (WN *st, BOOL src_is_shared, WN_OFFSET xtra_offst,
   } else {
     WN *value = WN_kid0(st);
     TY_IDX parm_ty_idx;
+   
+
+    if (WN_operator(value) == OPR_TAS &&
+	(WN_operator(WN_kid0(value)) == OPR_INTCONST || 
+	 WN_operator(WN_kid0(value)) == OPR_CONST)) {
+      //this is probably not needed anymore, but leave here to avoid regressions
+      parm_ty_idx =  MTYPE_To_TY(WN_rtype(WN_kid0(value)));
+    } else {
+      parm_ty_idx = WN_Get_Ref_TY(value);
+    }
     
+    if (parm_ty_idx == 0)
+      parm_ty_idx =  MTYPE_To_TY(WN_rtype(value));
+
+    /*
     if(OPERATOR_is_load(WN_operator(value)) || WN_operator(value) == OPR_TAS) {
       if(WN_operator(value) == OPR_TAS && 
 	 (WN_operator(WN_kid0(value)) == OPR_INTCONST || 
 	  WN_operator(WN_kid0(value)) == OPR_CONST))
 	parm_ty_idx =  MTYPE_To_TY(WN_rtype(WN_kid0(value)));
-      else
-	parm_ty_idx = WN_ty(value);
+      else 
+	parm_ty_idx = WN_Get_Ref_TY(value);
     } else {
       parm_ty_idx = WN_Get_Ref_TY(value);
       if (parm_ty_idx == 0)
 	parm_ty_idx =  MTYPE_To_TY(WN_rtype(value));
     }
-    
+    */
+   
+    if (TY_is_shared(parm_ty_idx)) {
+      //the loaded value should have private type
+      parm_ty_idx = Shared_To_Private_Type(parm_ty_idx);
+    }
    
     if(TY_kind(parm_ty_idx) != KIND_SCALAR && Type_Is_Shared_Ptr(parm_ty_idx))
       transfer_size = TY_size(TY_To_Sptr_Idx(parm_ty_idx));
     value = Strip_TAS(value);
-    if (WN_rtype(value) != MTYPE_M && rtype != MTYPE_M)
+    if (WN_rtype(value) != MTYPE_M && rtype != MTYPE_M) {
       WN_kid2 (call_wn) = WN_CreateParm(Mtype_comparison(WN_rtype(value)), value,
 					parm_ty_idx, WN_PARM_BY_VALUE);
+    }
     else { // need to extract the address of the symbol accessed by value
       if (WN_operator(value) == OPR_LDID && WN_st_idx(value) != 0) {
 	ST *tst = 0;
@@ -1060,11 +1086,21 @@ WN_Create_Shared_Load( WN *ld,
     } else 
       asize = TY_size(TY_pointed(WN_ty(dest)));
   }
-  size = WN_CreateParm(Integer_type, (WN_operator(ld)) == OPR_MLOAD ? WN_COPY_Tree(WN_kid1(ld)) :
-		       WN_Intconst(Integer_type, 
-				   dest ? (access_ty ? TY_adjusted_size(access_ty) : asize) : 
-				   TY_size(ret_ty)),
-		       MTYPE_To_TY(Integer_type), WN_PARM_BY_VALUE);
+  //bug 1897 - For  struct A a  = *p; with p shared, the split phase optimization generates
+  //           code that is not lowered (we should figure out why). 
+  //           Meanwhile, YET another exception
+
+  if(access_ty == 0 && dest == 0 && WN_operator(ld) == OPR_ILOAD && TY_kind(ret_ty) == KIND_STRUCT)
+    size = WN_CreateParm(Integer_type, (WN_operator(ld)) == OPR_MLOAD ? WN_COPY_Tree(WN_kid1(ld)) :
+			 WN_Intconst(Integer_type, TY_adjusted_size(ret_ty)),
+			 MTYPE_To_TY(Integer_type), WN_PARM_BY_VALUE);
+  else //end fix for 1897
+    size = WN_CreateParm(Integer_type, (WN_operator(ld)) == OPR_MLOAD ? WN_COPY_Tree(WN_kid1(ld)) :
+			 WN_Intconst(Integer_type, 
+				     dest ? (access_ty ? TY_adjusted_size(access_ty) : asize) : 
+				     TY_size(ret_ty)),
+			 MTYPE_To_TY(Integer_type), WN_PARM_BY_VALUE);
+
   src = WN_CreateParm(TY_mtype(sptr_idx), Strip_TAS(ldc),
 		      sptr_idx, WN_PARM_BY_VALUE);
 
@@ -1182,6 +1218,7 @@ WN_Create_Shared_Load( WN *ld,
     WN_kid2(call_wn) = offt;
     if (Use_Type_Access && phaseless) {
       WN_kid3(call_wn) = WN_Create_Type_Expr(ret_ty);
+      //Print_TY(stderr, ret_ty);
     } else {
       WN_kid3(call_wn) = size;    
     }
@@ -1215,20 +1252,24 @@ WN_Create_Shared_Ptr_Arithmetic( WN *base, WN *disp, OPERATOR opr,
 //   fprintf(stderr,"PTR ARITH DISP : ");
 //   fdump_tree(stderr, disp);
   
+  if(esize == 0){
+    fprintf(stderr, "WARNING: Ptr Arithmetic on void type\n");
+  }
+
   WN *call_wn;
-  TY_IDX actual_shared_ptr_idx = (bsize <= 1) ? pshared_ptr_idx : shared_ptr_idx;
+  TY_IDX actual_shared_ptr_idx = (bsize <= 1 && esize > 0) ? pshared_ptr_idx : shared_ptr_idx;
   TYPE_ID rtype = TY_mtype(actual_shared_ptr_idx);
 
   call_wn = WN_Create (OPR_INTRINSIC_CALL,
 		       (rtype == MTYPE_M) ? MTYPE_M : Shared_Load_Extend_Mtyp(rtype),  
-		       MTYPE_V,  (bsize <= 1) ? 3 : 4 );    
-
+		       MTYPE_V,  (bsize <= 1 && esize > 0) ? 3 : 4 );    
+  
   WN_Set_Linenum(call_wn, upc_srcpos);
 
   if (opr == OPR_SUB) {
     disp = WN_Neg(MTYPE_I8, disp);
   }
-  WN_intrinsic(call_wn) = WN_Operator_To_Intrinsic (opr, bsize);
+  WN_intrinsic(call_wn) = WN_Operator_To_Intrinsic (opr, bsize, 0, esize);
   
   if(WN_operator(base) == OPR_TAS)
     base = WN_kid0(base);
@@ -1244,7 +1285,7 @@ WN_Create_Shared_Ptr_Arithmetic( WN *base, WN *disp, OPERATOR opr,
   WN_kid2(call_wn) = WN_CreateParm(Integer_type, disp,
                                 MTYPE_To_TY(Integer_type),
 				WN_PARM_BY_VALUE);
-  if (bsize > 1)
+  if (bsize > 1 || esize == 0)
     WN_kid3(call_wn) =  WN_CreateParm(Integer_type, 
 		    WN_Intconst(Integer_type,  bsize),
 		    MTYPE_To_TY(Integer_type), WN_PARM_BY_VALUE);
@@ -1307,7 +1348,7 @@ WN_Convert_Shared_To_Local ( WN *ptr, TY_IDX ty, ST* st)
 
   WN_Set_Linenum(call_wn, upc_srcpos);
 
-  WN_kid0 (call_wn) = WN_CreateParm(TY_mtype(sptr_idx), ptr, sptr_idx, WN_PARM_BY_VALUE);
+  WN_kid0 (call_wn) = WN_CreateParm(TY_mtype(sptr_idx), WN_COPY_Tree(ptr), sptr_idx, WN_PARM_BY_VALUE);
 
   WN *wn0 = WN_CreateBlock();
   WN_INSERT_BlockLast (wn0, call_wn);
@@ -1450,6 +1491,7 @@ WN_Create_StoP_Cvt(WN *init_wn, INTRINSIC iop)
   
   WN *wn0 = WN_CreateBlock();
   WN_INSERT_BlockLast (wn0, call_wn);
+
   WN *wn1 = WN_Ldid(TY_mtype(ret_ty), -1, Return_Val_Preg, ret_ty);
    
   ST *ret_st = Gen_Temp_Symbol(ret_ty, (char*) ".Mstopcvt.");

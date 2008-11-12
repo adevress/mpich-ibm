@@ -8,13 +8,13 @@
 
 if test "$USE_GCC" != "" ; then
 # GCC-based compilers
-CC='mpicc -Wno-unused' ; export CC  # vanilla target C compiler
-CXX='mpicxx -Wno-unused' ; export CXX  # vanilla target C++ compiler
+CC='/bgsys/drivers/ppcfloor/gnu-linux/bin/powerpc-bgp-linux-gcc -Wno-unused' ; export CC  # vanilla target C compiler
+CXX='/bgsys/drivers/ppcfloor/gnu-linux/bin/powerpc-bgp-linux-g++ -Wno-unused' ; export CXX  # vanilla target C++ compiler
 # for dynamic linking add: -dynamic -Wl,-rpath,/bgsys/drivers/V1R1M2_500_2007-071213P/ppc/runtime/SPI
 else
 # XLC-based compilers
-CC='bgxlc -qarch=450d -qtune=450' ; export CC  # vanilla target C compiler
-CXX='bgxlC -qarch=450d -qtune=450' ; export CXX  # vanilla target C++ compiler
+CC='bgxlc_r -qarch=450d -qtune=450' ; export CC  # vanilla target C compiler
+CXX='bgxlC_r -qarch=450d -qtune=450' ; export CXX  # vanilla target C++ compiler
 # for dynamic linking add: -qnostaticlink -Wl,-rpath,/bgsys/drivers/V1R1M2_500_2007-071213P/ppc/runtime/SPI
 fi
 
@@ -40,7 +40,9 @@ fi
 #MPI_CFLAGS='' ; export MPI_CFLAGS  # flags for MPI_CC
 #MPI_LIBS='' ; export MPI_LIBS      # libs for linking with MPI_CC
 # system batch submit command:
-MPIRUN_CMD='cqsub -q short -t 10 -n %N %C' ; export MPIRUN_CMD  # launch command for MPI jobs
+MPIRUN_CMD='qsub -t 0:10:00 -n %N %C' ; export MPIRUN_CMD  # launch command for MPI jobs
+MPIRUN_CMD_BATCH='cobalt-mpirun %N %C' ; export MPIRUN_CMD_BATCH  # launch command for MPI inside the batch script
+
 # BEWARE: the mpirun below boots its own partition on the BG/L, which may disrupt the system resource scheduler and anger the admins
 #MPIRUN_CMD='mpirun -timeout 600 -np %N %V -verbose 0 -cwd %D -exe %P -args "%A"' ; export MPIRUN_CMD  # launch command for MPI jobs
 # --disable-aligned-segments because /proc/sys/kernel/randomize_va_space==1
@@ -53,7 +55,7 @@ CROSS_HAVE_MMAP='0' ; export CROSS_HAVE_MMAP
 EXTRA_CONFIGURE_ARGS='--enable-dcmf-linux --disable-aligned-segments --disable-udp --disable-amudp' ; export EXTRA_CONFIGURE_ARGS  # misc configure args to pass
 else
 CROSS_HAVE_MMAP='1' ; export CROSS_HAVE_MMAP
-EXTRA_CONFIGURE_ARGS='--disable-dcmf-linux --disable-udp --disable-amudp' ; export EXTRA_CONFIGURE_ARGS  # misc configure args to pass
+EXTRA_CONFIGURE_ARGS='-with-max-pthreads-per-node=4 --disable-dcmf-linux --disable-udp --disable-amudp' ; export EXTRA_CONFIGURE_ARGS  # misc configure args to pass
 fi
 
 #EXTRA_CONFIGURE_ARGS='--disable-aligned-segments --enable-mpi --disable-udp --disable-amudp' ; export EXTRA_CONFIGURE_ARGS  # misc configure args to pass
@@ -77,7 +79,7 @@ CROSS_PAGESIZE='4096' ; export CROSS_PAGESIZE
 
 # Does the system stack grow up?
 
-CROSS_STACK_GROWS_UP='1' ; export CROSS_STACK_GROWS_UP
+CROSS_STACK_GROWS_UP='0' ; export CROSS_STACK_GROWS_UP
 
 # Is char a signed type?
 

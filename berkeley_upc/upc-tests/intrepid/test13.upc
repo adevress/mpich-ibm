@@ -40,14 +40,24 @@ test13()
 {
   size_t s1, s2;
   shared int *p_t, *p_0;
-  p_t = &vec[THREADS];
+  p_t = &vec[THREADS - 1];
   p_0 = &vec[0];
   s1 = ptr_diff(p_t, p_0);
   s2 = p_t - p_0;
-  if (s1 != THREADS)
-    abort ();
+  if (s1 != (THREADS - 1))
+    {
+      fprintf (stderr, "Error in pointer difference,"
+                       " got: %lld, expected: %lld.\n",
+		       (long long)s1, (long long)(THREADS - 1));
+      abort ();
+    }
   if (s1 != s2)
-    abort ();
+    {
+      fprintf (stderr, "Error in pointer difference,"
+                       " s1: %lld not equal to s2: %lld.\n",
+		       (long long)s1, (long long)s2);
+      abort ();
+    }
   upc_barrier;
   if (MYTHREAD == 0)
     {

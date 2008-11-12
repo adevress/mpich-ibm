@@ -469,9 +469,18 @@ void add_symbols() {
     for(;i != upc_st_orig_ty.end(); i++) {
       add_shared_symbol(i->first, i->second);
     }
+    /* bug 2299 - some intialized symbols are dependendent on other symbols
+       make sure we output the unitialized ones first */
     //for (std::map<ST_IDX, ST*>::iterator i = upc_tld.begin(); i!= upc_tld.end(); i++) {
     for (std::set<ST_IDX>::iterator i = upc_tld.begin(); i!= upc_tld.end(); i++) {
-      add_TLD_symbol(*i);
+      if(!ST_is_initialized(ST_ptr(*i))) {
+	add_TLD_symbol(*i);
+      } 
+    }
+    for (std::set<ST_IDX>::iterator i = upc_tld.begin(); i!= upc_tld.end(); i++) {
+      if(ST_is_initialized(ST_ptr(*i))) {
+	add_TLD_symbol(*i);
+      } 
     }
     //clear the two maps...
     upc_st_orig_ty.clear();

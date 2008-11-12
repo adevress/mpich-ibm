@@ -38,8 +38,8 @@
  * ====================================================================
  *
  * Module: ori.cxx
- * $Revision: 1.1.1.1 $
- * $Date: 2001/10/30 16:59:45 $
+ * $Revision: 1.2 $
+ * $Date: 2008/10/15 02:08:34 $
  * $Author: ciancu $
  * $Source: /var/local/cvs/compilers/open64/osprey1.0/be/region/ori.cxx,v $
  *
@@ -62,7 +62,11 @@
  * ====================================================================
  */
 
+#if(__GNUC__ == 4 && __GNUC_MINOR__ == 3)
+#include <list>
+#else
 #include <list.h>
+#endif
 #include "defs.h"
 #include "tracing.h"
 #include "errors.h"

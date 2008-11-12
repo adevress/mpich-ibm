@@ -2945,7 +2945,7 @@ static void Du_Sanity_Check_r(
           Dump_WN(loop,fp,fancy,2,2,NULL,NULL,NULL,FALSE);
         }
         WN* wn1=wn;
-        while (WN_opcode(wn1)!=OPC_FUNC_ENTRY) {
+        while (wn1 && WN_opcode(wn1)!=OPC_FUNC_ENTRY) {
           if (wn1==loop)
             break;
           else
@@ -2964,9 +2964,9 @@ static void Du_Sanity_Check_r(
       WN* parent_loop;
       if (WN_operator(wn)==OPR_LDID) {
         parent_loop=LWN_Get_Parent(wn);
-        while (!OPCODE_is_scf(WN_opcode(parent_loop)))
+        while (parent_loop && !OPCODE_is_scf(WN_opcode(parent_loop)))
           parent_loop=LWN_Get_Parent(parent_loop);
-        if (WN_opcode(parent_loop)==OPC_DO_LOOP && parent_loop==loop
+        if (parent_loop && WN_opcode(parent_loop)==OPC_DO_LOOP && parent_loop==loop
             && SYMBOL(wn) == SYMBOL(WN_index(parent_loop)))
           ldid_in_do_loop_head=TRUE;
       }
