@@ -10,7 +10,7 @@
 #include "defs.h"
 #include "errors.h"
 #include "gnu_config.h"
-
+#include <setjmp.h>
 extern "C" {
 #include "gnu/flags.h"
 #include "gnu/system.h"

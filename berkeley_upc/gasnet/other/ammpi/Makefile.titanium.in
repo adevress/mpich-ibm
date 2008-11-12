@@ -1,6 +1,6 @@
-#   $Source$
-#     $Date$
-# $Revision$
+#   $Source: /var/local/cvs/gasnet/other/ammpi/Makefile.titanium.in,v $
+#     $Date: 2006/06/06 16:03:27 $
+# $Revision: 1.14 $
 # Description: setup necessary variables needed by Makefile
 # Copyright 2000, Dan Bonachea <bonachea@cs.berkeley.edu>
 

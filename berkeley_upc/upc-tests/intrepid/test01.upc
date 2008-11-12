@@ -21,40 +21,39 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 #include <upc_strict.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #define FACTOR 100
-shared int array[FACTOR*THREADS];
+shared int array[FACTOR * THREADS];
 
 void
-test01()
+test01 ()
 {
   int i;
-  for (i = MYTHREAD; i < FACTOR*THREADS; i += THREADS)
+  for (i = MYTHREAD; i < FACTOR * THREADS; i += THREADS)
     {
-      array[i] = i+1;
+      array[i] = i + 1;
     }
   upc_barrier;
   if (MYTHREAD == 0)
     {
-      for (i = 0; i < FACTOR*THREADS; ++i)
+      for (i = 0; i < FACTOR * THREADS; ++i)
 	{
 	  int got = array[i];
-	  int expected = i+1;
+	  int expected = i + 1;
 	  if (got != expected)
 	    {
-	      printf("test01: error at element %d. Expected %d, got %d\n",
-		i, expected, got);
-	    
-	      upc_global_exit(1);
+	      fprintf (stderr, "test01: Error at element %d. Expected %d, got %d\n",
+		       i, expected, got);
+	      abort ();
 	    }
 	}
       printf ("test01: simple array test - passed.\n");
     }
-  
 }
 
 int
-main()
+main ()
 {
   test01 ();
   return 0;

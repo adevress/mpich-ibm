@@ -30,6 +30,12 @@
 extern uint64_t upcri_stat_mallocsz;
 extern int upcri_debug_malloc;
 
+#ifndef UPCR_NO_SRCPOS
+  /* ensure debug malloc reports caller line numbers for calls in user code */
+  #undef GASNETT_MALLOC_USE_SRCPOS
+  #define GASNETT_MALLOC_USE_SRCPOS 1
+#endif
+
 GASNETT_INLINE(upcri_malloc) GASNETT_MALLOC
 void * upcri_malloc(size_t bytes) {
     UPCRI_PTHREADINFO_LOOKUPDECL_IFINST();

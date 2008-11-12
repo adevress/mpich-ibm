@@ -1,6 +1,6 @@
-/*   $Source$
- *     $Date$
- * $Revision$
+/*   $Source: /var/local/cvs/gasnet/gasnet_coll.h,v $
+ *     $Date: 2007/10/18 19:17:18 $
+ * $Revision: 1.53 $
  * Description: GASNet Extended API Collective declarations
  * Copyright 2004, Dan Bonachea <bonachea@cs.berkeley.edu>
  * Terms of use are as specified in license.txt

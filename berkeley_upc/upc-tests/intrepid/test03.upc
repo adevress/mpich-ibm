@@ -21,44 +21,49 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 #include <upc_strict.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 struct data_struct
-  {
-    unsigned char x1;
-    short x2;
-    int x3;
-    long long x4;
-  };
+{
+  char x1;
+  short x2;
+  int x3;
+  long long x4;
+};
 
 shared struct data_struct s;
 
 void
-test03()
+test03 ()
 {
   if (MYTHREAD == 0)
     {
-      s.x1 = 255;
+      s.x1 = 127;
       s.x2 = -2;
       s.x3 = -3;
       s.x4 = -4;
     }
   upc_barrier;
-  if (s.x1 != 255) {
-     printf("%d: Error %s : %d = 255\n", MYTHREAD, "char", s.x1);
-    upc_global_exit(1);
-  }
-  if (s.x2 != -2) {
-     printf("%d: Error %s : %d = -2\n", MYTHREAD, "short", s.x2);
-    upc_global_exit(1);
-  }
-  if (s.x3 != -3) {
-    printf("%d: Error %s : %d = -3\n", MYTHREAD, "int", s.x3);
-    upc_global_exit(1);
-  }
-  if (s.x4 != -4) {
-    printf("%d: Error %s : %lld = -4\n", MYTHREAD, "long long", s.x4);
-    upc_global_exit(1);
-  }
+  if (s.x1 != 127)
+    {
+      fprintf (stderr, "%d: Error %s : %d = 255\n", MYTHREAD, "char", s.x1);
+      abort ();
+    }
+  if (s.x2 != -2)
+    {
+      fprintf (stderr, "%d: Error %s : %d = -2\n", MYTHREAD, "short", s.x2);
+      abort ();
+    }
+  if (s.x3 != -3)
+    {
+      fprintf (stderr, "%d: Error %s : %d = -3\n", MYTHREAD, "int", s.x3);
+      abort ();
+    }
+  if (s.x4 != -4)
+    {
+      fprintf (stderr, "%d: Error %s : %lld = -4\n", MYTHREAD, "long long", s.x4);
+      abort ();
+    }
   upc_barrier;
   if (MYTHREAD == 0)
     {
@@ -67,7 +72,7 @@ test03()
 }
 
 int
-main()
+main ()
 {
   test03 ();
   return 0;

@@ -38,7 +38,7 @@
  *
  * Module: wn2c.c
 
- * $Author: wychen $
+ * $Author: ciancu $
 
  * $Source: /var/local/cvs/compilers/open64/osprey1.0/be/whirl2c/wn2c.cxx,v $
  *
@@ -58,7 +58,7 @@
  */
 
 #ifdef _KEEP_RCS_ID
-_id = "$Source: /var/local/cvs/compilers/open64/osprey1.0/be/whirl2c/wn2c.cxx,v $ $Revision: 1.144 $";
+_id = "$Source: /var/local/cvs/compilers/open64/osprey1.0/be/whirl2c/wn2c.cxx,v $ $Revision: 1.146 $";
 
 #endif /* _KEEP_RCS_ID */
 
@@ -2723,8 +2723,11 @@ static TY_IDX WN2C_get_base_type(TY_IDX idx) {
   }
 }
 
+
+
+
 static void
-WN2C_Append_Symtab_Vars(TOKEN_BUFFER tokens, 
+WN2C_Append_Symtab_Vars(TOKEN_BUFFER  tokens, 
 			INT          lines_between_decls,
 			CONTEXT      context)
 {
@@ -2757,7 +2760,7 @@ WN2C_Append_Symtab_Vars(TOKEN_BUFFER tokens,
      global = Compile_Upc && global;
 
      
-   
+     
      if (global && ST_class(st) != CLASS_FUNC) {
        /* If the global variables are based on some struct types,
 	* we need to output the struct type in the w2c.h file
@@ -2771,7 +2774,7 @@ WN2C_Append_Symtab_Vars(TOKEN_BUFFER tokens,
 
      TY_IDX st_ty  = ST_class(st) == CLASS_VAR ? ST_type(st) :
        ST_class(st) == CLASS_FUNC ? ST_pu_type(st) : ST_type(st);
-     //cerr << "For ST: " << ST_name(st) << " " << st_ty << " " << TY_name(st_ty) << endl;      
+     // printf("For ST: %s %s\n", ST_name(st), TY_name(st_ty));    
      if (!ST_is_not_used(st)                         &&
 	 ST_sclass(st) != SCLASS_FORMAL              && 
 	 ST_sclass(st) != SCLASS_FORMAL_REF          &&
@@ -2807,6 +2810,22 @@ WN2C_Append_Symtab_Vars(TOKEN_BUFFER tokens,
        }
      
    }
+   
+   /* bug 2308 */
+   /* a single variable of struct type initialized at global scope - the original type is not 
+      translated - do a pass over the INITTO table and translate all the struct types */
+   /* The following attempt does not really work - in order to fix properly we should extend
+      INITO to hold the original type in addition to the ST entry since the ST entries get patched to 
+      ptr_to_shared in the backend. We can then add a pass on the INITO table right here.
+      Need to modify wfe_decl.cxx to fill in  the original type.
+   /*
+   for(TY_IDX idx = 1; idx < TY_Table_Size(); idx++) {
+     TY_IDX idx1 = make_TY_IDX(idx);
+     if(TY_Is_Structured(idx1) && !TY_is_translated_to_c(idx1) && TY_is_written(idx1) ) {
+       //problem is that here I see all the bupc_memvec types which should not be translated
+     }
+   }
+   */
 } /* WN2C_Append_Symtab_Vars */
 
 
@@ -5558,6 +5577,13 @@ WN2C_array(TOKEN_BUFFER tokens, const WN *wn, CONTEXT context)
 	}
 
 	//check the dimensions are right
+	if(cur_offset != 0) {
+	  char dbg_buf[10000];
+	  SRCPOS spos = CONTEXT_srcpos(context);
+	  Str_Write_And_Reclaim_Tokens(dbg_buf, 10000, &tokens);
+	  fprintf(stderr,"PROBLEM OCCURED AROUND THIS LINE: %d\n", Srcpos_To_Line(spos));
+	  fprintf(stderr,"FULL CONTEXT FOR PROBLEM:\n %s", dbg_buf); 
+	}
 	FmtAssert(cur_offset == 0, ("current offset should be 0 at the end\n"));
 	//FmtAssert(cur_dim == num_dim+1, ("wrong number of array dimensions"));
 	STATUS_set_lvalue(return_status);           /* we're returning a lvalue */
@@ -5723,8 +5749,10 @@ WN2C_intrinsic_op(TOKEN_BUFFER tokens, const WN *wn, CONTEXT context)
 
    if (Compile_Upc && WN_intrinsic(wn) == INTRN_TYPE_EXPR) {
      //it's a type argument, and the type is on the PARM node.
+     CONTEXT context;
      WN* kid0 = WN_kid0(wn);
-     TY2C_translate_unqualified(tokens, WN_ty(kid0));
+     CONTEXT_reset(context);
+     TY2C_translate(tokens, WN_ty(kid0), context);
      return EMPTY_STATUS;
    }
 

@@ -1,6 +1,6 @@
-/*   $Source$
- *     $Date$
- * $Revision$
+/*   $Source: /var/local/cvs/gasnet/other/amudp/amudp.h,v $
+ *     $Date: 2007/10/31 05:28:10 $
+ * $Revision: 1.38 $
  * Description: AMUDP Header
  * Copyright 2000, Dan Bonachea <bonachea@cs.berkeley.edu>
  */

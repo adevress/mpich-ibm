@@ -21,12 +21,13 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 #include <upc_strict.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #define FACTOR 100
 
 shared int array[FACTOR*THREADS];
 
-void test07();
+extern void test07 (); /* separate */
 
 int
 main()

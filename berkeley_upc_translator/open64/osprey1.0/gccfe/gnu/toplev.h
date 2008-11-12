@@ -90,7 +90,7 @@ extern void really_sorry		PARAMS ((const char *, ...))
 extern void default_print_error_function PARAMS ((const char *));
 extern void report_error_function	PARAMS ((const char *));
 
-extern void rest_of_decl_compilation	PARAMS ((union tree_node *,
+extern  void rest_of_decl_compilation	PARAMS ((union tree_node *,
 						const char *, int, int));
 extern void rest_of_type_compilation	PARAMS ((union tree_node *, int));
 extern void rest_of_compilation		PARAMS ((union tree_node *));

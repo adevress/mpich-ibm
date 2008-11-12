@@ -1,6 +1,6 @@
-/*   $Source$
- *     $Date$
- * $Revision$
+/*   $Source: /var/local/cvs/gasnet/extended-ref/gasnet_extended_refvis.h,v $
+ *     $Date: 2007/10/15 20:00:19 $
+ * $Revision: 1.7 $
  * Description: GASNet Vector, Indexed & Strided conduit header
  * Copyright 2002, Dan Bonachea <bonachea@cs.berkeley.edu>
  * Terms of use are as specified in license.txt

@@ -1,6 +1,6 @@
-//   $Source$
-//     $Date$
-// $Revision$
+//   $Source: /var/local/cvs/gasnet/other/amudp/socklist.h,v $
+//     $Date: 2006/04/10 04:20:12 $
+// $Revision: 1.4 $
 // Description: 
 // Copyright 2000, Dan Bonachea <bonachea@cs.berkeley.edu>
 

@@ -1,6 +1,6 @@
-/*   $Source$
- *     $Date$
- * $Revision$
+/*   $Source: /var/local/cvs/gasnet/other/ssh-spawner/gasnet_bootstrap_internal.h,v $
+ *     $Date: 2005/07/03 14:33:42 $
+ * $Revision: 1.3 $
  * Description: GASNet conduit-independent ssh-based spawner (prototypes)
  * Copyright 2005, The Regents of the University of California
  * Terms of use are as specified in license.txt

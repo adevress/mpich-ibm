@@ -1,4 +1,4 @@
-# $Id: Makefile.am,v 1.17 2006/02/01 21:13:25 bonachea Exp $
+# $Id: Makefile.am,v 1.18 2008/11/07 16:01:38 bonachea Exp $
 AUTOMAKE_OPTIONS  = foreign 1.4 no-dependencies
 
 manfiles            = upcc.1 upcrun.1 upc_trace.1 upcdecl.1
@@ -46,7 +46,7 @@ upcdecl.1: $(top_srcdir)/$(upcdecl_dir)/upcdecl.extraman
 # 'upc-webpage' tree before building the release tarball
 html: $(htmlfiles)
 
-.1.html:
+%.html: %.1
 	$(top_srcdir)/man/manServer_107.pl $< > $@
 
 dev-clean: 

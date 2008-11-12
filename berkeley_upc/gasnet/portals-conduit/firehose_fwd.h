@@ -1,6 +1,6 @@
 /*   $Source: /var/local/cvs/gasnet/portals-conduit/firehose_fwd.h,v $
- *     $Date: 2008/10/25 01:50:28 $
- * $Revision: 1.3.2.1 $
+ *     $Date: 2008/09/12 23:21:55 $
+ * $Revision: 1.3 $
  * Description: Configuration of firehose code to fit portals-conduit
  * Copyright 2003, E. O. Lawrence Berekely National Laboratory
  * Terms of use are as specified in license.txt

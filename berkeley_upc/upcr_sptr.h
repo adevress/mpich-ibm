@@ -77,10 +77,6 @@ typedef unsigned int upcr_phase_t;
   #define UPCRI_SYMMETRIC_PSHARED 0
 #endif
 
-#if UPCRI_USING_GCCUPC && !UPCRI_STRUCT_SPTR
-  #error '--enable-gccupc' requires '--enable-sptr-struct'
-#endif
-
 #if UPCRI_SYMMETRIC_SEGMENTS
   #if SIZEOF_VOID_P != 8
     #error Symmetric segments only available for 64-bit platforms
@@ -163,7 +159,9 @@ typedef unsigned int upcr_phase_t;
   #if (UPCRI_PHASE_BITS + UPCRI_THREAD_BITS + UPCRI_ADDR_BITS) != 64
     #error Packed shared pointer components do not add up to 64 bits!
   #endif
-  #if UPCRI_ADDR_BITS > SIZEOF_VOID_P*8
+  #if UPCRI_USING_GCCUPC
+    /* Presently GCCUPC uses 36 bits for addr, even on 32-bit arch */
+  #elif UPCRI_ADDR_BITS > SIZEOF_VOID_P*8
     #error UPCRI_ADDR_BITS is larger than 8*sizeof(void*)
   #endif
   #if UPCRI_PHASE_BITS < 1
@@ -175,12 +173,35 @@ typedef unsigned int upcr_phase_t;
   #if UPCRI_ADDR_BITS < 20
     #error UPCRI_ADDR_BITS is less than 20 bits
   #endif
+  #if UPCRI_USING_GCCUPC
+    /* GCCUPC packed pointer: high                 low
+                              | addr | thead | phase |
+       Different representation then BUPC is chosen because it
+       simplifies pointer comparison.
+    */
+    #define UPCRI_PHASE_SHIFT 0
+    #define UPCRI_THREAD_SHIFT (UPCRI_PHASE_BITS) 
+    #define UPCRI_ADDR_SHIFT (UPCRI_PHASE_BITS+UPCRI_THREAD_BITS)
+  #else
+    /* BUPC packed pointer: high                 low
+                            | phase | thead | addr | */
+    #define UPCRI_PHASE_SHIFT (UPCRI_THREAD_BITS+UPCRI_ADDR_BITS) 
+    #define UPCRI_THREAD_SHIFT (UPCRI_ADDR_BITS) 
+    #define UPCRI_ADDR_SHIFT 0
+  #endif
   #define UPCRI_PHASE_MASK \
-    ((uint64_t)((1ull<<UPCRI_PHASE_BITS)-1)<<(UPCRI_THREAD_BITS+UPCRI_ADDR_BITS))
+    ((uint64_t)((1ull << UPCRI_PHASE_BITS) - 1) << UPCRI_PHASE_SHIFT) 
   #define UPCRI_THREAD_MASK \
-    ((uint64_t)((1ull << UPCRI_THREAD_BITS) - 1) << UPCRI_ADDR_BITS)
+    ((uint64_t)((1ull << UPCRI_THREAD_BITS) - 1) << UPCRI_THREAD_SHIFT) 
   #define UPCRI_ADDR_MASK \
-    ((uint64_t)((1ull << UPCRI_ADDR_BITS) - 1))
+    ((uint64_t)((1ull << UPCRI_ADDR_BITS) - 1) << UPCRI_ADDR_SHIFT) 
+
+  #define UPCRI_PHASE_OF(x) \
+    ((x & UPCRI_PHASE_MASK) >> UPCRI_PHASE_SHIFT)
+  #define UPCRI_THREAD_OF(x) \
+    ((x & UPCRI_THREAD_MASK) >> UPCRI_THREAD_SHIFT)
+  #define UPCRI_ADDR_OF(x) \
+    ((x & UPCRI_ADDR_MASK) >> UPCRI_ADDR_SHIFT)
 
   #if UPCR_DEBUG
     /* checks to see if addr/offset is too big to fit in address bits */ 
@@ -189,36 +210,75 @@ typedef unsigned int upcr_phase_t;
     #define upcri_check_addr_overflow(addrfield)
   #endif
 
-  #define UPCRI_ADDR_FITS_IN_SPTR   (UPCRI_ADDR_BITS >= (SIZEOF_VOID_P * 8))
+  #if UPCRI_USING_GCCUPC
+    /* GCCUPC puts offsets only in addr field */
+    #define UPCRI_ADDR_FITS_IN_SPTR   0
+  #else
+    #define UPCRI_ADDR_FITS_IN_SPTR   (UPCRI_ADDR_BITS >= (SIZEOF_VOID_P * 8))
+  #endif
 
 #elif UPCRI_STRUCT_SPTR
+
   #if UPCRI_USING_GCCUPC
-    /* 
-     * use bitfields, to match GCCUPC's representation 
-     */
-    #if SIZEOF_VOID_P == 4
-      #define UPCRI_PHASE_BITS     24
-      #define UPCRI_THREAD_BITS     8
-      #define UPCRI_ADDR_BITS      32
-      #define UPCRI_THREAD_FIELD_TYPE char
-    #elif SIZEOF_VOID_P == 8
-      #define UPCRI_PHASE_BITS     48
-      #define UPCRI_THREAD_BITS    16
-      #define UPCRI_ADDR_BITS      64
-      #define UPCRI_THREAD_FIELD_TYPE short
-    #else
-      #error bad pointer width: only 32/64 bit architectures supported
+
+    /* Make sure that configure set the appropiate
+       field bit size values.  */
+    #if !(defined(UPCRI_ADDR_BITS_OVERRIDE) \
+         && defined(UPCRI_THREAD_BITS_OVERRIDE) \
+         && defined(UPCRI_PHASE_BITS_OVERRIDE))
+    #  error the 'struct' sptr field sizes must be defined by configure
     #endif
-    typedef struct shared_ptr_struct {
-        unsigned long s_phase  : UPCRI_PHASE_BITS; 
-	unsigned UPCRI_THREAD_FIELD_TYPE s_thread : UPCRI_THREAD_BITS; 
-	uintptr_t     s_addr;   
-    } 
-    #if PLATFORM_ARCH_64 && PLATFORM_COMPILER_GNU
-       /* bug 1653: GCCUPC currently requires sptr struct to br 16-byte aligned on LP64 */
-       __attribute__ ((__aligned__ (16)))
+
+    /* Make sure that configure set the appropiate
+       field type values.  */
+    #if !(defined(UPCRI_STRUCT_SPTR_ADDR_TYPE) \
+          && defined(UPCRI_STRUCT_SPTR_THREAD_TYPE) \
+          && defined(UPCRI_STRUCT_SPTR_PHASE_TYPE))
+    #  error the 'struct' sptr field types must be defined by configure
     #endif
-       upcr_shared_ptr_t;
+
+    /* Field sizes set by configure */
+    #define UPCRI_PHASE_BITS  UPCRI_PHASE_BITS_OVERRIDE
+    #define UPCRI_THREAD_BITS UPCRI_THREAD_BITS_OVERRIDE
+    #define UPCRI_ADDR_BITS   UPCRI_ADDR_BITS_OVERRIDE
+
+    /* If the sptr field definitions aren't set, then
+       make them empty.  */
+    #ifndef UPCRI_STRUCT_SPTR_ADDR_FIELD
+    #define UPCRI_STRUCT_SPTR_ADDR_FIELD
+    #endif
+    #ifndef UPCRI_STRUCT_SPTR_THREAD_FIELD
+    #define UPCRI_STRUCT_SPTR_THREAD_FIELD
+    #endif
+    #ifndef UPCRI_STRUCT_SPTR_PHASE_FIELD
+    #define UPCRI_STRUCT_SPTR_PHASE_FIELD
+    #endif
+
+    typedef struct
+#if __GCC_UPC__
+    /* Make sure that UPCR's shared pointer struct type isn't
+       allowed to 'pun' either GCCUPC's internal shared pointer representation
+       type, or pointer-to-shared types.  (See Bug #2424 for details.) */
+    __attribute__ ((may_alias))
+#endif
+    shared_ptr_struct
+    {
+#if UPCRI_SPTR_ADDR_FIRST
+        uintptr_t s_addr;
+	UPCRI_STRUCT_SPTR_THREAD_TYPE s_thread UPCRI_STRUCT_SPTR_THREAD_FIELD;
+	UPCRI_STRUCT_SPTR_PHASE_TYPE s_phase UPCRI_STRUCT_SPTR_PHASE_FIELD;
+#else
+        /* 'old' (GCCUPC 4.2.3.x, x <= 4) sptr field ordering. */
+	UPCRI_STRUCT_SPTR_PHASE_TYPE s_phase UPCRI_STRUCT_SPTR_PHASE_FIELD;
+	UPCRI_STRUCT_SPTR_THREAD_TYPE s_thread UPCRI_STRUCT_SPTR_THREAD_FIELD;
+        uintptr_t s_addr;
+#endif
+    }
+    #if !HAVE_GCC_ATTRIBUTE_ALIGNED
+      #error GCCUPC currently requires sptr struct to be 2*SIZEOF_VOID_P aligned (see bug 1653)
+    #endif
+      __attribute__ ((__aligned__ (2*SIZEOF_VOID_P)))
+      upcr_shared_ptr_t;
     /* pshared ptrs currently not used by GCCUPC */
     typedef struct shared_ptr_struct upcr_pshared_ptr_t;
 
@@ -450,7 +510,7 @@ upcr_thread_t
 upcr_threadof_shared(upcr_shared_ptr_t sptr) 
 {
   #if UPCRI_PACKED_SPTR
-    return (sptr & UPCRI_THREAD_MASK) >> UPCRI_ADDR_BITS;
+    return UPCRI_THREAD_OF(sptr);
   #else /* !UPCRI_PACKED_SPTR */
     return sptr.s_thread;
   #endif
@@ -463,7 +523,7 @@ upcr_threadof_pshared(upcr_pshared_ptr_t sptr)
   #if UPCRI_SYMMETRIC_PSHARED
     return UPCRI_SYMMETRIC_THREADOF(sptr);
   #elif UPCRI_PACKED_SPTR
-    return (sptr & UPCRI_THREAD_MASK) >> UPCRI_ADDR_BITS;
+    return UPCRI_THREAD_OF(sptr);
   #else /* !UPCRI_PACKED_SPTR */
     return sptr.s_thread;
   #endif
@@ -478,7 +538,7 @@ GASNETT_INLINE(upcr_phaseof_shared)
 upcr_phase_t upcr_phaseof_shared(upcr_shared_ptr_t sptr) 
 {
   #if UPCRI_PACKED_SPTR
-    return sptr >> (UPCRI_THREAD_BITS+UPCRI_ADDR_BITS);
+    return UPCRI_PHASE_OF(sptr);
   #else /* !UPCRI_PACKED_SPTR */
     return sptr.s_phase;
   #endif
@@ -502,7 +562,7 @@ uintptr_t
 upcr_addrfield_shared(upcr_shared_ptr_t sptr) 
 {
   #if UPCRI_PACKED_SPTR
-    return sptr & UPCRI_ADDR_MASK;
+    return UPCRI_ADDR_OF(sptr);
   #else /* !UPCRI_PACKED_SPTR */
     return sptr.s_addr;
   #endif
@@ -518,7 +578,7 @@ upcr_addrfield_pshared(upcr_pshared_ptr_t sptr)
     else
 	return UPCRI_SYMMETRIC_ADDRFIELD((sptr-upcri_segsym_base));
   #elif UPCRI_PACKED_SPTR
-    return sptr & UPCRI_ADDR_MASK;
+    return UPCRI_ADDR_OF(sptr);
   #else /* !UPCRI_PACKED_SPTR */
     return sptr.s_addr;
   #endif
@@ -538,9 +598,9 @@ upcri_addrfield_to_shared(uintptr_t addrfield, upcr_thread_t threadid,
 
   #if UPCRI_PACKED_SPTR
     upcri_check_addr_overflow(addrfield);
-    p = ((uint64_t)addrfield)
-	| (((uint64_t)threadid) << UPCRI_ADDR_BITS) 
-	| (((uint64_t)phase) << (UPCRI_ADDR_BITS+UPCRI_THREAD_BITS));
+    p = (((uint64_t)addrfield) << UPCRI_ADDR_SHIFT)
+	| (((uint64_t)threadid) << UPCRI_THREAD_SHIFT) 
+	| (((uint64_t)phase) << UPCRI_PHASE_SHIFT);
   #else
     p.s_addr = addrfield;
     p.s_thread = threadid;
@@ -560,7 +620,8 @@ upcri_addrfield_to_pshared(uintptr_t addrfield, upcr_thread_t threadid)
     p = (upcr_pshared_ptr_t) addrfield UPCRI_PLUS_REMOTE_OFFSET(threadid);
   #elif UPCRI_PACKED_SPTR
     upcri_check_addr_overflow(addrfield);
-    p = ((uint64_t)addrfield) | (((uint64_t)threadid) << UPCRI_ADDR_BITS);
+    p = (((uint64_t)addrfield) << UPCRI_ADDR_SHIFT)
+        | (((uint64_t)threadid) << UPCRI_THREAD_SHIFT);
   #else
     p.s_addr = addrfield;
     p.s_thread = threadid;
@@ -786,8 +847,8 @@ _upcr_local_to_shared(void *lptr UPCRI_PT_ARG)
 	return upcr_null_shared;
   #if UPCRI_PACKED_SPTR
     upcri_check_addr_overflow( ((uintptr_t)lptr) UPCRI_MINUS_MY_OFFSET);
-    p = ( (uint64_t) (((uintptr_t)lptr) UPCRI_MINUS_MY_OFFSET))
-	  | (((uint64_t)upcr_mythread()) << UPCRI_ADDR_BITS);
+    p = (((uint64_t) (((uintptr_t)lptr) UPCRI_MINUS_MY_OFFSET)) << UPCRI_ADDR_SHIFT)
+	  | (((uint64_t)upcr_mythread()) << UPCRI_THREAD_SHIFT);
   #else /* struct-based ptr w/aligned segments */
     p.s_addr = ((uintptr_t)lptr) UPCRI_MINUS_MY_OFFSET;
     p.s_thread = upcr_mythread();
@@ -806,8 +867,8 @@ _upcr_local_to_shared_ref(void *lptr, upcr_shared_ptr_t *result UPCRI_PT_ARG)
     }
   #if UPCRI_PACKED_SPTR
     upcri_check_addr_overflow( ((uintptr_t)lptr) UPCRI_MINUS_MY_OFFSET);
-    *result = ( (uint64_t) (((uintptr_t)lptr) UPCRI_MINUS_MY_OFFSET))
-	        | (((uint64_t)upcr_mythread()) << UPCRI_ADDR_BITS);
+    *result = (((uint64_t) (((uintptr_t)lptr) UPCRI_MINUS_MY_OFFSET)) << UPCRI_ADDR_SHIFT)
+	        | (((uint64_t)upcr_mythread()) << UPCRI_THREAD_SHIFT);
   #else
     result->s_addr = ((uintptr_t)lptr) UPCRI_MINUS_MY_OFFSET;
     result->s_thread = upcr_mythread();
@@ -827,8 +888,8 @@ _upcr_local_to_pshared(void *lptr UPCRI_PT_ARG)
     p = (upcr_pshared_ptr_t)(lptr); /* free */
   #elif UPCRI_PACKED_SPTR
     upcri_check_addr_overflow( ((uintptr_t)lptr) UPCRI_MINUS_MY_OFFSET);
-    p = ( (uint64_t) (((uintptr_t)lptr) UPCRI_MINUS_MY_OFFSET))
-	  | (((uint64_t)upcr_mythread()) << UPCRI_ADDR_BITS);
+    p = (((uint64_t) (((uintptr_t)lptr) UPCRI_MINUS_MY_OFFSET)) << UPCRI_ADDR_SHIFT)
+	  | (((uint64_t)upcr_mythread()) << UPCRI_THREAD_SHIFT);
   #else
     p.s_addr = ((uintptr_t)lptr) UPCRI_MINUS_MY_OFFSET;
     p.s_thread = upcr_mythread();
@@ -846,8 +907,8 @@ _upcr_local_to_pshared_ref(void *lptr, upcr_pshared_ptr_t *result UPCRI_PT_ARG)
     *result = (upcr_pshared_ptr_t)(lptr); /* free */
   #elif UPCRI_PACKED_SPTR
     upcri_check_addr_overflow( ((uintptr_t)lptr) UPCRI_MINUS_MY_OFFSET);
-    *result = ( (uint64_t) (((uintptr_t)lptr) UPCRI_MINUS_MY_OFFSET))
-	        | (((uint64_t)upcr_mythread()) << UPCRI_ADDR_BITS);
+    *result = (((uint64_t) (((uintptr_t)lptr) UPCRI_MINUS_MY_OFFSET)) << UPCRI_ADDR_SHIFT)
+	        | (((uint64_t)upcr_mythread()) << UPCRI_THREAD_SHIFT);
   #else
     result->s_addr = ((uintptr_t)lptr) UPCRI_MINUS_MY_OFFSET;
     result->s_thread = upcr_mythread();
@@ -874,9 +935,9 @@ _upcr_local_to_shared_withphase(void *lptr, upcr_phase_t phase,
   #if UPCRI_PACKED_SPTR
     upcri_check_addr_overflow(((uintptr_t)lptr)
 				UPCRI_MINUS_REMOTE_OFFSET(threadid));
-    p = ((uint64_t) (((uintptr_t)lptr) UPCRI_MINUS_REMOTE_OFFSET(threadid)))
-	  | (((uint64_t)threadid) << UPCRI_ADDR_BITS) 
-	  | (((uint64_t)phase) << (UPCRI_ADDR_BITS+UPCRI_THREAD_BITS));
+    p = (((uint64_t) (((uintptr_t)lptr) UPCRI_MINUS_REMOTE_OFFSET(threadid))) << UPCRI_ADDR_SHIFT)
+	| (((uint64_t)threadid) << UPCRI_THREAD_SHIFT) 
+	| (((uint64_t)phase) << UPCRI_PHASE_SHIFT);
   #else
     p.s_addr = ((uintptr_t)lptr) UPCRI_MINUS_REMOTE_OFFSET(threadid);
     p.s_thread = threadid;
@@ -898,9 +959,9 @@ _upcr_local_to_shared_ref_withphase(void *lptr, upcr_phase_t phase,
   #if UPCRI_PACKED_SPTR
     upcri_check_addr_overflow(((uintptr_t)lptr)
 				UPCRI_MINUS_REMOTE_OFFSET(threadid));
-    *ref = ((uint64_t) (((uintptr_t)lptr) UPCRI_MINUS_REMOTE_OFFSET(threadid)))
-	    | (((uint64_t)threadid) << UPCRI_ADDR_BITS) 
-	    | (((uint64_t)phase) << (UPCRI_ADDR_BITS+UPCRI_THREAD_BITS));
+    *ref = (((uint64_t) (((uintptr_t)lptr) UPCRI_MINUS_REMOTE_OFFSET(threadid))) << UPCRI_ADDR_SHIFT)
+	   | (((uint64_t)threadid) << UPCRI_THREAD_SHIFT) 
+	   | (((uint64_t)phase) << UPCRI_PHASE_SHIFT);
   #else
     ref->s_addr = ((uintptr_t)lptr) UPCRI_MINUS_REMOTE_OFFSET(threadid);
     ref->s_thread = threadid;
@@ -925,9 +986,9 @@ _upcr_mylocal_to_shared_withphase(void *lptr, upcr_phase_t phase,
 	return upcr_null_shared; /* thread/phase must be 0 for NULL ptr */
   #if UPCRI_PACKED_SPTR
     upcri_check_addr_overflow(((uintptr_t)lptr) UPCRI_MINUS_MY_OFFSET);
-    p = ((uint64_t) (((uintptr_t)lptr) UPCRI_MINUS_MY_OFFSET))
-	  | (((uint64_t)threadid) << UPCRI_ADDR_BITS) 
-	  | (((uint64_t)phase) << (UPCRI_ADDR_BITS+UPCRI_THREAD_BITS));
+    p = (((uint64_t) (((uintptr_t)lptr) UPCRI_MINUS_MY_OFFSET)) << UPCRI_ADDR_SHIFT)
+	| (((uint64_t)threadid) << UPCRI_THREAD_SHIFT) 
+	| (((uint64_t)phase) << UPCRI_PHASE_SHIFT);
   #else
     p.s_addr = ((uintptr_t)lptr) UPCRI_MINUS_MY_OFFSET;
     p.s_thread = threadid;
@@ -994,8 +1055,8 @@ upcr_pshared_to_shared(upcr_pshared_ptr_t sptr)
   #if UPCRI_PACKED_SPTR
     #if UPCRI_SYMMETRIC_PSHARED
       return upcri_checkvalid_shared(
-	    (((uint64_t) upcr_addrfield_pshared(sptr))
-	     | (((uint64_t)upcr_threadof_pshared(sptr)) << UPCRI_ADDR_BITS))
+	    ((((uint64_t) upcr_addrfield_pshared(sptr)) << UPCRI_ADDR_SHIFT)
+            | (((uint64_t)upcr_threadof_pshared(sptr)) << UPCRI_THREAD_SHIFT))
 	   );
     #else
       return upcri_checkvalid_shared((upcr_shared_ptr_t)sptr);
@@ -1018,8 +1079,8 @@ upcr_pshared_to_shared_ref(upcr_pshared_ptr_t sptr, upcr_shared_ptr_t *result)
   upcri_checkvalid_pshared(sptr);
   #if UPCRI_PACKED_SPTR
     #if UPCRI_SYMMETRIC_PSHARED
-      *result =  (((uint64_t) upcr_addrfield_pshared(sptr))
-	          | (((uint64_t)upcr_threadof_pshared(sptr)) << UPCRI_ADDR_BITS));
+      *result =  ((((uint64_t) upcr_addrfield_pshared(sptr)) << UPCRI_ADDR_SHIFT)
+	         | (((uint64_t)upcr_threadof_pshared(sptr)) << UPCRI_THREAD_SHIFT));
     #else
       upcri_assert((sptr & UPCRI_PHASE_MASK) == 0);
       *result = sptr;
@@ -1045,11 +1106,11 @@ upcr_pshared_to_shared_withphase(upcr_pshared_ptr_t sptr, upcr_phase_t phase)
   upcri_checkvalid_pshared(sptr);
   #if UPCRI_PACKED_SPTR
     #if UPCRI_SYMMETRIC_PSHARED
-      p = ((uint64_t) upcr_addrfield_pshared(sptr))
-	  | (((uint64_t)upcr_threadof_pshared(sptr)) << UPCRI_ADDR_BITS)
-	  | (((uint64_t)phase << (UPCRI_THREAD_BITS+UPCRI_ADDR_BITS)) & UPCRI_PHASE_MASK);
+      p = (((uint64_t) upcr_addrfield_pshared(sptr)) << UPCRI_ADDR_SHIFT)
+	  | (((uint64_t)upcr_threadof_pshared(sptr)) << UPCRI_THREAD_SHIFT)
+	  | ((((uint64_t)phase << UPCRI_PHASE_SHIFT)) & UPCRI_PHASE_MASK);
     #else
-      p = sptr | (((uint64_t)phase << (UPCRI_THREAD_BITS+UPCRI_ADDR_BITS)) 
+      p = sptr | (((uint64_t)phase << UPCRI_PHASE_SHIFT) 
 		& UPCRI_PHASE_MASK);
     #endif
   #else
@@ -1068,11 +1129,11 @@ upcr_pshared_to_shared_ref_withphase(upcr_pshared_ptr_t sptr, upcr_phase_t phase
   upcri_checkvalid_pshared(sptr);
   #if UPCRI_PACKED_SPTR
     #if UPCRI_SYMMETRIC_PSHARED
-      *result = ((uint64_t) upcr_addrfield_pshared(sptr))
-	        | (((uint64_t)upcr_threadof_pshared(sptr)) << UPCRI_ADDR_BITS)
-	        | (((uint64_t)phase << (UPCRI_THREAD_BITS+UPCRI_ADDR_BITS)) & UPCRI_PHASE_MASK);
+      *result = (((uint64_t) upcr_addrfield_pshared(sptr)) << UPCRI_ADDR_SHIFT)
+	        | (((uint64_t)upcr_threadof_pshared(sptr)) << UPCRI_THREAD_SHIFT)
+	        | (((uint64_t)phase << UPCRI_PHASE_SHIFT) & UPCRI_PHASE_MASK);
     #else
-      *result = sptr | (((uint64_t)phase << (UPCRI_THREAD_BITS+UPCRI_ADDR_BITS)) 
+      *result = sptr | ((((uint64_t)phase) << UPCRI_PHASE_SHIFT)
 			  & UPCRI_PHASE_MASK);
     #endif
   #else
@@ -1251,7 +1312,7 @@ upcr_inc_psharedI(upcr_pshared_ptr_t *psptr, size_t elemsz, ptrdiff_t inc)
     *psptr = (char *) (*psptr + (inc * (ssize_t)elemsz));
   #elif UPCRI_PACKED_SPTR
     /* must use fully-signed math for negative inc to work correctly */
-    *psptr = (uint64_t) (((int64_t)*psptr) + (int64_t)(inc * (ssize_t)elemsz));
+    *psptr = (uint64_t) (((int64_t)*psptr) + ((int64_t)(inc * (ssize_t)elemsz) << UPCRI_ADDR_SHIFT));
   #else
     psptr->s_addr += (inc * elemsz);
   #endif
@@ -1268,7 +1329,7 @@ upcr_add_psharedI(upcr_pshared_ptr_t sptr, size_t elemsz, ptrdiff_t inc)
   #if UPCRI_SYMMETRIC_PSHARED
     out = (char *) (sptr + (inc * (ssize_t)elemsz));
   #elif UPCRI_PACKED_SPTR
-    out = (uint64_t) (((int64_t)sptr) + (int64_t)(inc * (ssize_t)elemsz));
+    out = (uint64_t) (((int64_t)sptr) + ((int64_t)(inc * (ssize_t)elemsz) << UPCRI_ADDR_SHIFT));
   #else
     out = sptr;  /* bitwise copy */
     upcr_inc_psharedI(&out, elemsz, inc); 
@@ -1335,7 +1396,8 @@ _upcr_inc_pshared1(upcr_pshared_ptr_t *psptr, size_t elemsz, ptrdiff_t inc UPCRI
 
     #if UPCRI_PACKED_SPTR
       upcri_check_addr_overflow(addr);
-      *psptr = ((uint64_t)addr) | (((uint64_t)threadid) << UPCRI_ADDR_BITS);
+      *psptr = (((uint64_t)addr) << UPCRI_ADDR_SHIFT) 
+               | (((uint64_t)threadid) << UPCRI_THREAD_SHIFT);
     #else
       psptr->s_thread = threadid;
       psptr->s_addr = addr;
@@ -1407,8 +1469,8 @@ _upcr_add_pshared1(upcr_pshared_ptr_t sptr, size_t elemsz, ptrdiff_t inc UPCRI_T
 
   #if UPCRI_PACKED_SPTR
     upcri_check_addr_overflow(addr);
-    return upcri_checkvalid_pshared((uint64_t)addr) | 
-                                    (((uint64_t)threadid) << UPCRI_ADDR_BITS);
+    return upcri_checkvalid_pshared(((uint64_t)addr) << UPCRI_ADDR_SHIFT) | 
+                                    (((uint64_t)threadid) << UPCRI_THREAD_SHIFT);
   #else
     { upcr_pshared_ptr_t result;
       result.s_thread = threadid;

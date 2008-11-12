@@ -1,6 +1,6 @@
-#   $Source$
-#     $Date$
-# $Revision$
+#   $Source: /var/local/cvs/gasnet/other/ammpi/Makefile.standalone,v $
+#     $Date: 2006/06/06 16:03:27 $
+# $Revision: 1.25 $
 # Description: Makefile for AMMPI
 # Copyright 2000, Dan Bonachea <bonachea@cs.berkeley.edu>
 srcdir = .

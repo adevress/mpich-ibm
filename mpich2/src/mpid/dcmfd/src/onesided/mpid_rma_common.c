@@ -1179,18 +1179,19 @@ void done_getfree_rqc_cb(void *v, DCMF_Error_t *e) {
         }
 	MPID_assert_debug(get != NULL);
         if (--get->ref == 0) {
-		MPID_assert_debug(get->dtp != NULL);
-		MPID_Segment segment;
-		DLOOP_Offset last;
+		if (get->dtp) {
+			MPID_Segment segment;
+			DLOOP_Offset last;
 
-		int mpi_errno = MPID_Segment_init(get->addr,
-				get->count,
-				get->dtp->handle, &segment, 0);
-		MPID_assert_debug(mpi_errno == MPI_SUCCESS);
-		last = get->len;
-		MPID_Segment_unpack(&segment, 0, &last, get->buf);
-		MPID_assert_debug(last == get->len);
-		MPID_Datatype_release(get->dtp);
+			int mpi_errno = MPID_Segment_init(get->addr,
+					get->count,
+					get->dtp->handle, &segment, 0);
+			MPID_assert_debug(mpi_errno == MPI_SUCCESS);
+			last = get->len;
+			MPID_Segment_unpack(&segment, 0, &last, get->buf);
+			MPID_assert_debug(last == get->len);
+			MPID_Datatype_release(get->dtp);
+		}
 		DCMF_Memregion_destroy((DCMF_Memregion_t *)&get->memreg);
                 if (xtra.mpid_xtra_w2) { MPIDU_FREE(xtra.mpid_xtra_w2, e, "xtra.mpid_xtra_w2"); }
                 if (xtra.mpid_xtra_w3) { MPIDU_FREE(xtra.mpid_xtra_w3, e, "xtra.mpid_xtra_w3"); }

@@ -48,9 +48,9 @@
  * ====================================================================
  *
  * Module: can.c  
- * $Revision: 1.20 $
- * $Date: 2006/10/17 06:25:15 $
- * $Author: wychen $
+ * $Revision: 1.21 $
+ * $Date: 2007/01/04 20:36:17 $
+ * $Author: ciancu $
  * $Source: /var/local/cvs/compilers/open64/osprey1.0/be/lno/can.cxx,v $
  *
  * Revision history:
@@ -68,7 +68,7 @@
 #pragma hdrstop
 
 static char *source_file = __FILE__;
-static char *rcs_id = "$Source: /var/local/cvs/compilers/open64/osprey1.0/be/lno/can.cxx,v $ $Revision: 1.20 $";
+static char *rcs_id = "$Source: /var/local/cvs/compilers/open64/osprey1.0/be/lno/can.cxx,v $ $Revision: 1.21 $";
 
 #include "call_info.h"
 #include "lnopt_main.h"
@@ -1843,18 +1843,15 @@ static void Promote_Pointer(WN *wn, INT kid_num, INT load_size)
     if(!had_TAS)
       WN_Delete(mult);
   }
-
-
-  //if (!Compile_Upc) {
-  //Costin - have no idea why this has been disabled. 
-  // Without this code, 1-d loops with "good" dependencies will lead to 
-  // unknown dependencies, e.g. a[i-1] = a[i] + 1; 
+  
+  // Without this code, 1-d loops with "good" dependence will lead to 
+  // unknown dependence, e.g. a[i-1] = a[i] + 1; 
   //Maybe the fix is to check for the presence of a field_id in the ld/st or
   //within their subtrees
   if (OPCODE_is_load(opcode) || OPCODE_is_store(opcode)) {
     Fold_Offset(wn,array);
   }
-  //}
+ 
   
   return;
 }

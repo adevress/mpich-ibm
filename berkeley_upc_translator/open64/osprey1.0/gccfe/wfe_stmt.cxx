@@ -729,15 +729,17 @@ WFE_Expand_Return (tree retval)
 	OPERATOR rhs_opr = WN_operator(rhs_wn);
 	TY_IDX ty_idx = WN_ty(rhs_wn);
 	INTRINSIC ix;
+
+
  	if(WN_operator(rhs_wn) == OPR_INTCONST && Type_Is_Shared_Ptr(ret_ty_idx, TRUE)) {
 	  FmtAssert(WN_const_val(rhs_wn) == 0, (""));
 	  wn = WN_Create(OPR_TAS, TY_mtype(ret_ty_idx), MTYPE_V, 1);
 	  WN_kid0(wn) = rhs_wn;
 	  WN_set_ty(wn, ret_ty_idx);
 	  rhs_wn = wn;
-	} else if (Type_Is_Shared_Ptr(ty_idx) && Type_Is_Shared_Ptr(ret_ty_idx)) {
+	} else if (WN_operator(rhs_wn) != OPR_CONST && Type_Is_Shared_Ptr(ty_idx) && Type_Is_Shared_Ptr(ret_ty_idx)) {
 	  if(Need_StoP_Cvt(ty_idx, ret_ty_idx, &ix)) {
-	    fprintf(stderr, "got here in %s\n", __func__);
+	    // fprintf(stderr, "got here in %s\n", __func__);
 	    wn = WN_Create(OPR_TAS, TY_mtype(ret_ty_idx), MTYPE_V,1);
 	    WN_kid0(wn) = rhs_wn;
 	    WN_set_ty(wn, ret_ty_idx);

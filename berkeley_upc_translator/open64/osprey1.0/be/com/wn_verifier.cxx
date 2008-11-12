@@ -38,9 +38,9 @@
 // ====================================================================
 //
 // Module: wn_verifier.cxx
-// $Revision: 1.3 $
-// $Date: 2005/12/07 06:42:20 $
-// $Author: wychen $
+// $Revision: 1.4 $
+// $Date: 2008/10/15 02:08:30 $
+// $Author: ciancu $
 // $Source: /var/local/cvs/compilers/open64/osprey1.0/be/com/wn_verifier.cxx,v $
 //
 // Revision history:
@@ -88,10 +88,22 @@
 #endif /* USE_PCH */
 #pragma hdrstop
 #define USE_STANDARD_TYPES
-#include <algo.h>  // STL
+
 #include <stdlib.h>
+
+#if(__GNUC__ == 4 && __GNUC_MINOR__ == 3)
+#include <algorithm>
+#include <vector>
+#include <stack>
+#include <list>
+#include <set>
+#include <deque>
+#include <map>
+#else
+#include <algo.h>  // STL
 #include <vector.h>
 #include <stack.h>
+#endif
 
 #include "defs.h"
 #include "stab.h"

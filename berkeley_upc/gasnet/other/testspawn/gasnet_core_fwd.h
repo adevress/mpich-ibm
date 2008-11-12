@@ -1,6 +1,6 @@
-/*   $Source$
- *     $Date$
- * $Revision$
+/*   $Source: /var/local/cvs/gasnet/other/testspawn/gasnet_core_fwd.h,v $
+ *     $Date: 2005/04/14 17:29:17 $
+ * $Revision: 1.2 $
  * Description: 
  * Copyright 2005, Regents of the University of California
  * Terms of use are as specified in license.txt

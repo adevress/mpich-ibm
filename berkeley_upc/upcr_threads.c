@@ -43,7 +43,7 @@ uintptr_t upcri_stacksz_threshhold = (uintptr_t)(0.95*UPCRI_STACK_DEFAULT);
 extern void upcri_stack_check(upcri_stackinfo_t *si, upcr_thread_t mythreadid, const char *filename, int linenum) {
   static int already_warned = 0;
   #if UPCRI_SUPPORT_PTHREADS
-    static pthread_mutex_t warn_lock = PTHREAD_MUTEX_INITIALIZER;
+    static gasnett_mutex_t warn_lock = GASNETT_MUTEX_INITIALIZER;
   #endif
   char x;
   #ifdef UPCRI_STACK_GROWS_UP
@@ -56,7 +56,7 @@ extern void upcri_stack_check(upcri_stackinfo_t *si, upcr_thread_t mythreadid, c
       si->hot = &x;
       if (size > upcri_stacksz_threshhold && !already_warned) {
         #if UPCRI_SUPPORT_PTHREADS
-          pthread_mutex_lock(&warn_lock);
+          gasnett_mutex_lock(&warn_lock);
         #endif
         if (!already_warned) {
           upcri_warn("The program stack on thread %i has grown beyond %llu KB at %s:%i.\n"
@@ -67,7 +67,7 @@ extern void upcri_stack_check(upcri_stackinfo_t *si, upcr_thread_t mythreadid, c
           already_warned = 1;
         }
         #if UPCRI_SUPPORT_PTHREADS
-          pthread_mutex_unlock(&warn_lock);
+          gasnett_mutex_unlock(&warn_lock);
         #endif
       }
     }

@@ -419,9 +419,8 @@ int main(int argc, char **argv)
         BARRIER();
         if (!insegment) {
 	    test_free(alloc);
-				}
-				
-				MSG("done.");
+	}
+
     gasnet_exit(0);
 
     return 0;

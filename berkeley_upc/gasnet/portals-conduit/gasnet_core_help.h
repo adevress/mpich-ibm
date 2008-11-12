@@ -1,6 +1,6 @@
-/*   $Source$
- *     $Date$
- * $Revision$
+/*   $Source: /var/local/cvs/gasnet/portals-conduit/gasnet_core_help.h,v $
+ *     $Date: 2007/08/26 06:01:24 $
+ * $Revision: 1.3 $
  * Description: GASNet PORTALS conduit core Header Helpers (Internal code, not for client use)
  * Copyright 2002, Dan Bonachea <bonachea@cs.berkeley.edu>
  * Terms of use are as specified in license.txt

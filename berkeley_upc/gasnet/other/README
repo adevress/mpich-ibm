@@ -1,6 +1,6 @@
 External Software README
 ------------------------
-$Revision$
+$Revision: 1.5 $
 
 This subdirectory contains various external libraries and tools
 used by this GASNet implementation.

@@ -38,8 +38,8 @@
  *
  * Module: driver_util.c
  * $Revisionr: 1.34 $
- * $Date: 2006/10/29 02:22:36 $
- * $Author: wychen $
+ * $Date: 2008/11/04 02:11:05 $
+ * $Author: ciancu $
  * $Source: /var/local/cvs/compilers/open64/osprey1.0/be/be/driver_util.cxx,v $
  *
  * Revision history:
@@ -264,6 +264,10 @@ Process_Command_Line (INT argc, char **argv)
                 } else if(strcmp(cp, "o-msg-vect") == 0) {
 		    run_msg_vect = 1;
                     Run_lno = 1;
+                    if(!Run_w2c) {
+	               opt_set = TRUE;
+	               Opt_Level = 3;
+                    }      
 		} else if(strcmp(cp, "o-ptr-locality") == 0) {
 		  run_ptr_locality = 1;
 		} else if (strcmp(cp, "o-forall-opt") == 0) {
@@ -272,7 +276,14 @@ Process_Command_Line (INT argc, char **argv)
 		    Use_Valget = TRUE;
 		} else if (strcmp(cp, "o-autonb") == 0) {
 		  run_auto_nb = 1; 
-		} else 
+		}  else if (!strcmp(cp, "o-split-phase")) {
+		  run_split_phase = 1;
+		  run_ptr_coalescing = 1;
+		} else if (!strcmp(cp, "o-pre-add")) {
+		  run_pre_add = 1;
+		} else if (!strcmp(cp, "o-ptr-coalesce")) {
+		  run_ptr_coalescing = 1;
+		}   else 
 		    ErrMsg (EC_Unknown_Flag, *(cp-1), argv[i]);
 		break;
 
@@ -440,7 +451,7 @@ Process_Command_Line (INT argc, char **argv)
                 if ( strncmp ( cp-1, "tfprev10", 8 ) == 0 ) {
 		  add_phase_args (PHASE_CG, argv[i]);
 		  break;
-		} if(strcmp (cp - 1, "trace_msg_vect") == 0) {
+		} if(strcmp (cp - 1, "trace-msg-vect") == 0) {
                    trace_msg_vect = 1;
                  }else {
 		  Process_Trace_Option ( cp-2 );

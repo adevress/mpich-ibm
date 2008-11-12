@@ -1,6 +1,6 @@
-#   $Source$
-#     $Date$
-# $Revision$
+#   $Source: /var/local/cvs/gasnet/tests/Makefile.in,v $
+#     $Date: 2008/10/10 04:22:01 $
+# $Revision: 1.107 $
 # Description: Makefile for GASNet tests
 # @configure_input@
 # Copyright 2002, Dan Bonachea <bonachea@cs.berkeley.edu>

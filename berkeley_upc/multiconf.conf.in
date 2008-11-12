@@ -32,13 +32,26 @@ ENABLED_CONFS= dbg, opt
 
 # Change this line to point at the default BUPC translator installation to use
 # use the internet-based public 2.4.0 release translator: (internet connection required)
-BUPC_TRANS=http://upc-translator.lbl.gov/upcc-2.6.0.cgi
+BUPC_TRANS=http://upc-translator.lbl.gov/upcc-2.8.0.cgi
 # use a local BUPC translator installation, if you have one:
 #BUPC_TRANS=/usr/local/berkeley_upc_translator/targ
 
 # Change this line to point at your GCCUPC translator installation 
 # (if you have one -- required for *_gccupc configs)
 GCCUPC_TRANS=/usr/local/gccupc-3.4.4.1-xt3-inst/bin/upc
+
+# BLACKLISTED TOP-LEVEL CONFIGURE OPTIONS
+# The following enable/disable options are blacklisted as top-level options to this 
+# multiconf script, since the sub-configures offer permutations of these options,
+# so you should instead enable/disable building of the appropriate configurations.
+# For example: 
+# Instead of passing --enable-inst, you should pass --with-multiconf=+opt_inst
+# Instead of passing --enable-totalview, you should pass --with-multiconf=+dbg_tv
+# Instead of passing --with-translator you should set the BUPC_TRANS path above.
+# Instead of passing --with-gccupc you should set the GCCUPC_TRANS path above,
+#   and pass --with-multiconf=+dbg_gccupc,+opt_gccupc
+BLACKLISTED_ENABLE_OPTIONS=debug,totalview,trace,stats,inst
+BLACKLISTED_WITH_OPTIONS=gccupc,translator
 
 # end of global section:
 ;;;

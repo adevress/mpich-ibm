@@ -37,8 +37,8 @@
  * ====================================================================
  *
  * Module: wn_attr.c
- * $Revision: 1.16 $
- * $Date: 2005/10/03 23:11:41 $
+ * $Revision: 1.17 $
+ * $Date: 2006/11/07 19:26:43 $
  * $Author: wychen $
  * $Source: /var/local/cvs/compilers/open64/osprey1.0/be/whirl2c/wn_attr.cxx,v $
  *
@@ -55,7 +55,7 @@
  */
 
 #ifdef _KEEP_RCS_ID
-static char *rcs_id = "$Source: /var/local/cvs/compilers/open64/osprey1.0/be/whirl2c/wn_attr.cxx,v $ $Revision: 1.16 $";
+static char *rcs_id = "$Source: /var/local/cvs/compilers/open64/osprey1.0/be/whirl2c/wn_attr.cxx,v $ $Revision: 1.17 $";
 #endif /* _KEEP_RCS_ID */
 
 
@@ -387,7 +387,12 @@ WN_Tree_Type(const WN *wn)
 	       ty = Make_Pointer_Type(pointed);
 	   }
 	 } 
-//#if 0
+	 else if (TY_kind(TY_pointed(ty)) == KIND_ARRAY && WN_load_offset(wn) == 0) {
+	   if (!TY_Is_Array(TY_etype(TY_pointed(ty)))) {
+	     ty = Make_Pointer_Type(/*TY_etype*/ Get_Inner_Array_Type(TY_pointed(ty)));
+	   } 
+	 }
+#if 0
 	 else if (TY_kind(TY_pointed(ty)) == KIND_ARRAY && WN_load_offset(wn) == 0) {
 	   //fix bug445.
 	   //When taking the address of an array, 
@@ -398,7 +403,7 @@ WN_Tree_Type(const WN *wn)
 	   // Should we go for the inner array type here or for the element type?
 	   ty = Make_Pointer_Type(/*TY_etype*/ Get_Inner_Array_Type(TY_pointed(ty)));
 	 }
-//#endif
+#endif
 
 	 break;
 

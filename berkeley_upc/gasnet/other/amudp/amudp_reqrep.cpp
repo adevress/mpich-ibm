@@ -1,6 +1,6 @@
-/*   $Source$
- *     $Date$
- * $Revision$
+/*   $Source: /var/local/cvs/gasnet/other/amudp/amudp_reqrep.cpp,v $
+ *     $Date: 2007/03/18 01:10:42 $
+ * $Revision: 1.45 $
  * Description: AMUDP Implementations of request/reply operations
  * Copyright 2000, Dan Bonachea <bonachea@cs.berkeley.edu>
  */

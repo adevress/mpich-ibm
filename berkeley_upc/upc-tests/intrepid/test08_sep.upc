@@ -26,13 +26,13 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define DIM1 1024
 
 void
-test08()
+test08 ()
 {
   extern shared int array[DIM1][THREADS];
   int i, j;
   for (i = 0; i < DIM1; ++i)
     {
-      array[i][MYTHREAD] = (i+1)*(MYTHREAD + 1);
+      array[i][MYTHREAD] = (i + 1) * (MYTHREAD + 1);
     }
   upc_barrier;
   if (MYTHREAD == 0)
@@ -45,9 +45,8 @@ test08()
 	      int expected = (i + 1) * (j + 1);
 	      if (got != expected)
 		{
-		  fprintf(stderr,
-		    "test08: error at element [%d,%d]. Expected %d, got %d\n",
-		    i, j, expected, got);
+		  fprintf (stderr, "test08: error at element [%d,%d]. Expected %d, got %d\n",
+			   i, j, expected, got);
 		  abort ();
 		}
 	    }

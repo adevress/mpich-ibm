@@ -1,6 +1,6 @@
-#   $Source$
-#     $Date$
-# $Revision$
+#   $Source: /var/local/cvs/gasnet/other/testspawn/Makefile.am,v $
+#     $Date: 2006/04/17 22:01:03 $
+# $Revision: 1.3 $
 # Description: 
 # Copyright 2005, Regents of the University of California
 # Terms of use are as specified in license.txt

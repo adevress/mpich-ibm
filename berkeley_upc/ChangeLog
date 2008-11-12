@@ -1,3 +1,36 @@
+2008-11-05  Berkeley UPC release 2.8.0
+    - Add native support for IBM BlueGene/P via new 'dcmf' network
+    - Upgrade portals network support to cache local memory registration
+    - Many small improvements to IBM LAPI support
+    - Fix performance and correctness problems in Myrinet GM support
+    - Add Pathscale compilers to supported list for Cray XT machines
+    - Improved support for XLC compilers on Linux
+    - Extend "ibv" (InfiniBand) support to Qlogic's InfiniPath adapters
+    - Add/improve support for MIPSEL/Linux platforms, including SiCortex
+    - Extend GCCUPC support to GCCUPC 4.2.0.2 and newer
+    - Add user documentation for experimental UPC-level compiler
+        optimizations (see the upcc manpage)
+    - Workaround for a gcc 4.x (x<3) optimizer bug has changed
+        We now encourage updating to gcc >= 4.3.0, though our previously
+        documented workarounds remain valid
+    - Add support for autoconf 2.62 and newer
+    - Add experimental support for ARM processors
+    - Misc improvements and/or fixes for MIPS, Alpha, PPC and SPARC processors
+    - Fix the following notable bugs in 2.6.0 (see http://upc-bugs.lbl.gov for details):
+      - bug1847 - Fix stability problems in cygwin -pthread apps
+      - bug2391 - Berkeley UPC atomics failures on SGI Altix
+      - bug2383 - Failure to parse gcc-4.3.2's private includes
+      - bug2304 - "make install" always appears up-to-date on Cygwin
+      - bug2209 - Provide missing documentation for IBM SP job launch
+      - bug2188 - Support unequal thread distribution on LAPI network
+      - bug2025 - Translator build failures w/ g++ >= 4.1.2
+      - Various code generation bugs in the source-to-source translator
+      - Source-to-source translator error messages on various valid inputs
+      - Source-to-source translator crashes on various valid inputs
+    - Additional bug reports resolved with improved/clarified documentation
+    - Additional bugs fixed in GASNet (see gasnet/ChangeLog)
+    - Numerous misc minor bug fixes
+
 2007-10-30  Berkeley UPC release 2.6.0
     - Multiconf build manager is now enabled by default, providing easy access
         to multiple UPCR configs (eg debug and opt) from the upcc command line
@@ -178,7 +211,7 @@
     - Full implementation of UPC collectives (as per version 1.0 of the UPC
       Collective specification)
     - MPI/C++/C/FORTRAN/UPC interoperability support added
-    - Runtime now works with GCC UPC binary compiler (see INSTALL for more
+    - Runtime now works with GCC UPC binary compiler (see INSTALL.TXT for more
       information)
     - Runtime memory allocator no longer divides shared memory 50-50% between
       upc_global_alloc/upc_all_alloc and upc_alloc: either type of allocation

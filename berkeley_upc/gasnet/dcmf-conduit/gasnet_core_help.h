@@ -1,8 +1,9 @@
-/*   $Source$
- *     $Date$
- * $Revision$
+/*   $Source: /var/local/cvs/gasnet/dcmf-conduit/gasnet_core_help.h,v $
+ *     $Date: 2008/10/28 05:43:39 $
+ * $Revision: 1.2 $
  * Description: GASNet dcmf conduit core Header Helpers (Internal code, not for client use)
- * Copyright 2002, Dan Bonachea <bonachea@cs.berkeley.edu>
+ * Copyright 2008, Rajesh Nishtala <rajeshn@cs.berkeley.edu>
+ *                 Dan Bonachea <bonachea@cs.berkeley.edu>
  * Terms of use are as specified in license.txt
  */
 

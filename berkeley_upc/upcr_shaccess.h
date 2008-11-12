@@ -1,7 +1,7 @@
 /*
  * Functions for accessing shared memory
  *
- * $Id: upcr_shaccess.h,v 1.70 2006/10/31 01:52:29 jduell Exp $
+ * $Id: upcr_shaccess.h,v 1.71 2008/01/29 03:02:42 bonachea Exp $
  * Jason Duell <jcduell@lbl.gov>
  */
 
@@ -268,6 +268,34 @@
 
 #define UPCRI_VALUE_RETURN(src, nbytes) \
 	GASNETT_VALUE_RETURN(src, nbytes)
+
+/* upcr_(p)shared_to_processlocal - public version of upcri_(p)shared_to_remote
+ * Convert a pointer-to-shared into a virtual address usable by the calling thread
+ * The pointer target must refer to shared memory with affinity to the calling thread, 
+ * or otherwise to shared memory which the calling thread has the ability to access 
+ * directly via load/store to virtual memory, otherwise the call is erroneous.
+ * The extent of memory which falls into the latter category is implementation-dependent
+ * and may be empty. Furthermore, the virtual addresses returned by this function
+ * are only guaranteed to be valid on the calling thread.
+ */
+#define upcr_shared_to_processlocal(sptr) \
+       _upcr_shared_to_processlocal(sptr UPCRI_TV_PASS)
+
+GASNETT_INLINE(_upcr_shared_to_processlocal)
+void *_upcr_shared_to_processlocal(upcr_shared_ptr_t sptr UPCRI_TV_ARG) {
+    upcri_checkvalid_shared(sptr);
+    upcri_assert(upcri_s_islocal(sptr));
+    return upcri_shared_to_remote(sptr);
+}
+#define upcr_pshared_to_processlocal(sptr) \
+       _upcr_pshared_to_processlocal(sptr UPCRI_TV_PASS)
+
+GASNETT_INLINE(_upcr_pshared_to_processlocal)
+void *_upcr_pshared_to_processlocal(upcr_pshared_ptr_t sptr UPCRI_TV_ARG) {
+    upcri_checkvalid_pshared(sptr);
+    upcri_assert(upcri_p_islocal(sptr));
+    return upcri_pshared_to_remote(sptr);
+}
 
 /* 
  * UPCR_ATOMIC_MEMSIZE() is a macro describing the datatype sizes at which

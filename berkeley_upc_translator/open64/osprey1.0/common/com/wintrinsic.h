@@ -71,9 +71,9 @@
 ***
 **/
 
-/** $Revision: 1.28 $
-*** $Date: 2006/10/05 07:20:40 $
-*** $Author: wychen $
+/** $Revision: 1.31 $
+*** $Date: 2007/03/30 02:45:08 $
+*** $Author: ciancu $
 *** $Source: /var/local/cvs/compilers/open64/osprey1.0/common/com/wintrinsic.h,v $
 **/
 
@@ -1354,7 +1354,16 @@ typedef enum {
   INTRN_PUT_NB_P_TYPE_S = 968,
   INTRN_TYPE_EXPR = 969,
 
-  INTRINSIC_LAST  =  970
+  INTRN_VEC_NEW_RR = 970,
+  INTRN_VEC_NEW_LMAD_TARG = 971,
+
+  INTRN_VEC_LOOP_1RS1 = 972,
+  INTRN_VEC_ANAL_1RS1 = 973, 
+  INTRN_VEC_GETSTR_1RS1 = 974,
+  INTRN_VEC_ADVD_1RS1 = 975,
+  INTRN_VEC_GET_LADDR_1RS1 = 976,
+  INTRN_VEC_FIND_1RS1 = 977,
+  INTRINSIC_LAST  =  978
 
 } INTRINSIC;
 

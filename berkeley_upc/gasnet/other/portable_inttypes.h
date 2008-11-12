@@ -1,6 +1,6 @@
-/*    $Source$ */
-/*      $Date$ */
-/*  $Revision$ */
+/*    $Source: /var/local/cvs/gasnet/other/portable_inttypes.h,v $ */
+/*      $Date: 2006/05/23 12:42:25 $ */
+/*  $Revision: 1.13 $ */
 /*  Description: portable_inttypes.h  */
 /*  Copyright 2004, Dan Bonachea <bonachea@cs.berkeley.edu> */
 

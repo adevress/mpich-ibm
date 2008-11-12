@@ -83,6 +83,13 @@ public:
 
   void construct(pointer p, const T& val) { new(p) T(val); }
   void destroy(pointer p) { p->~T(); }
+
+#if (__GNUC__ >= 4)
+  inline bool operator!=(const mempool_allocator& b) const {
+    return pool != b.pool;
+  }
+#endif
+
 };
 
 template<>

@@ -132,27 +132,49 @@ int MPID_Put(void *origin_addr, int origin_count,
                         t_dt_contig, t_data_sz, t_dtp, t_dt_true_lb);
                 /* NOTE! t_data_sz already is adjusted for target_count */
 
-                if (dt_contig) {
+                if (dt_contig && origin_addr >= win_ptr->base &&
+				origin_addr < win_ptr->base + win_ptr->size) {
+			// put from inside origin window, re-use origin window memregion.
                         buf = origin_addr;
-                        cb_send.function = done_rqc_cb;
+                       	cb_send.function = done_rqc_cb;
 			bufmr = &win_ptr->_dev.coll_info[rank].mem_region;
-			s = (char *)((char *)origin_addr -
+			s = (char *)((char *)buf -
 				(char *)win_ptr->base +
 				(char *)win_ptr->_dev.coll_info[rank].base_addr);
                 } else {
-                        MPIDU_MALLOC(buf, char, data_sz +
-				sizeof(struct mpid_put_cb_data),
-				mpi_errno, "MPID_Put");
-                        if (buf == NULL) {
-                                MPID_Abort(NULL, MPI_ERR_NO_SPACE, -1,
-                                        "Unable to allocate "
-                                        "non-contiguous buffer");
-                        }
-                        put = (struct mpid_put_cb_data *)buf;
-                        buf += sizeof(struct mpid_put_cb_data);
+			// need memregion, also may need to pack
+			if (dt_contig) {
+                        	buf = origin_addr;
+                        	MPIDU_MALLOC(put, struct mpid_put_cb_data,
+					sizeof(struct mpid_put_cb_data),
+					mpi_errno, "MPID_Put");
+                        	if (put == NULL) {
+                                	MPID_Abort(NULL, MPI_ERR_NO_SPACE, -1,
+                                        	"Unable to allocate "
+                                        	"put buffer");
+                        	}
+			} else {
+                        	MPIDU_MALLOC(buf, char, data_sz +
+					sizeof(struct mpid_put_cb_data),
+					mpi_errno, "MPID_Put");
+                        	if (buf == NULL) {
+                                	MPID_Abort(NULL, MPI_ERR_NO_SPACE, -1,
+                                        	"Unable to allocate "
+                                        	"non-contiguous buffer");
+                        	}
+                        	put = (struct mpid_put_cb_data *)buf;
+                        	buf += sizeof(struct mpid_put_cb_data);
+                        	mpi_errno = MPID_Segment_init(origin_addr,
+                                        	origin_count,
+                                        	origin_datatype, &segment, 0);
+                        	if (mpi_errno) { MPIU_ERR_POP(mpi_errno); }
+                        	last = data_sz;
+                        	MPID_Segment_pack(&segment, 0, &last, buf);
+                        	MPID_assert_debug(last == data_sz);
+			}
                         refp = &put->ref;
-                        xtra.mpid_xtra_w1 = (size_t)put;
-                        xtra.mpid_xtra_w2 = (size_t)put; // buf to free
+                        xtra.mpid_xtra_w1 = (size_t)put; // 'put' struct
+                        xtra.mpid_xtra_w2 = (size_t)put; // generic buf to free
                         cb_send.function = done_reffree_rqc_cb;
 			void * mrcfg_base  = buf;
 			size_t mrcfg_bytes = data_sz;
@@ -162,13 +184,6 @@ int MPID_Put(void *origin_addr, int origin_count,
 			s = (char *)(buf - (char *)mrcfg_base);
 			put->flag = 1; // we have a memregion
                         *refp = 0;
-                        mpi_errno = MPID_Segment_init(origin_addr,
-                                        origin_count,
-                                        origin_datatype, &segment, 0);
-                        if (mpi_errno) { MPIU_ERR_POP(mpi_errno); }
-                        last = data_sz;
-                        MPID_Segment_pack(&segment, 0, &last, buf);
-                        MPID_assert_debug(last == data_sz);
                 }
 #ifdef USE_DCMF_PUT
 #else /* ! USE_DCMF_PUT */

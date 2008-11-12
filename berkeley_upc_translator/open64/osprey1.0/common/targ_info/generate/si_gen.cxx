@@ -44,17 +44,19 @@
 //
 /////////////////////////////////////
 
-//  $Revision: 1.2 $
-//  $Date: 2005/07/15 09:01:44 $
-//  $Author: wychen $
+//  $Revision: 1.4 $
+//  $Date: 2008/10/15 20:28:09 $
+//  $Author: ciancu $
 //  $Source: /var/local/cvs/compilers/open64/osprey1.0/common/targ_info/generate/si_gen.cxx,v $
 
 
 #include <assert.h>
 #include <stdio.h>
-#include <unistd.h>
 #include <limits.h>
 #include <stdarg.h>
+#include <string.h>
+#include <unistd.h>
+#include <stdlib.h>
 #include <list>
 #include <map>
 #include <vector>
@@ -65,7 +67,7 @@ using std::vector;
 using std::less;
 
 
-
+#include "gen_util.h"
 #include "topcode.h"
 #include "targ_isa_properties.h"
 #include "targ_isa_subset.h"

@@ -54,16 +54,17 @@ batch_sys = pbs
 
 queues = [
         {
-          Q_name     => batch,   
+          Q_name     => workq,   
           Q_maxnode  => 32,      
           Q_minnode  => 1,       
 	  Q_maxtpn   => 1,      
 	  Q_maxtime  => 1:00:00,
 	  Q_noppn    => 1,
-	  Q_usesize    => 1
+	  Q_usemppwidth    => 1,
+	  Q_usemppnppn => 1
         }
 ]
-# XT3 requires reslist like: -l size=N  with no ppn
+# XT3 requires reslist like: -l mppwidth=N  with no ppn
 
 # =================================================================
 # Optional (but suggested) fields

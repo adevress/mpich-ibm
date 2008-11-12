@@ -85,6 +85,7 @@ ibv_options         =
 shmem_options       =
 portals_options     =
 sci_options         =
+dcmf_options        =
 
 # A Perl regular expression specifying warning messages 
 # issued by any tool invoked by upcc that should never be 
@@ -103,11 +104,11 @@ warning_blacklist = \
         (.*?Warning: -xarch=native has been explicitly specified.*?$)| \
 	(.*?warning .1357: optimization disabled due to excessive resource requirements; contact Intel.*?$)| \
         (.*?Additional NOP may be necessary to workaround Itanium processor A.B step errata.*?$)| \
-        ((ld: 0711-224 WARNING: Duplicate symbol: (__fe_def_env|gasnett_debug_).*?\n)+ld: 0711-345.*?$)| \
+        ((ld: 0711-224 WARNING: Duplicate symbol: (__fe_def_env|_?gasnet[it]_).*?\n)+ld: 0711-345.*?$)| \
+        (ld.*?: WARNING 105: Common symbol "_?gasnet[it]_.*?$)| \
         (1501-245 Warning: Hard ulimit has been reduced to less than RLIM_INFINITY.*?$)| \
         (.*?warning: undefining "__STDC.*?$)| \
-        (.*?0711-224.*?Duplicate symbol: __fe_def_env.*?\n.*?Use the -bloadmap or -bnoquiet option.*?$)| \
-        (.*?In function .*?\n.*?warning: passing argument .*? of \'_gasnet_.*?\' discards qualifiers.*?$)| \
+        (.*?In function .*?(\n.*?warning: passing argument .*? of \'_gasnet_.*?\' discards qualifiers.*)+)| \
         ((In file included from.*?\n(\s*from .*?\n)*)? \
          (\/(usr|opt)\/.*In function.*\n)* \
           ((\/usr\/.*ignoring .*pragma.*\n)| \

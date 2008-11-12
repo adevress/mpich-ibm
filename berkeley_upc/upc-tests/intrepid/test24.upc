@@ -161,8 +161,7 @@ test24()
 	      shared char *ptr;
 	      char *s;
 	      if (!a)
-	        { fprintf (stderr,
-		        "%d: Error: can't find alloc list entry for size %ld\n",
+	        { fprintf (stderr, "%d: Error: can't find alloc list entry for size %ld\n",
 		        MYTHREAD, (long int)size);
 		  abort ();
 	        }
@@ -176,8 +175,7 @@ test24()
 	      s = (char *)&ptr[MYTHREAD];
 	      if (strcmp (s, buf))
 	        {
-		  fprintf (stderr,
-		    "%d: Error: global alloc pass %d:"
+		  fprintf (stderr, "%d: Error: global alloc pass %d:"
 		    " data comparison failed for size %ld\n",
                     MYTHREAD, pass, (long int)size);
 		  abort ();
@@ -214,7 +212,7 @@ test24()
 	    {
 	      int c = char_code (nxt_thread, size);
 	      shared [] char *s;
-	      s = upc_alloc (size);
+	      s = upc_local_alloc (1, size);
 	      if (!s)
 	        {
 		  fprintf (stderr, "%d: Error: upc_all_alloc() failed\n",
@@ -240,8 +238,7 @@ test24()
 	      char *s;
 	      int t_free;
 	      if (!a)
-	        { fprintf (stderr,
-		        "%d: Error: can't find alloc list entry for size %ld\n",
+	        { fprintf (stderr, "%d: Error: can't find alloc list entry for size %ld\n",
 		        MYTHREAD, (long int)size);
 		  abort ();
 	        }
@@ -255,8 +252,7 @@ test24()
 	      s = (char *)ptr;
 	      if (strcmp (s, buf))
 	        {
-		  fprintf (stderr,
-		    "%d: Error: local alloc pass %d:"
+		  fprintf (stderr, "%d: Error: local alloc pass %d:"
 		    " data comparison failed for size %ld\n",
                     MYTHREAD, pass, (long int)size);
 		  abort ();
@@ -277,14 +273,15 @@ test24()
 	  upc_barrier 7;
 	}
     }
+  free (buf);
   upc_barrier 8;
-  if (MYTHREAD == 0)
-    printf ("test24: global/local allocation test - passed\n");
 }
 
 int
 main()
 {
   test24 ();
+  if (MYTHREAD == 0)
+    printf ("test24: global/local allocation test - passed\n");
   return 0;
 }

@@ -173,7 +173,7 @@ upcri_print_pshared(upcr_pshared_ptr_t sptr)
 void 
 upcri_check_addr_overflow(uintptr_t addrfield)
 {
-    if ((addrfield & UPCRI_ADDR_MASK) != addrfield)
+    if ((addrfield & (UPCRI_ADDR_MASK >> UPCRI_ADDR_SHIFT)) != addrfield)
 	upcri_err("value %p would overflow shared pointer bits", 
 		  (void *)addrfield);
 }
@@ -348,7 +348,7 @@ int _upcri_isvalid_pshared(upcr_pshared_ptr_t sptr) {
 	  #if UPCRI_SYMMETRIC_PSHARED
 	    0,
           #elif UPCRI_PACKED_SPTR
-            (int)(sptr >> (UPCRI_THREAD_BITS+UPCRI_ADDR_BITS)),
+            (int)((sptr & UPCRI_PHASE_MASK) >> UPCRI_PHASE_SHIFT),
           #else
 	    (int)upcr_phaseof_pshared(sptr),
           #endif

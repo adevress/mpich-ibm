@@ -326,7 +326,7 @@
  */
 
 /*  $REVISION: $
- *  $Date: 2001/10/30 16:59:45 $
+ *  $Date: 2007/01/04 20:53:24 $
  *  $Author: ciancu $
  *  $Source: /var/local/cvs/compilers/open64/osprey1.0/common/targ_info/access/ti_si.h,v $
  */
@@ -339,7 +339,7 @@ extern "C" {
 #ifndef SI_RCS_ID
 #define SI_RCS_ID
 #ifdef _KEEP_RCS_ID
-static const char SI_rcs_id[] = "$Source: /var/local/cvs/compilers/open64/osprey1.0/common/targ_info/access/ti_si.h,v $ $Revision: 1.1.1.1 $";
+static const char SI_rcs_id[] = "$Source: /var/local/cvs/compilers/open64/osprey1.0/common/targ_info/access/ti_si.h,v $ $Revision: 1.2 $";
 #endif
 #endif
 
@@ -726,7 +726,7 @@ inline INT TSI_Write_Write_Interlock( TOP top )
  ****************************************************************************/
 
 extern const INT SI_ID_count;
-#pragma weak SI_ID_count
+#pragma weak SI_ID_count 
 
 inline INT SI_ID_Count(void)
 {

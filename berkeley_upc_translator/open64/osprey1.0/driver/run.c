@@ -929,6 +929,10 @@ print_time (string phase)
 #if defined(__MACH__) && defined(__APPLE__)
 #define HZ 100
 #endif 
+
+#ifndef HZ
+#define HZ 100
+#endif
     clock_t time1, wtime;
     double utime, stime;
     struct tms tm1;

@@ -1,6 +1,6 @@
-/*   $Source$
- *     $Date$
- * $Revision$
+/*   $Source: /var/local/cvs/gasnet/other/ammpi/ammpi_internal.h,v $
+ *     $Date: 2008/10/02 07:56:49 $
+ * $Revision: 1.40 $
  * Description: AMMPI internal header file
  * Copyright 2000, Dan Bonachea <bonachea@cs.berkeley.edu>
  */

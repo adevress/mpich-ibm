@@ -29,7 +29,7 @@ all clean install:
 	  echo " $(CC) is: `$(CC) --version 2>&1 | head -1`" ; \
 	  echo " $(CXX) is: `$(CXX) --version 2>&1 | head -1`" ; \
 	  echo "------------------------------------------------------------" ; \
-	  if test "$$builddir" = "targ_g4_osx" ; then   \
+	  if test "$$builddir" = "targ_g4_osx" -o "$$builddir" = "targ_ia32_osx"; then   \
 	    strip=NOSTRIP=1 ; export strip ;            \
 	  fi ;                                          \
 	  $(MAKE) BUILDDIR="$$builddir" $$strip $@-internal ;	\
@@ -65,8 +65,7 @@ clean-internal:
 
 # Files to install
 INSTALL_LIST = \
-	libupc/upcr_trans_extra.c		\
-	libupc/upcr_trans_extra.w2c.h		\
+	libupc/upcr_trans_extra*.[ch]		\
 	$(BUILDDIR)/be/be			\
 	$(BUILDDIR)/driver.nue/driver		\
 	$(BUILDDIR)/driver.nue/sgiupc		\
@@ -117,14 +116,19 @@ EXTRA_DIST = \
 	config-aux \
 	open64/osprey1.0/libupc/upcr_trans_extra.c \
 	open64/osprey1.0/libupc/upcr_trans_extra.w2c.h \
+	open64/osprey1.0/libupc/upcr_trans_extra_auto_nb.c \
+	open64/osprey1.0/libupc/upcr_trans_extra_vect.c \
+	open64/osprey1.0/libupc/upcr_trans_extra_vect.w2c.h \
 	open64/osprey1.0/gccfe/gnu/gstab.h \
 	open64/osprey1.0/gccfe/gnu/stab.def \
 	open64/osprey1.0/targia32_ia64_nodebug \
 	open64/osprey1.0/build_ia64 \
 	open64/osprey1.0/targ_alpha_tru64 \
 	open64/osprey1.0/targ_g4_osx \
+	open64/osprey1.0/targ_ia32_osx \
 	open64/osprey1.0/targ_ppc_aix \
 	open64/osprey1.0/be/be/so_locations \
+	open64/osprey1.0/be/lno/BUPC-LNO-NOTES.txt \
 	open64/osprey1.0/driver/sort_options.*
 
 # Files/directories to never distribute
@@ -164,24 +168,35 @@ update-nodist-list:
             sort | uniq > nodist-list
 	rm -f nodist-list.old
 
-TARBALL_NAME = berkeley_upc_translator.tar.gz
+DIST_DIRNAME = berkeley_upc_translator-$(TRANS_VERSION)
+TARBALL_NAME = $(DIST_DIRNAME).tar.gz
+DIST_TMPDIR = $${TMPDIR:-/tmp}
 
 # create a pruned translator distribution
 dist: nodist-list
+	@if test -z "$(TRANS_VERSION)"; then \
+	  echo ERROR: you must set TRANS_VERSION when running make dist ; \
+	  exit 1 ; \
+        fi
+	@if test -e "$(TARBALL_NAME)"; then \
+	  echo ERROR: \"$(TARBALL_NAME)\" already exists ; \
+	  exit 1 ; \
+        fi
+	@if test -e "$(DIST_TMPDIR)/$(DIST_DIRNAME)"; then \
+	  echo ERROR: \"$(DIST_TMPDIR)/$(DIST_DIRNAME)\" already exists ; \
+	  exit 1 ; \
+        fi
 	@echo --- Checking source tree...
 	@if test "`find . -name '*.o' -print`" != "" ; then \
 	  echo ERROR: make dist should only be run on a CLEAN CVS checkout of the translator source tree ; \
 	  exit 1 ; \
         fi
-	@echo --- Pruning source tree...
-	for file in `cat ./nodist-list` ; do \
-	  rm -Rf $$file ; \
-	done
+	@echo --- Constructing pruned source tree...
+	cp -R . $(DIST_TMPDIR)/$(DIST_DIRNAME) && \
+	( cd "$(DIST_TMPDIR)/$(DIST_DIRNAME)" && xargs rm -Rf ) < ./nodist-list
 	@echo --- Preparing translator distribution tarball...
-	rm -f $(TARBALL_NAME)
-	dir=`pwd` ; dir=`basename $$dir` ; cd .. ; \
-        tar cvpf - $$dir | gzip -9 -c > $(TARBALL_NAME) ; \
-	mv -f $(TARBALL_NAME) $$dir
+	( cd $(DIST_TMPDIR) && tar cvpf - "$(DIST_DIRNAME)" ) | gzip -9 -c > $(TARBALL_NAME) && \
+	rm -Rf "$(DIST_TMPDIR)/$(DIST_DIRNAME)"
 	@echo $(TARBALL_NAME) is ready for testing and distribution.
 
 force:

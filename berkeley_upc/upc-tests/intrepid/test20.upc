@@ -64,15 +64,13 @@ test20 ()
       double got_imag = sh1[MYTHREAD].cell[i].imag;
       if (got_real != expected_real)
         {
-	  fprintf (stderr,
-	     "%d: Error mismatch at %i - real, expected: %7.0lf got: %7.0lf\n",
+	  fprintf (stderr, "%d: Error mismatch at %i - real, expected: %7.0lf got: %7.0lf\n",
 	     MYTHREAD, i, expected_real, got_real);
           abort ();
 	}
       if (got_imag != expected_imag)
         {
-	  fprintf (stderr,
-	     "%d: Error mismatch at %i - imag, expected: %7.0lf got: %7.0lf\n",
+	  fprintf (stderr, "%d: Error mismatch at %i - imag, expected: %7.0lf got: %7.0lf\n",
 	     MYTHREAD, i, expected_imag, got_imag);
           abort ();
 	}
@@ -86,5 +84,5 @@ test20 ()
 int main (int argc, char **argv)
 {
   test20 ();
-  exit (0);
+  return 0;
 }

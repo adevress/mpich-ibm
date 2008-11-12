@@ -1,5 +1,4 @@
 Berkeley UPC and Intrepid GCCUPC
-Cray XT Special Release, September 13, 2007
 Compiler installation instructions
 ----------------------------------
 
@@ -7,16 +6,13 @@ This source archive contains everything required to build the Berkeley UPC
 compiler and Intrepid GCCUPC+UPCR compiler on the Cray XT3/4 systems with
 Catamount or Compute-Node Linux, and consists of the following components:
 
-* berkeley_upc-2.5.10.tar.gz: Berkeley UPC Runtime (UPCR) v2.5.10 source 
-   Beta release of version 2.6 of the Berkeley UPC runtime.
-   Includes XT-specific fixes relative to the 2.4.0 public release.
-   Intended for release to "Cray-friendly" XT customers ONLY.
-
-* berkeley_upc_translator-2.4.0.tar.gz: Berkeley UPC translator v2.4.0 source 
+* berkeley_upc-X.Y.Z.tar.gz: Berkeley UPC Runtime (UPCR) vX.Y.Z source 
    Also available from http://upc.lbl.gov/
 
-* gccupc-4.0.3.4.tar.gz: GCCUPC compiler source (version 4 branch)
-   Special preview release version of GCCUPC for the Cray XT
+* berkeley_upc_translator-X.Y.Z.tar.gz: Berkeley UPC translator vX.Y.Z source 
+   Also available from http://upc.lbl.gov/
+
+* gccupc-4.A.B.C.tar.gz: GCCUPC compiler source (version 4 branch)
 
 * README.CrayXT: These instructions (also available in the Berkeley UPC Runtime
   distribution in the docs directory)
@@ -79,11 +75,11 @@ To build the Berkeley UPC translator locally:
 
    * unpack the translator source tarball:
 
-      gunzip -c berkeley_upc_translator-2.4.0.tar.gz | tar xvpf -  
+      gunzip -c berkeley_upc_translator-X.Y.Z.tar.gz | tar xvpf -  
 
    * cd into the source directory:
 
-      cd berkeley_upc_translator-2.4.0/
+      cd berkeley_upc_translator-X.Y.Z/
 
    * build the translator, using the *FRONTEND* (login node) gcc compiler 
      (CC and CXX MUST reference the gcc for the login host, 
@@ -122,11 +118,11 @@ To build the GCCUPC compiler:
 
    * unpack the translator source tarball:
 
-      gunzip -c gccupc-4.0.3.4.tar.gz | tar xvpf -
+      gunzip -c gccupc-4.A.B.C.tar.gz | tar xvpf -
 
    * cd into the unpacked directory:
 
-      cd gccupc-4.0.3.4/
+      cd gccupc-4.A.B.C/
 
    * create a build directory, and cd into it:
 
@@ -183,7 +179,7 @@ for use with either or both of the translators above.
 
    * unpack the runtime source tarball:
 
-      gunzip -c berkeley_upc-2.5.10.tar.gz | tar xvpf -  
+      gunzip -c berkeley_upc-X.Y.Z.tar.gz | tar xvpf -  
    
      This will create a runtime source directory which we'll henceforce refer to as $UPCR_SRC
 
@@ -235,7 +231,8 @@ for use with either or both of the translators above.
      --disable-smp   Disables the single-node smp-conduit, to save disk space
      --disable-mpi   Disables the low-performance mpi-conduit, to save disk space
      --enable-sptr-struct   Use the 128-bit shared pointer representation
-          (currently required for runs using > 1024 nodes). Only supports BUPC.
+          (currently required for runs using > 1024 nodes w/ the BUPC translator,
+           or for runs > 4096 nodes w/ the Intrepid GCCUPC translator).
 
    * configure the runtime by invoking the cross-configure script, and point it at the 
      appropriate translators from steps 1A & 1B:
@@ -243,22 +240,25 @@ for use with either or both of the translators above.
      For BUPC translator ONLY, use: (if BUPC_TRANS is omitted, it will default to the 
      internet-based BUPC translator)
 
-      export BUPC_TRANS=/path/from/step1A/targ
+      BUPC_TRANS=/path/from/step1A/targ; export BUPC_TRANS
       $UPCR_SRC/cross-configure-crayxt-* --with-multiconf=dbg,opt \
               --prefix=$PREFIX   ...any optional settings...
 
      For GCCUPC translator ONLY, use:  (this option requires PrgEnv-gnu)
 
-      export GCCUPC_TRANS=/path/from/step1B/bin/upc
+      GCCUPC_TRANS=/path/from/step1B/bin/upc; export GCCUPC_TRANS
       $UPCR_SRC/cross-configure-crayxt-* --with-multiconf=dbg_gccupc,opt_gccupc \
               --prefix=$PREFIX   ...any optional settings...
 
      For both BUPC and GCCUPC translators, use:  (this option requires PrgEnv-gnu)
 
-      export BUPC_TRANS=/path/from/step1A/targ
-      export GCCUPC_TRANS=/path/from/step1B/bin/upc
+      BUPC_TRANS=/path/from/step1A/targ; export BUPC_TRANS
+      GCCUPC_TRANS=/path/from/step1B/bin/upc; export GCCUPC_TRANS
       $UPCR_SRC/cross-configure-crayxt-* --with-multiconf=dbg,opt,dbg_gccupc,opt_gccupc \
               --prefix=$PREFIX   ...any optional settings...
+
+     NOTE: For a csh-type shell, replace "VAR=VAL; export VAR" with "setenv VAR VAL"
+     in all the examples above.
 
      The multiconf.conf.in file contains detailed tweakable settings for each conf, 
      although in most cases you should stick with the defaults. 
@@ -267,7 +267,7 @@ for use with either or both of the translators above.
      version compatibility with the GCCUPC translator. If the GCCUPC translator
      binary is not yet available at the path provided (eg when preparing an RPM
      installer) this check can be bypassed by explicitly providing the version
-     number as an additional argument: --with-gccupc-version=4.0.3.4
+     number as an additional argument: --with-gccupc-version=4.A.B.C
 
    * build the runtime:
 
@@ -358,7 +358,7 @@ Known Issues and limitations:
 
  portals-conduit:
  ---------------
- * portals-conduit is a new native implementation of GASNet (and hence UPC)
+ * portals-conduit is a native implementation of GASNet (and hence UPC)
    targeting Portals which delivers improved communication performance on the
    Cray XT3/XT4. The current release now includes a fully-native implementation 
    of portals-conduit, where all functionality is implemented via direct Portals
@@ -451,10 +451,8 @@ Additional constraints for using UPCR in pthreaded mode: (optimizes on-node comm
 
 * Special UPCR configure options must be passed to select the NPTL libraries and headers
 
-* The NPTL pthread.h must be manually patched to fix compilation errors
-
-* C compiler used to configure UPCR must be ABI compatible with the one used to
-build the NPTL library (there might be a sles10 dependency here)
+* On PE 2.0, C compiler used to configure UPCR must be ABI compatible with the one used to
+build the NPTL library (there might be a sles10 dependency here). 
 
 Additional constraints for UPCR with BUPC translator:
 -------------------------------------------------------

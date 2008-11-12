@@ -3,9 +3,9 @@
 // ====================================================================
 //
 // Module: opt_cond_const.cxx
-// $Revision: 1.2 $
-// $Date: 2003/03/04 06:16:03 $
-// $Author: wychen $
+// $Revision: 1.3 $
+// $Date: 2008/10/14 22:56:10 $
+// $Author: ciancu $
 // $Source: /var/local/cvs/compilers/open64/osprey1.0/be/opt/opt_cond_const.cxx,v $
 //
 // ====================================================================
@@ -58,8 +58,13 @@
 // ====================================================================
 
 
+#if(__GNUC__ == 4 && __GNUC_MINOR__ == 3)
+#include <set>
+#include <map>
+#else
 #include <set.h>
 #include <map.h>
+#endif 
 
 #define USE_STANDARD_TYPE
 #include "opt_defs.h"
