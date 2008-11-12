@@ -1,4 +1,4 @@
-DIRS = driver.nue gccfe be whirl2c wopt ipl lno
+DIRS = driver.nue gccfe be whirl2c wopt ipl lno targ_info libiberty libcomutil
 
 all:
 	

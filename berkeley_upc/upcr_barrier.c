@@ -1,6 +1,6 @@
 /* $Source: /var/local/cvs/upcr/upcr_barrier.c,v $
- * $Date: 2006/10/13 08:06:25 $
- * $Revision: 1.36 $
+ * $Date: 2008/09/22 23:50:06 $
+ * $Revision: 1.39 $
  * Description: UPC barrier implementation on GASNet
  * Copyright 2002, Dan Bonachea <bonachea@cs.berkeley.edu>
  */
@@ -19,7 +19,7 @@ static char _cache_pad2[256];
 
 static int volatile notify_done[2] = {0,0};
 static int volatile wait_done[2] = {0,0};
-static pthread_mutex_t barrier_lock = PTHREAD_MUTEX_INITIALIZER;
+static gasnett_mutex_t barrier_lock = GASNETT_MUTEX_INITIALIZER;
 
 static int barrier_consensus_value = 0;
 static int barrier_flags = 0;
@@ -28,8 +28,8 @@ static int barrier_local_mismatch = 0;
 typedef struct {
   gasnett_atomic_t	count;
   volatile int		done;
-  pthread_cond_t	cond;
-  pthread_mutex_t	lock;
+  gasnett_cond_t	cond;
+  gasnett_mutex_t	lock;
 } upcri_pthread_barrier_t;
 
 static upcri_pthread_barrier_t upcri_pthread_barrier_var[2];
@@ -47,8 +47,8 @@ upcri_barrier_init()
     for (i = 0; i < 2; ++i) {
 	gasnett_atomic_set(&(upcri_pthread_barrier_var[i].count), upcri_mypthreads(), 0);
 	upcri_pthread_barrier_var[i].done = 0;
-	pthread_cond_init(&upcri_pthread_barrier_var[i].cond, NULL);
-	pthread_mutex_init(&upcri_pthread_barrier_var[i].lock, NULL);
+	gasnett_cond_init(&upcri_pthread_barrier_var[i].cond);
+	gasnett_mutex_init(&upcri_pthread_barrier_var[i].lock);
     }
 }
 
@@ -58,7 +58,7 @@ _upcri_pthread_barrier() {
     int last;
 
     if_pf (upcri_polite_wait) {
-	pthread_mutex_lock(&state->lock);
+	gasnett_mutex_lock(&state->lock);
     }
 
     /* The REL ensures everything written by this thread prior to entering the barrier
@@ -76,12 +76,12 @@ _upcri_pthread_barrier() {
 	state->done = 1;
 
 	if_pf (upcri_polite_wait) {
-	    pthread_cond_broadcast(&state->cond);
+	    gasnett_cond_broadcast(&state->cond);
 	}
     } else {
 	do {
 	    if_pf (upcri_polite_wait) {
-		pthread_cond_wait(&state->cond, &state->lock);
+		gasnett_cond_wait(&state->cond, &state->lock);
 	    } else {
 		gasnett_spinloop_hint();	/* XXX: gasnet_AMPoll() ? */
 	    }
@@ -89,7 +89,7 @@ _upcri_pthread_barrier() {
     }
 
     if_pf (upcri_polite_wait) {
-	pthread_mutex_unlock(&state->lock);
+	gasnett_mutex_unlock(&state->lock);
     }
     
     /* Ensure all values written by any thread before entering the barrer will be
@@ -205,14 +205,14 @@ upcr_wait_internal(int barrierval, int flags, int block UPCRI_PT_ARG)
 #endif
     } else if (!wait_done[phase]) {	/* redundant, but reduces lock contention */
 	if (block) {
-            while (pthread_mutex_trylock(&barrier_lock) == EBUSY) {
+            while (gasnett_mutex_trylock(&barrier_lock) == EBUSY) {
               /* required to prevent deadlock, also reduces lock contention */
               if (wait_done[phase]) goto done; 
 	      if (upcri_polite_wait) gasnett_sched_yield(); /* spin-wait */
               gasnett_spinloop_hint();
             }
         } else {
-	    int retval = pthread_mutex_trylock(&barrier_lock);
+	    int retval = gasnett_mutex_trylock(&barrier_lock);
 
 	    if (retval == EBUSY)
 		return 0;
@@ -223,7 +223,7 @@ upcr_wait_internal(int barrierval, int flags, int block UPCRI_PT_ARG)
 
 	    if (!notify_done[phase]) { /*  not everyone has notified yet */
                 if (!block) {
-	          pthread_mutex_unlock(&barrier_lock);
+	          gasnett_mutex_unlock(&barrier_lock);
                   return 0;
                 }
 		while (!notify_done[phase]) {
@@ -231,12 +231,14 @@ upcr_wait_internal(int barrierval, int flags, int block UPCRI_PT_ARG)
                   gasnett_spinloop_hint();
                 }
 	    }
+	    gasnett_local_rmb(); /* ensure we will observe the values written by the notify */
+
 	    if (block)		/*  do the global gasnet barrier wait */
 		retval = gasnet_barrier_wait(barrier_consensus_value, barrier_flags);
 	    else {
 		retval = gasnet_barrier_try(barrier_consensus_value, barrier_flags);
                 if (retval == GASNET_ERR_NOT_READY) {
-	          pthread_mutex_unlock(&barrier_lock);
+	          gasnett_mutex_unlock(&barrier_lock);
 		  return 0;
                 }
 	    }
@@ -247,7 +249,7 @@ upcr_wait_internal(int barrierval, int flags, int block UPCRI_PT_ARG)
             gasnett_local_wmb();
   	    wait_done[phase] = 1;
 	}
-	pthread_mutex_unlock(&barrier_lock);
+	gasnett_mutex_unlock(&barrier_lock);
     }
 done:
     gasnett_local_rmb();

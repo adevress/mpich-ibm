@@ -3,8 +3,8 @@ GASNet Specification
 
    Version 1.8
 Released November 2nd, 2006
-$Date: 2007/10/31 00:27:24 $
-$Revision: 1.43 $
+$Date: 2008/10/11 04:34:38 $
+$Revision: 1.44 $
 Editor: Dan Bonachea <bonachea@cs.berkeley.edu>
 `http://www.cs.berkeley.edu/~bonachea/gasnet'
 `http://upc.lbl.gov/'
@@ -757,7 +757,7 @@ sender's point of view, the request and reply functions block until the
 message is sent. A message is defined to be sent once it is safe for
 the caller to reuse the storage (registers or memory) containing the
 message (one notable exception to this policy is
-`gasnet_RequestLargeAsyncM()'). In implementations which copy or buffer
+`gasnet_RequestLongAsyncM()'). In implementations which copy or buffer
 messages for transmission, the definition still holds: message sent
 means the layer has copied the message and promises to deliver the copy
 with its "best effort", and the original message storage may be reused.

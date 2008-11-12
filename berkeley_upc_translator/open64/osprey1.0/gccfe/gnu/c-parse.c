@@ -73,7 +73,7 @@ static tree prefix_attributes = NULL_TREE;
 static tree declspec_stack;
 
 /* 1 if we explained undeclared var errors.  */
-static int undeclared_variable_notice;
+/*static*/ int undeclared_variable_notice;
 
   /* 1 if we're in a for loop with declarations */
   static int for_scope = 0;

@@ -55,7 +55,7 @@ batch_sys = interactive
 queues = [
         {
           Q_name     => dque,   
-          Q_maxnode  => 60,      
+          Q_maxnode  => 7,      
           Q_minnode  => 1,       
 	  Q_maxtpn   => 2,      
 	  Q_maxtime  => 00:00:00 

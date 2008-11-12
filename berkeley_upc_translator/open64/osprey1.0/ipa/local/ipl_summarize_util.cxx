@@ -75,10 +75,15 @@
 
 // Hashing on CODEREP and PHI_NODE pointers is much faster than tracing
 // chains of PHIs and CHIs and then hashing on the SUMMARY_* structs
+#if !((__GNUC__ == 4) && (__GNUC_MINOR__ >= 2))
+extern
+#endif
 CHI_CR_TO_INT_MAP* Chi_To_Idx_Map;
 CHI_CR_ARRAY* Hashed_Chis;
 INT Num_Chis_On_PU_Start;
-
+#if !((__GNUC__ == 4) && (__GNUC_MINOR__ >= 2))
+extern
+#endif
 PHI_NODE_TO_INT_MAP* Phi_To_Idx_Map;
 PHI_NODE_ARRAY* Hashed_Phis;
 INT Num_Phis_On_PU_Start;
@@ -1195,3 +1200,7 @@ Count_tree_size (FEEDBACK& fb, WN *wn, INT32 &bbs, INT32 &stmts, FB_FREQ& cycles
   } 
 
 } // Count_tree_size 
+
+void initjunk() {
+  Phi_To_Idx_Map = 0;
+}

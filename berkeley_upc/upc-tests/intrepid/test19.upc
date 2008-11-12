@@ -23,18 +23,18 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/time.h>
-#include <inttypes.h>
 #include <unistd.h>
 
 #undef min
-#define min(x,y) (((x) < (y)) ? (x): (y))
 #undef max
-#define max(x,y) (((x) > (y)) ? (x): (y))
 #undef abs
-#define abs(x) (((x) > 0) ? (x): -(x))
-#undef ceil 
-#define ceil(x, r) (((x) + (r) - 1)/(r))
+#undef ceil
 #undef round_up
+
+#define min(x,y) (((x) < (y)) ? (x): (y))
+#define max(x,y) (((x) > (y)) ? (x): (y))
+#define abs(x) (((x) > 0) ? (x): -(x))
+#define ceil(x, r) (((x) + (r) - 1)/(r))
 #define round_up(x, r) (ceil(x,r)*(r))
 
 #define ALLOC_OVERHEAD 64
@@ -88,7 +88,7 @@ test19()
   lock = upc_all_lock_alloc();
   if (!lock)
     {
-      fprintf (stderr, "Error upc_all_lock_alloc() failed.\n");
+      fprintf (stderr, "Error: upc_all_lock_alloc() failed.\n");
       abort ();
     }
   upc_barrier;
@@ -110,7 +110,7 @@ test19()
 	  global_ptr = upc_global_alloc (THREADS, MAX_ALLOC_SIZE);
 	  if (!global_ptr)
 	    {
-	      fprintf (stderr, "%d: Error failed to allocate large block\n", MYTHREAD);
+	      fprintf (stderr, "%d: Error: failed to allocate large block\n", MYTHREAD);
 	      abort ();
 	         
 	    }
@@ -242,12 +242,12 @@ test19()
 	  k = random() % N;
 	  p = ptrs[k];
 	  sz = sizes[k];
-	  for (i = k; i < (N - 1); ++i)
+	  for (i = k; i < (N_max - 1); ++i)
 	    {
 	      ptrs[i]  = ptrs[i+1];
 	      sizes[i] = sizes[i+1];
             }
-	  sizes[N-1] = sz;
+	  sizes[N_max-1] = sz;
 	  N = N - 1;
 #ifdef VERBOSE
           upc_lock (lock);

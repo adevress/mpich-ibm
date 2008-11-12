@@ -1,6 +1,6 @@
 /* $Source: /var/local/cvs/gasnet/gm-conduit/gasnet_core_receive.c,v $
- * $Date: 2007/10/15 08:09:19 $
- * $Revision: 1.44 $
+ * $Date: 2007/12/19 22:33:09 $
+ * $Revision: 1.48 $
  * Description: GASNet GM conduit Implementation
  * Copyright 2002, Christian Bell <csbell@cs.berkeley.edu>
  * Copyright 2002, Dan Bonachea <bonachea@cs.berkeley.edu>
@@ -51,7 +51,6 @@ gasnetc_bufdesc_from_event(gm_recv_event_t *e)
 	GASNETC_ASSERT_BUFDESC_PTR(bufd, gm_ntohp(e->recv.buffer));
 
 	bufd->dest_addr   = 0;
-	bufd->payload_off = 0;
 	bufd->len         = (uint32_t) gm_ntoh_u32(e->recv.length);
 	bufd->gm_id       = gm_ntoh_u16(e->recv.sender_node_id);
 	bufd->gm_port     = (uint16_t) gm_ntoh_u8(e->recv.sender_port_id);
@@ -208,7 +207,6 @@ void
 gasnetc_process_AMRequest(gasnetc_bufdesc_t *bufd)
 {
 	uint8_t			handler_idx, numargs, *ptr;
-	uintptr_t		dest_addr;
 	int32_t			*argptr, len;
 
 	ptr = (uint8_t *) bufd->buf;
@@ -237,13 +235,20 @@ gasnetc_process_AMRequest(gasnetc_bufdesc_t *bufd)
 			    len - GASNETC_AM_MEDIUM_HEADER_LEN(numargs));
 			break;
 
-		case GASNETC_AM_LONG:
-			dest_addr = *((uintptr_t *) &ptr[8]);
+		case GASNETC_AM_LONG: {
+			uint32_t payload_len = *((uint32_t *) &ptr[4]);
+			uintptr_t dest_addr = *((uintptr_t *) &ptr[8]);
+			uint32_t header_len = GASNETC_AM_LONG_HEADER_LEN(numargs);
+			len -= header_len;
+			if (len) {
+			    memcpy((uint8_t *)dest_addr + (payload_len - len),
+				   ptr+header_len, len);
+			}
 			argptr = (int32_t *) &ptr[GASNETC_AM_LONG_ARGS_OFF];
-			len = *((uint32_t *) &ptr[4]);
 			GASNETI_RUN_HANDLER_LONG(1, handler_idx, _gmc.handlers[handler_idx],
-			    bufd, argptr, numargs, (void*)dest_addr, len);
+			    bufd, argptr, numargs, (void*)dest_addr, payload_len);
 			break;
+		}
 
 		default:
 			gasneti_fatalerror("AMRequest type unknown 0x%x",
@@ -288,13 +293,19 @@ gasnetc_process_AMReply(gasnetc_bufdesc_t *bufd)
 			    len - GASNETC_AM_MEDIUM_HEADER_LEN(numargs)); 
 			break;
 
-		case GASNETC_AM_LONG:
+		case GASNETC_AM_LONG: {
+			uint32_t header_len = GASNETC_AM_LONG_HEADER_LEN(numargs);
+			uint32_t payload_len = *((uint32_t *) &ptr[4]);
 			dest_addr = *((uintptr_t *) &ptr[8]);
-			len = *((uint32_t *) &ptr[4]);
+			if (len != header_len) {
+			    gasneti_assert(len == header_len + payload_len); /* Reply packs all or none */
+			    memcpy((uint8_t *)dest_addr, ptr+header_len, payload_len);
+			}
 			argptr = (int32_t *) &ptr[GASNETC_AM_LONG_ARGS_OFF];
 			GASNETI_RUN_HANDLER_LONG(0, handler_idx, _gmc.handlers[handler_idx],
-			    bufd, argptr, numargs, (void *)dest_addr, len);
+			    bufd, argptr, numargs, (void *)dest_addr, payload_len);
 			break;
+		}
 
 		default:
 			gasneti_fatalerror("AMReply type unknown 0x%x",
@@ -446,9 +457,11 @@ gasnetc_callback_hi(struct gm_port *p, void *ctx, gm_status_t status)
 	gasnetc_token_hi_release();
 }
 
-/* Utility function for releasing rdma from bufd.  At least the remote_req must
- * have a firehose request type whereas the local request type is optional (AM
- * buffers can be used to send payload from).
+/* Utility function for releasing rdma from bufd.
+ * LARGE/EVERYTHING: At least the remote_req must have a firehose request
+ * type whereas the local request type is optional (AM buffers can be used
+ * to send payload from).
+ * FAST: Never have remote, but always have local.
  */
 GASNETI_INLINE(gasnetc_release_rdma)
 void gasnetc_release_rdma(gasnetc_bufdesc_t *bufd) {
@@ -458,14 +471,20 @@ void gasnetc_release_rdma(gasnetc_bufdesc_t *bufd) {
 
 	gasneti_mutex_assertlocked(&gasnetc_lock_gm);
 	gasneti_assert(bufd->node < gasneti_nodes);
-	gasneti_assert(bufd->remote_req != NULL);
 
+#if defined(GASNET_SEGMENT_FAST)
+	/* Release firehose on local region */
+	gasneti_assert(bufd->local_req != NULL);
+	reqs[0] = bufd->local_req;
+#else
 	/* Release firehose on regions (remote and possibly local) */
+	gasneti_assert(bufd->remote_req != NULL);
 	reqs[0] = bufd->remote_req;
 	if (bufd->local_req != NULL) {
 		reqs[1] = bufd->local_req;
 		numreqs++;
 	}
+#endif
 	GASNETE_GM_SET_IN_UNKNOWN();
 	firehose_release(reqs, numreqs);
 	GASNETE_GM_UNSET_IN_UNKNOWN();

@@ -61,10 +61,20 @@ double *localPtr;
 /* bug 103: ICE: codegen (AMD64) - fail while evaluating shared array element actual parameters */
 shared double save_err[100][4][THREADS];
 
+/* gimple bug. */
+shared int gimple_arr[THREADS];
 
-#ifndef abs
+/* BUPC bug53 - de-reference via shared pointer to local.*/
+int * shared bupc_bug53_p;
+
+/* BUPC bug206 - de-reference via local pointer
+   to pointer to unblocked shared.  */
+typedef shared [] int *sintptr;
+shared [] int bupc_206_A[10];
+sintptr bupc_206_S;
+
+#undef abs
 #define abs(x) ((x) < 0 ? -(x) : (x))
-#endif
 
 int
 process_errors (double e1, double e2, double e3, double e4)
@@ -183,7 +193,7 @@ bupc156_test()
 	  int got = a[i];
 	  if (got != expected)
 	    {
-	      printf ("bupc156 test failed: expected %d got %d at i = %d\n",
+	      fprintf (stderr, "Error bupc156 test failed: expected %d got %d at i = %d\n",
 	              expected, got, i);
 	      abort ();
 	    }
@@ -231,10 +241,13 @@ bug228_test (void)
   upc_barrier;
 }
 
-shared int bug230_ia[2][10*THREADS];
+/* 'strict' is needed here, because on a 64 bit machine,
+   two threads might try to write each half of a 64 bit
+   word and a race condition results.  */
+strict shared int bug230_ia[2][10*THREADS];
 
 void
-bug230_proc(shared int ia[2][10*THREADS])
+bug230_proc(strict shared int ia[2][10*THREADS])
 {
   int i, j;
   for (i = 0; i < 2; ++i)
@@ -246,8 +259,7 @@ bug230_proc(shared int ia[2][10*THREADS])
 /* Note: Bug 229 is a compile-time bug, that this
    test reproduces when compiled.  At runtime,
    this test exercises bug 230 (when compiled with
-   static threads).  */
-
+   static threads and THREADS=2).  */
 void
 bug230_test()
 {
@@ -318,6 +330,166 @@ bug233_test ()
   upc_barrier;
 }
 
+/* Bug 235: incorrect address calculation involving blocked PTS
+ * and a negative index.  This failure was originally discovered
+ * when running the "compound_test" test in the new (RC2) GWU GUTS
+ * test, though it has nothing to do with that test.   This test
+ * fails only if THREADS > 2.  Upon further analysis, the incorrect
+ * calculation implies to all negative index values. The reasons
+ * for this boil down to the need to insure that a signed
+ * floor_div() and floor_mod() calculation is used when performing
+ * the address calculation. */
+void
+bug235_test()
+{
+  shared [5] int *p1;
+  int i;
+  p1 = (shared[5] int *) upc_all_alloc(3*THREADS, 5*sizeof(int));
+  if (!p1)
+    {
+      fprintf(stderr, "Error Bug #235 allocation failed.\n");
+      abort();
+    }
+  for (i = 1; i <= 3*THREADS*5; ++i)
+    {
+      int got = upc_threadof(p1+i-1);
+      int expected = ((i-1)/5)%THREADS;
+      if (got != expected)
+        {
+          fprintf(stderr, "Error Bug #235: affinity check for p1+i-1 failed.\n"
+            " i = %d MYTHREAD = %d affinity = %d expected = %d\n",
+            i, MYTHREAD, got, expected);
+          abort ();
+        }
+    }
+}
+
+/* bug 236: bugzila/bug1126.upc fails to compile -
+   reports __copyblk3 has incompatible type for argument 2
+   Problem occurs when a PTS is in shared space.  The result
+   of incrementing/decrementing the pointer is erroneously
+   qualified as "shared".   A similar situation arises
+   for regular pointer arithmetic (bug 226) which is also
+   tested below. */
+shared [5] int bug236_A[5*THREADS];
+shared [5] int * shared bug236_ptr;
+void bug236_test ()
+{
+  int i;
+  if (!MYTHREAD)
+      bug236_ptr = bug236_A;
+  upc_barrier;
+  for (i = 0; i < 5*THREADS; ++i)
+    {
+      upc_barrier;
+      if (MYTHREAD == ((i/5)%THREADS))
+        {
+	  int expected, got;
+	  expected = (i/5)%THREADS;
+	  got = upc_threadof (bug236_ptr);
+	  bug236_ptr = bug236_ptr + 1;
+	  if (got != expected)
+	    {
+	      fprintf (stderr, "Error threadof(%i) = %d, expected: %d - bug226 test failed.\n",
+			       i, got, expected);
+	      abort ();
+	    }
+        }
+      upc_barrier;
+    }
+  upc_barrier;
+  if (!MYTHREAD)
+      bug236_ptr = bug236_A;
+  upc_barrier;
+  for (i = 0; i < 5*THREADS; ++i)
+    {
+      upc_barrier;
+      if (MYTHREAD == ((i/5)%THREADS))
+        {
+	  int expected, got;
+	  expected = (i/5)%THREADS;
+	  got = upc_threadof (bug236_ptr++);
+	  if (got != expected)
+	    {
+	      fprintf (stderr, "Error threadof(%i) = %d, expected: %d - bug236 test failed.\n",
+			       i, got, expected);
+	      abort ();
+	    }
+        }
+      upc_barrier;
+    }
+  upc_barrier;
+}
+
+int
+get_prev()
+{
+  /* The following generated an internal compiler error
+     in gimplify_expr() when compiled at -O0 using the
+     packed PTS representation.  */
+  int val = gimple_arr[MYTHREAD?(MYTHREAD-1):THREADS-1];
+  return val;
+}
+
+void
+gimple_bug_test()
+{
+  int expected, got;
+  if (!MYTHREAD)
+    {
+      int i;
+      for (i = 0; i < THREADS; ++i) gimple_arr[i] = (i+1);
+    }
+  upc_barrier;
+  expected = MYTHREAD ? MYTHREAD : THREADS;
+  got = get_prev();
+  if (got != expected)
+    {
+      fprintf (stderr, "thread %i: Error: expected: %d  got %d - gimple bug test failed.\n",
+		       MYTHREAD, got, expected);
+      abort ();
+    }
+  upc_barrier;
+}
+
+void
+bupc_bug53_test ()
+{
+  if (MYTHREAD == 0)
+    {
+      int i;
+      bupc_bug53_p = (int *) malloc (10 * sizeof (int));
+      for (i = 0; i < 10; i++)
+	bupc_bug53_p[i] = i;
+      for (i = 0; i < 10; i++)
+	{
+	  int expected = i;
+	  int got = bupc_bug53_p[i];
+	  if (got != expected)
+	    {
+	      fprintf (stderr, "Error: expected: %d, got: %d - BUPC bug53 test failed\n",
+	               expected, got);
+	      abort ();
+	    }
+	}
+      free (bupc_bug53_p);
+    }
+}
+
+void
+bupc_bug206_test()
+{
+  sintptr *local = &bupc_206_S;
+  bupc_206_S = bupc_206_A;
+  local[0] = NULL;  /* local[0] is an alias for 'S' */
+  if (bupc_206_S != NULL)
+    {
+      fprintf (stderr, "%d: Error: S != NULL"
+                       " - BUPC bug206 test failed.\n", MYTHREAD);
+      abort();
+    }
+}
+
 void
 test18()
 {
@@ -370,7 +542,7 @@ test18()
       abort ();
     }
 #endif
-#endif /* KNOWN_BUG */
+#endif  /* KNOWN_BUG */
   /* bug 39: can't statically initialize pointer-to-shared with NULL */
   got = !shared_ptr_null_init;
   expected = 1;
@@ -404,6 +576,7 @@ test18()
   /* We can't test upc_lock_free(), so we'll just call it. */
   lock = upc_global_lock_alloc ();
   upc_lock_free (lock);
+#ifndef sgi /* KNOWN BUG #89 */
   /* bug 52: upc_resetphase unimplemented */
   ptr_to_blk5 = upc_resetphase (&a_blk5[1]);
   got = upc_phaseof (ptr_to_blk5);
@@ -414,6 +587,7 @@ test18()
                        got, expected);
       abort ();
     }
+#endif /* !sgi */
   /* bug 53: cast of pointer-to-shared with differing block size does not reset phase */
   ptr_to_blk5 = &a_blk5[3];
   ptr_to_blk3 = (shared [3] int *)ptr_to_blk5;
@@ -427,10 +601,8 @@ test18()
     }
   /* bug 54: upc_fence is unimplemented */
   upc_fence;
-  #if defined(__BERKELEY_UPC__) || defined(__GNUC__)
   /* bug 55: upc_poll is unimplemented */
   upc_poll();
-  #endif
   /* bug 56: can't initialize a shared pointer to NULL at auto scope */
   got = (sptr_auto == (shared void *)0);
   expected = 1;
@@ -672,13 +844,23 @@ test18()
   upc_barrier;
   bug233_test ();
   upc_barrier;
+  bug235_test ();
+  upc_barrier;
+  bug236_test ();
+  upc_barrier;
+  gimple_bug_test ();
+  upc_barrier;
+  bupc_bug53_test ();
+  upc_barrier;
+  bupc_bug206_test ();
+  upc_barrier;
   if (MYTHREAD == 0)
     {
       printf ("test18: miscellaneous regression tests - passed.\n");
     }
 }
 
-volatile int two() { return 2; }
+int two() { return 2; }
 volatile int v2;
 
 int

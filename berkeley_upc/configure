@@ -47,7 +47,7 @@
     # avoid duplicate messages caused by configure re-execing itself (eg on Tru64)
     upcri_hello_shown=1
     export upcri_hello_shown
-    echo 'Configuring Berkeley UPC Runtime version 2.6.0 with the following options:'
+    echo 'Configuring Berkeley UPC Runtime version 2.8.0 with the following options:'
     echo "  " "$@"
   fi
 
@@ -364,7 +364,7 @@ ac_includes_default="\
 # include <unistd.h>
 #endif"
 
-ac_subst_vars='SHELL PATH_SEPARATOR PACKAGE_NAME PACKAGE_TARNAME PACKAGE_VERSION PACKAGE_STRING PACKAGE_BUGREPORT exec_prefix prefix program_transform_name bindir sbindir libexecdir datadir sysconfdir sharedstatedir localstatedir libdir includedir oldincludedir infodir mandir build_alias host_alias target_alias DEFS ECHO_C ECHO_N ECHO_T LIBS build build_cpu build_vendor build_os host host_cpu host_vendor host_os target target_cpu target_vendor target_os INSTALL_PROGRAM INSTALL_SCRIPT INSTALL_DATA CYGPATH_W PACKAGE VERSION ACLOCAL AUTOCONF AUTOMAKE AUTOHEADER MAKEINFO install_sh STRIP ac_ct_STRIP INSTALL_STRIP_PROGRAM mkdir_p AWK SET_MAKE am__leading_dot AMTAR am__tar am__untar PWD_PROG CONFIGURE_ARGS TOP_SRCDIR TOP_BUILDDIR BUILD_IS_SRC_TRUE BUILD_IS_SRC_FALSE BUILD_IS_SRC SYSTEM_NAME SYSTEM_TUPLE BUILD_ID UPCR_VERSION RUNTIME_SPEC UPC_SPEC PERL GASNET_PERL_BYTESFLAG HARNESS_TRANS_OPTION COMPILER_SPEC_FILE GCCUPC_VERSION USING_GCCUPC USING_GCCUPC_TRUE USING_GCCUPC_FALSE CC CFLAGS LDFLAGS CPPFLAGS ac_ct_CC EXEEXT OBJEXT DEPDIR am__include am__quote AMDEP_TRUE AMDEP_FALSE AMDEPBACKSLASH CCDEPMODE am__fastdepCC_TRUE am__fastdepCC_FALSE CPP upcr_cv__gfp_fullprogname_CPP upcr_cv__gfp_fullprogname_CC CROSS_COMPILING_TRUE CROSS_COMPILING_FALSE CROSS_COMPILING CC_FAMILY CC_UNWRAPPED CC_WRAPPED UPCR_SYSTEM_CFLAGS HOST_CC HOST_CFLAGS HOST_LDFLAGS HOST_LIBS UPCR_PROFILE_FLAG EGREP LEX LEXLIB LEX_OUTPUT_ROOT UPCR_USE_LEX_TRUE UPCR_USE_LEX_FALSE SIZEOF_VOID_P UPCRI_PTR_BITS NM GNU_NM_TRUE GNU_NM_FALSE AR RANLIB ENVCMD DIG NSLOOKUP GMAKE TAIL BOURNE_SHELL TAIL_FOLLOW TAIL_FOLLOW_MULTI GNU_GCC USE_GNU_PREPROC GCC_AS_CC EXESUFFIX PLATFORM_PREPROCESS UPCR_OBJECT_STRINGS_TRUE UPCR_OBJECT_STRINGS_FALSE TOTALVIEW_ENABLED TOTALVIEW_SUBDIR BUILDCONFIG_DEBUG_TRUE BUILDCONFIG_DEBUG_FALSE BUILDCONFIG_GASP_TRUE BUILDCONFIG_GASP_FALSE GASP_ENABLED MPI_INCOMPATIBLE BUILDCONFIG TRANSLATOR GCC_TLS_SUPPORT HAVE_CPP_INCLUDE_NEXT PATH_ALLOCA_H HAVE_ALLOCA_H PATH_FENV_H HAVE_FENV_H PATH_STDINT_H HAVE_STDINT_H PATH_STRING_H HAVE_STRING_H PATH_STDLIB_H HAVE_STDLIB_H PATH_STDIO_H HAVE_STDIO_H PATH_STDDEF_H HAVE_STDDEF_H PATH_STDBOOL_H HAVE_STDBOOL_H PATH_STDARG_H HAVE_STDARG_H PATH_INTTYPES_H HAVE_INTTYPES_H PATH_LIMITS_H HAVE_LIMITS_H PATH_MATH_H HAVE_MATH_H PATH_TIME_H HAVE_TIME_H PATH_SYS_STAT_H HAVE_SYS_STAT_H SYSTEM_HEADER_DIRS HAVE_BUILTIN_ALLOCA HAVE_ALLOCA_IN_STDLIB_H SIZEOF_CHAR SIZEOF_SHORT SIZEOF_INT SIZEOF_LONG SIZEOF_LONG_LONG PLATFORM_ILP32_TRUE PLATFORM_ILP32_FALSE PLATFORM_LP64_TRUE PLATFORM_LP64_FALSE PLATFORM_ILP64_TRUE PLATFORM_ILP64_FALSE COMPLETE_STDINT_H COMPLETE_INTTYPES_H HAVE_SYS_TYPES_H COMPLETE_SYS_TYPES_H INTTYPES_DEFINES SIZEOF_PTRDIFF_T SIZEOF_SIZE_T CHAR_IS_SIGNED HAVE_BOOL SIGINT SIGTERM SIGKILL SYS_HEADER_BLD SYS_HEADER_INST PATCHED_HEADER CONDUITS DEFAULT_CONDUIT PTHREADS PARSEQ TARGETLIBS ASSISTANTLIBS HAVE_PTHREAD_TRUE HAVE_PTHREAD_FALSE POE_RDMA_ARGS PRETRANS_CPPFLAGS GASNET_INSTALL_CMD MAKE_INCLUDE SHARED_HEAP_SIZE SHARED_HEAP_OFFSET LIBOBJS LTLIBOBJS'
+ac_subst_vars='SHELL PATH_SEPARATOR PACKAGE_NAME PACKAGE_TARNAME PACKAGE_VERSION PACKAGE_STRING PACKAGE_BUGREPORT exec_prefix prefix program_transform_name bindir sbindir libexecdir datadir sysconfdir sharedstatedir localstatedir libdir includedir oldincludedir infodir mandir build_alias host_alias target_alias DEFS ECHO_C ECHO_N ECHO_T LIBS build build_cpu build_vendor build_os host host_cpu host_vendor host_os target target_cpu target_vendor target_os INSTALL_PROGRAM INSTALL_SCRIPT INSTALL_DATA CYGPATH_W PACKAGE VERSION ACLOCAL AUTOCONF AUTOMAKE AUTOHEADER MAKEINFO install_sh STRIP ac_ct_STRIP INSTALL_STRIP_PROGRAM mkdir_p AWK SET_MAKE am__leading_dot AMTAR am__tar am__untar PWD_PROG CONFIGURE_ARGS TOP_SRCDIR TOP_BUILDDIR BUILD_IS_SRC_TRUE BUILD_IS_SRC_FALSE BUILD_IS_SRC SYSTEM_NAME SYSTEM_TUPLE BUILD_ID UPCR_VERSION RUNTIME_SPEC UPC_SPEC PERL GASNET_PERL_BYTESFLAG HARNESS_TRANS_OPTION COMPILER_SPEC_FILE GCCUPC_VERSION CC CFLAGS LDFLAGS CPPFLAGS ac_ct_CC EXEEXT OBJEXT DEPDIR am__include am__quote AMDEP_TRUE AMDEP_FALSE AMDEPBACKSLASH CCDEPMODE am__fastdepCC_TRUE am__fastdepCC_FALSE CPP EGREP SIZEOF_VOID_P USING_GCCUPC USING_GCCUPC_TRUE USING_GCCUPC_FALSE upcr_cv__gfp_fullprogname_CPP upcr_cv__gfp_fullprogname_CC CROSS_COMPILING_TRUE CROSS_COMPILING_FALSE CROSS_COMPILING CC_FAMILY CC_UNWRAPPED CC_WRAPPED UPCR_SYSTEM_CFLAGS HOST_CC HOST_CFLAGS HOST_LDFLAGS HOST_LIBS UPCR_PROFILE_FLAG LEX LEXLIB LEX_OUTPUT_ROOT UPCR_USE_LEX_TRUE UPCR_USE_LEX_FALSE UPCRI_PTR_BITS NM GNU_NM_TRUE GNU_NM_FALSE AR RANLIB ENVCMD DIG NSLOOKUP GMAKE TAIL BOURNE_SHELL TAIL_FOLLOW TAIL_FOLLOW_MULTI GNU_GCC USE_GNU_PREPROC GCC_AS_CC EXESUFFIX PLATFORM_PREPROCESS UPCR_OBJECT_STRINGS_TRUE UPCR_OBJECT_STRINGS_FALSE TOTALVIEW_ENABLED TOTALVIEW_SUBDIR BUILDCONFIG_DEBUG_TRUE BUILDCONFIG_DEBUG_FALSE BUILDCONFIG_GASP_TRUE BUILDCONFIG_GASP_FALSE GASP_ENABLED MPI_INCOMPATIBLE BUILDCONFIG TRANSLATOR GCC_TLS_SUPPORT HAVE_CPP_INCLUDE_NEXT PATH_ALLOCA_H HAVE_ALLOCA_H PATH_FENV_H HAVE_FENV_H PATH_STDINT_H HAVE_STDINT_H PATH_STRING_H HAVE_STRING_H PATH_STDLIB_H HAVE_STDLIB_H PATH_STDIO_H HAVE_STDIO_H PATH_STDDEF_H HAVE_STDDEF_H PATH_STDBOOL_H HAVE_STDBOOL_H PATH_STDARG_H HAVE_STDARG_H PATH_INTTYPES_H HAVE_INTTYPES_H PATH_LIMITS_H HAVE_LIMITS_H PATH_MATH_H HAVE_MATH_H PATH_TIME_H HAVE_TIME_H PATH_SYS_STAT_H HAVE_SYS_STAT_H SYSTEM_HEADER_DIRS HAVE_BUILTIN_ALLOCA HAVE_ALLOCA_IN_STDLIB_H SIZEOF_CHAR SIZEOF_SHORT SIZEOF_INT SIZEOF_LONG SIZEOF_LONG_LONG PLATFORM_ILP32_TRUE PLATFORM_ILP32_FALSE PLATFORM_LP64_TRUE PLATFORM_LP64_FALSE PLATFORM_ILP64_TRUE PLATFORM_ILP64_FALSE COMPLETE_STDINT_H COMPLETE_INTTYPES_H HAVE_SYS_TYPES_H COMPLETE_SYS_TYPES_H INTTYPES_DEFINES SIZEOF_PTRDIFF_T SIZEOF_SIZE_T CHAR_IS_SIGNED HAVE_BOOL SIGINT SIGTERM SIGKILL SYS_HEADER_BLD SYS_HEADER_INST PATCHED_HEADER CONDUITS DEFAULT_CONDUIT PTHREADS PARSEQ TARGETLIBS ASSISTANTLIBS HAVE_PTHREAD_TRUE HAVE_PTHREAD_FALSE POE_RDMA_ARGS PRETRANS_CPPFLAGS GASNET_INSTALL_CMD MAKE_INCLUDE SHARED_HEAP_SIZE SHARED_HEAP_OFFSET LIBOBJS LTLIBOBJS'
 ac_subst_files='cc_wrapper_mk UPCR_INCLUDE_NEXT_ALLOCA_H UPCR_INCLUDE_NEXT_FENV_H UPCR_INCLUDE_NEXT_STDINT_H UPCR_INCLUDE_NEXT_STRING_H UPCR_INCLUDE_NEXT_STDLIB_H UPCR_INCLUDE_NEXT_STDIO_H UPCR_INCLUDE_NEXT_STDDEF_H UPCR_INCLUDE_NEXT_STDBOOL_H UPCR_INCLUDE_NEXT_STDARG_H UPCR_INCLUDE_NEXT_INTTYPES_H UPCR_INCLUDE_NEXT_LIMITS_H UPCR_INCLUDE_NEXT_MATH_H UPCR_INCLUDE_NEXT_TIME_H UPCR_INCLUDE_NEXT_SYS_STAT_H PERLSTART'
 
 # Initialize some variables set by options.
@@ -947,6 +947,8 @@ Optional Features:
   --disable-shmem             support running over SHMEM
   --enable-vapi               support running over Mellanox VAPI
   --disable-vapi              support running over Mellanox VAPI
+  --enable-dcmf               support running over IBM BlueGene/P DCMF
+  --disable-dcmf              support running over IBM BlueGene/P DCMF
   --enable-ibv                support running over OpenIB/OpenFabrics IB Verbs
   --disable-ibv               support running over OpenIB/OpenFabrics IB Verbs
   --enable-portals            support running over Cray Portals
@@ -960,6 +962,7 @@ Optional Packages:
   --with-lex=value            specify the 'lex' version to use (default is auto-detection).  Use --without-lex to force use of the prebuild scanner.
   --with-gcc=value            full pathname of GNU GCC compiler (if needed)
   --with-segment-mmap-max=value Set default max size of mmap-based GASNet segments (ex: "2GB", "1045MB") -- see also --enable-segment-large
+  --with-max-pthreads-per-node=value Set max pthreads supported per GASNet node
   --with-lapi-type=value      IBM Switch hardware type ("colony" or "federation", default is to probe)
   --with-sptr-packed-bits=value value='phase,thread,addr' tweak bit distribution in packed sptr representation, requires phase+thread+addr=64
   --with-translator           specify UPC-to-C translator
@@ -1808,7 +1811,7 @@ fi
 
 # Define the identity of the package.
  PACKAGE=berkeley_upc
- VERSION=2.6.0
+ VERSION=2.8.0
 
 
 # Some tools Automake needs.
@@ -2266,7 +2269,7 @@ ac_configure_args="$ac_configure_args --prefix="$ac_default_prefix""
    # ensure we report the correct target tuple
    *-apple-darwin*)
      _GASNET_GCCVER=`${CC:-gcc} -v 2>&1`
-     _GASNET_GCCISAPPLE=`echo "$_GASNET_GCCVER" | grep 'gcc version' | grep 'Apple Computer'`
+     _GASNET_GCCISAPPLE=`echo "$_GASNET_GCCVER" | grep 'gcc version' | grep 'Apple '`
      _GASNET_GCCTARGET=`echo "$_GASNET_GCCVER" | /usr/bin/perl -ne 'print \$1 if (m/--target=(\S+)/);'`
      _GASNET_GCCCPU=`echo "$_GASNET_GCCVER" | /usr/bin/perl -ne 'print \$1 if (m/--target=([^-]+)/);'`
      if test "$_GASNET_GCCISAPPLE" -a "$_GASNET_GCCTARGET" -a "$_GASNET_GCCCPU" ; then
@@ -2405,15 +2408,15 @@ _ACEOF
 
 
 
-    default_translator="http://upc-translator.lbl.gov/upcc-2.6.0.cgi"
+    default_translator="http://upc-translator.lbl.gov/upcc-2.8.0.cgi"
 
     UPCR_RUNTIME_SPEC_MAJOR=3
-  UPCR_RUNTIME_SPEC_MINOR=9
+  UPCR_RUNTIME_SPEC_MINOR=10
   RUNTIME_SPEC="${UPCR_RUNTIME_SPEC_MAJOR}.${UPCR_RUNTIME_SPEC_MINOR}"
 
     UPC_SPEC="200505L"
 
-  UPCR_VERSION=2.6.0
+  UPCR_VERSION=2.8.0
   cat >>confdefs.h <<_ACEOF
 #define UPCR_VERSION "$UPCR_VERSION"
 _ACEOF
@@ -2541,6 +2544,72 @@ echo "$as_me: error: cannot find perl $MIN_PERL_VERSION or later" >&2;}
 
 
 
+# vvvvvvvvvvvvvvvvvvvvvv GASNET_FORBID_PROGRAM_TRANSFORM vvvvvvvvvvvvvvvvvvvvvv (L:1)
+
+  # echo program_prefix=$program_prefix  program_suffix=$program_suffix program_transform_name=$program_transform_name
+  # undo prefix autoconf automatically adds during cross-compilation
+  if test "$cross_compiling" = yes && test "$program_prefix" = "${target_alias}-" ; then
+    program_prefix=NONE
+  fi
+  # normalize empty prefix/suffix
+  if test -z "$program_prefix" ; then
+    program_prefix=NONE
+  fi
+  if test -z "$program_suffix" ; then
+    program_suffix=NONE
+  fi
+  # undo transforms caused by empty prefix/suffix
+  if test "$program_transform_name" = 's,^,,' || \
+     test "$program_transform_name" = 's,$$,,' || \
+     test "$program_transform_name" = 's,$$,,;s,^,,' ; then
+    program_transform_name="s,x,x,"
+  fi
+  if test "$program_prefix$program_suffix$program_transform_name" != "NONENONEs,x,x," ; then
+
+
+echo
+echo "configure error: This configure script does not support --program-prefix, --program-suffix or --program-transform-name. Users are recommended to instead use --prefix with a unique directory and make symbolic links as desired for renaming."
+if test "" ; then
+if test -f "conftest.$ac_ext" ; then
+  errfile=conftest.$ac_ext
+else
+  errfile=gasnet_errsave_file
+fi
+if test -f "$errfile" ; then
+  echo
+  echo " --- Failed program --- "
+  cat $errfile
+  echo " -----------------------"
+fi
+fi
+if test -f "conftest.err" ; then
+  errfile=conftest.err
+else
+  errfile=gasnet_errsave_err
+fi
+if test -f "$errfile" ; then
+  echo
+  echo "Compilation error: "
+  echo
+  cat $errfile
+fi
+echo
+CONFIG_FILE=`pwd`/config.log
+{ { echo "$as_me:$LINENO: error: See $CONFIG_FILE for details." >&5
+echo "$as_me: error: See $CONFIG_FILE for details." >&2;}
+   { (exit 1); exit 1; }; }
+
+
+  fi
+
+# ^^^^^^^^^^^^^^^^^^^^^^ GASNET_FORBID_PROGRAM_TRANSFORM ^^^^^^^^^^^^^^^^^^^^^^ (L:1)
+
+
+
+
+
+
+
 # vvvvvvvvvvvvvvvvvvvvvv GASNET_IF_ENABLED(sptr-packed,...) vvvvvvvvvvvvvvvvvvvvvv (L:1)
 
 # Check whether --enable-sptr-packed or --disable-sptr-packed was given.
@@ -2609,158 +2678,6 @@ HARNESS_TRANS_OPTION="-trans"
 COMPILER_SPEC_FILE="compiler.spec"
 
 
-
-
-# vvvvvvvvvvvvvvvvvvvvvv GASNET_WITH(gccupc,...) vvvvvvvvvvvvvvvvvvvvvv (L:1)
-
-
-# Check whether --with-gccupc or --without-gccupc was given.
-if test "${with_gccupc+set}" = set; then
-  withval="$with_gccupc"
-
-  case "$withval" in
-    no) :
-         USING_GCCUPC="no"  ;;
-    *)  if test -n "$force_packed_sptr" -o -n "$force_packed_symmetric"; then
-        { { echo "$as_me:$LINENO: error: '--with-gccupc' requires '--enable-sptr-struct'" >&5
-echo "$as_me: error: '--with-gccupc' requires '--enable-sptr-struct'" >&2;}
-   { (exit 1); exit 1; }; }
-     fi
-     if test "$withval" = "yes"; then
-        { { echo "$as_me:$LINENO: error: '--with-gccupc requires pathname to 'upc' or 'xupc'" >&5
-echo "$as_me: error: '--with-gccupc requires pathname to 'upc' or 'xupc'" >&2;}
-   { (exit 1); exit 1; }; }
-     fi
-     echo "$as_me:$LINENO: checking for gccupc" >&5
-echo $ECHO_N "checking for gccupc... $ECHO_C" >&6
-     gccdir=`expr "$withval" : '\(.*\)/x*upc$'`
-     if test -z "$gccdir"; then
-        { { echo "$as_me:$LINENO: error: \"--with-gccupc: must provide full path to 'upc' or 'xupc'\"" >&5
-echo "$as_me: error: \"--with-gccupc: must provide full path to 'upc' or 'xupc'\"" >&2;}
-   { (exit 1); exit 1; }; }
-     fi
-     TRANSLATOR="$withval"
-     echo "$as_me:$LINENO: result: $TRANSLATOR" >&5
-echo "${ECHO_T}$TRANSLATOR" >&6
-# Default CC to gccupc's 'gcc' (living in same directory as 'upc')
-#   - TODO: make this work:  right now gasnet doesn't see the CC change if we
-#           merely set CC=$gccdir/gcc.  If we export CC (or append
-#           CC=$gccdir/gcc or --with-cc=$gccdir/gcc to ac_configure_args),
-#           gasnet's configure dies complaining that CC wasn't set in the last
-#           configure invocation.  This is because it shared the same
-#           config.cache with upcr.
-#       - for now, force users to set CC=<gccupc's gcc> if they want it.
-#   - UPDATE: we do *not* require the use of CC=<gccupc's gcc>: that approach is fully supported, but optional
-#         users are free to supply a different CC provided it is ABI compatible with gccupc
-#     if test -n "`$gccdir/gcc -v 2>&1 < /dev/null | grep 'gcc version'`"; then
-#         if test -z "$CC"; then
-#             CC="$gccdir/gcc"
-#         fi
-#     fi
-
-     cat >>confdefs.h <<\_ACEOF
-#define UPCRI_USING_GCCUPC 1
-_ACEOF
-
-     force_struct_sptr="yes"
-     USING_GCCUPC="yes"
-     HARNESS_TRANS_OPTION=""
-     echo "$as_me:$LINENO: checking for gccupc version" >&5
-echo $ECHO_N "checking for gccupc version... $ECHO_C" >&6
-     GCCUPC_VERSION=
-
-
-
-# vvvvvvvvvvvvvvvvvvvvvv GASNET_WITH(gccupc-version,...) vvvvvvvvvvvvvvvvvvvvvv (L:2)
-
-
-# Check whether --with-gccupc-version or --without-gccupc-version was given.
-if test "${with_gccupc_version+set}" = set; then
-  withval="$with_gccupc_version"
-
-  case "$withval" in
-    no) :
-         ;;
-    *)   # don't attempt to run GCC/UPC (eg when building an RPM it might not yet be installed)
-         # just accept the version override and trust the user knows what he's doing
-         GCCUPC_VERSION="$withval"
-	 { echo "$as_me:$LINENO: WARNING: Accepting --with-gccupc-version=$GCCUPC_VERSION. Translator validation check skipped." >&5
-echo "$as_me: WARNING: Accepting --with-gccupc-version=$GCCUPC_VERSION. Translator validation check skipped." >&2;}
-        ;;
-  esac
-
-else
-
-   :
-
-
-fi;
-
-# ^^^^^^^^^^^^^^^^^^^^^^ GASNET_WITH(gccupc-version,...) ^^^^^^^^^^^^^^^^^^^^^^ (L:2)
-
-
-
-     if test -z "$GCCUPC_VERSION" ; then # auto-detect version by running the compiler
-       if test -z "`$TRANSLATOR -v 2>&1 < /dev/null | grep 'GCC UPC'`" ; then
-         { { echo "$as_me:$LINENO: error: '--with-gccupc' requires pathname to 'upc' or 'xupc' executable" >&5
-echo "$as_me: error: '--with-gccupc' requires pathname to 'upc' or 'xupc' executable" >&2;}
-   { (exit 1); exit 1; }; }
-       fi
-       # Old GCC UPC version string:
-       #  xgcc (GCC) 4.0.3 20071007 upc-4.0.3.5 (GCC UPC/dev)
-       # New GCC UPC version string:
-       #  xgcc (GCC) 4.2.0 20071006 (dev) (GCC UPC 4.2.0-1)
-       # Above, in a production compiler, xgcc is gcc,
-       # and dev (with optional parens) is not present.
-       GCCUPC_VERSION=`$TRANSLATOR -v 2>&1 | \
-         $PERL -ne 'if (/upc-(\S+) .GCC UPC/ or /\(GCC UPC (\S+)?\)/) {print $1;}'`
-     fi
-     GCCUPC_VERSION_MAJOR=`echo "$GCCUPC_VERSION" | \
-         $PERL -ne 'if (m/(\d+)\.(\d+)\.(\d+)[.-](\d+)/) {print $1;}'`
-     if test -z "$GCCUPC_VERSION_MAJOR" ; then
-       { { echo "$as_me:$LINENO: error: Missing or invalid GCC/UPC translator version: $GCCUPC_VERSION" >&5
-echo "$as_me: error: Missing or invalid GCC/UPC translator version: $GCCUPC_VERSION" >&2;}
-   { (exit 1); exit 1; }; }
-     else
-       echo "$as_me:$LINENO: result: $GCCUPC_VERSION" >&5
-echo "${ECHO_T}$GCCUPC_VERSION" >&6
-     fi
-     if test "$GCCUPC_VERSION_MAJOR" -lt 4 ; then
-       { { echo "$as_me:$LINENO: error: This version of UPCR requires GCC/UPC version 4.x or greater. Detected GCC/UPC translator version: $GCCUPC_VERSION" >&5
-echo "$as_me: error: This version of UPCR requires GCC/UPC version 4.x or greater. Detected GCC/UPC translator version: $GCCUPC_VERSION" >&2;}
-   { (exit 1); exit 1; }; }
-     fi
-
-     COMPILER_SPEC_FILE="gcc-upc-upcr.spec"
-     ;;
-  esac
-
-else
-
-   :
-    USING_GCCUPC="no"
-
-fi;
-
-# ^^^^^^^^^^^^^^^^^^^^^^ GASNET_WITH(gccupc,...) ^^^^^^^^^^^^^^^^^^^^^^ (L:1)
-
-
-
-
-
-
-if test "$USING_GCCUPC" = "yes"; then
-  USING_GCCUPC_TRUE=
-  USING_GCCUPC_FALSE='#'
-else
-  USING_GCCUPC_TRUE='#'
-  USING_GCCUPC_FALSE=
-fi
-
-
-
-
-
 DEPDIR="${am__leading_dot}deps"
 
           ac_config_commands="$ac_config_commands depfiles"
@@ -2826,42 +2743,7 @@ fi
 
 
 
-
-
-
-
-# vvvvvvvvvvvvvvvvvvvvvv GASNET_IF_DISABLED(full-path-expansion,...) vvvvvvvvvvvvvvvvvvvvvv (L:4)
-
-# Check whether --enable-full-path-expansion or --disable-full-path-expansion was given.
-if test "${enable_full_path_expansion+set}" = set; then
-  enableval="$enable_full_path_expansion"
-
-fi;
-case "$enable_full_path_expansion" in
-  '' | yes) :
-        ;;
-  *)   upcr_cv__gfp_disable=1 ;;
-esac
-
-# ^^^^^^^^^^^^^^^^^^^^^^ GASNET_IF_DISABLED(full-path-expansion,...) ^^^^^^^^^^^^^^^^^^^^^^ (L:4)
-
-
-
-
-
-
-
-
-
-# vvvvvvvvvvvvvvvvvvvvvv GASNET_PROG_CC vvvvvvvvvvvvvvvvvvvvvv (L:1)
-
-
-
-
-# vvvvvvvvvvvvvvvvvvvvvv GASNET_PROG_CPP vvvvvvvvvvvvvvvvvvvvvv (L:2)
-
-
-  ac_ext=c
+ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
 ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
@@ -3397,6 +3279,3106 @@ echo "$as_me:$LINENO: result: $ac_cv_objext" >&5
 echo "${ECHO_T}$ac_cv_objext" >&6
 OBJEXT=$ac_cv_objext
 ac_objext=$OBJEXT
+echo "$as_me:$LINENO: checking whether we are using the GNU C compiler" >&5
+echo $ECHO_N "checking whether we are using the GNU C compiler... $ECHO_C" >&6
+if test "${ac_cv_c_compiler_gnu+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+
+int
+main ()
+{
+#ifndef __GNUC__
+       choke me
+#endif
+
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext
+if { (eval echo "$as_me:$LINENO: \"$ac_compile\"") >&5
+  (eval $ac_compile) 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } &&
+	 { ac_try='test -z "$ac_c_werror_flag"
+			 || test ! -s conftest.err'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; } &&
+	 { ac_try='test -s conftest.$ac_objext'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; }; then
+  ac_compiler_gnu=yes
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+ac_compiler_gnu=no
+fi
+rm -f conftest.err conftest.$ac_objext conftest.$ac_ext
+ac_cv_c_compiler_gnu=$ac_compiler_gnu
+
+fi
+echo "$as_me:$LINENO: result: $ac_cv_c_compiler_gnu" >&5
+echo "${ECHO_T}$ac_cv_c_compiler_gnu" >&6
+GCC=`test $ac_compiler_gnu = yes && echo yes`
+ac_test_CFLAGS=${CFLAGS+set}
+ac_save_CFLAGS=$CFLAGS
+CFLAGS="-g"
+echo "$as_me:$LINENO: checking whether $CC accepts -g" >&5
+echo $ECHO_N "checking whether $CC accepts -g... $ECHO_C" >&6
+if test "${ac_cv_prog_cc_g+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+
+int
+main ()
+{
+
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext
+if { (eval echo "$as_me:$LINENO: \"$ac_compile\"") >&5
+  (eval $ac_compile) 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } &&
+	 { ac_try='test -z "$ac_c_werror_flag"
+			 || test ! -s conftest.err'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; } &&
+	 { ac_try='test -s conftest.$ac_objext'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; }; then
+  ac_cv_prog_cc_g=yes
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+ac_cv_prog_cc_g=no
+fi
+rm -f conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+echo "$as_me:$LINENO: result: $ac_cv_prog_cc_g" >&5
+echo "${ECHO_T}$ac_cv_prog_cc_g" >&6
+if test "$ac_test_CFLAGS" = set; then
+  CFLAGS=$ac_save_CFLAGS
+elif test $ac_cv_prog_cc_g = yes; then
+  if test "$GCC" = yes; then
+    CFLAGS="-g -O2"
+  else
+    CFLAGS="-g"
+  fi
+else
+  if test "$GCC" = yes; then
+    CFLAGS="-O2"
+  else
+    CFLAGS=
+  fi
+fi
+echo "$as_me:$LINENO: checking for $CC option to accept ANSI C" >&5
+echo $ECHO_N "checking for $CC option to accept ANSI C... $ECHO_C" >&6
+if test "${ac_cv_prog_cc_stdc+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  ac_cv_prog_cc_stdc=no
+ac_save_CC=$CC
+cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+#include <stdarg.h>
+#include <stdio.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+/* Most of the following tests are stolen from RCS 5.7's src/conf.sh.  */
+struct buf { int x; };
+FILE * (*rcsopen) (struct buf *, struct stat *, int);
+static char *e (p, i)
+     char **p;
+     int i;
+{
+  return p[i];
+}
+static char *f (char * (*g) (char **, int), char **p, ...)
+{
+  char *s;
+  va_list v;
+  va_start (v,p);
+  s = g (p, va_arg (v,int));
+  va_end (v);
+  return s;
+}
+
+/* OSF 4.0 Compaq cc is some sort of almost-ANSI by default.  It has
+   function prototypes and stuff, but not '\xHH' hex character constants.
+   These don't provoke an error unfortunately, instead are silently treated
+   as 'x'.  The following induces an error, until -std1 is added to get
+   proper ANSI mode.  Curiously '\x00'!='x' always comes out true, for an
+   array size at least.  It's necessary to write '\x00'==0 to get something
+   that's true only with -std1.  */
+int osf4_cc_array ['\x00' == 0 ? 1 : -1];
+
+int test (int i, double x);
+struct s1 {int (*f) (int a);};
+struct s2 {int (*f) (double a);};
+int pairnames (int, char **, FILE *(*)(struct buf *, struct stat *, int), int, int);
+int argc;
+char **argv;
+int
+main ()
+{
+return f (e, argv, 0) != argv[0]  ||  f (e, argv, 1) != argv[1];
+  ;
+  return 0;
+}
+_ACEOF
+# Don't try gcc -ansi; that turns off useful extensions and
+# breaks some systems' header files.
+# AIX			-qlanglvl=ansi
+# Ultrix and OSF/1	-std1
+# HP-UX 10.20 and later	-Ae
+# HP-UX older versions	-Aa -D_HPUX_SOURCE
+# SVR4			-Xc -D__EXTENSIONS__
+for ac_arg in "" -qlanglvl=ansi -std1 -Ae "-Aa -D_HPUX_SOURCE" "-Xc -D__EXTENSIONS__"
+do
+  CC="$ac_save_CC $ac_arg"
+  rm -f conftest.$ac_objext
+if { (eval echo "$as_me:$LINENO: \"$ac_compile\"") >&5
+  (eval $ac_compile) 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } &&
+	 { ac_try='test -z "$ac_c_werror_flag"
+			 || test ! -s conftest.err'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; } &&
+	 { ac_try='test -s conftest.$ac_objext'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; }; then
+  ac_cv_prog_cc_stdc=$ac_arg
+break
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+fi
+rm -f conftest.err conftest.$ac_objext
+done
+rm -f conftest.$ac_ext conftest.$ac_objext
+CC=$ac_save_CC
+
+fi
+
+case "x$ac_cv_prog_cc_stdc" in
+  x|xno)
+    echo "$as_me:$LINENO: result: none needed" >&5
+echo "${ECHO_T}none needed" >&6 ;;
+  *)
+    echo "$as_me:$LINENO: result: $ac_cv_prog_cc_stdc" >&5
+echo "${ECHO_T}$ac_cv_prog_cc_stdc" >&6
+    CC="$CC $ac_cv_prog_cc_stdc" ;;
+esac
+
+# Some people use a C++ compiler to compile C.  Since we use `exit',
+# in C++ we need to declare it.  In case someone uses the same compiler
+# for both compiling C and C++ we need to have the C++ compiler decide
+# the declaration of exit, since it's the most demanding environment.
+cat >conftest.$ac_ext <<_ACEOF
+#ifndef __cplusplus
+  choke me
+#endif
+_ACEOF
+rm -f conftest.$ac_objext
+if { (eval echo "$as_me:$LINENO: \"$ac_compile\"") >&5
+  (eval $ac_compile) 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } &&
+	 { ac_try='test -z "$ac_c_werror_flag"
+			 || test ! -s conftest.err'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; } &&
+	 { ac_try='test -s conftest.$ac_objext'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; }; then
+  for ac_declaration in \
+   '' \
+   'extern "C" void std::exit (int) throw (); using std::exit;' \
+   'extern "C" void std::exit (int); using std::exit;' \
+   'extern "C" void exit (int) throw ();' \
+   'extern "C" void exit (int);' \
+   'void exit (int);'
+do
+  cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+$ac_declaration
+#include <stdlib.h>
+int
+main ()
+{
+exit (42);
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext
+if { (eval echo "$as_me:$LINENO: \"$ac_compile\"") >&5
+  (eval $ac_compile) 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } &&
+	 { ac_try='test -z "$ac_c_werror_flag"
+			 || test ! -s conftest.err'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; } &&
+	 { ac_try='test -s conftest.$ac_objext'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; }; then
+  :
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+continue
+fi
+rm -f conftest.err conftest.$ac_objext conftest.$ac_ext
+  cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+$ac_declaration
+int
+main ()
+{
+exit (42);
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext
+if { (eval echo "$as_me:$LINENO: \"$ac_compile\"") >&5
+  (eval $ac_compile) 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } &&
+	 { ac_try='test -z "$ac_c_werror_flag"
+			 || test ! -s conftest.err'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; } &&
+	 { ac_try='test -s conftest.$ac_objext'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; }; then
+  break
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+fi
+rm -f conftest.err conftest.$ac_objext conftest.$ac_ext
+done
+rm -f conftest*
+if test -n "$ac_declaration"; then
+  echo '#ifdef __cplusplus' >>confdefs.h
+  echo $ac_declaration      >>confdefs.h
+  echo '#endif'             >>confdefs.h
+fi
+
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+fi
+rm -f conftest.err conftest.$ac_objext conftest.$ac_ext
+ac_ext=c
+ac_cpp='$CPP $CPPFLAGS'
+ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
+ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
+ac_compiler_gnu=$ac_cv_c_compiler_gnu
+
+depcc="$CC"   am_compiler_list=
+
+echo "$as_me:$LINENO: checking dependency style of $depcc" >&5
+echo $ECHO_N "checking dependency style of $depcc... $ECHO_C" >&6
+if test "${am_cv_CC_dependencies_compiler_type+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  if test -z "$AMDEP_TRUE" && test -f "$am_depcomp"; then
+  # We make a subdir and do the tests there.  Otherwise we can end up
+  # making bogus files that we don't know about and never remove.  For
+  # instance it was reported that on HP-UX the gcc test will end up
+  # making a dummy file named `D' -- because `-MD' means `put the output
+  # in D'.
+  mkdir conftest.dir
+  # Copy depcomp to subdir because otherwise we won't find it if we're
+  # using a relative directory.
+  cp "$am_depcomp" conftest.dir
+  cd conftest.dir
+  # We will build objects and dependencies in a subdirectory because
+  # it helps to detect inapplicable dependency modes.  For instance
+  # both Tru64's cc and ICC support -MD to output dependencies as a
+  # side effect of compilation, but ICC will put the dependencies in
+  # the current directory while Tru64 will put them in the object
+  # directory.
+  mkdir sub
+
+  am_cv_CC_dependencies_compiler_type=none
+  if test "$am_compiler_list" = ""; then
+     am_compiler_list=`sed -n 's/^#*\([a-zA-Z0-9]*\))$/\1/p' < ./depcomp`
+  fi
+  for depmode in $am_compiler_list; do
+    # Setup a source with many dependencies, because some compilers
+    # like to wrap large dependency lists on column 80 (with \), and
+    # we should not choose a depcomp mode which is confused by this.
+    #
+    # We need to recreate these files for each test, as the compiler may
+    # overwrite some of them when testing with obscure command lines.
+    # This happens at least with the AIX C compiler.
+    : > sub/conftest.c
+    for i in 1 2 3 4 5 6; do
+      echo '#include "conftst'$i'.h"' >> sub/conftest.c
+      # Using `: > sub/conftst$i.h' creates only sub/conftst1.h with
+      # Solaris 8's {/usr,}/bin/sh.
+      touch sub/conftst$i.h
+    done
+    echo "${am__include} ${am__quote}sub/conftest.Po${am__quote}" > confmf
+
+    case $depmode in
+    nosideeffect)
+      # after this tag, mechanisms are not by side-effect, so they'll
+      # only be used when explicitly requested
+      if test "x$enable_dependency_tracking" = xyes; then
+	continue
+      else
+	break
+      fi
+      ;;
+    none) break ;;
+    esac
+    # We check with `-c' and `-o' for the sake of the "dashmstdout"
+    # mode.  It turns out that the SunPro C++ compiler does not properly
+    # handle `-M -o', and we need to detect this.
+    if depmode=$depmode \
+       source=sub/conftest.c object=sub/conftest.${OBJEXT-o} \
+       depfile=sub/conftest.Po tmpdepfile=sub/conftest.TPo \
+       $SHELL ./depcomp $depcc -c -o sub/conftest.${OBJEXT-o} sub/conftest.c \
+         >/dev/null 2>conftest.err &&
+       grep sub/conftst6.h sub/conftest.Po > /dev/null 2>&1 &&
+       grep sub/conftest.${OBJEXT-o} sub/conftest.Po > /dev/null 2>&1 &&
+       ${MAKE-make} -s -f confmf > /dev/null 2>&1; then
+      # icc doesn't choke on unknown options, it will just issue warnings
+      # or remarks (even with -Werror).  So we grep stderr for any message
+      # that says an option was ignored or not supported.
+      # When given -MP, icc 7.0 and 7.1 complain thusly:
+      #   icc: Command line warning: ignoring option '-M'; no argument required
+      # The diagnosis changed in icc 8.0:
+      #   icc: Command line remark: option '-MP' not supported
+      if (grep 'ignoring option' conftest.err ||
+          grep 'not supported' conftest.err) >/dev/null 2>&1; then :; else
+        am_cv_CC_dependencies_compiler_type=$depmode
+        break
+      fi
+    fi
+  done
+
+  cd ..
+  rm -rf conftest.dir
+else
+  am_cv_CC_dependencies_compiler_type=none
+fi
+
+fi
+echo "$as_me:$LINENO: result: $am_cv_CC_dependencies_compiler_type" >&5
+echo "${ECHO_T}$am_cv_CC_dependencies_compiler_type" >&6
+CCDEPMODE=depmode=$am_cv_CC_dependencies_compiler_type
+
+
+
+if
+  test "x$enable_dependency_tracking" != xno \
+  && test "$am_cv_CC_dependencies_compiler_type" = gcc3; then
+  am__fastdepCC_TRUE=
+  am__fastdepCC_FALSE='#'
+else
+  am__fastdepCC_TRUE='#'
+  am__fastdepCC_FALSE=
+fi
+
+
+depcc="$CC"   am_compiler_list=
+
+echo "$as_me:$LINENO: checking dependency style of $depcc" >&5
+echo $ECHO_N "checking dependency style of $depcc... $ECHO_C" >&6
+if test "${am_cv_CC_dependencies_compiler_type+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  if test -z "$AMDEP_TRUE" && test -f "$am_depcomp"; then
+  # We make a subdir and do the tests there.  Otherwise we can end up
+  # making bogus files that we don't know about and never remove.  For
+  # instance it was reported that on HP-UX the gcc test will end up
+  # making a dummy file named `D' -- because `-MD' means `put the output
+  # in D'.
+  mkdir conftest.dir
+  # Copy depcomp to subdir because otherwise we won't find it if we're
+  # using a relative directory.
+  cp "$am_depcomp" conftest.dir
+  cd conftest.dir
+  # We will build objects and dependencies in a subdirectory because
+  # it helps to detect inapplicable dependency modes.  For instance
+  # both Tru64's cc and ICC support -MD to output dependencies as a
+  # side effect of compilation, but ICC will put the dependencies in
+  # the current directory while Tru64 will put them in the object
+  # directory.
+  mkdir sub
+
+  am_cv_CC_dependencies_compiler_type=none
+  if test "$am_compiler_list" = ""; then
+     am_compiler_list=`sed -n 's/^#*\([a-zA-Z0-9]*\))$/\1/p' < ./depcomp`
+  fi
+  for depmode in $am_compiler_list; do
+    # Setup a source with many dependencies, because some compilers
+    # like to wrap large dependency lists on column 80 (with \), and
+    # we should not choose a depcomp mode which is confused by this.
+    #
+    # We need to recreate these files for each test, as the compiler may
+    # overwrite some of them when testing with obscure command lines.
+    # This happens at least with the AIX C compiler.
+    : > sub/conftest.c
+    for i in 1 2 3 4 5 6; do
+      echo '#include "conftst'$i'.h"' >> sub/conftest.c
+      # Using `: > sub/conftst$i.h' creates only sub/conftst1.h with
+      # Solaris 8's {/usr,}/bin/sh.
+      touch sub/conftst$i.h
+    done
+    echo "${am__include} ${am__quote}sub/conftest.Po${am__quote}" > confmf
+
+    case $depmode in
+    nosideeffect)
+      # after this tag, mechanisms are not by side-effect, so they'll
+      # only be used when explicitly requested
+      if test "x$enable_dependency_tracking" = xyes; then
+	continue
+      else
+	break
+      fi
+      ;;
+    none) break ;;
+    esac
+    # We check with `-c' and `-o' for the sake of the "dashmstdout"
+    # mode.  It turns out that the SunPro C++ compiler does not properly
+    # handle `-M -o', and we need to detect this.
+    if depmode=$depmode \
+       source=sub/conftest.c object=sub/conftest.${OBJEXT-o} \
+       depfile=sub/conftest.Po tmpdepfile=sub/conftest.TPo \
+       $SHELL ./depcomp $depcc -c -o sub/conftest.${OBJEXT-o} sub/conftest.c \
+         >/dev/null 2>conftest.err &&
+       grep sub/conftst6.h sub/conftest.Po > /dev/null 2>&1 &&
+       grep sub/conftest.${OBJEXT-o} sub/conftest.Po > /dev/null 2>&1 &&
+       ${MAKE-make} -s -f confmf > /dev/null 2>&1; then
+      # icc doesn't choke on unknown options, it will just issue warnings
+      # or remarks (even with -Werror).  So we grep stderr for any message
+      # that says an option was ignored or not supported.
+      # When given -MP, icc 7.0 and 7.1 complain thusly:
+      #   icc: Command line warning: ignoring option '-M'; no argument required
+      # The diagnosis changed in icc 8.0:
+      #   icc: Command line remark: option '-MP' not supported
+      if (grep 'ignoring option' conftest.err ||
+          grep 'not supported' conftest.err) >/dev/null 2>&1; then :; else
+        am_cv_CC_dependencies_compiler_type=$depmode
+        break
+      fi
+    fi
+  done
+
+  cd ..
+  rm -rf conftest.dir
+else
+  am_cv_CC_dependencies_compiler_type=none
+fi
+
+fi
+echo "$as_me:$LINENO: result: $am_cv_CC_dependencies_compiler_type" >&5
+echo "${ECHO_T}$am_cv_CC_dependencies_compiler_type" >&6
+CCDEPMODE=depmode=$am_cv_CC_dependencies_compiler_type
+
+
+
+if
+  test "x$enable_dependency_tracking" != xno \
+  && test "$am_cv_CC_dependencies_compiler_type" = gcc3; then
+  am__fastdepCC_TRUE=
+  am__fastdepCC_FALSE='#'
+else
+  am__fastdepCC_TRUE='#'
+  am__fastdepCC_FALSE=
+fi
+
+
+
+ac_ext=c
+ac_cpp='$CPP $CPPFLAGS'
+ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
+ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
+ac_compiler_gnu=$ac_cv_c_compiler_gnu
+echo "$as_me:$LINENO: checking how to run the C preprocessor" >&5
+echo $ECHO_N "checking how to run the C preprocessor... $ECHO_C" >&6
+# On Suns, sometimes $CPP names a directory.
+if test -n "$CPP" && test -d "$CPP"; then
+  CPP=
+fi
+if test -z "$CPP"; then
+  if test "${ac_cv_prog_CPP+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+      # Double quotes because CPP needs to be expanded
+    for CPP in "$CC -E" "$CC -E -traditional-cpp" "/lib/cpp"
+    do
+      ac_preproc_ok=false
+for ac_c_preproc_warn_flag in '' yes
+do
+  # Use a header file that comes with gcc, so configuring glibc
+  # with a fresh cross-compiler works.
+  # Prefer <limits.h> to <assert.h> if __STDC__ is defined, since
+  # <limits.h> exists even on freestanding compilers.
+  # On the NeXT, cc -E runs the code through the compiler's parser,
+  # not just through cpp. "Syntax error" is here to catch this case.
+  cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+#ifdef __STDC__
+# include <limits.h>
+#else
+# include <assert.h>
+#endif
+		     Syntax error
+_ACEOF
+if { (eval echo "$as_me:$LINENO: \"$ac_cpp conftest.$ac_ext\"") >&5
+  (eval $ac_cpp conftest.$ac_ext) 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } >/dev/null; then
+  if test -s conftest.err; then
+    ac_cpp_err=$ac_c_preproc_warn_flag
+    ac_cpp_err=$ac_cpp_err$ac_c_werror_flag
+  else
+    ac_cpp_err=
+  fi
+else
+  ac_cpp_err=yes
+fi
+if test -z "$ac_cpp_err"; then
+  :
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+  # Broken: fails on valid input.
+continue
+fi
+rm -f conftest.err conftest.$ac_ext
+
+  # OK, works on sane cases.  Now check whether non-existent headers
+  # can be detected and how.
+  cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+#include <ac_nonexistent.h>
+_ACEOF
+if { (eval echo "$as_me:$LINENO: \"$ac_cpp conftest.$ac_ext\"") >&5
+  (eval $ac_cpp conftest.$ac_ext) 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } >/dev/null; then
+  if test -s conftest.err; then
+    ac_cpp_err=$ac_c_preproc_warn_flag
+    ac_cpp_err=$ac_cpp_err$ac_c_werror_flag
+  else
+    ac_cpp_err=
+  fi
+else
+  ac_cpp_err=yes
+fi
+if test -z "$ac_cpp_err"; then
+  # Broken: success on invalid input.
+continue
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+  # Passes both tests.
+ac_preproc_ok=:
+break
+fi
+rm -f conftest.err conftest.$ac_ext
+
+done
+# Because of `break', _AC_PREPROC_IFELSE's cleaning code was skipped.
+rm -f conftest.err conftest.$ac_ext
+if $ac_preproc_ok; then
+  break
+fi
+
+    done
+    ac_cv_prog_CPP=$CPP
+
+fi
+  CPP=$ac_cv_prog_CPP
+else
+  ac_cv_prog_CPP=$CPP
+fi
+echo "$as_me:$LINENO: result: $CPP" >&5
+echo "${ECHO_T}$CPP" >&6
+ac_preproc_ok=false
+for ac_c_preproc_warn_flag in '' yes
+do
+  # Use a header file that comes with gcc, so configuring glibc
+  # with a fresh cross-compiler works.
+  # Prefer <limits.h> to <assert.h> if __STDC__ is defined, since
+  # <limits.h> exists even on freestanding compilers.
+  # On the NeXT, cc -E runs the code through the compiler's parser,
+  # not just through cpp. "Syntax error" is here to catch this case.
+  cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+#ifdef __STDC__
+# include <limits.h>
+#else
+# include <assert.h>
+#endif
+		     Syntax error
+_ACEOF
+if { (eval echo "$as_me:$LINENO: \"$ac_cpp conftest.$ac_ext\"") >&5
+  (eval $ac_cpp conftest.$ac_ext) 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } >/dev/null; then
+  if test -s conftest.err; then
+    ac_cpp_err=$ac_c_preproc_warn_flag
+    ac_cpp_err=$ac_cpp_err$ac_c_werror_flag
+  else
+    ac_cpp_err=
+  fi
+else
+  ac_cpp_err=yes
+fi
+if test -z "$ac_cpp_err"; then
+  :
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+  # Broken: fails on valid input.
+continue
+fi
+rm -f conftest.err conftest.$ac_ext
+
+  # OK, works on sane cases.  Now check whether non-existent headers
+  # can be detected and how.
+  cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+#include <ac_nonexistent.h>
+_ACEOF
+if { (eval echo "$as_me:$LINENO: \"$ac_cpp conftest.$ac_ext\"") >&5
+  (eval $ac_cpp conftest.$ac_ext) 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } >/dev/null; then
+  if test -s conftest.err; then
+    ac_cpp_err=$ac_c_preproc_warn_flag
+    ac_cpp_err=$ac_cpp_err$ac_c_werror_flag
+  else
+    ac_cpp_err=
+  fi
+else
+  ac_cpp_err=yes
+fi
+if test -z "$ac_cpp_err"; then
+  # Broken: success on invalid input.
+continue
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+  # Passes both tests.
+ac_preproc_ok=:
+break
+fi
+rm -f conftest.err conftest.$ac_ext
+
+done
+# Because of `break', _AC_PREPROC_IFELSE's cleaning code was skipped.
+rm -f conftest.err conftest.$ac_ext
+if $ac_preproc_ok; then
+  :
+else
+  { { echo "$as_me:$LINENO: error: C preprocessor \"$CPP\" fails sanity check
+See \`config.log' for more details." >&5
+echo "$as_me: error: C preprocessor \"$CPP\" fails sanity check
+See \`config.log' for more details." >&2;}
+   { (exit 1); exit 1; }; }
+fi
+
+ac_ext=c
+ac_cpp='$CPP $CPPFLAGS'
+ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
+ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
+ac_compiler_gnu=$ac_cv_c_compiler_gnu
+
+
+echo "$as_me:$LINENO: checking for egrep" >&5
+echo $ECHO_N "checking for egrep... $ECHO_C" >&6
+if test "${ac_cv_prog_egrep+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  if echo a | (grep -E '(a|b)') >/dev/null 2>&1
+    then ac_cv_prog_egrep='grep -E'
+    else ac_cv_prog_egrep='egrep'
+    fi
+fi
+echo "$as_me:$LINENO: result: $ac_cv_prog_egrep" >&5
+echo "${ECHO_T}$ac_cv_prog_egrep" >&6
+ EGREP=$ac_cv_prog_egrep
+
+
+echo "$as_me:$LINENO: checking for ANSI C header files" >&5
+echo $ECHO_N "checking for ANSI C header files... $ECHO_C" >&6
+if test "${ac_cv_header_stdc+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+#include <stdlib.h>
+#include <stdarg.h>
+#include <string.h>
+#include <float.h>
+
+int
+main ()
+{
+
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext
+if { (eval echo "$as_me:$LINENO: \"$ac_compile\"") >&5
+  (eval $ac_compile) 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } &&
+	 { ac_try='test -z "$ac_c_werror_flag"
+			 || test ! -s conftest.err'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; } &&
+	 { ac_try='test -s conftest.$ac_objext'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; }; then
+  ac_cv_header_stdc=yes
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+ac_cv_header_stdc=no
+fi
+rm -f conftest.err conftest.$ac_objext conftest.$ac_ext
+
+if test $ac_cv_header_stdc = yes; then
+  # SunOS 4.x string.h does not declare mem*, contrary to ANSI.
+  cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+#include <string.h>
+
+_ACEOF
+if (eval "$ac_cpp conftest.$ac_ext") 2>&5 |
+  $EGREP "memchr" >/dev/null 2>&1; then
+  :
+else
+  ac_cv_header_stdc=no
+fi
+rm -f conftest*
+
+fi
+
+if test $ac_cv_header_stdc = yes; then
+  # ISC 2.0.2 stdlib.h does not declare free, contrary to ANSI.
+  cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+#include <stdlib.h>
+
+_ACEOF
+if (eval "$ac_cpp conftest.$ac_ext") 2>&5 |
+  $EGREP "free" >/dev/null 2>&1; then
+  :
+else
+  ac_cv_header_stdc=no
+fi
+rm -f conftest*
+
+fi
+
+if test $ac_cv_header_stdc = yes; then
+  # /bin/cc in Irix-4.0.5 gets non-ANSI ctype macros unless using -ansi.
+  if test "$cross_compiling" = yes; then
+  :
+else
+  cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+#include <ctype.h>
+#if ((' ' & 0x0FF) == 0x020)
+# define ISLOWER(c) ('a' <= (c) && (c) <= 'z')
+# define TOUPPER(c) (ISLOWER(c) ? 'A' + ((c) - 'a') : (c))
+#else
+# define ISLOWER(c) \
+		   (('a' <= (c) && (c) <= 'i') \
+		     || ('j' <= (c) && (c) <= 'r') \
+		     || ('s' <= (c) && (c) <= 'z'))
+# define TOUPPER(c) (ISLOWER(c) ? ((c) | 0x40) : (c))
+#endif
+
+#define XOR(e, f) (((e) && !(f)) || (!(e) && (f)))
+int
+main ()
+{
+  int i;
+  for (i = 0; i < 256; i++)
+    if (XOR (islower (i), ISLOWER (i))
+	|| toupper (i) != TOUPPER (i))
+      exit(2);
+  exit (0);
+}
+_ACEOF
+rm -f conftest$ac_exeext
+if { (eval echo "$as_me:$LINENO: \"$ac_link\"") >&5
+  (eval $ac_link) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && { ac_try='./conftest$ac_exeext'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; }; then
+  :
+else
+  echo "$as_me: program exited with status $ac_status" >&5
+echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+( exit $ac_status )
+ac_cv_header_stdc=no
+fi
+rm -f core *.core gmon.out bb.out conftest$ac_exeext conftest.$ac_objext conftest.$ac_ext
+fi
+fi
+fi
+echo "$as_me:$LINENO: result: $ac_cv_header_stdc" >&5
+echo "${ECHO_T}$ac_cv_header_stdc" >&6
+if test $ac_cv_header_stdc = yes; then
+
+cat >>confdefs.h <<\_ACEOF
+#define STDC_HEADERS 1
+_ACEOF
+
+fi
+
+# On IRIX 5.3, sys/types and inttypes.h are conflicting.
+
+
+
+
+
+
+
+
+
+for ac_header in sys/types.h sys/stat.h stdlib.h string.h memory.h strings.h \
+		  inttypes.h stdint.h unistd.h
+do
+as_ac_Header=`echo "ac_cv_header_$ac_header" | $as_tr_sh`
+echo "$as_me:$LINENO: checking for $ac_header" >&5
+echo $ECHO_N "checking for $ac_header... $ECHO_C" >&6
+if eval "test \"\${$as_ac_Header+set}\" = set"; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+$ac_includes_default
+
+#include <$ac_header>
+_ACEOF
+rm -f conftest.$ac_objext
+if { (eval echo "$as_me:$LINENO: \"$ac_compile\"") >&5
+  (eval $ac_compile) 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } &&
+	 { ac_try='test -z "$ac_c_werror_flag"
+			 || test ! -s conftest.err'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; } &&
+	 { ac_try='test -s conftest.$ac_objext'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; }; then
+  eval "$as_ac_Header=yes"
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+eval "$as_ac_Header=no"
+fi
+rm -f conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+echo "$as_me:$LINENO: result: `eval echo '${'$as_ac_Header'}'`" >&5
+echo "${ECHO_T}`eval echo '${'$as_ac_Header'}'`" >&6
+if test `eval echo '${'$as_ac_Header'}'` = yes; then
+  cat >>confdefs.h <<_ACEOF
+#define `echo "HAVE_$ac_header" | $as_tr_cpp` 1
+_ACEOF
+
+fi
+
+done
+
+
+
+
+
+# vvvvvvvvvvvvvvvvvvvvvv GASNET_WITH(gccupc,...) vvvvvvvvvvvvvvvvvvvvvv (L:1)
+
+
+# Check whether --with-gccupc or --without-gccupc was given.
+if test "${with_gccupc+set}" = set; then
+  withval="$with_gccupc"
+
+  case "$withval" in
+    no) :
+         USING_GCCUPC="no"  ;;
+    *)  if test "$withval" = "yes"; then
+        { { echo "$as_me:$LINENO: error: '--with-gccupc requires pathname to 'upc' or 'xupc'" >&5
+echo "$as_me: error: '--with-gccupc requires pathname to 'upc' or 'xupc'" >&2;}
+   { (exit 1); exit 1; }; }
+     fi
+     echo "$as_me:$LINENO: checking for gccupc" >&5
+echo $ECHO_N "checking for gccupc... $ECHO_C" >&6
+     gccdir=`expr "$withval" : '\(.*\)/x*upc$'`
+     if test -z "$gccdir"; then
+        { { echo "$as_me:$LINENO: error: \"--with-gccupc: must provide full path to 'upc' or 'xupc'\"" >&5
+echo "$as_me: error: \"--with-gccupc: must provide full path to 'upc' or 'xupc'\"" >&2;}
+   { (exit 1); exit 1; }; }
+     fi
+     TRANSLATOR="$withval"
+     echo "$as_me:$LINENO: result: $TRANSLATOR" >&5
+echo "${ECHO_T}$TRANSLATOR" >&6
+# Default CC to gccupc's 'gcc' (living in same directory as 'upc')
+#   - TODO: make this work:  right now gasnet doesn't see the CC change if we
+#           merely set CC=$gccdir/gcc.  If we export CC (or append
+#           CC=$gccdir/gcc or --with-cc=$gccdir/gcc to ac_configure_args),
+#           gasnet's configure dies complaining that CC wasn't set in the last
+#           configure invocation.  This is because it shared the same
+#           config.cache with upcr.
+#       - for now, force users to set CC=<gccupc's gcc> if they want it.
+#   - UPDATE: we do *not* require the use of CC=<gccupc's gcc>: that approach is fully supported, but optional
+#         users are free to supply a different CC provided it is ABI compatible with gccupc
+#     if test -n "`$gccdir/gcc -v 2>&1 < /dev/null | grep 'gcc version'`"; then
+#         if test -z "$CC"; then
+#             CC="$gccdir/gcc"
+#         fi
+#     fi
+
+     cat >>confdefs.h <<\_ACEOF
+#define UPCRI_USING_GCCUPC 1
+_ACEOF
+
+     USING_GCCUPC="yes"
+     HARNESS_TRANS_OPTION=""
+     GCCUPC_VERSION=
+
+
+
+# vvvvvvvvvvvvvvvvvvvvvv GASNET_WITH(gccupc-version,...) vvvvvvvvvvvvvvvvvvvvvv (L:2)
+
+
+# Check whether --with-gccupc-version or --without-gccupc-version was given.
+if test "${with_gccupc_version+set}" = set; then
+  withval="$with_gccupc_version"
+
+  case "$withval" in
+    no) :
+         ;;
+    *)   # don't attempt to run GCC/UPC (eg when building an RPM it might not yet be installed)
+         # just accept the version override and trust the user knows what he's doing
+         GCCUPC_VERSION="$withval"
+	 { echo "$as_me:$LINENO: WARNING: Accepting --with-gccupc-version=$GCCUPC_VERSION. Translator validation check skipped." >&5
+echo "$as_me: WARNING: Accepting --with-gccupc-version=$GCCUPC_VERSION. Translator validation check skipped." >&2;}
+        ;;
+  esac
+
+else
+
+   :
+
+
+fi;
+
+# ^^^^^^^^^^^^^^^^^^^^^^ GASNET_WITH(gccupc-version,...) ^^^^^^^^^^^^^^^^^^^^^^ (L:2)
+
+
+
+     if test -z "$GCCUPC_VERSION" ; then # auto-detect version by running the compiler
+       echo "$as_me:$LINENO: checking for gccupc version" >&5
+echo $ECHO_N "checking for gccupc version... $ECHO_C" >&6
+       if test -z "`$TRANSLATOR -v 2>&1 < /dev/null | grep 'GCC UPC'`" ; then
+         { { echo "$as_me:$LINENO: error: '--with-gccupc' requires pathname to 'upc' or 'xupc' executable" >&5
+echo "$as_me: error: '--with-gccupc' requires pathname to 'upc' or 'xupc' executable" >&2;}
+   { (exit 1); exit 1; }; }
+       fi
+       # Old GCC UPC version string:
+       #  xgcc (GCC) 4.0.3 20071007 upc-4.0.3.5 (GCC UPC/dev)
+       # New GCC UPC version string:
+       #  xgcc (GCC) 4.2.0 20071006 (dev) (GCC UPC 4.2.0-1)
+       # Above, in a production compiler, xgcc is gcc,
+       # and dev (with optional parens) is not present.
+       GCCUPC_VERSION=`$TRANSLATOR -v 2>&1 | \
+         $PERL -ne 'if (/upc-(\S+) .GCC UPC/ or /\(GCC UPC (\S+)?\)/) {print $1;}'`
+     fi
+     GCCUPC_VERSION_MAJOR=`echo "$GCCUPC_VERSION" | \
+         $PERL -ne 'if (m/(\d+)\.\d+\.\d+[.-]\d+/) {print $1;}'`
+     if test -z "$GCCUPC_VERSION_MAJOR" ; then
+       { { echo "$as_me:$LINENO: error: Missing or invalid GCC/UPC translator version: $GCCUPC_VERSION" >&5
+echo "$as_me: error: Missing or invalid GCC/UPC translator version: $GCCUPC_VERSION" >&2;}
+   { (exit 1); exit 1; }; }
+     else
+       echo "$as_me:$LINENO: result: $GCCUPC_VERSION" >&5
+echo "${ECHO_T}$GCCUPC_VERSION" >&6
+     fi
+     if test "$GCCUPC_VERSION_MAJOR" -lt 4 ; then
+       { { echo "$as_me:$LINENO: error: This version of UPCR requires GCC/UPC version 4.x or greater. Detected GCC/UPC translator version: $GCCUPC_VERSION" >&5
+echo "$as_me: error: This version of UPCR requires GCC/UPC version 4.x or greater. Detected GCC/UPC translator version: $GCCUPC_VERSION" >&2;}
+   { (exit 1); exit 1; }; }
+     fi
+
+
+     # bless gccupc's gcc as ok
+     # The problem in question should not affect that config anyhow because
+     # local accesses are generated as assembly from gccupc, instead of UPCR calls
+
+
+
+# vvvvvvvvvvvvvvvvvvvvvv GASNET_SUBCONFIGURE_ARG(--enable-allow-gcc4) vvvvvvvvvvvvvvvvvvvvvv (L:2)
+
+ac_configure_args="$ac_configure_args --enable-allow-gcc4"
+
+# ^^^^^^^^^^^^^^^^^^^^^^ GASNET_SUBCONFIGURE_ARG(--enable-allow-gcc4) ^^^^^^^^^^^^^^^^^^^^^^ (L:2)
+
+
+
+
+     # Versions 4.2.0.2 and up support init sections
+     echo "$as_me:$LINENO: checking for gccupc init section support" >&5
+echo $ECHO_N "checking for gccupc init section support... $ECHO_C" >&6
+     GCCUPC_CANONICAL_VERSION=`echo "$GCCUPC_VERSION" | \
+         $PERL -ne 'if (m/(\d+)\.(\d+)\.(\d+)[.-](\d+)/) \
+          {printf "%01d.%02d.%02d.%02d", $1, $2, $3, $4;}'`
+     GCCUPC_INIT_SECTION=`$PERL -e \
+       "print '$GCCUPC_CANONICAL_VERSION' ge '4.02.00.02' ? 'yes':'no'"`
+     echo "$as_me:$LINENO: result: $GCCUPC_INIT_SECTION" >&5
+echo "${ECHO_T}$GCCUPC_INIT_SECTION" >&6
+     if test "$GCCUPC_INIT_SECTION" = "yes"; then
+       cat >>confdefs.h <<\_ACEOF
+#define UPCRI_USING_GCCUPC_INIT_SECTION 1
+_ACEOF
+
+     else
+       cat >>confdefs.h <<\_ACEOF
+#define UPCRI_USING_GCCUPC_INIT_STATIC_COPY 1
+_ACEOF
+
+     fi
+     echo "$as_me:$LINENO: checking for older gccupc that supports only struct pointer-to-shared" >&5
+echo $ECHO_N "checking for older gccupc that supports only struct pointer-to-shared... $ECHO_C" >&6
+     GCCUPC_HAS_ONLY_STRUCT_SPTR=`$PERL -e \
+       "print '$GCCUPC_CANONICAL_VERSION' lt '4.02.00.02' ? 'yes':'no'"`
+     echo "$as_me:$LINENO: result: $GCCUPC_HAS_ONLY_STRUCT_SPTR" >&5
+echo "${ECHO_T}$GCCUPC_HAS_ONLY_STRUCT_SPTR" >&6
+     echo "$as_me:$LINENO: checking for gccupc that supports new struct pointer-to-shared format" >&5
+echo $ECHO_N "checking for gccupc that supports new struct pointer-to-shared format... $ECHO_C" >&6
+     GCCUPC_HAS_NEW_STRUCT_SPTR=`$PERL -e \
+       "print '$GCCUPC_CANONICAL_VERSION' ge '4.02.03.05' ? 'yes':'no'"`
+     echo "$as_me:$LINENO: result: $GCCUPC_HAS_NEW_STRUCT_SPTR" >&5
+echo "${ECHO_T}$GCCUPC_HAS_NEW_STRUCT_SPTR" >&6
+
+     echo "$as_me:$LINENO: checking for __attribute__((__aligned__ (16)))" >&5
+echo $ECHO_N "checking for __attribute__((__aligned__ (16)))... $ECHO_C" >&6
+
+
+
+# vvvvvvvvvvvvvvvvvvvvvv GASNET_TRY_CCOMPILE_WITHWARN(...) vvvvvvvvvvvvvvvvvvvvvv (L:2)
+
+
+
+
+# vvvvvvvvvvvvvvvvvvvvvv GASNET_TRY_CCOMPILE_WITHWARN_NORETRY(...) vvvvvvvvvvvvvvvvvvvvvv (L:3)
+
+  gasnet_testname=gasnet-conftest
+  gasnet_testfile=${gasnet_testname}.c
+  gasnet_compile_cmd="${CC-cc} -c $CFLAGS $CPPFLAGS $gasnet_testfile"
+  cat > $gasnet_testfile <<EOF
+#include "confdefs.h"
+
+	#undef __attribute__
+	typedef struct {int x; int y;} __attribute__((__aligned__ (16))) foo;
+
+int main() {
+
+; return 0; }
+EOF
+
+
+
+# vvvvvvvvvvvvvvvvvvvvvv GASNET_TRY_RUNCMD($gasnet_compile_cmd,...) vvvvvvvvvvvvvvvvvvvvvv (L:4)
+
+  echo \"$gasnet_compile_cmd\" >&5
+  ( $gasnet_compile_cmd ) > conftest-runcmdout 2> conftest-runcmderr
+  gasnet_cmd_result="$?"
+  gasnet_cmd_stdout="`cat conftest-runcmdout`"
+  gasnet_cmd_stderr="`cat conftest-runcmderr`"
+  cat conftest-runcmdout >&5
+  cat conftest-runcmderr >&5
+  echo gasnet_cmd_result=$gasnet_cmd_result >&5
+  rm -rf conftest*
+  if test "$gasnet_cmd_result" = "0" ; then
+    if test -z "$gasnet_cmd_stdout$gasnet_cmd_stderr" ; then
+      :
+
+	 echo "$as_me:$LINENO: result: yes" >&5
+echo "${ECHO_T}yes" >&6
+	 cat >>confdefs.h <<\_ACEOF
+#define HAVE_GCC_ATTRIBUTE_ALIGNED 1
+_ACEOF
+
+	 have_attrib_aligned=1
+
+    else
+      :
+
+    echo "configure: warned program was:" >&5
+    cat $gasnet_testfile >&5
+
+        _GASNET_TRY_COMPILE_WITHWARN_OUTTMP="$gasnet_cmd_stdout"
+    _GASNET_TRY_COMPILE_WITHWARN_ERRTMP="$gasnet_cmd_stderr"
+
+
+
+# vvvvvvvvvvvvvvvvvvvvvv GASNET_TRY_CCOMPILE_WITHWARN_NORETRY(...) vvvvvvvvvvvvvvvvvvvvvv (L:5)
+
+  gasnet_testname=gasnet-conftest
+  gasnet_testfile=${gasnet_testname}.c
+  gasnet_compile_cmd="${CC-cc} -c $CFLAGS $CPPFLAGS $gasnet_testfile"
+  cat > $gasnet_testfile <<EOF
+#include "confdefs.h"
+
+int main() {
+
+; return 0; }
+EOF
+
+
+
+# vvvvvvvvvvvvvvvvvvvvvv GASNET_TRY_RUNCMD($gasnet_compile_cmd,...) vvvvvvvvvvvvvvvvvvvvvv (L:6)
+
+  echo \"$gasnet_compile_cmd\" >&5
+  ( $gasnet_compile_cmd ) > conftest-runcmdout 2> conftest-runcmderr
+  gasnet_cmd_result="$?"
+  gasnet_cmd_stdout="`cat conftest-runcmdout`"
+  gasnet_cmd_stderr="`cat conftest-runcmderr`"
+  cat conftest-runcmdout >&5
+  cat conftest-runcmderr >&5
+  echo gasnet_cmd_result=$gasnet_cmd_result >&5
+  rm -rf conftest*
+  if test "$gasnet_cmd_result" = "0" ; then
+    if test -z "$gasnet_cmd_stdout$gasnet_cmd_stderr" ; then
+      :
+
+        	gasnet_cmd_stdout="$_GASNET_TRY_COMPILE_WITHWARN_OUTTMP"
+	gasnet_cmd_stderr="$_GASNET_TRY_COMPILE_WITHWARN_ERRTMP"
+    	 echo "$as_me:$LINENO: result: no/warning" >&5
+echo "${ECHO_T}no/warning" >&6
+
+
+    else
+      :
+
+    echo "configure: warned program was:" >&5
+    cat $gasnet_testfile >&5
+           if test "$gasnet_cmd_stdout$gasnet_cmd_stderr" = "$_GASNET_TRY_COMPILE_WITHWARN_OUTTMP$_GASNET_TRY_COMPILE_WITHWARN_ERRTMP" ; then
+
+	 echo "$as_me:$LINENO: result: yes" >&5
+echo "${ECHO_T}yes" >&6
+	 cat >>confdefs.h <<\_ACEOF
+#define HAVE_GCC_ATTRIBUTE_ALIGNED 1
+_ACEOF
+
+	 have_attrib_aligned=1
+
+      else
+        	gasnet_cmd_stdout="$_GASNET_TRY_COMPILE_WITHWARN_OUTTMP"
+	gasnet_cmd_stderr="$_GASNET_TRY_COMPILE_WITHWARN_ERRTMP"
+	 echo "$as_me:$LINENO: result: no/warning" >&5
+echo "${ECHO_T}no/warning" >&6
+
+      fi
+
+
+    fi
+  else
+    :
+
+    echo "configure: failed program was:" >&5
+    cat $gasnet_testfile >&5
+
+
+echo
+echo "configure error: unknown failure case in TRY_CCOMPILE_WITHWARN"
+if test "" ; then
+if test -f "conftest.$ac_ext" ; then
+  errfile=conftest.$ac_ext
+else
+  errfile=gasnet_errsave_file
+fi
+if test -f "$errfile" ; then
+  echo
+  echo " --- Failed program --- "
+  cat $errfile
+  echo " -----------------------"
+fi
+fi
+if test -f "conftest.err" ; then
+  errfile=conftest.err
+else
+  errfile=gasnet_errsave_err
+fi
+if test -f "$errfile" ; then
+  echo
+  echo "Compilation error: "
+  echo
+  cat $errfile
+fi
+echo
+CONFIG_FILE=`pwd`/config.log
+{ { echo "$as_me:$LINENO: error: See $CONFIG_FILE for details." >&5
+echo "$as_me: error: See $CONFIG_FILE for details." >&2;}
+   { (exit 1); exit 1; }; }
+
+
+
+
+  fi
+
+# ^^^^^^^^^^^^^^^^^^^^^^ GASNET_TRY_RUNCMD($gasnet_compile_cmd,...) ^^^^^^^^^^^^^^^^^^^^^^ (L:6)
+
+
+
+  rm -f ${gasnet_testname}.*
+
+# ^^^^^^^^^^^^^^^^^^^^^^ GASNET_TRY_CCOMPILE_WITHWARN_NORETRY(...) ^^^^^^^^^^^^^^^^^^^^^^ (L:5)
+
+
+
+
+
+    fi
+  else
+    :
+
+    echo "configure: failed program was:" >&5
+    cat $gasnet_testfile >&5
+     echo "$as_me:$LINENO: result: no/error" >&5
+echo "${ECHO_T}no/error" >&6
+
+
+  fi
+
+# ^^^^^^^^^^^^^^^^^^^^^^ GASNET_TRY_RUNCMD($gasnet_compile_cmd,...) ^^^^^^^^^^^^^^^^^^^^^^ (L:4)
+
+
+
+  rm -f ${gasnet_testname}.*
+
+# ^^^^^^^^^^^^^^^^^^^^^^ GASNET_TRY_CCOMPILE_WITHWARN_NORETRY(...) ^^^^^^^^^^^^^^^^^^^^^^ (L:3)
+
+
+
+
+# ^^^^^^^^^^^^^^^^^^^^^^ GASNET_TRY_CCOMPILE_WITHWARN(...) ^^^^^^^^^^^^^^^^^^^^^^ (L:2)
+
+
+
+
+     COMPILER_SPEC_FILE="gcc-upc-upcr.spec"
+     if test -n "$force_symmetric_sptr"; then
+       { { echo "$as_me:$LINENO: error: '--with-gccupc' does not support '--enable-sptr-symmetric'" >&5
+echo "$as_me: error: '--with-gccupc' does not support '--enable-sptr-symmetric'" >&2;}
+   { (exit 1); exit 1; }; }
+     fi
+     echo "$as_me:$LINENO: checking for gccupc packed sptr support" >&5
+echo $ECHO_N "checking for gccupc packed sptr support... $ECHO_C" >&6
+     if test "$with_gccupc_version"; then
+       if test "$GCCUPC_HAS_ONLY_STRUCT_SPTR" = "yes" \
+               -o -n "$force_struct_sptr"; then
+	 GCCUPC_PACKED_SPTR="no"
+       else
+         GCCUPC_PACKED_SPTR="yes"
+       fi
+     else
+       # We'd like to use the AC_TRY_CPP macro here, but GCCUPC has
+       # a bug where it always exits with a 0 status even when
+       # it hits the #error preprocessor op.
+       cat > conftest.upc << _ACEOF
+	  #if !__UPC_PTS_PACKED_REP__
+	    #error UPC packed shared pointers are not supported.
+	  #endif
+_ACEOF
+       if $TRANSLATOR -E conftest.upc 2>&1 | grep '#error' > /dev/null; then
+	 GCCUPC_PACKED_SPTR="no"
+       else
+	 GCCUPC_PACKED_SPTR="yes"
+       fi
+       rm -f conftest.upc
+     fi
+     echo "$as_me:$LINENO: result: $GCCUPC_PACKED_SPTR" >&5
+echo "${ECHO_T}$GCCUPC_PACKED_SPTR" >&6
+     if test "$GCCUPC_PACKED_SPTR" = "yes"; then
+       if test -n "$force_struct_sptr"; then
+	   { { echo "$as_me:$LINENO: error: The GCCUPC installation at $TRANSLATOR does not support '--enable-sptr-struct'. If you wish to use the struct pointer-to-shared representation (eg to support huge thread counts, memory sizes or shared blocksizes) then you must configure GCCUPC with: --with-upc-pts=struct" >&5
+echo "$as_me: error: The GCCUPC installation at $TRANSLATOR does not support '--enable-sptr-struct'. If you wish to use the struct pointer-to-shared representation (eg to support huge thread counts, memory sizes or shared blocksizes) then you must configure GCCUPC with: --with-upc-pts=struct" >&2;}
+   { (exit 1); exit 1; }; }
+       fi
+       force_packed_sptr="yes"
+     else
+       if test -n "$force_packed_sptr"; then
+	 if test "$GCCUPC_HAS_ONLY_STRUCT_SPTR" = "yes"; then
+	   { { echo "$as_me:$LINENO: error: The GCCUPC installation at $TRANSLATOR does not support '--enable-sptr-packed'. Packed pointer support is available starting in GCCUPC v4.2.0.2" >&5
+echo "$as_me: error: The GCCUPC installation at $TRANSLATOR does not support '--enable-sptr-packed'. Packed pointer support is available starting in GCCUPC v4.2.0.2" >&2;}
+   { (exit 1); exit 1; }; }
+	 else
+	   { { echo "$as_me:$LINENO: error: The GCCUPC installation at $TRANSLATOR does not support '--enable-sptr-packed'. If you wish to use the packed pointer-to-shared representation then you must configure GCCUPC with: --with-upc-pts=packed" >&5
+echo "$as_me: error: The GCCUPC installation at $TRANSLATOR does not support '--enable-sptr-packed'. If you wish to use the packed pointer-to-shared representation then you must configure GCCUPC with: --with-upc-pts=packed" >&2;}
+   { (exit 1); exit 1; }; }
+	 fi
+       fi
+       if test -z "$have_attrib_aligned"; then
+         { { echo "$as_me:$LINENO: error: GCCUPC requires CC to support __attribute__(__aligned__) for struct pointers" >&5
+echo "$as_me: error: GCCUPC requires CC to support __attribute__(__aligned__) for struct pointers" >&2;}
+   { (exit 1); exit 1; }; }
+       fi
+       force_struct_sptr="yes"
+     fi
+     # Newer GCCUPC's will report their pointer-to-shared configuration.
+     if test -z "$with_gccupc_version"; then
+       echo "$as_me:$LINENO: checking for gccupc that provides pointer-to-shared configuration information" >&5
+echo $ECHO_N "checking for gccupc that provides pointer-to-shared configuration information... $ECHO_C" >&6
+       GCCUPC_HAS_SPTR_CONFIG=`$PERL -e \
+	 "print '$GCCUPC_CANONICAL_VERSION' ge '4.02.03.04' ? 'yes':'no'"`
+       echo "$as_me:$LINENO: result: $GCCUPC_HAS_SPTR_CONFIG" >&5
+echo "${ECHO_T}$GCCUPC_HAS_SPTR_CONFIG" >&6
+     fi
+     if test "$GCCUPC_HAS_SPTR_CONFIG" = "yes"; then
+       cat > conftest.upc << _ACEOF
+#define _XSTR(X) #X
+#define _STR(S) _XSTR(S)
+#if __UPC_VADDR_FIRST__
+UPCRI_SPTR_ADDR_FIRST=1
+#endif
+UPCRI_ADDR_BITS_OVERRIDE=_STR(__UPC_VADDR_SIZE__)
+UPCRI_PHASE_BITS_OVERRIDE=_STR(__UPC_PHASE_SIZE__)
+UPCRI_THREAD_BITS_OVERRIDE=_STR(__UPC_THREAD_SIZE__)
+#if __UPC_PTS_STRUCT_REP__
+UPCRI_STRUCT_SPTR_ADDR_TYPE=_STR(__UPC_VADDR_TYPE__)
+UPCRI_STRUCT_SPTR_PHASE_TYPE=_STR(__UPC_PHASE_TYPE__)
+UPCRI_STRUCT_SPTR_THREAD_TYPE=_STR(__UPC_THREAD_TYPE__)
+#ifdef __UPC_VADDR_FIELD__
+UPCRI_STRUCT_SPTR_ADDR_FIELD=_STR(__UPC_VADDR_FIELD__)
+#endif
+#ifdef __UPC_PHASE_FIELD__
+UPCRI_STRUCT_SPTR_PHASE_FIELD=_STR(__UPC_PHASE_FIELD__)
+#endif
+#ifdef __UPC_THREAD_FIELD__
+UPCRI_STRUCT_SPTR_THREAD_FIELD=_STR(__UPC_THREAD_FIELD__)
+#endif
+#endif
+_ACEOF
+	 eval `$TRANSLATOR -E conftest.upc | grep '^ *UPCRI_[A-Z0-9_]*='`
+	 rm -f conftest.upc
+     else
+       # Set configuration defaults based upon version and target word size
+
+
+
+# vvvvvvvvvvvvvvvvvvvvvv GASNET_CHECK_SIZEOF(void *,) vvvvvvvvvvvvvvvvvvvvvv (L:2)
+
+
+
+
+
+
+  if test "$cross_compiling" = "yes" ; then
+    SIZEOF_VOID_P=
+
+
+
+
+# vvvvvvvvvvvvvvvvvvvvvv GASNET_TRY_CACHE_EXTRACT_EXPR(sizeof(void *) (binary probe),SIZEOF_VOID_P,...) vvvvvvvvvvvvvvvvvvvvvv (L:3)
+
+echo "$as_me:$LINENO: checking sizeof(void *) (binary probe)" >&5
+echo $ECHO_N "checking sizeof(void *) (binary probe)... $ECHO_C" >&6
+if test "${upcr_cv_SIZEOF_VOID_P+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+
+upcr_cv_SIZEOF_VOID_P=""
+
+
+
+
+
+
+# vvvvvvvvvvvvvvvvvvvvvv GASNET_COMPILE_EXAMINE(...) vvvvvvvvvvvvvvvvvvvvvv (L:4)
+
+  cat >conftest.$ac_ext <<"EOF"
+#include "confdefs.h"
+
+
+ #include <stdio.h>
+ extern char s[];
+ #define DIGIT(d) (((char)(( ((sizeof(void *))>0?(sizeof(void *)):-(sizeof(void *))) >>(d*4))&0xF))+0x40)
+ char s[] = {'$','g','a','s','n','e','t','e','x','t','r','a','c','t','e','x','p','r',':',' ',
+             ((sizeof(void *))>=0?' ':'-'),
+             ' ',
+	     DIGIT(7),DIGIT(6),DIGIT(5),DIGIT(4),
+	     DIGIT(3),DIGIT(2),DIGIT(1),DIGIT(0),
+             ' ','$','\0'};
+
+  int main() {
+ char *p = s; while (*p) printf("%c",*(p++));
+  return 0; }
+EOF
+  if test ! -f conftest.$ac_ext ; then
+     { { echo "$as_me:$LINENO: error: failed to write conftest.$ac_ext" >&5
+echo "$as_me: error: failed to write conftest.$ac_ext" >&2;}
+   { (exit 1); exit 1; }; }
+  fi
+  if { (eval echo "$as_me:$LINENO: \"$ac_compile\"") >&5
+       (eval $ac_compile) 2>&5
+       ac_status=$?
+       echo "$as_me:$LINENO: \$? = $ac_status" >&5
+       (exit $ac_status); } && \
+       test -f conftest.${ac_objext} ; then
+
+
+
+# vvvvvvvvvvvvvvvvvvvvvv GASNET_PUSHVAR(GASNET_EXAMINE_BIN,"gasnet-examine-bin-$LINENO.${ac_objext}") vvvvvvvvvvvvvvvvvvvvvv (L:5)
+
+    if test "$_pushcnt_GASNET_EXAMINE_BIN" = "" ; then
+    _pushcnt_GASNET_EXAMINE_BIN=0
+  fi
+  if test "$_total_pushcnt" = "" ; then
+    _total_pushcnt=0
+  fi
+  if test "${GASNET_EXAMINE_BIN+set}" = set; then
+   _gasnet_pushvar_isset=1
+  else
+   _gasnet_pushvar_isset=0
+  fi
+  eval _pushedvar_GASNET_EXAMINE_BIN_$_pushcnt_GASNET_EXAMINE_BIN=\$GASNET_EXAMINE_BIN
+  eval _pushedvarset_GASNET_EXAMINE_BIN_$_pushcnt_GASNET_EXAMINE_BIN=$_gasnet_pushvar_isset
+  _pushcnt_GASNET_EXAMINE_BIN=`expr $_pushcnt_GASNET_EXAMINE_BIN + 1`
+  _total_pushcnt=`expr $_total_pushcnt + 1`
+  GASNET_EXAMINE_BIN="gasnet-examine-bin-$LINENO.${ac_objext}"
+  echo "pushed new GASNET_EXAMINE_BIN value: $GASNET_EXAMINE_BIN" >&5
+
+# ^^^^^^^^^^^^^^^^^^^^^^ GASNET_PUSHVAR(GASNET_EXAMINE_BIN,"gasnet-examine-bin-$LINENO.${ac_objext}") ^^^^^^^^^^^^^^^^^^^^^^ (L:5)
+
+
+
+    mv conftest.${ac_objext} $GASNET_EXAMINE_BIN
+
+   _extract_prog='BEGIN{$/="\$";} if (m/^gasnetextractexpr: ([ -]) (.+?) \$/) { map($val=($val<<4)+($_-0x40),unpack("C8",$2)); print "-" if ($1 eq "-"); print $val;}'
+   upcr_cv_SIZEOF_VOID_P=`$PERL -ne "$_extract_prog" $GASNET_EXAMINE_BIN`
+
+    rm -f $GASNET_EXAMINE_BIN
+
+
+
+# vvvvvvvvvvvvvvvvvvvvvv GASNET_POPVAR(GASNET_EXAMINE_BIN) vvvvvvvvvvvvvvvvvvvvvv (L:5)
+
+  if test "$_pushcnt_GASNET_EXAMINE_BIN" -ge "1"; then
+    _pushcnt_GASNET_EXAMINE_BIN=`expr $_pushcnt_GASNET_EXAMINE_BIN - 1`
+    _total_pushcnt=`expr $_total_pushcnt - 1`
+    eval _gasnet_pushvar_isset=\$_pushedvarset_GASNET_EXAMINE_BIN_$_pushcnt_GASNET_EXAMINE_BIN
+    if test "$_gasnet_pushvar_isset" = "1" ; then
+      eval GASNET_EXAMINE_BIN=\$_pushedvar_GASNET_EXAMINE_BIN_$_pushcnt_GASNET_EXAMINE_BIN
+      echo "popping GASNET_EXAMINE_BIN back to: $GASNET_EXAMINE_BIN" >&5
+    else
+      unset GASNET_EXAMINE_BIN
+      echo "popping GASNET_EXAMINE_BIN back to: <unset>" >&5
+    fi
+  else
+
+
+echo
+echo "configure error: INTERNAL ERROR: GASNET_PUSH/POPVAR underflow on GASNET_EXAMINE_BIN"
+if test "" ; then
+if test -f "conftest.$ac_ext" ; then
+  errfile=conftest.$ac_ext
+else
+  errfile=gasnet_errsave_file
+fi
+if test -f "$errfile" ; then
+  echo
+  echo " --- Failed program --- "
+  cat $errfile
+  echo " -----------------------"
+fi
+fi
+if test -f "conftest.err" ; then
+  errfile=conftest.err
+else
+  errfile=gasnet_errsave_err
+fi
+if test -f "$errfile" ; then
+  echo
+  echo "Compilation error: "
+  echo
+  cat $errfile
+fi
+echo
+CONFIG_FILE=`pwd`/config.log
+{ { echo "$as_me:$LINENO: error: See $CONFIG_FILE for details." >&5
+echo "$as_me: error: See $CONFIG_FILE for details." >&2;}
+   { (exit 1); exit 1; }; }
+
+
+  fi
+
+# ^^^^^^^^^^^^^^^^^^^^^^ GASNET_POPVAR(GASNET_EXAMINE_BIN) ^^^^^^^^^^^^^^^^^^^^^^ (L:5)
+
+
+
+  else
+    echo Failed program: >&5
+    cat conftest.$ac_ext >&5
+
+
+echo
+echo "configure error: Failed while compile extracting sizeof(void *)"
+if test "" ; then
+if test -f "conftest.$ac_ext" ; then
+  errfile=conftest.$ac_ext
+else
+  errfile=gasnet_errsave_file
+fi
+if test -f "$errfile" ; then
+  echo
+  echo " --- Failed program --- "
+  cat $errfile
+  echo " -----------------------"
+fi
+fi
+if test -f "conftest.err" ; then
+  errfile=conftest.err
+else
+  errfile=gasnet_errsave_err
+fi
+if test -f "$errfile" ; then
+  echo
+  echo "Compilation error: "
+  echo
+  cat $errfile
+fi
+echo
+CONFIG_FILE=`pwd`/config.log
+{ { echo "$as_me:$LINENO: error: See $CONFIG_FILE for details." >&5
+echo "$as_me: error: See $CONFIG_FILE for details." >&2;}
+   { (exit 1); exit 1; }; }
+
+
+  fi
+
+# ^^^^^^^^^^^^^^^^^^^^^^ GASNET_COMPILE_EXAMINE(...) ^^^^^^^^^^^^^^^^^^^^^^ (L:4)
+
+
+
+if test -z "$upcr_cv_SIZEOF_VOID_P" ; then
+
+
+
+# vvvvvvvvvvvvvvvvvvvvvv GASNET_LINK_EXAMINE(...) vvvvvvvvvvvvvvvvvvvvvv (L:4)
+
+  cat >conftest.$ac_ext <<"EOF"
+#include "confdefs.h"
+
+
+ #include <stdio.h>
+ extern char s[];
+ #define DIGIT(d) (((char)(( ((sizeof(void *))>0?(sizeof(void *)):-(sizeof(void *))) >>(d*4))&0xF))+0x40)
+ char s[] = {'$','g','a','s','n','e','t','e','x','t','r','a','c','t','e','x','p','r',':',' ',
+             ((sizeof(void *))>=0?' ':'-'),
+             ' ',
+	     DIGIT(7),DIGIT(6),DIGIT(5),DIGIT(4),
+	     DIGIT(3),DIGIT(2),DIGIT(1),DIGIT(0),
+             ' ','$','\0'};
+
+  int main() {
+ char *p = s; while (*p) printf("%c",*(p++));
+  return 0; }
+EOF
+  if test ! -f conftest.$ac_ext ; then
+     { { echo "$as_me:$LINENO: error: failed to write conftest.$ac_ext" >&5
+echo "$as_me: error: failed to write conftest.$ac_ext" >&2;}
+   { (exit 1); exit 1; }; }
+  fi
+  if { (eval echo "$as_me:$LINENO: \"$ac_link\"") >&5
+       (eval $ac_link) 2>&5
+       ac_status=$?
+       echo "$as_me:$LINENO: \$? = $ac_status" >&5
+       (exit $ac_status); } && \
+       test -f conftest$ac_exeext ; then
+
+
+
+# vvvvvvvvvvvvvvvvvvvvvv GASNET_PUSHVAR(GASNET_EXAMINE_BIN,"gasnet-examine-bin-$LINENO$ac_exeext") vvvvvvvvvvvvvvvvvvvvvv (L:5)
+
+    if test "$_pushcnt_GASNET_EXAMINE_BIN" = "" ; then
+    _pushcnt_GASNET_EXAMINE_BIN=0
+  fi
+  if test "$_total_pushcnt" = "" ; then
+    _total_pushcnt=0
+  fi
+  if test "${GASNET_EXAMINE_BIN+set}" = set; then
+   _gasnet_pushvar_isset=1
+  else
+   _gasnet_pushvar_isset=0
+  fi
+  eval _pushedvar_GASNET_EXAMINE_BIN_$_pushcnt_GASNET_EXAMINE_BIN=\$GASNET_EXAMINE_BIN
+  eval _pushedvarset_GASNET_EXAMINE_BIN_$_pushcnt_GASNET_EXAMINE_BIN=$_gasnet_pushvar_isset
+  _pushcnt_GASNET_EXAMINE_BIN=`expr $_pushcnt_GASNET_EXAMINE_BIN + 1`
+  _total_pushcnt=`expr $_total_pushcnt + 1`
+  GASNET_EXAMINE_BIN="gasnet-examine-bin-$LINENO$ac_exeext"
+  echo "pushed new GASNET_EXAMINE_BIN value: $GASNET_EXAMINE_BIN" >&5
+
+# ^^^^^^^^^^^^^^^^^^^^^^ GASNET_PUSHVAR(GASNET_EXAMINE_BIN,"gasnet-examine-bin-$LINENO$ac_exeext") ^^^^^^^^^^^^^^^^^^^^^^ (L:5)
+
+
+
+    mv conftest$ac_exeext $GASNET_EXAMINE_BIN
+
+   _extract_prog='BEGIN{$/="\$";} if (m/^gasnetextractexpr: ([ -]) (.+?) \$/) { map($val=($val<<4)+($_-0x40),unpack("C8",$2)); print "-" if ($1 eq "-"); print $val;}'
+   upcr_cv_SIZEOF_VOID_P=`$PERL -ne "$_extract_prog" $GASNET_EXAMINE_BIN`
+
+    rm -f $GASNET_EXAMINE_BIN
+
+
+
+# vvvvvvvvvvvvvvvvvvvvvv GASNET_POPVAR(GASNET_EXAMINE_BIN) vvvvvvvvvvvvvvvvvvvvvv (L:5)
+
+  if test "$_pushcnt_GASNET_EXAMINE_BIN" -ge "1"; then
+    _pushcnt_GASNET_EXAMINE_BIN=`expr $_pushcnt_GASNET_EXAMINE_BIN - 1`
+    _total_pushcnt=`expr $_total_pushcnt - 1`
+    eval _gasnet_pushvar_isset=\$_pushedvarset_GASNET_EXAMINE_BIN_$_pushcnt_GASNET_EXAMINE_BIN
+    if test "$_gasnet_pushvar_isset" = "1" ; then
+      eval GASNET_EXAMINE_BIN=\$_pushedvar_GASNET_EXAMINE_BIN_$_pushcnt_GASNET_EXAMINE_BIN
+      echo "popping GASNET_EXAMINE_BIN back to: $GASNET_EXAMINE_BIN" >&5
+    else
+      unset GASNET_EXAMINE_BIN
+      echo "popping GASNET_EXAMINE_BIN back to: <unset>" >&5
+    fi
+  else
+
+
+echo
+echo "configure error: INTERNAL ERROR: GASNET_PUSH/POPVAR underflow on GASNET_EXAMINE_BIN"
+if test "" ; then
+if test -f "conftest.$ac_ext" ; then
+  errfile=conftest.$ac_ext
+else
+  errfile=gasnet_errsave_file
+fi
+if test -f "$errfile" ; then
+  echo
+  echo " --- Failed program --- "
+  cat $errfile
+  echo " -----------------------"
+fi
+fi
+if test -f "conftest.err" ; then
+  errfile=conftest.err
+else
+  errfile=gasnet_errsave_err
+fi
+if test -f "$errfile" ; then
+  echo
+  echo "Compilation error: "
+  echo
+  cat $errfile
+fi
+echo
+CONFIG_FILE=`pwd`/config.log
+{ { echo "$as_me:$LINENO: error: See $CONFIG_FILE for details." >&5
+echo "$as_me: error: See $CONFIG_FILE for details." >&2;}
+   { (exit 1); exit 1; }; }
+
+
+  fi
+
+# ^^^^^^^^^^^^^^^^^^^^^^ GASNET_POPVAR(GASNET_EXAMINE_BIN) ^^^^^^^^^^^^^^^^^^^^^^ (L:5)
+
+
+
+  else
+    echo Failed program: >&5
+    cat conftest.$ac_ext >&5
+
+
+echo
+echo "configure error: Failed while link extracting sizeof(void *)"
+if test "" ; then
+if test -f "conftest.$ac_ext" ; then
+  errfile=conftest.$ac_ext
+else
+  errfile=gasnet_errsave_file
+fi
+if test -f "$errfile" ; then
+  echo
+  echo " --- Failed program --- "
+  cat $errfile
+  echo " -----------------------"
+fi
+fi
+if test -f "conftest.err" ; then
+  errfile=conftest.err
+else
+  errfile=gasnet_errsave_err
+fi
+if test -f "$errfile" ; then
+  echo
+  echo "Compilation error: "
+  echo
+  cat $errfile
+fi
+echo
+CONFIG_FILE=`pwd`/config.log
+{ { echo "$as_me:$LINENO: error: See $CONFIG_FILE for details." >&5
+echo "$as_me: error: See $CONFIG_FILE for details." >&2;}
+   { (exit 1); exit 1; }; }
+
+
+  fi
+
+# ^^^^^^^^^^^^^^^^^^^^^^ GASNET_LINK_EXAMINE(...) ^^^^^^^^^^^^^^^^^^^^^^ (L:4)
+
+
+
+fi
+
+
+
+fi
+echo "$as_me:$LINENO: result: $upcr_cv_SIZEOF_VOID_P" >&5
+echo "${ECHO_T}$upcr_cv_SIZEOF_VOID_P" >&6
+if test -n "$upcr_cv_SIZEOF_VOID_P" ; then
+  SIZEOF_VOID_P=$upcr_cv_SIZEOF_VOID_P
+fi
+
+# ^^^^^^^^^^^^^^^^^^^^^^ GASNET_TRY_CACHE_EXTRACT_EXPR(sizeof(void *) (binary probe),SIZEOF_VOID_P,...) ^^^^^^^^^^^^^^^^^^^^^^ (L:3)
+
+
+
+    if test -z "$SIZEOF_VOID_P" ; then # last resort is to use CROSS var
+
+
+
+# vvvvvvvvvvvvvvvvvvvvvv GASNET_CROSS_VAR(SIZEOF_VOID_P,SIZEOF_VOID_P) vvvvvvvvvvvvvvvvvvvvvv (L:3)
+
+
+  if test "$cross_compiling" = "yes" ; then
+
+
+
+
+# vvvvvvvvvvvvvvvvvvvvvv GASNET_ENV_DEFAULT(CROSS_SIZEOF_VOID_P,) vvvvvvvvvvvvvvvvvvvvvv (L:4)
+
+
+
+
+  echo "$as_me:$LINENO: checking for CROSS_SIZEOF_VOID_P in environment" >&5
+echo $ECHO_N "checking for CROSS_SIZEOF_VOID_P in environment... $ECHO_C" >&6
+
+
+
+
+
+
+  envval_src_CROSS_SIZEOF_VOID_P="cached"
+  if test "${upcr_cv_envvar_CROSS_SIZEOF_VOID_P+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+
+      case "${CROSS_SIZEOF_VOID_P-__NOT_SET__}" in
+	__NOT_SET__)
+            if test "$with_cross_sizeof_void_p" != ""; then
+	      upcr_cv_envvar_CROSS_SIZEOF_VOID_P="$with_cross_sizeof_void_p"
+	      envval_src_CROSS_SIZEOF_VOID_P=given
+	    else
+	      upcr_cv_envvar_CROSS_SIZEOF_VOID_P=""
+	      envval_src_CROSS_SIZEOF_VOID_P=default
+	    fi
+	    ;;
+	*)  upcr_cv_envvar_CROSS_SIZEOF_VOID_P="$CROSS_SIZEOF_VOID_P"
+	    envval_src_CROSS_SIZEOF_VOID_P=given
+      esac
+
+fi
+
+
+  CROSS_SIZEOF_VOID_P="$upcr_cv_envvar_CROSS_SIZEOF_VOID_P"
+  case "$envval_src_CROSS_SIZEOF_VOID_P" in
+      'cached')
+	  echo "$as_me:$LINENO: result: using cached value \"$CROSS_SIZEOF_VOID_P\"" >&5
+echo "${ECHO_T}using cached value \"$CROSS_SIZEOF_VOID_P\"" >&6 ;;
+      'default')
+	  echo "$as_me:$LINENO: result: no, defaulting to \"$CROSS_SIZEOF_VOID_P\"" >&5
+echo "${ECHO_T}no, defaulting to \"$CROSS_SIZEOF_VOID_P\"" >&6 ;;
+      'given')
+	  echo "$as_me:$LINENO: result: yes, using \"$CROSS_SIZEOF_VOID_P\"" >&5
+echo "${ECHO_T}yes, using \"$CROSS_SIZEOF_VOID_P\"" >&6 ;;
+      *)
+
+echo
+echo "configure error: _GASNET_ENV_DEFAULT broken"
+if test "" ; then
+if test -f "conftest.$ac_ext" ; then
+  errfile=conftest.$ac_ext
+else
+  errfile=gasnet_errsave_file
+fi
+if test -f "$errfile" ; then
+  echo
+  echo " --- Failed program --- "
+  cat $errfile
+  echo " -----------------------"
+fi
+fi
+if test -f "conftest.err" ; then
+  errfile=conftest.err
+else
+  errfile=gasnet_errsave_err
+fi
+if test -f "$errfile" ; then
+  echo
+  echo "Compilation error: "
+  echo
+  cat $errfile
+fi
+echo
+CONFIG_FILE=`pwd`/config.log
+{ { echo "$as_me:$LINENO: error: See $CONFIG_FILE for details." >&5
+echo "$as_me: error: See $CONFIG_FILE for details." >&2;}
+   { (exit 1); exit 1; }; }
+
+
+  esac
+
+
+
+
+# ^^^^^^^^^^^^^^^^^^^^^^ GASNET_ENV_DEFAULT(CROSS_SIZEOF_VOID_P,) ^^^^^^^^^^^^^^^^^^^^^^ (L:4)
+
+
+
+
+    if test "$CROSS_SIZEOF_VOID_P" = "" ; then
+      { { echo "$as_me:$LINENO: error: This configure script requires \$CROSS_SIZEOF_VOID_P be set for cross-compilation" >&5
+echo "$as_me: error: This configure script requires \$CROSS_SIZEOF_VOID_P be set for cross-compilation" >&2;}
+   { (exit 1); exit 1; }; }
+    else
+      SIZEOF_VOID_P="$CROSS_SIZEOF_VOID_P"
+    fi
+  fi
+
+
+# ^^^^^^^^^^^^^^^^^^^^^^ GASNET_CROSS_VAR(SIZEOF_VOID_P,SIZEOF_VOID_P) ^^^^^^^^^^^^^^^^^^^^^^ (L:3)
+
+
+
+    fi
+    ac_cv_sizeof_void_p=$SIZEOF_VOID_P
+  fi
+
+
+
+# vvvvvvvvvvvvvvvvvvvvvv GASNET_PUSHVAR(ac_cv_sizeof_void_p,"$ac_cv_sizeof_void_p") vvvvvvvvvvvvvvvvvvvvvv (L:3)
+
+    if test "$_pushcnt_ac_cv_sizeof_void_p" = "" ; then
+    _pushcnt_ac_cv_sizeof_void_p=0
+  fi
+  if test "$_total_pushcnt" = "" ; then
+    _total_pushcnt=0
+  fi
+  if test "${ac_cv_sizeof_void_p+set}" = set; then
+   _gasnet_pushvar_isset=1
+  else
+   _gasnet_pushvar_isset=0
+  fi
+  eval _pushedvar_ac_cv_sizeof_void_p_$_pushcnt_ac_cv_sizeof_void_p=\$ac_cv_sizeof_void_p
+  eval _pushedvarset_ac_cv_sizeof_void_p_$_pushcnt_ac_cv_sizeof_void_p=$_gasnet_pushvar_isset
+  _pushcnt_ac_cv_sizeof_void_p=`expr $_pushcnt_ac_cv_sizeof_void_p + 1`
+  _total_pushcnt=`expr $_total_pushcnt + 1`
+  ac_cv_sizeof_void_p="$ac_cv_sizeof_void_p"
+  echo "pushed new ac_cv_sizeof_void_p value: $ac_cv_sizeof_void_p" >&5
+
+# ^^^^^^^^^^^^^^^^^^^^^^ GASNET_PUSHVAR(ac_cv_sizeof_void_p,"$ac_cv_sizeof_void_p") ^^^^^^^^^^^^^^^^^^^^^^ (L:3)
+
+
+
+  if test "$ac_cv_sizeof_void_p" = "" ; then
+    unset ac_cv_sizeof_void_p
+    unset ac_cv_type_void_p
+  fi
+  if test "" != "" ; then
+    echo "$as_me:$LINENO: checking  size:" >&5
+echo $ECHO_N "checking  size:... $ECHO_C" >&6
+  fi
+  echo "$as_me:$LINENO: checking for void *" >&5
+echo $ECHO_N "checking for void *... $ECHO_C" >&6
+if test "${ac_cv_type_void_p+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+$ac_includes_default
+int
+main ()
+{
+if ((void * *) 0)
+  return 0;
+if (sizeof (void *))
+  return 0;
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext
+if { (eval echo "$as_me:$LINENO: \"$ac_compile\"") >&5
+  (eval $ac_compile) 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } &&
+	 { ac_try='test -z "$ac_c_werror_flag"
+			 || test ! -s conftest.err'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; } &&
+	 { ac_try='test -s conftest.$ac_objext'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; }; then
+  ac_cv_type_void_p=yes
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+ac_cv_type_void_p=no
+fi
+rm -f conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+echo "$as_me:$LINENO: result: $ac_cv_type_void_p" >&5
+echo "${ECHO_T}$ac_cv_type_void_p" >&6
+
+echo "$as_me:$LINENO: checking size of void *" >&5
+echo $ECHO_N "checking size of void *... $ECHO_C" >&6
+if test "${ac_cv_sizeof_void_p+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  if test "$ac_cv_type_void_p" = yes; then
+  # The cast to unsigned long works around a bug in the HP C Compiler
+  # version HP92453-01 B.11.11.23709.GP, which incorrectly rejects
+  # declarations like `int a3[[(sizeof (unsigned char)) >= 0]];'.
+  # This bug is HP SR number 8606223364.
+  if test "$cross_compiling" = yes; then
+  # Depending upon the size, compute the lo and hi bounds.
+cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+$ac_includes_default
+int
+main ()
+{
+static int test_array [1 - 2 * !(((long) (sizeof (void *))) >= 0)];
+test_array [0] = 0
+
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext
+if { (eval echo "$as_me:$LINENO: \"$ac_compile\"") >&5
+  (eval $ac_compile) 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } &&
+	 { ac_try='test -z "$ac_c_werror_flag"
+			 || test ! -s conftest.err'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; } &&
+	 { ac_try='test -s conftest.$ac_objext'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; }; then
+  ac_lo=0 ac_mid=0
+  while :; do
+    cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+$ac_includes_default
+int
+main ()
+{
+static int test_array [1 - 2 * !(((long) (sizeof (void *))) <= $ac_mid)];
+test_array [0] = 0
+
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext
+if { (eval echo "$as_me:$LINENO: \"$ac_compile\"") >&5
+  (eval $ac_compile) 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } &&
+	 { ac_try='test -z "$ac_c_werror_flag"
+			 || test ! -s conftest.err'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; } &&
+	 { ac_try='test -s conftest.$ac_objext'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; }; then
+  ac_hi=$ac_mid; break
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+ac_lo=`expr $ac_mid + 1`
+		    if test $ac_lo -le $ac_mid; then
+		      ac_lo= ac_hi=
+		      break
+		    fi
+		    ac_mid=`expr 2 '*' $ac_mid + 1`
+fi
+rm -f conftest.err conftest.$ac_objext conftest.$ac_ext
+  done
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+$ac_includes_default
+int
+main ()
+{
+static int test_array [1 - 2 * !(((long) (sizeof (void *))) < 0)];
+test_array [0] = 0
+
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext
+if { (eval echo "$as_me:$LINENO: \"$ac_compile\"") >&5
+  (eval $ac_compile) 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } &&
+	 { ac_try='test -z "$ac_c_werror_flag"
+			 || test ! -s conftest.err'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; } &&
+	 { ac_try='test -s conftest.$ac_objext'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; }; then
+  ac_hi=-1 ac_mid=-1
+  while :; do
+    cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+$ac_includes_default
+int
+main ()
+{
+static int test_array [1 - 2 * !(((long) (sizeof (void *))) >= $ac_mid)];
+test_array [0] = 0
+
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext
+if { (eval echo "$as_me:$LINENO: \"$ac_compile\"") >&5
+  (eval $ac_compile) 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } &&
+	 { ac_try='test -z "$ac_c_werror_flag"
+			 || test ! -s conftest.err'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; } &&
+	 { ac_try='test -s conftest.$ac_objext'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; }; then
+  ac_lo=$ac_mid; break
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+ac_hi=`expr '(' $ac_mid ')' - 1`
+		       if test $ac_mid -le $ac_hi; then
+			 ac_lo= ac_hi=
+			 break
+		       fi
+		       ac_mid=`expr 2 '*' $ac_mid`
+fi
+rm -f conftest.err conftest.$ac_objext conftest.$ac_ext
+  done
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+ac_lo= ac_hi=
+fi
+rm -f conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+rm -f conftest.err conftest.$ac_objext conftest.$ac_ext
+# Binary search between lo and hi bounds.
+while test "x$ac_lo" != "x$ac_hi"; do
+  ac_mid=`expr '(' $ac_hi - $ac_lo ')' / 2 + $ac_lo`
+  cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+$ac_includes_default
+int
+main ()
+{
+static int test_array [1 - 2 * !(((long) (sizeof (void *))) <= $ac_mid)];
+test_array [0] = 0
+
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext
+if { (eval echo "$as_me:$LINENO: \"$ac_compile\"") >&5
+  (eval $ac_compile) 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } &&
+	 { ac_try='test -z "$ac_c_werror_flag"
+			 || test ! -s conftest.err'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; } &&
+	 { ac_try='test -s conftest.$ac_objext'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; }; then
+  ac_hi=$ac_mid
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+ac_lo=`expr '(' $ac_mid ')' + 1`
+fi
+rm -f conftest.err conftest.$ac_objext conftest.$ac_ext
+done
+case $ac_lo in
+?*) ac_cv_sizeof_void_p=$ac_lo;;
+'') { { echo "$as_me:$LINENO: error: cannot compute sizeof (void *), 77
+See \`config.log' for more details." >&5
+echo "$as_me: error: cannot compute sizeof (void *), 77
+See \`config.log' for more details." >&2;}
+   { (exit 1); exit 1; }; } ;;
+esac
+else
+  if test "$cross_compiling" = yes; then
+  { { echo "$as_me:$LINENO: error: cannot run test program while cross compiling
+See \`config.log' for more details." >&5
+echo "$as_me: error: cannot run test program while cross compiling
+See \`config.log' for more details." >&2;}
+   { (exit 1); exit 1; }; }
+else
+  cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+$ac_includes_default
+long longval () { return (long) (sizeof (void *)); }
+unsigned long ulongval () { return (long) (sizeof (void *)); }
+#include <stdio.h>
+#include <stdlib.h>
+int
+main ()
+{
+
+  FILE *f = fopen ("conftest.val", "w");
+  if (! f)
+    exit (1);
+  if (((long) (sizeof (void *))) < 0)
+    {
+      long i = longval ();
+      if (i != ((long) (sizeof (void *))))
+	exit (1);
+      fprintf (f, "%ld\n", i);
+    }
+  else
+    {
+      unsigned long i = ulongval ();
+      if (i != ((long) (sizeof (void *))))
+	exit (1);
+      fprintf (f, "%lu\n", i);
+    }
+  exit (ferror (f) || fclose (f) != 0);
+
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest$ac_exeext
+if { (eval echo "$as_me:$LINENO: \"$ac_link\"") >&5
+  (eval $ac_link) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && { ac_try='./conftest$ac_exeext'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; }; then
+  ac_cv_sizeof_void_p=`cat conftest.val`
+else
+  echo "$as_me: program exited with status $ac_status" >&5
+echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+( exit $ac_status )
+{ { echo "$as_me:$LINENO: error: cannot compute sizeof (void *), 77
+See \`config.log' for more details." >&5
+echo "$as_me: error: cannot compute sizeof (void *), 77
+See \`config.log' for more details." >&2;}
+   { (exit 1); exit 1; }; }
+fi
+rm -f core *.core gmon.out bb.out conftest$ac_exeext conftest.$ac_objext conftest.$ac_ext
+fi
+fi
+rm -f conftest.val
+else
+  ac_cv_sizeof_void_p=0
+fi
+fi
+echo "$as_me:$LINENO: result: $ac_cv_sizeof_void_p" >&5
+echo "${ECHO_T}$ac_cv_sizeof_void_p" >&6
+cat >>confdefs.h <<_ACEOF
+#define SIZEOF_VOID_P $ac_cv_sizeof_void_p
+_ACEOF
+
+
+  gasnet_checksizeoftmp_sizeof_void_p="$ac_cv_sizeof_void_p"
+
+
+
+# vvvvvvvvvvvvvvvvvvvvvv GASNET_POPVAR(ac_cv_sizeof_void_p) vvvvvvvvvvvvvvvvvvvvvv (L:3)
+
+  if test "$_pushcnt_ac_cv_sizeof_void_p" -ge "1"; then
+    _pushcnt_ac_cv_sizeof_void_p=`expr $_pushcnt_ac_cv_sizeof_void_p - 1`
+    _total_pushcnt=`expr $_total_pushcnt - 1`
+    eval _gasnet_pushvar_isset=\$_pushedvarset_ac_cv_sizeof_void_p_$_pushcnt_ac_cv_sizeof_void_p
+    if test "$_gasnet_pushvar_isset" = "1" ; then
+      eval ac_cv_sizeof_void_p=\$_pushedvar_ac_cv_sizeof_void_p_$_pushcnt_ac_cv_sizeof_void_p
+      echo "popping ac_cv_sizeof_void_p back to: $ac_cv_sizeof_void_p" >&5
+    else
+      unset ac_cv_sizeof_void_p
+      echo "popping ac_cv_sizeof_void_p back to: <unset>" >&5
+    fi
+  else
+
+
+echo
+echo "configure error: INTERNAL ERROR: GASNET_PUSH/POPVAR underflow on ac_cv_sizeof_void_p"
+if test "" ; then
+if test -f "conftest.$ac_ext" ; then
+  errfile=conftest.$ac_ext
+else
+  errfile=gasnet_errsave_file
+fi
+if test -f "$errfile" ; then
+  echo
+  echo " --- Failed program --- "
+  cat $errfile
+  echo " -----------------------"
+fi
+fi
+if test -f "conftest.err" ; then
+  errfile=conftest.err
+else
+  errfile=gasnet_errsave_err
+fi
+if test -f "$errfile" ; then
+  echo
+  echo "Compilation error: "
+  echo
+  cat $errfile
+fi
+echo
+CONFIG_FILE=`pwd`/config.log
+{ { echo "$as_me:$LINENO: error: See $CONFIG_FILE for details." >&5
+echo "$as_me: error: See $CONFIG_FILE for details." >&2;}
+   { (exit 1); exit 1; }; }
+
+
+  fi
+
+# ^^^^^^^^^^^^^^^^^^^^^^ GASNET_POPVAR(ac_cv_sizeof_void_p) ^^^^^^^^^^^^^^^^^^^^^^ (L:3)
+
+
+
+  ac_cv_sizeof_void_p=$gasnet_checksizeoftmp_sizeof_void_p
+  SIZEOF_VOID_P=$gasnet_checksizeoftmp_sizeof_void_p
+  if test "$SIZEOF_VOID_P" = "0" -o "$SIZEOF_VOID_P" = "" -o "$ac_cv_sizeof_void_p" != "$SIZEOF_VOID_P"; then
+
+
+echo
+echo "configure error: failed to find sizeof(void *)"
+if test "" ; then
+if test -f "conftest.$ac_ext" ; then
+  errfile=conftest.$ac_ext
+else
+  errfile=gasnet_errsave_file
+fi
+if test -f "$errfile" ; then
+  echo
+  echo " --- Failed program --- "
+  cat $errfile
+  echo " -----------------------"
+fi
+fi
+if test -f "conftest.err" ; then
+  errfile=conftest.err
+else
+  errfile=gasnet_errsave_err
+fi
+if test -f "$errfile" ; then
+  echo
+  echo "Compilation error: "
+  echo
+  cat $errfile
+fi
+echo
+CONFIG_FILE=`pwd`/config.log
+{ { echo "$as_me:$LINENO: error: See $CONFIG_FILE for details." >&5
+echo "$as_me: error: See $CONFIG_FILE for details." >&2;}
+   { (exit 1); exit 1; }; }
+
+
+  fi
+  if test "" != ""; then
+                    ac_cv_SIZEOF_VOID_P_indirect=SIZEOF_VOID_P
+        cat >>confdefs.h <<_ACEOF
+#define $ac_cv_SIZEOF_VOID_P_indirect $SIZEOF_VOID_P
+_ACEOF
+
+  fi
+
+
+
+
+
+
+
+# ^^^^^^^^^^^^^^^^^^^^^^ GASNET_CHECK_SIZEOF(void *,) ^^^^^^^^^^^^^^^^^^^^^^ (L:2)
+
+
+
+       GCCUPC_PTR_BITS=`expr $SIZEOF_VOID_P \* 8`
+       if test -n "$force_struct_sptr"; then
+	 echo "$as_me:$LINENO: result: Setting default struct sptr configuration values" >&5
+echo "${ECHO_T}Setting default struct sptr configuration values" >&6
+	 if test "$GCCUPC_HAS_NEW_STRUCT_SPTR" = "yes" ; then
+	   UPCRI_SPTR_ADDR_FIRST=1
+	   if test "$GCCUPC_PTR_BITS" = 64 ; then
+	     UPCRI_ADDR_BITS_OVERRIDE=64
+	     UPCRI_THREAD_BITS_OVERRIDE=32
+	     UPCRI_PHASE_BITS_OVERRIDE=32
+	     UPCRI_STRUCT_SPTR_ADDR_TYPE="char *"
+	     UPCRI_STRUCT_SPTR_THREAD_TYPE="uint32_t"
+	     UPCRI_STRUCT_SPTR_PHASE_TYPE="unit32_t"
+	   else
+	     UPCRI_ADDR_BITS_OVERRIDE=32
+	     UPCRI_THREAD_BITS_OVERRIDE=16
+	     UPCRI_PHASE_BITS_OVERRIDE=16
+	     UPCRI_STRUCT_SPTR_ADDR_TYPE="char *"
+	     UPCRI_STRUCT_SPTR_THREAD_TYPE="uint16_t"
+	     UPCRI_STRUCT_SPTR_PHASE_TYPE="uint16_t"
+	   fi
+	 else
+	   # Old format
+	   if test "$GCCUPC_PTR_BITS" = 64 ; then
+	     UPCRI_ADDR_BITS_OVERRIDE=64
+	     UPCRI_THREAD_BITS_OVERRIDE=16
+	     UPCRI_PHASE_BITS_OVERRIDE=48
+	     UPCRI_STRUCT_SPTR_THREAD_FIELD=": 16"
+	     UPCRI_STRUCT_SPTR_PHASE_FIELD=": 48"
+	     UPCRI_STRUCT_SPTR_ADDR_TYPE="char *"
+	     UPCRI_STRUCT_SPTR_THREAD_TYPE="unsigned short"
+	     UPCRI_STRUCT_SPTR_PHASE_TYPE="unsigned long"
+	   else
+	     UPCRI_ADDR_BITS_OVERRIDE=32
+	     UPCRI_THREAD_BITS_OVERRIDE=8
+	     UPCRI_PHASE_BITS_OVERRIDE=24
+	     UPCRI_STRUCT_SPTR_THREAD_FIELD=": 8"
+	     UPCRI_STRUCT_SPTR_PHASE_FIELD=": 24"
+	     UPCRI_STRUCT_SPTR_ADDR_TYPE="char *"
+	     UPCRI_STRUCT_SPTR_THREAD_TYPE="unsigned char"
+	     UPCRI_STRUCT_SPTR_PHASE_TYPE="unsigned long"
+	   fi
+	 fi
+       else
+	 UPCRI_SPTR_ADDR_FIRST=1
+	 # Set GCC packed default representation.
+	 UPCRI_PHASE_BITS_OVERRIDE=16
+	 UPCRI_THREAD_BITS_OVERRIDE=12
+	 UPCRI_ADDR_BITS_OVERRIDE=36
+       fi
+     fi
+     for cfg in UPCRI_ADDR_BITS_OVERRIDE UPCRI_PHASE_BITS_OVERRIDE \
+                UPCRI_THREAD_BITS_OVERRIDE UPCRI_STRUCT_SPTR_ADDR_TYPE \
+		UPCRI_STRUCT_SPTR_PHASE_TYPE UPCRI_STRUCT_SPTR_THREAD_TYPE \
+		UPCRI_STRUCT_SPTR_ADDR_FIELD UPCRI_STRUCT_SPTR_PHASE_FIELD \
+		UPCRI_STRUCT_SPTR_THREAD_FIELD ; do
+       eval "cval=\$$cfg"
+       if test -n "$cval"; then
+         echo "$as_me:$LINENO: checking value of $cfg" >&5
+echo $ECHO_N "checking value of $cfg... $ECHO_C" >&6
+         echo "$as_me:$LINENO: result: $cval" >&5
+echo "${ECHO_T}$cval" >&6
+       fi
+     done
+     ;;
+  esac
+
+else
+
+   :
+    USING_GCCUPC="no"
+
+fi;
+
+# ^^^^^^^^^^^^^^^^^^^^^^ GASNET_WITH(gccupc,...) ^^^^^^^^^^^^^^^^^^^^^^ (L:1)
+
+
+
+
+
+
+if test "$USING_GCCUPC" = "yes"; then
+  USING_GCCUPC_TRUE=
+  USING_GCCUPC_FALSE='#'
+else
+  USING_GCCUPC_TRUE='#'
+  USING_GCCUPC_FALSE=
+fi
+
+
+
+
+
+
+
+
+
+# vvvvvvvvvvvvvvvvvvvvvv GASNET_IF_DISABLED(full-path-expansion,...) vvvvvvvvvvvvvvvvvvvvvv (L:4)
+
+# Check whether --enable-full-path-expansion or --disable-full-path-expansion was given.
+if test "${enable_full_path_expansion+set}" = set; then
+  enableval="$enable_full_path_expansion"
+
+fi;
+case "$enable_full_path_expansion" in
+  '' | yes) :
+        ;;
+  *)   upcr_cv__gfp_disable=1 ;;
+esac
+
+# ^^^^^^^^^^^^^^^^^^^^^^ GASNET_IF_DISABLED(full-path-expansion,...) ^^^^^^^^^^^^^^^^^^^^^^ (L:4)
+
+
+
+
+
+
+
+# vvvvvvvvvvvvvvvvvvvvvv GASNET_PROG_CC vvvvvvvvvvvvvvvvvvvvvv (L:1)
+
+
+
+
+# vvvvvvvvvvvvvvvvvvvvvv GASNET_PROG_CPP vvvvvvvvvvvvvvvvvvvvvv (L:2)
+
+
+  ac_ext=c
+ac_cpp='$CPP $CPPFLAGS'
+ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
+ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
+ac_compiler_gnu=$ac_cv_c_compiler_gnu
+if test -n "$ac_tool_prefix"; then
+  # Extract the first word of "${ac_tool_prefix}gcc", so it can be a program name with args.
+set dummy ${ac_tool_prefix}gcc; ac_word=$2
+echo "$as_me:$LINENO: checking for $ac_word" >&5
+echo $ECHO_N "checking for $ac_word... $ECHO_C" >&6
+if test "${ac_cv_prog_CC+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  if test -n "$CC"; then
+  ac_cv_prog_CC="$CC" # Let the user override the test.
+else
+as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
+for as_dir in $PATH
+do
+  IFS=$as_save_IFS
+  test -z "$as_dir" && as_dir=.
+  for ac_exec_ext in '' $ac_executable_extensions; do
+  if $as_executable_p "$as_dir/$ac_word$ac_exec_ext"; then
+    ac_cv_prog_CC="${ac_tool_prefix}gcc"
+    echo "$as_me:$LINENO: found $as_dir/$ac_word$ac_exec_ext" >&5
+    break 2
+  fi
+done
+done
+
+fi
+fi
+CC=$ac_cv_prog_CC
+if test -n "$CC"; then
+  echo "$as_me:$LINENO: result: $CC" >&5
+echo "${ECHO_T}$CC" >&6
+else
+  echo "$as_me:$LINENO: result: no" >&5
+echo "${ECHO_T}no" >&6
+fi
+
+fi
+if test -z "$ac_cv_prog_CC"; then
+  ac_ct_CC=$CC
+  # Extract the first word of "gcc", so it can be a program name with args.
+set dummy gcc; ac_word=$2
+echo "$as_me:$LINENO: checking for $ac_word" >&5
+echo $ECHO_N "checking for $ac_word... $ECHO_C" >&6
+if test "${ac_cv_prog_ac_ct_CC+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  if test -n "$ac_ct_CC"; then
+  ac_cv_prog_ac_ct_CC="$ac_ct_CC" # Let the user override the test.
+else
+as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
+for as_dir in $PATH
+do
+  IFS=$as_save_IFS
+  test -z "$as_dir" && as_dir=.
+  for ac_exec_ext in '' $ac_executable_extensions; do
+  if $as_executable_p "$as_dir/$ac_word$ac_exec_ext"; then
+    ac_cv_prog_ac_ct_CC="gcc"
+    echo "$as_me:$LINENO: found $as_dir/$ac_word$ac_exec_ext" >&5
+    break 2
+  fi
+done
+done
+
+fi
+fi
+ac_ct_CC=$ac_cv_prog_ac_ct_CC
+if test -n "$ac_ct_CC"; then
+  echo "$as_me:$LINENO: result: $ac_ct_CC" >&5
+echo "${ECHO_T}$ac_ct_CC" >&6
+else
+  echo "$as_me:$LINENO: result: no" >&5
+echo "${ECHO_T}no" >&6
+fi
+
+  CC=$ac_ct_CC
+else
+  CC="$ac_cv_prog_CC"
+fi
+
+if test -z "$CC"; then
+  if test -n "$ac_tool_prefix"; then
+  # Extract the first word of "${ac_tool_prefix}cc", so it can be a program name with args.
+set dummy ${ac_tool_prefix}cc; ac_word=$2
+echo "$as_me:$LINENO: checking for $ac_word" >&5
+echo $ECHO_N "checking for $ac_word... $ECHO_C" >&6
+if test "${ac_cv_prog_CC+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  if test -n "$CC"; then
+  ac_cv_prog_CC="$CC" # Let the user override the test.
+else
+as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
+for as_dir in $PATH
+do
+  IFS=$as_save_IFS
+  test -z "$as_dir" && as_dir=.
+  for ac_exec_ext in '' $ac_executable_extensions; do
+  if $as_executable_p "$as_dir/$ac_word$ac_exec_ext"; then
+    ac_cv_prog_CC="${ac_tool_prefix}cc"
+    echo "$as_me:$LINENO: found $as_dir/$ac_word$ac_exec_ext" >&5
+    break 2
+  fi
+done
+done
+
+fi
+fi
+CC=$ac_cv_prog_CC
+if test -n "$CC"; then
+  echo "$as_me:$LINENO: result: $CC" >&5
+echo "${ECHO_T}$CC" >&6
+else
+  echo "$as_me:$LINENO: result: no" >&5
+echo "${ECHO_T}no" >&6
+fi
+
+fi
+if test -z "$ac_cv_prog_CC"; then
+  ac_ct_CC=$CC
+  # Extract the first word of "cc", so it can be a program name with args.
+set dummy cc; ac_word=$2
+echo "$as_me:$LINENO: checking for $ac_word" >&5
+echo $ECHO_N "checking for $ac_word... $ECHO_C" >&6
+if test "${ac_cv_prog_ac_ct_CC+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  if test -n "$ac_ct_CC"; then
+  ac_cv_prog_ac_ct_CC="$ac_ct_CC" # Let the user override the test.
+else
+as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
+for as_dir in $PATH
+do
+  IFS=$as_save_IFS
+  test -z "$as_dir" && as_dir=.
+  for ac_exec_ext in '' $ac_executable_extensions; do
+  if $as_executable_p "$as_dir/$ac_word$ac_exec_ext"; then
+    ac_cv_prog_ac_ct_CC="cc"
+    echo "$as_me:$LINENO: found $as_dir/$ac_word$ac_exec_ext" >&5
+    break 2
+  fi
+done
+done
+
+fi
+fi
+ac_ct_CC=$ac_cv_prog_ac_ct_CC
+if test -n "$ac_ct_CC"; then
+  echo "$as_me:$LINENO: result: $ac_ct_CC" >&5
+echo "${ECHO_T}$ac_ct_CC" >&6
+else
+  echo "$as_me:$LINENO: result: no" >&5
+echo "${ECHO_T}no" >&6
+fi
+
+  CC=$ac_ct_CC
+else
+  CC="$ac_cv_prog_CC"
+fi
+
+fi
+if test -z "$CC"; then
+  # Extract the first word of "cc", so it can be a program name with args.
+set dummy cc; ac_word=$2
+echo "$as_me:$LINENO: checking for $ac_word" >&5
+echo $ECHO_N "checking for $ac_word... $ECHO_C" >&6
+if test "${ac_cv_prog_CC+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  if test -n "$CC"; then
+  ac_cv_prog_CC="$CC" # Let the user override the test.
+else
+  ac_prog_rejected=no
+as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
+for as_dir in $PATH
+do
+  IFS=$as_save_IFS
+  test -z "$as_dir" && as_dir=.
+  for ac_exec_ext in '' $ac_executable_extensions; do
+  if $as_executable_p "$as_dir/$ac_word$ac_exec_ext"; then
+    if test "$as_dir/$ac_word$ac_exec_ext" = "/usr/ucb/cc"; then
+       ac_prog_rejected=yes
+       continue
+     fi
+    ac_cv_prog_CC="cc"
+    echo "$as_me:$LINENO: found $as_dir/$ac_word$ac_exec_ext" >&5
+    break 2
+  fi
+done
+done
+
+if test $ac_prog_rejected = yes; then
+  # We found a bogon in the path, so make sure we never use it.
+  set dummy $ac_cv_prog_CC
+  shift
+  if test $# != 0; then
+    # We chose a different compiler from the bogus one.
+    # However, it has the same basename, so the bogon will be chosen
+    # first if we set CC to just the basename; use the full file name.
+    shift
+    ac_cv_prog_CC="$as_dir/$ac_word${1+' '}$@"
+  fi
+fi
+fi
+fi
+CC=$ac_cv_prog_CC
+if test -n "$CC"; then
+  echo "$as_me:$LINENO: result: $CC" >&5
+echo "${ECHO_T}$CC" >&6
+else
+  echo "$as_me:$LINENO: result: no" >&5
+echo "${ECHO_T}no" >&6
+fi
+
+fi
+if test -z "$CC"; then
+  if test -n "$ac_tool_prefix"; then
+  for ac_prog in cl
+  do
+    # Extract the first word of "$ac_tool_prefix$ac_prog", so it can be a program name with args.
+set dummy $ac_tool_prefix$ac_prog; ac_word=$2
+echo "$as_me:$LINENO: checking for $ac_word" >&5
+echo $ECHO_N "checking for $ac_word... $ECHO_C" >&6
+if test "${ac_cv_prog_CC+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  if test -n "$CC"; then
+  ac_cv_prog_CC="$CC" # Let the user override the test.
+else
+as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
+for as_dir in $PATH
+do
+  IFS=$as_save_IFS
+  test -z "$as_dir" && as_dir=.
+  for ac_exec_ext in '' $ac_executable_extensions; do
+  if $as_executable_p "$as_dir/$ac_word$ac_exec_ext"; then
+    ac_cv_prog_CC="$ac_tool_prefix$ac_prog"
+    echo "$as_me:$LINENO: found $as_dir/$ac_word$ac_exec_ext" >&5
+    break 2
+  fi
+done
+done
+
+fi
+fi
+CC=$ac_cv_prog_CC
+if test -n "$CC"; then
+  echo "$as_me:$LINENO: result: $CC" >&5
+echo "${ECHO_T}$CC" >&6
+else
+  echo "$as_me:$LINENO: result: no" >&5
+echo "${ECHO_T}no" >&6
+fi
+
+    test -n "$CC" && break
+  done
+fi
+if test -z "$CC"; then
+  ac_ct_CC=$CC
+  for ac_prog in cl
+do
+  # Extract the first word of "$ac_prog", so it can be a program name with args.
+set dummy $ac_prog; ac_word=$2
+echo "$as_me:$LINENO: checking for $ac_word" >&5
+echo $ECHO_N "checking for $ac_word... $ECHO_C" >&6
+if test "${ac_cv_prog_ac_ct_CC+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  if test -n "$ac_ct_CC"; then
+  ac_cv_prog_ac_ct_CC="$ac_ct_CC" # Let the user override the test.
+else
+as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
+for as_dir in $PATH
+do
+  IFS=$as_save_IFS
+  test -z "$as_dir" && as_dir=.
+  for ac_exec_ext in '' $ac_executable_extensions; do
+  if $as_executable_p "$as_dir/$ac_word$ac_exec_ext"; then
+    ac_cv_prog_ac_ct_CC="$ac_prog"
+    echo "$as_me:$LINENO: found $as_dir/$ac_word$ac_exec_ext" >&5
+    break 2
+  fi
+done
+done
+
+fi
+fi
+ac_ct_CC=$ac_cv_prog_ac_ct_CC
+if test -n "$ac_ct_CC"; then
+  echo "$as_me:$LINENO: result: $ac_ct_CC" >&5
+echo "${ECHO_T}$ac_ct_CC" >&6
+else
+  echo "$as_me:$LINENO: result: no" >&5
+echo "${ECHO_T}no" >&6
+fi
+
+  test -n "$ac_ct_CC" && break
+done
+
+  CC=$ac_ct_CC
+fi
+
+fi
+
+
+test -z "$CC" && { { echo "$as_me:$LINENO: error: no acceptable C compiler found in \$PATH
+See \`config.log' for more details." >&5
+echo "$as_me: error: no acceptable C compiler found in \$PATH
+See \`config.log' for more details." >&2;}
+   { (exit 1); exit 1; }; }
+
+# Provide some information about the compiler.
+echo "$as_me:$LINENO:" \
+     "checking for C compiler version" >&5
+ac_compiler=`set X $ac_compile; echo $2`
+{ (eval echo "$as_me:$LINENO: \"$ac_compiler --version </dev/null >&5\"") >&5
+  (eval $ac_compiler --version </dev/null >&5) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }
+{ (eval echo "$as_me:$LINENO: \"$ac_compiler -v </dev/null >&5\"") >&5
+  (eval $ac_compiler -v </dev/null >&5) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }
+{ (eval echo "$as_me:$LINENO: \"$ac_compiler -V </dev/null >&5\"") >&5
+  (eval $ac_compiler -V </dev/null >&5) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }
+
 echo "$as_me:$LINENO: checking whether we are using the GNU C compiler" >&5
 echo $ECHO_N "checking whether we are using the GNU C compiler... $ECHO_C" >&6
 if test "${ac_cv_c_compiler_gnu+set}" = set; then
@@ -11575,259 +14557,6 @@ echo "$as_me: error: See $CONFIG_FILE for details." >&2;}
 
 
 if test "$UPCR_PROFILE_FLAG" != ""; then
-  echo "$as_me:$LINENO: checking for egrep" >&5
-echo $ECHO_N "checking for egrep... $ECHO_C" >&6
-if test "${ac_cv_prog_egrep+set}" = set; then
-  echo $ECHO_N "(cached) $ECHO_C" >&6
-else
-  if echo a | (grep -E '(a|b)') >/dev/null 2>&1
-    then ac_cv_prog_egrep='grep -E'
-    else ac_cv_prog_egrep='egrep'
-    fi
-fi
-echo "$as_me:$LINENO: result: $ac_cv_prog_egrep" >&5
-echo "${ECHO_T}$ac_cv_prog_egrep" >&6
- EGREP=$ac_cv_prog_egrep
-
-
-echo "$as_me:$LINENO: checking for ANSI C header files" >&5
-echo $ECHO_N "checking for ANSI C header files... $ECHO_C" >&6
-if test "${ac_cv_header_stdc+set}" = set; then
-  echo $ECHO_N "(cached) $ECHO_C" >&6
-else
-  cat >conftest.$ac_ext <<_ACEOF
-/* confdefs.h.  */
-_ACEOF
-cat confdefs.h >>conftest.$ac_ext
-cat >>conftest.$ac_ext <<_ACEOF
-/* end confdefs.h.  */
-#include <stdlib.h>
-#include <stdarg.h>
-#include <string.h>
-#include <float.h>
-
-int
-main ()
-{
-
-  ;
-  return 0;
-}
-_ACEOF
-rm -f conftest.$ac_objext
-if { (eval echo "$as_me:$LINENO: \"$ac_compile\"") >&5
-  (eval $ac_compile) 2>conftest.er1
-  ac_status=$?
-  grep -v '^ *+' conftest.er1 >conftest.err
-  rm -f conftest.er1
-  cat conftest.err >&5
-  echo "$as_me:$LINENO: \$? = $ac_status" >&5
-  (exit $ac_status); } &&
-	 { ac_try='test -z "$ac_c_werror_flag"
-			 || test ! -s conftest.err'
-  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
-  (eval $ac_try) 2>&5
-  ac_status=$?
-  echo "$as_me:$LINENO: \$? = $ac_status" >&5
-  (exit $ac_status); }; } &&
-	 { ac_try='test -s conftest.$ac_objext'
-  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
-  (eval $ac_try) 2>&5
-  ac_status=$?
-  echo "$as_me:$LINENO: \$? = $ac_status" >&5
-  (exit $ac_status); }; }; then
-  ac_cv_header_stdc=yes
-else
-  echo "$as_me: failed program was:" >&5
-sed 's/^/| /' conftest.$ac_ext >&5
-
-ac_cv_header_stdc=no
-fi
-rm -f conftest.err conftest.$ac_objext conftest.$ac_ext
-
-if test $ac_cv_header_stdc = yes; then
-  # SunOS 4.x string.h does not declare mem*, contrary to ANSI.
-  cat >conftest.$ac_ext <<_ACEOF
-/* confdefs.h.  */
-_ACEOF
-cat confdefs.h >>conftest.$ac_ext
-cat >>conftest.$ac_ext <<_ACEOF
-/* end confdefs.h.  */
-#include <string.h>
-
-_ACEOF
-if (eval "$ac_cpp conftest.$ac_ext") 2>&5 |
-  $EGREP "memchr" >/dev/null 2>&1; then
-  :
-else
-  ac_cv_header_stdc=no
-fi
-rm -f conftest*
-
-fi
-
-if test $ac_cv_header_stdc = yes; then
-  # ISC 2.0.2 stdlib.h does not declare free, contrary to ANSI.
-  cat >conftest.$ac_ext <<_ACEOF
-/* confdefs.h.  */
-_ACEOF
-cat confdefs.h >>conftest.$ac_ext
-cat >>conftest.$ac_ext <<_ACEOF
-/* end confdefs.h.  */
-#include <stdlib.h>
-
-_ACEOF
-if (eval "$ac_cpp conftest.$ac_ext") 2>&5 |
-  $EGREP "free" >/dev/null 2>&1; then
-  :
-else
-  ac_cv_header_stdc=no
-fi
-rm -f conftest*
-
-fi
-
-if test $ac_cv_header_stdc = yes; then
-  # /bin/cc in Irix-4.0.5 gets non-ANSI ctype macros unless using -ansi.
-  if test "$cross_compiling" = yes; then
-  :
-else
-  cat >conftest.$ac_ext <<_ACEOF
-/* confdefs.h.  */
-_ACEOF
-cat confdefs.h >>conftest.$ac_ext
-cat >>conftest.$ac_ext <<_ACEOF
-/* end confdefs.h.  */
-#include <ctype.h>
-#if ((' ' & 0x0FF) == 0x020)
-# define ISLOWER(c) ('a' <= (c) && (c) <= 'z')
-# define TOUPPER(c) (ISLOWER(c) ? 'A' + ((c) - 'a') : (c))
-#else
-# define ISLOWER(c) \
-		   (('a' <= (c) && (c) <= 'i') \
-		     || ('j' <= (c) && (c) <= 'r') \
-		     || ('s' <= (c) && (c) <= 'z'))
-# define TOUPPER(c) (ISLOWER(c) ? ((c) | 0x40) : (c))
-#endif
-
-#define XOR(e, f) (((e) && !(f)) || (!(e) && (f)))
-int
-main ()
-{
-  int i;
-  for (i = 0; i < 256; i++)
-    if (XOR (islower (i), ISLOWER (i))
-	|| toupper (i) != TOUPPER (i))
-      exit(2);
-  exit (0);
-}
-_ACEOF
-rm -f conftest$ac_exeext
-if { (eval echo "$as_me:$LINENO: \"$ac_link\"") >&5
-  (eval $ac_link) 2>&5
-  ac_status=$?
-  echo "$as_me:$LINENO: \$? = $ac_status" >&5
-  (exit $ac_status); } && { ac_try='./conftest$ac_exeext'
-  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
-  (eval $ac_try) 2>&5
-  ac_status=$?
-  echo "$as_me:$LINENO: \$? = $ac_status" >&5
-  (exit $ac_status); }; }; then
-  :
-else
-  echo "$as_me: program exited with status $ac_status" >&5
-echo "$as_me: failed program was:" >&5
-sed 's/^/| /' conftest.$ac_ext >&5
-
-( exit $ac_status )
-ac_cv_header_stdc=no
-fi
-rm -f core *.core gmon.out bb.out conftest$ac_exeext conftest.$ac_objext conftest.$ac_ext
-fi
-fi
-fi
-echo "$as_me:$LINENO: result: $ac_cv_header_stdc" >&5
-echo "${ECHO_T}$ac_cv_header_stdc" >&6
-if test $ac_cv_header_stdc = yes; then
-
-cat >>confdefs.h <<\_ACEOF
-#define STDC_HEADERS 1
-_ACEOF
-
-fi
-
-# On IRIX 5.3, sys/types and inttypes.h are conflicting.
-
-
-
-
-
-
-
-
-
-for ac_header in sys/types.h sys/stat.h stdlib.h string.h memory.h strings.h \
-		  inttypes.h stdint.h unistd.h
-do
-as_ac_Header=`echo "ac_cv_header_$ac_header" | $as_tr_sh`
-echo "$as_me:$LINENO: checking for $ac_header" >&5
-echo $ECHO_N "checking for $ac_header... $ECHO_C" >&6
-if eval "test \"\${$as_ac_Header+set}\" = set"; then
-  echo $ECHO_N "(cached) $ECHO_C" >&6
-else
-  cat >conftest.$ac_ext <<_ACEOF
-/* confdefs.h.  */
-_ACEOF
-cat confdefs.h >>conftest.$ac_ext
-cat >>conftest.$ac_ext <<_ACEOF
-/* end confdefs.h.  */
-$ac_includes_default
-
-#include <$ac_header>
-_ACEOF
-rm -f conftest.$ac_objext
-if { (eval echo "$as_me:$LINENO: \"$ac_compile\"") >&5
-  (eval $ac_compile) 2>conftest.er1
-  ac_status=$?
-  grep -v '^ *+' conftest.er1 >conftest.err
-  rm -f conftest.er1
-  cat conftest.err >&5
-  echo "$as_me:$LINENO: \$? = $ac_status" >&5
-  (exit $ac_status); } &&
-	 { ac_try='test -z "$ac_c_werror_flag"
-			 || test ! -s conftest.err'
-  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
-  (eval $ac_try) 2>&5
-  ac_status=$?
-  echo "$as_me:$LINENO: \$? = $ac_status" >&5
-  (exit $ac_status); }; } &&
-	 { ac_try='test -s conftest.$ac_objext'
-  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
-  (eval $ac_try) 2>&5
-  ac_status=$?
-  echo "$as_me:$LINENO: \$? = $ac_status" >&5
-  (exit $ac_status); }; }; then
-  eval "$as_ac_Header=yes"
-else
-  echo "$as_me: failed program was:" >&5
-sed 's/^/| /' conftest.$ac_ext >&5
-
-eval "$as_ac_Header=no"
-fi
-rm -f conftest.err conftest.$ac_objext conftest.$ac_ext
-fi
-echo "$as_me:$LINENO: result: `eval echo '${'$as_ac_Header'}'`" >&5
-echo "${ECHO_T}`eval echo '${'$as_ac_Header'}'`" >&6
-if test `eval echo '${'$as_ac_Header'}'` = yes; then
-  cat >>confdefs.h <<_ACEOF
-#define `echo "HAVE_$ac_header" | $as_tr_cpp` 1
-_ACEOF
-
-fi
-
-done
-
-
 
 
 
@@ -12393,7 +15122,6 @@ echo "$as_me: error: See $CONFIG_FILE for details." >&2;}
 
 
 fi
-
 
 
 
@@ -13605,8 +16333,6 @@ fi
 
   echo "$as_me:$LINENO: checking for CROSS_SIZEOF_VOID_P in environment" >&5
 echo $ECHO_N "checking for CROSS_SIZEOF_VOID_P in environment... $ECHO_C" >&6
-
-
 
 
 
@@ -15591,6 +18317,33 @@ fi;
 
 
 
+
+
+
+# vvvvvvvvvvvvvvvvvvvvvv GASNET_WITH(max-pthreads-per-node,...) vvvvvvvvvvvvvvvvvvvvvv (L:1)
+
+
+# Check whether --with-max-pthreads-per-node or --without-max-pthreads-per-node was given.
+if test "${with_max_pthreads_per_node+set}" = set; then
+  withval="$with_max_pthreads_per_node"
+
+  case "$withval" in
+    no) :
+         ;;
+    *)   ;;
+  esac
+
+else
+
+   :
+
+
+fi;
+
+# ^^^^^^^^^^^^^^^^^^^^^^ GASNET_WITH(max-pthreads-per-node,...) ^^^^^^^^^^^^^^^^^^^^^^ (L:1)
+
+
+
 BUILDCONFIG_SEGMENT="segment_fast"
 
 
@@ -15712,12 +18465,53 @@ if test "$force_struct_sptr" = "yes"; then
 _ACEOF
 
       BUILDCONFIG="$BUILDCONFIG,structsptr"
+      if test -n "$UPCRI_STRUCT_SPTR_ADDR_TYPE" ; then
+        cat >>confdefs.h <<_ACEOF
+#define UPCRI_STRUCT_SPTR_ADDR_TYPE $UPCRI_STRUCT_SPTR_ADDR_TYPE
+_ACEOF
+
+        cat >>confdefs.h <<_ACEOF
+#define UPCRI_STRUCT_SPTR_THREAD_TYPE $UPCRI_STRUCT_SPTR_THREAD_TYPE
+_ACEOF
+
+        cat >>confdefs.h <<_ACEOF
+#define UPCRI_STRUCT_SPTR_PHASE_TYPE $UPCRI_STRUCT_SPTR_PHASE_TYPE
+_ACEOF
+
+	# Field specifiers (eg, ": 24") are defined only when needed.
+	if test -n "$UPCRI_STRUCT_SPTR_ADDR_FIELD" ; then
+          cat >>confdefs.h <<_ACEOF
+#define UPCRI_STRUCT_SPTR_ADDR_FIELD $UPCRI_STRUCT_SPTR_ADDR_FIELD
+_ACEOF
+
+	fi
+	if test -n "$UPCRI_STRUCT_SPTR_THREAD_FIELD" ; then
+          cat >>confdefs.h <<_ACEOF
+#define UPCRI_STRUCT_SPTR_THREAD_FIELD $UPCRI_STRUCT_SPTR_THREAD_FIELD
+_ACEOF
+
+	fi
+	if test -n "$UPCRI_STRUCT_SPTR_PHASE_FIELD" ; then
+          cat >>confdefs.h <<_ACEOF
+#define UPCRI_STRUCT_SPTR_PHASE_FIELD $UPCRI_STRUCT_SPTR_PHASE_FIELD
+_ACEOF
+
+	fi
+      fi
 else
       cat >>confdefs.h <<\_ACEOF
 #define UPCRI_PACKED_SPTR 1
 _ACEOF
 
       BUILDCONFIG="$BUILDCONFIG,packedsptr"
+fi
+
+# GCCUPC may order its sptr fields (addr, thread, phase), thus "address first".
+if test -n "$UPCRI_SPTR_ADDR_FIRST" ; then
+      cat >>confdefs.h <<_ACEOF
+#define UPCRI_SPTR_ADDR_FIRST $UPCRI_SPTR_ADDR_FIRST
+_ACEOF
+
 fi
 
 # Enable symmetric pointer if enabled by user
@@ -15753,29 +18547,27 @@ if test "${with_sptr_packed_bits+set}" = set; then
 echo "$as_me: error: --with-sptr-packed-bits is only supported for packed sptr representation" >&2;}
    { (exit 1); exit 1; }; }
   fi
+  if test "$USING_GCCUPC" = "yes" -a -z "$with_gccupc_version" ; then
+    { { echo "$as_me:$LINENO: error: --with-sptr-packed-bits is not supported for GCC/UPC" >&5
+echo "$as_me: error: --with-sptr-packed-bits is not supported for GCC/UPC" >&2;}
+   { (exit 1); exit 1; }; }
+  fi
   UPCRI_PHASE_BITS_OVERRIDE=`echo $withval | $PERL -ne 'm/^(\d+),(\d+),(\d+)$/;  print $1 if ($1+$2+$3 == 64);'`
   UPCRI_THREAD_BITS_OVERRIDE=`echo $withval | $PERL -ne 'm/^(\d+),(\d+),(\d+)$/; print $2 if ($1+$2+$3 == 64);'`
   UPCRI_ADDR_BITS_OVERRIDE=`echo $withval | $PERL -ne 'm/^(\d+),(\d+),(\d+)$/;   print $3 if ($1+$2+$3 == 64);'`
   if test -z "$UPCRI_PHASE_BITS_OVERRIDE"  -o "$UPCRI_PHASE_BITS_OVERRIDE"  -lt 1 -o \
           -z "$UPCRI_THREAD_BITS_OVERRIDE" -o "$UPCRI_THREAD_BITS_OVERRIDE" -lt 1 -o \
-          -z "$UPCRI_ADDR_BITS_OVERRIDE"   -o "$UPCRI_ADDR_BITS_OVERRIDE"   -lt 20 -o \
-	  "$UPCRI_ADDR_BITS_OVERRIDE" -gt "$UPCRI_PTR_BITS" ; then
-    { { echo "$as_me:$LINENO: error: --with-sptr-packed-bits=phase,thread,addr requires phase+thread+addr=64 and phase >= 1 and thread >= 1 and addr >= 20 and addr <= 8*sizeof(void*)" >&5
-echo "$as_me: error: --with-sptr-packed-bits=phase,thread,addr requires phase+thread+addr=64 and phase >= 1 and thread >= 1 and addr >= 20 and addr <= 8*sizeof(void*)" >&2;}
+          -z "$UPCRI_ADDR_BITS_OVERRIDE"   -o "$UPCRI_ADDR_BITS_OVERRIDE"   -lt 20 ; then
+    { { echo "$as_me:$LINENO: error: --with-sptr-packed-bits=phase,thread,addr requires phase+thread+addr=64 and phase >= 1 and thread >= 1 and addr >= 20" >&5
+echo "$as_me: error: --with-sptr-packed-bits=phase,thread,addr requires phase+thread+addr=64 and phase >= 1 and thread >= 1 and addr >= 20" >&2;}
    { (exit 1); exit 1; }; }
   fi
-  cat >>confdefs.h <<_ACEOF
-#define UPCRI_PHASE_BITS_OVERRIDE $UPCRI_PHASE_BITS_OVERRIDE
-_ACEOF
-
-  cat >>confdefs.h <<_ACEOF
-#define UPCRI_THREAD_BITS_OVERRIDE $UPCRI_THREAD_BITS_OVERRIDE
-_ACEOF
-
-  cat >>confdefs.h <<_ACEOF
-#define UPCRI_ADDR_BITS_OVERRIDE $UPCRI_ADDR_BITS_OVERRIDE
-_ACEOF
-
+  if test "$UPCRI_ADDR_BITS_OVERRIDE" -gt "$UPCRI_PTR_BITS" \
+          -a "$USING_GCCUPC" = "no" ; then
+    { { echo "$as_me:$LINENO: error: --with-sptr-packed-bits=phase,thread,addr requires addr <= 8*sizeof(void*)" >&5
+echo "$as_me: error: --with-sptr-packed-bits=phase,thread,addr requires addr <= 8*sizeof(void*)" >&2;}
+   { (exit 1); exit 1; }; }
+  fi
  ;;
   esac
 
@@ -15790,6 +18582,24 @@ fi;
 
 
 
+# The layout of a packed shared pointer can be chenged by --sptr-packed-bits
+# (as shown above), or when GCC/UPC is configured to support the
+# packed pointer representation.  GCC/UPC also sets these fields when
+# configuring its 'struct' sptr. representation.
+if test -n "$UPCRI_ADDR_BITS_OVERRIDE"; then
+  cat >>confdefs.h <<_ACEOF
+#define UPCRI_PHASE_BITS_OVERRIDE $UPCRI_PHASE_BITS_OVERRIDE
+_ACEOF
+
+  cat >>confdefs.h <<_ACEOF
+#define UPCRI_THREAD_BITS_OVERRIDE $UPCRI_THREAD_BITS_OVERRIDE
+_ACEOF
+
+  cat >>confdefs.h <<_ACEOF
+#define UPCRI_ADDR_BITS_OVERRIDE $UPCRI_ADDR_BITS_OVERRIDE
+_ACEOF
+
+fi
 
 echo "$as_me:$LINENO: checking for compiler feature list" >&5
 echo $ECHO_N "checking for compiler feature list... $ECHO_C" >&6
@@ -36098,6 +38908,33 @@ esac
 
 
 
+# vvvvvvvvvvvvvvvvvvvvvv GASNET_IF_ENABLED_WITH_AUTO(dcmf,...) vvvvvvvvvvvvvvvvvvvvvv (L:1)
+
+# Check whether --enable-dcmf or --disable-dcmf was given.
+if test "${enable_dcmf+set}" = set; then
+  enableval="$enable_dcmf"
+
+fi;
+# Check whether --enable-dcmf or --disable-dcmf was given.
+if test "${enable_dcmf+set}" = set; then
+  enableval="$enable_dcmf"
+
+fi;
+case "$enable_dcmf" in
+  no)   ;;
+  yes)  ;;
+  *)    ;;
+esac
+
+# ^^^^^^^^^^^^^^^^^^^^^^ GASNET_IF_ENABLED_WITH_AUTO(dcmf,...) ^^^^^^^^^^^^^^^^^^^^^^ (L:1)
+
+
+
+
+
+
+
+
 # vvvvvvvvvvvvvvvvvvvvvv GASNET_IF_ENABLED_WITH_AUTO(ibv,...) vvvvvvvvvvvvvvvvvvvvvv (L:1)
 
 # Check whether --enable-ibv or --disable-ibv was given.
@@ -36279,7 +39116,7 @@ echo $ECHO_N "checking for CONDUITS in gasnet... $ECHO_C" >&6
 echo "$as_me: error: failed to open $_subconfig_extract_file - file not found" >&2;}
    { (exit 1); exit 1; }; }
   fi
-  _subconfig_extract_result=`$PERL -ne 'if (m/^s(.)\@('CONDUITS')\@\1([^\1]*)\1/) { my ($var,$val) = ($2,$3); $val =~ s/\|#_!!_#\|//g; print "$var='"'"'$val'"'"'"; }' $_subconfig_extract_file`
+  _subconfig_extract_result=`$PERL -n -e 'if (m/^S\["('CONDUITS')"\]="(.*)"/) { print "$1='"'"'$2'"'"'"; };' -e 'if (m/^s(.)\@('CONDUITS')\@\1([^\1]*)\1/) { my ($var,$val) = ($2,$3); $val =~ s/\|#_!!_#\|//g; print "$var='"'"'$val'"'"'"; };' $_subconfig_extract_file`
   if test -n "$_subconfig_extract_result" ; then
     eval $_subconfig_extract_result
     echo "$as_me:$LINENO: result: $CONDUITS" >&5
@@ -36310,7 +39147,7 @@ echo $ECHO_N "checking for PTHREADS in gasnet... $ECHO_C" >&6
 echo "$as_me: error: failed to open $_subconfig_extract_file - file not found" >&2;}
    { (exit 1); exit 1; }; }
   fi
-  _subconfig_extract_result=`$PERL -ne 'if (m/^s(.)\@('PTHREADS')\@\1([^\1]*)\1/) { my ($var,$val) = ($2,$3); $val =~ s/\|#_!!_#\|//g; print "$var='"'"'$val'"'"'"; }' $_subconfig_extract_file`
+  _subconfig_extract_result=`$PERL -n -e 'if (m/^S\["('PTHREADS')"\]="(.*)"/) { print "$1='"'"'$2'"'"'"; };' -e 'if (m/^s(.)\@('PTHREADS')\@\1([^\1]*)\1/) { my ($var,$val) = ($2,$3); $val =~ s/\|#_!!_#\|//g; print "$var='"'"'$val'"'"'"; };' $_subconfig_extract_file`
   if test -n "$_subconfig_extract_result" ; then
     eval $_subconfig_extract_result
     echo "$as_me:$LINENO: result: $PTHREADS" >&5
@@ -36399,7 +39236,7 @@ echo $ECHO_N "checking for POE_RDMA_ARGS in gasnet... $ECHO_C" >&6
 echo "$as_me: error: failed to open $_subconfig_extract_file - file not found" >&2;}
    { (exit 1); exit 1; }; }
   fi
-  _subconfig_extract_result=`$PERL -ne 'if (m/^s(.)\@('POE_RDMA_ARGS')\@\1([^\1]*)\1/) { my ($var,$val) = ($2,$3); $val =~ s/\|#_!!_#\|//g; print "$var='"'"'$val'"'"'"; }' $_subconfig_extract_file`
+  _subconfig_extract_result=`$PERL -n -e 'if (m/^S\["('POE_RDMA_ARGS')"\]="(.*)"/) { print "$1='"'"'$2'"'"'"; };' -e 'if (m/^s(.)\@('POE_RDMA_ARGS')\@\1([^\1]*)\1/) { my ($var,$val) = ($2,$3); $val =~ s/\|#_!!_#\|//g; print "$var='"'"'$val'"'"'"; };' $_subconfig_extract_file`
   if test -n "$_subconfig_extract_result" ; then
     eval $_subconfig_extract_result
     echo "$as_me:$LINENO: result: $POE_RDMA_ARGS" >&5
@@ -36817,17 +39654,31 @@ echo "$as_me: error: conditional \"BUILD_IS_SRC\" was never defined.
 Usually this means the macro was only invoked conditionally." >&2;}
    { (exit 1); exit 1; }; }
 fi
-if test -z "${USING_GCCUPC_TRUE}" && test -z "${USING_GCCUPC_FALSE}"; then
-  { { echo "$as_me:$LINENO: error: conditional \"USING_GCCUPC\" was never defined.
-Usually this means the macro was only invoked conditionally." >&5
-echo "$as_me: error: conditional \"USING_GCCUPC\" was never defined.
-Usually this means the macro was only invoked conditionally." >&2;}
-   { (exit 1); exit 1; }; }
-fi
 if test -z "${AMDEP_TRUE}" && test -z "${AMDEP_FALSE}"; then
   { { echo "$as_me:$LINENO: error: conditional \"AMDEP\" was never defined.
 Usually this means the macro was only invoked conditionally." >&5
 echo "$as_me: error: conditional \"AMDEP\" was never defined.
+Usually this means the macro was only invoked conditionally." >&2;}
+   { (exit 1); exit 1; }; }
+fi
+if test -z "${am__fastdepCC_TRUE}" && test -z "${am__fastdepCC_FALSE}"; then
+  { { echo "$as_me:$LINENO: error: conditional \"am__fastdepCC\" was never defined.
+Usually this means the macro was only invoked conditionally." >&5
+echo "$as_me: error: conditional \"am__fastdepCC\" was never defined.
+Usually this means the macro was only invoked conditionally." >&2;}
+   { (exit 1); exit 1; }; }
+fi
+if test -z "${am__fastdepCC_TRUE}" && test -z "${am__fastdepCC_FALSE}"; then
+  { { echo "$as_me:$LINENO: error: conditional \"am__fastdepCC\" was never defined.
+Usually this means the macro was only invoked conditionally." >&5
+echo "$as_me: error: conditional \"am__fastdepCC\" was never defined.
+Usually this means the macro was only invoked conditionally." >&2;}
+   { (exit 1); exit 1; }; }
+fi
+if test -z "${USING_GCCUPC_TRUE}" && test -z "${USING_GCCUPC_FALSE}"; then
+  { { echo "$as_me:$LINENO: error: conditional \"USING_GCCUPC\" was never defined.
+Usually this means the macro was only invoked conditionally." >&5
+echo "$as_me: error: conditional \"USING_GCCUPC\" was never defined.
 Usually this means the macro was only invoked conditionally." >&2;}
    { (exit 1); exit 1; }; }
 fi
@@ -37603,9 +40454,6 @@ s,@GASNET_PERL_BYTESFLAG@,$GASNET_PERL_BYTESFLAG,;t t
 s,@HARNESS_TRANS_OPTION@,$HARNESS_TRANS_OPTION,;t t
 s,@COMPILER_SPEC_FILE@,$COMPILER_SPEC_FILE,;t t
 s,@GCCUPC_VERSION@,$GCCUPC_VERSION,;t t
-s,@USING_GCCUPC@,$USING_GCCUPC,;t t
-s,@USING_GCCUPC_TRUE@,$USING_GCCUPC_TRUE,;t t
-s,@USING_GCCUPC_FALSE@,$USING_GCCUPC_FALSE,;t t
 s,@CC@,$CC,;t t
 s,@CFLAGS@,$CFLAGS,;t t
 s,@LDFLAGS@,$LDFLAGS,;t t
@@ -37623,6 +40471,11 @@ s,@CCDEPMODE@,$CCDEPMODE,;t t
 s,@am__fastdepCC_TRUE@,$am__fastdepCC_TRUE,;t t
 s,@am__fastdepCC_FALSE@,$am__fastdepCC_FALSE,;t t
 s,@CPP@,$CPP,;t t
+s,@EGREP@,$EGREP,;t t
+s,@SIZEOF_VOID_P@,$SIZEOF_VOID_P,;t t
+s,@USING_GCCUPC@,$USING_GCCUPC,;t t
+s,@USING_GCCUPC_TRUE@,$USING_GCCUPC_TRUE,;t t
+s,@USING_GCCUPC_FALSE@,$USING_GCCUPC_FALSE,;t t
 s,@upcr_cv__gfp_fullprogname_CPP@,$upcr_cv__gfp_fullprogname_CPP,;t t
 s,@upcr_cv__gfp_fullprogname_CC@,$upcr_cv__gfp_fullprogname_CC,;t t
 s,@CROSS_COMPILING_TRUE@,$CROSS_COMPILING_TRUE,;t t
@@ -37637,13 +40490,11 @@ s,@HOST_CFLAGS@,$HOST_CFLAGS,;t t
 s,@HOST_LDFLAGS@,$HOST_LDFLAGS,;t t
 s,@HOST_LIBS@,$HOST_LIBS,;t t
 s,@UPCR_PROFILE_FLAG@,$UPCR_PROFILE_FLAG,;t t
-s,@EGREP@,$EGREP,;t t
 s,@LEX@,$LEX,;t t
 s,@LEXLIB@,$LEXLIB,;t t
 s,@LEX_OUTPUT_ROOT@,$LEX_OUTPUT_ROOT,;t t
 s,@UPCR_USE_LEX_TRUE@,$UPCR_USE_LEX_TRUE,;t t
 s,@UPCR_USE_LEX_FALSE@,$UPCR_USE_LEX_FALSE,;t t
-s,@SIZEOF_VOID_P@,$SIZEOF_VOID_P,;t t
 s,@UPCRI_PTR_BITS@,$UPCRI_PTR_BITS,;t t
 s,@NM@,$NM,;t t
 s,@GNU_NM_TRUE@,$GNU_NM_TRUE,;t t

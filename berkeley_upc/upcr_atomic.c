@@ -1,6 +1,6 @@
 /*   $Source: /var/local/cvs/upcr/upcr_atomic.c,v $
- *     $Date: 2006/08/30 20:59:47 $
- * $Revision: 1.9 $
+ *     $Date: 2008/10/27 20:06:53 $
+ * $Revision: 1.10 $
  * Description: 
  *  Berkeley UPC atomic extensions
  *
@@ -38,12 +38,12 @@ upcri_atomic_set_SRequest(gasnet_token_t token, int bytes, uint32_t hi32, uint32
 			  void *addr, void *result) {
   switch (bytes) {
     case 4:
-      gasnett_atomic32_set((gasnett_atomic32_t *)addr, lo32, 0);
+      upcri_atomic32_set((upcri_atomic32_t *)addr, lo32, 0);
       break;
     case 8:
     {
       const uint64_t value = ((uint64_t)hi32 << 32) | lo32;
-      gasnett_atomic64_set((gasnett_atomic64_t *)addr, value, 0);
+      upcri_atomic64_set((upcri_atomic64_t *)addr, value, 0);
       break;
     }
     default:
@@ -63,11 +63,11 @@ upcri_atomic_read_SRequest(gasnet_token_t token, int bytes, void *addr, void *re
 #if UPCR_DEBUG
       hi32 = 0xdeadbeef;	/* avoid uninitialized variable warning */
 #endif
-      lo32 = gasnett_atomic32_read((gasnett_atomic32_t *)addr, 0);
+      lo32 = upcri_atomic32_read((upcri_atomic32_t *)addr, 0);
       break;
     case 8:
     {
-      const uint64_t value = gasnett_atomic64_read((gasnett_atomic64_t *)addr, 0);
+      const uint64_t value = upcri_atomic64_read((upcri_atomic64_t *)addr, 0);
       hi32 = (uint32_t)(value >> 32);
       lo32 = (uint32_t)value;
       break;

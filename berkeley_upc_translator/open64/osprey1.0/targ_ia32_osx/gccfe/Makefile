@@ -44,6 +44,7 @@ PWD = $(shell pwd)
 BUILD_AREA     = ..
 BUILD_TOT      = $(PWD)/../..
 BUILD_BASE     = $(BUILD_TOT)/gccfe
+BUILD_OPTIMIZE = DEBUG
 
 include $(BUILD_AREA)/Makefile.platform
 

@@ -29,8 +29,10 @@ been extensively tested are:
 
 On all of these platforms, g++ version 3.4 or above was used.  Success has been
 reported using older versions of g++, but this has not been regularly tested.  
+We primarily test with g++ 4.x versions at this time, but see the Release Notes
+section, below.
 
-You must have GNU 'make' on your system, and (depending on your systems's
+You must have GNU 'make' on your system, and (depending on your system's
 version of 'yacc') you may also need GNU 'bison'.
 
 ----------------------------------------
@@ -86,4 +88,31 @@ See the runtime's INSTALL documentation for information on how to point the
 using HTTP or ssh.  Any translator can support any UPC runtime on any
 architecture, and so this is our current method for supporting UPC on systems
 where the translator will not build.
+
+-------------
+Release Notes
+-------------
+
+== Version 2.8.0 ==
+
++ EXPERIMENTAL compiler optimizations
+  This release adds experimental support for UPC-level optimizations of user's
+  code via the '-opt' flag to upcc.  See the upcc man page for documentation.
+
++ G++ 4.X
+  With g++ version 4.x, the code we maintain works correctly for the various
+  versions of g++ compiled from source obtained from gcc.gnu.org.  However, there
+  are "vendor" versions (e.g. Debian, Red Hat, etc.) that behave differently and
+  lack compile-time identifying marks to allow us to adjust automatically.  This
+  issue has been assigned Bug #2202 in our bug database (http://upc-bugs.lbl.gov).
+  That bug report contains at least 2 possible work arounds and should always
+  contain the most recent information on this issue.
+
++ AIX
+  We have seen that the translator build on AIX frequently crashes when passed
+  '-opt' to enable UPC-level optimizations.  This issue has been assigned bug
+  #2385 in our bug database.  Please consult the bug report for the most 
+  recent information on this issue.
+  The recommendation at the time this README is being written in not to use a
+  translator build on AIX if you wish to utilize '-opt'.
 

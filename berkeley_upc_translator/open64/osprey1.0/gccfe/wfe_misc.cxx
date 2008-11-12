@@ -82,7 +82,6 @@ extern int      snprintf(char *__restrict__, size_t, const char *__restrict__, .
 int WFE_Keep_Zero_Length_Structs = FALSE;
 
 extern int optimize;
-extern int compiling_upc;
 
 //Stores a list of upc system header directories
 //Functions from these directories will not have their prototypes emitted in whirl2c.
@@ -1439,5 +1438,11 @@ WFE_Stmt_Pop (WFE_STMT_KIND kind)
 } /* WFE_Stmt_Pop */
 
 extern "C" int is_64bit_target() {
+  
   return  TY_size(MTYPE_To_TY(Pointer_type)) > 4 ? 1 : 0;
+}
+
+extern "C" int int_is_64bit() {
+  
+  return  TY_size(MTYPE_To_TY(Integer_type)) > 4 ? 1 : 0;
 }

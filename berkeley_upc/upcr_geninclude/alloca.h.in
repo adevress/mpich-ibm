@@ -1,6 +1,10 @@
 #ifndef _IN_UPCR_ALLOCA_H
 #define _IN_UPCR_ALLOCA_H
 
+#if defined(__PGI) && defined(__osx86) && defined(__x86_64__) /* bug 2235: system header bug workaround */
+  #include <sys/cdefs.h>
+#endif
+
 #if @HAVE_ALLOCA_H@
 @UPCR_INCLUDE_NEXT_ALLOCA_H@
 #elif @HAVE_ALLOCA_IN_STDLIB_H@
@@ -55,4 +59,18 @@
 #endif
 
 #undef _IN_UPCR_ALLOCA_H
+#elif !defined(_IN_UPCR_ALLOCA_H_AGAIN)
+  /* There is a known gcc bug with regards to #include_next not starting its
+   * search at the next directory in the path as is documented.  This causes
+   * some problems with gcc's private header's use of #include_next finding
+   * THIS header rather than the system one (see Berkeley UPC bug #2118).
+   * A similar bug is present in some xlc versions (see Berkeley UPC bug #2133).
+   * Here we just allow the #include_next to pass through one extra time.
+   */
+  #define _IN_UPCR_ALLOCA_H_AGAIN
+#if @HAVE_ALLOCA_H@
+@UPCR_INCLUDE_NEXT_ALLOCA_H@
+#elif @HAVE_ALLOCA_IN_STDLIB_H@
+ #include <stdlib.h>
+#endif
 #endif

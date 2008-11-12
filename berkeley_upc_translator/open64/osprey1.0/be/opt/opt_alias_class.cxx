@@ -3,8 +3,8 @@
 // ====================================================================
 //
 // Module: opt_alias_class.h
-// $Revision: 1.3 $
-// $Date: 2003/08/20 21:14:22 $
+// $Revision: 1.4 $
+// $Date: 2008/10/14 22:56:10 $
 // $Author: ciancu $
 // $Source: /var/local/cvs/compilers/open64/osprey1.0/be/opt/opt_alias_class.cxx,v $
 //
@@ -78,7 +78,11 @@
 
 // For the interface to clients, see opt_alias_class.h
 
+#if(__GNUC__ == 4 && __GNUC_MINOR__ == 3)
+#include <set>
+#else
 #include <set.h>
+#endif
 
 #ifdef USE_PCH
 #include "opt_pch.h"

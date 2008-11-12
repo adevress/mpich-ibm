@@ -1,6 +1,6 @@
 /* UPC Runtime Layer API for compiler-generated code
  *
- * $Header: /var/local/cvs/upcr/upcr.h,v 1.82 2007/09/07 01:17:13 nenadv Exp $
+ * $Header: /var/local/cvs/upcr/upcr.h,v 1.84 2008/10/30 20:11:00 nenadv Exp $
  */
 
 /* 
@@ -109,7 +109,9 @@
 
 /* GCCUPC support: */
 #if UPCRI_USING_GCCUPC
-  #define UPCR_USING_LINKADDRS 1
+  #if UPCRI_STRUCT_SPTR
+    #define UPCR_USING_LINKADDRS 1
+  #endif
   #if UPCRI_UPC_PTHREADS
     #define UPCR_PTHREADS_SECTION
   #endif
@@ -353,6 +355,26 @@ extern char * bupc_getenv(const char *env_name);
       #include <bupc_extensions.h>
     #endif
   #endif
+#endif
+
+/* undef some particularly naughty/dangerous internal functions that should 
+   never be available in code outside UPCR */
+#undef upcri_s_islocal
+#undef upcri_p_islocal
+#undef upcri_s_nodeof
+#undef upcri_p_nodeof
+#undef upcri_s2local
+#undef upcri_s2localoff
+#undef upcri_p2local
+#undef upcri_p2localoff
+#if !_IN_UPCR_GLOBFILES_C
+#define _upcri_shared_to_remote             abort
+#define _upcri_shared_to_remote_off         abort
+#define _upcri_shared_to_remote_withthread  abort
+#define _upcri_pshared_to_remote            abort
+#define _upcri_pshared_to_remote_off        abort
+#define _upcri_pshared_to_remote_withthread abort
+#define _upcri_shared_remote_to_mylocal     abort
 #endif
 
 #endif /* UPCR_H */

@@ -4216,8 +4216,12 @@ build_modify_expr (lhs, modifycode, rhs)
 static tree find_addr_expr(tree exp) {
 
   switch(TREE_CODE(exp)) {
+  case PARM_DECL:
+  case VAR_DECL:
+  case COMPONENT_REF:  /*new*/
   case ADDR_EXPR:
     return exp;
+  case INDIRECT_REF:   /*new*/
   case NOP_EXPR:
     return find_addr_expr(TREE_OPERAND(exp, 0));
   case PLUS_EXPR: {
@@ -4446,14 +4450,25 @@ convert_for_assignment (type, rhs, errtype, fundecl, funname, parmnum)
 				     errtype, funname, parmnum);
 	    } else {
 	      tree addr = find_addr_expr(rhs);
-	      if (addr) { 
-		if(TREE_CODE(TREE_OPERAND(addr,0)) == COMPONENT_REF && 
-		   TREE_INT_CST_LOW(bl) == 0)		  
-		  ; else
-		    warn_for_assignment(
-					"%s between pointer-to-shared with different block sizes without a cast",
+	      if (addr) {
+		if(TREE_CODE(addr) == PARM_DECL || 
+		   TREE_CODE(addr) == VAR_DECL )
+		  	warn_for_assignment(
+					    "%s between pointer-to-shared with different block sizes without a cast",
+					    errtype, funname, parmnum);
+		else  if(TREE_CODE(TREE_OPERAND(addr,0)) == COMPONENT_REF && 
+			 TREE_INT_CST_LOW(bl) == 0)		  
+		       ; 
+		      else
+			warn_for_assignment(
+					    "%s between pointer-to-shared with different block sizes without a cast",
+					    errtype, funname, parmnum);
+	      } else { /* addr */
+		/* bug1997 */
+		warn_for_assignment("%s between pointer-to-shared with different block sizes without a cast",
 					errtype, funname, parmnum);
 	      }
+		
 	    }
 	  } else { /* bl = 0 */
 	    if(br) {
@@ -4900,8 +4915,9 @@ digest_init (type, init, require_constant, constructor_constant)
 {
   enum tree_code code = TREE_CODE (type);
   tree inside_init = init;
+  extern int undeclared_variable_notice; /* bug 1985 : stop processing undeclared vbles */
 
-  if (type == error_mark_node || init == error_mark_node)
+  if (type == error_mark_node || init == error_mark_node || undeclared_variable_notice)
     return error_mark_node;
 
   /* Strip NON_LVALUE_EXPRs since we aren't using as an lvalue.  */

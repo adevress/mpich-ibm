@@ -1625,9 +1625,25 @@ static simpnode  simp_add_sub(OPCODE opc,
    simpnode x[4], t, dt;
    BOOL s[4], bt, constant_moved;
    INT32 num_const,num_ops,i,j,k,ic1,ic2,d1,d2;
+   TY_IDX idx;
+   BOOL sptr_arith = FALSE;
+   OPERATOR o1, o2;
+   
    
    ty = OPCODE_rtype(opc);
+   idx = MTYPE_To_TY(ty);
    issub = (OPCODE_operator(opc) == OPR_SUB);
+#ifdef BACK_END
+#ifdef WN_SIMP_WORKING_ON_WHIRL
+   if(SIMPNODE_operator(k1) == OPR_LDID || SIMPNODE_operator(k1) == OPR_TAS)
+     idx  = WN_ty((WN*) k1);
+   else 
+     if(SIMPNODE_operator(k0) == OPR_LDID || SIMPNODE_operator(k0) == OPR_TAS)
+       idx = WN_ty((WN*) k0);
+#endif
+#endif
+   sptr_arith = Type_Is_Shared_Ptr(idx,0);
+   
    if (issub) {
       subop = opc;
       addop = OPC_FROM_OPR(OPR_ADD,ty);
@@ -1644,6 +1660,8 @@ static simpnode  simp_add_sub(OPCODE opc,
    } else if (SIMP_IS_TYPE_FLOATING(ty)) {
       reassoc = Enable_Cfold_Reassociate;
    }
+
+   reassoc &= !sptr_arith;
 
    /* Try the simple ones first */
 

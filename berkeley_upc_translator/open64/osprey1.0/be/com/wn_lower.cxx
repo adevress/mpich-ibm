@@ -4089,9 +4089,16 @@ static WN *lower_miload(WN *block, WN *tree, LOWER_ACTIONS actions)
   TY_IDX ty_idx = WN_ty(tree);
   TY_IDX pty_idx = WN_load_addr_ty(tree);
   UINT64 size    = TY_size(Ty_Table[ty_idx]);
-  if(Action(LOWER_UPC_MFIELD) && WN_field_id(tree) && Type_Is_Shared_Ptr(ty_idx)) {
-    //pty_idx = Make_Pointer_Type(WN_ty(tree));
-     size = TY_size(TY_To_Sptr_Idx(ty_idx));
+  if(Action(LOWER_UPC_MFIELD)) {
+     if (WN_field_id(tree) && Type_Is_Shared_Ptr(ty_idx)) {
+       //pty_idx = Make_Pointer_Type(WN_ty(tree));
+       size = TY_size(TY_To_Sptr_Idx(ty_idx));
+     } else {
+       //type-based get may introduce new miload,
+       //and their size needs to be adjusted (bug1813)
+       size = TY_adjusted_size(ty_idx);
+       //fprintf(stderr, "!!!!!!!!!!!!!!size is %d\n", size);
+     }
   }
   WN*    wn;
   WN*    swn;
@@ -5666,6 +5673,10 @@ no_shared:
 	  UINT off = Adjust_Field_Offset(TY_kind(tidx) == KIND_POINTER ? 
 					      TY_pointed(tidx) : TY_etype(tidx), 
 					      WN_offset(tree));
+          TY_IDX base_ty = TY_kind(tidx) == KIND_POINTER ? TY_pointed(tidx) : TY_etype(tidx); 
+          if(off < TY_adjusted_size(base_ty) && Get_Type_Block_Size(base_ty) > 1) {
+                ld = WN_Create_StoP_Cvt(ld, INTRN_S_TO_P);
+          }
 	  ld = WN_Create_Shared_Ptr_Arithmetic(ld,  WN_Intconst(Integer_type,off),
 					       OPR_ADD, 1, 0, 1);
 	}  
@@ -5798,8 +5809,9 @@ no_shared:
 	TY_IDX tas_idx = WN_ty(tree);
 	INTRINSIC iop;
 	BOOL spill = (WN_operator(kid0) == OPR_LDID &&  ST_class(WN_st(kid0)) == CLASS_PREG);
+        TY_IDX base_ty = (TY_kind(WN_ty(kid0)) == KIND_POINTER) ? TY_pointed(WN_ty(kid0)) : TY_etype(WN_ty(kid0));
 	
-	if(Type_Is_Shared_Ptr(kid_idx, TRUE) && Need_StoP_Cvt(kid_idx, tas_idx, &iop)) 
+	if(Type_Is_Shared_Ptr(kid_idx, TRUE) && !(WN_operator(kid0) == OPR_LDA && TY_kind(base_ty) == KIND_STRUCT && WN_offset(kid0) < TY_size(base_ty) ) && Need_StoP_Cvt(kid_idx, tas_idx, &iop)) 
 	  {	
 	    WN *res = lower_expr(block, kid0, actions);
 	    return  WN_Create_StoP_Cvt(res, iop);

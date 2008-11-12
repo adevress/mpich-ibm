@@ -48,8 +48,7 @@ test11()
 	      got = (shared int *)&array[i][j];
 	      if (*got != expected)
 		{
-		  fprintf(stderr,
-		    "test11: error at element %d. Expected %d, got %d\n",
+		  fprintf(stderr, "test11: error at element %d. Expected %d, got %d\n",
 		    i, expected, *got);
 		  abort ();
 		}
