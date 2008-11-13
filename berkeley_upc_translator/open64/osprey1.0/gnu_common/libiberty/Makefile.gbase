@@ -35,7 +35,7 @@
 # Makefile for libiberty library
 
 # What we're building, and where to find it.
-TARGET      = libiberty.a
+LIB_TARGET = libiberty.a
 SRC_DIRS    = $(BUILD_BASE)
 
 # Makefile setup
@@ -87,18 +87,18 @@ OBJS =	alloca.o	\
 
 default: all
 
-all: $(TARGET)
+all: $(LIB_TARGET)
 
 $
 ifeq ($(BUILD_OS), OSX)
-$(TARGET): $(OBJS)
-	rm -f $(TARGET)
-	$(AR) $(AR_FLAGS) $(TARGET) $(OBJS)
-	ranlib $(TARGET)
+$(LIB_TARGET): $(OBJS)
+	rm -f $(LIB_TARGET)
+	$(AR) $(AR_FLAGS) $(LIB_TARGET) $(OBJS)
+	ranlib $(LIB_TARGET)
 else 
-$(TARGET): $(OBJS)
-	rm -f $(TARGET)
-	$(AR) $(AR_FLAGS) $(TARGET) $(OBJS)
+$(LIB_TARGET): $(OBJS)
+	rm -f $(LIB_TARGET)
+	$(AR) $(AR_FLAGS) $(LIB_TARGET) $(OBJS)
 endif 
 
 include $(COMMONRULES)
