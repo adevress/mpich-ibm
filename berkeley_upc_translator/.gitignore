@@ -2,6 +2,7 @@
 *.a
 *.so
 .d_*
+/.last_target
 /config-aux/abi
 /open64/osprey1.0/build_ia64/be/be
 /open64/osprey1.0/build_ia64/be/preg_list.cxx
