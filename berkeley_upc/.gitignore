@@ -2,7 +2,7 @@
 Makefile.in
 aclocal.m4
 configure
-cross-configure-*
+/cross-configure-*
 /totalview/config-aux/ltmain.sh
 /config-aux/ylwrap
 /libtool.m4
