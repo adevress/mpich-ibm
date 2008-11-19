@@ -65,7 +65,12 @@
    End Algorithm: MPI_Bcast
 */
 
+#undef FUNCNAME
+#define FUNCNAME MPIR_Bcast
+#undef FCNAME
+#define FCNAME MPIU_QUOTE(FUNCNAME)
 /* begin:nested */
+
 /* not declared static because it is called in intercomm. allgatherv */
 int MPIR_Bcast ( 
 	void *buffer, 
@@ -74,7 +79,6 @@ int MPIR_Bcast (
 	int root, 
 	MPID_Comm *comm_ptr )
 {
-  static const char FCNAME[] = "MPIR_Bcast";
   MPI_Status status;
   int        rank, comm_size, src, dst;
   int        relative_rank, mask;
@@ -92,14 +96,14 @@ int MPIR_Bcast (
   
   MPID_MPI_FUNC_ENTER(MPID_STATE_MPIR_BCAST);
 
-  if (count == 0) return MPI_SUCCESS;
+  if (count == 0) goto fn_exit;
 
   comm = comm_ptr->handle;
   comm_size = comm_ptr->local_size;
   rank = comm_ptr->rank;
   
   /* If there is only one process, return */
-  if (comm_size == 1) return MPI_SUCCESS;
+  if (comm_size == 1) goto fn_exit;
 
   if (HANDLE_GET_KIND(datatype) == HANDLE_KIND_BUILTIN)
       is_contig = 1;
@@ -140,7 +144,7 @@ int MPIR_Bcast (
       {
           mpi_errno = MPIR_Err_create_code( MPI_SUCCESS, MPIR_ERR_RECOVERABLE, FCNAME, __LINE__, MPI_ERR_OTHER, "**nomem",
 					    "**nomem %d", type_size );
-          return mpi_errno;
+          goto fn_fail;
       }
       /* --END ERROR HANDLING-- */
 
@@ -492,7 +496,7 @@ int MPIR_Bcast (
 	  {
               mpi_errno = MPIR_Err_create_code( MPI_SUCCESS, MPIR_ERR_RECOVERABLE, FCNAME, __LINE__, MPI_ERR_OTHER, "**nomem",
 						"**nomem %d", comm_size * sizeof(int));
-              return mpi_errno;
+              goto fn_fail;
           }
 	  /* --END ERROR HANDLING-- */
           displs = MPIU_Malloc(comm_size*sizeof(int));
@@ -501,7 +505,7 @@ int MPIR_Bcast (
 	  {
               mpi_errno = MPIR_Err_create_code( MPI_SUCCESS, MPIR_ERR_RECOVERABLE, FCNAME, __LINE__, MPI_ERR_OTHER, "**nomem",
 						"**nomem %d", comm_size * sizeof(int));
-              return mpi_errno;
+              goto fn_fail;
           }
 	  /* --END ERROR HANDLING-- */
           
@@ -570,6 +574,44 @@ int MPIR_Bcast (
 }
 /* end:nested */
 
+/* A simple utility function to that calls the comm_ptr->coll_fns->Bcast
+   override if it exists or else it calls MPIR_Bcast with the same arguments.
+   This function just makes the high-level broadcast logic easier to read while
+   still accomodating coll_fns-style overrides.  It also reduces future errors
+   by eliminating the duplication of Bcast arguments. 
+
+   This routine is used in other files as well (barrier.c, allreduce.c)
+*/
+#undef FUNCNAME
+#define FUNCNAME MPIR_Bcast_or_coll_fn
+#undef FCNAME
+#define FCNAME MPIU_QUOTE(FUNCNAME)
+int MPIR_Bcast_or_coll_fn(void *buffer, 
+			  int count, 
+			  MPI_Datatype datatype, 
+			  int root, 
+			  MPID_Comm *comm_ptr)
+{
+    int mpi_errno = MPI_SUCCESS;
+
+    if (comm_ptr->coll_fns != NULL && comm_ptr->coll_fns->Bcast != NULL)
+    {
+        /* --BEGIN USEREXTENSION-- */
+        mpi_errno = comm_ptr->node_roots_comm->coll_fns->Bcast(buffer, count,
+                                                               datatype, root, comm_ptr);
+        /* --END USEREXTENSION-- */
+    }
+    else {
+        mpi_errno = MPIR_Bcast(buffer, count, datatype, root, comm_ptr);
+    }
+
+    return mpi_errno;
+}
+
+#undef FUNCNAME
+#define FUNCNAME MPIR_Bcast_inter
+#undef FCNAME
+#define FCNAME MPIU_QUOTE(FUNCNAME)
 /* begin:nested */
 /* Not PMPI_LOCAL because it is called in intercomm allgather */
 int MPIR_Bcast_inter ( 
@@ -583,7 +625,6 @@ int MPIR_Bcast_inter (
     Root sends to rank 0 in remote group. Remote group does local
     intracommunicator broadcast.
 */
-    static const char FCNAME[] = "MPIR_Bcast_inter";
     int rank, mpi_errno;
     MPI_Status status;
     MPID_Comm *newcomm_ptr = NULL;
@@ -614,7 +655,6 @@ int MPIR_Bcast_inter (
 	}
 	/* --END ERROR HANDLING-- */
         MPIDU_ERR_CHECK_MULTIPLE_THREADS_EXIT( comm_ptr );
-        return mpi_errno;
     }
     else
     {
@@ -659,10 +699,12 @@ int MPIR_Bcast_inter (
     return mpi_errno;
 }
 /* end:nested */
-#endif
+#endif /* MPICH_MPI_FROM_PMPI */
 
 #undef FUNCNAME
 #define FUNCNAME MPI_Bcast
+#undef FCNAME
+#define FCNAME MPIU_QUOTE(FUNCNAME)
 
 /*@
 MPI_Bcast - Broadcasts a message from the process with rank "root" to
@@ -692,14 +734,13 @@ Input Parameters:
 int MPI_Bcast( void *buffer, int count, MPI_Datatype datatype, int root, 
                MPI_Comm comm )
 {
-    static const char FCNAME[] = "MPI_Bcast";
     int mpi_errno = MPI_SUCCESS;
     MPID_Comm *comm_ptr = NULL;
     MPID_MPI_STATE_DECL(MPID_STATE_MPI_BCAST);
 
     MPIR_ERRTEST_INITIALIZED_ORDIE();
     
-    MPIU_THREAD_SINGLE_CS_ENTER("coll");
+    MPIU_THREAD_CS_ENTER(ALLFUNC,);
     MPID_MPI_COLL_FUNC_ENTER(MPID_STATE_MPI_BCAST);
 
     /* Validate parameters, especially handles needing to be converted */
@@ -768,13 +809,50 @@ int MPI_Bcast( void *buffer, int count, MPI_Datatype datatype, int root,
         if (comm_ptr->comm_kind == MPID_INTRACOMM)
 	{
             /* intracommunicator */
+#if USE_SMP_COLLECTIVES
+            if (MPIR_Comm_is_node_aware(comm_ptr)) {
+                /* perform the intranode broadcast on the root's node */
+                if (comm_ptr->node_comm != NULL &&
+                    MPIU_Get_intranode_rank(comm_ptr, root) > 0) /* is not the node root (0) */ 
+                {                                                /* and is on our node (!-1) */
+                    mpi_errno = MPIR_Bcast_or_coll_fn(buffer, count, datatype,
+                                                      MPIU_Get_intranode_rank(comm_ptr, root),
+                                                      comm_ptr->node_comm);
+                    if (mpi_errno) {
+                        MPIR_Nest_decr();
+                        goto fn_fail;
+                    }
+                }
+
+                /* perform the internode broadcast */
+                if (comm_ptr->node_roots_comm != NULL) {
+                    mpi_errno = MPIR_Bcast_or_coll_fn(buffer, count, datatype,
+                                                      MPIU_Get_internode_rank(comm_ptr, root),
+                                                      comm_ptr->node_roots_comm);
+                    if (mpi_errno) {
+                        MPIR_Nest_decr();
+                        goto fn_fail;
+                    }
+                }
+
+                /* perform the intranode broadcast on all except for the root's node */
+                if (comm_ptr->node_comm != NULL &&
+                    MPIU_Get_intranode_rank(comm_ptr, root) <= 0) /* 0 if root was local root too */
+                {                                                 /* -1 if different node than root */
+                    mpi_errno = MPIR_Bcast_or_coll_fn(buffer, count, datatype, 0, comm_ptr->node_comm);
+                }
+            }
+            else {
+                mpi_errno = MPIR_Bcast( buffer, count, datatype, root, comm_ptr );
+            }
+#else
             mpi_errno = MPIR_Bcast( buffer, count, datatype, root, comm_ptr );
+#endif
 	}
         else
 	{
             /* intercommunicator */
-            mpi_errno = MPIR_Bcast_inter( buffer, count, datatype,
-	      root, comm_ptr );
+            mpi_errno = MPIR_Bcast_inter( buffer, count, datatype, root, comm_ptr );
         }
 	MPIR_Nest_decr();
     }
@@ -785,7 +863,7 @@ int MPI_Bcast( void *buffer, int count, MPI_Datatype datatype, int root,
     
   fn_exit:
     MPID_MPI_COLL_FUNC_EXIT(MPID_STATE_MPI_BCAST);
-    MPIU_THREAD_SINGLE_CS_EXIT("coll");
+    MPIU_THREAD_CS_EXIT(ALLFUNC,);
     return mpi_errno;
 
   fn_fail:

@@ -66,8 +66,7 @@ void ADIOI_GEN_WriteStrided_naive(ADIO_File fd, void *buf, int count,
 	end_offset = off + bufsize - 1;
 
 	/* if atomicity is true, lock (exclusive) the region to be accessed */
-        if ((fd->atomicity) && (fd->file_system != ADIO_PIOFS) && 
-	   (fd->file_system != ADIO_PVFS) && (fd->file_system != ADIO_PVFS2))
+        if ((fd->atomicity) && ADIO_Feature(fd, ADIO_LOCKS))
 	{
             ADIOI_WRITE_LOCK(fd, start_off, SEEK_SET, end_offset-start_off+1);
 	}
@@ -83,7 +82,7 @@ void ADIOI_GEN_WriteStrided_naive(ADIO_File fd, void *buf, int count,
 		req_len = flat_buf->blocklens[b_index];
 
     ADIOI_Assert(req_len == (int) req_len);
-    ADIOI_Assert((((ADIO_Offset)(MPIR_Upint)buf) + userbuf_off) == (ADIO_Offset)(MPIR_Upint)(buf + userbuf_off));
+    ADIOI_Assert((((ADIO_Offset)(MPIR_Upint)buf) + userbuf_off) == (ADIO_Offset)(MPIR_Upint)((MPIR_Upint)buf + userbuf_off));
 		ADIO_WriteContig(fd, 
 				(char *) buf + userbuf_off,
 				(int)req_len, 
@@ -99,8 +98,7 @@ void ADIOI_GEN_WriteStrided_naive(ADIO_File fd, void *buf, int count,
             }
 	}
 
-        if ((fd->atomicity) && (fd->file_system != ADIO_PIOFS) && 
-	   (fd->file_system != ADIO_PVFS) && (fd->file_system != ADIO_PVFS2))
+        if ((fd->atomicity) && ADIO_Feature(fd, ADIO_LOCKS))
 	{
             ADIOI_UNLOCK(fd, start_off, SEEK_SET, end_offset-start_off+1);
 	}
@@ -220,8 +218,7 @@ void ADIOI_GEN_WriteStrided_naive(ADIO_File fd, void *buf, int count,
 	 */
 
 	/* if atomicity is true, lock (exclusive) the region to be accessed */
-        if ((fd->atomicity) && (fd->file_system != ADIO_PIOFS) && 
-	   (fd->file_system != ADIO_PVFS) && (fd->file_system != ADIO_PVFS2))
+        if ((fd->atomicity) && ADIO_Feature(fd, ADIO_LOCKS))
 	{
             ADIOI_WRITE_LOCK(fd, start_off, SEEK_SET, end_offset-start_off+1);
 	}
@@ -246,7 +243,7 @@ void ADIOI_GEN_WriteStrided_naive(ADIO_File fd, void *buf, int count,
 		    req_len = fwr_size;
 
         ADIOI_Assert(req_len == (int) req_len);
-        ADIOI_Assert((((ADIO_Offset)(MPIR_Upint)buf) + userbuf_off) == (ADIO_Offset)(MPIR_Upint)(buf + userbuf_off));
+        ADIOI_Assert((((ADIO_Offset)(MPIR_Upint)buf) + userbuf_off) == (ADIO_Offset)(MPIR_Upint)((MPIR_Upint)buf + userbuf_off));
 		    ADIO_WriteContig(fd, 
 				    (char *) buf + userbuf_off,
 				    (int)req_len, 
@@ -312,7 +309,7 @@ void ADIOI_GEN_WriteStrided_naive(ADIO_File fd, void *buf, int count,
 		    userbuf_off = i_offset;
 
         ADIOI_Assert(req_len == (int) req_len);
-        ADIOI_Assert((((ADIO_Offset)(MPIR_Upint)buf) + userbuf_off) == (ADIO_Offset)(MPIR_Upint)(buf + userbuf_off));
+        ADIOI_Assert((((ADIO_Offset)(MPIR_Upint)buf) + userbuf_off) == (ADIO_Offset)(MPIR_Upint)((MPIR_Upint)buf + userbuf_off));
 		    ADIO_WriteContig(fd, 
 				    (char *) buf + userbuf_off,
 				    (int)req_len, 
@@ -362,8 +359,7 @@ void ADIOI_GEN_WriteStrided_naive(ADIO_File fd, void *buf, int count,
 	}
 
 	/* unlock the file region if we locked it */
-        if ((fd->atomicity) && (fd->file_system != ADIO_PIOFS) && 
-	   (fd->file_system != ADIO_PVFS) && (fd->file_system != ADIO_PVFS2))
+        if ((fd->atomicity) && ADIO_Feature(fd, ADIO_LOCKS))
 	{
             ADIOI_UNLOCK(fd, start_off, SEEK_SET, end_offset-start_off+1);
 	}

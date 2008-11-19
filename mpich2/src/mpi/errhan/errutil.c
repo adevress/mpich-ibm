@@ -156,15 +156,15 @@ void MPIR_Errhandler_set_cxx( MPI_Errhandler errhand, void (*errcall)(void) )
 /* These routines export the nest increment and decrement for use in ROMIO */
 void MPIR_Nest_incr_export( void )
 {
-    MPICH_PerThread_t *p;
-    MPIR_GetPerThread(&p);
-    p->nest_count++;
+    MPIU_THREADPRIV_DECL;
+    MPIU_THREADPRIV_GET;
+    MPIU_THREADPRIV_FIELD(nest_count) = MPIU_THREADPRIV_FIELD(nest_count) + 1;
 }
 void MPIR_Nest_decr_export( void )
 {
-    MPICH_PerThread_t *p;
-    MPIR_GetPerThread(&p);
-    p->nest_count--;
+    MPIU_THREADPRIV_DECL;
+    MPIU_THREADPRIV_GET;
+    MPIU_THREADPRIV_FIELD(nest_count) = MPIU_THREADPRIV_FIELD(nest_count) - 1;
 }
 
 /* ------------------------------------------------------------------------- */
@@ -1243,6 +1243,8 @@ static MPIR_Err_msg_t ErrorRing[MAX_ERROR_RING];
 static volatile unsigned int error_ring_loc     = 0;
 static volatile unsigned int max_error_ring_loc = 0;
 
+/* FIXME: This needs to be made consistent with the different thread levels, 
+   since in the "global" thread level, an extra thread mutex is not required. */
 #if defined(MPID_REQUIRES_THREAD_SAFETY)
 /* if the device requires internal MPICH routines to be thread safe, the
    MPIU_THREAD_CHECK macros are not appropriate */

@@ -1,6 +1,5 @@
 /* -*- Mode: C; c-basic-offset:4 ; -*- */
-/*  $Id$
- *
+/*
  *  (C) 2001 by Argonne National Laboratory.
  *      See COPYRIGHT in top-level directory.
  */
@@ -15,21 +14,23 @@
 void MPID_TimerStateBegin( int id, MPID_Time_t *time_stamp )
 {
 #ifdef HAVE_TIMING 
-    MPICH_PerThread_t *p;
+    MPIU_THREADPRIV_DECL;
+    MPIU_THREADPRIV_GET;
 
     MPID_Wtime( time_stamp );
-    MPIR_GetPerThread( &p );
-    p->timestamps[id].count++;
+    MPIU_THREADPRIV_FIELD(timestamps[id].count) = 
+	MPIU_THREADPRIV_FIELD(timestamps[id].count) + 1;
 #endif
 }
 void MPID_TimerStateEnd( int id, MPID_Time_t *time_stamp )
 {
 #ifdef HAVE_TIMING 
-    MPICH_PerThread_t *p;
     MPID_Time_t final_time;
+    MPIU_THREADPRIV_DECL;
+    MPIU_THREADPRIV_GET;
 
     MPID_Wtime( &final_time );
-    MPIR_GetPerThread( &p );
-    MPID_Wtime_acc( time_stamp, &final_time, &p->timestamps[id].stamp );
+    MPID_Wtime_acc( time_stamp, &final_time, 
+		    &MPIU_THREADPRIV_FIELD(timestamps[id].stamp) );
 #endif
 }

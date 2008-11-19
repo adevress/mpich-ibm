@@ -1,6 +1,5 @@
 /* -*- Mode: C; c-basic-offset:4 ; -*- */
-/*  $Id$
- *
+/*
  *  (C) 2001 by Argonne National Laboratory.
  *      See COPYRIGHT in top-level directory.
  */
@@ -17,72 +16,15 @@
 #include <sys/bitypes.h>
 #endif
 
-/* */
-/*
-#ifndef HAVE_UINT8_T 
-#ifdef MPIU_UINT8_T
-typedef MPIU_UINT8_T uint8_t;
-#else
-#error 'Configure did not find a 8-bit unsigned integer type'
+/* inttypes.h is supposed to include stdint.h but this is here as
+   belt-and-suspenders for platforms that aren't fully compliant */
+#ifdef HAVE_INTTYPES_H
+#include <inttypes.h>
 #endif
+/* stdint.h gives us fixed-width C99 types like int16_t, among others */
+#ifdef HAVE_STDINT_H
+#include <stdint.h>
 #endif
-
-#ifndef HAVE_INT16_T 
-#ifdef MPIU_INT16_T
-typedef MPIU_INT16_T int16_t;
-#else
-#error 'Configure did not find a 16-bit integer type'
-#endif
-#endif
-
-#ifndef HAVE_UINT16_T 
-#ifdef MPIU_UINT16_T
-typedef MPIU_UINT16_T uint16_t;
-#else
-#error 'Configure did not find a 16-bit unsigned integer type'
-#endif
-#endif
-
-#ifndef HAVE_INT32_T
-#ifdef MPIU_INT32_T
-typedef MPIU_INT32_T int32_t;
-#else
-#error 'Configure did not find a 32-bit integer type'
-#endif
-#endif
-
-#ifndef HAVE_UINT32_T 
-#ifdef MPIU_UINT32_T
-typedef MPIU_UINT32_T uint32_t;
-#else
-#error 'Configure did not find a 32-bit unsigned integer type'
-#endif
-#endif
-*/
-/*
-#ifndef HAVE_INT64_T
-#ifdef MPIU_INT64_T
-typedef MPIU_INT64_T int64_t;
-#else
-*/
-/* Don't define a 64 bit integer type if we didn't find one, but 
-   allow the code to compile as long as we don't need that type */
-/*
-#endif
-#endif
-*/
-/*
-#ifndef HAVE_UINT64_T
-#ifdef MPIU_UINT64_T
-typedef MPIU_UINT64_T uint64_t;
-#else
-*/
-/* Don't define a 64 bit unsigned integer type if we didn't find one, 
-   allow the code to compile as long as we don't need the type */
-/*
-#endif
-#endif
-*/
 
 #ifdef HAVE_WINDOWS_H
 #include <winsock2.h>
@@ -107,10 +49,14 @@ typedef MPIU_UINT64_T uint64_t;
 #define MPIU_UNREFERENCED_ARG(a)
 #endif
 
-#define MPIDU_MAX(a,b)    (((a) > (b)) ? (a) : (b))
-#define MPIDU_MIN(a,b)    (((a) < (b)) ? (a) : (b))
+#define MPIU_MAX(a,b)    (((a) > (b)) ? (a) : (b))
+#define MPIU_MIN(a,b)    (((a) < (b)) ? (a) : (b))
 
 #include "mpiiov.h"
+
+/* FIXME MPI_UNSIGNED_SHORT will not always be the same size as uint16_t. */
+#define MPIR_CONTEXT_ID_T_DATATYPE MPI_UNSIGNED_SHORT
+typedef uint16_t MPIR_Context_id_t;
 
 typedef MPIU_SIZE_T MPIU_Size_t;
 

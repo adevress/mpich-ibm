@@ -126,7 +126,7 @@ void ADIOI_GEN_ReadStrided(ADIO_File fd, void *buf, int count,
         readbuf_len = (unsigned) (ADIOI_MIN(max_bufsize, end_offset-readbuf_off+1));
 
 /* if atomicity is true, lock (exclusive) the region to be accessed */
-        if ((fd->atomicity) && (fd->file_system != ADIO_PIOFS) && (fd->file_system != ADIO_PVFS))
+        if ((fd->atomicity) && ADIO_Feature(fd, ADIO_LOCKS))
             ADIOI_WRITE_LOCK(fd, start_off, SEEK_SET, end_offset-start_off+1);
 
         ADIO_ReadContig(fd, readbuf, readbuf_len, MPI_BYTE, 
@@ -144,7 +144,7 @@ void ADIOI_GEN_ReadStrided(ADIO_File fd, void *buf, int count,
               }
         }
 
-        if ((fd->atomicity) && (fd->file_system != ADIO_PIOFS) && (fd->file_system != ADIO_PVFS))
+        if ((fd->atomicity) && ADIO_Feature(fd, ADIO_LOCKS))
             ADIOI_UNLOCK(fd, start_off, SEEK_SET, end_offset-start_off+1);
 
         if (file_ptr_type == ADIO_INDIVIDUAL) fd->fp_ind = off;
@@ -160,31 +160,33 @@ void ADIOI_GEN_ReadStrided(ADIO_File fd, void *buf, int count,
 	disp = fd->disp;
 
 	if (file_ptr_type == ADIO_INDIVIDUAL) {
-	    /* wei-keng reworked type processing to be a bit more efficient */
-            offset = fd->fp_ind - disp; /* in bytes */
-            n_filetypes = offset / filetype_extent;  /* no. filetypes */
-            offset %= filetype_extent;   /* local offset in a filetype */
+	    /* Wei-keng reworked type processing to be a bit more efficient */
+            offset       = fd->fp_ind - disp;
+            n_filetypes  = (offset - flat_file->indices[0]) / filetype_extent;
+	    offset -= (ADIO_Offset)n_filetypes * filetype_extent;
+	    /* now offset is local to this extent */
 
-	    /* Wei-keng Liao: find contiguous block where offset is located */
-
-            for (i=0; i<flat_file->count; i++) {/*bin. search would be better */
-		ADIO_Offset rem_len = offset - flat_file->indices[i];
-		if (rem_len >= 0) {
-		    /* skip over zero length blocklens */
-		    if (rem_len == flat_file->blocklens[i])
-		        offset = flat_file->indices[i+1];
-		    else if (rem_len < flat_file->blocklens[i]) {
-		        /* frd_size is from offset to the end of block i */
-			frd_size = flat_file->blocklens[i] - rem_len;
-			break;
-		    }
+            /* find the block where offset is located, skip blocklens[i]==0 */
+            for (i=0; i<flat_file->count; i++) {
+                ADIO_Offset dist;
+                if (flat_file->blocklens[i] == 0) continue;
+                dist = flat_file->indices[i] + flat_file->blocklens[i] - offset;
+                /* frd_size is from offset to the end of block i */
+		if (dist == 0) {
+		    i++;
+		    offset   = flat_file->indices[i];
+		    frd_size = flat_file->blocklens[i];
+		    break;
+		}
+		if (dist > 0) {
+                    frd_size = dist;
+		    break;
 		}
 	    }
             st_index = i;  /* starting index in flat_file->indices[] */
-            offset += disp + (ADIO_Offset)n_filetypes*filetype_extent; /*bytes*/
+            offset += disp + (ADIO_Offset)n_filetypes*filetype_extent;
         }
 	else {
-    int i;
 	    n_etypes_in_filetype = filetype_size/etype_size;
 	    n_filetypes = offset / n_etypes_in_filetype;
 	    etype_in_filetype = offset % n_etypes_in_filetype;
@@ -209,12 +211,29 @@ void ADIOI_GEN_ReadStrided(ADIO_File fd, void *buf, int count,
 
         start_off = offset;
 
-        /* Wei-keng Liao: read request within single flat_file contig block */
-	/* e.g. with subarray types that actually describe the whole array */
-        if (buftype_is_contig && bufsize <= frd_size) {
+	/* Wei-keng Liao: read request is within a single flat_file contig
+	 * block e.g. with subarray types that actually describe the whole
+	 * array */
+	if (buftype_is_contig && bufsize <= frd_size) {
             ADIO_ReadContig(fd, buf, bufsize, MPI_BYTE, ADIO_EXPLICIT_OFFSET,
                              offset, status, error_code);
-	    if (file_ptr_type == ADIO_INDIVIDUAL) fd->fp_ind = offset + bufsize;
+
+	    if (file_ptr_type == ADIO_INDIVIDUAL) {
+                /* update MPI-IO file pointer to point to the first byte that 
+		 * can be accessed in the fileview. */
+		fd->fp_ind = offset + bufsize;
+		if (bufsize == frd_size) {
+		    do {
+			st_index++;
+			if (st_index == flat_file->count) {
+			    st_index = 0;
+			    n_filetypes++;
+			}
+                    } while (flat_file->blocklens[st_index] == 0);
+		    fd->fp_ind = disp + flat_file->indices[st_index]
+                               + n_filetypes*filetype_extent;
+		}
+	    }
 	    fd->fp_sys_posn = -1;   /* set it to null. */ 
 #ifdef HAVE_STATUS_SET_BYTES
 	    MPIR_Status_set_bytes(status, datatype, bufsize);
@@ -235,18 +254,18 @@ void ADIOI_GEN_ReadStrided(ADIO_File fd, void *buf, int count,
 	    i_offset += frd_size;
 	    end_offset = off + frd_size - 1;
 
-	    if (j < (flat_file->count - 1)) j++;
-	    else {
-		j = 0;
-		n_filetypes++;
+	    j = (j+1) % flat_file->count;
+            n_filetypes += (j == 0) ? 1 : 0;
+            while (flat_file->blocklens[j]==0) {
+		j = (j+1) % flat_file->count;
+		n_filetypes += (j == 0) ? 1 : 0;
 	    }
-
 	    off = disp + flat_file->indices[j] + n_filetypes*(ADIO_Offset)filetype_extent;
 	    frd_size = ADIOI_MIN(flat_file->blocklens[j], bufsize-i_offset);
 	}
 
 /* if atomicity is true, lock (exclusive) the region to be accessed */
-        if ((fd->atomicity) && (fd->file_system != ADIO_PIOFS) && (fd->file_system != ADIO_PVFS))
+        if ((fd->atomicity) && ADIO_Feature(fd, ADIO_LOCKS))
             ADIOI_WRITE_LOCK(fd, start_off, SEEK_SET, end_offset-start_off+1);
 
 	readbuf_off = 0;
@@ -283,11 +302,12 @@ void ADIOI_GEN_ReadStrided(ADIO_File fd, void *buf, int count,
                 /* did not reach end of contiguous block in filetype.
                    no more I/O needed. off is incremented by frd_size. */
                 else {
-		    if (j < (flat_file->count - 1)) j++;
-		    else {
-			j = 0;
-			n_filetypes++;
-		    }
+                    j = (j+1) % flat_file->count;
+                    n_filetypes += (j == 0) ? 1 : 0;
+                    while (flat_file->blocklens[j]==0) {
+                        j = (j+1) % flat_file->count;
+                        n_filetypes += (j == 0) ? 1 : 0;
+                    }
 		    off = disp + flat_file->indices[j] + 
                                         n_filetypes*(ADIO_Offset)filetype_extent;
 		    frd_size = ADIOI_MIN(flat_file->blocklens[j], bufsize-i_offset);
@@ -326,12 +346,12 @@ void ADIOI_GEN_ReadStrided(ADIO_File fd, void *buf, int count,
 
 		if (size == frd_size) {
 /* reached end of contiguous block in file */
-		    if (j < (flat_file->count - 1)) j++;
-		    else {
-			j = 0;
-			n_filetypes++;
-		    }
-
+                    j = (j+1) % flat_file->count;
+                    n_filetypes += (j == 0) ? 1 : 0;
+                    while (flat_file->blocklens[j]==0) {
+                        j = (j+1) % flat_file->count;
+                        n_filetypes += (j == 0) ? 1 : 0;
+                    }
 		    off = disp + flat_file->indices[j] + 
           n_filetypes*(ADIO_Offset)filetype_extent;
 
@@ -362,7 +382,7 @@ void ADIOI_GEN_ReadStrided(ADIO_File fd, void *buf, int count,
 	    }
 	}
 	
-        if ((fd->atomicity) && (fd->file_system != ADIO_PIOFS) && (fd->file_system != ADIO_PVFS))
+        if ((fd->atomicity) && ADIO_Feature(fd, ADIO_LOCKS))
             ADIOI_UNLOCK(fd, start_off, SEEK_SET, end_offset-start_off+1);
 
 	if (file_ptr_type == ADIO_INDIVIDUAL) fd->fp_ind = off;

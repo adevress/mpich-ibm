@@ -65,9 +65,6 @@ typedef enum {
     M_(CONN_STATE_TA_C_RANKRCVD),               \
     M_(CONN_STATE_TA_C_TMPVCRCVD),               \
     M_(CONN_STATE_TS_COMMRDY),                  \
-    M_(CONN_STATE_TS_D_DCNTING),                \
-    M_(CONN_STATE_TS_D_REQSENT),                \
-    M_(CONN_STATE_TS_D_REQRCVD),                \
     M_(CONN_STATE_TS_D_QUIESCENT)
 
 /* REQ - Request, RSP - Response */
@@ -154,7 +151,6 @@ struct MPID_nem_new_tcp_module_sockconn{
     MPIDI_VC_t *vc;
     /* Conn_type_t conn_type;  Probably useful for debugging/analyzing purposes. */
     handler_func_t handler;
-    sockconn_event_t pending_event;
 };
 
 typedef enum MPIDI_nem_newtcp_module_pkt_type {

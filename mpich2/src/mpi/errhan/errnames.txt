@@ -182,6 +182,8 @@ MPI_TYPECLASS_INTEGER, or MPI_TYPECLASS_COMPLEX
 **unableToLoadDLLsym %s %s: Unable to find or load the symbol %s from a \
  dynamically loaded library for reason %s
 
+**dynamic_node_ids: Node information for dynamic processes currently is not implemnted
+
 # -- FIXME: Some (but not all) of the messages below this line have been used
 #---- The messages below this line haven't been used yet.
 #
@@ -456,6 +458,8 @@ with MPI_Alloc_mem.
 **winunlockrank:Invalid rank argument
 **winunlockrank %d %d:Invalid rank argument %d, should be %d
 **nomemreq:failure occurred while allocating memory for a request object
+**nomemuereq %d:Failed to allocate memory for an unexpected message. %d \
+unexpected messages queued.
 **notcstatignore:MPI_STATUS_IGNORE cannot be passed to MPI_Status_c2f()
 **notfstatignore:MPI_STATUS_IGNORE cannot be passed to MPI_Status_f2c()
 **user:user defined function returned an error code
@@ -925,6 +929,19 @@ with MPI_Alloc_mem.
 **psm_wait:psm_wait failed
 **psm_wait %s:psm_wait failed (%s)
 
+**invalid_netmod:Invalid netmod specified
+**invalid_netmod %s:Invalid netmod specified (%s)
+
+**mkstemp:mkstemp failed
+**mkstemp %s:mkstemp failed %s
+**fdopen:fdopen failed
+**fdopen %s:fdopen failed %s
+**tmpnam:tmpnam failed
+**tmpnam %s:tmpnam failed %s
+**fopen:fopen failed
+**fopen %s:fopen failed %s
+**abi_version_mismatch:ABI version mismatch
+**abi_version_mismatch %D %D:ABI version mismatch, expected %D - got %D
 
 #
 # mpi functions

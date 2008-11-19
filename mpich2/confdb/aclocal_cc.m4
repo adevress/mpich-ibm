@@ -123,6 +123,8 @@ else
     # Could not compile without the option!
     AC_MSG_RESULT(no)
 fi
+# This is needed for Mac OSX 10.5
+rm -rf conftest.dSYM
 rm -f conftest*
 ])
 dnl
@@ -236,6 +238,8 @@ if test -n "$ac_cv_c_depend_opt" ; then
     C_DO_DEPENDS="$ac_cv_c_do_depends"
 else
    # Determine the values
+# This is needed for Mac OSX 10.5
+rm -rf conftest.dSYM
 rm -f conftest*
 dnl
 dnl Some systems (/usr/ucb/cc on Solaris) do not generate a dependency for
@@ -411,6 +415,87 @@ AC_TRY_COMPILE([inline int a( int b ){return b+1;}],[int a;],
 pac_cv_c_inline="yes",pac_cv_c_inline="no")])
 if test "$pac_cv_c_inline" = "no" ; then
     AC_DEFINE(inline,,[if C does not support inline])
+fi
+])dnl
+dnl
+dnl/*D
+dnl PAC_C_CONST - Check if C supports const 
+dnl
+dnl Synopsis:
+dnl PAC_C_CONST
+dnl
+dnl Output Effect:
+dnl AC_MSG_ERROR if const is not supported.
+dnl
+dnl D*/
+dnl AC_DEFUN(PAC_C_CONST,[
+dnl AC_CACHE_CHECK([for support of const in C],
+dnl pac_cv_c_const,[
+dnl AC_LANG_PUSH(C)
+dnl AC_TRY_COMPILE(,[const int a = 1; int b; b = a;],
+dnl pac_cv_c_const="yes", pac_cv_c_const="no")])
+dnl if test "$pac_cv_c_const" = "no" ; then
+dnl     AC_MSG_ERROR([C does not support const! Abort...])
+dnl fi
+dnl AC_LANG_POP(C)
+dnl ])dnl
+AC_DEFUN([PAC_C_CONST],
+[AC_CACHE_CHECK([for an ANSI C-conforming const], pac_cv_c_const,
+[AC_COMPILE_IFELSE([AC_LANG_PROGRAM([],
+[[/* FIXME: Include the comments suggested by Paul. */
+#ifndef __cplusplus
+  /* Ultrix mips cc rejects this.  */
+  typedef int charset[2];
+  const charset cs = {0,0};
+  /* SunOS 4.1.1 cc rejects this.  */
+  char const *const *pcpcc;
+  char **ppc;
+  /* NEC SVR4.0.2 mips cc rejects this.  */
+  struct point {int x, y;};
+  static struct point const zero = {0,0};
+  /* AIX XL C 1.02.0.0 rejects this.
+     It does not let you subtract one const X* pointer from another in
+     an arm of an if-expression whose if-part is not a constant
+     expression */
+  const char *g = "string";
+  pcpcc = &g + (g ? g-g : 0);
+  /* HPUX 7.0 cc rejects these. */
+  ++pcpcc;
+  ppc = (char**) pcpcc;
+  pcpcc = (char const *const *) ppc;
+  { /* SCO 3.2v4 cc rejects this.  */
+    char const *s = 0 ? (char *) 0 : (char const *) 0;
+    if (s) return 0;
+  }
+  { /* Someone thinks the Sun supposedly-ANSI compiler will reject this.  */
+    int x[] = {25, 17};
+    const int *foo = &x[0];
+    ++foo;
+  }
+  { /* Sun SC1.0 ANSI compiler rejects this -- but not the above. */
+    typedef const int *iptr;
+    iptr p = 0;
+    ++p;
+  }
+  { /* AIX XL C 1.02.0.0 rejects this saying
+       "k.c", line 2.27: 1506-025 (S) Operand must be a modifiable lvalue. */
+    struct s { int j; const int *ap[3]; };
+    struct s a;
+    struct s *b = &a;
+    b->j = 5; 
+  }
+  { /* ULTRIX-32 V3.1 (Rev 9) vcc rejects this */
+    const int foo = 10;
+    if (!foo) return 0;
+  }
+  return !cs[0] && !zero.x;
+#endif
+]])],
+                   [pac_cv_c_const=yes],
+                   [pac_cv_c_const=no])])
+if test $pac_cv_c_const = no; then
+  AC_DEFINE(const,,
+            [Define to empty if `const' does not conform to ANSI C.])
 fi
 ])dnl
 dnl
@@ -610,6 +695,8 @@ AC_DEFUN(PAC_C_TRY_COMPILE_CLEAN,[
 $3=2
 dnl Get the compiler output to test against
 if test -z "$pac_TRY_COMPLILE_CLEAN" ; then
+    # This is needed for Mac OSX 10.5
+    rm -rf conftest.dSYM
     rm -f conftest*
     echo 'int try(void);int try(void){return 0;}' > conftest.c
     if ${CC-cc} $CFLAGS -c conftest.c >conftest.bas 2>&1 ; then
@@ -624,6 +711,8 @@ if test -z "$pac_TRY_COMPLILE_CLEAN" ; then
 fi
 dnl
 dnl Create the program that we need to test with
+# This is needed for Mac OSX 10.5
+rm -rf conftest.dSYM
 rm -f conftest*
 cat >conftest.c <<EOF
 #include "confdefs.h"
@@ -647,6 +736,8 @@ else
     if test -s conftest.bas ; then cat conftest.bas >> config.log ; fi
     $3=2
 fi
+# This is needed for Mac OSX 10.5
+rm -rf conftest.dSYM
 rm -f conftest*
 ])
 dnl
@@ -737,6 +828,8 @@ int Foo(int a) { return a; }
 # pragma.  Some compilers require this in order to make the weak symbol
 # extenally visible.  
 if test "$has_pragma_weak" = yes ; then
+    # This is needed for Mac OSX 10.5
+    rm -rf conftest.dSYM
     rm -f conftest*
     cat >>conftest1.c <<EOF
 extern int PFoo(int);
@@ -755,6 +848,8 @@ EOF
         # correctly implement it on systems where the loader doesn't 
         # support weak symbols (e.g., cygwin).  This is a bug in gcc, but it
         # it is one that *we* have to detect.
+	# This is needed for Mac OSX 10.5
+	rm -rf conftest.dSYM
         rm -f conftest*
         cat >>conftest1.c <<EOF
 extern int PFoo(int);
@@ -788,6 +883,8 @@ EOF
       has_pragma_weak=0
       pragma_extra_message="pragma weak does not work outside of a file"
     fi
+    # This is needed for Mac OSX 10.5
+    rm -rf conftest.dSYM
     rm -f conftest*
 fi
 dnl
@@ -873,6 +970,8 @@ AC_CACHE_CHECK([for multiple weak symbol support],
 pac_cv_prog_c_multiple_weak_symbols,[
 # Test for multiple weak symbol support...
 #
+# This is needed for Mac OSX 10.5
+rm -rf conftest.dSYM
 rm -f conftest*
 cat >>conftest1.c <<EOF
 extern int PFoo(int);
@@ -899,6 +998,8 @@ else
     cat conftest2.c >>config.log
     if test -s conftest.out ; then cat conftest.out >> config.log ; fi
 fi
+# This is needed for Mac OSX 10.5
+rm -rf conftest.dSYM
 rm -f conftest*
 dnl
 ])
@@ -957,8 +1058,12 @@ dnl Adds '--enable-strict' to the command line.  If this is enabled, then
 dnl if no compiler has been set, set 'CC' to 'gcc'.
 dnl If the compiler is 'gcc', 'COPTIONS' is set to include
 dnl.vb
-dnl	-O -Wall -Wstrict-prototypes -Wmissing-prototypes -DGCC_WALL -std=c89
+dnl	-O -Wall -Wstrict-prototypes -Wmissing-prototypes -Wpointer-arith -Werror=pointer-arith -DGCC_WALL -std=c89
 dnl.ve
+dnl This makes using a void * with pointer arithmetic an error, not a warning.
+dnl We do this because pointer arithmetic with void * is not valid C but
+dnl gcc accepts this unless these particular optiones are used.
+dnl Grr. -Werror=name is a recent addition to gcc, so we can't require it yet.
 dnl
 dnl -std=c89 is used to select the C89 version of the ANSI/ISO C standard.
 dnl As of this writing, many C compilers still accepted only this version,
@@ -971,7 +1076,7 @@ dnl
 dnl If the value 'all' is given to '--enable-strict', additional warning
 dnl options are included.  These are
 dnl.vb
-dnl -Wunused -Wshadow -Wmissing-declarations -Wno-long-long -Wpointer-arith
+dnl -Wunused -Wshadow -Wmissing-declarations -Wno-long-long
 dnl.ve
 dnl 
 dnl If the value 'noopt' is given to '--enable-strict', no optimization
@@ -1019,7 +1124,7 @@ if test "$enable_strict_done" != "yes" ; then
 	yes)
         enable_strict_done="yes"
         if test "$CC" = "gcc" ; then 
-            COPTIONS="${COPTIONS} -Wall $GCC_OPTFLAG -Wstrict-prototypes -Wmissing-prototypes -DGCC_WALL -std=c89"
+            COPTIONS="${COPTIONS} -Wall $GCC_OPTFLAG -Wstrict-prototypes -Wmissing-prototypes -Wpointer-arith -DGCC_WALL -std=c89"
         fi
 	;;
 	all)
@@ -1029,7 +1134,35 @@ if test "$enable_strict_done" != "yes" ; then
 	    # the gcc documentation claims that it does; in particular,
 	    # the -Wunused-parameter option is *not* part of -Wall
 	    # -Wextra (if available) adds some to -Wall (!)
-            COPTIONS="${COPTIONS} -Wall -Wextra $GCC_OPTFLAG -Wstrict-prototypes -Wmissing-prototypes -DGCC_WALL -Wunused -Wshadow -Wmissing-declarations -Werror-implicit-function-declaration -Wno-long-long -Wunused-parameter -Wunused-value -std=c89"
+	    # -Wsystem-headers removed because of too many warning messages
+	    # that are unfixable by the user of this option (the warnings
+	    # often show benign but real problems)
+	    # -Wunreachable-code has a serious bug and falsely reports 
+	    # labels as unreachable code.  This makes that option useless
+	    # for the MPICH2 code, for example
+            COPTIONS="${COPTIONS} -Wall -Wextra $GCC_OPTFLAG -Wstrict-prototypes -Wmissing-prototypes -Wpointer-arith -DGCC_WALL -Wunused -Wshadow -Wmissing-declarations -Werror-implicit-function-declaration -Wno-long-long -Wunused-parameter -Wunused-value -Wfloat-equal -Wdeclaration-after-statement -Wundef -Wno-endif-labels -Wpointer-arith -Wbad-function-cast -Wcast-qual -Wcast-align -Wwrite-strings -Wconversion -Wsign-compare -Waggregate-return -Wold-style-definition -Wmissing-field-initializers -Wmissing-noreturn -Wmissing-format-attribute -Wno-multichar -Wno-deprecated-declarations -Wpacked -Wpadded -Wredundant-decls -Wnested-externs -Winline -Winvalid-pch -Wno-pointer-sign -Wvariadic-macros -std=c89"
+        fi
+	;;
+
+	# The MPICH2 code has several modules that have duplicate 
+	# function declarations.  The resulting list of warnings is
+	# swamped by those duplicates, rendering the output nearly
+	# useless.  This temporary option choice is the same as
+	# --enable-strict=all, but without that one option
+	allbutdupdefs)
+        enable_strict_done="yes"
+        if test "$CC" = "gcc" ; then 
+	    # Note that -Wall does not include all of the warnings that
+	    # the gcc documentation claims that it does; in particular,
+	    # the -Wunused-parameter option is *not* part of -Wall
+	    # -Wextra (if available) adds some to -Wall (!)
+	    # -Wsystem-headers removed because of too many warning messages
+	    # that are unfixable by the user of this option (the warnings
+	    # often show benign but real problems)
+	    # -Wunreachable-code has a serious bug and falsely reports 
+	    # labels as unreachable code.  This makes that option useless
+	    # for the MPICH2 code, for example
+            COPTIONS="${COPTIONS} -Wall -Wextra $GCC_OPTFLAG -Wstrict-prototypes -Wmissing-prototypes -DGCC_WALL -Wunused -Wshadow -Wmissing-declarations -Werror-implicit-function-declaration -Wno-long-long -Wunused-parameter -Wunused-value -Wfloat-equal -Wdeclaration-after-statement -Wundef -Wno-endif-labels -Wpointer-arith -Wbad-function-cast -Wcast-qual -Wcast-align -Wwrite-strings -Wconversion -Wsign-compare -Waggregate-return -Wold-style-definition -Wmissing-field-initializers -Wmissing-noreturn -Wmissing-format-attribute -Wno-multichar -Wno-deprecated-declarations -Wpacked -Wpadded -Wnested-externs -Winline -Winvalid-pch -Wno-pointer-sign -Wvariadic-macros -std=c89"
         fi
 	;;
 
@@ -1048,7 +1181,7 @@ if test "$enable_strict_done" != "yes" ; then
 	noopt)
         enable_strict_done="yes"
         if test "$CC" = "gcc" ; then 
-            COPTIONS="${COPTIONS} -Wall -Wstrict-prototypes -Wmissing-prototypes -DGCC_WALL -std=c89"
+            COPTIONS="${COPTIONS} -Wall -Wstrict-prototypes -Wmissing-prototypes -Wpointer-arith -DGCC_WALL -std=c89"
         fi
 	;;
 	no)
@@ -1111,10 +1244,56 @@ if test "$enable_strict_done" != "yes" ; then
             AC_MSG_WARN([enable strict supported only for gcc])
         fi
         ;;
+
         all)
         enable_strict_done="yes"
         if test "$ac_cv_prog_gcc" = "yes" ; then 
-            pac_cc_strict_flags="-Wall -Wextra $GCC_OPTFLAG -Wstrict-prototypes -Wmissing-prototypes -Wundef -Wpointer-arith -Wbad-function-cast -ansi -DGCC_WALL -Wunused -Wshadow -Wmissing-declarations -Wunused-parameter -Wunused-value -Wno-long-long -Werror-implicit-function-declaration"
+	    # -Wsystem-headers removed because of too many warning messages
+	    # that are unfixable by the user of this option (the warnings
+	    # often show benign but real problems)
+	    # -Wunreachable-code has a serious bug and falsely reports 
+	    # labels as unreachable code.  This makes that option useless
+	    # for the MPICH2 code, for example
+	    # The next line was the original set of options; this 
+	    # worked with gcc version 2.x
+#            pac_cc_strict_flags="-Wall -Wextra $GCC_OPTFLAG -Wstrict-prototypes -Wmissing-prototypes -Wundef -Wpointer-arith -Wbad-function-cast -ansi -DGCC_WALL -Wunused -Wshadow -Wmissing-declarations -Wunused-parameter -Wunused-value -Wno-long-long -Werror-implicit-function-declaration"
+            pac_cc_strict_flags="-Wall -Wextra $GCC_OPTFLAG -Wstrict-prototypes -Wmissing-prototypes -DGCC_WALL -Wunused -Wshadow -Wmissing-declarations -Werror-implicit-function-declaration -Wno-long-long -Wunused-parameter -Wunused-value  -Wfloat-equal -Wdeclaration-after-statement -Wundef -Wno-endif-labels -Wpointer-arith -Wbad-function-cast -Wcast-qual -Wcast-align -Wwrite-strings -Wconversion -Wsign-compare -Waggregate-return -Wold-style-definition -Wmissing-field-initializers -Wmissing-noreturn -Wmissing-format-attribute -Wno-multichar -Wno-deprecated-declarations -Wpacked -Wpadded -Wredundant-decls -Wnested-externs -Winline -Winvalid-pch -Wno-pointer-sign -Wvariadic-macros"
+            CFLAGS="$CFLAGS $pac_cc_strict_flags"
+            AC_MSG_CHECKING([whether we can add -std=c89])
+            # See if we can add -std=c89
+            savCFLAGS=$CFLAGS
+            CFLAGS="$CFLAGS -std=c89"
+            AC_COMPILE_IFELSE([AC_LANG_PROGRAM(,[int a;])],
+                  stdc_ok=yes,
+                  stdc_ok=no)
+            AC_MSG_RESULT($stdc_ok)
+            if test "$stdc_ok" != yes ; then
+                CFLAGS="$savCFLAGS"
+            else
+                pac_cc_strict_flags="$pac_cc_strict_flags -std=c89"
+            fi
+        else 
+            AC_MSG_WARN([enable strict supported only for gcc])
+        fi
+        ;;
+
+	# The MPICH2 code has several modules that have duplicate 
+	# function declarations.  The resulting list of warnings is
+	# swamped by those duplicates, rendering the output nearly
+	# useless.  This temporary option choice is the same as
+	# --enable-strict=all, but without that one option
+	allbutdupdefs)
+        enable_strict_done="yes"
+        if test "$ac_cv_prog_gcc" = "yes" ; then 
+	    # -Wsystem-headers removed because of too many warning messages
+	    # that are unfixable by the user of this option (the warnings
+	    # often show benign but real problems)
+	    # -Wunreachable-code has a serious bug and falsely reports 
+	    # labels as unreachable code.  This makes that option useless
+	    # for the MPICH2 code, for example
+	    # This next line contains the options used with gcc version 2.x
+#            pac_cc_strict_flags="-Wall -Wextra $GCC_OPTFLAG -Wstrict-prototypes -Wmissing-prototypes -Wundef -Wpointer-arith -Wbad-function-cast -ansi -DGCC_WALL -Wunused -Wshadow -Wmissing-declarations -Wunused-parameter -Wunused-value -Wno-long-long -Werror-implicit-function-declaration"
+            pac_cc_strict_flags="-Wall -Wextra $GCC_OPTFLAG -Wstrict-prototypes -Wmissing-prototypes -DGCC_WALL -Wunused -Wshadow -Wmissing-declarations -Werror-implicit-function-declaration -Wno-long-long -Wunused-parameter -Wunused-value  -Wfloat-equal -Wdeclaration-after-statement -Wundef -Wno-endif-labels -Wpointer-arith -Wbad-function-cast -Wcast-qual -Wcast-align -Wwrite-strings -Wconversion -Wsign-compare -Waggregate-return -Wold-style-definition -Wmissing-field-initializers -Wmissing-noreturn -Wmissing-format-attribute -Wno-multichar -Wno-deprecated-declarations -Wpacked -Wpadded -Wnested-externs -Winline -Winvalid-pch -Wno-pointer-sign -Wvariadic-macros -std=c89"
             CFLAGS="$CFLAGS $pac_cc_strict_flags"
             AC_MSG_CHECKING([whether we can add -std=c89])
             # See if we can add -std=c89
@@ -1339,6 +1518,8 @@ if ${CC-cc} $CFLAGS -c conftest1.c >conftest.out 2>&1 ; then
         fi
     fi
 fi
+# This is needed for Mac OSX 10.5
+rm -rf conftest.dSYM
 rm -f conftest* libconftest*])
 if test "$ac_cv_prog_cc_globals_work" = no ; then
     AC_MSG_WARN([Common symbols not supported on this system!])
@@ -2130,12 +2311,17 @@ dnl the declaration is required.
 dnl
 dnl We use a 'double' as the first argument to try and catch varargs
 dnl routines that may use an int or pointer as the first argument.
+dnl
+dnl There is one difficulty - if the compiler has been instructed to
+dnl fail on implicitly defined functions, then this test will always
+dnl fail.
 dnl 
 dnl D*/
 AC_DEFUN(PAC_FUNC_NEEDS_DECL,[
 AC_CACHE_CHECK([whether $2 needs a declaration],
 pac_cv_func_decl_$2,[
-AC_TRY_COMPILE([$1],[int a=$2(1.0,27,1.0,"foo");],
+AC_TRY_COMPILE([$1
+int $2(double, int, double, const char *);],[int a=$2(1.0,27,1.0,"foo");],
 pac_cv_func_decl_$2=yes,pac_cv_func_decl_$2=no)])
 if test "$pac_cv_func_decl_$2" = "yes" ; then
 changequote(<<,>>)dnl
@@ -2257,6 +2443,8 @@ AC_REQUIRE([AC_PROG_RANLIB])
 AC_REQUIRE([AC_PROG_INSTALL])
 AC_REQUIRE([AC_PROG_CC])
 ac_cv_prog_install_breaks_libs=yes
+# This is needed for Mac OSX 10.5
+rm -rf conftest.dSYM
 rm -f libconftest* conftest*
 echo 'int foo(int);int foo(int a){return a;}' > conftest1.c
 echo 'extern int foo(int); int main( int argc, char **argv){ return foo(0); }' > conftest2.c
@@ -2286,6 +2474,8 @@ if ${CC-cc} $CFLAGS -c conftest1.c >conftest.out 2>&1 ; then
         fi
     fi
 fi
+# This is needed for Mac OSX 10.5
+rm -rf conftest.dSYM
 rm -f conftest* libconftest*])
 
 if test -z "$RANLIB_AFTER_INSTALL" ; then
@@ -2304,4 +2494,75 @@ case "$ac_cv_prog_install_breaks_libs" in
 	;;
 esac
 AC_SUBST(RANLIB_AFTER_INSTALL)
+])
+
+#
+# determine if the compiler defines a symbol containing the function name
+# Inspired by checks within the src/mpid/globus/configure.in file in MPICH2
+#
+# These tests check not only that the compiler defines some symbol, such
+# as __FUNCTION__, but that the symbol correctly names the function.
+#
+# Defines 
+#   HAVE__FUNC__      (if __func__ defined)
+#   HAVE_CAP__FUNC__  (if __FUNC__ defined)
+#   HAVE__FUNCTION__  (if __FUNCTION__ defined)
+#
+AC_DEFUN([PAC_CC_FUNCTION_NAME_SYMBOL],[
+AC_CACHE_CHECK([whether the compiler defines __func__],
+pac_cv_have__func__,[
+AC_RUN_IFELSE([
+#include <string.h>
+int foo(void);
+int foo(void)
+{
+    return (strcmp(__func__, "foo") == 0);
+}
+int main(int argc, char ** argv)
+{
+    return (foo() ? 0 : 1);
+}
+], pac_cv_have__func__=yes, pac_cv_have__func__=no)
+])
+if test $pac_cv_have__func__ = "yes" ; then
+    AC_DEFINE(HAVE__FUNC__,,[define if the compiler defines __func__])
+fi
+
+AC_CACHE_CHECK([whether the compiler defines __FUNC__],
+pac_cv_have_cap__func__,[
+AC_RUN_IFELSE([
+#include <string.h>
+int foo(void);
+int foo(void)
+{
+    return (strcmp(__FUNC__, "foo") == 0);
+}
+int main(int argc, char ** argv)
+{
+    return (foo() ? 0 : 1);
+}
+], pac_cv_have_cap__func__=yes, pac_cv_have_cap__func__=no)
+])
+if test $pac_cv_have_cap__func__ = "yes" ; then
+    AC_DEFINE(HAVE_CAP__FUNC__,,[define if the compiler defines __FUNC__])
+fi
+
+AC_CACHE_CHECK([whether the compiler sets __FUNCTION__],
+pac_cv_have__function__,[
+AC_RUN_IFELSE([
+#include <string.h>
+int foo(void);
+int foo(void)
+{
+    return (strcmp(__FUNCTION__, "foo") == 0);
+}
+int main(int argc, char ** argv)
+{
+    return (foo() ? 0 : 1);
+}
+], pac_cv_have__function__=yes, pac_cv_have__function__=no)
+])
+if test $pac_cv_have__function__ = "yes" ; then
+    AC_DEFINE(HAVE__FUNCTION__,,[define if the compiler defines __FUNCTION__])
+fi
 ])

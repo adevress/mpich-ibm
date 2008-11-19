@@ -49,6 +49,37 @@ MPID_Request ** const MPID_Recvq_posted_head_ptr     = &recvq_posted_head;
 MPID_Request ** const MPID_Recvq_unexpected_head_ptr = &recvq_unexpected_head;
 #endif
 
+/* If the MPIDI_Message_match structure fits into a pointer size, we
+ * can directly work on it */
+/* MATCH_WITH_NO_MASK compares the match values without masking
+ * them. This is useful for the case where there are no ANY_TAG or
+ * ANY_SOURCE wild cards. */
+#define MATCH_WITH_NO_MASK(match1, match2) \
+    ((sizeof(MPIDI_Message_match) == SIZEOF_VOID_P && 0) ? ((match1).whole == (match2).whole) : \
+     (((match1).parts.rank == (match2).parts.rank) && \
+      ((match1).parts.tag == (match2).parts.tag) && \
+      ((match1).parts.context_id == (match2).parts.context_id)))
+
+/* MATCH_WITH_LEFT_MASK compares the match values after masking only
+ * the left field. This is useful for the case where the right match
+ * is a part of the unexpected queue and has no ANY_TAG or ANY_SOURCE
+ * wild cards, but the left match might have them. */
+#define MATCH_WITH_LEFT_MASK(match1, match2, mask) \
+    ((sizeof(MPIDI_Message_match) == SIZEOF_VOID_P && 0) ? (((match1).whole & (mask).whole) == (match2).whole) : \
+     ((((match1).parts.rank & (mask).parts.rank) == (match2).parts.rank) && \
+      (((match1).parts.tag & (mask).parts.tag) == (match2).parts.tag) && \
+      ((match1).parts.context_id == (match2).parts.context_id)))
+
+/* This is the most general case where both matches have to be
+ * masked. Both matches are masked with the same value. There doesn't
+ * seem to be a need for two different masks at this time. */
+#define MATCH_WITH_LEFT_RIGHT_MASK(match1, match2, mask) \
+    ((sizeof(MPIDI_Message_match) == SIZEOF_VOID_P && 0) ? (((match1).whole & (mask).whole) == ((match2).whole & (mask).whole)) : \
+     ((((match1).parts.rank & (mask).parts.rank) == ((match2).parts.rank & (mask).parts.rank)) && \
+      (((match1).parts.tag & (mask).parts.tag) == ((match2).parts.tag & (mask).parts.tag)) && \
+      ((match1).parts.context_id == (match2).parts.context_id)))
+
+
 /* FIXME: If this routine is only used by probe/iprobe, then we don't need
    to set the cancelled field in status (only set for nonblocking requests) */
 /*
@@ -59,6 +90,16 @@ MPID_Request ** const MPID_Recvq_unexpected_head_ptr = &recvq_unexpected_head;
  * not MPI_STATUS_IGNORE, return information about the request in that
  * parameter.  This routine is used by mpid_probe and mpid_iprobe.
  *
+ * Multithread - As this is a read-only routine, it need not
+ * require an external critical section (careful organization of the
+ * queue updates would not even require a critical section within this
+ * routine).  However, this routine is used both from within the progress
+ * engine and from without it.  To make that work with the current
+ * design for MSGQUEUE and the brief-global mode, the critical section 
+ * is *outside* of this routine.
+ *
+ * This routine is used only in mpid_iprobe and mpid_probe
+ *
  */
 #undef FUNCNAME
 #define FUNCNAME MPIDI_CH3U_Recvq_FU
@@ -68,64 +109,34 @@ int MPIDI_CH3U_Recvq_FU(int source, int tag, int context_id, MPI_Status *s)
 {
     MPID_Request * rreq;
     int found = 0;
+    MPIDI_Message_match match, mask;
     MPIDI_STATE_DECL(MPID_STATE_MPIDI_CH3U_RECVQ_FU);
 
     MPIDI_FUNC_ENTER(MPID_STATE_MPIDI_CH3U_RECVQ_FU);
 
-    if (tag != MPI_ANY_TAG && source != MPI_ANY_SOURCE)
-    {
-	rreq = recvq_unexpected_head;
-	/* FIXME: If the match data fits in an int64_t, we should try
-	   to use a single test here */
-	while(rreq != NULL)
-	{
-	    if (rreq->dev.match.context_id == context_id && 
-		rreq->dev.match.rank == source && rreq->dev.match.tag == tag)
-	    {
+    rreq = recvq_unexpected_head;
+
+    match.parts.context_id = context_id;
+    match.parts.tag = tag;
+    match.parts.rank = source;
+
+    if (tag != MPI_ANY_TAG && source != MPI_ANY_SOURCE) {
+	while (rreq != NULL) {
+	    if (MATCH_WITH_NO_MASK(rreq->dev.match, match))
 		break;
-	    }
-	    
 	    rreq = rreq->dev.next;
 	}
     }
-    else
-    {
-	MPIDI_Message_match match;
-	MPIDI_Message_match mask;
-
-	match.context_id = context_id;
-	mask.context_id = ~0;
+    else {
+	mask.parts.context_id = mask.parts.rank = mask.parts.tag = ~0;
 	if (tag == MPI_ANY_TAG)
-	{
-	    match.tag = 0;
-	    mask.tag = 0;
-	}
-	else
-	{
-	    match.tag = tag;
-	    mask.tag = ~0;
-	}
+	    match.parts.tag = mask.parts.tag = 0;
 	if (source == MPI_ANY_SOURCE)
-	{
-	    match.rank = 0;
-	    mask.rank = 0;
-	}
-	else
-	{
-	    match.rank = source;
-	    mask.rank = ~0;
-	}
-	
-	rreq = recvq_unexpected_head;
-	while (rreq != NULL)
-	{
-	    if (rreq->dev.match.context_id == match.context_id && 
-		(rreq->dev.match.rank & mask.rank) == match.rank &&
-		(rreq->dev.match.tag & mask.tag) == match.tag)
-	    {
+	    match.parts.rank = mask.parts.rank = 0;
+
+	while (rreq != NULL) {
+	    if (MATCH_WITH_LEFT_MASK(rreq->dev.match, match, mask))
 		break;
-	    }
-	    
 	    rreq = rreq->dev.next;
 	}
     }
@@ -152,7 +163,12 @@ int MPIDI_CH3U_Recvq_FU(int source, int tag, int context_id, MPI_Status *s)
  *
  * Find a request in the unexpected queue and dequeue it; otherwise return NULL.
  *
- * This routine is used only in the case of send_cancel
+ * Multithread - This routine must be atomic (since it dequeues a
+ * request).  However, once the request is dequeued, no other thread can
+ * see it, so this routine provides its own atomicity.
+ *
+ * This routine is used only in the case of send_cancel.  However, it is used both
+ * within mpid_send_cancel and within a packet handler.
  */
 #undef FUNCNAME
 #define FUNCNAME MPIDI_CH3U_Recvq_FDU
@@ -176,21 +192,18 @@ MPID_Request * MPIDI_CH3U_Recvq_FDU(MPI_Request sreq_id,
 
     /* Note that since this routine is used only in the case of send_cancel,
        there can be only one match if at all. */
+    /* FIXME: Why doesn't this exit after it finds the first match? */
     cur_rreq = recvq_unexpected_head;
-    while(cur_rreq != NULL) {
-	if (cur_rreq->dev.sender_req_id == sreq_id && 
-	    cur_rreq->dev.match.context_id == match->context_id &&
-	    cur_rreq->dev.match.rank == match->rank && 
-	    cur_rreq->dev.match.tag == match->tag)
-	    {
-		matching_prev_rreq = prev_rreq;
-		matching_cur_rreq = cur_rreq;
-	    }
-	
+    while (cur_rreq != NULL) {
+	if (cur_rreq->dev.sender_req_id == sreq_id &&
+	    (MATCH_WITH_NO_MASK(cur_rreq->dev.match, *match))) {
+	    matching_prev_rreq = prev_rreq;
+	    matching_cur_rreq = cur_rreq;
+	}
 	prev_rreq = cur_rreq;
 	cur_rreq = cur_rreq->dev.next;
     }
-    
+
     if (matching_cur_rreq != NULL) {
 	if (matching_prev_rreq != NULL) {
 	    matching_prev_rreq->dev.next = matching_cur_rreq->dev.next;
@@ -219,6 +232,14 @@ MPID_Request * MPIDI_CH3U_Recvq_FDU(MPI_Request sreq_id,
  *
  * Atomically find a request in the unexpected queue and dequeue it, or 
  * allocate a new request and enqueue it in the posted queue
+ *
+ * Multithread - This routine must be called from within a MSGQUEUE 
+ * critical section.  If a request is allocated, it must not release
+ * the MSGQUEUE until the request is completely valid, as another thread
+ * may then find it and dequeue it.
+ *
+ * This routine is used in mpid_irecv and mpid_recv.
+ *
  */
 #undef FUNCNAME
 #define FUNCNAME MPIDI_CH3U_Recvq_FDU_or_AEP
@@ -230,6 +251,8 @@ MPID_Request * MPIDI_CH3U_Recvq_FDU_or_AEP(int source, int tag,
 {
     int found;
     MPID_Request *rreq, *prev_rreq;
+    MPIDI_Message_match match;
+    MPIDI_Message_match mask;
     MPIDI_STATE_DECL(MPID_STATE_MPIDI_CH3U_RECVQ_FDU_OR_AEP);
 
     MPIDI_FUNC_ENTER(MPID_STATE_MPIDI_CH3U_RECVQ_FDU_OR_AEP);
@@ -238,60 +261,46 @@ MPID_Request * MPIDI_CH3U_Recvq_FDU_or_AEP(int source, int tag,
     rreq = recvq_unexpected_head;
     if (rreq) {
 	prev_rreq = NULL;
+
+	match.parts.context_id = context_id;
+	match.parts.tag = tag;
+	match.parts.rank = source;
+
 	if (tag != MPI_ANY_TAG && source != MPI_ANY_SOURCE) {
-	    do { 
-		if (rreq->dev.match.context_id == context_id && 
-		    rreq->dev.match.rank == source && 
-		    rreq->dev.match.tag == tag) {
+	    do {
+		if (MATCH_WITH_NO_MASK(rreq->dev.match, match)) {
 		    if (prev_rreq != NULL) {
 			prev_rreq->dev.next = rreq->dev.next;
 		    }
 		    else {
 			recvq_unexpected_head = rreq->dev.next;
 		    }
+
 		    if (rreq->dev.next == NULL) {
 			recvq_unexpected_tail = prev_rreq;
 		    }
-                    rreq->comm                 = comm;
-                    MPIR_Comm_add_ref(comm);
-                    rreq->dev.user_buf         = user_buf;
-                    rreq->dev.user_count       = user_count;
-                    rreq->dev.datatype         = datatype;
+
+		    rreq->comm = comm;
+		    MPIR_Comm_add_ref(comm);
+		    rreq->dev.user_buf = user_buf;
+		    rreq->dev.user_count = user_count;
+		    rreq->dev.datatype = datatype;
 		    found = TRUE;
 		    goto lock_exit;
-		} 
-		
+		}
 		prev_rreq = rreq;
 		rreq      = rreq->dev.next;
 	    } while (rreq);
 	}
 	else {
-	    MPIDI_Message_match match;
-	    MPIDI_Message_match mask;
-	    
-	    match.context_id = context_id;
-	    mask.context_id = ~0;
-	    if (tag == MPI_ANY_TAG) {
-		match.tag = 0;
-		mask.tag = 0;
-	    }
-	    else {
-		match.tag = tag;
-		mask.tag = ~0;
-	    }
-	    if (source == MPI_ANY_SOURCE) {
-		match.rank = 0;
-		mask.rank = 0;
-	    }
-	    else {
-		match.rank = source;
-		mask.rank = ~0;
-	    }
-	    
+	    mask.parts.context_id = mask.parts.rank = mask.parts.tag = ~0;
+	    if (tag == MPI_ANY_TAG)
+		match.parts.tag = mask.parts.tag = 0;
+	    if (source == MPI_ANY_SOURCE)
+		match.parts.rank = mask.parts.rank = 0;
+
 	    do {
-		if (rreq->dev.match.context_id == match.context_id && 
-		    (rreq->dev.match.rank & mask.rank) == match.rank &&
-		    (rreq->dev.match.tag & mask.tag) == match.tag) {
+		if (MATCH_WITH_LEFT_MASK(rreq->dev.match, match, mask)) {
 		    if (prev_rreq != NULL) {
 			prev_rreq->dev.next = rreq->dev.next;
 		    }
@@ -301,15 +310,14 @@ MPID_Request * MPIDI_CH3U_Recvq_FDU_or_AEP(int source, int tag,
 		    if (rreq->dev.next == NULL) {
 			recvq_unexpected_tail = prev_rreq;
 		    }
-                    rreq->comm                 = comm;
-                    MPIR_Comm_add_ref(comm);
-                    rreq->dev.user_buf         = user_buf;
-                    rreq->dev.user_count       = user_count;
-                    rreq->dev.datatype         = datatype;
+		    rreq->comm                 = comm;
+		    MPIR_Comm_add_ref(comm);
+		    rreq->dev.user_buf         = user_buf;
+		    rreq->dev.user_count       = user_count;
+		    rreq->dev.datatype         = datatype;
 		    found = TRUE;
 		    goto lock_exit;
 		}
-		
 		prev_rreq = rreq;
 		rreq = rreq->dev.next;
 	    } while (rreq);
@@ -318,14 +326,26 @@ MPID_Request * MPIDI_CH3U_Recvq_FDU_or_AEP(int source, int tag,
     
     /* A matching request was not found in the unexpected queue, so we 
        need to allocate a new request and add it to the posted queue */
-
     {
 	int mpi_errno=0;
 	MPIDI_Request_create_rreq( rreq, mpi_errno, 
 				   found = FALSE;goto lock_exit );
-	rreq->dev.match.tag	   = tag;
-	rreq->dev.match.rank	   = source;
-	rreq->dev.match.context_id = context_id;
+	rreq->dev.match.parts.tag	   = tag;
+	rreq->dev.match.parts.rank	   = source;
+	rreq->dev.match.parts.context_id   = context_id;
+
+	/* Added a mask for faster search on 64-bit capable
+	 * platforms */
+	rreq->dev.mask.parts.context_id = ~0;
+	if (rreq->dev.match.parts.rank == MPI_ANY_SOURCE)
+	    rreq->dev.mask.parts.rank = 0;
+	else
+	    rreq->dev.mask.parts.rank = ~0;
+	if (rreq->dev.match.parts.tag == MPI_ANY_TAG)
+	    rreq->dev.mask.parts.tag = 0;
+	else
+	    rreq->dev.mask.parts.tag = ~0;
+
         rreq->comm                 = comm;
         MPIR_Comm_add_ref(comm);
         rreq->dev.user_buf         = user_buf;
@@ -359,6 +379,8 @@ MPID_Request * MPIDI_CH3U_Recvq_FDU_or_AEP(int source, int tag,
  *
  * Given an existing request, dequeue that request from the posted queue, or 
  * return NULL if the request was not in the posted queued
+ *
+ * Multithread - This routine is atomic
  */
 #undef FUNCNAME
 #define FUNCNAME MPIDI_CH3U_Recvq_DP
@@ -376,6 +398,7 @@ int MPIDI_CH3U_Recvq_DP(MPID_Request * rreq)
     found = FALSE;
     prev_rreq = NULL;
     
+    MPIU_THREAD_CS_ENTER(MSGQUEUE,);
     cur_rreq = recvq_posted_head;
     while (cur_rreq != NULL) {
 	if (cur_rreq == rreq) {
@@ -398,6 +421,8 @@ int MPIDI_CH3U_Recvq_DP(MPID_Request * rreq)
 	cur_rreq = cur_rreq->dev.next;
     }
 
+    MPIU_THREAD_CS_EXIT(MSGQUEUE,);
+
     MPIDI_FUNC_EXIT(MPID_STATE_MPIDI_CH3U_RECVQ_DP);
     return found;
 }
@@ -407,6 +432,19 @@ int MPIDI_CH3U_Recvq_DP(MPID_Request * rreq)
  *
  * Locate a request in the posted queue and dequeue it, or allocate a new 
  * request and enqueue it in the unexpected queue
+ *
+ * Multithread - This routine must be called from within a MSGQUEUE 
+ * critical section.  If a request is allocated, it must not release
+ * the MSGQUEUE until the request is completely valid, as another thread
+ * may then find it and dequeue it.
+ *
+ * This routine is used in ch3u_eager, ch3u_eagersync, ch3u_handle_recv_pkt,
+ * ch3u_rndv, and mpidi_isend_self.  Routines within the progress engine
+ * will need to be careful to avoid nested critical sections.  
+ *
+ * FIXME: Currently, the routines called from within the progress engine
+ * do not use the MSGQUEUE CS, because in the brief-global mode, that
+ * simply uses the global_mutex .  
  */
 #undef FUNCNAME
 #define FUNCNAME MPIDI_CH3U_Recvq_FDP_or_AEU
@@ -425,12 +463,9 @@ MPID_Request * MPIDI_CH3U_Recvq_FDP_or_AEU(MPIDI_Message_match * match,
     prev_rreq = NULL;
 
     rreq = recvq_posted_head;
+
     while (rreq != NULL) {
-	if ((rreq->dev.match.context_id == match->context_id) &&
-	    (rreq->dev.match.rank == match->rank || 
-	     rreq->dev.match.rank == MPI_ANY_SOURCE) &&
-	    (rreq->dev.match.tag == match->tag || 
-	     rreq->dev.match.tag == MPI_ANY_TAG)) {
+	if (MATCH_WITH_LEFT_RIGHT_MASK(rreq->dev.match, *match, rreq->dev.mask)) {
 	    if (prev_rreq != NULL) {
 		prev_rreq->dev.next = rreq->dev.next;
 	    }
@@ -441,11 +476,11 @@ MPID_Request * MPIDI_CH3U_Recvq_FDP_or_AEU(MPIDI_Message_match * match,
 		recvq_posted_tail = prev_rreq;
 	    }
 	    found = TRUE;
-	    /* This is for nemesis to know from where to expect a message */
+	    /* This is for the channel to know from where to expect a
+	     * message */
 	    MPIDI_POSTED_RECV_DEQUEUE_HOOK (rreq);
 	    goto lock_exit;
 	}
-	
 	prev_rreq = rreq;
 	rreq = rreq->dev.next;
     }
@@ -535,9 +570,9 @@ void MPIDI_CH3U_Dbg_print_recvq(FILE *stream)
     i = 0;
     while (rreq != NULL) {
         fprintf(stream, "..[%d] rreq=%p ctx=%#x rank=%s tag=%s\n", i, rreq,
-                        rreq->dev.match.context_id,
-                        rank_val_to_str(rreq->dev.match.rank, rank_buf, sizeof(rank_buf)),
-                        tag_val_to_str(rreq->dev.match.tag, tag_buf, sizeof(tag_buf)));
+                        rreq->dev.match.parts.context_id,
+                        rank_val_to_str(rreq->dev.match.parts.rank, rank_buf, sizeof(rank_buf)),
+                        tag_val_to_str(rreq->dev.match.parts.tag, tag_buf, sizeof(tag_buf)));
         ++i;
         rreq = rreq->dev.next;
     }
@@ -547,9 +582,9 @@ void MPIDI_CH3U_Dbg_print_recvq(FILE *stream)
     i = 0;
     while (rreq != NULL) {
         fprintf(stream, "..[%d] rreq=%p ctx=%#x rank=%s tag=%s\n", i, rreq,
-                        rreq->dev.match.context_id,
-                        rank_val_to_str(rreq->dev.match.rank, rank_buf, sizeof(rank_buf)),
-                        tag_val_to_str(rreq->dev.match.tag, tag_buf, sizeof(tag_buf)));
+                        rreq->dev.match.parts.context_id,
+                        rank_val_to_str(rreq->dev.match.parts.rank, rank_buf, sizeof(rank_buf)),
+                        tag_val_to_str(rreq->dev.match.parts.tag, tag_buf, sizeof(tag_buf)));
         fprintf(stream, "..    status.src=%s status.tag=%s\n",
                         rank_val_to_str(rreq->status.MPI_SOURCE, rank_buf, sizeof(rank_buf)),
                         tag_val_to_str(rreq->status.MPI_TAG, tag_buf, sizeof(tag_buf)));
@@ -560,3 +595,21 @@ void MPIDI_CH3U_Dbg_print_recvq(FILE *stream)
 }
 /* --END ERROR HANDLING-- */
 
+/* returns the number of elements in the unexpected queue */
+#undef FUNCNAME
+#define FUNCNAME MPIDI_CH3U_Recvq_count_unexp
+#undef FCNAME
+#define FCNAME MPIDI_QUOTE(FUNCNAME)
+int MPIDI_CH3U_Recvq_count_unexp(void)
+{
+    int count = 0;
+    MPID_Request *req = recvq_unexpected_head;
+
+    while (req)
+    {
+        ++count;
+        req = req->dev.next;
+    }
+
+    return count;
+}

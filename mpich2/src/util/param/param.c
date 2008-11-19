@@ -1,6 +1,5 @@
 /* -*- Mode: C; c-basic-offset:4 ; -*- */
-/*  $Id$
- *
+/*
  *  (C) 2001 by Argonne National Laboratory.
  *      See COPYRIGHT in top-level directory.
  */
@@ -400,5 +399,20 @@ int MPIU_GetEnvBool( const char *envName, int *val )
 	/* FIXME: We need to provide a way to signal this error */
 	return -1;
     }
+    return 0;
+}
+
+int MPIU_GetEnvStr( const char *envName, const char **val )
+{
+    const char *val_ptr;
+
+    val_ptr = getenv( envName );
+
+    if (val_ptr)
+    {
+        *val = val_ptr;
+        return 1;
+    }
+
     return 0;
 }

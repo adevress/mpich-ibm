@@ -68,7 +68,7 @@ int MPI_Type_create_keyval(MPI_Type_copy_attr_function *type_copy_attr_fn,
 
     MPIR_ERRTEST_INITIALIZED_ORDIE();
     
-    MPIU_THREAD_SINGLE_CS_ENTER("attr");
+    MPIU_THREAD_CS_ENTER(ALLFUNC,);
     MPID_MPI_FUNC_ENTER(MPID_STATE_MPI_TYPE_CREATE_KEYVAL);
     
     /* Validate parameters and objects (post conversion) */
@@ -105,12 +105,15 @@ int MPI_Type_create_keyval(MPI_Type_copy_attr_function *type_copy_attr_fn,
     keyval_ptr->extra_state      = extra_state;
     keyval_ptr->copyfn.C_CopyFunction  = type_copy_attr_fn;
     keyval_ptr->delfn.C_DeleteFunction = type_delete_attr_fn;
+
+    /* Tell finalize to check for attributes on permenant types */
+    MPIR_DatatypeAttrFinalize();
     
     /* ... end of body of routine ... */
 
   fn_exit:
     MPID_MPI_FUNC_EXIT(MPID_STATE_MPI_TYPE_CREATE_KEYVAL);
-    MPIU_THREAD_SINGLE_CS_EXIT("attr");
+    MPIU_THREAD_CS_EXIT(ALLFUNC,);
     return mpi_errno;
 
   fn_fail:

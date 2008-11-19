@@ -357,39 +357,43 @@ void ADIOI_Calc_my_off_len(ADIO_File fd, int bufcount, MPI_Datatype
 	disp = fd->disp;
 
 #ifdef RDCOLL_DEBUG 
-	int ii;
-	DBG_FPRINTF(stderr, "flattened %3d : ", flat_file->count );
-	for (ii=0; ii<flat_file->count; ii++) {
-	    DBG_FPRINTF(stderr, "%16qd:%-16qd", flat_file->indices[ii], flat_file->blocklens[ii] );
-	}
-  	DBG_FPRINTF(stderr, "\n" );
+        {
+            int ii;
+            DBG_FPRINTF(stderr, "flattened %3d : ", flat_file->count );
+            for (ii=0; ii<flat_file->count; ii++) {
+                DBG_FPRINTF(stderr, "%16qd:%-16qd", flat_file->indices[ii], flat_file->blocklens[ii] );
+            }
+            DBG_FPRINTF(stderr, "\n" );
+        }
 #endif
 	if (file_ptr_type == ADIO_INDIVIDUAL) {
-           /* wei-keng reworked type processing to be a bit more efficient */
-             offset = fd->fp_ind - disp; /* in bytes */
-             n_filetypes = offset / filetype_extent;  /* no. filetypes */
-             offset %= filetype_extent;   /* local offset in a filetype */
+           /* Wei-keng reworked type processing to be a bit more efficient */
+            offset       = fd->fp_ind - disp;
+            n_filetypes  = (offset - flat_file->indices[0]) / filetype_extent;
+             offset     -= (ADIO_Offset)n_filetypes * filetype_extent;
+	     	/* now offset is local to this extent */
  
-           /* Wei-keng Liao: find contiguous block where offset is located */
- 
-             for (i=0; i<flat_file->count; i++){/*bin. search would be better */
-		ADIO_Offset rem_len = offset - flat_file->indices[i];
-		if (rem_len >= 0) {
-		    /* skip over zero length blocklens */
-		    if (rem_len == flat_file->blocklens[i])
-		        offset = flat_file->indices[i+1];
-		    else if (rem_len < flat_file->blocklens[i]) {
-		        /* frd_size is from offset to the end of block i */
-			frd_size = flat_file->blocklens[i] - rem_len;
+            /* find the block where offset is located, skip blocklens[i]==0 */
+            for (i=0; i<flat_file->count; i++) {
+                ADIO_Offset dist;
+                if (flat_file->blocklens[i] == 0) continue;
+                dist = flat_file->indices[i] + flat_file->blocklens[i] - offset;
+                /* frd_size is from offset to the end of block i */
+		if (dist == 0) {
+			i++;
+			offset   = flat_file->indices[i];
+			frd_size = flat_file->blocklens[i];
 			break;
-		    }
+		}
+		if (dist > 0) {
+                    frd_size = dist;
+		    break;
 		}
 	    }
             st_index = i;  /* starting index in flat_file->indices[] */
-            offset += disp + (ADIO_Offset)n_filetypes*filetype_extent; /*bytes*/
+            offset += disp + (ADIO_Offset)n_filetypes*filetype_extent;
         }
 	else {
-    int i;
 	    n_etypes_in_filetype = filetype_size/etype_size;
 	    n_filetypes = offset / n_etypes_in_filetype;
 	    etype_in_filetype = offset % n_etypes_in_filetype;
@@ -466,13 +470,13 @@ void ADIOI_Calc_my_off_len(ADIO_File fd, int bufcount, MPI_Datatype
 		 */
 	    }
 	    else {
-		if (j < (flat_file->count - 1)) j++;
-		else {
-		    /* hit end of flattened filetype; 
-		     * start at beginning again 
-		     */
-		    j = 0;
-		    n_filetypes++;
+		j = (j+1) % flat_file->count;
+                n_filetypes += (j == 0) ? 1 : 0;
+                while (flat_file->blocklens[j]==0) {
+			j = (j+1) % flat_file->count;
+                    n_filetypes += (j == 0) ? 1 : 0;
+                    /* hit end of flattened filetype; start at beginning 
+		     * again */
 		}
 		off = disp + flat_file->indices[j] + 
 		     n_filetypes* (ADIO_Offset)filetype_extent;
@@ -927,7 +931,7 @@ static void ADIOI_R_Exchange_data(ADIO_File fd, void *buf, ADIOI_Flatlist_node
 { \
     while (size) { \
 	size_in_buf = ADIOI_MIN(size, flat_buf_sz); \
-  ADIOI_Assert((((ADIO_Offset)(MPIR_Upint)buf) + user_buf_idx) == (ADIO_Offset)(MPIR_Upint)(buf + user_buf_idx)); \
+  ADIOI_Assert((((ADIO_Offset)(MPIR_Upint)buf) + user_buf_idx) == (ADIO_Offset)(MPIR_Upint)((MPIR_Upint)buf + user_buf_idx)); \
   ADIOI_Assert(size_in_buf == (size_t)size_in_buf); \
 	memcpy(((char *) buf) + user_buf_idx, \
 	       &(recv_buf[p][recv_buf_idx[p]]), size_in_buf); \

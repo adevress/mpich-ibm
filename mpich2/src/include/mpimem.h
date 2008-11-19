@@ -1,6 +1,5 @@
 /* -*- Mode: C; c-basic-offset:4 ; -*- */
-/*  $Id$
- *
+/*
  *  (C) 2001 by Argonne National Laboratory.
  *      See COPYRIGHT in top-level directory.
  */
@@ -17,6 +16,8 @@
 #if defined(__cplusplus)
 extern "C" {
 #endif
+
+#include "mpichconf.h"
 
 /* ------------------------------------------------------------------------- */
 /* mpimem.h */
@@ -226,8 +227,10 @@ int MPIU_Str_get_string(char **str_ptr, char *val, int maxlen);
      strdup, we won't have an obscure failure when a file include string.h
     later in the compilation process. */
 #include <string.h>
+
     /* The ::: should cause the compiler to choke; the string 
        will give the explanation */
+#undef strdup /* in case strdup is a macro */
 #define strdup(a)         'Error use MPIU_Strdup' :::
 
 /* FIXME: Note that some of these prototypes are for old functions in the 
@@ -313,7 +316,7 @@ if (!(pointer_)) { \
 #define MPIU_CHKLMEM_DECL(n_) \
  void *(mpiu_chklmem_stk_[n_]);\
  int mpiu_chklmem_stk_sp_=0;\
- MPIU_AssertDecl(const int mpiu_chklmem_stk_sz_=n_)
+ MPIU_AssertDeclValue(const int mpiu_chklmem_stk_sz_,n_)
 
 #define MPIU_CHKLMEM_MALLOC_ORSTMT(pointer_,type_,nbytes_,rc_,name_,stmt_) \
 {pointer_ = (type_)MPIU_Malloc(nbytes_); \
@@ -340,7 +343,7 @@ if (pointer_) { \
 #define MPIU_CHKLBIGMEM_DECL(n_) \
  void *(mpiu_chklbigmem_stk_[n_]);\
  int mpiu_chklbigmem_stk_sp_=0;\
- MPIU_AssertDecl(const int mpiu_chklbigmem_stk_sz_=n_)
+ MPIU_AssertDeclValue(const int mpiu_chklbigmem_stk_sz_,n_)
 
 #define MPIU_CHKLBIGMEM_MALLOC_ORSTMT(pointer_,type_,nbytes_,rc_,name_,stmt_) \
 {pointer_ = (type_)MPIU_Malloc(nbytes_); \
@@ -364,7 +367,7 @@ if (pointer_) { \
 #define MPIU_CHKPMEM_DECL(n_) \
  void *(mpiu_chkpmem_stk_[n_]);\
  int mpiu_chkpmem_stk_sp_=0;\
- MPIU_AssertDecl(const int mpiu_chkpmem_stk_sz_=n_)
+ MPIU_AssertDeclValue(const int mpiu_chkpmem_stk_sz_,n_)
 #define MPIU_CHKPMEM_MALLOC_ORSTMT(pointer_,type_,nbytes_,rc_,name_,stmt_) \
 {pointer_ = (type_)MPIU_Malloc(nbytes_); \
 if (pointer_) { \
@@ -410,6 +413,13 @@ extern int snprintf( char *, size_t, const char *, ... ) ATTRIBUTE((format(print
 int MPIU_Snprintf( char *str, size_t size, const char *format, ... ) 
      ATTRIBUTE((format(printf,3,4)));
 #endif /* HAVE_SNPRINTF */
+
+/* MPIU_Basename(path, basename)
+   This function finds the basename in a path (ala "man 1 basename").
+   *basename will point to an element in path.
+   More formally: This function sets basename to the character just after the last '/' in path.
+*/
+void MPIU_Basename(char *path, char **basename);
 
 /* ------------------------------------------------------------------------- */
 /* end of mpimem.h */

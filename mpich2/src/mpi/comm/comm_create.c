@@ -56,8 +56,8 @@ int MPI_Comm_create(MPI_Comm comm, MPI_Group group, MPI_Comm *newcomm)
     static const char FCNAME[] = "MPI_Comm_create";
     int mpi_errno = MPI_SUCCESS;
     MPID_Comm *comm_ptr = NULL;
-    int i, j, n, *mapping = 0, *remote_mapping = 0, remote_size = -1, 
-	new_context_id;
+    int i, j, n, *mapping = 0, *remote_mapping = 0, remote_size = -1;
+    MPIR_Context_id_t new_context_id;
     MPID_Comm *newcomm_ptr;
     MPID_Group *group_ptr;
     MPIU_CHKLMEM_DECL(3);
@@ -66,7 +66,7 @@ int MPI_Comm_create(MPI_Comm comm, MPI_Group group, MPI_Comm *newcomm)
 
     MPIR_ERRTEST_INITIALIZED_ORDIE();
     
-    MPIU_THREAD_SINGLE_CS_ENTER("comm");
+    MPIU_THREAD_CS_ENTER(ALLFUNC,);
     MPID_MPI_FUNC_ENTER(MPID_STATE_MPI_COMM_CREATE);
     MPIU_THREADPRIV_GET;
 
@@ -125,13 +125,14 @@ int MPI_Comm_create(MPI_Comm comm, MPI_Group group, MPI_Comm *newcomm)
 	if (!comm_ptr->local_comm) {
 	    MPIR_Setup_intercomm_localcomm( comm_ptr );
 	}
-	new_context_id = MPIR_Get_contextid( comm_ptr->local_comm );
+        mpi_errno = MPIR_Get_contextid( comm_ptr->local_comm, &new_context_id );
+        if (mpi_errno) MPIU_ERR_POP(mpi_errno);
     }
     else {
-	new_context_id = MPIR_Get_contextid( comm_ptr );
+        mpi_errno = MPIR_Get_contextid( comm_ptr, &new_context_id );
+        if (mpi_errno) MPIU_ERR_POP(mpi_errno);
     }
-    MPIU_ERR_CHKANDJUMP(new_context_id == 0, mpi_errno, MPI_ERR_OTHER, 
-			"**toomanycomm" );
+    MPIU_Assert(new_context_id != 0);
 
     /* Make sure that the processes for this group are contained within
        the input communicator.  Also identify the mapping from the ranks of 
@@ -305,6 +306,8 @@ int MPI_Comm_create(MPI_Comm comm, MPI_Group group, MPI_Comm *newcomm)
 
 	/* Notify the device of this new communicator */
 	MPID_Dev_comm_create_hook( newcomm_ptr );
+        mpi_errno = MPIR_Comm_commit(newcomm_ptr);
+        if (mpi_errno) MPIU_ERR_POP(mpi_errno);
 	
 	*newcomm = newcomm_ptr->handle;
     }
@@ -315,15 +318,15 @@ int MPI_Comm_create(MPI_Comm comm, MPI_Group group, MPI_Comm *newcomm)
 
 	/* Dummy to complete collective ops in the intercomm case */
 	if (comm_ptr->comm_kind == MPID_INTERCOMM) {
-	    int rinfo[2], remote_size, *remote_mapping = 0;
+	    int rinfo[2], ic_remote_size, *ic_remote_mapping = 0;
             MPIR_Nest_incr();
 	    NMPI_Bcast( rinfo, 2, MPI_INT, 0, 
 			comm_ptr->local_comm->handle );
-	    remote_size                 = rinfo[1];
-	    MPIU_CHKLMEM_MALLOC(remote_mapping,int*,
-				remote_size*sizeof(int),
-				mpi_errno,"remote_mapping");
-	    NMPI_Bcast( remote_mapping, remote_size, MPI_INT, 0, 
+	    ic_remote_size = rinfo[1];
+	    MPIU_CHKLMEM_MALLOC(ic_remote_mapping,int*,
+				ic_remote_size*sizeof(int),
+				mpi_errno,"ic_remote_mapping");
+	    NMPI_Bcast( ic_remote_mapping, ic_remote_size, MPI_INT, 0, 
 			comm_ptr->local_comm->handle );
             MPIR_Nest_decr();
 	}
@@ -337,7 +340,7 @@ int MPI_Comm_create(MPI_Comm comm, MPI_Group group, MPI_Comm *newcomm)
   fn_exit:
     MPIU_CHKLMEM_FREEALL();
     MPID_MPI_FUNC_EXIT(MPID_STATE_MPI_COMM_CREATE);
-    MPIU_THREAD_SINGLE_CS_EXIT("comm");
+    MPIU_THREAD_CS_EXIT(ALLFUNC,);
     return mpi_errno;
 
   fn_fail:

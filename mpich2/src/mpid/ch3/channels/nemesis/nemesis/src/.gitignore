@@ -18,3 +18,4 @@
 /.deps
 /.libstamp*
 /.state-cache
+/mpid_nem_net_array.c

@@ -56,9 +56,6 @@ int MPIDI_CH3U_Handle_connection(MPIDI_VC_t * vc, MPIDI_VC_Event_t event)
 		       not always */
 		    /* MPIU_Object_set_ref(vc, 0); ??? */
 
-                    mpi_errno = MPIDI_CH3_Handle_vc_close(vc);
-                    if (mpi_errno) MPIU_ERR_POP(mpi_errno);
-
 		    /*
 		     * FIXME: The VC used in connect accept has a NULL 
 		     * process group
@@ -100,6 +97,7 @@ int MPIDI_CH3U_Handle_connection(MPIDI_VC_t * vc, MPIDI_VC_Event_t event)
 			MPI_SUCCESS, MPIR_ERR_FATAL, FCNAME, __LINE__, 
                         MPI_ERR_INTERN, "**ch3|unhandled_connection_state",
 			"**ch3|unhandled_connection_state %p %d", vc, event);
+                    goto fn_fail;
 		    break;
 		}
 	    }
@@ -342,7 +340,6 @@ int MPIDI_CH3U_VC_WaitForClose( void )
 	mpi_errno = MPID_Progress_wait(&progress_state);
 	/* --BEGIN ERROR HANDLING-- */
 	if (mpi_errno != MPI_SUCCESS) {
-	    MPID_Progress_end(&progress_state);
 	    MPIU_ERR_SET(mpi_errno,MPI_ERR_OTHER,"**ch3|close_progress");
 	    break;
 	}

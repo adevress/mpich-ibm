@@ -67,23 +67,15 @@ int MPIDI_CH3U_Init_sshm(int has_parent, MPIDI_PG_t *pg_p, int pg_rank,
 
     /* brad : need to set these locally */
     pmi_errno = PMI_KVS_Get_key_length_max(&key_max_sz);
-    if (pmi_errno != PMI_SUCCESS)
-    {
-	MPIU_ERR_SETANDJUMP1(mpi_errno,MPI_ERR_OTHER,
-			     "**pmi_kvs_get_key_length_max", 
-			     "**pmi_kvs_get_key_length_max %d", pmi_errno);
-    }
+    MPIU_ERR_CHKANDJUMP1(pmi_errno, mpi_errno, MPI_ERR_OTHER,
+                         "**pmi_kvs_get_key_length_max",
+                         "**pmi_kvs_get_key_length_max %d", pmi_errno);
+    MPIU_CHKLMEM_MALLOC(key, char *, key_max_sz, mpi_errno, "key");
 
-    MPIU_CHKLMEM_MALLOC(key,char *,key_max_sz,mpi_errno,"key");
-    
     pmi_errno = PMI_KVS_Get_value_length_max(&val_max_sz);
-    if (pmi_errno != PMI_SUCCESS)
-    {
-	MPIU_ERR_SETANDJUMP1(mpi_errno,MPI_ERR_OTHER,
-			     "**pmi_kvs_get_value_length_max", 
-			     "**pmi_kvs_get_value_length_max %d", pmi_errno);
-    }
-
+    MPIU_ERR_CHKANDJUMP1(pmi_errno, mpi_errno, MPI_ERR_OTHER,
+                         "**pmi_kvs_get_value_length_max",
+                         "**pmi_kvs_get_value_length_max %d", pmi_errno);
     MPIU_CHKLMEM_MALLOC(val,char *,val_max_sz,mpi_errno,"val");
 
 #ifdef MPIDI_CH3_USES_SHM_NAME
@@ -261,34 +253,23 @@ int MPIDI_CH3U_Init_sshm(int has_parent, MPIDI_PG_t *pg_p, int pg_rank,
 	}
 	/*printf("root process created bootQ: '%s'\n", queue_name);fflush(stdout);*/
 
-	mpi_errno = PMI_KVS_Put(kvsname, key, val);          
-	if (mpi_errno != 0) {
-	    MPIU_ERR_SETANDJUMP1(mpi_errno,MPI_ERR_OTHER, "**pmi_kvs_put", 
-				 "**pmi_kvs_put %d", mpi_errno);
-	}
-	mpi_errno = PMI_KVS_Commit(kvsname);
-	if (mpi_errno != 0) {
-	    MPIU_ERR_SETANDJUMP1(mpi_errno,MPI_ERR_OTHER, "**pmi_kvs_commit", 
-				 "**pmi_kvs_commit %d", mpi_errno);
-	}
-	mpi_errno = PMI_Barrier();
-	if (mpi_errno != 0) {
-	    MPIU_ERR_SETANDJUMP1(mpi_errno,MPI_ERR_OTHER, "**pmi_barrier", 
-				 "**pmi_barrier %d", mpi_errno);
-	}
+	pmi_errno = PMI_KVS_Put(kvsname, key, val);          
+        MPIU_ERR_CHKANDJUMP1(pmi_errno, mpi_errno, MPI_ERR_OTHER, "**pmi_kvs_put", "**pmi_kvs_put %d", pmi_errno);
+
+	pmi_errno = PMI_KVS_Commit(kvsname);
+        MPIU_ERR_CHKANDJUMP1(pmi_errno, mpi_errno, MPI_ERR_OTHER, "**pmi_kvs_commit", "**pmi_kvs_commit %d", pmi_errno);
+	
+	pmi_errno = PMI_Barrier();
+        MPIU_ERR_CHKANDJUMP1(pmi_errno, mpi_errno, MPI_ERR_OTHER, "**pmi_barrier", "**pmi_barrier %d", pmi_errno);
     }
     else
     {
-	mpi_errno = PMI_Barrier();
-	if (mpi_errno != 0) {
-	    MPIU_ERR_SETANDJUMP1(mpi_errno,MPI_ERR_OTHER, "**pmi_barrier", 
-				 "**pmi_barrier %d", mpi_errno);
-	}
-	mpi_errno = PMI_KVS_Get(kvsname, key, val, val_max_sz);
-	if (mpi_errno != 0) {
-	    MPIU_ERR_SETANDJUMP1(mpi_errno,MPI_ERR_OTHER, "**pmi_kvs_get", 
-				 "**pmi_kvs_get %d", mpi_errno);
-	}
+	pmi_errno = PMI_Barrier();
+        MPIU_ERR_CHKANDJUMP1(pmi_errno, mpi_errno, MPI_ERR_OTHER, "**pmi_barrier", "**pmi_barrier %d", pmi_errno);
+	
+	pmi_errno = PMI_KVS_Get(kvsname, key, val, val_max_sz);
+        MPIU_ERR_CHKANDJUMP1(pmi_errno, mpi_errno, MPI_ERR_OTHER, "**pmi_kvs_get", "**pmi_kvs_get %d", pmi_errno);
+
 	MPIU_Strncpy(queue_name, val, MPIDI_MAX_SHM_NAME_LENGTH);
 #ifdef MPIDI_CH3_USES_SHM_NAME
 	MPIU_Strncpy(pgch->shm_name, val, MPIDI_MAX_SHM_NAME_LENGTH);
@@ -324,11 +305,8 @@ int MPIDI_CH3U_Init_sshm(int has_parent, MPIDI_PG_t *pg_p, int pg_rank,
 	    MPIU_ERR_SETANDJUMP(mpi_errno,MPI_ERR_OTHER, "**boot_create");
 	}
     }
-    mpi_errno = PMI_Barrier();
-    if (mpi_errno != 0) {
-	MPIU_ERR_SETANDJUMP1(mpi_errno, MPI_ERR_OTHER, "**pmi_barrier", 
-			     "**pmi_barrier %d", mpi_errno);
-    }
+    pmi_errno = PMI_Barrier();
+    MPIU_ERR_CHKANDJUMP1(pmi_errno, mpi_errno, MPI_ERR_OTHER, "**pmi_barrier", "**pmi_barrier %d", pmi_errno);
 
 #ifdef USE_PERSISTENT_SHARED_MEMORY
     /* The bootstrap queue cannot be unlinked because it can be used outside 
@@ -474,7 +452,7 @@ static int getNodeRootRank(int pg_rank, int *root_rank)
     /* If the list is not sorted then find the lowest rank */
     for (i=1; i<num_ranks; i++)
     {
-	min_rank = MPIDU_MIN(min_rank, ranks[i]);
+	min_rank = MPIU_MIN(min_rank, ranks[i]);
     }
 
     *root_rank = min_rank;
