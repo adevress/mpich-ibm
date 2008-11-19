@@ -1,6 +1,6 @@
 /*   $Source: /var/local/cvs/gasnet/gasnet_membar.h,v $
- *     $Date: 2006/12/30 10:18:39 $
- * $Revision: 1.117 $
+ *     $Date: 2008/10/12 06:12:06 $
+ * $Revision: 1.122 $
  * Description: GASNet header for portable memory barrier operations
  * Copyright 2002, Dan Bonachea <bonachea@cs.berkeley.edu>
  * Terms of use are as specified in license.txt
@@ -78,7 +78,9 @@
   #else
     GASNETI_INLINE(_gasneti_local_mb)
     void _gasneti_local_mb(void) {
-      GASNETI_ASM("sync");  /* MIPS II+ memory barrier */ 
+      GASNETI_ASM(".set mips2  \n\t"
+                  "sync        \n\t"  /* MIPS II+ memory barrier */ 
+                  ".set mips0");
     }
     #define gasneti_local_mb()  _gasneti_local_mb()
     #define gasneti_local_wmb() _gasneti_local_mb()
@@ -154,10 +156,10 @@
 /* ------------------------------------------------------------------------------------ */
 #elif PLATFORM_ARCH_IA64 /* Itanium */
     /* Empirically observed that IA64 requires a full "mf" for both wmb and rmb (see bug 1000).
-     * The reason is that the Itanium memeory model only ensures ordering in one direction when
+     * The reason is that the Itanium memory model only ensures ordering in one direction when
      * using st.rel or ld.acq.  In particular, they implement the minimum required for proper
-     * mutex implementation.  While preventing loads and stores from moving OUT of the creitical
-     * section, this still allows for loads before the lock and stored after the unlock to reorder
+     * mutex implementation.  While preventing loads and stores from moving OUT of the critical
+     * section, this still allows for loads before the lock and stores after the unlock to reorder
      * INTO the critical section.  We need more than that.
      */
    #if PLATFORM_COMPILER_INTEL
@@ -362,6 +364,29 @@
    #define gasneti_local_wmb() gasneti_compiler_fence()
    #define gasneti_local_rmb() gasneti_compiler_fence()
    #define gasneti_local_mb()  gasneti_compiler_fence()
+   #define GASNETI_RMB_IS_MB
+   #define GASNETI_WMB_IS_MB
+/* ------------------------------------------------------------------------------------ */
+#elif PLATFORM_ARCH_ARM && PLATFORM_OS_LINUX && PLATFORM_COMPILER_GNU
+   #if defined(GASNETI_UNI_BUILD)
+     /* On a uniprocessor build avoid performing what reduces to an expensive no-op */
+     #define gasneti_local_mb()  gasneti_compiler_fence()
+   #elif GASNETI_HAVE_ARM_MEMBAR 
+     GASNETI_INLINE(gasneti_local_mb)
+     void gasneti_local_mb(void) {
+       __asm__ __volatile__ (
+	  "  mov   r0, #0xffff0fff\n"
+	  "  mov   lr, pc\n"
+	  "  sub   pc, r0, #0x5f\n"
+	  : : : "r0", "lr", "cc", "memory" );
+     }
+     #define gasneti_local_mb()  gasneti_local_mb()
+   #else
+     #error "Configure found no memory barrier support (required for SMPs).  Reconfigure with --disable-smp-safe to continue."
+   #endif
+   /* Common: */
+   #define gasneti_local_wmb() gasneti_local_mb()
+   #define gasneti_local_rmb() gasneti_local_mb()
    #define GASNETI_RMB_IS_MB
    #define GASNETI_WMB_IS_MB
 /* ------------------------------------------------------------------------------------ */

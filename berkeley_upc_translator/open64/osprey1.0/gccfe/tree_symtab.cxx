@@ -43,8 +43,8 @@
 #include "defs.h"
 #include "errors.h"
 #include "gnu_config.h"
-#include "gnu/flags.h"
 extern "C" {
+#include "gnu/flags.h"
 #include "gnu/system.h"
 #include "gnu/tree.h"
 #include "gnu/toplev.h"
@@ -102,7 +102,6 @@ BOOL psptr_inner_exception = FALSE;
 BOOL sptr_align_exception = FALSE;
 BOOL psptr_align_exception  = FALSE;
 BOOL struct_align_promote = FALSE;
-extern int compiling_upc;
 
 
 //store the shared variables.  This is processed at the end of every PU
@@ -734,12 +733,14 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 	case UNION_TYPE: {	// new scope for local vars
 		TY &ty = (idx == TY_IDX_ZERO) ? New_TY(idx) : Ty_Table[idx];
 		STR_IDX name;
+		
 		if (TYPE_NAME(type_tree) && TREE_CODE(TYPE_NAME(type_tree)) == TYPE_DECL) {
 		  name = Get_typedef_name(type_tree);
 		} else {
 		  name = Save_Str(Get_Name(TYPE_NAME(type_tree)));
 		}
 
+	
 		TY_Init (ty, tsize, KIND_STRUCT, MTYPE_M, name);
 		
 		if (TREE_CODE(type_tree) == UNION_TYPE) {
@@ -783,7 +784,8 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 				&& Get_Integer_Value(DECL_SIZE(field)) > 0
 				&& Get_Integer_Value(DECL_SIZE(field))
 				  != (TY_size(Get_TY(TREE_TYPE(field))) 
-					* BITSPERBYTE) )
+					* BITSPERBYTE) && 
+			     TY_kind(Get_TY(TREE_TYPE(field))) == KIND_SCALAR )
 			{
 				// for some reason gnu doesn't set bit field
 				// when have bit-field of standard size
@@ -833,7 +835,8 @@ Create_TY_For_Tree (tree type_tree, TY_IDX idx)
 				&& Get_Integer_Value(DECL_SIZE(field)) > 0
 				&& Get_Integer_Value(DECL_SIZE(field))
 				  != (TY_size(Get_TY(TREE_TYPE(field))) 
-					* BITSPERBYTE) )
+				      * BITSPERBYTE) && 
+			     TY_kind(Get_TY(TREE_TYPE(field))) == KIND_SCALAR )
 			{
 				// for some reason gnu doesn't set bit field
 				// when have bit-field of standard size
@@ -1491,5 +1494,11 @@ Create_ST_For_Tree (tree decl_node)
 }
 
 
-
-
+void Pad_Field_for_UPC_Align(tree type, 
+			     unsigned int actual_align, unsigned int known_align, 
+			     unsigned int desired_align) {
+  TY_IDX ty_idx;
+  
+ 
+ 
+}

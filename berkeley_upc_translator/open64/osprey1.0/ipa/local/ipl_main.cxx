@@ -149,6 +149,8 @@ WN_MAP Stmt_Map;
 FILE* STDOUT = stdout;
 DYN_ARRAY<char*>* Ipl_Symbol_Names = NULL; 
 DYN_ARRAY<char*>* Ipl_Function_Names = NULL; 
+PHI_NODE_TO_INT_MAP* Phi_To_Idx_Map;
+CHI_CR_TO_INT_MAP* Chi_To_Idx_Map;
 
 /* ====================================================================
  *

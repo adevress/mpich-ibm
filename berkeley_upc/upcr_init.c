@@ -1,7 +1,7 @@
 /*
  * UPC Runtime initialization code
  *
- * $Id: upcr_init.c,v 1.206 2007/10/08 22:54:05 jduell Exp $
+ * $Id: upcr_init.c,v 1.211 2008/11/06 15:16:42 bonachea Exp $
  */
 
 #include <upcr_internal.h>
@@ -205,23 +205,14 @@ _upcri_startup_freeze(struct upcri_spawn_arg *pargs,
 void upcri_startup_messages() 
 {
   if (gasnet_mynode() == 0) {
-    const char *debug = "";
-    const char *trace = "";
-    const char *stats = "";
-    const char *inst = "";
-    #ifdef GASNET_DEBUG
-      debug = "debugging ";
-    #endif
-    #ifdef GASNET_TRACE
-      trace = "tracing ";
-    #endif
-    #ifdef GASNET_STATS
-      stats = "statistics ";
-    #endif
+    char tmp[1024];
+    const char *warning = gasnett_performance_warning_str();
+    strcpy(tmp,warning);
     #ifdef UPCRI_GASP
-      inst = "gasp-instrumentation ";
+      strcat(tmp,"        GASP performance instrumentation\n");
     #endif
-    if (*debug || *trace || *stats || *inst) {
+
+    if (*tmp) {
       if (!upcr_getenv("UPC_NO_WARN")) {
 	fprintf(stderr,
 "-----------------------------------------------------------------------\n"
@@ -229,14 +220,14 @@ void upcri_startup_messages()
 "\n"
 " This application was built from a Berkeley UPC installation that\n"
 " was configured and built with these optional features enabled:\n"
-"        %s%s%s%s\n"
+"%s"
 " This usually has a SERIOUS impact on performance, so you should NOT\n"
 " trust any performance numbers reported in this program run!!!\n"
 "\n"
 " To suppress this message, pass '-quiet' to the upcrun command or set\n"
 " the UPC_NO_WARN or UPC_QUIET environment variables.\n"
 "-----------------------------------------------------------------------\n"
-	,debug,trace,stats,inst);
+	,tmp);
 	fflush(stderr);
       }
     }
@@ -299,7 +290,8 @@ parse_pthread_map(char *mapstr, int fill)
 	    upcri_err("invalid format for UPC_PTHREADS_MAP: '%s'", mapstr);
 	if (pthreads > UPCR_MAX_PTHREADS)
 	    upcri_err(
-		"value %d in UPC_PTHREADS_MAP (%s) > UPCR_MAX_PTHREADS (%d)",
+		"value %d in UPC_PTHREADS_MAP (%s) > UPCR_MAX_PTHREADS (%d). "
+                "To enable larger pthread counts on most systems, rebuild UPCR with: configure --with-max-pthreads-per-node=N",
 		pthreads, mapstr, UPCR_MAX_PTHREADS);
 	if (fill) {
 	    upcri_node2pthreads[nodecount] = pthreads;
@@ -353,8 +345,9 @@ get_thread_info(upcr_thread_t static_threadcnt,
 	if (pthreads_per <= 0)
 	    upcri_err("Illegal value for UPC_PTHREADS_PER_PROC: %d", pthreads_per);
 	if (pthreads_per > UPCR_MAX_PTHREADS)
-	    upcri_err("UPC_PTHREADS_PER_PROC (%d) > UPCR_MAX_PTHREADS (%d)",
-		      pthreads_per, UPCR_MAX_PTHREADS);
+	    upcri_err("UPC_PTHREADS_PER_PROC (%d) > UPCR_MAX_PTHREADS (%d). "
+                   "To enable larger pthread counts on most systems, rebuild UPCR with: configure --with-max-pthreads-per-node=N",
+                   pthreads_per, UPCR_MAX_PTHREADS);
 	upcri_threads = nodes * pthreads_per;
 	upcri_thread2node = UPCRI_XMALLOC_EARLY(gasnet_node_t, upcri_threads);
 	upcri_thread2pthread = UPCRI_XMALLOC_EARLY(upcri_pthread_t, upcri_threads);
@@ -521,10 +514,12 @@ void upcr_startup_attach(uintptr_t default_shared_size,
     startup_lvl++;
 
     #if UPCR_USING_LINKADDRS
-      if (!UPCRL_shared_begin)
-	  upcri_err("start of shared link segment (UPCRL_shared_begin) is NULL");
-      if (!UPCRL_shared_end)
-	  upcri_err("end of shared link segment (UPCRL_shared_end) is NULL");
+      {
+        /* Make sure that the compiler doesn't optimize away the check. */
+        void * volatile p = UPCRL_shared_end;
+        if (!p)
+           upcri_err("end of shared link segment (UPCRL_shared_end) is NULL");
+      }
       upcri_linksegstart = (uintptr_t)UPCRL_shared_begin;
     #endif
 
@@ -1016,6 +1011,22 @@ static void *upcri_perthread_spawn(void *args)
       printf(""); /* bug1506: workaround for thread-safety bug in atof */
     #endif
 
+    #ifdef PLATFORM_OS_CYGWIN
+      /* bug 2438/1847: cygwin's threaded I/O library is not reliably synchronized,
+         so try to reduce the incidence of I/O-related hangs by invoking
+         some relevant I/O early from a single thread. Note the I/O library 
+         appears to be lazily synchronized, so this hack is ineffective before the
+         first call to pthread_create.
+       */
+       if (!upcri_mypthread()) {
+         const char *empty = "";  /* avoid a gcc warning for printfing an empty string */
+         fprintf(stdout, empty);  /* init puts() internal locks */
+         fprintf(stderr, empty);  
+         gasnett_flush_streams(); /* init fflush() internal locks */
+       }
+    #endif
+
+
     /* Barrier, so inits complete on all threads before running user code */
     UPCRI_SINGLE_BARRIER();
     /* init GASP instrumentation tool, which may run some UPC code callbacks */
@@ -1283,8 +1294,8 @@ upcr_global_exit(int exitcode)
 
     if (UPCRL_profile_finalize != NULL) {
       #ifdef UPCRI_SUPPORT_PTHREADS
-        static pthread_mutex_t tmp_lock = PTHREAD_MUTEX_INITIALIZER;
-        pthread_mutex_lock(&tmp_lock);
+        static gasnett_mutex_t tmp_lock = GASNETT_MUTEX_INITIALIZER;
+        gasnett_mutex_lock(&tmp_lock);
         if (UPCRL_profile_finalize != NULL) {
       #endif
           if (gasnet_nodes() > 1 && !upcr_getenv("UPC_QUIET"))
@@ -1296,7 +1307,7 @@ upcr_global_exit(int exitcode)
           gasnett_flush_streams();
       #ifdef UPCRI_SUPPORT_PTHREADS
         }
-        pthread_mutex_unlock(&tmp_lock);
+        gasnett_mutex_unlock(&tmp_lock);
       #endif
     }
 
@@ -1413,7 +1424,7 @@ static void do_bupc_init_reentrant(int *pargc, char ***pargv,
     if (alreadycalled++)
 	return;
 
-#if UPCR_USING_LINKADDRS
+#if UPCR_USING_LINKADDRS || UPCRI_USING_GCCUPC
     static_data_size = upcri_roundup_pagesz(UPCRL_shared_end - 
 					    UPCRL_shared_begin);
 #endif

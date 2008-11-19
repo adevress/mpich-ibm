@@ -39,7 +39,7 @@ int MPIDI_Isend_self(const void    * buf,
   /* create a send request */
   /* --------------------- */
 
-  if (!(sreq = MPID_SendRequest_create()))
+  if (!(sreq = MPID_Request_create()))
     {
       *request = NULL;
       int mpi_errno = MPIR_Err_create_code(MPI_SUCCESS,
@@ -68,8 +68,7 @@ int MPIDI_Isend_self(const void    * buf,
   if (rreq == NULL)
     {
       int mpi_errno;
-      MPIU_Object_set_ref(sreq, 0);
-      MPID_Request_destroy(sreq);
+      MPID_Request_release(sreq);
       *request = NULL;
       mpi_errno = MPIR_Err_create_code(MPI_SUCCESS,
                                        MPIR_ERR_RECOVERABLE,
@@ -106,13 +105,11 @@ int MPIDI_Isend_self(const void    * buf,
                             &rreq->status.MPI_ERROR);
 
       rreq->status.count = data_sz;
-      MPID_Request_set_completed(rreq);
-      MPID_Request_release(rreq);
+      MPID_Request_complete(rreq);
 
       /* sreq has never been seen by the user or outside this thread,
          so it is safe to reset ref_count and cc */
       sreq->cc                   = 0;
-      MPIU_Object_set_ref(sreq, 1);
       *request                   = sreq;
       sreq->comm                 = comm;
       sreq->kind                 = MPID_REQUEST_SEND;
@@ -167,7 +164,6 @@ int MPIDI_Isend_self(const void    * buf,
 
       /* sreq has never been seen by the user or outside
          this thread, so it is safe to reset ref_count and cc */
-      MPIU_Object_set_ref(sreq, 1);
       sreq->cc                   = 0;
       *request                   = sreq;
       sreq->comm                 = comm;

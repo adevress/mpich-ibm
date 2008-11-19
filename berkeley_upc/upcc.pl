@@ -24,7 +24,7 @@ use Cwd;
 my $debug_on = 0;
 
 # All the network APIs we support
-my (@all_networks) = qw/mpi udp elan lapi gm smp vapi ibv sci shmem portals/;
+my (@all_networks) = qw/mpi udp elan lapi gm smp vapi ibv sci shmem portals dcmf/;
 
 # Configuration parameters.
 #   Each config file variable must be set here, either to its default value, or
@@ -194,6 +194,7 @@ my $sizesfile = "upcc-sizes";
 # stoopid Power alignment exceptions
 my ($dbl_1st_struct_align,  $int64_1st_struct_align, $sharedptr_1st_struct_align, $psharedptr_1st_struct_align);
 my ($dbl_inner_struct_align,  $int64_inner_struct_align, $sharedptr_inner_struct_align, $psharedptr_inner_struct_align);
+my $struct_promote;
 
 # extra flags for preprocessing/compilation
 my $extra_cppflags;
@@ -356,6 +357,11 @@ Advanced options:
                       threads.  (Available only for '-network=smp -pthreads' 
                       (or '-network=shmem' on the Cray X1).  If available, on 
                       by default if -T passed a power-of-two value.
+   -opt-enable=OPT1[,OPT2]
+   -opt-disable=OPT3[,OPT4]
+                      Selectively enable/disable specified optimizations in the
+                      BUPC UPC-to-C translator. See translator documentation for
+		      the available optimizations.
    -shared-heap-max=NUM   Specify the hard limit (per UNIX process) of the 
                       shared memory heap. This constitutes an upper limit on
                       -shared-heap (although unlike -shared-heap this is a 
@@ -922,6 +928,8 @@ sub initialize
         'O'                 => \$opt_optimize,
         'o=s'               => \$opt_outputname,
         'opt'               => \$opt_transopt,
+        'opt-enable=s'      => \&opt_control,
+        'opt-disable=s'     => \&opt_control,
 	'ansi-alias'        => \$opt_ansi_alias,		       
         'pg'                => \$opt_profile,
         'inst'              => \$opt_inst,
@@ -1372,6 +1380,9 @@ sub initialize
 	    $int64_1st_struct_align = align_exception('int64char_struct', $type64);
 	    $int64_inner_struct_align = align_innerstruct('int64_innerstruct', $type64, $int64_1st_struct_align);
 	}
+        # promotion to strictest alignment when structs are nested
+        $struct_promote = (($$sizes_ref{'struct_promote'} == 24) &&
+                           ($$sizes_ref{'int64char_struct'} == 16)) ? '1' : '0';
 
         # maxblocksize is stored as number of bits in shared pointer's phase field
         my $phasebits = $$sizes_ref{'phasebits'};
@@ -1547,6 +1558,24 @@ sub do_ARGVoodoo {
     }
 }
 
+################################################################################
+### Handle --opt-enable/opt-disable flags
+################################################################################
+sub opt_control { 
+  my ($en,$opts) = @_;
+  die "upcc: --opt-enable/--opt-disable not supported for GCCUPC" if ($gccupc);
+  if ($en eq "opt-enable") {
+    $en = "do";
+  } elsif ($en eq "opt-disable") {
+    $en = "no";
+  } else {
+    die "upcc: unrecognized opt_control flag $en\n";
+  }
+  foreach (split /,/,$opts) { 
+    push @opt_UPC_args, "-Wb,-$en-$_"; 
+    push @opt_W2C_args, "-$en-$_"; 
+  } 
+}
 
 ################################################################################
 ### Find site config file, and read in settings
@@ -2092,6 +2121,8 @@ alignof_dbl_innerstruct        $dbl_inner_struct_align
 alignof_int64_innerstruct      $int64_inner_struct_align 
 alignof_sharedptr_innerstruct  $sharedptr_inner_struct_align 
 alignof_psharedptr_innerstruct $psharedptr_inner_struct_align 
+# exception to previous exception
+alignof_struct_promote         $struct_promote
 maxblocksz          $maxblocksz
 UPCRConfig          $upcrlib_ctuple
 GASNetConfig        $gasnetlib_ctuple
@@ -3124,6 +3155,21 @@ sub do_link
     }
     push @toLinkQuoted, "'$tmp/$link_o'";
 
+    # compile trans_extra files
+    if (!$gccupc) {
+      foreach my $trans_extra_file (sort <$tmp/upcr_trans_extra*.c>) {
+        # skip the trans_extra file we append to startup_tmp.c
+        next if ($trans_extra_file =~ m@/upcr_trans_extra\.c$@);
+        $trans_extra_file =~ s@.*/([^/]*)\.c$@$1.o@;
+
+        my $cmd = qq|$gmake -f $upcr_include/upcc.mak UPCR_CONDUIT=$opt_network|
+                . qq| UPCR_PARSEQ=$parseq EXTRA_CPPFLAGS="$cppflags" |
+                . qq| EXTRA_CFLAGS="$extra_cflags" \'$trans_extra_file\'|;
+        runCmd($cmd, "error compiling trans_extra file $trans_extra_file", $tmp);
+        push @toLinkQuoted, "'$tmp/$trans_extra_file'";
+      }
+    }
+
     # build the application
     die "Link target '$target' already exists as a directory\n" if (-d $target);
     $extra_ldflags .= " -v" if $opt_verbose > 1;
@@ -3589,8 +3635,9 @@ int main(int argc, char **argv)
 EOF
     }
 
-    # append any translator-provided supporting files   
-    foreach my $trans_extra_file (sort <$tmp/upcr_trans_extra*.h>, sort <$tmp/upcr_trans_extra*.c>) {
+    # append the two "primary" translator-provided supporting files   
+    foreach my $trans_extra_file ("$tmp/upcr_trans_extra.w2c.h", "$tmp/upcr_trans_extra.c") {
+      next unless -f $trans_extra_file;
       print LINK_C "#line 1 \"$trans_extra_file\"\n";
       open (TRANS_EXTRA, "<$trans_extra_file")
         or die "Can't open '$trans_extra_file'\n";
@@ -3606,13 +3653,12 @@ EOF
 sub gccupc_compile {
     my ($obj, $errmsg, $preprocessed_input) = @_;
 
-    my $extra_cflags = "@opt_CC_args";
+    my $extra_cflags = "";
     $extra_cflags .= " -fpreprocessed" if $preprocessed_input;
     $extra_cflags .= " -v" if $opt_verbose > 1;
     $extra_cflags .= " -g" if $opt_debug;
-    # TODO:  what level of -O to pass gccupc?
-    $extra_cflags .= " -O" if $opt_optimize;
-    my ($ver_A, $ver_B, $ver_C, $ver_D) = ($conf{'gccupc_version'} =~ /(\d+)\.(\d+)\.(\d+)\.(\d+)/);
+    $extra_cflags .= " -O2 --param max-inline-insns-single=35000 --param inline-unit-growth=10000 --param large-function-growth=200000 -Winline" unless $opt_debug; # default is same as opt, per Nenad on 2008.10.07 et seq.
+    my ($ver_A, $ver_B, $ver_C, $ver_D) = ($conf{'gccupc_version'} =~ /(\d+)\.(\d+)\.(\d+)[.-](\d+)/);
     my $gccupc_version = ($ver_A<<24)|($ver_B<<16)|($ver_C<<8)|$ver_D;
     $extra_cflags .= " -fupc-libcall" if ($gccupc_version >= 0x03030209)
                                          && ($gccupc_version < 0x04000000);
@@ -3621,6 +3667,7 @@ sub gccupc_compile {
     # TODO: Need? Specifies default # of pthreads: checked by gccupc
     #$xtraflags .= " -fupc-pthreads-per-process-$opt_pthreads" 
     #    if $opt_pthreads;
+    $extra_cflags .= " @opt_CC_args"; # at the end to allow user overrides
     my $cmd = qq|$gmake -f $upcr_include/upcc.mak GCCUPC="$trans" EXTRA_CFLAGS="$extra_cflags" UPCR_PARSEQ=$parseq USE_GCCUPC_COMPILER=yes '$obj'|;
     $errmsg = "error invoking gccupc compiler" unless $errmsg;
     runCmd($cmd, $errmsg, $tmp);
@@ -3632,15 +3679,33 @@ sub gccupc_compile {
 sub gccupc_compile_marker_file
 {
     my ($name) = @_;   # 'begin' or 'end'
-    my $upcfile = "$tmp/gccupc_$name.c";
-    my $obj =     "$tmp/gccupc_$name.o";
+    my $cfile = "$tmp/gccupc_$name.c";
+    my $obj =   "$tmp/gccupc_$name.o";
+    my ($ver_A, $ver_B, $ver_C, $ver_D) = ($conf{'gccupc_version'} =~ /(\d+)\.(\d+)\.(\d+)[.-](\d+)/);
+    my $gccupc_version = ($ver_A<<24)|($ver_B<<16)|($ver_C<<8)|$ver_D;
 
-    open (UPC_FILE, ">$upcfile") or die "Can't create '$upcfile' for writing\n";
-    # space before '[]' is intentional (else we're accessing '@name')
-    print UPC_FILE "#include <upc.h>\n\nshared char UPCRL_shared_$name [1];\n";
-    close UPC_FILE;
+    open (C_FILE, ">$cfile") or die "Can't create '$cfile' for writing\n";
+    if ($name eq 'begin') {
+      # Allocate guard page at the beginning of the shared section
+      # for UPCR compatibility.  The value, 0x10000 (64K) is sufficiently
+      # large to ensure that the GCCUPC's packed sptr rep. will never
+      # generate an sptr that refers to the first page in remote memory.
+      print C_FILE "char UPCRL_shared_begin[0x10000] __attribute__((section(\"upc_shared\")));\n";
+    } else {
+      print C_FILE "char UPCRL_shared_end[] __attribute__((section(\"upc_shared\"))) = {};\n";
+    }
 
-    gccupc_compile($obj, "error compiling linker marker file '$upcfile'", 0);
+    if ($gccupc_version >= 0x04020002) {
+      print C_FILE "void (*UPCRL_init_array_$name\[1]) (void) __attribute__((section(\"upc_init_array\")));\n";
+    }
+    close C_FILE;
+
+    # Compile as C code to avoid interpreting init_array as thread-local
+    # when compiled in -pthreads mode.
+    my $extra_cflags = " -x c";
+    my $cmd = qq|$gmake -f $upcr_include/upcc.mak GCCUPC="$trans" EXTRA_CFLAGS="$extra_cflags" UPCR_PARSEQ=$parseq USE_GCCUPC_COMPILER=yes '$obj'|;
+    my $errmsg = "error compiling linker marker file '$cfile'";
+    runCmd($cmd, $errmsg, $tmp);
 }
 
 ################################################################################
@@ -3932,7 +3997,20 @@ sub update_tld_file
     while (<OBJ>) {
         # no need to distinguish tentative declarations for global struct
         s/UPCR_TLD_DEFINE_TENTATIVE/UPCR_TLD_DEFINE/;
-        push @tld_macros, "$1\n" if /(UPCR_TLD_DEFINE\([^)]+\))/;
+	if (m/UPCR_TLD_DEFINE(\([^;]+\))/) { 
+	  # bug 2228 - handle nested parens in args, but watch for parens in initializer
+	  my $text = reverse($1);
+	  my $args = "";
+	  my $nestlvl = 0;
+	  while (defined $text) {
+	    my $char = chop($text);
+	    $args .= $char;
+	    $nestlvl++ if ($char eq '(');
+	    $nestlvl-- if ($char eq ')');
+            last if ($nestlvl == 0);
+	  }
+          push @tld_macros, "UPCR_TLD_DEFINE$args\n";
+	}
     }
     close OBJ;
 

@@ -58,8 +58,11 @@
 #include "anl_driver.h" 
 #include "wb_f90_lower.h"
 
-#include "stack.h" // For MP_region_stack
-
+#if(__GNUC__ == 4 && __GNUC_MINOR__ == 3)
+#include <stack> // For MP_region_stack
+#else
+#include "stack.h"
+#endif
 #include "intrn_info.h"
 
 #include "f90_utils.h"

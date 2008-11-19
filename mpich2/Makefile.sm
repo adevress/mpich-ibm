@@ -182,7 +182,7 @@ install-preamble:
 install_local_DIR = libdir
 install-local:
 	-if [ "@BUILD_TVDLL@" = "yes" ] ; then \
-	    $(INSTALL_DATA) src/mpi/debugger/lib@debugger_lib@.@SHLIB_EXT@ \
+	    $(INSTALL_PROGRAM) src/mpi/debugger/lib@debugger_lib@.@SHLIB_EXT@ \
 			${DESTDIR}@debugger_path@ ; fi
 	-if [ -n "@other_pm_names@" ] ; then \
 	    for pm in @other_pm_names@ /dev/null ; do \

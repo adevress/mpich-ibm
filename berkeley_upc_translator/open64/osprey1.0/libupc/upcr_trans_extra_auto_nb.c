@@ -113,11 +113,13 @@ extern void upcrt_auto_nb_thread_init() {
   UPCR_BEGIN_FUNCTION();
   UPCRT_GLOBAL_PUT *my_vars = (UPCRT_GLOBAL_PUT *) UPCR_TLD_ADDR(global_vars);   
 
+  memset(my_vars, 0, sizeof(UPCRT_GLOBAL_PUT));
+
   my_vars->upcrt_nb_puts = (upcrt_nb_put_array_t*) upcri_malloc(gasnet_nodes() * sizeof(upcrt_nb_put_array_t));
   memset(my_vars->upcrt_nb_puts, 0, gasnet_nodes() * sizeof(upcrt_nb_put_array_t));
   
   my_vars->upcrt_nb_puts_aux = (upcrt_nb_put_array_t**) upcri_malloc(gasnet_nodes() * sizeof(upcrt_nb_put_array_t));
-  my_vars->active_nodes = 0;
+  my_vars->min_put_size = 1e7;
   
   /* the individual nb put queues to each node are initialized on demand */
 }

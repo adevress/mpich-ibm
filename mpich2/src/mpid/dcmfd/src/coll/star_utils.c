@@ -54,6 +54,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   */
 
 #include "mpidi_star.h"
+#include "mpido_coll.h"
 
 FILE * DCMF_STAR_fd = NULL;
 char comm_shape_str[3][8] = {"COMWRLD", "RECT", "IRREG"};
@@ -77,17 +78,19 @@ STAR_AssignBestAlgorithm(STAR_Tuning_Session * session)
   MPI = STAR_info.mpis[call_type];
 
   STAR_ALLOC(tmp, double, total_algs * STAR_info.invocs_per_algorithm);
-
+  
   /* compute the max of all algorithms time among all processes */
   MPIDO_Allreduce(session->time, tmp,
 		  STAR_info.invocs_per_algorithm * total_algs,
 		  MPI_DOUBLE, MPI_MAX, session->comm);
 
+#ifdef VBL2
   if (DCMF_STAR_fd)
     fprintf(DCMF_STAR_fd, 
 	    "\n%s: comm: %s np: %d msize: %d performance overview\n", 
 	    MPI, comm_shape_str[session -> comm -> dcmf.comm_shape],
             np, bytes);
+#endif
 
   for (i = 0; i < total_algs; i++)
   {
@@ -95,9 +98,13 @@ STAR_AssignBestAlgorithm(STAR_Tuning_Session * session)
     best[i] = -1;
     algorithms_times[i] = 0.0;
 
+#ifdef VBL2
     if (DCMF_STAR_fd)
+    {
       fprintf(DCMF_STAR_fd, "\n\n");
-
+    }
+#endif
+    
     /* compute the performance of this algorithm */
     STAR_ComputePerformance(session, tmp, i);
   }
@@ -111,6 +118,7 @@ STAR_AssignBestAlgorithm(STAR_Tuning_Session * session)
   STAR_SortAlgorithms(session);
   session->best_alg_index = session->best[0];
 
+#ifdef VBL2  
   if (DCMF_STAR_fd)
   {
     MPI = STAR_info.mpis[call_type];
@@ -122,6 +130,8 @@ STAR_AssignBestAlgorithm(STAR_Tuning_Session * session)
             bytes,
             1.0E6 * session->algorithms_times[session->best[0]]);
   }
+#endif
+
   MPIU_Free(tmp);
 }
 
@@ -158,7 +168,7 @@ STAR_CreateTuningSession(STAR_Tuning_Session ** ptr,
   {
     (*ptr) -> curr_invoc[i] = 0;
     for (j = 0; j < STAR_info.invocs_per_algorithm; j++)
-      (*ptr) -> time[i * STAR_info.invocs_per_algorithm + j] = 0;
+      (*ptr) -> time[i * STAR_info.invocs_per_algorithm + j] = 0.0;
   }
 
   (*ptr) -> repository = repo;
@@ -181,13 +191,15 @@ STAR_GetTuningSession(STAR_Callsite * collective_site,
 		      STAR_Algorithm * repo, int total_algs)
 {
   int rank;
-  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  MPID_Comm * comm_world, * comm;
   STAR_Tuning_Session * reset_ptr, * return_ptr;
   STAR_MPI_Call call_type;
-  MPID_Comm * comm;
 
   int bytes, id, op_type_support, np;
 
+  MPID_Comm_get_ptr(MPI_COMM_WORLD, comm_world);
+  rank = comm_world -> rank;
+  
   call_type = collective_site -> call_type;
   bytes = collective_site -> bytes;
   comm = collective_site -> comm;
@@ -234,44 +246,6 @@ STAR_GetTuningSession(STAR_Callsite * collective_site,
   comm -> dcmf.tuning_session = reset_ptr;
   return return_ptr;
 }
-#if 0
-STAR_Tuning_Session *
-STAR_GetTuningSession1(STAR_Callsite * collective_site,
-                       STAR_Algorithm * repo, int total_algs)
-{
-  STAR_Tuning_Session * ptr, * ptr_next;
-  STAR_MPI_Call call_type;
-  MPID_Comm * comm;
-
-  int bytes, id, op_type_support, np;
-
-  call_type = collective_site -> call_type;
-  bytes = collective_site -> bytes;
-  comm = collective_site -> comm;
-  id = collective_site -> id;
-  op_type_support =  collective_site -> op_type_support;
-  np = collective_site -> comm -> local_size;
-
-  ptr = comm -> dcmf.tuning_session;
-  ptr_next = comm -> dcmf.tuning_session;
-
-  /* search thru the list if the list if populated */
-  while (ptr)
-  {
-    if ((id == ptr -> callsite_id) &&
-        (np == ptr -> np) &&
-        (bytes == ptr -> bytes) &&
-        (op_type_support == ptr -> op_type_support))
-      return ptr;
-    ptr_next = ptr;
-    ptr = ptr -> next;
-  }
-
-  /* otherwise, create a new entry */
-  STAR_CreateTuningSession(&ptr_next, collective_site, repo, total_algs);
-  return ptr_next;
-}
-#endif
 
 void
 STAR_NextAlgorithm(STAR_Tuning_Session * session,
@@ -305,6 +279,9 @@ STAR_NextAlgorithm(STAR_Tuning_Session * session,
   DCMF_INFO_ZERO(&tmp_comm);
   DCMF_INFO_OR(comm_info, &tmp_comm);
 
+  /* because torus algorithms can handle irreg comms */
+  /* DCMF_INFO_SET(&tmp_comm, DCMF_IRREG_COMM);*/
+
   if (DCMF_INFO_ISSET(&tmp_comm, DCMF_USE_NOTREE_OPT_COLLECTIVES))
     DCMF_INFO_UNSET(&tmp_comm, DCMF_TREE_COMM);
   
@@ -317,7 +294,7 @@ STAR_NextAlgorithm(STAR_Tuning_Session * session,
   if (buff_attributes[2]) 
     DCMF_INFO_SET(&tmp_comm, DCMF_RBUFF_CONTIN);
 
-  if (buff_attributes[3]) 
+  if (buff_attributes[3])
     DCMF_INFO_SET(&tmp_comm, DCMF_BUFF_ALIGNED);
 
   if (!(bytes % sizeof(int))) 
@@ -358,11 +335,12 @@ STAR_NextAlgorithm(STAR_Tuning_Session * session,
         (alg_nprocs[1] && alg_nprocs[1] < np) || (alg_nprocs[0] > np))
       skip = 1;
 
+    /*
     if (!skip)
       if (call_type == BCAST_CALL && strstr(alg_name, "asyn"))
         if (comm -> dcmf.bcast_iter > 31)
           skip = 1;
-
+    */
     if (!skip)
     {
       if (DCMF_INFO_ISSET(alg_info, DCMF_TORUS_OP_TYPE) &&
@@ -473,17 +451,18 @@ STAR_SortAlgorithms(STAR_Tuning_Session * session)
         }
       }
 
+#ifdef VBL2
   if (DCMF_STAR_fd)
   {
     fprintf(DCMF_STAR_fd, "\nCurrent sorting\n");
     for (i = 0; i < total_algs; i++)
       if (session -> best[i] > -1)
-        fprintf(DCMF_STAR_fd, "%-39s best time %.2lfus\n",
+        fprintf(DCMF_STAR_fd, "%-39s best time %lfus\n",
                 session->repository[session->best[i]].name,
                 1.0E6 * session->algorithms_times[session->best[i]]);
     fflush(DCMF_STAR_fd);
   }
-
+#endif
   return MPI_SUCCESS;
 }
 
@@ -511,6 +490,7 @@ STAR_CheckPerformanceOfBestAlg(STAR_Tuning_Session * session)
   session->max[1] /= STAR_info.invocs_per_algorithm;
 
   /* reduce ave0 and ave1 over all processes using the max operation */
+  
   MPIDO_Allreduce(MPI_IN_PLACE, session->max, 2, MPI_DOUBLE, MPI_MAX,
 		  session->comm);
 
@@ -526,9 +506,10 @@ STAR_CheckPerformanceOfBestAlg(STAR_Tuning_Session * session)
     algorithm
   */
   best_time = 1.1 * session->algorithms_times[second];
-
+  
   if (DCMF_STAR_fd)
   {
+#ifdef VBL2
     fprintf(DCMF_STAR_fd, 
             "\n%s: comm: %s np: %d msize: %d Monitoring for %d invocs\n", 
             MPI, comm_shape_str[session -> comm -> dcmf.comm_shape], np, 
@@ -538,8 +519,9 @@ STAR_CheckPerformanceOfBestAlg(STAR_Tuning_Session * session)
             1.0E6 * session -> max[0], session -> repository[second].name,
             1.0E6 * session -> algorithms_times[second]);
     fflush(DCMF_STAR_fd);
+#endif
   }
-
+  
   /*
     more optimizations: we only switch to the second best algorithm when
     the performance of the so far best algorithm deteriorates over all
@@ -554,13 +536,14 @@ STAR_CheckPerformanceOfBestAlg(STAR_Tuning_Session * session)
   {
     if (session->max[1] >= best_time)
     {
+#ifdef VBL2
       if (DCMF_STAR_fd)
       {
         fprintf(DCMF_STAR_fd, "\nswitching to %s\n", 
                 session -> repository[second].name);
         fflush(DCMF_STAR_fd);
       }
-
+#endif
       /*
         get the index of the best algorithm on hand, update its time
         using the average over all monitoring phase, set new best
@@ -575,18 +558,18 @@ STAR_CheckPerformanceOfBestAlg(STAR_Tuning_Session * session)
       STAR_SortAlgorithms(session);
       session->factor = 2;
     }
-
+#ifdef VBL2
     else if (DCMF_STAR_fd)
       fprintf(DCMF_STAR_fd,"**** Re-monitoring\n");
-
+#endif
   }
   else
   {
     session->factor *= 2;
-
+#ifdef VBL2
     if (DCMF_STAR_fd)
       fprintf(DCMF_STAR_fd, "**** Keeping algorithm\n");
-
+#endif
   }
 
   /* reset book-keeping variables */
@@ -607,7 +590,7 @@ STAR_ComputePerformance(STAR_Tuning_Session * session,
 {
   char * MPI;
   int i, j, rank, np, bytes;
-  double sum = 0, hold;
+  double sum = 0.0, hold;
 
   np = session->comm->local_size;
   rank = session->comm->rank;
@@ -650,11 +633,12 @@ STAR_ComputePerformance(STAR_Tuning_Session * session,
   {
     sum += elapsed[alg_index * STAR_info.invocs_per_algorithm + i];
 
-    if (DCMF_STAR_fd && sum)
-      fprintf(DCMF_STAR_fd, "%-39s invoc %2d elapsed %.2lfus\n",
+#ifdef VBL2
+    if (DCMF_STAR_fd && (sum > 0.0))
+      fprintf(DCMF_STAR_fd, "%-39s invoc %2d elapsed %lfus\n",
               session->repository[alg_index].name, i,
               1.0E6 * elapsed[alg_index * STAR_info.invocs_per_algorithm+i]);
-
+#endif
   }
 
   /* now set the best time for each algorithm as the computed average */
@@ -666,107 +650,69 @@ STAR_ComputePerformance(STAR_Tuning_Session * session,
 int
 STAR_DisplayStatistics(MPID_Comm * comm)
 {
-  STAR_info.internal_control_flow = 1;
-#if 0
-  int np, i;
-  char * MPI;
+  STAR_Tuning_Session *ptr;
+  STAR_MPI_Call call_type;
   STAR_Algorithm * repository;
-  /* static double total_tune_ovrhd = 0; */
-  /* static double total_comm_ovrhd = 0; */
-  double tune_ave, curr_tune_total = 0;
-  double comm_ave, curr_comm_total = 0;
-  double post_tuning_ave, monitor_overhead;
+  int bytes, np, i, total_algs;
+  char * MPI;
 
-  for (i = 0; i < STAR_ROUTINES; i++)
+  /* we need to get src line and file name info */
+
+  ptr = comm->dcmf.tuning_session;
+  np = comm -> local_size;
+
+  //STAR_info.internal_control_flow = 1;
+  while (ptr)
   {
-    /* if we have not tuned the collective i */
-    if (!coll_ptrs[i])
-      continue;
+    repository = ptr->repository;
+    call_type = ptr->call_type;
+    MPI = STAR_info.mpis[call_type];
+    bytes = ptr->bytes;
+    total_algs = ptr->total_examined;
 
-    MPI = STAR_info.mpis[i];
-
-    curr_tune_total = 0;
-    curr_comm_total = 0;
-
-    while (coll_ptrs[i])
+    if (call_type == ALLGATHER_CALL) bytes /= np;
+    if (ptr->monitor_overhead)
     {
 
-      if (coll_ptrs[i]->comm->handle == comm->handle)
-      {
-        np = coll_ptrs[i]->np;
+      fprintf(DCMF_STAR_fd,
+              "\nComm: %s np: %d msize: %d #Tuning calls %d"
+              " #Monitor calls %d Best-Algorithm: %s elapsed %.2lfus"
+              " callsite: %x\n\n",
+              comm_shape_str[ptr->comm->dcmf.comm_shape],
+              np,
+              bytes,
+              ptr->tuning_calls, ptr->post_tuning_calls,
+              ptr->repository[ptr->best_alg_index].name,
+              1.0E6 * ptr->algorithms_times[ptr->best[0]],
+              ptr->callsite_id);
+      
+      fprintf(DCMF_STAR_fd, "Statistics\n");
+      for (i = 0; i < total_algs; i++)
+        if (ptr->best[i] > -1)
+          fprintf(DCMF_STAR_fd, "%-39s elapsed %.2lfus\n",
+                  repository[ptr->best[i]].name,
+                  1.0E6 * ptr->algorithms_times[ptr->best[i]]);
 
-        MPIR_Reduce(&(coll_ptrs[i]->tune_overhead), &tune_ave, 1,
-                    MPI_DOUBLE, MPI_SUM, 0, comm);
-        MPIDO_Reduce(&(coll_ptrs[i]->comm_overhead), &comm_ave, 1,
-                     MPI_DOUBLE, MPI_SUM, 0, comm);
-        MPIDO_Reduce(&(coll_ptrs[i]->post_tuning_time),
-                     &post_tuning_ave, 1, MPI_DOUBLE, MPI_SUM, 0, comm);
-        MPIDO_Reduce(&(coll_ptrs[i]->monitor_overhead),
-                     &monitor_overhead, 1, MPI_DOUBLE, MPI_SUM, 0, comm);
 
-        if (comm->rank == 0)
-        {
-
-          tune_ave /= np;
-          comm_ave /= np;
-          post_tuning_ave /= np;
-          monitor_overhead /= np;
-          repository = coll_ptrs[i]->repository;
-
-          fprintf(DCMF_STAR_fd,
-                  "\n%s %dB #Tuning calls %d #Monitor calls %d ",
-                  MPI, coll_ptrs[i]->bytes,
-                  coll_ptrs[i]->tuning_calls,
-                  coll_ptrs[i]->post_tuning_calls);
-
-          if (coll_ptrs[i]->best_alg_index != -1)
-            fprintf(DCMF_STAR_fd, "Best Alg: %s\n",
-                    repository[coll_ptrs[i]->best_alg_index].name);
-          else
-            fprintf(DCMF_STAR_fd, "\n");
-
-          fprintf(DCMF_STAR_fd, "Monitor Phase Os: %.2lfus Oc: %.2lfus\n",
-                  1.0E6 * tune_ave / coll_ptrs[i]->tuning_calls,
-                  1.0E6 * comm_ave / coll_ptrs[i]->tuning_calls);
-
-          if (monitor_overhead)
-            fprintf(DCMF_STAR_fd, "Tuning Phase  Os: %.2lfus Oc: %.2lfus\n",
-                    1.0E6 * monitor_overhead /
-                    coll_ptrs[i]->post_tuning_calls,
-                    1.0E6 * post_tuning_ave /
-                    coll_ptrs[i]->post_tuning_calls);
-          else
-            fprintf(DCMF_STAR_fd, "Monitor Phase Os: 0us Oc: 0us\n");
-
-          fprintf(DCMF_STAR_fd,
-                  "----------------------------------------\n");
-          fflush(DCMF_STAR_fd);
-
-          /*  need more thinking here */
-          /* curr_tune_total += tune_ave; */
-          /* curr_comm_total += comm_ave; */
-
-        }
-
-      }
-
-      coll_ptrs[i] = coll_ptrs[i]->next;
+      fprintf(DCMF_STAR_fd, "\nTuning Phase: Os: %.2lfus Oc: %.2lfus\n",
+              1.0E6 * ptr->tune_overhead / ptr->tuning_calls,
+              1.0E6 * ptr->comm_overhead / ptr->tuning_calls);
+     
+      fprintf(DCMF_STAR_fd, "Monitoring Phase:  Os: %.2lfus Oc: %.2lfus\n",
+              1.0E6 * ptr->monitor_overhead / ptr->post_tuning_calls,
+              1.0E6 * ptr->post_tuning_time / ptr->post_tuning_calls);
+      
+      fprintf(DCMF_STAR_fd,
+              "-----------------------------------------------------------\n");
+      fflush(DCMF_STAR_fd);
     }
-    /*
-      if (session!rank)
-      fprintf(coll_ptrs[i]->DCMF_STAR_fd, "Total %10s Os: %lfms Oc: %lfms\n",
-      MPI, 1000 * curr_tune_total, 1000 * curr_comm_total);
-      total_tune_ovrhd += curr_tune_total;
-      total_comm_ovrhd += curr_comm_total;
-    */
-
+    ptr = ptr->next;
   }
-#endif
-
-  if (comm -> handle == MPI_COMM_WORLD && DCMF_STAR_fd)
+  
+  if (comm -> handle == MPI_COMM_WORLD)
     fclose(DCMF_STAR_fd);
-
-  STAR_info.internal_control_flow = 0;
+  
+  //STAR_info.internal_control_flow = 0;
   return 0;
 }
 

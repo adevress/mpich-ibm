@@ -56,8 +56,8 @@
 //
 ////////////////////////////////////
 
-//  $Revision: 1.1.1.1 $
-//  $Date: 2001/10/30 16:59:45 $
+//  $Revision: 1.2 $
+//  $Date: 2008/10/15 20:28:09 $
 //  $Author: ciancu $
 //  $Source: /var/local/cvs/compilers/open64/osprey1.0/common/targ_info/generate/gen_util.h,v $
 
@@ -65,6 +65,10 @@
 #define gen_util_INCLUDED
 
 #include "gen_util_gen.h"
+#include <string.h>
+#include <stdlib.h>
+#include <unistd.h>
+
 
 #ifdef __cplusplus
 extern "C" {

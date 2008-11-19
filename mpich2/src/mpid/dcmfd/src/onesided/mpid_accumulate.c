@@ -350,8 +350,8 @@ int MPID_Accumulate(void *origin_addr, int origin_count,
                 put = (struct mpid_put_cb_data *)buf;
                 buf += sizeof(struct mpid_put_cb_data);
                 refp = &put->ref;
-                xtra.mpid_xtra_w1 = (size_t)put;
-                xtra.mpid_xtra_w2 = (size_t)put; // buf to free
+                xtra.mpid_xtra_w1 = (size_t)put; // 'put' struct
+                xtra.mpid_xtra_w2 = (size_t)put; // generic buf to free
 		put->flag = 0; // no memory region
                 cb_send.function = done_reffree_rqc_cb;
                 *refp = 0;

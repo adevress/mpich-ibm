@@ -16,13 +16,14 @@ use Cwd;
 ### BEGIN SHARED CODE ###
 #########################
 
-use vars qw($debug $disable_upcc);
+use vars qw($debug $disable_upcc $debuglog);
 
 # enable debug messages (for debugging this script)
 $debug = 0 || grep /^-?-v(erbose)?$/, @ARGV;
 sub debugmsg($) {
   my $msg = shift;
   print STDERR "$msg\n" if ($debug);
+  print $debuglog "$msg\n" if ($debuglog);
 }
 debugmsg("Running as: $0 ".join(" ",@ARGV));
 
@@ -223,15 +224,23 @@ sub run_command($$) {
   my $cmd = shift;
   my $context = shift;
   my $ignore_failure = shift;
-  debugmsg("Running $context: $cmd");
+  debugmsg("Running $context: \n$cmd");
   system($cmd);
   my $status = $?;
   if ($status == -1) {
-    die "Failed to spawn command for $context: '$cmd' : $! (status=$status)\n";
+    my $msg = "Failed to spawn command for $context: '$cmd' : $! (status=$status)\n";
+    debugmsg($msg);
+    die $msg;
   } elsif ($status & 127) {
-    die "Command for $context exited with signal ".($status & 127)."\n";
+    my $msg = "Command for $context exited with signal ".($status & 127)."\n";
+    debugmsg($msg);
+    die $msg;
   } elsif ($status >> 8 && !$ignore_failure) {
-    die "Failed during $context, exit=".($status >> 8)."\n";
+    my $msg = "Failed during $context, exit=".($status >> 8)."\n";
+    debugmsg($msg);
+    die $msg;
+  } else {
+    debugmsg("$context successful\n");
   }
 }
 

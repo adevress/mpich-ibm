@@ -21,56 +21,65 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 #include <upc_strict.h>
 #include <stdio.h>
+#include <stdlib.h>
 
-shared unsigned char x1;
+shared char x1;
 shared short x2;
 shared int x3;
 shared long long x4;
 shared float x5;
 shared double x6;
 
+#define CHAR_VAL  0x7f
+#define SHORT_VAL 0x1234
+#define INT_VAL   0x12345678
+#define LL_VAL    0x1234567887654321LL
+#define SF_VAL    1193046.0
+#define DF_VAL    20015998343868.0
+
 void
-test00()
+test00 ()
 {
-  
   if (MYTHREAD == 0)
     {
-      x1 = 255;
-      x2 = -2;
-      x3 = -3;
-      x4 = -4;
-      x5 = -5.0;
-      x6 = -6.0;
+      x1 = CHAR_VAL;
+      x2 = SHORT_VAL;
+      x3 = INT_VAL;
+      x4 = LL_VAL;
+      x5 = SF_VAL;
+      x6 = DF_VAL;
     }
- 
   upc_barrier;
-  if (x1 != 255) {
-    printf("%d: Error %s : %d = 255\n", MYTHREAD, "char", x1);
-    upc_global_exit(1);
-  }
-  if (x2 != -2) {
-    printf("%d: Error %s : %d = -2\n", MYTHREAD, "short", x2);
-    upc_global_exit(1);
-  }
-  if (x3 != -3) {
-    printf("%d: Error %s : %d = -3\n", MYTHREAD, "int", x3);
-    upc_global_exit(1);
-  }
-  if (x4 != -4) {
-    printf("%d: Error %s : %lld = -4\n", MYTHREAD, "long long", x4);
-    upc_global_exit(1);
-  }
-
-  if (x5 != -5.0) {
-    printf("%d: Error %s : %f = -5.0\n", MYTHREAD, "float", x5);
-    upc_global_exit(1);
-  }
-  
-  
-  if (x6 != -6.0) {
-    printf("%d: Error %s : %f = -6.0\n", MYTHREAD, "double", x6);
-    upc_global_exit(1);
-  }
+  if (x1 != CHAR_VAL)
+    {
+      fprintf (stderr, "%d: Error %s : %d = %d\n", MYTHREAD, "char", x1, CHAR_VAL);
+      abort ();
+    }
+  if (x2 != SHORT_VAL)
+    {
+      fprintf (stderr, "%d: Error %s : %d = %d\n", MYTHREAD, "short", x2, SHORT_VAL);
+      abort ();
+    }
+  if (x3 != INT_VAL)
+    {
+      fprintf (stderr, "%d: Error %s : %d = %d\n", MYTHREAD, "int", x3, INT_VAL);
+      abort ();
+    }
+  if (x4 != LL_VAL)
+    {
+      fprintf (stderr, "%d: Error %s : %lld = %lld\n", MYTHREAD, "long long", x4, LL_VAL);
+      abort ();
+    }
+  if (x5 != SF_VAL)
+    {
+      fprintf (stderr, "%d: Error %s : %f = %f\n", MYTHREAD, "float", x5, SF_VAL);
+      abort ();
+    }
+  if (x6 != DF_VAL)
+    {
+      fprintf (stderr, "%d: Error %s : %f = %f\n", MYTHREAD, "double", x6, DF_VAL);
+      abort ();
+    }
   upc_barrier;
   if (MYTHREAD == 0)
     {
@@ -79,7 +88,7 @@ test00()
 }
 
 int
-main()
+main ()
 {
   test00 ();
   return 0;

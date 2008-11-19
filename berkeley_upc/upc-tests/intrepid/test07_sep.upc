@@ -26,26 +26,25 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define FACTOR 100
 
 void
-test07()
+test07 ()
 {
-  extern shared int array[FACTOR*THREADS];
+  extern shared int array[FACTOR * THREADS];
   int i;
-  for (i = MYTHREAD; i < FACTOR*THREADS; i += THREADS)
+  for (i = MYTHREAD; i < FACTOR * THREADS; i += THREADS)
     {
-      array[i] = i+1;
+      array[i] = i + 1;
     }
   upc_barrier;
   if (MYTHREAD == 0)
     {
-      for (i = 0; i < FACTOR*THREADS; ++i)
+      for (i = 0; i < FACTOR * THREADS; ++i)
 	{
 	  int got = array[i];
-	  int expected = i+1;
+	  int expected = i + 1;
 	  if (got != expected)
 	    {
-	      fprintf(stderr,
-		"test07: error at element %d. Expected %d, got %d\n",
-		i, expected, got);
+	      fprintf (stderr, "test07: error at element %d. Expected %d, got %d\n",
+		       i, expected, got);
 	      abort ();
 	    }
 	}

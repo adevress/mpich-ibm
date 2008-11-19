@@ -37,9 +37,9 @@
  * ====================================================================
  *
  * Module: w2c_driver.c
- * $Revision: 1.39 $
- * $Date: 2006/10/31 20:41:17 $
- * $Author: jduell $
+ * $Revision: 1.47.2.1 $
+ * $Date: 2008/11/05 21:33:16 $
+ * $Author: phargrov $
  * $Source: /var/local/cvs/compilers/open64/osprey1.0/be/whirl2c/w2c_driver.cxx,v $
  *
  * Revision history:
@@ -61,7 +61,7 @@
  */
 
 #ifdef _KEEP_RCS_ID
-static char *rcs_id = "$Source: /var/local/cvs/compilers/open64/osprey1.0/be/whirl2c/w2c_driver.cxx,v $ $Revision: 1.39 $";
+static char *rcs_id = "$Source: /var/local/cvs/compilers/open64/osprey1.0/be/whirl2c/w2c_driver.cxx,v $ $Revision: 1.47.2.1 $";
 #endif /* _KEEP_RCS_ID */
 
 #include <sys/elf_whirl.h>  /* for WHIRL_REVISION */
@@ -93,6 +93,16 @@ static char *rcs_id = "$Source: /var/local/cvs/compilers/open64/osprey1.0/be/whi
 
 //the maximum line length for the global_data.c file
 #define MAX_LINE_LEN 2000
+
+#include <unistd.h>
+#include <sys/param.h>
+#ifndef MAXHOSTNAMELEN
+  #ifdef HOST_NAME_MAX
+    #define MAXHOSTNAMELEN HOST_NAME_MAX
+  #else
+    #define MAXHOSTNAMELEN 1024 /* give up */
+  #endif
+#endif
 
 extern void fdump_tree(FILE *f, WN *wn);
 /* ====================================================================
@@ -1254,9 +1264,66 @@ W2C_Outfile_Init(BOOL emit_global_decls)
      sprintf(buf, "#define UPCR_WANT_MINOR %d\n", UPCR_SPEC_MINOR);
      Write_String(W2C_File[W2C_DOTC_FILE], W2C_File[W2C_LOC_FILE], buf);
 
+     #if defined(__linux) || defined(__linux__) || defined(__gnu_linux__)
+       const char *osname = "linux";
+     #elif defined(_AIX)
+       const char *osname = "aix";
+     #elif defined(__osf__) || defined(__digital__)
+       const char *osname = "osf";
+     #elif defined(__sun) || defined(__sun__)
+       const char *osname = "solaris";
+     #elif (defined(__APPLE__) && defined(__MACH__))
+       const char *osname = "darwin";
+     #else
+       const char *osname = "unknown";
+     #endif
+ 
+     #if defined(_POWER) || \
+           defined(__PPC)  || defined(__PPC__) || \
+           defined(__powerpc) || defined(__powerpc__) || \
+           defined(__ppc) || defined(__ppc__) || \
+           defined(__POWERPC__)|| defined(_ARCH_PPC) || defined(_ARCH_PPC64)
+       const char *cpuname = "powerpc";
+     #elif defined(__x86_64) || defined(__x86_64__) || \
+         defined(__athlon) || defined(__athlon__) || \
+         defined(__amd64)  || defined(__amd64__)
+       const char *cpuname = "x86_64";
+     #elif defined(__ia64__) || defined(__ia64)
+       const char *cpuname = "ia64";
+     #elif defined(__i386__) || defined(__i386) || \
+           defined(__i486__) || defined(__i486) || \
+           defined(__i586__) || defined(__i586) || \
+           defined(__i686__) || defined(__i686) || \
+           defined(__pentiumpro) || defined(__pentiumpro__) || \
+           defined(_M_IX86)
+       const char *cpuname = "i686";
+     #elif defined(__alpha) || defined(__alpha__)
+       const char *cpuname = "alphaev67";
+     #elif defined(__sparc) || defined(__sparc__) || \
+         defined(__sparclet__) || defined(__sparclite__) || \
+         defined(__sparcv8) || defined(__sparcv9)
+       const char *cpuname = "sparc";
+     #else
+       const char *cpuname = "unknown";
+     #endif
+ 
+     const char *bitwidth;
+     if (sizeof(void *) == 4) bitwidth = "32";
+     else if (sizeof(void *) == 8) bitwidth = "64";
+     else bitwidth = "unknown";
+
+     char hostname[MAXHOSTNAMELEN];
+     if (gethostname(hostname, MAXHOSTNAMELEN)) strcpy(hostname, "*unknown_hostname*");
+     else hostname[MAXHOSTNAMELEN - 1] = '\0';
+     #ifdef __VERSION__
+       const char *gccversion = ", gcc v"__VERSION__;
+     #else
+       const char *gccversion = "";
+     #endif
+
      //Add translator build version
-     sprintf(buf, "/* UPC translator version: release 2.6.0, built on %s at %s */\n",
-		  __DATE__, __TIME__);
+     sprintf(buf, "/* UPC translator version: release 2.8.0, built on %s at %s, host %s %s-%s/%s%s */\n",
+		  __DATE__, __TIME__, hostname, osname, cpuname, bitwidth, gccversion);
      Write_String(W2C_File[W2C_DOTC_FILE], W2C_File[W2C_LOC_FILE], buf);
 
      // add the init file to output
@@ -1300,21 +1367,66 @@ W2C_Outfile_Init(BOOL emit_global_decls)
        }
        */
 
+       // the base trans_extra.c file, which we always download
        string transextrain_name = W2C_Progpath + "/../../libupc/upcr_trans_extra.c";
        string transextraout_name = string("./upcr_trans_extra.c");
        FILE *transextrain = Open_Read_File(transextrain_name.c_str());
        FILE *transextraout = Open_Create_File(transextraout_name.c_str());
+       if (run_msg_vect) fprintf(transextraout,"#define UPCRT_VECT_INCLUDE 1\n");
        while (fgets(buf, 1024, transextrain)) {
          fputs(buf, transextraout);
        }
        Close_File(transextraout_name.c_str(),transextraout);
        Close_File(transextrain_name.c_str(),transextrain);
-       string transextradecls_name = W2C_Progpath + "/../../libupc/upcr_trans_extra.w2c.h";
-       FILE *transextradecls = Open_Read_File(transextradecls_name.c_str());
-       while (fgets(buf, 1024, transextradecls)) {
-         Write_String(W2C_File[W2C_DOTH_FILE], NULL/* No srcpos map */, buf);
-       }
-       Close_File(transextradecls_name.c_str(),transextradecls);
+      
+       if(run_msg_vect) {
+         // the vectorization trans_extra.c file, which we only download when vectorization is enabled
+
+	 transextrain_name = W2C_Progpath + "/../../libupc/upcr_trans_extra_vect.w2c.h";
+	 transextrain = Open_Read_File(transextrain_name.c_str());
+	 
+	 transextraout_name = string("./upcr_trans_extra_vect.c");
+	 transextraout = Open_Create_File(transextraout_name.c_str());
+	 
+	 while (fgets(buf, 1024, transextrain)) {
+	   fputs(buf, transextraout);
+	 }
+	 
+	 Close_File(transextrain_name.c_str(),transextrain);
+	 
+	 transextrain_name = W2C_Progpath + "/../../libupc/upcr_trans_extra_vect.c";
+	 transextrain = Open_Read_File(transextrain_name.c_str());
+	 
+	 while (fgets(buf, 1024, transextrain)) {
+	   fputs(buf, transextraout);
+	 }
+	 
+	 Close_File(transextrain_name.c_str(),transextrain);
+	 Close_File(transextraout_name.c_str(),transextraout);
+       } // run_msg_vect
+	 
+     
+         // Prepend w2c.h to each translated file
+	 string transextradecls_name;
+	 FILE *transextradecls;
+
+       if(run_msg_vect) { // declarations for vectorization that must appear in each translated file
+	 transextradecls_name = W2C_Progpath + "/../../libupc/upcr_trans_extra_vect.w2c.h";
+	 transextradecls = Open_Read_File(transextradecls_name.c_str());
+	 while (fgets(buf, 1024, transextradecls)) {
+	 Write_String(W2C_File[W2C_DOTH_FILE], NULL/* No srcpos map */, buf);
+	 }
+   	 Close_File(transextradecls_name.c_str(),transextradecls);
+       } // run_msg_vect
+	 
+	 transextradecls_name = W2C_Progpath + "/../../libupc/upcr_trans_extra.w2c.h";
+	 transextradecls = Open_Read_File(transextradecls_name.c_str());
+	 while (fgets(buf, 1024, transextradecls)) {
+	 Write_String(W2C_File[W2C_DOTH_FILE], NULL/* No srcpos map */, buf);
+	 }
+	 Close_File(transextradecls_name.c_str(),transextradecls);
+	 
+
      }
    }
 

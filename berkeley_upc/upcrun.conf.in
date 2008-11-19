@@ -39,6 +39,7 @@ vapi_options =
 ibv_options  = 
 shmem_options=
 portals_options=
+dcmf_options = 
 sci_options  = 
 
 ######################################################################
@@ -142,6 +143,10 @@ sci_spawn_nodes =
 
 portals_spawn = ###INSTALL_PREFIX###/bin/gasnetrun_mpi %V -n %N -E %L %P %A
 portals_spawn_nodes = ###INSTALL_PREFIX###/bin/gasnetrun_mpi %V -np %N -N %M -E %L %P %A
+
+dcmf_spawn = ###INSTALL_PREFIX###/bin/gasnetrun_dcmf %V -n %N -E %L %P %A
+dcmf_spawn_nodes = ###INSTALL_PREFIX###/bin/gasnetrun_dcmf %V -n %N -N %M -E %L %P %A
+
 # Aprun for CNL:
 #portals_spawn = aprun -n %N -N 1 %P %A
 #portals_spawn_nodes = 

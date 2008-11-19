@@ -1,6 +1,6 @@
 #   $Source: /var/local/cvs/gasnet/tests/Makefile.in,v $
-#     $Date: 2007/10/15 23:19:58 $
-# $Revision: 1.104 $
+#     $Date: 2008/10/10 04:22:01 $
+# $Revision: 1.107 $
 # Description: Makefile for GASNet tests
 # @configure_input@
 # Copyright 2002, Dan Bonachea <bonachea@cs.berkeley.edu>
@@ -141,6 +141,7 @@ TEST_PARAMS=                    					\
    testenv_args='GASNet is \"Global Address Space Networking\"';	\
    testvisperf_args="-maxdata 131072 -maxcontig 512 10"; 		\
    testslice_args="1024000 10 10";			 		\
+   testcollperf_args="32768 2 50 0";			 		\
    $(CONDUIT_TESTPARAMS) dummy=1 ; 					\
    $(MANUAL_TESTPARAMS) dummy=1 ;
 
@@ -154,9 +155,9 @@ testprograms_err =      \
 # (except in the case of cross-compilation, where we run them on the compute node using MPIRUN_CMD)
 testprograms_nongasnet = \
 	testtools testtoolscxx
-
 CONDUIT_NAME_UC=`echo $(CONDUIT_NAME) | @AWK@  '{print toupper($$0)}'`
-awk_cmdbuild={  qargs="'"'"$$args"'"'"; gsub("'"'"\x22"'"'","'"'"\x5C\x22"'"'",qargs); \
+awk_cmdbuild={  qargs="'"'"$$args"'"'"; \
+                gsub(ENVIRON["'"'"DQUOTE"'"'"],ENVIRON["'"'"BACKSLASH"'"'"]ENVIRON["'"'"DQUOTE"'"'"],qargs); \
                 gsub("'"'"%C"'"'", "'"'"%P %A"'"'");       \
 		gsub("'"'"%P"'"'", "'"'"./$$file"'"'");    \
 		gsub("'"'"%L"'"'", "'"'"DUMMY"'"'");       \
@@ -173,6 +174,8 @@ run-tests: force
 	@$(TEST_PARAMS)                                                                 \
 	export `echo "$(TEST_PARAMS)" | @AWK@ 'BEGIN {FS="=";RS=";"}{ print $$1 }'` ;   \
 	line='+++++++++++++++++++++++++++++++++++++++' ; line="$$line$$line" ;          \
+	BACKSLASH='\' export BACKSLASH ;                                                \
+	DQUOTE='"' export DQUOTE ;                                                      \
 	tests_to_run="" export tests_to_run ;                                           \
 	tests_to_ignore="" export tests_to_ignore ;                                     \
 	for file in $(testprograms) ; do if test -x "$$file" ; then                     \
@@ -257,6 +260,8 @@ do-run-testexit: force
 	@echo "Building $(TESTEXIT_SCRIPT) script..."
 	@echo "#!/bin/sh" > $(TESTEXIT_SCRIPT)
 	@nodes=$${TEST_NODES-2} ; args="" ; file="testexit" ;             \
+         BACKSLASH='\' export BACKSLASH ;                                 \
+         DQUOTE='"' export DQUOTE ;                                       \
          awk_cmdbuild=`echo "$(awk_cmdbuild)"` ; 			  \
          cmd=`echo "$(CONDUIT_RUNCMD)" | eval @AWK@ \'$$awk_cmdbuild\'` ; \
 	 echo "INTERACTIVE_RUNCMD='$$cmd'"                        >> $(TESTEXIT_SCRIPT)

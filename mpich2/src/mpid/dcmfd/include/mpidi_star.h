@@ -246,6 +246,7 @@ typedef struct
   /* env variable setting the use of STAR */
   int enabled;
 
+  int threshold; /* min message size to have star kick in */
   /* flag to indicate where is the control coming from, App or within BG lib */
   unsigned char internal_control_flow;
 
@@ -273,7 +274,7 @@ typedef struct
 
 extern STAR_Info STAR_info;
 extern FILE * DCMF_STAR_fd;
-extern char * exec_name;
+extern char * MPID_Executable_name;
 
 extern STAR_Algorithm * repository_ptr;
 extern STAR_Algorithm * STAR_bcast_repository;

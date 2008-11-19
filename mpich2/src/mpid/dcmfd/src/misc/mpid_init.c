@@ -4,6 +4,7 @@
  * \brief Normal job startup code
  */
 #include "mpidimpl.h"
+#include "mpidi_star.h"
 #include <limits.h>
 
 MPIDI_Protocol_t MPIDI_Protocols;
@@ -32,6 +33,7 @@ void MPIDI_DCMF_Configure(int requested,
   // Get the actual values back
   DCMF_Messager_configure(&dcmf_config, &dcmf_config);
   *provided = dcmf_config.thread_level;
+  MPIR_ThreadInfo.thread_provided = *provided;
 }
 
 
@@ -53,22 +55,12 @@ int MPID_Init(int * argc,
               int * has_env)
 {
    int rank, size, i, rc;
-   int tempthread;
    MPID_Comm * comm;
    DCMF_Result dcmf_rc;
 
-   if (argc && *argv != NULL)
-   {
-      exec_name = NULL;
-      i = strlen(* argv[0]) + 1;
-      exec_name = (char *) malloc(sizeof(char) * i);
-      strcpy(exec_name, *argv[0]);
-   }
-   else
-   {
-      exec_name= (char *)malloc(sizeof(char) * 8);
-      strcpy(exec_name, "FORTRAN");
-   }
+   MPID_Executable_name = "FORTRAN";
+   if (argc && *argv != NULL && *argv[0] != NULL)
+      MPID_Executable_name = *argv[0];
 
   /* ------------------------- */
   /* initialize the statistics */
@@ -97,7 +89,7 @@ int MPID_Init(int * argc,
 
   if (MPIDI_Process.use_ssm)
     {
-      DCMF_Put_Configuration_t ssm_put_config = { DCMF_DEFAULT_PUT_PROTOCOL };
+      DCMF_Put_Configuration_t ssm_put_config = { DCMF_DEFAULT_PUT_PROTOCOL, DCMF_DefaultNetwork };
       DCMF_Put_register (&MPIDI_Protocols.ssm_put, &ssm_put_config);
       DCMF_Send_Configuration_t ssm_msg_config =
         {
@@ -159,7 +151,7 @@ int MPID_Init(int * argc,
   /* --------------------------- */
   /* Register point-to-point get */
   /* --------------------------- */
-  DCMF_Get_Configuration_t get_config = { DCMF_DEFAULT_GET_PROTOCOL };
+  DCMF_Get_Configuration_t get_config = { DCMF_DEFAULT_GET_PROTOCOL, DCMF_DefaultNetwork };
   DCMF_Get_register (&MPIDI_Protocols.get, &get_config);
 
   /* ---------------------------------- */
@@ -173,11 +165,14 @@ int MPID_Init(int * argc,
     };
   DCMF_Control_register (&MPIDI_Protocols.control, &control_config);
 
+/* Set up interrupts and thread level before protocol registration */
+  MPIDI_DCMF_Configure(requested, provided);
+
 #ifdef USE_CCMI_COLL
   /* ---------------------------------- */
   /* Register the collectives           */
   /* ---------------------------------- */
-  MPIDI_Coll_register(requested);
+  MPIDI_Coll_register();
 #endif /* USE_CCMI_COLL */
 
   /* ------------------------------------------------------ */
@@ -215,10 +210,7 @@ int MPID_Init(int * argc,
    * We don't get the thread_provided updated until AFTER MPID_Init is
    * finished so we need to know the requested thread level in comm_create
    */
-  tempthread = MPIR_ThreadInfo.thread_provided;
-  MPIR_ThreadInfo.thread_provided = requested;
   MPIDI_Comm_create(comm);
-  MPIR_ThreadInfo.thread_provided = tempthread;
 
   /* ------------------------------- */
   /* Initialize MPI_COMM_SELF object */
@@ -242,7 +234,6 @@ int MPID_Init(int * argc,
   *has_args = TRUE;
   *has_env  = TRUE;
 
-  MPIDI_DCMF_Configure(requested, provided);
 
   return MPI_SUCCESS;
 }

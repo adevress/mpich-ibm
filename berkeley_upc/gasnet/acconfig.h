@@ -1,6 +1,6 @@
 /*    $Source: /var/local/cvs/gasnet/acconfig.h,v $ */
-/*      $Date: 2007/10/18 23:42:44 $ */
-/*  $Revision: 1.125 $ */
+/*      $Date: 2008/10/12 02:32:01 $ */
+/*  $Revision: 1.135 $ */
 /*  Description: GASNet acconfig.h (or config.h)                             */
 /*  Copyright 2002, Dan Bonachea <bonachea@cs.berkeley.edu>                  */
 /* Terms of use are as specified in license.txt */
@@ -38,6 +38,7 @@
 #undef GASNETI_HAVE_GCC_ATTRIBUTE_NOINLINE
 #undef GASNETI_HAVE_GCC_ATTRIBUTE_MALLOC
 #undef GASNETI_HAVE_GCC_ATTRIBUTE_WARNUNUSEDRESULT
+#undef GASNETI_HAVE_GCC_ATTRIBUTE_USED
 #undef GASNETI_HAVE_GCC_ATTRIBUTE_NORETURN
 #undef GASNETI_HAVE_GCC_ATTRIBUTE_PURE
 #undef GASNETI_HAVE_GCC_ATTRIBUTE_CONST
@@ -72,6 +73,9 @@
 
 /* --with-segment-mmap-max value (if given) */
 #undef GASNETI_MMAP_MAX_SIZE
+
+/* --with-max-threads value (if given) */
+#undef GASNETI_MAX_THREADS_CONFIGURE
 
 /* has usleep() */
 #undef HAVE_USLEEP
@@ -121,8 +125,24 @@
 /* pause instruction, if any */
 #undef GASNETI_PAUSE_INSTRUCTION
 
+/* How to name MIPS assembler temporary register in inline asm, if at all */
+#undef GASNETI_HAVE_MIPS_REG_1
+#undef GASNETI_HAVE_MIPS_REG_AT
+
+/* has ARM kernel-level support for cmpxchg */
+#undef GASNETI_HAVE_ARM_CMPXCHG
+
+/* has ARM kernel-level support for membar */
+#undef GASNETI_HAVE_ARM_MEMBAR
+
 /* has x86 EBX register (not reserved for GOT) */
 #undef GASNETI_HAVE_X86_EBX
+
+/* has support (toolchain and cpu) for ia64 cmp8xchg16 instruction */
+#undef GASNETI_HAVE_IA64_CMP8XCHG16
+
+/* has support (toolchain and cpu) for x86_64 cmpxchg16b instruction */
+#undef GASNETI_HAVE_X86_CMPXCHG16B
 
 /* gcc/gas support "LDCW,CO" psuedo-op on PA-RISC */
 #undef GASNETI_HAVE_PARISC_LDCW_CO
@@ -179,6 +199,9 @@
 
 /* platform is an SGI Altix multiprocessor */
 #undef GASNETI_ARCH_ALTIX
+
+/* platform is a SiCortex multiprocessor */
+#undef GASNETI_ARCH_SICORTEX
 
 /* have (potentially buggy) MIPS R10000 multiprocessor */
 #undef GASNETI_ARCH_SGI_IP27
@@ -256,6 +279,7 @@
 #undef HAVE_ELAN_QUEUETXINIT
 
 /* GASNet portals-conduit specific */
+#undef HAVE_PCTMBOX_H
 #undef GASNETC_PORTALS_MISSING_EQ_HANDLER_T
 
 /* GASNet bug1389 detection/work-around */

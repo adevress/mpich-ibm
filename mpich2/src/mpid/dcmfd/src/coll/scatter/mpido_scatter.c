@@ -8,8 +8,10 @@
 #include "mpidi_star.h"
 #include "mpidi_coll_prototypes.h"
 
-#pragma weak PMPIDO_Scatter = MPIDO_Scatter
+#ifdef USE_CCMI_COLL
 
+
+#pragma weak PMPIDO_Scatter = MPIDO_Scatter
 /* works for simple data types, assumes fast bcast is available */
 
 int MPIDO_Scatter(void *sendbuf,
@@ -24,7 +26,7 @@ int MPIDO_Scatter(void *sendbuf,
   DCMF_Embedded_Info_Set * properties = &(comm->dcmf.properties);
   MPID_Datatype * data_ptr;
   MPI_Aint true_lb = 0;
-
+  char *sbuf = sendbuf, *rbuf = recvbuf;
   int contig, nbytes = 0, rc = 0;
   int rank = comm->rank;
   int success = 1;
@@ -64,6 +66,13 @@ int MPIDO_Scatter(void *sendbuf,
       success = 0;
   }
 
+  if (DCMF_INFO_ISSET(properties, DCMF_USE_MPICH_SCATTER) ||
+      DCMF_INFO_ISSET(properties, DCMF_IRREG_COMM) ||
+      (!DCMF_INFO_ISSET(properties, DCMF_USE_TREE_BCAST) && nbytes <= 64))
+    return MPIR_Scatter(sendbuf, sendcount, sendtype,
+                        recvbuf, recvcount, recvtype,
+                        root, comm);
+  
   /* set the internal control flow to disable internal star tuning */
   STAR_info.internal_control_flow = 1;
 
@@ -72,28 +81,31 @@ int MPIDO_Scatter(void *sendbuf,
   /* reset flag */
   STAR_info.internal_control_flow = 0;
 
-  MPID_Ensure_Aint_fits_in_pointer (MPI_VOID_PTR_CAST_TO_MPI_AINT sendbuf +
+  if (!success)
+    return MPIR_Scatter(sendbuf, sendcount, sendtype,
+                        recvbuf, recvcount, recvtype,
+                        root, comm);
+
+  MPID_Ensure_Aint_fits_in_pointer (MPIR_VOID_PTR_CAST_TO_MPI_AINT sendbuf +
 				    true_lb);
-  sendbuf = (char *) sendbuf + true_lb;
+  sbuf = (char *) sendbuf + true_lb;
 
   if (recvbuf != MPI_IN_PLACE)
   {
-    MPID_Ensure_Aint_fits_in_pointer(MPI_VOID_PTR_CAST_TO_MPI_AINT recvbuf +
+    MPID_Ensure_Aint_fits_in_pointer(MPIR_VOID_PTR_CAST_TO_MPI_AINT recvbuf +
                                      true_lb);
-    recvbuf = (char *) recvbuf + true_lb;
+    rbuf = (char *) recvbuf + true_lb;
   }
 
-  if (!STAR_info.enabled || STAR_info.internal_control_flow)
+  if (!STAR_info.enabled || STAR_info.internal_control_flow ||
+      STAR_info.scatter_algorithms == 1)
   {
-    if (!success || DCMF_INFO_ISSET(properties, DCMF_USE_MPICH_SCATTER) ||
-        !DCMF_INFO_ISSET(properties, DCMF_USE_BCAST_SCATTER))
-      return MPIR_Scatter(sendbuf, sendcount, sendtype,
-                          recvbuf, recvcount, recvtype,
-                          root, comm);
-    else
-      return MPIDO_Scatter_bcast(sendbuf, sendcount, sendtype,
-                                 recvbuf, recvcount, recvtype,
-                                 root, comm);
+    if (DCMF_INFO_ISSET(properties, DCMF_USE_BCAST_SCATTER))
+    {
+        return MPIDO_Scatter_bcast(sbuf, sendcount, sendtype,
+                                   rbuf, recvcount, recvtype,
+                                   root, comm);
+    }
   }
   else
   {
@@ -133,8 +145,8 @@ int MPIDO_Scatter(void *sendbuf,
       collective_site.op_type_support = DCMF_SUPPORT_NOT_NEEDED;
       collective_site.id = id;
 	  
-      rc = STAR_Scatter(sendbuf, sendcount, sendtype,
-                        recvbuf, recvcount, recvtype,
+      rc = STAR_Scatter(sbuf, sendcount, sendtype,
+                        rbuf, recvcount, recvtype,
                         root, &collective_site,
                         STAR_scatter_repository,
                         STAR_info.scatter_algorithms);
@@ -152,3 +164,5 @@ int MPIDO_Scatter(void *sendbuf,
   }
    return rc;
 }
+
+#endif

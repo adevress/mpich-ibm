@@ -8,6 +8,8 @@
 #include "mpidi_star.h"
 #include "mpidi_coll_prototypes.h"
 
+#ifdef USE_CCMI_COLL
+
 #pragma weak PMPIDO_Gather = MPIDO_Gather
 
 /* works for simple data types, assumes fast reduce is available */
@@ -24,7 +26,7 @@ int MPIDO_Gather(void *sendbuf,
   DCMF_Embedded_Info_Set * properties = &(comm->dcmf.properties);
   MPID_Datatype * data_ptr;
   MPI_Aint true_lb = 0;
-
+  char *sbuf =sendbuf, *rbuf=recvbuf;
   int success = 1, contig, send_bytes=-1, recv_bytes = 0;
   int rc = 0, rank = comm->rank;
 
@@ -32,7 +34,8 @@ int MPIDO_Gather(void *sendbuf,
   {
     MPIDI_Datatype_get_info(sendcount, sendtype, contig,
                             send_bytes, data_ptr, true_lb);
-    if (!contig) success = 0;
+    if (!contig || ((send_bytes * comm->local_size) % sizeof(int)))
+      success = 0;
   }
   else
     success = 0;
@@ -48,6 +51,15 @@ int MPIDO_Gather(void *sendbuf,
     else
       success = 0;
   }
+  
+  if (DCMF_INFO_ISSET(properties, DCMF_IRREG_COMM) ||
+      DCMF_INFO_ISSET(properties, DCMF_USE_MPICH_GATHER) ||
+      !DCMF_INFO_ISSET(properties, DCMF_USE_REDUCE_GATHER) ||
+      mpid_hw.tSize > 1)
+    return MPIR_Gather(sendbuf, sendcount, sendtype,
+                       recvbuf, recvcount, recvtype,
+                       root, comm);
+  
 
   /* set the internal control flow to disable internal star tuning */
   STAR_info.internal_control_flow = 1;
@@ -58,22 +70,27 @@ int MPIDO_Gather(void *sendbuf,
 
   MPID_Ensure_Aint_fits_in_pointer(MPI_VOID_PTR_CAST_TO_MPI_AINT recvbuf +
 				   true_lb);
+  if (!success)
+    return MPIR_Gather(sendbuf, sendcount, sendtype,
+                       recvbuf, recvcount, recvtype,
+                       root, comm);
 
-  recvbuf = (char *) recvbuf + true_lb;
+  
+  rbuf = (char *) recvbuf + true_lb;
 
-  if (!STAR_info.enabled || STAR_info.internal_control_flow)
+  if (sendbuf != MPI_IN_PLACE)
   {
-    if (!success || 
-        sendcount < 2048 ||
-        DCMF_INFO_ISSET(properties, DCMF_USE_MPICH_GATHER) || 
-        !DCMF_INFO_ISSET(properties, DCMF_USE_REDUCE_GATHER))
-      return MPIR_Gather(sendbuf, sendcount, sendtype,
-                         recvbuf, recvcount, recvtype,
-                         root, comm);
-
-    else
-      return MPIDO_Gather_reduce(sendbuf, sendcount, sendtype,
-                                 recvbuf, recvcount, recvtype,
+    MPID_Ensure_Aint_fits_in_pointer(MPIR_VOID_PTR_CAST_TO_MPI_AINT sendbuf +
+                                     true_lb);
+    sbuf = (char *) sendbuf + true_lb;
+  }
+  
+  if (!STAR_info.enabled || STAR_info.internal_control_flow ||
+      STAR_info.gather_algorithms == 1)
+  {
+    if (DCMF_INFO_ISSET(properties, DCMF_USE_REDUCE_GATHER))
+      return MPIDO_Gather_reduce(sbuf, sendcount, sendtype,
+                                 rbuf, recvcount, recvtype,
                                  root, comm);    
   }
   else
@@ -114,8 +131,8 @@ int MPIDO_Gather(void *sendbuf,
       collective_site.op_type_support = DCMF_SUPPORT_NOT_NEEDED;
       collective_site.id = id;
 
-      rc = STAR_Gather(sendbuf, sendcount, sendtype,
-                       recvbuf, recvcount, recvtype,
+      rc = STAR_Gather(sbuf, sendcount, sendtype,
+                       rbuf, recvcount, recvtype,
                        root, &collective_site,
                        STAR_gather_repository,
                        STAR_info.gather_algorithms);
@@ -133,4 +150,8 @@ int MPIDO_Gather(void *sendbuf,
 
     return rc;    
   }
+  /* this should never be reached, but we don't want compiler warnings either*/
+   return rc;
 }
+
+#endif

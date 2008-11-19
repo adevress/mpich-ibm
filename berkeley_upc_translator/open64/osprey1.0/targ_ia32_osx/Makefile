@@ -10,7 +10,7 @@ all:
 
 clean:
 	for d in $(DIRS) ; do \
-	 $(MAKE) -C $$d clean || exit 1; \
+	 $(MAKE) -C $$d clean; rm -fr CVS || exit 1; \
 	done
 
 .PHONY: all clean

@@ -6,6 +6,8 @@
 
 #include "mpido_coll.h"
 
+#ifdef USE_CCMI_COLL
+
 #pragma weak PMPIDO_Reduce_scatter = MPIDO_Reduce_scatter
 
 /* Call optimized reduce+scatterv - should be faster than pt2pt on
@@ -25,9 +27,10 @@ int MPIDO_Reduce_scatter(void *sendbuf,
   
   int contig, nbytes;
   MPID_Datatype *dt_ptr;
-  MPI_Aint dt_lb=0;
+  MPI_Aint dt_lb=0, extent=0;
   
   char *tempbuf;
+  char *sbuf = sendbuf;
   int *displs;
   int size = comm_ptr->local_size;
 
@@ -48,11 +51,15 @@ int MPIDO_Reduce_scatter(void *sendbuf,
 			  nbytes, 
 			  dt_ptr, 
 			  dt_lb);
+
+   NMPI_Type_get_true_extent(datatype, &dt_lb, &extent);
+   MPID_Ensure_Aint_fits_in_int(extent);
+
   
   for(i = 0; i < size; i++)
     tcount += recvcounts[i];
   
-  tempbuf = MPIU_Malloc(nbytes * sizeof(char) * tcount);
+  tempbuf = MPIU_Malloc(extent * sizeof(char) * tcount);
   displs = MPIU_Malloc(size * sizeof(int));
   
   if (!tempbuf || !displs)
@@ -69,9 +76,9 @@ int MPIDO_Reduce_scatter(void *sendbuf,
   
   MPID_Ensure_Aint_fits_in_pointer(MPI_VOID_PTR_CAST_TO_MPI_AINT sendbuf+ 
 				   dt_lb);
-  sendbuf = (char *)sendbuf + dt_lb;
+  sbuf = (char *)sendbuf + dt_lb;
   
-  rc = MPIDO_Reduce(sendbuf, 
+  rc = MPIDO_Reduce(sbuf,
 		    tempbuf, 
 		    tcount, 
 		    datatype, 
@@ -100,3 +107,5 @@ int MPIDO_Reduce_scatter(void *sendbuf,
   return rc;
 }
   
+
+#endif

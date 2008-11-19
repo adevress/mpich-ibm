@@ -523,6 +523,11 @@ upc_blocksizeof (type)
      is NULL, then return the default block size: 1. */
   elt_type = (TREE_CODE(type) == ARRAY_TYPE) ? get_inner_array_type(type) : type;
 
+  if(!TYPE_SHARED(elt_type)) {
+    error("upc_blocksizeof applied to a nonshared type");
+    return size_int (1);
+  }
+    
   blocksize = TYPE_BLOCK_SIZE (elt_type);
   if (blocksize == 0)
     return size_int(1);
@@ -556,6 +561,8 @@ upc_blocksizeof (type)
 }
 
 int is_64bit_target();
+int int_is_64bit();
+
 tree 
 upc_localsizeof (exp)
      tree exp;
@@ -568,7 +575,7 @@ upc_localsizeof (exp)
   tree num_blk, tmp, threads, rem, num_elt;
   long long  nelem, nblks, blks, r, ts, esize, tt;
   
-
+  
   if (code == FUNCTION_TYPE)
     {
       if (pedantic || warn_pointer_arith)
@@ -623,27 +630,17 @@ upc_localsizeof (exp)
     r = tt * blks;
     r = nelem - r;  /* remaining elements that goes to thread 0 */ 
     tt = nblks+r;
-    tt = tt * esize;
-    /*
-    threads = size_int(threads_int);
-    num_elt = size_binop(FLOOR_DIV_EXPR, totalsize, elt_size); 
-    tmp = size_binop(FLOOR_DIV_EXPR, num_elt, blocksize);   
-    num_blk = size_binop(FLOOR_DIV_EXPR, tmp, threads);  
-    num_blk = size_binop(MULT_EXPR, num_blk, blocksize);
-    rem = size_binop(MULT_EXPR, tmp, blocksize);
-    rem = size_binop(MINUS_EXPR, num_elt, rem);  
-    t = size_binop(PLUS_EXPR, num_blk, rem);
-    t = size_binop(MULT_EXPR, t, elt_size);
-    */
+    tt = tt*esize;
+  
 
-    if(is_64bit_target()) {
+    if(int_is_64bit()) {
       t = build_int_2(tt&(long long)0x00000000FFFFFFFF, (tt>>32)&(long long)0x00000000FFFFFFFF);
       TREE_TYPE (t) = sizetype_tab[(int) SIZETYPE];
       TREE_OVERFLOW (t) = TREE_CONSTANT_OVERFLOW (t) = force_fit_type (t, 0);
-    } else 
+    } else
       t = size_int(tt);
     
-    /* t = size_int(tt); */
+   
   } else {
     tree S, E, E_B;
     /* dynamic env */
@@ -989,3 +986,25 @@ int Can_Strip_NOP(tree t1, tree t2)
   }
   return 1;
 }
+
+int x_x_simp_safe(tree arg0, tree arg1) {
+  if(!compiling_upc)
+    return 1;
+  if(arg0 && (TREE_CODE(arg0) == VAR_DECL || TREE_CODE(arg0) == PARM_DECL) &&
+     TREE_CODE(TREE_TYPE(arg0)) == POINTER_TYPE && TREE_CODE(TREE_TYPE(TREE_TYPE(arg0))) == RECORD_TYPE)
+    return 0;
+  if(arg0 && (TREE_CODE(arg0) == VAR_DECL || TREE_CODE(arg0) == PARM_DECL) &&
+     TREE_CODE(TREE_TYPE(arg0)) == POINTER_TYPE &&  TREE_CODE(TREE_TYPE(TREE_TYPE(arg0))) == POINTER_TYPE && 
+     TYPE_SHARED(TREE_TYPE(TREE_TYPE(TREE_TYPE(arg0)))))
+    return 0;
+  if(arg1 && (TREE_CODE(arg1) == VAR_DECL || TREE_CODE(arg1) == PARM_DECL) &&
+     TREE_CODE(TREE_TYPE(arg1)) == POINTER_TYPE && TREE_CODE(TREE_TYPE(TREE_TYPE(arg1))) == RECORD_TYPE)
+    return 0;
+  if(arg1 && (TREE_CODE(arg1) == VAR_DECL || TREE_CODE(arg1) == PARM_DECL) &&
+     TREE_CODE(TREE_TYPE(arg1)) == POINTER_TYPE &&  TREE_CODE(TREE_TYPE(TREE_TYPE(arg0))) == POINTER_TYPE &&
+     TYPE_SHARED(TREE_TYPE(TREE_TYPE(TREE_TYPE(arg1)))))
+    return 0;
+  return 1;
+}
+
+

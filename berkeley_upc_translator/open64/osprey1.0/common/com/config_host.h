@@ -43,9 +43,9 @@ extern "C" {
  * ====================================================================
  *
  * Module: config_host.h
- * $Revision: 1.3 $
- * $Date: 2005/09/16 08:45:17 $
- * $Author: wychen $
+ * $Revision: 1.4 $
+ * $Date: 2007/01/04 20:53:22 $
+ * $Author: ciancu $
  * $Source: /var/local/cvs/compilers/open64/osprey1.0/common/com/config_host.h,v $
  *
  * Revision history:
@@ -71,7 +71,7 @@ extern "C" {
 
 
 #ifdef _KEEP_RCS_ID
-static char *config_host_rcs_id = "$Source: /var/local/cvs/compilers/open64/osprey1.0/common/com/config_host.h,v $ $Revision: 1.3 $";
+static char *config_host_rcs_id = "$Source: /var/local/cvs/compilers/open64/osprey1.0/common/com/config_host.h,v $ $Revision: 1.4 $";
 #endif /* _KEEP_RCS_ID */
 
 /* What is the byte sex of the host?  Note that the variable
@@ -81,7 +81,7 @@ static char *config_host_rcs_id = "$Source: /var/local/cvs/compilers/open64/ospr
 //FIXME: when porting translator, needs to set the endianness here
 //#if !defined(linux) && !defined(__alpha) 
 //wei: I think gcc will define this macro on big endian machines (powerpc, etc)
-#if defined(__BIG_ENDIAN__) 
+#if defined(__BIG_ENDIAN__) || (defined(__MACH__) && defined(__APPLE__) && !defined(i386))  
 #define HOST_IS_BIG_ENDIAN	1
 #define HOST_IS_LITTLE_ENDIAN	0
 #else

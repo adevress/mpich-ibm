@@ -297,7 +297,7 @@ deadlock may result on some systems.
     not use MPI:  you may thus wish to keep a separate runtime installation
     specifically for compiling MPI/UPC programs.  Finally, MPI interoperability
     is not provided for all systems and network types, and '<tt>-pthreads</tt>'
-    is not supported.  See the '<tt>INSTALL</tt>' document in the runtime for
+    is not supported.  See the '<tt>INSTALL.TXT</tt>' document in the runtime for
     more information.</i>
 
 <p>UPC files which contain calls to MPI functions must '<tt>#include
@@ -329,7 +329,7 @@ runtime--these calls should <i>not</i> appear in client code.  If
 '<tt>bupc_exit()</tt>' should replace any calls to the MPI init/finalize
 functions.  
 
-<p>Certain UPC network types (notably 'mpi' and 'vapi') use MPI under the
+<p>Certain UPC network types (notably 'mpi', 'vapi' and 'ibv') may use MPI under the
 covers.  For this reason, non-UPC MPI objects should be compiled with the same
 MPI compiler family as is used by <tt>upcc</tt>.  To see the MPI C compiler used
 by <tt>upcc</tt>, use '<tt>upcc -print-mpicc</tt>'.

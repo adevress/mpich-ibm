@@ -33,14 +33,11 @@ shared [BLKSIZE] int array[NELEM];
 void
 test09()
 {
-  int i, j, phase;
+  int i, j;
   for (i = 0; i < BLKS_PER_THREAD; ++i)
     {
       int blk_index = (MYTHREAD + i * THREADS) * BLKSIZE;
-      shared int *blk_ptr;
-      int *block;
-      blk_ptr = (shared int *)&array[blk_index];
-      block = (int *)blk_ptr;
+      int *block = (int *)&array[blk_index];
       for (j = 0; j < BLKSIZE; ++j)
 	{
 	  block[j] = blk_index + j + 1;
@@ -55,8 +52,7 @@ test09()
 	  int expected = i+1;
 	  if (got != expected)
 	    {
-	      fprintf(stderr,
-		"test09: error at element %d. Expected %d, got %d\n",
+	      fprintf(stderr, "test09: error at element %d. Expected %d, got %d\n",
 		i, expected, got);
 	      abort ();
 	    }

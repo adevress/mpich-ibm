@@ -37,9 +37,9 @@
  * ====================================================================
  *
  * Module: ty2c.c
- * $Revision: 1.37 $
- * $Date: 2006/02/28 23:02:28 $
- * $Author: wychen $
+ * $Revision: 1.38 $
+ * $Date: 2008/10/15 02:08:38 $
+ * $Author: ciancu $
  * $Source: /var/local/cvs/compilers/open64/osprey1.0/be/whirl2c/ty2c.cxx,v $
  *
  * Revision history:
@@ -54,7 +54,7 @@
  * ====================================================================
  */
 #ifdef _KEEP_RCS_ID
-static char *rcs_id = "$Source: /var/local/cvs/compilers/open64/osprey1.0/be/whirl2c/ty2c.cxx,v $ $Revision: 1.37 $";
+static char *rcs_id = "$Source: /var/local/cvs/compilers/open64/osprey1.0/be/whirl2c/ty2c.cxx,v $ $Revision: 1.38 $";
 #endif /* _KEEP_RCS_ID */
 
 #include "whirl2c_common.h"
@@ -778,7 +778,6 @@ static void TY2C_Output_Struct_Type(TY_IDX ty,
   if (struct_names.find(Save_Str(TY_name(ty))) != struct_names.end()
       || !TY_is_written(ty)) {
     //don't output duplicate struct definitions
-    //fprintf(stderr, "got here: %s %d\n",TY_name(ty), TY_is_written(ty));
     return;
   }
 

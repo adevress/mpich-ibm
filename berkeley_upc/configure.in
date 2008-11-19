@@ -41,6 +41,9 @@ dnl     Tell gasnet_trace to identify itself as upc_trace
 GASNET_SUBCONFIGURE_ARG(--with-tool-prefix=upc)
 GASNET_PROG_PERL
 
+dnl bug 2323: disallow configure --program-{prefix,suffix,transform}
+GASNET_FORBID_PROGRAM_TRANSFORM
+
 dnl     Need to parse --with-gccupc before detecting CC, since it changes the
 dnl     default value for CC to the 'gcc' that comes with gccupc's 'upc'
 GASNET_IF_ENABLED(sptr-packed, 
@@ -57,10 +60,7 @@ AC_SUBST(HARNESS_TRANS_OPTION)
 COMPILER_SPEC_FILE="compiler.spec"
 AC_SUBST(COMPILER_SPEC_FILE)
 GASNET_WITH(gccupc, [use gccupc compiler (provide full pathname to 'upc')],
-    [if test -n "$force_packed_sptr" -o -n "$force_packed_symmetric"; then 
-        AC_MSG_ERROR(['--with-gccupc' requires '--enable-sptr-struct'])
-     fi
-     if test "$withval" = "yes"; then
+    [if test "$withval" = "yes"; then
         AC_MSG_ERROR(['--with-gccupc requires pathname to 'upc' or 'xupc'])
      fi
      AC_MSG_CHECKING(for gccupc)
@@ -87,10 +87,8 @@ GASNET_WITH(gccupc, [use gccupc compiler (provide full pathname to 'upc')],
 #     fi
      
      AC_DEFINE(UPCRI_USING_GCCUPC)
-     force_struct_sptr="yes"
      USING_GCCUPC="yes"
      HARNESS_TRANS_OPTION=""
-     AC_MSG_CHECKING(for gccupc version)
      GCCUPC_VERSION=
      GASNET_WITH(gccupc-version, [Force UPCR to assume a particular version of GCC/UPC (default is auto-detect)], 
        [ # don't attempt to run GCC/UPC (eg when building an RPM it might not yet be installed)
@@ -99,6 +97,7 @@ GASNET_WITH(gccupc, [use gccupc compiler (provide full pathname to 'upc')],
 	 AC_MSG_WARN([Accepting --with-gccupc-version=$GCCUPC_VERSION. Translator validation check skipped.])
        ])
      if test -z "$GCCUPC_VERSION" ; then # auto-detect version by running the compiler
+       AC_MSG_CHECKING(for gccupc version)
        if test -z "`$TRANSLATOR -v 2>&1 < /dev/null | grep 'GCC UPC'`" ; then
          AC_MSG_ERROR(['--with-gccupc' requires pathname to 'upc' or 'xupc' executable])
        fi
@@ -112,7 +111,7 @@ GASNET_WITH(gccupc, [use gccupc compiler (provide full pathname to 'upc')],
          $PERL -ne 'if (/upc-(\S+) .GCC UPC/ or /\(GCC UPC (\S+)?\)/) {print $1;}'`
      fi
      GCCUPC_VERSION_MAJOR=`echo "$GCCUPC_VERSION" | \
-         $PERL -ne 'if (m/(\d+)\.(\d+)\.(\d+)[[.-]](\d+)/) {print $1;}'`
+         $PERL -ne 'if (m/(\d+)\.\d+\.\d+[[.-]]\d+/) {print $1;}'`
      if test -z "$GCCUPC_VERSION_MAJOR" ; then
        AC_MSG_ERROR([Missing or invalid GCC/UPC translator version: $GCCUPC_VERSION])
      else
@@ -122,7 +121,192 @@ GASNET_WITH(gccupc, [use gccupc compiler (provide full pathname to 'upc')],
        AC_MSG_ERROR([This version of UPCR requires GCC/UPC version 4.x or greater. Detected GCC/UPC translator version: $GCCUPC_VERSION])
      fi
      AC_SUBST(GCCUPC_VERSION)
+
+     # bless gccupc's gcc as ok
+     # The problem in question should not affect that config anyhow because
+     # local accesses are generated as assembly from gccupc, instead of UPCR calls
+     GASNET_SUBCONFIGURE_ARG(--enable-allow-gcc4)
+
+     # Versions 4.2.0.2 and up support init sections
+     AC_MSG_CHECKING([for gccupc init section support])
+     GCCUPC_CANONICAL_VERSION=`echo "$GCCUPC_VERSION" | \
+         $PERL -ne 'if (m/(\d+)\.(\d+)\.(\d+)[[.-]](\d+)/) \
+          {printf "%01d.%02d.%02d.%02d", $1, $2, $3, $4;}'`
+     GCCUPC_INIT_SECTION=`$PERL -e \
+       "print '$GCCUPC_CANONICAL_VERSION' ge '4.02.00.02' ? 'yes':'no'"`
+     AC_MSG_RESULT($GCCUPC_INIT_SECTION)
+     if test "$GCCUPC_INIT_SECTION" = "yes"; then
+       AC_DEFINE(UPCRI_USING_GCCUPC_INIT_SECTION)
+     else
+       AC_DEFINE(UPCRI_USING_GCCUPC_INIT_STATIC_COPY)
+     fi
+     AC_MSG_CHECKING([for older gccupc that supports only struct pointer-to-shared])
+     GCCUPC_HAS_ONLY_STRUCT_SPTR=`$PERL -e \
+       "print '$GCCUPC_CANONICAL_VERSION' lt '4.02.00.02' ? 'yes':'no'"`
+     AC_MSG_RESULT($GCCUPC_HAS_ONLY_STRUCT_SPTR)
+     AC_MSG_CHECKING([for gccupc that supports new struct pointer-to-shared format])
+     GCCUPC_HAS_NEW_STRUCT_SPTR=`$PERL -e \
+       "print '$GCCUPC_CANONICAL_VERSION' ge '4.02.03.05' ? 'yes':'no'"`
+     AC_MSG_RESULT($GCCUPC_HAS_NEW_STRUCT_SPTR)
+
+     AC_MSG_CHECKING(for __attribute__((__aligned__ (16))))
+     GASNET_TRY_CCOMPILE_WITHWARN([
+	#undef __attribute__
+	typedef struct {int x; int y;} __attribute__((__aligned__ (16))) foo;
+	], [ ], [
+	 AC_MSG_RESULT(yes)
+	 AC_DEFINE(HAVE_GCC_ATTRIBUTE_ALIGNED)
+	 have_attrib_aligned=1
+       ],[ AC_MSG_RESULT([no/warning])
+       ],[ AC_MSG_RESULT([no/error]) 
+     ])
+
      COMPILER_SPEC_FILE="gcc-upc-upcr.spec"
+     if test -n "$force_symmetric_sptr"; then 
+       AC_MSG_ERROR(['--with-gccupc' does not support '--enable-sptr-symmetric'])
+     fi
+     AC_MSG_CHECKING([for gccupc packed sptr support])
+     if test "$with_gccupc_version"; then
+       if test "$GCCUPC_HAS_ONLY_STRUCT_SPTR" = "yes" \
+               -o -n "$force_struct_sptr"; then
+	 GCCUPC_PACKED_SPTR="no"
+       else
+         GCCUPC_PACKED_SPTR="yes"
+       fi
+     else
+       # We'd like to use the AC_TRY_CPP macro here, but GCCUPC has
+       # a bug where it always exits with a 0 status even when
+       # it hits the #error preprocessor op.
+       cat > conftest.upc << _ACEOF
+	  #if !__UPC_PTS_PACKED_REP__
+	    #error UPC packed shared pointers are not supported.
+	  #endif
+_ACEOF
+       if $TRANSLATOR -E conftest.upc 2>&1 | grep '#error' > /dev/null; then
+	 GCCUPC_PACKED_SPTR="no"
+       else
+	 GCCUPC_PACKED_SPTR="yes"
+       fi
+       rm -f conftest.upc
+     fi
+     AC_MSG_RESULT($GCCUPC_PACKED_SPTR)
+     if test "$GCCUPC_PACKED_SPTR" = "yes"; then
+       if test -n "$force_struct_sptr"; then
+	   AC_MSG_ERROR([The GCCUPC installation at $TRANSLATOR does not support '--enable-sptr-struct'. If you wish to use the struct pointer-to-shared representation (eg to support huge thread counts, memory sizes or shared blocksizes) then you must configure GCCUPC with: --with-upc-pts=struct])
+       fi
+       force_packed_sptr="yes"
+     else
+       if test -n "$force_packed_sptr"; then 
+	 if test "$GCCUPC_HAS_ONLY_STRUCT_SPTR" = "yes"; then
+	   AC_MSG_ERROR([The GCCUPC installation at $TRANSLATOR does not support '--enable-sptr-packed'. Packed pointer support is available starting in GCCUPC v4.2.0.2])
+	 else
+	   AC_MSG_ERROR([The GCCUPC installation at $TRANSLATOR does not support '--enable-sptr-packed'. If you wish to use the packed pointer-to-shared representation then you must configure GCCUPC with: --with-upc-pts=packed])
+	 fi
+       fi
+       if test -z "$have_attrib_aligned"; then
+         AC_MSG_ERROR([GCCUPC requires CC to support __attribute__(__aligned__) for struct pointers])
+       fi
+       force_struct_sptr="yes"
+     fi
+     # Newer GCCUPC's will report their pointer-to-shared configuration.
+     if test -z "$with_gccupc_version"; then
+       AC_MSG_CHECKING(
+	 [for gccupc that provides pointer-to-shared configuration information])
+       GCCUPC_HAS_SPTR_CONFIG=`$PERL -e \
+	 "print '$GCCUPC_CANONICAL_VERSION' ge '4.02.03.04' ? 'yes':'no'"`
+       AC_MSG_RESULT($GCCUPC_HAS_SPTR_CONFIG)
+     fi
+     if test "$GCCUPC_HAS_SPTR_CONFIG" = "yes"; then
+       cat > conftest.upc << _ACEOF
+#define _XSTR(X) #X
+#define _STR(S) _XSTR(S)
+#if __UPC_VADDR_FIRST__
+UPCRI_SPTR_ADDR_FIRST=1
+#endif
+UPCRI_ADDR_BITS_OVERRIDE=_STR(__UPC_VADDR_SIZE__)
+UPCRI_PHASE_BITS_OVERRIDE=_STR(__UPC_PHASE_SIZE__)
+UPCRI_THREAD_BITS_OVERRIDE=_STR(__UPC_THREAD_SIZE__)
+#if __UPC_PTS_STRUCT_REP__
+UPCRI_STRUCT_SPTR_ADDR_TYPE=_STR(__UPC_VADDR_TYPE__)
+UPCRI_STRUCT_SPTR_PHASE_TYPE=_STR(__UPC_PHASE_TYPE__)
+UPCRI_STRUCT_SPTR_THREAD_TYPE=_STR(__UPC_THREAD_TYPE__)
+#ifdef __UPC_VADDR_FIELD__
+UPCRI_STRUCT_SPTR_ADDR_FIELD=_STR(__UPC_VADDR_FIELD__)
+#endif
+#ifdef __UPC_PHASE_FIELD__
+UPCRI_STRUCT_SPTR_PHASE_FIELD=_STR(__UPC_PHASE_FIELD__)
+#endif
+#ifdef __UPC_THREAD_FIELD__
+UPCRI_STRUCT_SPTR_THREAD_FIELD=_STR(__UPC_THREAD_FIELD__)
+#endif
+#endif
+_ACEOF
+	 eval `$TRANSLATOR -E conftest.upc | grep '^ *UPCRI_[[A-Z0-9_]]*='`
+	 rm -f conftest.upc
+     else
+       # Set configuration defaults based upon version and target word size
+       GASNET_CHECK_SIZEOF(void *)
+       GCCUPC_PTR_BITS=`expr $SIZEOF_VOID_P \* 8`
+       if test -n "$force_struct_sptr"; then
+	 AC_MSG_RESULT([Setting default struct sptr configuration values])
+	 if test "$GCCUPC_HAS_NEW_STRUCT_SPTR" = "yes" ; then
+	   UPCRI_SPTR_ADDR_FIRST=1
+	   if test "$GCCUPC_PTR_BITS" = 64 ; then
+	     UPCRI_ADDR_BITS_OVERRIDE=64
+	     UPCRI_THREAD_BITS_OVERRIDE=32
+	     UPCRI_PHASE_BITS_OVERRIDE=32
+	     UPCRI_STRUCT_SPTR_ADDR_TYPE="char *"
+	     UPCRI_STRUCT_SPTR_THREAD_TYPE="uint32_t"
+	     UPCRI_STRUCT_SPTR_PHASE_TYPE="unit32_t"
+	   else
+	     UPCRI_ADDR_BITS_OVERRIDE=32
+	     UPCRI_THREAD_BITS_OVERRIDE=16
+	     UPCRI_PHASE_BITS_OVERRIDE=16
+	     UPCRI_STRUCT_SPTR_ADDR_TYPE="char *"
+	     UPCRI_STRUCT_SPTR_THREAD_TYPE="uint16_t"
+	     UPCRI_STRUCT_SPTR_PHASE_TYPE="uint16_t"
+	   fi
+	 else
+	   # Old format
+	   if test "$GCCUPC_PTR_BITS" = 64 ; then
+	     UPCRI_ADDR_BITS_OVERRIDE=64
+	     UPCRI_THREAD_BITS_OVERRIDE=16
+	     UPCRI_PHASE_BITS_OVERRIDE=48
+	     UPCRI_STRUCT_SPTR_THREAD_FIELD=": 16"
+	     UPCRI_STRUCT_SPTR_PHASE_FIELD=": 48"
+	     UPCRI_STRUCT_SPTR_ADDR_TYPE="char *"
+	     UPCRI_STRUCT_SPTR_THREAD_TYPE="unsigned short"
+	     UPCRI_STRUCT_SPTR_PHASE_TYPE="unsigned long"
+	   else
+	     UPCRI_ADDR_BITS_OVERRIDE=32
+	     UPCRI_THREAD_BITS_OVERRIDE=8
+	     UPCRI_PHASE_BITS_OVERRIDE=24
+	     UPCRI_STRUCT_SPTR_THREAD_FIELD=": 8"
+	     UPCRI_STRUCT_SPTR_PHASE_FIELD=": 24"
+	     UPCRI_STRUCT_SPTR_ADDR_TYPE="char *"
+	     UPCRI_STRUCT_SPTR_THREAD_TYPE="unsigned char"
+	     UPCRI_STRUCT_SPTR_PHASE_TYPE="unsigned long"
+	   fi
+	 fi
+       else  
+	 UPCRI_SPTR_ADDR_FIRST=1
+	 # Set GCC packed default representation.
+	 UPCRI_PHASE_BITS_OVERRIDE=16
+	 UPCRI_THREAD_BITS_OVERRIDE=12
+	 UPCRI_ADDR_BITS_OVERRIDE=36
+       fi
+     fi
+     for cfg in UPCRI_ADDR_BITS_OVERRIDE UPCRI_PHASE_BITS_OVERRIDE \
+                UPCRI_THREAD_BITS_OVERRIDE UPCRI_STRUCT_SPTR_ADDR_TYPE \
+		UPCRI_STRUCT_SPTR_PHASE_TYPE UPCRI_STRUCT_SPTR_THREAD_TYPE \
+		UPCRI_STRUCT_SPTR_ADDR_FIELD UPCRI_STRUCT_SPTR_PHASE_FIELD \
+		UPCRI_STRUCT_SPTR_THREAD_FIELD ; do
+       eval "cval=\$$cfg"
+       if test -n "$cval"; then
+         AC_MSG_CHECKING([value of $cfg])
+         AC_MSG_RESULT($cval)
+       fi
+     done
     ],
     [ USING_GCCUPC="no" ], 
     [ USING_GCCUPC="no" ]) 
@@ -548,6 +732,7 @@ AC_SUBST(MPI_INCOMPATIBLE)
 # no-ops: pass down to gasnet.  Here for documentation purposes only
 GASNET_WITH(segment-mmap-max,
    [Set default max size of mmap-based GASNet segments (ex: "2GB", "1045MB") -- see also --enable-segment-large])
+GASNET_WITH(max-pthreads-per-node, [Set max pthreads supported per GASNet node])
 BUILDCONFIG_SEGMENT="segment_fast"
 GASNET_IF_ENABLED(segment-fast,
    [Select GASNet's FAST segments (default), for the fastest remote access with a possible cost in max shared memory size])
@@ -580,9 +765,29 @@ BUILDCONFIG="$BUILDCONFIG,$BUILDCONFIG_OS,$BUILDCONFIG_CPU,$BUILDCONFIG_CC"
 if test "$force_struct_sptr" = "yes"; then
       AC_DEFINE(UPCRI_STRUCT_SPTR)
       BUILDCONFIG="$BUILDCONFIG,structsptr"
+      if test -n "$UPCRI_STRUCT_SPTR_ADDR_TYPE" ; then
+        AC_DEFINE_UNQUOTED(UPCRI_STRUCT_SPTR_ADDR_TYPE,[$UPCRI_STRUCT_SPTR_ADDR_TYPE])
+        AC_DEFINE_UNQUOTED(UPCRI_STRUCT_SPTR_THREAD_TYPE,[$UPCRI_STRUCT_SPTR_THREAD_TYPE])
+        AC_DEFINE_UNQUOTED(UPCRI_STRUCT_SPTR_PHASE_TYPE,[$UPCRI_STRUCT_SPTR_PHASE_TYPE])
+	# Field specifiers (eg, ": 24") are defined only when needed.
+	if test -n "$UPCRI_STRUCT_SPTR_ADDR_FIELD" ; then
+          AC_DEFINE_UNQUOTED(UPCRI_STRUCT_SPTR_ADDR_FIELD,[$UPCRI_STRUCT_SPTR_ADDR_FIELD])
+	fi
+	if test -n "$UPCRI_STRUCT_SPTR_THREAD_FIELD" ; then
+          AC_DEFINE_UNQUOTED(UPCRI_STRUCT_SPTR_THREAD_FIELD,[$UPCRI_STRUCT_SPTR_THREAD_FIELD])
+	fi
+	if test -n "$UPCRI_STRUCT_SPTR_PHASE_FIELD" ; then
+          AC_DEFINE_UNQUOTED(UPCRI_STRUCT_SPTR_PHASE_FIELD,[$UPCRI_STRUCT_SPTR_PHASE_FIELD])
+	fi
+      fi
 else
       AC_DEFINE(UPCRI_PACKED_SPTR)
       BUILDCONFIG="$BUILDCONFIG,packedsptr"
+fi
+
+# GCCUPC may order its sptr fields (addr, thread, phase), thus "address first".
+if test -n "$UPCRI_SPTR_ADDR_FIRST" ; then
+      AC_DEFINE_UNQUOTED(UPCRI_SPTR_ADDR_FIRST,[$UPCRI_SPTR_ADDR_FIRST])
 fi
 
 # Enable symmetric pointer if enabled by user
@@ -598,19 +803,31 @@ GASNET_WITH(sptr-packed-bits, [value='phase,thread,addr' tweak bit distribution 
   if test "$force_struct_sptr" = "yes"; then
     AC_MSG_ERROR([--with-sptr-packed-bits is only supported for packed sptr representation])
   fi
+  if test "$USING_GCCUPC" = "yes" -a -z "$with_gccupc_version" ; then
+    AC_MSG_ERROR([--with-sptr-packed-bits is not supported for GCC/UPC])
+  fi
   UPCRI_PHASE_BITS_OVERRIDE=`echo $withval | $PERL -ne 'm/^(\d+),(\d+),(\d+)$/;  print $1 if ($1+$2+$3 == 64);'`
   UPCRI_THREAD_BITS_OVERRIDE=`echo $withval | $PERL -ne 'm/^(\d+),(\d+),(\d+)$/; print $2 if ($1+$2+$3 == 64);'`
   UPCRI_ADDR_BITS_OVERRIDE=`echo $withval | $PERL -ne 'm/^(\d+),(\d+),(\d+)$/;   print $3 if ($1+$2+$3 == 64);'`
   if test -z "$UPCRI_PHASE_BITS_OVERRIDE"  -o "$UPCRI_PHASE_BITS_OVERRIDE"  -lt 1 -o \
           -z "$UPCRI_THREAD_BITS_OVERRIDE" -o "$UPCRI_THREAD_BITS_OVERRIDE" -lt 1 -o \
-          -z "$UPCRI_ADDR_BITS_OVERRIDE"   -o "$UPCRI_ADDR_BITS_OVERRIDE"   -lt 20 -o \
-	  "$UPCRI_ADDR_BITS_OVERRIDE" -gt "$UPCRI_PTR_BITS" ; then
-    AC_MSG_ERROR([--with-sptr-packed-bits=phase,thread,addr requires phase+thread+addr=64 and phase >= 1 and thread >= 1 and addr >= 20 and addr <= 8*sizeof(void*)])
+          -z "$UPCRI_ADDR_BITS_OVERRIDE"   -o "$UPCRI_ADDR_BITS_OVERRIDE"   -lt 20 ; then
+    AC_MSG_ERROR([--with-sptr-packed-bits=phase,thread,addr requires phase+thread+addr=64 and phase >= 1 and thread >= 1 and addr >= 20])
   fi
+  if test "$UPCRI_ADDR_BITS_OVERRIDE" -gt "$UPCRI_PTR_BITS" \
+          -a "$USING_GCCUPC" = "no" ; then
+    AC_MSG_ERROR([--with-sptr-packed-bits=phase,thread,addr requires addr <= 8*sizeof(void*)])
+  fi
+])
+# The layout of a packed shared pointer can be chenged by --sptr-packed-bits
+# (as shown above), or when GCC/UPC is configured to support the
+# packed pointer representation.  GCC/UPC also sets these fields when
+# configuring its 'struct' sptr. representation.
+if test -n "$UPCRI_ADDR_BITS_OVERRIDE"; then
   AC_DEFINE_UNQUOTED(UPCRI_PHASE_BITS_OVERRIDE, $UPCRI_PHASE_BITS_OVERRIDE)
   AC_DEFINE_UNQUOTED(UPCRI_THREAD_BITS_OVERRIDE,$UPCRI_THREAD_BITS_OVERRIDE)
   AC_DEFINE_UNQUOTED(UPCRI_ADDR_BITS_OVERRIDE,  $UPCRI_ADDR_BITS_OVERRIDE)
-])
+fi
 
 AC_MSG_CHECKING(for compiler feature list)
 AC_MSG_RESULT($BUILDCONFIG)
@@ -1005,6 +1222,7 @@ UPCR_CONDUIT(lapi, [support running over IBM LAPI ])
 UPCR_CONDUIT(gm, [support running over Myrinet GM ])
 UPCR_CONDUIT(shmem, [support running over SHMEM ])
 UPCR_CONDUIT(vapi, [support running over Mellanox VAPI ])
+UPCR_CONDUIT(dcmf, [support running over IBM BlueGene/P DCMF ])
 UPCR_CONDUIT(ibv, [support running over OpenIB/OpenFabrics IB Verbs ])
 UPCR_CONDUIT(portals, [support running over Cray Portals ])
 

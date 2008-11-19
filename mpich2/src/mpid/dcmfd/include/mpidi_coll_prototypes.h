@@ -11,6 +11,7 @@
 
 /* Bcast prototypes */
 int MPIDO_Bcast_tree(void *, int, int, MPID_Comm *);
+int MPIDO_Bcast_CCMI_tree(void *, int, int, MPID_Comm *);
 int MPIDO_Bcast_binom_sync(void *, int, int, MPID_Comm *);
 int MPIDO_Bcast_rect_sync(void *, int, int, MPID_Comm *);
 int MPIDO_Bcast_binom_async(void *, int, int, MPID_Comm *);
@@ -41,6 +42,13 @@ int MPIDO_Allreduce_async_rect(void *, void *, int, DCMF_Dt, DCMF_Op,
 			       MPI_Datatype, MPID_Comm *);
 int MPIDO_Allreduce_async_rectring(void *, void *, int, DCMF_Dt, DCMF_Op,
 				   MPI_Datatype, MPID_Comm *);
+int MPIDO_Allreduce_rring_dput_singleth(void *, void *, int, DCMF_Dt, DCMF_Op,
+				   MPI_Datatype, MPID_Comm *);
+int MPIDO_Allreduce_short_async_rect(void *, void *, int, DCMF_Dt, DCMF_Op,
+				   MPI_Datatype, MPID_Comm *);
+int MPIDO_Allreduce_short_async_binom(void *, void *, int, DCMF_Dt, DCMF_Op,
+				   MPI_Datatype, MPID_Comm *);
+
 
 
 /* Alltoall prototypes */

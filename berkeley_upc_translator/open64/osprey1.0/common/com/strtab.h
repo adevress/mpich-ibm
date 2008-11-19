@@ -40,9 +40,9 @@
  * ====================================================================
  *
  * Module: strtab.h
- * $Revision: 1.3 $
- * $Date: 2006/01/05 08:37:52 $
- * $Author: wychen $
+ * $Revision: 1.4 $
+ * $Date: 2008/07/31 00:19:10 $
+ * $Author: ciancu $
  * $Source: /var/local/cvs/compilers/open64/osprey1.0/common/com/strtab.h,v $
  *
  * Description:
@@ -168,7 +168,7 @@ public:
     : rep(n, hf, eq, a)
     {}
 
-  STR_IDX& operator[](STR_IDX idx) { return rep[idx]; }
+    STR_IDX& operator[](STR_IDX idx) { return rep[idx]; }
   STR_IDX operator[](STR_IDX idx) const {
     rep_type::const_iterator i = rep.find(idx);
     return i != rep.end() ? i->second : STR_IDX(0);

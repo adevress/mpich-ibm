@@ -1,6 +1,6 @@
 /*   $Source: /var/local/cvs/gasnet/vapi-conduit/gasnet_extended_internal.h,v $
- *     $Date: 2006/07/10 05:56:33 $
- * $Revision: 1.21 $
+ *     $Date: 2008/10/24 22:20:17 $
+ * $Revision: 1.23 $
  * Description: GASNet header for internal definitions in Extended API
  * Copyright 2002, Dan Bonachea <bonachea@cs.berkeley.edu>
  * Terms of use are as specified in license.txt
@@ -13,7 +13,6 @@
 #include <gasnet_handler.h>
 
 /* ------------------------------------------------------------------------------------ */
-typedef uint8_t gasnete_threadidx_t;
 
 enum {
   gasnete_opExplicit = 0,	/* gasnete_eop_new() relies on this value */
@@ -104,8 +103,10 @@ gasnete_iop_t *gasnete_iop_new(gasnete_threaddata_t *thread);
     gasneti_assert(GASNETE_EOPADDR_TO_PTR(_th, (eop)->addr) == eop); \
   } while (0)
   #define gasnete_iop_check(iop) do {                         \
+    gasnete_iop_t *_tmp_next;                                 \
     gasneti_memcheck(iop);                                    \
-    if ((iop)->next != NULL) _gasnete_iop_check((iop)->next); \
+    _tmp_next = (iop)->next;                                  \
+    if (_tmp_next != NULL) _gasnete_iop_check(_tmp_next);     \
     gasneti_assert((iop)->type == gasnete_opImplicit);        \
     gasneti_assert((iop)->threadidx < gasnete_numthreads);    \
     gasneti_memcheck(gasnete_threadtable[(iop)->threadidx]);  \

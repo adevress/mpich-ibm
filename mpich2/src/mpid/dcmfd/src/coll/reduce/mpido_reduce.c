@@ -8,9 +8,10 @@
 #include "mpido_coll.h"
 #include "mpidi_coll_prototypes.h"
 
-#pragma weak PMPIDO_Reduce = MPIDO_Reduce
 
 #ifdef USE_CCMI_COLL
+
+#pragma weak PMPIDO_Reduce = MPIDO_Reduce
 
 int MPIDO_Reduce(void * sendbuf,
                  void * recvbuf,
@@ -24,9 +25,10 @@ int MPIDO_Reduce(void * sendbuf,
   DCMF_Embedded_Info_Set * properties = &(comm->dcmf.properties);
   int success = 1, rc = 0, op_type_support;
   int data_contig, data_size = 0;
-  unsigned char reset_sendbuff = 0;
+  int userenvset = DCMF_INFO_ISSET(properties, DCMF_REDUCE_ENVVAR);
   MPID_Datatype * data_ptr;
   MPI_Aint data_true_lb = 0;
+  char *sbuf = sendbuf, *rbuf = recvbuf;
 
   DCMF_Dt dcmf_data = DCMF_UNDEFINED_DT;
   DCMF_Op dcmf_op = DCMF_UNDEFINED_OP;
@@ -53,59 +55,83 @@ int MPIDO_Reduce(void * sendbuf,
 
   MPID_Ensure_Aint_fits_in_pointer(MPI_VOID_PTR_CAST_TO_MPI_AINT recvbuf +
 				   data_true_lb);
-  recvbuf = (char *) recvbuf + data_true_lb;
+  rbuf = (char *) recvbuf + data_true_lb;
 
   if (sendbuf == MPI_IN_PLACE)
   {
-    sendbuf = recvbuf;
-    reset_sendbuff = 1;
+    sbuf = rbuf;
   }
   else
   {
     MPID_Ensure_Aint_fits_in_pointer(MPI_VOID_PTR_CAST_TO_MPI_AINT sendbuf +
                                      data_true_lb);
-    sendbuf = (char *) sendbuf + data_true_lb;
+    sbuf = (char *) sendbuf + data_true_lb;
   }
-
-  if (!STAR_info.enabled || STAR_info.internal_control_flow)
+  
+  if (!STAR_info.enabled || STAR_info.internal_control_flow ||
+      (((op_type_support == DCMF_TREE_SUPPORT ||
+         op_type_support == DCMF_TREE_MIN_SUPPORT) &&
+        DCMF_INFO_ISSET(properties, DCMF_TREE_COMM)) ||
+       data_size < STAR_info.threshold))
   {
-    extern int DCMF_TREE_SMP_SHORTCUT;
+    if(!userenvset)
+    {
+      if ((op_type_support == DCMF_TREE_SUPPORT ||
+           op_type_support == DCMF_TREE_MIN_SUPPORT) &&
+          DCMF_INFO_ISSET(properties, DCMF_USE_TREE_REDUCE))
+      {
 
-  
-    if (op_type_support == DCMF_TREE_SUPPORT &&
-        DCMF_INFO_ISSET(properties, DCMF_USE_TREE_REDUCE))
-    {
-      if (DCMF_TREE_SMP_SHORTCUT)
-	func = MPIDO_Reduce_global_tree;
-      else
-	func = MPIDO_Reduce_tree;
+        if(DCMF_INFO_ISSET(properties, DCMF_USE_SMP_TREE_SHORTCUT))
+          func = MPIDO_Reduce_global_tree;
+        else
+          func = MPIDO_Reduce_tree;
+      }
+       
+      if (!func && op_type_support != DCMF_NOT_SUPPORTED)
+      {
+        if (DCMF_INFO_ISSET(properties, DCMF_IRREG_COMM))
+          func = MPIDO_Reduce_binom;
+         
+        if (!func && (data_size <= 32768))
+        {
+          if (DCMF_INFO_ISSET(properties, DCMF_USE_BINOM_REDUCE))
+            func = MPIDO_Reduce_binom;
+        }
+         
+        if (!func && (data_size > 32768))
+        {
+          if (DCMF_INFO_ISSET(properties, DCMF_USE_RECTRING_REDUCE))
+            func = MPIDO_Reduce_rectring;
+        }
+      }
     }
-  
-    else if (op_type_support == DCMF_TORUS_SUPPORT ||
-             op_type_support == DCMF_TREE_SUPPORT)
-    {
-      if (DCMF_INFO_ISSET(properties, DCMF_USE_RECT_REDUCE))
-	func = MPIDO_Reduce_rect;
-      
-      else if (DCMF_INFO_ISSET(properties, DCMF_USE_RECTRING_REDUCE) &&
-	       count > 16384)
-	func = MPIDO_Reduce_rectring;
-      
-      else if (DCMF_INFO_ISSET(properties, DCMF_USE_BINOM_REDUCE))
-	func = MPIDO_Reduce_binom;
-    }
-  
-    if (func)
-      rc = (func)(sendbuf, recvbuf, count, dcmf_data,
-                  dcmf_op, datatype, root, comm);      
-  
-    /* 
-       if datatype or op are not device specific, or no func was found,
-       default to mpich 
-    */
     else
     {
-      if (reset_sendbuff) sendbuf = MPI_IN_PLACE;
+      if(DCMF_INFO_ISSET(properties, DCMF_USE_BINOM_REDUCE))
+        func = MPIDO_Reduce_binom;
+      if(!func &&
+         DCMF_INFO_ISSET(properties, DCMF_USE_TREE_REDUCE) && 
+         DCMF_INFO_ISSET(properties, DCMF_USE_SMP_TREE_SHORTCUT) &&
+         op_type_support == DCMF_TREE_SUPPORT)
+      {
+        func = MPIDO_Reduce_global_tree;
+      }
+      if(!func &&
+         DCMF_INFO_ISSET(properties, DCMF_USE_TREE_REDUCE) && 
+         !DCMF_INFO_ISSET(properties, DCMF_USE_SMP_TREE_SHORTCUT) &&
+         op_type_support == DCMF_TREE_SUPPORT)
+        func = MPIDO_Reduce_tree;
+      if(!func &&
+         DCMF_INFO_ISSET(properties, DCMF_USE_RECTRING_REDUCE))
+        func = MPIDO_Reduce_rectring;
+    }
+     
+    if (func)
+      rc = (func)(sbuf, rbuf, count, dcmf_data,
+                  dcmf_op, datatype, root, comm);      
+      
+    else
+    {
       rc = MPIR_Reduce(sendbuf, recvbuf, count, datatype, op, root, comm);
     }
   }
@@ -147,7 +173,7 @@ int MPIDO_Reduce(void * sendbuf,
       collective_site.op_type_support = op_type_support;
 
 
-      rc = STAR_Reduce(sendbuf, recvbuf, count, dcmf_data, dcmf_op,
+      rc = STAR_Reduce(sbuf, rbuf, count, dcmf_data, dcmf_op,
                        datatype, root, &collective_site,
                        STAR_reduce_repository,
                        STAR_info.reduce_algorithms);
@@ -155,8 +181,6 @@ int MPIDO_Reduce(void * sendbuf,
 
     if (rc == STAR_FAILURE || !same_callsite)
     {
-      if (reset_sendbuff) sendbuf = MPI_IN_PLACE;
-	
       rc = MPIR_Reduce(sendbuf, recvbuf, count, datatype, op, root, comm);
     }
     /* unset the internal control flow */
@@ -165,7 +189,6 @@ int MPIDO_Reduce(void * sendbuf,
     MPIU_Free(tb_ptr);
   }  
 
-  if (reset_sendbuff) sendbuf = MPI_IN_PLACE;
   
   return rc;
 }

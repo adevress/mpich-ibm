@@ -28,26 +28,18 @@ MPID_Cancel_send_rsm(MPID_Request * sreq)
       if (rreq)
         {
           MPID_assert(rreq->partner_request == sreq);
-          MPIU_Object_set_ref(rreq, 0);
-          MPID_Request_destroy(rreq);
+          MPID_Request_release(rreq);
           sreq->status.cancelled = TRUE;
           sreq->cc = 0;
-          MPIU_Object_set_ref(sreq, 1);
         }
       return MPI_SUCCESS;
     }
   else
     {
-      if (sreq->dcmf.state == MPIDI_DCMF_ACKNOWLEGED)
-        {
-          MPID_assert(0 == *sreq->cc_ptr);
-          MPIU_Object_add_ref(sreq);
-          MPID_Request_increment_cc(sreq);
-        }
-
       if(!sreq->comm)
         return MPI_SUCCESS;
 
+      MPID_Request_increment_cc(sreq);
       MPIDI_DCMF_postCancelReq(sreq);
 
       return MPI_SUCCESS;

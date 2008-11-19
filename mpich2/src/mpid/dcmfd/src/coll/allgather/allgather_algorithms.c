@@ -7,7 +7,7 @@
 #include "mpido_coll.h"
 
 #ifdef USE_CCMI_COLL
-void allgather_async_done(void *clientdata, DCMF_Error_t *err)
+static void allgather_async_done(void *clientdata, DCMF_Error_t *err)
 {
   volatile unsigned *work_left = (unsigned *)clientdata;
   (*work_left)--;
@@ -331,7 +331,8 @@ int MPIDO_Allgather_bcast(void *sendbuf,
                    recvtype);
   }
 
-#warning this code should either abort on first error or somehow aggregate error codes
+/* this code should either abort on first error or somehow aggregate 
+ * error codes, esp since it calls internal routines */
   for (i = 0; i < np; i++)
   {
     void *destbuf = recvbuf + i * recvcount * extent;

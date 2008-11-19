@@ -67,7 +67,6 @@ int MPID_Startall(int count, MPID_Request * requests[])
             MPID_Request * sreq = MPID_Request_create();
             if (sreq != NULL)
               {
-                MPIU_Object_set_ref(sreq, 1);
                 sreq->kind = MPID_REQUEST_SEND;
                 sreq->cc   = 0;
                 sreq->comm = preq->comm;

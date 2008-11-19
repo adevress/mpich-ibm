@@ -13,7 +13,7 @@
  * **************************************************************************
  */
 
-void
+static void
 alltoallw_cb_done(void *clientdata, DCMF_Error_t *err)
 {
   volatile unsigned * work_left = (unsigned *) clientdata;

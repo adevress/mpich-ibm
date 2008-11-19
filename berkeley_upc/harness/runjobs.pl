@@ -42,12 +42,15 @@ my $got_outofmem = 0;
 my $got_crash = 0;
 my $got_timeout = 0;
 
+my $ran_any = 0;
+
 # gather arguments
 my $logdir = shift;
 my $run_file = shift;
 my $rpt_file = shift;
 my $runarg = shift;
 my $timelimit = shift;
+my $slack = shift || 15;
 
 # the runlist field names
 my @runlist_fields = qw(rundir runcmd app limit e_code pass_expr fail_expr nthread
@@ -94,8 +97,6 @@ if (-e $runlist_file) {
     print "Copying $runlist_file to $save\n";
     `cp ${runlist_file} $save`;
 }
-
-my $slack = 15;
 
 my $start_time = time();
 while (1) {
@@ -203,7 +204,17 @@ sub select_job {
 	}
 	# jobs left to run, but none small enough to fit into our
 	# time limit.  Leave the runlist file as it is and tell
-	# the job script to re-submit itself.
+	# the job script to re-submit itself, UNLESS we didn't
+	# actually run anything (which would indicate one or more
+	# jobs are too big to run w/ slack).
+	unless ($ran_any) {
+	    print "NO JOBS RAN - stopping to avoid inifinite loop.\n";
+            my $rpt = new IO::File(">> $report_file");
+            die "Cant append to $report_file" if !defined($rpt);
+            printf $rpt "Run of $runlist_file FAILED - $cnt unrunnable jobs remain.\n";
+            undef $rpt;
+            exit $finished_code;
+        }
 	print "Time Limit reached, $cnt jobs remain.\n";
 	exit $again_code;
     }
@@ -226,6 +237,7 @@ sub select_job {
 
     #printf("Selected job to run [%s]\n",$job->{app});
 
+    $ran_any = 1;
     return $job;
 }
 
@@ -431,7 +443,7 @@ sub run_job {
     }
     if ($remove_executable) {
 	printf("Removing binary [$app]\n");
-	unlink "$app";
+	unlink (is_cygwin() ? "${app}.exe" : "$app");
     }
 
         # append to report file
@@ -496,6 +508,7 @@ sub pass_fail {
     # remove known-harmless warnings 
     $errtxt =~ s/$warning_blacklist//mg; 
     $outtxt =~ s/$warning_blacklist//mg; 
+    my $fulltxt = "$errtxt$outtxt";
 
     if (${fail_expr} !~ /^\s*0\s*$/) {
 	if ( $outtxt =~ m/${fail_expr}/m || $errtxt =~ m/${fail_expr}/m) {
@@ -513,9 +526,11 @@ sub pass_fail {
 	    $result = "FAILED";
 	}
     }
-    $got_outofmem = 1 if ($errtxt =~ /UPC Runtime error:.*out of shared memory/);
-    $got_crash = 1 if ($errtxt =~ /UPC Runtime error:/ && !$got_outofmem);
-    $got_crash = 1 if ($errtxt =~ /UPC Runtime: GASNet error/);
-    $got_crash = 1 if ($errtxt =~ /Caught a fatal signal/);
+    # look for select error messages we generate
+    # these are normally all in errtxt, but some job spawners cause them to end up in outtxt
+    $got_outofmem = 1 if ($fulltxt =~ /UPC Runtime error:.*out of shared memory/);
+    $got_crash = 1 if ($fulltxt =~ /UPC Runtime error:/ && !$got_outofmem);
+    $got_crash = 1 if ($fulltxt =~ /UPC Runtime: GASNet error/);
+    $got_crash = 1 if ($fulltxt =~ /Caught a fatal signal/);
     return $result;
 }

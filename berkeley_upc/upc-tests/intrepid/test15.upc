@@ -45,8 +45,7 @@ test15()
 	  int got = *p++;
 	  if (got != expected)
 	    {
-	      fprintf(stderr,
-		"test15: error at element %d. Expected %d, got %d\n",
+	      fprintf(stderr, "test15: error at element %d. Expected %d, got %d\n",
 		i, expected, got);
 	      abort ();
 	    }
@@ -59,8 +58,7 @@ test15()
 	  int got = *--p;
 	  if (got != expected)
 	    {
-	      fprintf(stderr,
-		"test15: error at element %d. Expected %d, got %d\n",
+	      fprintf(stderr, "test15: error at element %d. Expected %d, got %d\n",
 		i, expected, got);
 	      abort ();
 	    }
@@ -73,5 +71,5 @@ int
 main()
 {
   test15 ();
-  exit (0);
+  return 0;
 }

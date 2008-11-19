@@ -55,6 +55,15 @@
  *   message sizes. 
  *   - Default is 32.
  *
+ * - DCMF_TREE_SMP_SHORTCUT -
+ * Boolean indicating that a collective capable of using the
+ * collective network should bypass the CCMI layer and call 
+ *      the Collective Network Device directly.
+ *      Possible values:
+ *      - 0 (false) - The CCMI layer will be used.
+ *      - 1 (true)  - The CCMI layer will be bypassed.
+ *      - Default is 1.
+ *
  * - DCMF_INTERRUPT -
  * - DCMF_INTERRUPTS - Turns on interrupt driven communications. This
  *   can be beneficial to some applications and is required if you are
@@ -512,9 +521,9 @@ MPIDI_Env_setup()
   /* default setting of flags for the mpidi_coll_protocol object */
   DCMF_MSET_INFO(properties, 
 		 DCMF_USE_GI_BARRIER,
+       DCMF_USE_SMP_TREE_SHORTCUT,
 		 DCMF_USE_RECT_BARRIER,
 		 DCMF_USE_BINOM_BARRIER,
-		 DCMF_USE_OPT_BARRIER,
 		 DCMF_USE_LOCKBOX_LBARRIER,
 		 DCMF_USE_BINOM_LBARRIER,
 		 DCMF_USE_RECT_DPUT_BCAST,
@@ -524,54 +533,47 @@ MPIDI_Env_setup()
 		 DCMF_USE_ARECT_BCAST,
 		 DCMF_USE_BINOM_BCAST,
 		 DCMF_USE_ABINOM_BCAST,
-		 DCMF_USE_OPT_BCAST,
 		 DCMF_USE_SCATTER_GATHER_BCAST,
+                 DCMF_USE_TREE_BCAST, 
 		 DCMF_USE_STORAGE_ALLREDUCE,
 		 DCMF_USE_RECT_ALLREDUCE,
+       DCMF_USE_SHORT_ASYNC_RECT_ALLREDUCE,
 		 DCMF_USE_RECTRING_ALLREDUCE,
 		 DCMF_USE_BINOM_ALLREDUCE,
 		 DCMF_USE_ARECT_ALLREDUCE,
 		 DCMF_USE_ARECTRING_ALLREDUCE,
 		 DCMF_USE_ABINOM_ALLREDUCE,
-		 DCMF_USE_OPT_ALLREDUCE,
+                 DCMF_USE_RRING_DPUT_SINGLETH_ALLREDUCE,
+                 DCMF_USE_TREE_ALLREDUCE,
+                 DCMF_USE_PIPELINED_TREE_ALLREDUCE,
+                 DCMF_USE_CCMI_TREE_ALLREDUCE,                 
 		 DCMF_USE_STORAGE_REDUCE,
 		 DCMF_USE_RECT_REDUCE,
 		 DCMF_USE_RECTRING_REDUCE,
 		 DCMF_USE_BINOM_REDUCE,
-		 DCMF_USE_OPT_REDUCE,
+                 DCMF_USE_TREE_REDUCE, 
 		 DCMF_USE_ALLREDUCE_ALLGATHER,
 		 DCMF_USE_BCAST_ALLGATHER,
 		 DCMF_USE_ABCAST_ALLGATHER,
 		 DCMF_USE_ALLTOALL_ALLGATHER,
 		 DCMF_USE_PREALLREDUCE_ALLGATHER,
-		 DCMF_USE_OPT_ALLGATHER,
+       DCMF_USE_ARECT_BCAST_ALLGATHER,
 		 DCMF_USE_ALLREDUCE_ALLGATHERV,
 		 DCMF_USE_BCAST_ALLGATHERV,
 		 DCMF_USE_ABCAST_ALLGATHERV,
 		 DCMF_USE_ALLTOALL_ALLGATHERV,
 		 DCMF_USE_PREALLREDUCE_ALLGATHERV,
-		 DCMF_USE_OPT_ALLGATHERV,
+       DCMF_USE_ARECT_BCAST_ALLGATHERV,
 		 DCMF_USE_ALLTOALL_SCATTERV,
 		 DCMF_USE_PREALLREDUCE_SCATTERV,
-		 DCMF_USE_OPT_SCATTERV,
 		 DCMF_USE_BCAST_SCATTER,
-		 DCMF_USE_OPT_SCATTER,
 		 DCMF_USE_REDUCE_GATHER,
-		 DCMF_USE_OPT_GATHER,
 		 DCMF_USE_REDUCESCATTER,
-		 DCMF_USE_OPT_REDUCESCATTER,
 		 DCMF_USE_TORUS_ALLTOALL,
 		 DCMF_USE_TORUS_ALLTOALLV,
 		 DCMF_USE_TORUS_ALLTOALLW,
 		 DCMF_USE_PREMALLOC_ALLTOALL,
 		 DCMF_END_ARGS);
-  
-  if (MPIDI_Process.optimized.tree)
-    DCMF_MSET_INFO(properties, 
-		   DCMF_USE_TREE_BCAST, 
-		   DCMF_USE_TREE_ALLREDUCE,
-		   DCMF_USE_TREE_REDUCE, 
-		   DCMF_END_ARGS);
   
   MPIDI_CollectiveProtocols.bcast_asynccutoff = 8192;
   MPIDI_CollectiveProtocols.allreduce_asynccutoff = 131072;
@@ -588,10 +590,15 @@ MPIDI_Env_setup()
     {
       DCMF_INFO_SET(properties, DCMF_USE_MPICH_SCATTER);
       DCMF_INFO_UNSET(properties, DCMF_USE_BCAST_SCATTER);
-      DCMF_INFO_UNSET(properties, DCMF_USE_OPT_SCATTER);
     }
   }
 
+   int smp_shortcut=1;
+   ENV_Int(getenv("DCMF_TREE_SMP_SHORTCUT"), &smp_shortcut);
+   if(!smp_shortcut)
+      DCMF_INFO_UNSET(properties, DCMF_USE_SMP_TREE_SHORTCUT);
+
+      
   envopts = getenv("DCMF_SCATTERV");
   if(envopts != NULL)
   {
@@ -600,7 +607,6 @@ MPIDI_Env_setup()
       DCMF_INFO_SET(properties, DCMF_USE_MPICH_SCATTERV);
       DCMF_INFO_UNSET(properties, DCMF_USE_ALLTOALL_SCATTERV);
       DCMF_INFO_UNSET(properties, DCMF_USE_BCAST_SCATTERV);
-      DCMF_INFO_UNSET(properties, DCMF_USE_OPT_SCATTERV);
     }
     else if(strncasecmp(envopts, "A", 1) == 0) /* alltoall */
     {
@@ -621,7 +627,6 @@ MPIDI_Env_setup()
     {
       DCMF_INFO_SET(properties, DCMF_USE_MPICH_GATHER);
       DCMF_INFO_UNSET(properties, DCMF_USE_REDUCE_GATHER);
-      DCMF_INFO_UNSET(properties, DCMF_USE_OPT_GATHER);
     }
   }
   
@@ -632,7 +637,6 @@ MPIDI_Env_setup()
     {
       DCMF_INFO_SET(properties, DCMF_USE_MPICH_REDUCESCATTER);
       DCMF_INFO_UNSET(properties, DCMF_USE_REDUCESCATTER);
-      DCMF_INFO_UNSET(properties, DCMF_USE_OPT_REDUCESCATTER);
     }
   }
   
@@ -654,7 +658,6 @@ MPIDI_Env_setup()
       if(strncasecmp(envopts, "M", 1) == 0) /* MPICH */
       {
          DCMF_INFO_SET(properties, DCMF_USE_MPICH_BCAST);
-         DCMF_INFO_UNSET(properties, DCMF_USE_OPT_BCAST);
       }
       else if(strncasecmp(envopts, "AR", 2) == 0) /* async rectangle */
       {
@@ -697,7 +700,6 @@ MPIDI_Env_setup()
          fprintf(stderr,
             "Valid bcasts are: M, AR, AB, R, B, T, D, SR, SB, and SG. Using MPICH\n");
          DCMF_INFO_SET(properties, DCMF_USE_MPICH_BCAST);
-         DCMF_INFO_UNSET(properties, DCMF_USE_OPT_BCAST);
       }
    } 
    
@@ -801,13 +803,12 @@ MPIDI_Env_setup()
       fprintf(stderr,"Invalid DCMF_ALLTOALLW option\n");
   }
   
-  envopts = getenv("DCMF_ALLGATHER");
-  if(envopts != NULL)
-  {
-    if(strncasecmp(envopts, "M", 1) == 0) /* MPICH */
-    {
-      DCMF_INFO_SET(properties, DCMF_USE_MPICH_ALLGATHER);
-      DCMF_INFO_UNSET(properties, DCMF_USE_OPT_ALLGATHER);
+   envopts = getenv("DCMF_ALLGATHER");
+   if(envopts != NULL)
+   {
+      /* The user specified something, so set the env var, then
+       * turn off all options and pick the right one. */
+      DCMF_INFO_SET(properties, DCMF_ALLGATHER_ENVVAR);
       DCMF_INFO_UNSET(properties, DCMF_USE_ABCAST_ALLGATHER);
       DCMF_INFO_UNSET(properties, DCMF_USE_BCAST_ALLGATHER);
       DCMF_INFO_UNSET(properties, DCMF_USE_RECT_BCAST_ALLGATHER);
@@ -816,62 +817,42 @@ MPIDI_Env_setup()
       DCMF_INFO_UNSET(properties, DCMF_USE_ABINOM_BCAST_ALLGATHER);
       DCMF_INFO_UNSET(properties, DCMF_USE_ALLTOALL_ALLGATHER);
       DCMF_INFO_UNSET(properties, DCMF_USE_ALLREDUCE_ALLGATHER);
-    }
-    else if(strncasecmp(envopts, "ALLR", 4) == 0) /* ALLREDUCE */
-    {
-      DCMF_INFO_UNSET(properties, DCMF_USE_ABCAST_ALLGATHER);
-      DCMF_INFO_UNSET(properties, DCMF_USE_BCAST_ALLGATHER);
-      DCMF_INFO_UNSET(properties, DCMF_USE_RECT_BCAST_ALLGATHER);
-      DCMF_INFO_UNSET(properties, DCMF_USE_ARECT_BCAST_ALLGATHER);
-      DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_BCAST_ALLGATHER);
-      DCMF_INFO_UNSET(properties, DCMF_USE_ABINOM_BCAST_ALLGATHER);
-      DCMF_INFO_UNSET(properties, DCMF_USE_ALLTOALL_ALLGATHER);
-      DCMF_INFO_SET(properties, DCMF_USE_ALLREDUCE_ALLGATHER);
-    }
-    else if(strncasecmp(envopts, "BCAST", 1) == 0) /* BCAST */
-    {
-      DCMF_INFO_UNSET(properties, DCMF_USE_ABCAST_ALLGATHER);
-      DCMF_INFO_SET(properties, DCMF_USE_BCAST_ALLGATHER);
-      DCMF_INFO_SET(properties, DCMF_USE_RECT_BCAST_ALLGATHER);
-      DCMF_INFO_UNSET(properties, DCMF_USE_ARECT_BCAST_ALLGATHER);
-      DCMF_INFO_SET(properties, DCMF_USE_BINOM_BCAST_ALLGATHER);
-      DCMF_INFO_UNSET(properties, DCMF_USE_ABINOM_BCAST_ALLGATHER);
-      DCMF_INFO_UNSET(properties, DCMF_USE_ALLTOALL_ALLGATHER);
-      DCMF_INFO_UNSET(properties, DCMF_USE_ALLREDUCE_ALLGATHER);
-    }
-    else if(strncasecmp(envopts, "ALLT", 4) == 0) /* ALLTOALL */
-    {
-      DCMF_INFO_UNSET(properties, DCMF_USE_ABCAST_ALLGATHER);
-      DCMF_INFO_UNSET(properties, DCMF_USE_BCAST_ALLGATHER);
-      DCMF_INFO_UNSET(properties, DCMF_USE_RECT_BCAST_ALLGATHER);
-      DCMF_INFO_UNSET(properties, DCMF_USE_ARECT_BCAST_ALLGATHER);
-      DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_BCAST_ALLGATHER);
-      DCMF_INFO_UNSET(properties, DCMF_USE_ABINOM_BCAST_ALLGATHER);
-      DCMF_INFO_SET(properties, DCMF_USE_ALLTOALL_ALLGATHER);
-      DCMF_INFO_UNSET(properties, DCMF_USE_ALLREDUCE_ALLGATHER);
-    }
-    else if(strncasecmp(envopts, "AS", 2) == 0) /*Async bcast */
-    {
-      DCMF_INFO_SET(properties, DCMF_USE_ABCAST_ALLGATHER);
-      DCMF_INFO_SET(properties, DCMF_USE_ARECT_BCAST_ALLGATHER);
-      DCMF_INFO_SET(properties, DCMF_USE_ABINOM_BCAST_ALLGATHER);
-      DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_BCAST_ALLGATHER);
-      DCMF_INFO_UNSET(properties, DCMF_USE_RECT_BCAST_ALLGATHER);
-      DCMF_INFO_UNSET(properties, DCMF_USE_BCAST_ALLGATHER);
-      DCMF_INFO_UNSET(properties, DCMF_USE_ALLTOALL_ALLGATHER);
-      DCMF_INFO_UNSET(properties, DCMF_USE_ALLREDUCE_ALLGATHER);
-    }
-    else
-      fprintf(stderr,"Invalid DCMF_ALLGATHER option\n");
-  }
+
+      if(strncasecmp(envopts, "M", 1) == 0) /* MPICH */
+      {
+         DCMF_INFO_SET(properties, DCMF_USE_MPICH_ALLGATHER);
+      }
+      else if(strncasecmp(envopts, "ALLR", 4) == 0) /* ALLREDUCE */
+      {
+         DCMF_INFO_SET(properties, DCMF_USE_ALLREDUCE_ALLGATHER);
+      }
+      /* Bcast is never used in the glue, just async bcasts */
+      else if(strncasecmp(envopts, "B", 1) == 0) /* BCAST */
+      {
+         DCMF_INFO_SET(properties, DCMF_USE_BCAST_ALLGATHER);
+         DCMF_INFO_SET(properties, DCMF_USE_RECT_BCAST_ALLGATHER);
+         DCMF_INFO_SET(properties, DCMF_USE_BINOM_BCAST_ALLGATHER);
+      }
+      else if(strncasecmp(envopts, "ALLT", 4) == 0) /* ALLTOALL */
+      {
+         DCMF_INFO_SET(properties, DCMF_USE_ALLTOALL_ALLGATHER);
+      }
+      else if(strncasecmp(envopts, "AS", 2) == 0) /*Async bcast */
+      {
+         DCMF_INFO_SET(properties, DCMF_USE_ABCAST_ALLGATHER);
+         DCMF_INFO_SET(properties, DCMF_USE_ARECT_BCAST_ALLGATHER);
+         DCMF_INFO_SET(properties, DCMF_USE_ABINOM_BCAST_ALLGATHER);
+      }
+      else
+      {
+         fprintf(stderr,"DCMF_ALLGATHER options: ALLR, BCAST, ALLT, AS, M\n");
+         DCMF_INFO_SET(properties, DCMF_USE_MPICH_ALLGATHER);
+      }
+   }
   
-  envopts = getenv("DCMF_ALLGATHERV");
-  if(envopts != NULL)
-  {
-    if(strncasecmp(envopts, "M", 1) == 0) /* MPICH */
-    {
-      DCMF_INFO_SET(properties, DCMF_USE_MPICH_ALLGATHERV);
-      DCMF_INFO_UNSET(properties, DCMF_USE_OPT_ALLGATHERV);
+   envopts = getenv("DCMF_ALLGATHERV");
+   if(envopts != NULL)
+   {
       DCMF_INFO_UNSET(properties, DCMF_USE_ABCAST_ALLGATHERV);
       DCMF_INFO_UNSET(properties, DCMF_USE_BCAST_ALLGATHERV);
       DCMF_INFO_UNSET(properties, DCMF_USE_RECT_BCAST_ALLGATHERV);
@@ -880,113 +861,95 @@ MPIDI_Env_setup()
       DCMF_INFO_UNSET(properties, DCMF_USE_ABINOM_BCAST_ALLGATHERV);
       DCMF_INFO_UNSET(properties, DCMF_USE_ALLTOALL_ALLGATHERV);
       DCMF_INFO_UNSET(properties, DCMF_USE_ALLREDUCE_ALLGATHERV);
-    }
-    else if(strncasecmp(envopts, "ALLR", 4) == 0) /* ALLREDUCE */
-    {
-      DCMF_INFO_UNSET(properties, DCMF_USE_ABCAST_ALLGATHERV);
-      DCMF_INFO_UNSET(properties, DCMF_USE_BCAST_ALLGATHERV);
-      DCMF_INFO_UNSET(properties, DCMF_USE_RECT_BCAST_ALLGATHERV);
-      DCMF_INFO_UNSET(properties, DCMF_USE_ARECT_BCAST_ALLGATHERV);
-      DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_BCAST_ALLGATHERV);
-      DCMF_INFO_UNSET(properties, DCMF_USE_ABINOM_BCAST_ALLGATHERV);
-      DCMF_INFO_UNSET(properties, DCMF_USE_ALLTOALL_ALLGATHERV);
-      DCMF_INFO_SET(properties, DCMF_USE_ALLREDUCE_ALLGATHERV);
-    }
-    else if(strncasecmp(envopts, "BCAST", 1) == 0) /* BCAST */
-    {
-      DCMF_INFO_UNSET(properties, DCMF_USE_ABCAST_ALLGATHERV);
-      DCMF_INFO_SET(properties, DCMF_USE_BCAST_ALLGATHERV);
-      DCMF_INFO_SET(properties, DCMF_USE_RECT_BCAST_ALLGATHERV);
-      DCMF_INFO_UNSET(properties, DCMF_USE_ARECT_BCAST_ALLGATHERV);
-      DCMF_INFO_SET(properties, DCMF_USE_BINOM_BCAST_ALLGATHERV);
-      DCMF_INFO_UNSET(properties, DCMF_USE_ABINOM_BCAST_ALLGATHERV);
-      DCMF_INFO_UNSET(properties, DCMF_USE_ALLTOALL_ALLGATHERV);
-      DCMF_INFO_UNSET(properties, DCMF_USE_ALLREDUCE_ALLGATHERV);
-    }
-    else if(strncasecmp(envopts, "ALLT", 4) == 0) /* ALLTOALL */
-    {
-      DCMF_INFO_UNSET(properties, DCMF_USE_ABCAST_ALLGATHERV);
-      DCMF_INFO_UNSET(properties, DCMF_USE_BCAST_ALLGATHERV);
-      DCMF_INFO_UNSET(properties, DCMF_USE_RECT_BCAST_ALLGATHERV);
-      DCMF_INFO_UNSET(properties, DCMF_USE_ARECT_BCAST_ALLGATHERV);
-      DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_BCAST_ALLGATHERV);
-      DCMF_INFO_UNSET(properties, DCMF_USE_ABINOM_BCAST_ALLGATHERV);
-      DCMF_INFO_SET(properties, DCMF_USE_ALLTOALL_ALLGATHERV);
-      DCMF_INFO_UNSET(properties, DCMF_USE_ALLREDUCE_ALLGATHERV);
-    }
-    else if(strncasecmp(envopts, "AS", 2) == 0) /*Async bcast */
-    {
-      DCMF_INFO_SET(properties, DCMF_USE_ABCAST_ALLGATHERV);
-      DCMF_INFO_SET(properties, DCMF_USE_ARECT_BCAST_ALLGATHERV);
-      DCMF_INFO_SET(properties, DCMF_USE_ABINOM_BCAST_ALLGATHERV);
-      DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_BCAST_ALLGATHERV);
-      DCMF_INFO_UNSET(properties, DCMF_USE_RECT_BCAST_ALLGATHERV);
-      DCMF_INFO_UNSET(properties, DCMF_USE_BCAST_ALLGATHERV);
-      DCMF_INFO_UNSET(properties, DCMF_USE_ALLTOALL_ALLGATHERV);
-      DCMF_INFO_UNSET(properties, DCMF_USE_ALLREDUCE_ALLGATHERV);
-    }
-    else
-      fprintf(stderr,"Invalid DCMF_ALLGATHERV option\n");
-  }
+      DCMF_INFO_SET(properties, DCMF_ALLGATHERV_ENVVAR);
+
+      if(strncasecmp(envopts, "M", 1) == 0) /* MPICH */
+      {
+         DCMF_INFO_SET(properties, DCMF_USE_MPICH_ALLGATHERV);
+      }
+      else if(strncasecmp(envopts, "ALLR", 4) == 0) /* ALLREDUCE */
+      {
+         DCMF_INFO_SET(properties, DCMF_USE_ALLREDUCE_ALLGATHERV);
+      }
+      /* Bcast is never used in the glue, just async bcast now */
+      else if(strncasecmp(envopts, "B", 1) == 0) /* BCAST */
+      {
+         DCMF_INFO_SET(properties, DCMF_USE_BCAST_ALLGATHERV);
+         DCMF_INFO_SET(properties, DCMF_USE_RECT_BCAST_ALLGATHERV);
+         DCMF_INFO_SET(properties, DCMF_USE_BINOM_BCAST_ALLGATHERV);
+      }
+      else if(strncasecmp(envopts, "ALLT", 4) == 0) /* ALLTOALL */
+      {
+         DCMF_INFO_SET(properties, DCMF_USE_ALLTOALL_ALLGATHERV);
+      }
+      else if(strncasecmp(envopts, "AS", 2) == 0) /*Async bcast */
+      {
+         DCMF_INFO_SET(properties, DCMF_USE_ABCAST_ALLGATHERV);
+         DCMF_INFO_SET(properties, DCMF_USE_ARECT_BCAST_ALLGATHERV);
+         DCMF_INFO_SET(properties, DCMF_USE_ABINOM_BCAST_ALLGATHERV);
+      }
+      else
+      {
+         fprintf(stderr,"DCMF_ALLGATHERV options: ALLR, BCAST, ALLT, AS, M\n");
+         DCMF_INFO_SET(properties, DCMF_USE_MPICH_ALLGATHERV);
+      }
+   }
   
-  envopts = getenv("DCMF_ALLREDUCE");
-  if(envopts != NULL)
-  {
-    /* The user has specified something. Turn off all options for now */
-    /* Then, turn on the specific option they want. If they specify an*/
-    /* invalid option, use MPICH and let them know                    */
-    DCMF_INFO_UNSET(properties, DCMF_USE_ARECT_ALLREDUCE);
-    DCMF_INFO_UNSET(properties, DCMF_USE_ABINOM_ALLREDUCE);
-    DCMF_INFO_UNSET(properties, DCMF_USE_ARECTRING_ALLREDUCE);
-    DCMF_INFO_UNSET(properties, DCMF_USE_TREE_ALLREDUCE);
-    DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_ALLREDUCE);
-    DCMF_INFO_UNSET(properties, DCMF_USE_RECTRING_ALLREDUCE);
-    DCMF_INFO_UNSET(properties, DCMF_USE_RECT_ALLREDUCE);
-    DCMF_INFO_UNSET(properties, DCMF_USE_CCMI_TREE_ALLREDUCE);
-    DCMF_INFO_UNSET(properties, DCMF_USE_PIPELINED_TREE_ALLREDUCE);
-    DCMF_INFO_SET(properties, DCMF_ALLREDUCE_ENVVAR);
+   envopts = getenv("DCMF_ALLREDUCE");
+   if(envopts != NULL)
+   {
+      /* The user has specified something. Turn off all options for now */
+      /* Then, turn on the specific option they want. If they specify an*/
+      /* invalid option, use MPICH and let them know                    */
+      DCMF_INFO_UNSET(properties, DCMF_USE_ARECT_ALLREDUCE);
+      DCMF_INFO_UNSET(properties, DCMF_USE_ABINOM_ALLREDUCE);
+      DCMF_INFO_UNSET(properties, DCMF_USE_ARECTRING_ALLREDUCE);
+      DCMF_INFO_UNSET(properties, DCMF_USE_TREE_ALLREDUCE);
+      DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_ALLREDUCE);
+      DCMF_INFO_UNSET(properties, DCMF_USE_RECTRING_ALLREDUCE);
+      DCMF_INFO_UNSET(properties, DCMF_USE_RECT_ALLREDUCE);
+      DCMF_INFO_UNSET(properties, DCMF_USE_SHORT_ASYNC_RECT_ALLREDUCE);
+      DCMF_INFO_UNSET(properties, DCMF_USE_SHORT_ASYNC_BINOM_ALLREDUCE);
+      DCMF_INFO_UNSET(properties, DCMF_USE_CCMI_TREE_ALLREDUCE);
+      DCMF_INFO_UNSET(properties, DCMF_USE_PIPELINED_TREE_ALLREDUCE);
+      DCMF_INFO_UNSET(properties, DCMF_USE_RRING_DPUT_SINGLETH_ALLREDUCE);
+      DCMF_INFO_SET(properties, DCMF_ALLREDUCE_ENVVAR);
 
-    if(strncasecmp(envopts, "ARI", 3) == 0)
-      DCMF_INFO_SET(properties, DCMF_USE_ARECTRING_ALLREDUCE);
-
-    else if(strncasecmp(envopts, "AR", 2) == 0)
-      DCMF_INFO_SET(properties, DCMF_USE_ARECT_ALLREDUCE);
-
-    else if(strncasecmp(envopts, "AB", 2) == 0)
-      DCMF_INFO_SET(properties, DCMF_USE_ABINOM_ALLREDUCE);
-
-    else if(strncasecmp(envopts, "RI", 2) == 0)
-      DCMF_INFO_SET(properties, DCMF_USE_RECTRING_ALLREDUCE);
-
-    else if(strncasecmp(envopts, "R", 1) == 0)
-      DCMF_INFO_SET(properties, DCMF_USE_RECT_ALLREDUCE);
-
-    else if(strncasecmp(envopts, "C", 1) == 0)
-      DCMF_INFO_SET(properties, DCMF_USE_CCMI_TREE_ALLREDUCE);
-
-    else if(strncasecmp(envopts, "B", 1) == 0)
-      DCMF_INFO_SET(properties, DCMF_USE_BINOM_ALLREDUCE);
-
-    else if(strncasecmp(envopts, "M", 1) == 0) /* MPICH */
-    {
-      DCMF_INFO_SET(properties, DCMF_USE_MPICH_ALLREDUCE);
-      DCMF_INFO_UNSET(properties, DCMF_USE_OPT_ALLREDUCE);
-    }
-
-    else if(strncasecmp(envopts, "T", 1) == 0) /* Tree */
-      DCMF_INFO_SET(properties, DCMF_USE_TREE_ALLREDUCE);
-
-    else if(strncasecmp(envopts, "P", 1) == 0) /* CCMI Pipelined Tree */
-      DCMF_INFO_SET(properties, DCMF_USE_PIPELINED_TREE_ALLREDUCE);
-
-    else
-    {
-      fprintf(stderr,
+      if(strncasecmp(envopts, "ARI", 3) == 0)
+         DCMF_INFO_SET(properties, DCMF_USE_ARECTRING_ALLREDUCE);
+      else if(strncasecmp(envopts, "AR", 2) == 0)
+         DCMF_INFO_SET(properties, DCMF_USE_ARECT_ALLREDUCE);
+      else if(strncasecmp(envopts, "SR", 2) == 0) /* Short async rect */
+         DCMF_INFO_SET(properties, DCMF_USE_SHORT_ASYNC_RECT_ALLREDUCE);
+      else if(strncasecmp(envopts, "SB", 2) == 0) /* Short async binom */
+         DCMF_INFO_SET(properties, DCMF_USE_SHORT_ASYNC_BINOM_ALLREDUCE);
+      else if(strncasecmp(envopts, "AB", 2) == 0)
+         DCMF_INFO_SET(properties, DCMF_USE_ABINOM_ALLREDUCE);
+      else if(strncasecmp(envopts, "RI", 2) == 0)
+         DCMF_INFO_SET(properties, DCMF_USE_RECTRING_ALLREDUCE);
+      else if(strncasecmp(envopts, "R", 1) == 0)
+         DCMF_INFO_SET(properties, DCMF_USE_RECT_ALLREDUCE);
+      else if(strncasecmp(envopts, "C", 1) == 0)
+         DCMF_INFO_SET(properties, DCMF_USE_CCMI_TREE_ALLREDUCE);
+      else if(strncasecmp(envopts, "B", 1) == 0)
+         DCMF_INFO_SET(properties, DCMF_USE_BINOM_ALLREDUCE);
+      else if(strncasecmp(envopts, "M", 1) == 0) /* MPICH */
+      {
+         DCMF_INFO_SET(properties, DCMF_USE_MPICH_ALLREDUCE);
+      }
+      else if(strncasecmp(envopts, "T", 1) == 0) /* Tree */
+         DCMF_INFO_SET(properties, DCMF_USE_TREE_ALLREDUCE);
+      else if(strncasecmp(envopts, "P", 1) == 0) /* CCMI Pipelined Tree */
+         DCMF_INFO_SET(properties, DCMF_USE_PIPELINED_TREE_ALLREDUCE);
+      else if(strncasecmp(envopts, "D", 1) == 0) /* Rect dput */
+         DCMF_INFO_SET(properties, DCMF_USE_RRING_DPUT_SINGLETH_ALLREDUCE);
+      else
+      {
+         fprintf(stderr,
               "Invalid DCMF_ALLREDUCE option - %s. Using mpich\n", envopts);
-      DCMF_INFO_UNSET(properties, DCMF_USE_OPT_ALLREDUCE);
-      DCMF_INFO_SET(properties, DCMF_USE_MPICH_ALLREDUCE);
-    }
-  }
+         DCMF_INFO_SET(properties, DCMF_USE_MPICH_ALLREDUCE);
+      }
+   }
   
   envopts = getenv("DCMF_ALLREDUCE_REUSE_STORAGE");
   if(envopts != NULL)
@@ -1001,56 +964,45 @@ MPIDI_Env_setup()
       fprintf(stderr,"Invalid DCMF_ALLREDUCE_REUSE_STORAGE option\n");
   }
   
-  envopts = getenv("DCMF_REDUCE");
-  if(envopts != NULL)
-  {
-    if(strncasecmp(envopts, "M", 1) == 0) /* MPICH */
-    {
-      DCMF_INFO_SET(properties, DCMF_USE_MPICH_REDUCE);
+   envopts = getenv("DCMF_REDUCE");
+   if(envopts != NULL)
+   {
+      DCMF_INFO_SET(properties, DCMF_REDUCE_ENVVAR);
       DCMF_INFO_UNSET(properties, DCMF_USE_TREE_REDUCE);
       DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_REDUCE);
       DCMF_INFO_UNSET(properties, DCMF_USE_RECTRING_REDUCE);
       DCMF_INFO_UNSET(properties, DCMF_USE_RECT_REDUCE);
-      DCMF_INFO_UNSET(properties, DCMF_USE_OPT_REDUCE);
-    }
-    else if(strncasecmp(envopts, "RI", 2) == 0) /* Rectangle Ring*/
-    {
-      DCMF_INFO_UNSET(properties, DCMF_USE_TREE_REDUCE);
-      DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_REDUCE);
-      DCMF_INFO_SET(properties, DCMF_USE_RECTRING_REDUCE);
-      DCMF_INFO_UNSET(properties, DCMF_USE_RECT_REDUCE);
-    }
-    else if(strncasecmp(envopts, "R", 1) == 0) /* Rectangle */
-    {
-      DCMF_INFO_UNSET(properties, DCMF_USE_TREE_REDUCE);
-      DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_REDUCE);
-      DCMF_INFO_UNSET(properties, DCMF_USE_RECTRING_REDUCE);
-      DCMF_INFO_SET(properties, DCMF_USE_RECT_REDUCE);
-    }
-    else if(strncasecmp(envopts, "B", 1) == 0) /* Binomial */
-    {
-      DCMF_INFO_UNSET(properties, DCMF_USE_TREE_REDUCE);
-      DCMF_INFO_SET(properties, DCMF_USE_BINOM_REDUCE);
-      DCMF_INFO_UNSET(properties, DCMF_USE_RECTRING_REDUCE);
-      DCMF_INFO_UNSET(properties, DCMF_USE_RECT_REDUCE);
-    }
-    else if(strncasecmp(envopts, "T", 1) == 0) /* Tree */
-    {
-      DCMF_INFO_SET(properties, DCMF_USE_TREE_REDUCE);
-      DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_REDUCE);
-      DCMF_INFO_UNSET(properties, DCMF_USE_RECTRING_REDUCE);
-      DCMF_INFO_UNSET(properties, DCMF_USE_RECT_REDUCE);
-    }
-    else if(strncasecmp(envopts, "C", 1) == 0) /* CCMI Tree */
-    {
-      DCMF_INFO_SET(properties, DCMF_USE_CCMI_TREE_REDUCE);
-      DCMF_INFO_UNSET(properties, DCMF_USE_TREE_REDUCE);
-      DCMF_INFO_UNSET(properties, DCMF_USE_BINOM_REDUCE);
-      DCMF_INFO_UNSET(properties, DCMF_USE_RECTRING_REDUCE);
-      DCMF_INFO_UNSET(properties, DCMF_USE_RECT_REDUCE);
-    }
-    else
-      fprintf(stderr,"Invalid DCMF_REDUCE option\n");
+      DCMF_INFO_UNSET(properties, DCMF_USE_CCMI_TREE_REDUCE);
+
+      if(strncasecmp(envopts, "M", 1) == 0) /* MPICH */
+      {
+         DCMF_INFO_SET(properties, DCMF_USE_MPICH_REDUCE);
+      }
+      else if(strncasecmp(envopts, "RI", 2) == 0) /* Rectangle Ring*/
+      {
+         DCMF_INFO_SET(properties, DCMF_USE_RECTRING_REDUCE);
+      }
+      else if(strncasecmp(envopts, "R", 1) == 0) /* Rectangle */
+      {
+         DCMF_INFO_SET(properties, DCMF_USE_RECT_REDUCE);
+      }
+      else if(strncasecmp(envopts, "B", 1) == 0) /* Binomial */
+      {
+         DCMF_INFO_SET(properties, DCMF_USE_BINOM_REDUCE);
+      }
+      else if(strncasecmp(envopts, "T", 1) == 0) /* Tree */
+      {
+         DCMF_INFO_SET(properties, DCMF_USE_TREE_REDUCE);
+      }
+      else if(strncasecmp(envopts, "C", 1) == 0) /* CCMI Tree */
+      {
+         DCMF_INFO_SET(properties, DCMF_USE_CCMI_TREE_REDUCE);
+      }
+      else
+      {
+         fprintf(stderr,"Invalid DCMF_REDUCE option. Defaulting to MPICH\n");
+         DCMF_INFO_SET(properties, DCMF_USE_MPICH_REDUCE);
+      }
   }
   
   envopts = getenv("DCMF_REDUCE_REUSE_STORAGE");
@@ -1078,7 +1030,6 @@ MPIDI_Env_setup()
          
       /* MPIDI_Coll_register changes this state for us */
       /* MPIDI_CollectiveProtocols.barrier.usegi = 1; */
-      DCMF_INFO_UNSET(properties, DCMF_USE_OPT_BARRIER);
     }
     else if(strncasecmp(envopts, "B", 1) == 0) /* Binomial */
     {
@@ -1124,6 +1075,11 @@ MPIDI_Env_setup()
     /* initialize the repositories of STAR */
     STAR_InitRepositories();
   }
+
+  dval = 0;
+  ENV_Int(getenv("DCMF_STAR_THRESHOLD"), &dval);
+  if (dval >= 0 )
+    STAR_info.threshold = dval;
   
   dval = 0;
   ENV_Int(getenv("DCMF_STAR_NUM_INVOCS"), &dval);

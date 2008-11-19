@@ -16,7 +16,7 @@ bin_SCRIPTS   = upcc upcrun
 noinst_SCRIPTS= gcc_as_cc.pl
 config_DATA   = $(CONFIG_HEADER)
 configdir     = $(includedir)
-docs          = ChangeLog README README.developers 
+docs          = ChangeLog README README.developers INSTALL.TXT
 EXTRA_DIST    = $(docs)                         \
 		.autom4te.cfg                   \
                 Bootstrap                       \
@@ -94,7 +94,8 @@ EXTRA_LIBRARIES     = libupcr-mpi-seq.a   libupcr-mpi-par.a  libupcr-mpi-tv.a   
                       libupcr-shmem-seq.a                                       \
                       libupcr-sci-seq.a   libupcr-sci-par.a  libupcr-sci-tv.a   \
                       libupcr-smp-seq.a   libupcr-smp-par.a  libupcr-smp-tv.a   \
-                      libupcr-portals-seq.a libupcr-portals-par.a libupcr-portals-tv.a
+                      libupcr-portals-seq.a libupcr-portals-par.a libupcr-portals-tv.a \
+                      libupcr-dcmf-seq.a  libupcr-dcmf-par.a
 
 # list of libraries to actually build, determined at configure time
 lib_LIBRARIES       = @TARGETLIBS@
@@ -227,6 +228,15 @@ libupcr-portals-par.a: $(libupcr_deps)
 libupcr_portals_tv_a_SOURCES   = $(libupcr_srcs) $(libupcr_hdrs)
 libupcr-portals-tv.a: $(libupcr_deps) 
 	$(MAKE) UPCR_CONDUIT=portals UPCR_PARSEQ=tv build_lib
+
+libupcr_dcmf_seq_a_SOURCES   = $(libupcr_srcs) $(libupcr_hdrs)
+libupcr-dcmf-seq.a: $(libupcr_deps) 
+	$(MAKE) UPCR_CONDUIT=dcmf UPCR_PARSEQ=seq build_lib
+
+libupcr_dcmf_par_a_SOURCES   = $(libupcr_srcs) $(libupcr_hdrs)
+libupcr-dcmf-par.a: $(libupcr_deps) 
+	$(MAKE) UPCR_CONDUIT=dcmf UPCR_PARSEQ=par build_lib
+
 
 if UPCR_OBJECT_STRINGS
 else

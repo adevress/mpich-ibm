@@ -7,9 +7,10 @@
 #include "mpido_coll.h"
 #include "mpidi_coll_prototypes.h"
 
-#pragma weak PMPIDO_Barrier = MPIDO_Barrier
 
 #ifdef USE_CCMI_COLL
+
+#pragma weak PMPIDO_Barrier = MPIDO_Barrier
 
 /**
  * **************************************************************************
@@ -21,6 +22,7 @@ int MPIDO_Barrier(MPID_Comm * comm)
 {
   int rc;
   DCMF_Embedded_Info_Set * properties = &(comm->dcmf.properties);
+  
   if(DCMF_INFO_ISSET(properties, DCMF_USE_MPICH_BARRIER))
     return MPIR_Barrier(comm);
 

@@ -103,7 +103,6 @@ int MPIDI_IsTreeOp(MPI_Op op, MPI_Datatype datatype)
   case MPI_CHARACTER:
   case MPI_DOUBLE_COMPLEX:
   case MPI_COMPLEX:
-  default:
     return 0;
   }
   return rc;
@@ -200,6 +199,7 @@ int MPIDI_ConvertMPItoDCMF(MPI_Op op, DCMF_Op *dcmf_op,
     *dcmf_op = DCMF_UNDEFINED_OP;
     return DCMF_NOT_SUPPORTED;
   }
+  
   int rc_tmp = rc;
   switch(datatype)
   {
@@ -246,7 +246,11 @@ int MPIDI_ConvertMPItoDCMF(MPI_Op op, DCMF_Op *dcmf_op,
   case MPI_DOUBLE:
   case MPI_DOUBLE_PRECISION:
     *dcmf_dt = DCMF_DOUBLE;
-    break;
+      if(rc == DCMF_TORUS_SUPPORT)
+         rc_tmp = DCMF_TORUS_SUPPORT;
+      else
+         rc_tmp = DCMF_TREE_MIN_SUPPORT;
+      break;
 
   case MPI_LONG_DOUBLE:
     *dcmf_dt = DCMF_LONG_DOUBLE;
@@ -304,7 +308,7 @@ int MPIDI_ConvertMPItoDCMF(MPI_Op op, DCMF_Op *dcmf_op,
     *dcmf_op = DCMF_UNDEFINED_OP;
     return DCMF_NOT_SUPPORTED;
   }
-  if(rc_tmp ==DCMF_TORUS_SUPPORT)
+  if(rc_tmp == DCMF_TORUS_SUPPORT || rc_tmp == DCMF_TREE_MIN_SUPPORT)
     return rc_tmp;
   return rc;
 }

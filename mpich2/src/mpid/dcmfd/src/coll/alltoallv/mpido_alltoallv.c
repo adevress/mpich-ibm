@@ -7,9 +7,10 @@
 #include "mpido_coll.h"
 #include "mpidi_coll_prototypes.h"
 
-#pragma weak PMPIDO_Alltoallv = MPIDO_Alltoallv
 
 #ifdef USE_CCMI_COLL
+
+#pragma weak PMPIDO_Alltoallv = MPIDO_Alltoallv
 
 int
 MPIDO_Alltoallv(void *sendbuf,

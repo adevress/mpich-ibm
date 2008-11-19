@@ -61,6 +61,8 @@ typedef mUINT32 INITV_IDX;		// idx to initial value table
 typedef mUINT32 STR_IDX;		// idx to string table
 typedef mUINT8  SYMTAB_IDX;		// idx to scope array
 
+
+
 // Reserved values for each index type.
 
 static const ST_IDX ST_IDX_ZERO = 0;

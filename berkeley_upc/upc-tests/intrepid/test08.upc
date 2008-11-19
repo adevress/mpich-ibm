@@ -21,12 +21,13 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 #include <upc_strict.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #define DIM1 1024
 
 shared int array[DIM1][THREADS];
 
-void test08();
+extern void test08 (); /* separate */
 
 int
 main()

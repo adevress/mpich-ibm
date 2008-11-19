@@ -8,9 +8,10 @@
 #include "mpidi_star.h"
 #include "mpidi_coll_prototypes.h"
 
-#pragma weak PMPIDO_Scatterv = MPIDO_Scatterv
 
 #ifdef USE_CCMI_COLL
+
+#pragma weak PMPIDO_Scatterv = MPIDO_Scatterv
 
 int MPIDO_Scatterv(void *sendbuf,
                    int *sendcounts,
@@ -28,6 +29,15 @@ int MPIDO_Scatterv(void *sendbuf,
   MPID_Datatype *dt_ptr;
   MPI_Aint true_lb=0;
 
+  if (DCMF_INFO_ISSET(properties, DCMF_USE_MPICH_SCATTERV) ||
+      comm_ptr->comm_kind != MPID_INTRACOMM)
+  {
+    return MPIR_Scatterv(sendbuf, sendcounts, displs, sendtype,
+                         recvbuf, recvcount, recvtype, 
+                         root, comm_ptr);
+  }
+
+    
   /* we can't call scatterv-via-bcast unless we know all nodes have
    * valid sendcount arrays. so the user must explicitly ask for it.
    */
@@ -42,13 +52,6 @@ int MPIDO_Scatterv(void *sendbuf,
    optscatterv[0] = !DCMF_INFO_ISSET(properties, DCMF_USE_ALLTOALL_SCATTERV);
    optscatterv[1] = !DCMF_INFO_ISSET(properties, DCMF_USE_BCAST_SCATTERV);
    optscatterv[2] = 1;
-
-   if(comm_ptr->comm_kind != MPID_INTRACOMM)
-   {
-      return MPIR_Scatterv(sendbuf, sendcounts, displs, sendtype,
-                           recvbuf, recvcount, recvtype, 
-                           root, comm_ptr);
-   }
 
    if(rank == root)
    {

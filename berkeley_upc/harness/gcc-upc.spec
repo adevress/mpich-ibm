@@ -1,7 +1,7 @@
 # Compiler spec file for Intrepid GCC/UPC 4.x, stand-alone version
 
 # upc compiler command
-upc_compiler = /upc/gcc-upc-4/wrk/gcc/xupc -I. -g -Wno-implicit-function-declaration
+upc_compiler = /eng/upc/gcc-upc-4-2/wrk/gcc/xupc -I. -g -Wno-implicit-function-declaration
 
 # upc run command
 # Following replacements are performed:
@@ -57,6 +57,7 @@ bug247 [test checks to see if 256 threads are supported, but GCC/UPC supports on
 bug317a [GCC/UPC doesnt support implicit conversions between integers and shared pointers] | \
 bug342 [GCC/UPC doesn\'t suppress the warning about __transparent_union__] | \
 bug383 [GCC/UPC warns about unprototyped function call] | \
+bug438 [compile-warning;gccupc;GCC/UPC warns C99 inline functions are not supported] | \
 bug846 [GCC/UPC doesn\'t accept large arrays] | \
 bug851 [test expects returns with no value to be diagnosed as errors, but GCC/UPC issues warnings in those cases] | \
 bug856 [Problem with upc_blocksizeof calculation - fails at runtime] | \

@@ -23,12 +23,6 @@ int THREADS = -1;
 /* The current thread number (range: 0..THREADS-1) */
 UPCRI_THREAD_LOCAL_VARIABLE int MYTHREAD;
 
-/* The base address of the GCC/UPC shared section */
-extern char UPCRL_shared_begin[1];
-
-/* The ending address (plus one) of the GCC/UPC shared section */
-extern char UPCRL_shared_end[1];
-
 /* useful constants */
 #undef KILOBYTE
 #define KILOBYTE 1024LU
@@ -73,12 +67,35 @@ gccupc_pre_spawn_init()
     THREADS = upcr_threads();
 }
 
+#ifdef UPCRI_USING_GCCUPC_INIT_SECTION
+#define UPC_INIT_ARRAY_START UPCRL_init_array_begin
+#define UPC_INIT_ARRAY_END   UPCRL_init_array_end
+typedef void (*func_ptr_t)(void);
+extern func_ptr_t UPC_INIT_ARRAY_START[1];
+extern func_ptr_t UPC_INIT_ARRAY_END[1];
+#endif
+
 void 
 gccupc_per_pthread_init()
 {
     UPCR_BEGIN_FUNCTION();
     /* thread-specific initialization */
     MYTHREAD = upcr_mythread();
+#ifdef UPCRI_USING_GCCUPC_INIT_SECTION
+    if (!MYTHREAD)
+      {
+        /* Call the initialization routines indirectly
+           via the address list created in the __upc_init section. */
+        size_t n_init = (UPC_INIT_ARRAY_END - UPC_INIT_ARRAY_START);
+        int i;
+        for (i = 0; i < n_init; ++i)
+          {
+             func_ptr_t init_func = UPC_INIT_ARRAY_START[i];
+             if (*init_func)
+               (*init_func)();
+          }
+      }
+#endif
 }
 
 void
@@ -96,7 +113,9 @@ gccupc_static_data_init (void *start, uintptr_t len) {
   #if 0
     printf("copying %i from %p to %p\n",(int)static_data_sz,UPCRL_shared_begin,start);
   #endif
+#ifdef UPCRI_USING_GCCUPC_INIT_STATIC_COPY
   memcpy(start, UPCRL_shared_begin, static_data_sz);
+#endif
 }
 
 void

@@ -93,7 +93,7 @@ STAR_Allgatherv(void * sendbuf,
                 int total_algs)
 {
   STAR_Tuning_Session * session;
-  allgatherv_fptr func;
+  allgatherv_fptr func = NULL;
   MPID_Comm * comm;
   double start, elapsed;
   int bytes, best_alg, rc;
@@ -112,7 +112,6 @@ STAR_Allgatherv(void * sendbuf,
       we are now in monitoring phase:
       execute best algorithm and measure its performance.
     */
-
     start = DCMF_Timer();
     rc = STAR_BestAllgatherv(sendbuf, sendcount, sendtype,
                              recvbuf, recvcounts, buffer_sum, displs,

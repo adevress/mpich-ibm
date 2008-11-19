@@ -196,3 +196,60 @@ void MPIX_Dump_stacks()
 
   free(strings); /* Since this is not allocated by MPIU_Malloc, do not use MPIU_Free */
 }
+
+#pragma weak PMI_Get_properties = MPIX_Get_properties
+int MPIX_Get_properties(MPI_Comm comm, int * array)
+{
+  int i;
+  MPID_Comm * comm_ptr;
+  MPID_Comm_get_ptr(comm, comm_ptr);
+  
+  if (!comm_ptr || comm == MPI_COMM_NULL)
+    return MPI_ERR_COMM;
+
+  for (i = 0; i < DCMF_MAX_NUM_BITS; i++)
+    array[i] = DCMF_INFO_ISSET(&(comm_ptr->dcmf.properties), i);
+
+
+  return MPI_SUCCESS;
+}
+
+#pragma weak PMI_Get_property = MPIX_Get_property
+int MPIX_Get_property(MPI_Comm comm, int prop, int * result)
+{
+  MPID_Comm * comm_ptr;
+  MPID_Comm_get_ptr(comm, comm_ptr);
+  if (!comm_ptr || comm == MPI_COMM_NULL)
+    return MPI_ERR_COMM;
+
+  if (prop < 0 || prop > DCMF_MAX_NUM_BITS)
+    return MPI_ERR_ARG;
+
+  *result = DCMF_INFO_ISSET(&(comm_ptr->dcmf.properties), prop);
+  return MPI_SUCCESS; 
+}
+
+#pragma weak PMI_Set_property = MPIX_Set_property
+int MPIX_Set_property(MPI_Comm comm, int prop, int value)
+{
+  MPID_Comm * comm_ptr;
+  MPID_Comm_get_ptr(comm, comm_ptr);
+  
+  if (!comm_ptr || comm == MPI_COMM_NULL)
+    return MPI_ERR_COMM;
+  
+  if (prop < 0 || prop > DCMF_MAX_NUM_BITS)
+    return MPI_ERR_ARG;
+
+  if (!value)
+    DCMF_INFO_UNSET(&(comm_ptr->dcmf.properties), prop);
+  else
+    DCMF_INFO_SET(&(comm_ptr->dcmf.properties), prop);
+  
+  /* if we are attempting changing a communicator property */
+  if (prop == DCMF_TREE_COMM || prop == DCMF_RECT_COMM ||
+      prop == DCMF_IRREG_COMM)
+    MPIDI_Comm_setup_properties(comm_ptr, 0);
+
+  return MPI_SUCCESS;
+}
