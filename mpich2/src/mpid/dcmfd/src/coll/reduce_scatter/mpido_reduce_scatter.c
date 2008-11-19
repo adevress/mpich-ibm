@@ -55,24 +55,34 @@ int MPIDO_Reduce_scatter(void *sendbuf,
    NMPI_Type_get_true_extent(datatype, &dt_lb, &extent);
    MPID_Ensure_Aint_fits_in_int(extent);
 
+   displs = MPIU_Malloc(size * sizeof(int));
+   if(!displs)
+    return MPIR_Err_create_code(MPI_SUCCESS, 
+                                MPIR_ERR_RECOVERABLE,
+                                "MPI_Reduce_scatter",
+                                __LINE__, MPI_ERR_OTHER, "**nomem", 0);
   
-  for(i = 0; i < size; i++)
-    tcount += recvcounts[i];
+   displs[0] = 0;
+   for(i = 0; i < size-1; i++)
+   {
+      tcount += recvcounts[i];
+      displs[i+1]=displs[i]+recvcounts[i];
+   }
+   tcount+=recvcounts[size-1];
+
   
   tempbuf = MPIU_Malloc(extent * sizeof(char) * tcount);
-  displs = MPIU_Malloc(size * sizeof(int));
   
-  if (!tempbuf || !displs)
+  if (!tempbuf)
   {
-    if(tempbuf)
-      MPIU_Free(tempbuf);
+    if(displs)
+      MPIU_Free(displs);
     return MPIR_Err_create_code(MPI_SUCCESS, 
                                 MPIR_ERR_RECOVERABLE,
                                 "MPI_Reduce_scatter",
                                 __LINE__, MPI_ERR_OTHER, "**nomem", 0);
   }
   
-  memset(displs, 0, size*sizeof(int));
   
   MPID_Ensure_Aint_fits_in_pointer(MPIR_VOID_PTR_CAST_TO_MPI_AINT sendbuf+ 
 				   dt_lb);
@@ -95,7 +105,7 @@ int MPIDO_Reduce_scatter(void *sendbuf,
                         displs, 
                         datatype,
                         recvbuf, 
-                        tcount/size, 
+                        tcount, 
                         datatype, 
                         0, 
                         comm_ptr);
