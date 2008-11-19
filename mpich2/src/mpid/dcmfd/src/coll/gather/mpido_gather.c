@@ -52,8 +52,14 @@ int MPIDO_Gather(void *sendbuf,
       success = 0;
   }
   
+   /* Called MPIR_Reduce with *all* nodes have sendbuf==MPI_IN_PLACE won't
+    * work, so if MPICH Reduce is our only option, don't bother doing an
+    * optimized gather. This probably needs to check if we have a elligible
+    * reduce given the op/comm/type, but this is a reasonable check
+    */
   if (DCMF_INFO_ISSET(properties, DCMF_IRREG_COMM) ||
       DCMF_INFO_ISSET(properties, DCMF_USE_MPICH_GATHER) ||
+      DCMF_INFO_ISSET(properties, DCMF_USE_MPICH_REDUCE) ||
       !DCMF_INFO_ISSET(properties, DCMF_USE_REDUCE_GATHER) ||
       mpid_hw.tSize > 1)
     return MPIR_Gather(sendbuf, sendcount, sendtype,
