@@ -111,7 +111,7 @@ int MPIDI_PG_Finalize(void)
 		MPIDI_Process.my_pg = NULL;
 
 	    pg->ref_count = 0; /* satisfy assertions in PG_Destroy */
-	    MPIDI_PG_Destroy(pg);
+	    MPIDI_PG_Destroy( pg );
 	}
 	pg     = pgNext;
     }
@@ -280,7 +280,7 @@ int MPIDI_PG_Destroy(MPIDI_PG_t * pg)
             else
                 pg_prev->next = pg->next;
 
-            MPIU_DBG_MSG_FMT(CH3_DISCONNECT, VERBOSE, (MPIU_DBG_FDEST, "destroying pg=%p pg->id=%s", pg, pg->id));
+            MPIU_DBG_MSG_FMT(CH3_DISCONNECT, VERBOSE, (MPIU_DBG_FDEST, "destroying pg=%p pg->id=%s", pg, (char *)pg->id));
 
             for (i = 0; i < pg->size; ++i) {
                 /* FIXME it would be good if we could make this assertion.
@@ -289,6 +289,8 @@ int MPIDI_PG_Destroy(MPIDI_PG_t * pg)
                       function doesn't bother to manage all the refcounts
                       because he thinks he knows better.  Annoying, but not
                       strictly a bug.
+		      (wdg - actually, that is a bug - managing the ref
+		      counts IS required and missing one is a bug.)
                    2) There is a real bug lurking out there somewhere and we
                       just haven't hit it in the tests yet.  */
                 /*MPIU_Assert(pg->vct[i].ref_count == 0);*/
@@ -299,6 +301,12 @@ int MPIDI_PG_Destroy(MPIDI_PG_t * pg)
                    not the right place to do this.  The VC should only be freed
                    when the PG that it belongs to is freed, not just when the
                    VC's refcount drops to zero. [goodell@ 2008-06-13] */
+		/* In that case, the fact that the VC is in the PG should
+		   increment the ref count - reflecting the fact that the
+		   use in the PG constitutes a reference-count-incrementing
+		   use.  Alternately, if the PG is able to recreate a VC, 
+		   and can thus free unused (or idle) VCs, it should be allowed
+		   to do so.  [wdg 2008-08-31] */
                 mpi_errno = MPIU_CALL(MPIDI_CH3,VC_Destroy(&(pg->vct[i])));
                 if (mpi_errno) { MPIU_ERR_POP(mpi_errno); }
             }
@@ -474,9 +482,7 @@ int MPIDI_PG_Create_from_string(const char * str, MPIDI_PG_t ** pg_pptr,
        it to the find routine */
     /* printf( "Looking for pg with id %s\n", str );fflush(stdout); */
     mpi_errno = MPIDI_PG_Find((void *)str, &existing_pg);
-    if (mpi_errno != PMI_SUCCESS) {
-	MPIU_ERR_POP(mpi_errno);
-    }
+    if (mpi_errno) MPIU_ERR_POP(mpi_errno);
 
     if (existing_pg != NULL) {
 	/* return the existing PG */
@@ -735,7 +741,8 @@ static int connToStringKVS( char **buf_p, int *slen, MPIDI_PG_t *pg )
     if (string) MPIU_Free(string);
     goto fn_exit;
 }
-static int connFromStringKVS( const char *buf, MPIDI_PG_t *pg )
+static int connFromStringKVS( const char *buf ATTRIBUTE((unused)), 
+			      MPIDI_PG_t *pg ATTRIBUTE((unused)) )
 {
     /* Fixme: this should be a failure to call this routine */
     return MPI_SUCCESS;

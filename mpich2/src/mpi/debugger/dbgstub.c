@@ -41,10 +41,21 @@ enum { TYPE_UNKNOWN = 0,
        TYPE_MPID_REQUEST = 5, 
        TYPE_MPIR_SENDQ = 6,		// NOT USED
 } KnownTypes;
-static int curType = TYPE_UNKNOWN;
+
+/* The dll_mpich2.c has a few places where it doesn't always use the most 
+   recent type, so a static current type will not work.  Instead, we
+   have an example of each type, and return that value. */
+
+static int knownTypesArray[] = { TYPE_UNKNOWN, TYPE_MPID_COMM, 
+				 TYPE_MPIR_COMM_LIST, TYPE_MPIDI_REQUEST, 
+				 TYPE_MPIDI_MESSAGE_MATCH, TYPE_MPID_REQUEST, 
+				 TYPE_MPIR_SENDQ };
+
 mqs_type * dbgrI_find_type(mqs_image *image, char *name, 
-				  mqs_lang_code lang)
+			   mqs_lang_code lang)
 {
+    int curType = TYPE_UNKNOWN;
+
     if (strcmp(name,"MPID_Comm") == 0) {
 	curType = TYPE_MPID_COMM;
     }
@@ -57,13 +68,18 @@ mqs_type * dbgrI_find_type(mqs_image *image, char *name,
     else {
 	curType = TYPE_UNKNOWN;
     }
-    return (mqs_type *)&curType;
+    return (mqs_type *)&knownTypesArray[curType];
 }
 #define OFFSET_OF(type,field)		((unsigned)&((type *)0)->field)
 #define OFFSET_OF_MACRO(type,macro)	((unsigned)&macro((type *)0))
 int dbgrI_field_offset(mqs_type *type, char *name)
 {
     int off = -1;
+
+    int curType = *(int*)type;
+
+    /* printf ( "curtype is %d\n", curType ); */
+
     switch (curType) {
     case TYPE_MPID_COMM:
 	{
@@ -78,6 +94,12 @@ int dbgrI_field_offset(mqs_type *type, char *name)
 	    } else if (strcmp( name, "context_id" ) == 0) {
 		off = OFFSET_OF(MPID_Comm, context_id);
 	    }
+	    else if (strcmp( name, "recvcontext_id" ) == 0) {
+		off = ((char*)&c.recvcontext_id - (char*)&c.handle);
+	    }
+	    else {
+		printf( "Panic! Unrecognized COMM field %s\n", name );
+	    }
 	}
 	break;
     case TYPE_MPIR_COMM_LIST:
@@ -86,6 +108,9 @@ int dbgrI_field_offset(mqs_type *type, char *name)
 		off = OFFSET_OF(MPIR_Comm_list, sequence_number);
 	    } else if (strcmp( name, "head" ) == 0) {
 		off = OFFSET_OF(MPIR_Comm_list, head);
+	    }
+	    else {
+		printf( "Panic! Unrecognized message match field %s\n", name );
 	    }
 	}
 	break;
@@ -103,6 +128,9 @@ int dbgrI_field_offset(mqs_type *type, char *name)
 		off = OFFSET_OF_MACRO(MPID_Request, MPID_Request_getMatchRank);
 	    } else if (strcmp( name, "context_id" ) == 0) {
 		off = OFFSET_OF_MACRO(MPID_Request, MPID_Request_getMatchCtxt);
+	    }
+	    else {
+		printf( "Panic! Unrecognized Sendq field %s\n", name );
 	    }
 	}
 	break;
@@ -125,6 +153,8 @@ int dbgrI_find_symbol( mqs_image *image, char *name, mqs_taddr_t * loc )
     }
     else if (strcmp( name, "MPID_Recvq_posted_head_ptr" ) == 0) {
 	*loc = (mqs_taddr_t)&MPID_Recvq_posted_head_ptr;
+	printf( "Address of ptr to posted head ptr = %p\n", &MPID_Recvq_posted_head_ptr );
+	printf( "Address of posted head ptr = %p\n", MPID_Recvq_posted_head_ptr );
 	return mqs_ok;
     }
     else if (strcmp( name, "MPID_Recvq_unexpected_head_ptr" ) == 0) {
@@ -134,6 +164,9 @@ int dbgrI_find_symbol( mqs_image *image, char *name, mqs_taddr_t * loc )
     else if (strcmp( name, "MPIR_Sendq_head" ) == 0) {
 	*loc = (mqs_taddr_t)&MPIR_Sendq_head;
 	return mqs_ok;
+    }
+    else {
+	printf( "Panic! Unrecognized symbol %s\n", name );
     }
     return 1;
 }

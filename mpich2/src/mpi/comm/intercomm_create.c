@@ -157,6 +157,8 @@ PMPI_LOCAL int MPID_LPID_GetAllInComm( MPID_Comm *comm_ptr, int local_size,
 {
     int i;
     
+    /* FIXME: Should be using the local_size argument */
+    MPIU_Assert( comm_ptr->local_size == local_size );
     for (i=0; i<comm_ptr->local_size; i++) {
 	(void)MPID_VCR_Get_lpid( comm_ptr->vcr[i], &local_lpids[i] );
     }
@@ -195,7 +197,7 @@ Notes:
    'local_leader' in the 'local_comm'.
 
   The MPI 1.1 Standard contains two mutually exclusive comments on the
-  input intracommunicators.  One says that their repective groups must be
+  input intercommunicators.  One says that their repective groups must be
   disjoint; the other that the leaders can be the same process.  After
   some discussion by the MPI Forum, it has been decided that the groups must
   be disjoint.  Note that the `reason` given for this in the standard is
@@ -226,7 +228,7 @@ int MPI_Intercomm_create(MPI_Comm local_comm, int local_leader,
     int mpi_errno = MPI_SUCCESS;
     MPID_Comm *comm_ptr = NULL;
     MPID_Comm *peer_comm_ptr = NULL;
-    int final_context_id, recvcontext_id;
+    MPIR_Context_id_t final_context_id, recvcontext_id;
     int remote_size, *remote_lpids=0, *remote_gpids=0, singlePG;
     int local_size, *local_gpids=0, *local_lpids=0;
     int comm_info[3];
@@ -239,7 +241,7 @@ int MPI_Intercomm_create(MPI_Comm local_comm, int local_leader,
 
     MPIR_ERRTEST_INITIALIZED_ORDIE();
     
-    MPIU_THREAD_SINGLE_CS_ENTER("comm");
+    MPIU_THREAD_CS_ENTER(ALLFUNC,);
     MPID_MPI_FUNC_ENTER(MPID_STATE_MPI_INTERCOMM_CREATE);
 
     MPIU_THREADPRIV_GET;
@@ -440,15 +442,14 @@ int MPI_Intercomm_create(MPI_Comm local_comm, int local_leader,
      * step will complete 
      */
     MPIU_DBG_MSG_FMT(COMM,VERBOSE,
-          (MPIU_DBG_FDEST,"About to get contextid (commsize=%d) on %d",
+          (MPIU_DBG_FDEST,"About to get contextid (local_size=%d) on rank %d",
 		  comm_ptr->local_size, comm_ptr->rank ));
     /* In the multi-threaded case, MPIR_Get_contextid assumes that the
        calling routine already holds the single criticial section */
-    recvcontext_id = MPIR_Get_contextid( comm_ptr );
-    if (recvcontext_id == 0) {
-	MPIU_ERR_SETANDJUMP(mpi_errno,MPI_ERR_OTHER, "**toomanycomm");
-    }
-    MPIU_DBG_MSG(COMM,VERBOSE,"Got contextid");
+    mpi_errno = MPIR_Get_contextid( comm_ptr, &recvcontext_id );
+    if (mpi_errno) MPIU_ERR_POP(mpi_errno);
+    MPIU_Assert(recvcontext_id != 0);
+    MPIU_DBG_MSG_FMT(COMM,VERBOSE, (MPIU_DBG_FDEST,"Got contextid=%d", recvcontext_id));
 
     /* Increment the nest count for everyone because all processes
        will be communicating now */
@@ -456,10 +457,10 @@ int MPI_Intercomm_create(MPI_Comm local_comm, int local_leader,
     /* Leaders can now swap context ids and then broadcast the value
        to the local group of processes */
     if (comm_ptr->rank == local_leader) {
-	int remote_context_id;
+	MPIR_Context_id_t remote_context_id;
 
-	NMPI_Sendrecv( &recvcontext_id, 1, MPI_INT, remote_leader, tag,
-		       &remote_context_id, 1, MPI_INT, remote_leader, tag, 
+	NMPI_Sendrecv( &recvcontext_id, 1, MPIR_CONTEXT_ID_T_DATATYPE, remote_leader, tag,
+		       &remote_context_id, 1, MPIR_CONTEXT_ID_T_DATATYPE, remote_leader, tag, 
 		       peer_comm, MPI_STATUS_IGNORE );
 	
 	final_context_id = remote_context_id;
@@ -561,6 +562,8 @@ int MPI_Intercomm_create(MPI_Comm local_comm, int local_leader,
 	
     /* Notify the device of this new communicator */
     MPID_Dev_comm_create_hook( newcomm_ptr );
+    mpi_errno = MPIR_Comm_commit(newcomm_ptr);
+    if (mpi_errno) MPIU_ERR_POP(mpi_errno);
     
     *newintercomm = newcomm_ptr->handle;
 
@@ -569,7 +572,7 @@ int MPI_Intercomm_create(MPI_Comm local_comm, int local_leader,
   fn_exit:
     MPIU_CHKLMEM_FREEALL();
     MPID_MPI_FUNC_EXIT(MPID_STATE_MPI_INTERCOMM_CREATE);
-    MPIU_THREAD_SINGLE_CS_EXIT("comm");
+    MPIU_THREAD_CS_EXIT(ALLFUNC,);
     return mpi_errno;
     
   fn_fail:

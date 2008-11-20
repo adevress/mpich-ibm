@@ -3,9 +3,10 @@
 MPICH2 is an all-new implementation of MPI from the group at Argonne
 National Laboratory.  It shares many goals with the original MPICH but
 no actual code.  It is a portable, high-performance implementation of
-the entire MPI-2 standard.  This release has all MPI-2 functions and
+the entire MPI 2.1 standard. This release has all MPI 2.1 functions and
 features required by the standard with the exception of support for the
-"external32" portable I/O format. 
+"external32" portable I/O format and user-defined data representations 
+for I/O. 
 
 The distribution has been tested by us on a variety of machines in our
 own environments. If you have problems, please report them to
@@ -65,13 +66,13 @@ later, in the section "Alternative configurations".
 
 2.  Unpack the tar file and go to the top level directory:
 
-      tar xfz mpich2-%VERSION%.tar.gz
+      tar xzf mpich2-%VERSION%.tar.gz
       cd mpich2-%VERSION%
 
     If your tar doesn't accept the z option, use
 
-      gunzip mpich2.tar.gz
-      tar xf mpich2.tar
+      gunzip mpich2-%VERSION%.tar.gz
+      tar xf mpich2-%VERSION%.tar
       cd mpich2-%VERSION%
 
 3.  Choose an installation directory (the default is /usr/local/bin),
@@ -127,6 +128,21 @@ later, in the section "Alternative configurations".
     This step collects all required executables and scripts in the bin
     subdirectory of the directory specified by the prefix argument to
     configure. 
+
+    (For users who want an install directory structure compliant to
+     GNU coding standards (i.e., documentation files go to 
+     ${datarootdir}/doc/${PACKAGE}, architecture-independent
+     read-only files go to ${datadir}/${PACKAGE}), replace
+     "make install" by
+
+       make install PACKAGE=mpich2-<versrion>
+
+     and corresponding installcheck step should be
+
+       make installcheck PACKAGE=mpich2-<version>
+
+    Setting PACKAGE in "make install" or "installcheck" step is optional
+    and unnecessary for typical MPI users.)
 
 7.  Add the bin subdirectory of the installation directory to your path:
 
@@ -380,6 +396,18 @@ or
 This will cause the MPICH2 libraries to be built with -O3, and -O3 will
 not be included in the mpicc and other MPI wrapper script.
 
+There are certain compiler flags that should not be used with MPICH2's
+configure, e.g. gcc's -Werror which would confuse configure and cause
+certain configure tests to fail to detect the correct system features.
+To use -Werror in building MPICH2 libraries, you can pass the compiler
+flags during the make step through the Makefile variable
+MPICH2_MAKE_CFLAGS as follows:
+
+  make VERBOSE=1 MPICH2_MAKE_CFLAGS="-Wall -Werror"
+
+(assume CC is set to gcc). The content of MPICH2_MAKE_CFLAGS
+is appended to the CFLAGS in almost all Makefiles.
+
 
 Alternative Process Managers
 ============================
@@ -389,6 +417,12 @@ mpd
 MPD is the default process manager.  Its setup and use have been
 described above.  The file mpich2-%VERSION%/src/pm/mpd/README has more 
 information about interactive commands for managing the ring of MPDs.
+
+hydra
+-----
+Hydra is a new process management framework that uses existing daemons
+on nodes (e.g., ssh, pbs, slurm, sge) to start MPI processes. The file
+mpich2-%VERSION%/src/pm/hydra/README has mode information about Hydra.
 
 smpd
 ---- 
@@ -420,7 +454,7 @@ Alternative Channels and Devices
 The communication mechanisms in MPICH2 are called "devices", paired with
 specific "channels".  The most thoroughly tested device is the "ch3"
 device.  The default configuration chooses the "nemesis" channel in the ch3
-device (all communication goes over TCP sockets), which would be
+device (communication over shared memory and TCP or other network), which would be
 specified explicitly by putting
 
   --with-device=ch3:nemesis
@@ -480,12 +514,6 @@ You may find that some symbols are not found when loading the libraries.
 If you want to try this experimental channel, please let us know what does
 and does not work.  The next release will have a more robust, 
 ready-for-production, version of this channel.
-
-The sshm (scalable shared memory) channel is currently not
-supported. The code has been retained to provide an example of some
-MPI-2 RMA optimizations (the immediate method as opposed to the
-deferred method used in other channels for implementing the
-synchronization in MPI-2 one-sided communication).
 
 The Nemesis channel is a low-latency channel that uses shared memory
 for intra-node communication and various networks for inter-node
@@ -762,10 +790,7 @@ includes all of ROMIO)
 Active-target one-sided communication is implemented. Passive target
 one-sided communication (with MPI_Win_lock and MPI_Win_unlock) is
 implemented but relies on MPI functions at the target for progress to
-occur (the function could well be MPI_Win_free).  The one exception is
-in the sshm channel when window memory is allocated with
-MPI_Alloc_mem. In this case, communication happens without any action
-from the target.
+occur (the function could well be MPI_Win_free).
 
 The dynamic process management routines (MPI_Comm_spawn,
 MPI_Comm_Connect, and MPI_Comm_Accept, and their relations) are

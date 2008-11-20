@@ -147,6 +147,9 @@ int MPIR_Localcopy(void *sendbuf, int sendcount, MPI_Datatype sendtype,
     int rank, mpi_errno = MPI_SUCCESS;
     MPI_Aint true_extent, sendtype_true_lb, recvtype_true_lb;
     MPIU_THREADPRIV_DECL;
+    MPID_MPI_STATE_DECL(MPID_STATE_MPIR_LOCALCOPY);
+
+    MPID_MPI_FUNC_ENTER(MPID_STATE_MPIR_LOCALCOPY);
 
     MPIU_THREADPRIV_GET;
 
@@ -171,6 +174,9 @@ int MPIR_Localcopy(void *sendbuf, int sendcount, MPI_Datatype sendtype,
                sendcount*sendsize);
     }
     else {
+	/* FIXME: This invokes a lot of machinery, including possible nested 
+	   mutexes (see accumulate) just to make use of the datatype copy
+	   routines from one buffer to another. */
         NMPI_Comm_rank(MPI_COMM_WORLD, &rank);
         mpi_errno = MPIC_Sendrecv ( sendbuf, sendcount, sendtype,
                                     rank, MPIR_LOCALCOPY_TAG, 
@@ -182,6 +188,7 @@ int MPIR_Localcopy(void *sendbuf, int sendcount, MPI_Datatype sendtype,
     
   fn_exit:
     MPIR_Nest_decr();
+    MPID_MPI_FUNC_EXIT(MPID_STATE_MPIR_LOCALCOPY);
     return mpi_errno;
 
   fn_fail:
@@ -248,6 +255,10 @@ int MPIC_Irecv(void *buf, int count, MPI_Datatype datatype, int
     return mpi_errno;
 }
 
+/* FIXME: For the brief-global and finer-grain control, we must ensure that
+   the global lock is *not* held when this routine is called. (unless we change
+   progress_start/end to grab the lock, in which case we must *still* make
+   sure that the lock is not held when this routine is called). */
 #undef FUNCNAME
 #define FUNCNAME MPIC_Wait
 #undef FCNAME
@@ -255,7 +266,6 @@ int MPIC_Irecv(void *buf, int count, MPI_Datatype datatype, int
 int MPIC_Wait(MPID_Request * request_ptr)
 {
     int mpi_errno = MPI_SUCCESS;
-
     MPIDI_STATE_DECL(MPID_STATE_MPIC_WAIT);
 
     MPIDI_PT2PT_FUNC_ENTER(MPID_STATE_MPIC_WAIT);

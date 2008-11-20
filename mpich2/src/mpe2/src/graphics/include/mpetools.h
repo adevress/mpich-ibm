@@ -1,8 +1,8 @@
-/* $Id$ */
+/* -*- Mode: C; c-basic-offset:4 ; -*- */
 /*
-   (C) 2001 by Argonne National Laboratory.
-       See COPYRIGHT in top-level directory.
-*/
+ *  (C) 2001 by Argonne National Laboratory.
+ *      See COPYRIGHT in top-level directory.
+ */
 
 /*
     This file contains some basic definitions that the tools routines

@@ -62,7 +62,7 @@ MPIDO_Allgather(void *sendbuf,
   send_size = recv_size;
   recv_size *= comm_size;
   
-  MPID_Ensure_Aint_fits_in_pointer(MPIR_VOID_PTR_CAST_TO_MPI_AINT recvbuf
+  MPID_Ensure_Aint_fits_in_pointer(MPI_VOID_PTR_CAST_TO_MPI_AINT recvbuf
 				   + recv_true_lb + comm_size * send_size);
   
   if (sendbuf != MPI_IN_PLACE)
@@ -73,7 +73,7 @@ MPIDO_Allgather(void *sendbuf,
                             send_size,
                             dt_null,
                             send_true_lb);
-    MPID_Ensure_Aint_fits_in_pointer(MPIR_VOID_PTR_CAST_TO_MPI_AINT
+    MPID_Ensure_Aint_fits_in_pointer(MPI_VOID_PTR_CAST_TO_MPI_AINT
                                      sendbuf + send_true_lb);
   }
 

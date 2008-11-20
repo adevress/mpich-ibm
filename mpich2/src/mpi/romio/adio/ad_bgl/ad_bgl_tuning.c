@@ -4,7 +4,7 @@
 /**
  * \file ad_bgl_tuning.c
  * \brief defines ad_bgl performance tuning
-  */
+ */
 
 /* -*- Mode: C; c-basic-offset:4 ; -*- */
 /* 

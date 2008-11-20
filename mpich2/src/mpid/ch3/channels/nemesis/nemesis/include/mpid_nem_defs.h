@@ -11,9 +11,13 @@
 #include "mpi.h"
 #include "pmi.h"
 
-#define MPID_NEM_MAX_KEY_VAL_LEN 256
 #define MPID_NEM_MAX_FNAME_LEN 256
+
+/* FIXME: This definition should be gotten from mpidi_ch3_impl.h */
+#ifndef MAX_HOSTNAME_LEN
 #define MAX_HOSTNAME_LEN 256
+#endif /* MAX_HOSTNAME_LEN */
+
 extern char MPID_nem_hostname[MAX_HOSTNAME_LEN];
 
 /* #define ENABLED_CHECKPOINTING */
@@ -67,17 +71,13 @@ MPID_nem_barrier_t;
 
 typedef struct MPID_nem_seg
 {
-  /* Sizes */
-  int   max_size ;
-  int   size_left;
-  /* Pointers */
-  char *base_addr;
-  char *current_addr;
-  char *max_addr;
-  /* Misc */
-  char  file_name[MPID_NEM_MAX_FNAME_LEN];
-  int   base_descs; 
-  int   symmetrical;
+    size_t segment_len;
+    /* Pointers */
+    char *base_addr;
+    /* Misc */
+    char  file_name[MPID_NEM_MAX_FNAME_LEN];
+    int   base_descs; 
+    int   symmetrical;
 } MPID_nem_seg_t, *MPID_nem_seg_ptr_t;
 
 typedef struct MPID_nem_seg_info
@@ -100,7 +100,9 @@ typedef struct MPID_nem_barrier_vars
     volatile int context_id;
     volatile int usage_cnt;
     volatile int cnt;
+#if MPID_NEM_CACHE_LINE_LEN != SIZEOF_INT
     char padding0[MPID_NEM_CACHE_LINE_LEN - sizeof(int)];
+#endif
     volatile int sig0;
     volatile int sig;
     char padding1[MPID_NEM_CACHE_LINE_LEN - 2* sizeof(int)];
@@ -115,8 +117,6 @@ typedef struct MPID_nem_mem_region
     int                         map_lock;
     pid_t                      *pid;
     int                         num_local;
-    int                         num_nodes;
-    int                        *node_ids;
     int                         num_procs;
     int                        *local_procs; /* local_procs[lrank] gives the global rank of proc with local rank lrank */
     int                         local_rank;    

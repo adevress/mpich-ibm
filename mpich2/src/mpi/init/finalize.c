@@ -1,6 +1,5 @@
 /* -*- Mode: C; c-basic-offset:4 ; -*- */
-/*  $Id$
- *
+/*
  *  (C) 2001 by Argonne National Laboratory.
  *      See COPYRIGHT in top-level directory.
  */
@@ -71,7 +70,9 @@ void MPIR_Add_finalize( int (*f)( void * ), void *extra_data, int priority )
 PMPI_LOCAL void MPIR_Call_finalize_callbacks( int min_prio, int max_prio )
 {
     int i, j;
-    for (j=fstack_max_priority; j>=min_prio; j--) {
+
+    if (max_prio > fstack_max_priority) max_prio = fstack_max_priority;
+    for (j=max_prio; j>=min_prio; j--) {
 	for (i=fstack_sp-1; i>=0; i--) {
 	    if (fstack[i].f && fstack[i].priority == j) {
 		fstack[i].f( fstack[i].extra_data );
@@ -119,7 +120,9 @@ int MPI_Finalize( void )
 
     MPIR_ERRTEST_INITIALIZED_ORDIE();
 
-    MPIU_THREAD_SINGLE_CS_ENTER("init");
+    /* Note: Only one thread may ever call MPI_Finalize (MPI_Finalize may
+       be called at most once in any program) */
+    MPIU_THREAD_CS_ENTER(ALLFUNC,);
     MPID_MPI_FINALIZE_FUNC_ENTER(MPID_STATE_MPI_FINALIZE);
     
     /* ... body of routine ... */
@@ -133,15 +136,57 @@ int MPI_Finalize( void )
        Do this only if the attribute functions are defined. */ 
     /* The standard (MPI-2, section 4.8) says that the attributes on 
        MPI_COMM_SELF are deleted before almost anything else happens */
+    /* Note that the attributes need to be removed from the communicators 
+       so that they aren't freed twice. (The communicators are released
+       in MPID_Finalize) */
     if (MPIR_Process.attr_free && MPIR_Process.comm_self->attributes) {
         mpi_errno = MPIR_Process.attr_free( MPI_COMM_SELF,
-					   MPIR_Process.comm_self->attributes);
+					    MPIR_Process.comm_self->attributes);
+	MPIR_Process.comm_self->attributes = 0;
     }
     if (MPIR_Process.attr_free && MPIR_Process.comm_world->attributes) {
         mpi_errno = MPIR_Process.attr_free( MPI_COMM_WORLD, 
                                          MPIR_Process.comm_world->attributes);
+	MPIR_Process.comm_world->attributes = 0;
     }
 
+    /* 
+     * Now that we're finalizing, we need to take control of the error handlers
+     * At this point, we will release any user-defined error handlers on 
+     * comm self and comm world
+     */
+    if (MPIR_Process.comm_world->errhandler && 
+	! (HANDLE_GET_KIND(MPIR_Process.comm_world->errhandler->handle) == 
+	   HANDLE_KIND_BUILTIN) ) {
+	int in_use;
+	MPIR_Errhandler_release_ref( MPIR_Process.comm_world->errhandler,
+				     &in_use);
+	if (!in_use) {
+	    MPIU_Handle_obj_free( &MPID_Errhandler_mem, 
+				  MPIR_Process.comm_world->errhandler );
+	}
+    }
+    if (MPIR_Process.comm_self->errhandler && 
+	! (HANDLE_GET_KIND(MPIR_Process.comm_self->errhandler->handle) == 
+	   HANDLE_KIND_BUILTIN) ) {
+	int in_use;
+	MPIR_Errhandler_release_ref( MPIR_Process.comm_self->errhandler,
+				     &in_use);
+	if (!in_use) {
+	    MPIU_Handle_obj_free( &MPID_Errhandler_mem, 
+				  MPIR_Process.comm_self->errhandler );
+	}
+    }
+
+    /* At this point, we end the critical section for the Finalize call.
+       Since we've set MPIR_Process.initialized value to POST_FINALIZED, 
+       if the user erroneously calls Finalize from another thread, an
+       error message will be issued. */
+    /* We put this here to avoid nesting problems with the callbacks - 
+       however, an erroneous user program could cause problems here if if
+       makes its own MPI calls. */
+    MPIU_THREAD_CS_EXIT(ALLFUNC,);
+    
     /* FIXME: Why is this not one of the finalize callbacks?.  Do we need
        pre and post MPID_Finalize callbacks? */
     MPIU_Timer_finalize();
@@ -150,23 +195,17 @@ int MPI_Finalize( void )
     MPIR_Call_finalize_callbacks( MPIR_FINALIZE_CALLBACK_PRIO+1, 
 				  MPIR_FINALIZE_CALLBACK_MAX_PRIO );
 
+    /* Signal the debugger that we are about to exit. */
+    /* FIXME: Should this also be a finalize callback? */
+#ifdef HAVE_DEBUGGER_SUPPORT
+    MPIR_DebuggerSetAborting( (char *)0 );
+#endif
+
     mpi_errno = MPID_Finalize();
     if (mpi_errno) {
 	MPIU_ERR_POP(mpi_errno);
     }
     
-    /* delete local and remote groups on comm_world and comm_self if
-       they had been created (should we use a function pointer here
-       as well to avoid loading the group code?) */
-    if (MPIR_Process.comm_world->local_group)
-        MPIR_Group_release(MPIR_Process.comm_world->local_group);
-    if (MPIR_Process.comm_world->remote_group)
-        MPIR_Group_release(MPIR_Process.comm_world->remote_group);
-    if (MPIR_Process.comm_self->local_group)
-        MPIR_Group_release(MPIR_Process.comm_self->local_group);
-    if (MPIR_Process.comm_self->remote_group)
-        MPIR_Group_release(MPIR_Process.comm_self->remote_group);
-
     /* Call the low-priority (post Finalize) callbacks */
     MPIR_Call_finalize_callbacks( 0, MPIR_FINALIZE_CALLBACK_PRIO-1 );
 
@@ -174,27 +213,35 @@ int MPI_Finalize( void )
        completing the finalize */
     if (mpi_errno != MPI_SUCCESS) goto fn_fail;
 
+    /* FIXME: Many of these debugging items could/should be callbacks, 
+       added to the finalize callback list */
     /* FIXME: Both the memory tracing and debug nesting code blocks should
        be finalize callbacks */
     /* If memory debugging is enabled, check the memory here, after all
        finalize callbacks */
 #ifdef MPICH_DEBUG_NESTING
-    /* FIXME: the (1) in the if test should be replaced by a 
-       parameter call */
-    if (1) {
-	MPIU_THREADPRIV_DECL;
+    {
+	int parmFound, parmValue;
 
-	MPIU_THREADPRIV_GET;
-	/* Check for an error in the nesting level */
-	if (MPIR_Nest_value()) {
-	    int i,n;
-	    n = MPIR_Nest_value();
-	    fprintf( stderr, "Unexpected value for nesting level = %d\n", n );
-	    fprintf( stderr, "Nest stack is:\n" );
-	    for (i=n-1; i>=0; i--) {
-		fprintf( stderr, "\t[%d] %s:%d\n", i, 
-			 MPIU_THREADPRIV_FIELD(nestinfo[i].file), 
-			 MPIU_THREADPRIV_FIELD(nestinfo[i].line) );
+	MPIU_Param_register( "nestcheck", "NESTCHECK", 
+	     "List any memory that was allocated by MPICH2 and that remains allocated when MPI_Finalize completes" );
+	parmFound = MPIU_GetEnvBool( "MPICH_NESTCHECK", &parmValue );
+	if (!parmFound) parmValue = 1;
+	if (parmValue) {
+	    MPIU_THREADPRIV_DECL;
+	    
+	    MPIU_THREADPRIV_GET;
+	    /* Check for an error in the nesting level */
+	    if (MPIR_Nest_value()) {
+		int i,n;
+		n = MPIR_Nest_value();
+		fprintf( stderr, "Unexpected value for nesting level = %d\n", n );
+		fprintf( stderr, "Nest stack is:\n" );
+		for (i=n-1; i>=0; i--) {
+		    fprintf( stderr, "\t[%d] %s:%d\n", i, 
+			     MPIU_THREADPRIV_FIELD(nestinfo[i].file), 
+			     MPIU_THREADPRIV_FIELD(nestinfo[i].line) );
+		}
 	    }
 	}
     }
@@ -202,12 +249,7 @@ int MPI_Finalize( void )
 
     MPIR_Process.initialized = MPICH_POST_FINALIZED;
 
-    /* At this point, we end the critical section for the Finalize call.
-       Since we've set MPIR_Process.initialized value to POST_FINALIZED, 
-       if the user erroneously calls Finalize from another thread, an
-       error message will be issued. */
-    MPIU_THREAD_SINGLE_CS_EXIT("init");
-    MPIU_THREAD_SINGLE_CS_FINALIZE;
+    MPID_CS_FINALIZE();
 
     /* We place the memory tracing at the very end because any of the other
        steps may have allocated memory that they still need to release*/
@@ -273,7 +315,7 @@ int MPI_Finalize( void )
     }
 #   endif
     mpi_errno = MPIR_Err_return_comm( 0, FCNAME, mpi_errno );
-    MPIU_THREAD_SINGLE_CS_EXIT("init");
+    MPIU_THREAD_CS_EXIT(ALLFUNC,);
     goto fn_exit;
     /* --END ERROR HANDLING-- */
 }

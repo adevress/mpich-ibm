@@ -161,14 +161,15 @@ fi
 # Numeric version will have 1 digit for MAJ, 2 digits for MIN,
 # 2 digits for REV, 1 digit for EXT and 2 digits for EXT_NUMBER.
 changequote(<<,>>)
-V1=`expr $VERSION : '\([0-9]*\)\.[0-9]*\.[0-9]*[a-zA-Z]*[0-9]*'`
-V2=`expr $VERSION : '[0-9]*\.\([0-9]*\)\.[0-9]*[a-zA-Z]*[0-9]*'`
-V3=`expr $VERSION : '[0-9]*\.[0-9]*\.\([0-9]*\)[a-zA-Z]*[0-9]*'`
-V4=`expr $VERSION : '[0-9]*\.[0-9]*\.[0-9]*\([a-zA-Z]*\)[0-9]*'`
-V5=`expr $VERSION : '[0-9]*\.[0-9]*\.[0-9]*[a-zA-Z]*\([0-9]*\)'`
+V1=`expr $VERSION : '\([0-9]*\)\.[0-9]*[\.]*[0-9]*[a-zA-Z]*[0-9]*'`
+V2=`expr $VERSION : '[0-9]*\.\([0-9]*\)[\.]*[0-9]*[a-zA-Z]*[0-9]*'`
+V3=`expr $VERSION : '[0-9]*\.[0-9]*[\.]*\([0-9]*\)[a-zA-Z]*[0-9]*'`
+V4=`expr $VERSION : '[0-9]*\.[0-9]*[\.]*[0-9]*\([a-zA-Z]*\)[0-9]*'`
+V5=`expr $VERSION : '[0-9]*\.[0-9]*[\.]*[0-9]*[a-zA-Z]*\([0-9]*\)'`
 changequote([,])
 
 if test "$V2" -le 9 ; then V2=0$V2 ; fi
+if test "$V3" = "" ; then V3=0; fi
 if test "$V3" -le 9 ; then V3=0$V3 ; fi
 if test "$V4" = "a" ; then
     V4=0
@@ -302,16 +303,18 @@ dnl --enable-fast
 AC_ARG_ENABLE(fast,
 [--enable-fast=option - Control the level of fast execution in the MPICH
 implementation.   option is a list of comma separated names including 
-    defopt   - Default compiler optimization -O2 for all language bindings.
-               when neither --enable-fast nor --disable-fast is specified.
+    O<n>     - Appends default optimization flags, -O<n>, to all internal
+               compiler flags, i.e. MPICH2LIB_CFLAGS, MPICH2LIB_CXXFLAGS,
+               MPICH2LIB_FFLAGS, and MPICH2LIB_F90FLAGS.
+    defopt   - Default compiler optimization -O2 for all language bindings,
+               i.e. --enable-fast=O2, when neither --enable-fast
+               nor --disable-fast is specified.
     nochkmsg - No error checking and no error messages, i.e.
                --disable-error-checking and --disable-error-messages.
     notiming - No timing collection, i.e. --disable-timing.
-    ndebug   - Appends -DNDEBUG to CFLAGS.
+    ndebug   - Appends -DNDEBUG to internal CFLAGS, i.e. MPICH2LIB_CFLAGS.
     all|yes  - "defopt", "nochkmsg", "notiming" and "ndebug" are enabled
                when --enable-fast is specified without any option.
-    O<n>     - Appends default optimization flags, -O<n>, to
-               CFLAGS, FFLAGS, CXXFLAGS, F90FLAGS.
     none     - None of above options, i.e. --disable-fast.
 ],,enable_fast=defopt)
 
@@ -332,6 +335,16 @@ AC_ARG_ENABLE(romio,
 dnl
 AC_ARG_ENABLE(debuginfo,
 [--enable-debuginfo - Enable support for debuggers],,enable_debuginfo=no)
+
+AC_ARG_ENABLE(smpcoll,
+	[--enable-smpcoll - Enable support for SMP/multi-core aware collectives],
+	smpcoll=$enableval,
+	smpcoll=yes)
+
+if test $smpcoll = "yes" ; then
+   AC_DEFINE(USE_SMP_COLLECTIVES,1,[define to enable SMP/multi-core aware collectives])
+fi
+
 dnl
 dnl The environment variable MPICH_DEBUGLIBNAME may be used to override the
 dnl default name of the library that the debugger will load to access the
@@ -393,16 +406,38 @@ If MPI_Init_thread is not called, the default is funneled .
 For other channels, the --enable-threads option is not supported currently, and 
 the default is funneled.],,
 enable_threads=default)
+dnl
+AC_ARG_ENABLE(thread-cs,
+[--enable-thread-cs=type - Choose the method used for critical sections and 
+ other atomic updates when multiple threads are present.  Values may be
+ global (default), brief-global, per-object, lock-free],,
+ enable_thread_cs=global)
+AC_ARG_ENABLE(refcount,
+[--enable-refcount=type - Choose the method for ensuring atomic updates to
+the reference counts for MPI objects.  Values may be lock, lock-free, none.
+The default depends on the thread-cs choice; for global it is none (because
+none is required), for brief-global and per-object it is lock, and for
+lock-free it is lock-free],,enable_refcount=default)
+AC_ARG_ENABLE(mutex-timing, [--enable-mutex-timing - calculate the
+			    time spent waiting on mutexes.  For best
+			    results, use with
+			    --enable-timer-type=linux86_cycle],
+	      AC_DEFINE(MPIU_MUTEX_WAIT_TIME,1,[Define to enable timing mutexes])
+	      )
+AC_ARG_ENABLE(handle-allocation,
+              [--enable-handle-allocation=type - Choose the method used for
+              allocating MPI object handles.  Values may be 'tls' for
+              thread-local storage or 'mutex' for simple locking.  'mutex' is
+              the default.],
+              ,
+              enable_handle_allocation=default)
+
 dnl 
 dnl
 AC_ARG_ENABLE(weak-symbols,
 [--enable-weak-symbols - Use weak symbols to implement PMPI routines (default)],,
 enable_weak_symbols=yes)
 dnl
-AC_ARG_WITH(htmldir,[--with-htmldir=dir - Specify the directory for html documentation],,
-with_htmldir='${prefix}/www')
-AC_ARG_WITH(docdir,[--with-docdir=dir - Specify the directory for documentation],,
-with_docdir='${prefix}/doc')
 dnl
 dnl
 AC_ARG_WITH(cross,
@@ -461,23 +496,6 @@ export WRAPPER_LDFLAGS
 PAC_VPATH_CHECK(src/include/mpi.h src/env/mpicc src/env/mpicc.conf,lib)
 
 # ----------------------------------------------------------------------------
-#
-# Set the defaults for directories that are not included in configure's
-# repetoire
-if test -n "$with_htmldir" ; then 
-    htmldir=$with_htmldir
-else
-    htmldir='${prefix}/www'
-fi
-AC_SUBST(htmldir)
-
-if test -n "$with_docdir" ; then 
-    docdir=$with_docdir
-else
-    docdir='${prefix}/doc'
-fi
-AC_SUBST(docdir)
-
 # This test is complicated by the fact that top_srcdir is not set until
 # the very end of configure.  Instead, we get it ourselves
 if test -z "$top_srcdir" ; then
@@ -1020,6 +1038,65 @@ if test "$thread_pkg_required" = "no" ; then
 fi
 export MPE_THREAD_DEFAULT
 
+# Check for value thread_cs choice; set the refcount default if necessary
+thread_granularity=0
+thread_refcount=0
+if test "$enable_threads" = "multiple" ; then
+    case $enable_thread_cs in 
+    global)
+    thread_granularity=MPIU_THREAD_GRANULARITY_GLOBAL
+    if test "$enable_refcount" = "default" ; then enable_refcount=none ; fi
+    ;;
+    brief-global|brief_global)
+    thread_granularity=MPIU_THREAD_GRANULARITY_BRIEF_GLOBAL
+    if test "$enable_refcount" = "default" ; then enable_refcount=lock ; fi
+    ;;
+    per-object|per_object)
+    thread_granularity=MPIU_THREAD_GRANULARITY_PER_OBJECT
+    if test "$enable_refcount" = "default" ; then enable_refcount=lock ; fi
+    ;;
+    lock-free|lock_free|lockfree)
+    thread_granularity=MPIU_THREAD_GRANULARITY_LOCK_FREE
+    if test "$enable_refcount" = "default" ; then enable_refcount=lock-free ; fi
+    ;;
+    *)
+    AC_MSG_ERROR([Unrecognized value $enable_thread_cs for --enable-thread-cs])
+    ;;
+    esac
+
+    case $enable_refcount in
+    lock)
+    thread_refcount=MPIU_REFCOUNT_LOCK
+    ;;
+    lock-free|lock_free|lockfree)
+    thread_refcount=MPIU_REFCOUNT_LOCKFREE
+    ;;
+    none)
+    thread_refcount=MPIU_REFCOUNT_NONE
+    ;;
+    *)
+    AC_MSG_ERROR([Unrecognized value $enable_refcount for --enable-refcount])
+    ;;
+    esac
+fi
+AC_DEFINE_UNQUOTED([MPIU_THREAD_GRANULARITY],$thread_granularity,[Method used to implement atomic updates and access])
+
+case $enable_handle_allocation in
+    mutex|default)
+        handle_allocation_method=MPIU_HANDLE_ALLOCATION_MUTEX
+    ;;
+    tls)
+        handle_allocation_method=MPIU_HANDLE_ALLOCATION_THREAD_LOCAL
+    ;;
+    *)
+        AC_MSG_ERROR([Unrecognized value $enable_handle_allocation for --enable-handle-allocation])
+    ;;
+esac
+AC_DEFINE_UNQUOTED([MPIU_HANDLE_ALLOCATION_METHOD],$handle_allocation_method,[Method used to allocate MPI object handles])
+
+
+AC_DEFINE_UNQUOTED([MPIU_THREAD_REFCOUNT],$thread_refcount,[Method used to implement refcount updates])
+
 # enable-g
 # strip off multiple options, separated by commas
 save_IFS="$IFS"
@@ -1030,6 +1107,9 @@ for option in $enable_g ; do
         enable_append_g=yes
 	;;
         no|none)
+	;;
+	handlealloc)
+	perform_handlealloc=yes
 	;;
 	handle)
 	AC_DEFINE(MPICH_DEBUG_HANDLES,1,[Define to enable handle checking])
@@ -1063,6 +1143,7 @@ for option in $enable_g ; do
 	enable_append_g=yes
 	perform_meminit=yes
 	perform_dbgmutex=yes
+	perform_handlealloc=yes
 	;;
 	*)
 	AC_MSG_WARN([Unknown value $enable_g for enable-g])
@@ -1102,6 +1183,10 @@ fi
 if test -n "$perform_meminit" ; then
     AC_DEFINE(MPICH_DEBUG_MEMINIT,1,[Define to enable preinitialization of memory used by structures and unions])
 fi
+if test "$perform_handlealloc" = yes ; then
+   AC_DEFINE(MPICH_DEBUG_HANDLEALLOC,1,[Define to enable checking of handles still allocated at MPI_Finalize])
+fi
+
 if test -n "$perform_memtracing" ; then
     enable_g_mem=yes
     AC_DEFINE(USE_MEMORY_TRACING,1,[Define to enable memory tracing])
@@ -1127,35 +1212,6 @@ if test -n "$perform_dbgmutex" ; then
    AC_DEFINE(MPICH_DEBUG_MUTEX,1,[Define to enable mutex debugging])
 fi
 
-if test "$enable_debuginfo" = "yes" ; then
-    debugger_dir=debugger
-    AC_DEFINE(HAVE_DEBUGGER_SUPPORT,1,[Define if debugger support is included])
-    # The debugger support requires a shared library.  This is handled 
-    # below, after we check for compiler support for shared libraries
-    # Note: if libdir contains exec_prefix, handle the fact that the
-    # default exec_prefix is NONE, which (much later in configure)
-    # gets turned into the value of prefix
-    ##ENVVAR: MPICH_DEBUGLIBNAME - Set this environment variable to 
-    ## override the default name of the debugger support library.
-    ## The default name is libtvmpich2.so .
-    ##ENVVAR END:
-    if test -z "$MPICH_DEBUGLIBNAME" ; then
-        DEBUGLIBNAME=libtvmpich2.so
-    else
-        DEBUGLIBNAME=$MPICH_DEBUGLIBNAME
-    fi
-    if test "x$exec_prefix" = xNONE ; then
-        saveExecPrefix=$exec_prefix
-	exec_prefix=$prefix
-        eval dlldir=$libdir/$DEBUGLIBNAME
-	exec_prefix=$saveExecPrefix
-    else
-        eval dlldir=$libdir/$DEBUGLIBNAME
-    fi
-    dlldir='"'$dlldir'"'
-    AC_DEFINE_UNQUOTED(MPICH_INFODLL_LOC,$dlldir,[Define as the name of the debugger support library])
-fi
-AC_SUBST(debugger_dir)
 pac_cross_compiling=no
 if test "$with_cross" != "no" ; then
     if test -s "$with_cross" ; then
@@ -1509,6 +1565,14 @@ PAC_CC_STRICT
 if test -n "$pac_cc_strict_flags" ; then
     MPICH2_EXTRA_CFLAGS="$MPICH2_EXTRA_CFLAGS $pac_cc_strict_flags"
 fi
+# Check for whether the compiler defines a symbol that contains the 
+# function name.  The MPICH2 code, for greater portability, defines
+# its own symbols, FCNAME (a string) and FUNCNAME (a token that is not a 
+# string).  Code should use these symbols where possible.  However, 
+# some debugging macros may want to use a compiler-provided symbol
+# for the function name, and this check makes it possible to 
+# define such macros in a way that is always correct.
+PAC_CC_FUNCTION_NAME_SYMBOL
 
 # Check if $MPI_DEFAULT_COPTS is valid with $CC
 if test "$enable_default_optimize" = "yes" \
@@ -1648,6 +1712,7 @@ if test "$enable_f77" = yes ; then
     PAC_PROG_F77_CHECK_FLIBS
 
     PAC_PROG_F77_LINKER_WITH_C
+    PAC_PROG_F77_OBJ_LINKS_WITH_C
     # For name mangle, we need the library flags
     PAC_PROG_F77_NAME_MANGLE
     # Check whether additional libraries are needed when linking with C
@@ -1820,6 +1885,8 @@ EOF
 		 AC_MSG_WARN([Cannot build shared libraries for Fortran with this compiler])
              fi
          fi
+	 # This is needed for Mac OSX 10.5
+	 rm -rf conftest.dSYM
          rm -f conftest*
 
 	 FC_LINKPATH_SHL="-Wl,-rpath -Wl,"
@@ -1853,6 +1920,8 @@ EOF
     # allow this or have serious bugs (OSF Fortran compilers have a bug
     # that generates an error message from cpp).  The following test
     # checks to see if .F works, and if not, whether "cpp -P -C" can be used
+    # This is needed for Mac OSX 10.5
+    rm -rf conftest.dSYM
     rm -f conftest*
     AC_MSG_CHECKING([whether Fortran compiler processes .F files with C preprocessor])
     cat >conftest.F <<EOF
@@ -2052,6 +2121,8 @@ if test "$enable_f90" = "yes" ; then
     # allow this or have serious bugs (OSF Fortran compilers have a bug
     # that generates an error message from cpp).  The following test
     # checks to see if .F works, and if not, whether "cpp -P -C" can be used
+    # This is needed for Mac OSX 10.5
+    rm -rf conftest.dSYM
     rm -f conftest*
     AC_MSG_CHECKING([whether Fortran 90 compiler processes .F90 files with C preprocessor])
     cat >conftest.F90 <<EOF
@@ -2275,8 +2346,19 @@ public:
  pac_cv_cxx_builds_exe=yes, ac_cv_builds_exe=no)
  AC_LANG_RESTORE
 ])
-    if test "$pac_cv_cxx_builds_exe" != yes; then
+    if test "$pac_cv_cxx_builds_exe" != yes ; then
        AC_MSG_ERROR([Aborting because C++ compiler does not work.  If you do not need a C++ compiler, configure with --disable-cxx])
+    fi
+    # Recent failures have come when a standard header is loaded
+    # The Intel icpc 10.x compiler fails with <string> if gcc 4.2 is installed. 
+    AC_CACHE_CHECK([whether C++ compiler works with string],pac_cv_cxx_compiles_string,[
+    AC_LANG_SAVE
+    AC_LANG_CPLUSPLUS
+    AC_TRY_COMPILE([#include <string>],[return 0;],pac_cv_cxx_compiles_string=yes,pac_cv_cxx_compiles_string=no)
+    AC_LANG_RESTORE
+])
+    if test "$pac_cv_cxx_compiles_string" != yes ; then 
+        AC_MSG_WARN([The C++ compiler $CXX cannot compile a program containing the <string> header - this may indicate a problem with the C++ installation.  Consider configuing with --disable-cxx])
     fi
 
     AC_LANG_CPLUSPLUS
@@ -2532,6 +2614,8 @@ EOF
     if test -n "$ETAGSADD" ; then
         AC_MSG_RESULT($ETAGSADD)
     fi
+     # This is needed for Mac OSX 10.5
+    rm -rf conftest.dSYM
     rm -f conftest*
 fi
 AC_SUBST(ETAGS)
@@ -2725,10 +2809,11 @@ if test "$enable_debuginfo" = "yes" ; then
         BUILD_TVDLL=yes
 	CC_SHL_DBG="$CC_SHL"
 	C_LINK_SHL_DBG="$C_LINK_SHL"
+	DBG_SHLIB_TYPE=$ENABLE_SHLIB
    else
         # Try to determine how to build the tv shared library
-	AC_MSG_CHECKING([for how to build shared library for debugger interface])
-        PAC_CC_SHAREDLIBS(,CC_SHL_DBG,C_LINK_SHL_DBG)
+	AC_MSG_RESULT([for how to build shared library for debugger interface])
+        PAC_CC_SHAREDLIBS(,CC_SHL_DBG,C_LINK_SHL_DBG,DBG_SHLIB_TYPE)
 	PAC_CC_SHLIB_EXT
 	if test "$SHLIB_EXT" = "unknown" ; then
 	    # Guess that the extension is .so
@@ -2738,10 +2823,11 @@ if test "$enable_debuginfo" = "yes" ; then
 	    AC_MSG_RESULT([none found])
             AC_MSG_WARN([Debugger support requires shared libraries])      
 	else
-	    AC_MSG_RESULT($CC_SHL_DBG)
+	    AC_MSG_RESULT([Use this to build the debugger shared library: $CC_SHL_DBG])
 	    BUILD_TVDLL=yes
         fi
    fi
+   AC_SUBST(DBG_SHLIB_TYPE)
    # One more nasty problem.  Totalview relies on debugger symbols 
    # being present in the executable.  Some experimental versions of
    # gcc (3.2 20020329 for ia64) do *not* include the object symbols
@@ -2761,7 +2847,8 @@ on all link lines (consider adding it to LDFLAGS)])
    AC_SUBST(CC_SHL_DBG)
    AC_SUBST(C_LINK_SHL_DBG)
 
-    # Now configure the library name. must be after setup, above.
+    # The debugger library name cannot be set until we know the extension
+    # of shared libraries - the name is so on most Unix system, dylib on OS X.
     debugger_dir=debugger
     debugger_lib=tvmpich2
     AC_DEFINE(HAVE_DEBUGGER_SUPPORT,1,[Define if debugger support is included])
@@ -2785,6 +2872,7 @@ on all link lines (consider adding it to LDFLAGS)])
     AC_SUBST(debugger_lib)
 fi
 AC_SUBST(debugger_dir)
+
 # ----------------------------------------------------------------------------
 
 nameserv_name=""
@@ -2922,7 +3010,6 @@ case $byteOrdering in
     AC_MSG_ERROR([Unable to determine endianess])
     ;;
 esac
-dnl AC_C_BIGENDIAN(,AC_DEFINE(WORDS_LITTLEENDIAN,1,[Define if words are little endian]))
 
 # We only need this test if we are using Fortran
 if test "$enable_f77" ; then
@@ -3224,7 +3311,7 @@ dnl PAC_CHECK_SIZEOF_DERIVED(long double int,[struct { long double a; int b; }],
 AC_CHECK_HEADER(sys/bitypes.h,[use_bitypes="#include <sys/bitypes.h>"
 AC_DEFINE(HAVE_SYS_BITYPES_H,1,[Define if sys/bitypes.h exists])])
 # A C99 compliant compiler should have inttypes.h for fixed-size int types
-AC_CHECK_HEADER(inttypes.h)
+AC_CHECK_HEADERS(inttypes.h stdint.h)
 
 # Check for types
 AC_TYPE_INT8_T
@@ -4250,6 +4337,81 @@ int main( int argc, char **argv ){
     fi
     AC_SUBST(MPI_STATUS_SIZE)
 
+    #
+    # We must convert all hex values to decimal (!).
+    # This is for the C types so they are also available in Fortran
+    for var in CHAR SIGNED_CHAR UNSIGNED_CHAR WCHAR SHORT \
+		  UNSIGNED_SHORT INT UNSIGNED_INT LONG UNSIGNED_LONG \
+		  FLOAT DOUBLE LONG_DOUBLE LONG_LONG_INT \
+		  UNSIGNED_LONG_LONG LONG_LONG FLOAT_INT DOUBLE_INT \
+		  LONG_INT SHORT_INT "2INT" LONG_DOUBLE_INT ; do
+        fullvar="MPI_$var"
+	fullf77var="MPI_F77_$var"
+        eval fullvarvalue=\$$fullvar
+        #echo "$fullvar = $fullvarvalue"
+	if test "x$fullvarvalue" = "x" ; then
+             eval $fullf77var="MPI_DATATYPE_NULL"
+             continue
+        fi
+        value=0
+        fullvarvalue=`echo $fullvarvalue | sed -e 's/..\(.*\)/\1/'`
+	offset=0
+        for pos in 3 4 5 6 7 8 9 10 ; do
+            # This works, even for Tru64, because only a single character
+  	    # is extracted
+            char=`expr $fullvarvalue : '\(.\)'`
+	    # FIXME: Tru64 Unix eliminates leading zeros (!)
+ 	    # How do we fix something that broken?
+	    fullvarvalue=`echo $fullvarvalue | sed -e 's/.\(.*\)/\1/'`
+            case $char in 
+                a) char=10 ;;
+	        b) char=11 ;;
+	        c) char=12 ;;
+	        d) char=13 ;;
+	        e) char=14 ;;
+	        f) char=15 ;;
+            esac
+	    # For Fortran, if the value is too big for an unsigned int, 
+	    # we need to make it a signed (negative) int. Currently, the
+	    # types in this class are the minloc/maxloc types.
+	    if test $pos = 3 -a $char -ge 8 ; then
+	        #echo "for $var in position $pos found a value >= 8"
+		char=`expr $char - 8`
+		offset=-2147483648
+            fi
+	    value=`expr $value \* 16 + $char`
+        done
+	if test "$offset" != 0 ; then 
+	    #echo "$fullf77var: $value, $offset"
+            value=`expr $value + $offset`
+	fi
+        #echo "$fullf77var = $value"
+        eval $fullf77var=$value
+    done
+    AC_SUBST(MPI_F77_CHAR)
+    AC_SUBST(MPI_F77_SIGNED_CHAR)
+    AC_SUBST(MPI_F77_UNSIGNED_CHAR)
+    AC_SUBST(MPI_F77_WCHAR)
+    AC_SUBST(MPI_F77_SHORT)
+    AC_SUBST(MPI_F77_UNSIGNED_SHORT)
+    MPI_F77_UNSIGNED=$MPI_F77_UNSIGNED_INT
+    AC_SUBST(MPI_F77_UNSIGNED)
+    AC_SUBST(MPI_F77_INT)
+    AC_SUBST(MPI_F77_LONG)
+    AC_SUBST(MPI_F77_UNSIGNED_LONG)
+    AC_SUBST(MPI_F77_FLOAT)
+    AC_SUBST(MPI_F77_DOUBLE)
+    AC_SUBST(MPI_F77_LONG_DOUBLE)
+    AC_SUBST(MPI_F77_UNSIGNED_LONG_LONG)
+    MPI_F77_LONG_LONG_INT=$MPI_F77_LONG_LONG
+    AC_SUBST(MPI_F77_LONG_LONG_INT)
+    AC_SUBST(MPI_F77_LONG_LONG)
+    AC_SUBST(MPI_F77_FLOAT_INT)
+    AC_SUBST(MPI_F77_DOUBLE_INT)
+    AC_SUBST(MPI_F77_LONG_INT)
+    AC_SUBST(MPI_F77_SHORT_INT)
+    AC_SUBST(MPI_F77_2INT)
+    AC_SUBST(MPI_F77_LONG_DOUBLE_INT)
     # Try and compute the values of .true. and .false. in Fortran
     # This code has been removed because the Fortran binding code does
     # not yet support it.  
@@ -4599,6 +4761,13 @@ using namespace std;
     AC_DEFINE_UNQUOTED(MPIR_CXX_COMPLEX_VALUE,$MPIR_CXX_COMPLEX,[Define as the MPI Datatype handle for MPI::COMPLEX])
     AC_DEFINE_UNQUOTED(MPIR_CXX_DOUBLE_COMPLEX_VALUE,$MPIR_CXX_DOUBLE_COMPLEX,[Define as the MPI Datatype handle for MPI::DOUBLE_COMPLEX])
     AC_DEFINE_UNQUOTED(MPIR_CXX_LONG_DOUBLE_COMPLEX_VALUE,$MPIR_CXX_LONG_DOUBLE_COMPLEX,[Define as the MPI Datatype handle for MPI::LONG_DOUBLE_COMPLEX])
+    
+    # If either complex or double complex have length 0, then mark 
+    # c++ complex as unavailable
+    if test "$ac_cv_sizeof_Complex" != 0 -a \
+            "$ac_cv_sizeof_DoubleComplex" != 0 ; then
+	AC_DEFINE(HAVE_CXX_COMPLEX,1,[Define is C++ supports complex types])
+    fi
 fi
 
 # ----------------------------------------------------------------------------
@@ -4896,6 +5065,8 @@ if test "$enable_coverage" = "yes" ; then
     # with the -fprofile-args -ftest-coverage option.
     # We cannot use TRY_LINK because that uses both the compilation and
     # the linking flags.  
+    # This is needed for Mac OSX 10.5
+    rm -rf conftest.dSYM
     rm -f conftest*
     cat >>conftest.c <<EOF
 int main( int argc, char **argv ) { return 1; }
@@ -4924,6 +5095,8 @@ EOF
         AC_MSG_RESULT(no)
         AC_MSG_ERROR([Unable to compile programs when coverage analysis enabled])
     fi
+    # This is needed for Mac OSX 10.5
+    rm -rf conftest.dSYM
     rm -f conftest*
     
     # Test for the routines that we need to use to ensure that the
@@ -4940,7 +5113,7 @@ AC_HEADER_STDC
 # Grrr.  OS/X fails the test for sys/uio.h because uio *requires* sys/types.h
 # to compile.  Thus, we'll make that a separate test
 # stddef.h is sometimes needed for types like wchar_t
-AC_CHECK_HEADERS(stdlib.h stdarg.h sys/types.h inttypes.h limits.h stddef.h errno.h sys/socket.h sys/time.h unistd.h endian.h assert.h)
+AC_CHECK_HEADERS(stdlib.h stdarg.h sys/types.h inttypes.h limits.h stddef.h errno.h sys/socket.h sys/time.h unistd.h endian.h assert.h sys/param.h)
 AC_CACHE_CHECK([for sys/uio.h],ac_cv_header_sys_uio_h,[
 AC_TRY_COMPILE([
 #include <sys/types.h>
@@ -5008,6 +5181,9 @@ void foo1( char *fmt, ... ) {
     AC_DEFINE(HAVE___VA_COPY,1,[Define if we have __va_copy])
     fi
 fi
+
+# headers for valgrind client requests
+AC_CHECK_HEADERS([valgrind.h memcheck.h valgrind/valgrind.h valgrind/memcheck.h])
  
 dnl
 dnl If internationalization selected, try to find the needed functions
@@ -5060,6 +5236,22 @@ else
     # Note that HPUX and AIX may require _INCLUDE_XOPEN_SOURCE or
     # _XOPEN_SOURCE be defined respectively.
 fi
+
+# ----------------------------------------------------------------------------
+# Look for some non-posix, but commonly provided functions
+# ----------------------------------------------------------------------------
+# mkstemp() is a better replacement for mktemp()
+AC_HAVE_FUNCS(mkstemp)
+if test "$ac_cv_func_mkstemp" = "yes" ; then
+    PAC_FUNC_NEEDS_DECL([#include <stdlib.h>],mkstemp)
+fi
+# fdopen() converts from an fd to a FILE*
+AC_HAVE_FUNCS(fdopen)
+if test "$ac_cv_func_fdopen" = "yes" ; then
+    PAC_FUNC_NEEDS_DECL([#include <stdlib.h>],fdopen)
+fi
+
+
 # ----------------------------------------------------------------------------
 # Support for timers.  The following code processes the 
 #  --enable-timer-type=name argument and selects the timer based on 
@@ -5624,6 +5816,25 @@ void f1(void *a) { return; }],
             fi
     
         fi
+	# Check for PTHREAD_MUTEX_RECURSIVE_NP and PTHREAD_MUTEX_RECURSIVE
+	AC_CACHE_CHECK([whether pthread.h defines PTHREAD_MUTEX_RECURSIVE_NP],
+	pac_cv_has_pthread_mutex_recursive_np,[
+        AC_TRY_COMPILE([#include <pthread.h>],
+                       [int a=PTHREAD_MUTEX_RECURSIVE_NP;],
+		       pac_cv_has_pthread_mutex_recursive_np=yes,
+		       pac_cv_has_pthread_mutex_recursive_np=no)])
+	AC_CACHE_CHECK([whether pthread.h defines PTHREAD_MUTEX_RECURSIVE],
+	pac_cv_has_pthread_mutex_recursive,[
+        AC_TRY_COMPILE([#include <pthread.h>],
+                       [int a=PTHREAD_MUTEX_RECURSIVE;],
+		       pac_cv_has_pthread_mutex_recursive=yes,
+		       pac_cv_has_pthread_mutex_recursive=no)])
+        if test "$pac_cv_has_pthread_mutex_recursive_np" = yes ; then
+	    AC_DEFINE(HAVE_PTHREAD_MUTEX_RECURSIVE_NP,1,[Define if PTHREAD_MUTEX_RECURSIVE_NP is available in pthread.h])
+	fi		       
+        if test "$pac_cv_has_pthread_mutex_recursive" = yes ; then
+	    AC_DEFINE(HAVE_PTHREAD_MUTEX_RECURSIVE,1,[Define if PTHREAD_MUTEX_RECURSIVE is available in pthread.h])
+	fi		       
 	THR_LIBS="$THR_LIBS -lpthread"
 	MPICH2_THREAD_PACKAGE=pthreads
 	;;
@@ -5649,7 +5860,7 @@ esac
 # such as MPE, will know what's used in MPICH2
 export MPICH2_THREAD_PACKAGE
 
-AC_CHECK_FUNCS(sched_yield yield usleep sleep select)
+AC_CHECK_FUNCS(sched_yield yield usleep sleep select getpid)
 
 # Check for the Linux functions for controlling processor affinity.
 # LINUX: sched_setaffinity
@@ -5933,6 +6144,8 @@ if test "$cross_compiling" = "no" -a -n "$MPI_OFFSET_TYPE" ; then
         dnl We'd like to use AC_CHECK_SIZEOF, but that won't take a variable.
         AC_CACHE_CHECK([the sizeof MPI_Offset],ac_cv_sizeof_MPI_Offset,[
         ac_cv_sizeof_MPI_Offset=unknown
+	# This is needed for Mac OSX 10.5
+	rm -rf conftest.dSYM
         rm -f conftest*
         cat >> conftest.c <<EOF
 #include "confdefs.h"
@@ -5966,6 +6179,8 @@ EOF
 	    echo "configure: failed program was:" >&AC_FD_CC
 	    cat conftest.c >&AC_FD_CC
         fi
+	# This is needed for Mac OSX 10.5
+	rm -rf conftest.dSYM
         rm -f conftest*
 	])
 	if test "$ac_cv_sizeof_MPI_Offset" != "unknown" ; then 
@@ -6298,6 +6513,7 @@ AC_OUTPUT(Makefile src/Makefile src/include/Makefile \
 	  src/binding/f90/mpi_sizeofs.f90 \
 	  src/pkgconfig/mpich2-ch3.pc \
 	  src/pkgconfig/Makefile \
+          src/env/mpixxx_opts.conf \
           src/env/mpicc \
 	  src/env/mpicc.conf \
 	  src/env/mpicc.bash \
@@ -6350,6 +6566,7 @@ AC_OUTPUT(Makefile src/Makefile src/include/Makefile \
           src/util/dbg/Makefile \
 	  src/util/dbg/getfuncstack \
 	  src/util/osserv/Makefile \
+	  src/util/procmap/Makefile \
           src/include/mpi.h \
           src/include/mpirdefs.h \
 	  test/Makefile test/util/Makefile \

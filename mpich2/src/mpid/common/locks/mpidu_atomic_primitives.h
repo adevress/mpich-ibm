@@ -47,7 +47,7 @@ int MPIDU_Interprocess_lock_init(MPIDU_Process_lock_t *shm_lock, int isLeader);
 
 /* function prototypes for mpidu_atomic.c */
 void MPIDU_Atomic_add_emulated(int *ptr, int val);
-int *MPIDU_Atomic_cas_int_ptr_emulated(volatile int **ptr, int *oldv, int *newv);
+int *MPIDU_Atomic_cas_int_ptr_emulated(int * volatile *ptr, int *oldv, int *newv);
 int MPIDU_Atomic_cas_int_emulated(volatile int *ptr, int oldv, int newv);
 MPI_Aint MPIDU_Atomic_cas_aint_emulated(volatile MPI_Aint *ptr, MPI_Aint oldv, MPI_Aint newv);
 int MPIDU_Atomic_decr_and_test_emulated(volatile int *ptr);
@@ -56,7 +56,7 @@ int MPIDU_Atomic_fetch_and_add_emulated(volatile int *ptr, int val);
 int MPIDU_Atomic_fetch_and_decr_emulated(volatile int *ptr);
 int MPIDU_Atomic_fetch_and_incr_emulated(volatile int *ptr);
 void MPIDU_Atomic_incr_emulated(volatile int *ptr);
-int *MPIDU_Atomic_swap_int_ptr_emulated(volatile int **ptr, int *val);
+int *MPIDU_Atomic_swap_int_ptr_emulated(int * volatile *ptr, int *val);
 int MPIDU_Atomic_swap_int_emulated(volatile int *ptr, int val);
 MPI_Aint MPIDU_Atomic_swap_aint_emulated(volatile MPI_Aint *ptr, MPI_Aint val);
 
@@ -112,10 +112,19 @@ MPI_Aint MPIDU_Atomic_swap_aint_emulated(volatile MPI_Aint *ptr, MPI_Aint val);
    manner.  As such, calls to these functions on plaforms that do not support
    them will result in an abort.
 */
+/* Beause Load-Link/Store-Conditional is one low-level approach to
+   providing atomic operations but is not (usually) appropriate when
+   the underlying hardware doesn't support it, we only define the LL/SC
+   routines if they can be supported */
+#if defined(HAVE_GCC_AND_POWERPC_ASM)
+#define ATOMIC_LL_SC_SUPPORTED
+#endif
+
+#ifdef ATOMIC_LL_SC_SUPPORTED
+
 static inline int MPIDU_Atomic_LL_int(volatile int *ptr)
 {
 #if defined(HAVE_GCC_AND_POWERPC_ASM)
-#  define ATOMIC_LL_SC_SUPPORTED
     int val;
     __asm__ __volatile__ ("lwarx %[val],0,%[ptr]"
                           : [val] "=r" (val)
@@ -133,7 +142,6 @@ static inline int MPIDU_Atomic_LL_int(volatile int *ptr)
 static inline int MPIDU_Atomic_SC_int(volatile int *ptr, int val)
 {
 #if defined(HAVE_GCC_AND_POWERPC_ASM)
-#  define ATOMIC_LL_SC_SUPPORTED
     int ret;
     __asm__ __volatile__ ("stwcx. %[val],0,%[ptr];\n"
                           "beq 1f;\n"
@@ -190,6 +198,7 @@ static inline int MPIDU_Atomic_SC_int_ptr(volatile int **ptr, int *val)
     return 0;
 #endif
 }
+#endif /* ATOMIC_LL_SC_SUPPORTED */
 
 static inline void MPIDU_Atomic_add(int *ptr, int val)
 {

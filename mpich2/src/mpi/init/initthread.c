@@ -1,6 +1,5 @@
 /* -*- Mode: C; c-basic-offset:4 ; -*- */
-/*  $Id$
- *
+/*
  *  (C) 2001 by Argonne National Laboratory.
  *      See COPYRIGHT in top-level directory.
  */
@@ -108,6 +107,91 @@ void MPIR_CleanupThreadStorage( void *a )
 	MPIU_Free( a );
     }
 }
+
+/* These routine handle any thread initialization that my be required */
+int MPIR_Thread_CS_Init( void )
+{
+    MPID_Thread_tls_create(MPIR_CleanupThreadStorage, 
+			   &MPIR_ThreadInfo.thread_storage, NULL);  
+#if MPIU_THREAD_GRANULARITY == MPIU_THREAD_GRANULARITY_GLOBAL
+/* There is a single, global lock, held for the duration of an MPI call */
+    MPID_Thread_mutex_create(&MPIR_ThreadInfo.global_mutex, NULL);
+    MPID_Thread_mutex_create(&MPIR_ThreadInfo.handle_mutex, NULL);
+
+#elif MPIU_THREAD_GRANULARITY == MPIU_THREAD_GRANULARITY_BRIEF_GLOBAL || \
+      MPIU_THREAD_GRANULARITY == MPIU_THREAD_GRANULARITY_PER_OBJECT
+    /* MPIU_THREAD_GRANULARITY_BRIEF_GLOBAL: There is a single, global
+     * lock, held only when needed */
+    /* MPIU_THREAD_GRANULARITY_PER_OBJECT: Multiple locks */
+    MPID_Thread_mutex_create(&MPIR_ThreadInfo.global_mutex, NULL);
+    MPID_Thread_mutex_create(&MPIR_ThreadInfo.handle_mutex, NULL);
+
+#ifdef MPID_THREAD_DEBUG
+    MPID_Thread_tls_create(MPIR_CleanupThreadStorage, 
+			   &MPIR_ThreadInfo.nest_storage, NULL);
+    { 
+	MPIU_ThreadDebug_t *nest_ptr = 
+	    (MPIU_ThreadDebug_t *) MPIU_Calloc( 2, sizeof(MPIU_ThreadDebug_t) );
+    MPID_Thread_tls_set( &MPIR_ThreadInfo.nest_storage, nest_ptr );
+    }
+#endif 
+
+#elif MPIU_THREAD_GRANULARITY == MPIU_THREAD_GRANULARITY_LOCK_FREE
+/* Updates to shared data and access to shared services is handled without 
+   locks where ever possible. */
+#error lock-free not yet implemented
+
+#elif MPIU_THREAD_GRANULARITY == MPIU_THREAD_GRANULARITY_SINGLE
+/* No thread support, make all operations a no-op */
+
+#else
+#error Unrecognized thread granularity
+#endif
+    MPIU_DBG_MSG(THREAD,TYPICAL,"Created global mutex and private storage");
+    return MPI_SUCCESS;
+}
+
+int MPIR_Thread_CS_Finalize( void )
+{
+    MPIU_DBG_MSG(THREAD,TYPICAL,"Freeing global mutex and private storage");
+#if MPIU_THREAD_GRANULARITY == MPIU_THREAD_GRANULARITY_GLOBAL
+/* There is a single, global lock, held for the duration of an MPI call */
+    MPID_Thread_mutex_destroy(&MPIR_ThreadInfo.global_mutex, NULL);
+
+#elif MPIU_THREAD_GRANULARITY == MPIU_THREAD_GRANULARITY_BRIEF_GLOBAL || \
+      MPIU_THREAD_GRANULARITY == MPIU_THREAD_GRANULARITY_PER_OBJECT
+    /* MPIU_THREAD_GRANULARITY_BRIEF_GLOBAL: There is a single, global
+     * lock, held only when needed */
+    /* MPIU_THREAD_GRANULARITY_PER_OBJECT: There are multiple locks,
+     * one for each logical class (e.g., each type of object) */
+    MPID_Thread_mutex_destroy(&MPIR_ThreadInfo.global_mutex, NULL);
+    MPID_Thread_mutex_destroy(&MPIR_ThreadInfo.handle_mutex, NULL);
+
+#ifdef MPID_THREAD_DEBUG
+    { void *ptr;
+	MPID_Thread_tls_get( &MPIR_ThreadInfo.nest_storage, &ptr );
+	if (ptr) MPIU_Free( ptr );
+	MPID_Thread_tls_set( &MPIR_ThreadInfo.nest_storage, NULL );
+    }
+    MPID_Thread_tls_destroy( &MPIR_ThreadInfo.nest_storage, NULL);
+#endif
+
+#elif MPIU_THREAD_GRANULARITY == MPIU_THREAD_GRANULARITY_LOCK_FREE
+/* Updates to shared data and access to shared services is handled without 
+   locks where ever possible. */
+#error lock-free not yet implemented
+
+#elif MPIU_THREAD_GRANULARITY == MPIU_THREAD_GRANULARITY_SINGLE
+/* No thread support, make all operations a no-op */
+
+#else
+#error Unrecognized thread granularity
+#endif
+    MPIR_ReleasePerThread;						\
+    MPID_Thread_tls_destroy(&MPIR_ThreadInfo.thread_storage, NULL);	\
+
+    return MPI_SUCCESS;
+}
 #endif /* MPICH_IS_THREADED */
 
 
@@ -118,7 +202,6 @@ int MPIR_Init_thread(int * argc, char ***argv, int required,
     int has_args;
     int has_env;
     int thread_provided;
-    int rc;
     MPIU_THREADPRIV_DECL;
 
     /* FIXME: Move to os-dependent interface? */
@@ -264,10 +347,6 @@ int MPIR_Init_thread(int * argc, char ***argv, int required,
     /* Call any and all MPID_Init type functions */
     /* FIXME: The call to err init should be within an ifdef
        HAVE_ ERROR_CHECKING block (as must all uses of Err_create_code) */
-    rc = MPID_Wtime_init();
-#ifdef USE_DBG_LOGGING
-    MPIU_DBG_PreInit( argc, argv, rc );
-#endif
     MPIR_Err_init();
     MPIR_Datatype_init();
 
@@ -400,7 +479,13 @@ int MPI_Init_thread( int *argc, char ***argv, int required, int *provided )
 {
     static const char FCNAME[] = "MPI_Init_thread";
     int mpi_errno = MPI_SUCCESS;
+    int rc;
     MPID_MPI_INIT_STATE_DECL(MPID_STATE_MPI_INIT_THREAD);
+
+    rc = MPID_Wtime_init();
+#ifdef USE_DBG_LOGGING
+    MPIU_DBG_PreInit( argc, argv, rc );
+#endif
 
     MPID_CS_INITIALIZE();
     /* FIXME: Can we get away without locking every time.  Now, we
@@ -412,9 +497,10 @@ int MPI_Init_thread( int *argc, char ***argv, int required, int *provided )
        don't release the lock after progress, we'll deadlock the next
        time this process tries to acquire the lock.
        MPID_CS_ENTER/EXIT functions are used here instead of
-       MPIU_THREAD_SINGLE_CS_ENTER/EXIT because
+       MPIU_THREAD_CS_ENTER/EXIT because
        MPIR_ThreadInfo.isThreaded hasn't been initialized yet.
     */
+    /*   */
     MPID_CS_ENTER();
 
 #if 0

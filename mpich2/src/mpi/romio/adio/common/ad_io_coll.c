@@ -1,12 +1,7 @@
 /* -*- Mode: C; c-basic-offset:4 ; -*- */
 /* 
- *
  *   Copyright (C) 2008 University of Chicago. 
  *   See COPYRIGHT notice in top-level directory.
- */
-
-/*
- * $Id$
  */
 
 #include "assert.h"
@@ -45,6 +40,10 @@ void post_client_comm (ADIO_File fd, int rw_type, int agg_rank, void *buf,
 		       int agg_alltoallw_count,
 		       MPI_Request *request);
 
+/* Avery Ching and Kenin Columa's reworked two-phase algorithm.  Key features
+ * - persistent file domains
+ * - an option to use alltoall instead of point-to-point
+ */
 void ADIOI_IOStridedColl (ADIO_File fd, void *buf, int count, int rdwr,
 			  MPI_Datatype datatype, int file_ptr_type,
 			  ADIO_Offset offset, ADIO_Status *status,
@@ -1175,13 +1174,5 @@ void post_client_comm (ADIO_File fd, int rw_type, int agg_rank, void *buf,
     }
 }
 
-int ADIOI_Build_client_reqs(ADIO_File fd, 
-			    int nprocs,
-			    view_state *my_mem_view_state_arr,
-			    view_state *agg_file_view_state_arr,
-			    ADIO_Offset *agg_comm_sz_arr,
-			    MPI_Datatype *agg_comm_dtype_arr)
-{
-	fprintf(stderr, "STUB: calling unimplemented function\n");
-}
+
 

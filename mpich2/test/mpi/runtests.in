@@ -56,6 +56,7 @@ $xmloutput = 0;          # Set to true to get xml output (also specify file)
 $closeXMLOutput = 1;     # Set to false to leave XML output file open to
                          # accept additional data
 $verbose = 0;            # Set to true to get more output
+$showProgress = 0;       # Set to true to get a "." with each run program.
 $newline = "\r\n";       # Set to \r\n for Windows-friendly, \n for Unix only
 
 $debug = 1;
@@ -68,13 +69,13 @@ $clean_pgms      = 1;
 $resume = 0; # 1 = do not remake existing binaries
 $preserve = 0 ; # 1 = do not erase binaries after running
 
-
 #---------------------------------------------------------------------------
 # Get some arguments from the environment
 #   Currently, only the following are understood:
 #   VERBOSE
 #   RUNTESTS_VERBOSE  (an alias for VERBOSE in case you want to 
 #                      reserve VERBOSE)
+#   RUNTESTS_SHOWPROGRESS
 #   MPITEST_STOPTEST
 #   MACHINE path to bglmachine XML file
 #   BLOCK path to bglblock XML file
@@ -84,6 +85,9 @@ $preserve = 0 ; # 1 = do not erase binaries after running
 #   VIRTUALNODEMODE if set, use VNM
 #   MPITEST_TIMEOUT
 #---------------------------------------------------------------------------
+if ( defined($ENV{"VERBOSE"}) || defined($ENV{"RUNTESTS_VERBOSE"}) ) {
+    $verbose = 1;
+}
 $romio=1;
 $rma=1; #these are reset in the makefile, so not too concerned...
 $spawn=1; #these are reset in the makefile, so not too concerned...
@@ -106,6 +110,16 @@ if(defined($ENV{"PARTITION"}))
 if(defined($ENV{"MACHINE"}))
 {
    $machine=$ENV{MACHINE}; $machineflag=1;
+}
+if ( defined($ENV{"RUNTESTS_SHOWPROGRESS"} ) ) {
+    $showProgress = 1;       
+}
+if (defined($ENV{"MPITEST_STOPTEST"})) {
+    $stopfile = $ENV{"MPITEST_STOPTEST"};
+}
+else {
+    $stopfile = `pwd` . "/.stoptest";
+    $stopfile =~ s/\r*\n*//g;    # Remove any newlines (from pwd)
 }
 
 if(defined($ENV{"RUNONLY"}))
@@ -138,7 +152,7 @@ if(defined($ENV{"DUALMODE"}))
    $dualmodeflag=1;
 }
 
-if(defined($ENV{"DRVPATH"})) 
+if(defined($ENV{"DRVPATH"}))
 {
    $driverpath=$ENV{DRVPATH}; $driverpathflag=1;
 }
@@ -171,7 +185,7 @@ if(defined($ENV{"BGLTMP"}) || defined($ENV{"STAGINGDIR"}))
 {
    if(defined($ENV{"BGLTMP"}))
    {
-      $stagingdir=$ENV{BGLTMP}; 
+      $stagingdir=$ENV{BGLTMP};
    }
    else
    {
@@ -185,23 +199,6 @@ else
    $stagingdir="/bglscratch/$username/mpitests";
    $stagingdirflag=1;
 }
-   
-if(defined($ENV{"VERBOSE"}) || defined($ENV{"RUNTESTS_VERBOSE"})) 
-{
-   $verbose = 1;
-}
-if (defined($ENV{"MPITEST_STOPTEST"})) 
-{
-   $stopfile = $ENV{"MPITEST_STOPTEST"};
-}
-else 
-{
-   $stopfile = `pwd` . "/.stoptest";
-   $stopfile =~ s/\r*\n*//g;    # Remove any newlines (from pwd)
-}
-
-
-
 if (defined($ENV{"MPITEST_TIMEOUT"})) {
     $defaultTimeLimit = $ENV{"MPITEST_TIMEOUT"};
 }
@@ -229,12 +226,10 @@ if($ENV{'PRESERVE'} == 1)
    $preserve = 1;
 }
 
-
 #---------------------------------------------------------------------------
 # Process arguments and override any defaults
 #---------------------------------------------------------------------------
-foreach $_ (@ARGV) 
-{
+foreach $_ (@ARGV) {
     if (/-mpiexec=(.*)/) { $mpiexecflag=1; $mpiexec= $1; }
     elsif (/-np=(.*)/)   { $np_default = $1; }
     elsif (/-stagingdir=(.*)/) { $stagingdir = $1; $stagingdirflag=1;}
@@ -261,37 +256,31 @@ foreach $_ (@ARGV)
     elsif (/-partition=(.*)/) {$partition=$1; $partitionflag=1;}
     elsif (/-resume/) {$resume=1;}
     elsif (/-preserve/) {$preserve=1;}
-    elsif (/-datestamp/) 
-    { 
-       $datestamp = 1 ; 
+    elsif (/-datestamp/)
+    {
+       $datestamp = 1 ;
        $datetext=`date "+%Y%m%d.%H%M%S"`;
        chop($datetext);
     } # don't overwrite summary.xml
+    elsif (/-showprogress/) { $showProgress = 1; }
     elsif (/-debug/) { $debug = 1; }
     elsif (/-otp/) { $otp = 1; }
-    elsif (/-xmlfile=(.*)/) 
-    {
-      if($datestamp eq 1)
-      {
-         $xmlfile=$1."-".$datetext;
-      }
-      else
-      {
-      	$xmlfile   = $1;
-      }
-
-   	if (! ($xmlfile =~ /^\//)) 
-      {
-   	    $thisdir = `pwd`;
-   	    chop $thisdir;
-   	    $xmlfullfile = $thisdir . "/" . $xmlfile ;
-   	}
-   	else 
-      {
-	      $xmlfullfile = $xmlfile;
-	   }
+    elsif (/-xmlfile=(.*)/) {
+	if($datestamp eq 1) {
+	    $xmlfile = $1."-".$datetext;
+	}
+	else {
+	    $xmlfile = $1;
+	}
+	if (! ($xmlfile =~ /^\//)) {
+	    $thisdir = `pwd`;
+	    chop $thisdir;
+	    $xmlfullfile = $thisdir . "/" . $xmlfile ;
+	}
+	else {
+	    $xmlfullfile = $xmlfile;
+	}
 	$xmloutput = 1;
-      
 	open( XMLOUT, ">$xmlfile" ) || die "Cannot open $xmlfile\n";
 	my $date = `date "+%Y-%m-%d-%H-%M"`;
 	$date =~ s/\r?\n//;
@@ -301,7 +290,7 @@ foreach $_ (@ARGV)
 	print XMLOUT "<?xml-stylesheet href=\"TestResults.xsl\" type=\"text/xsl\" ?>$newline";
 	print XMLOUT "<MPITESTRESULTS>$newline";
 	print XMLOUT "<DATE>$date</DATE>$newline";
-	print XMLOUT "<MPISOURCE></MPISOURCE>$newline";
+	print XMLOUT "<MPISOURCE>@MPI_SOURCE@</MPISOURCE>$newline";
     }
     elsif (/-noxmlclose/) {
 	$closeXMLOutput = 0;
@@ -310,17 +299,15 @@ foreach $_ (@ARGV)
 	print STDERR "Unrecognized argument $_\n";
 	print STDERR "runtests [-tests=testfile] [-np=nprocesses] \
         [-maxnp=max-nprocesses] [-srcdir=location-of-tests] \
-        [-xmlfile=filename ] [-datestamp]\
-        [-verbose] [-debug] [-stagingdir=directory] [-nostagingdir] \
+        [-xmlfile=filename ] [-noxmlclose] \
+        [-datestamp] [-stagingdir=directory] [-nostagingdir] \
         [-block=bglblock] [-machine=bglmachine] [-driverpath=driverpath] \
         [-timeout=timeout-value] [-noromio] [-norma] [-nospawn] \
         [-nodemap=mapping or file] [-virtualNodeMode] [-usempirun] [-nofree] \
-        [-partition] [-host=MMCShostname] [-dualMode] [-otp]\n";
-
-    } #end argv checking
-
-} # end foreach
-
+        [-partition] [-host=MMCShostname] [-dualMode] [-otp] \
+        [-verbose] [-showprogress] [-debug]\n";
+    }
+}
 
 if($machineflag==0)
 {
@@ -406,17 +393,17 @@ if($dualmodeflag==1)
 }
 
 if($otp==1)
-{ 
+{
     $mpirunflags.=" -only_test_protocol";
 }
 
 
-if($resume == 1) 
+if($resume == 1)
 {
    print "\nWARNING:  Resume flag set, not remaking existing binaries\n\n";
 }
 
-if($preserve == 1) 
+if($preserve == 1)
 {
 print "\nWARNING:  Preserve flag set, not removing binaries after running\n\n";
 }
@@ -517,7 +504,7 @@ if (!$compileonly) {
     print "\n";
 }
 
-#
+#
 # ---------------------------------------------------------------------------
 # Routines
 # 
@@ -544,7 +531,7 @@ sub ProcessDir {
 
     if (! -f $listfile) { $listfile = "testlist"; }
     &RunList( $listfile );
-
+    print "\n" if $showProgress; # Terminate line from progress output
     chdir $savedir;
     $curdir = $savecurdir;
     $srcdir = $savesrcdir;
@@ -555,7 +542,7 @@ sub ProcessDir {
 #  programname number-of-processes [ key=value ... ]
 # If the second value is not given, the default value is used.
 # 
-sub RunList {
+sub RunList { 
     use File::Basename; #req for fileparse(), basename(), dirname()
     my $LIST = "LIST$depth"; $depth++;
     my $listfile = $_[0];
@@ -600,6 +587,7 @@ sub RunList {
 	my $ResultTest = "";
 	my $InitForRun = "";
 	my $timeLimit  = "";
+	my $progArgs   = "";
 	if ($#args >= 1) { $np = $args[1]; }
 	# Process the key=value arguments
 	for (my $i=2; $i <= $#args; $i++) {
@@ -615,6 +603,9 @@ sub RunList {
 		elsif ($key eq "timeLimit") {
 		    $timeLimit = $value;
 		}
+		elsif ($key eq "arg") {
+		    $progArgs = "$progArgs $value";
+		}
 		else {
 		    print STDERR "Unrecognized key $key in $listfileSource\n";
 		}
@@ -625,22 +616,18 @@ sub RunList {
 	if ($np_max > 0 && $np > $np_max) { $np = $np_max; }
 	# skip empty lines
 	if ($programname eq "") { next; }
-	if (-d $programname) 
-	{
+	if (-d $programname) {
 	    $execpath=`pwd`;
 	    chop($execpath);
-	    if ($romio==0 && $programname eq "io") 
-	    {
+	    if ($romio==0 && $programname eq "io") {
 		print "Skipping IO tests is $execpath\n" if $verbose;
 		next;
 	    }
-	    if ($rma==0 && $programname eq "rma") 
-	    {
+	    if ($rma==0 && $programname eq "rma") {
 		print "Skipping RMA tests in $execpath\n" if $verbose;
 		next;
 	    }
-	    if ($spawn==0 && $programname eq "spawn")
-	    {
+	    if ($spawn==0 && $programname eq "spawn") {
 		print "Skipping comm spawn tests in $execpath\n" if $verbose;
 		next;
 	    }
@@ -675,7 +662,7 @@ sub RunList {
 
 	    if (&BuildMPIProgram( $programname ) == 0) {
 		&RunMPIProgram( $programname, $np, $ResultTest, $InitForRun, 
-				$timeLimit );
+				$timeLimit, $progArgs );
 	    }
 	    &CleanUpAfterRun( $programname );
 
@@ -722,7 +709,7 @@ sub ProcessImplicitList {
 	    if ($programname eq "runtests") { next; } # Ignore self
 	    if (-x $programname) {
 		$total_count++;
-		&RunMPIProgram( $programname, $np_default, "", "" );
+		&RunMPIProgram( $programname, $np_default, "", "", "", "" );
 	    }
 	}
 	close PGMS;
@@ -743,7 +730,7 @@ sub ProcessImplicitList {
 	    $programname =~ s/\.c//;
 	    $total_count++;
 	    if (&BuildMPIProgram( $programname ) == 0) {
-		&RunMPIProgram( $programname, $np_default, "", "" );
+		&RunMPIProgram( $programname, $np_default, "", "", "", "" );
 	    }
 	    &CleanUpAfterRun( $programname );
 	}
@@ -754,10 +741,11 @@ sub ProcessImplicitList {
 # ToDo: Add a way to limit the time that any particular program may run.
 # The arguments are
 #    name of program, number of processes, name of routine to check results
+#    init for testing, timelimit, and any additional program arguments
 # If the 3rd arg is not present, the a default that simply checks that the
 # return status is 0 and that the output is " No Errors" is used.
 sub RunMPIProgram {
-    my ($programname,$np,$ResultTest,$InitForTest,$timeLimit) = @_;
+    my ($programname,$np,$ResultTest,$InitForTest,$timeLimit,$progArgs) = @_;
     my $found_error   = 0;
     my $found_noerror = 0;
     my $inline = "";
@@ -804,24 +792,24 @@ sub RunMPIProgram {
     }
     if($mpirunflag==0)
     {
-       print STDOUT "$mpiexec $np_arg $np $stagingdir/$programname\n" if $verbose;
-       open ( MPIOUT, "$mpiexec $np_arg $np $stagingdir/$programname 2>&1 |" ) ||
-   	   die "Could not run ./$programname\n";
+        print STDOUT "$mpiexec $np_arg $np $stagingdir/$programname $progArgs\n" if $verbose;
+        print STDOUT "." if $showProgress;
+        open(MPIOUT, "$mpiexec $np_arg $np $stagingdir/$programname $progArgs 2>&1 |" ) ||
+   	  die "Could not run ./$programname\n";
     }
     else
     {
-      print STDOUT "$mpiexec $np_arg $np -cwd $mpi_cwd -exe $stagingdir/$programname\n" if $verbose;
-      open(MPIOUT, "$mpiexec $np_arg $np -cwd $mpi_cwd -exe $stagingdir/$programname 2>&1 |" ) ||
-         die "Could not run ./$programname\n";
+        print STDOUT "$mpiexec $np_arg $np -cwd $mpi_cwd -exe $stagingdir/$programname $progArgs\n" if $verbose;
+        print STDOUT "." if $showProgress;
+        open(MPIOUT, "$mpiexec $np_arg $np -cwd $mpi_cwd -exe $stagingdir/$programname $progArgs 2>&1 |" ) ||
+          die "Could not run ./$programname\n";
     }
-
     if ($ResultTest ne "") {
 	# Read and process the output
 	($found_error, $inline) = &$ResultTest( MPIOUT, $programname );
     }
     else {
-	if ($verbose) 
-	{
+	if ($verbose) {
 	    if($mpirunflag==0)
 	    {
 		$inline = "$mpiexec $np_arg $np $stagingdir/$programname\n";

@@ -1,6 +1,5 @@
 /* -*- Mode: C; c-basic-offset:4 ; -*- */
-/*  $Id$
- *
+/*
  *  (C) 2001 by Argonne National Laboratory.
  *      See COPYRIGHT in top-level directory.
  */
@@ -10,7 +9,7 @@
 #ifndef HAS_MPID_ABORT_DECL
 /* FIXME: 4th arg is undocumented and bogus */
 struct MPID_Comm;
-int MPID_Abort( struct MPID_Comm *comm, int mpi_errno, int exit_code, const char *error_msg );
+int MPID_Abort( struct MPID_Comm *comm, int mpi_errno, int exit_code, const char *error_msg ) ATTRIBUTE((noreturn));
 #endif
 
 /*
@@ -47,6 +46,7 @@ int MPID_Abort( struct MPID_Comm *comm, int mpi_errno, int exit_code, const char
  */
 #if (!defined(NDEBUG) && defined(HAVE_ERROR_CHECKING))
 #   define MPIU_AssertDecl(a_) a_
+#   define MPIU_AssertDeclValue(_a,_b) _a = _b
 #   define MPIU_Assert(a_)						\
     {									\
 	if (!(a_))							\
@@ -59,7 +59,8 @@ int MPID_Abort( struct MPID_Comm *comm, int mpi_errno, int exit_code, const char
 #else
 #   define MPIU_Assert(a_)
 /* Empty decls not allowed in C */
-#   define MPIU_AssertDecl(a_) a_
+#   define MPIU_AssertDecl(a_) a_ 
+#   define MPIU_AssertDeclValue(_a,_b) _a ATTRIBUTE((unused))
 #endif
 
 /*

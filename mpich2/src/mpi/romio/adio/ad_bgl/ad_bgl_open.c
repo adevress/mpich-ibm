@@ -208,6 +208,22 @@ void ADIOI_BGL_Open(ADIO_File fd, int *error_code)
         DBG_FPRINTF(stderr,"fsync aggregator %d\n",rank);
       }
       else ; /* aggregation enabled but this rank is not an aggregator*/
+      }
+    else; /* Other filesystems default to no fsync aggregation */
+    if ((bgl_statfs.f_type == GPFS_SUPER_MAGIC) ||
+        (bgl_statfs.f_type == PVFS2_SUPER_MAGIC))
+    {
+      int rank;
+      ((ADIOI_BGL_fs*)fd->fs_ptr)->fsync_aggr = ADIOI_BGL_FSYNC_AGGREGATION_ENABLED;
+
+      /* Only one rank is an "fsync aggregator" because only one fsync is needed */
+      MPI_Comm_rank(fd->comm, &rank);
+      if (rank == 0)
+      {
+        ((ADIOI_BGL_fs*)fd->fs_ptr)->fsync_aggr |= ADIOI_BGL_FSYNC_AGGREGATOR;
+        DBG_FPRINTF(stderr,"fsync aggregator %d\n",rank);
+      }
+      else ; /* aggregation enabled but this rank is not an aggregator*/
     }
     else; /* Other filesystems default to no fsync aggregation */
   }

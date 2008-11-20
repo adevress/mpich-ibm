@@ -4,18 +4,13 @@
  *      See COPYRIGHT in top-level directory.
  */
 
-#ifdef MPID_NEM_DONT_INLINE_FUNCTIONS
-#undef MPID_NEM_INLINE_DECL
-#define MPID_NEM_INLINE_DECL
-#undef _MPID_NEM_INLINE_H /* ok to include again: we're including the non-inline functions in a .c file */
-#else
-#define MPID_NEM_INLINE_DECL extern inline
-#endif
-
 #ifndef _MPID_NEM_INLINE_H
 #define _MPID_NEM_INLINE_H
 
+#define MPID_NEM_INLINE_DECL static inline
+
 #define MPID_NEM_POLLS_BEFORE_YIELD 1000
+#define MPID_NEM_THREAD_POLLS_BEFORE_YIELD 1
 
 #include "my_papi_defs.h"
 
@@ -75,12 +70,8 @@ MPID_nem_mpich2_send_header (void* buf, int size, MPIDI_VC_t *vc, int *again)
 	u_int32_t *payload_32 = (u_int32_t *)pbox->cell.pkt.mpich2.payload;
 	u_int32_t *buf_32 = (u_int32_t *)buf;
 
-#ifdef BLOCKING_FBOX
-	MPID_nem_waitforlock ((MPID_nem_fbox_common_ptr_t)pbox, 0, count);
-#else /*BLOCKING_FBOX */
 	if (MPID_nem_islocked ((MPID_nem_fbox_common_ptr_t)pbox, 0, count))
 	    goto usequeue_l;
-#endif /*BLOCKING_FBOX */
 	{
 	    pbox->cell.pkt.mpich2.source  = MPID_nem_mem_region.local_rank;
 	    pbox->cell.pkt.mpich2.datalen = size;
@@ -183,7 +174,7 @@ MPID_nem_mpich2_send_header (void* buf, int size, MPIDI_VC_t *vc, int *again)
     }
     else
     {
-        mpi_errno = MPID_nem_net_module_send (vc, el, size);
+        mpi_errno = MPID_nem_netmod_func->send (vc, el, size);
         if (mpi_errno) MPIU_ERR_POP (mpi_errno);
     }
     DO_PAPI (PAPI_accum_var (PAPI_EventSet, PAPI_vvalues12));
@@ -316,7 +307,7 @@ MPID_nem_mpich2_sendv (struct iovec **iov, int *n_iov, MPIDI_VC_t *vc, int *agai
     }
     else
     {
-        mpi_errno = MPID_nem_net_module_send (vc, el, MPID_NEM_MPICH2_DATA_LEN - payload_len);
+        mpi_errno = MPID_nem_netmod_func->send (vc, el, MPID_NEM_MPICH2_DATA_LEN - payload_len);
         if (mpi_errno) MPIU_ERR_POP (mpi_errno);
     }
 
@@ -380,13 +371,8 @@ MPID_nem_mpich2_sendv_header (struct iovec **iov, int *n_iov, MPIDI_VC_t *vc, in
 	u_int32_t *payload_32 = (u_int32_t *)(pbox->cell.pkt.mpich2.payload ) ;
 	u_int32_t *buf_32 = (u_int32_t *)(*iov)->iov_base;
 
-#ifdef BLOCKING_FBOX
-	DO_PAPI3 (PAPI_reset (PAPI_EventSet));
-	MPID_nem_waitforlock ((MPID_nem_fbox_common_ptr_t)pbox, 0, count);
-#else /*BLOCKING_FBOX */
 	if (MPID_nem_islocked ((MPID_nem_fbox_common_ptr_t)pbox, 0, count))
 	    goto usequeue_l;
-#endif /*BLOCKING_FBOX */
 	{
 	    pbox->cell.pkt.mpich2.source  = MPID_nem_mem_region.local_rank;
 	    pbox->cell.pkt.mpich2.datalen = (*iov)[1].iov_len + sizeof(MPIDI_CH3_Pkt_t);
@@ -504,7 +490,7 @@ MPID_nem_mpich2_sendv_header (struct iovec **iov, int *n_iov, MPIDI_VC_t *vc, in
     }
     else
     {
-        mpi_errno = MPID_nem_net_module_send (vc, el, MPID_NEM_MPICH2_DATA_LEN - payload_len);
+        mpi_errno = MPID_nem_netmod_func->send (vc, el, MPID_NEM_MPICH2_DATA_LEN - payload_len);
         if (mpi_errno) MPIU_ERR_POP (mpi_errno);
     }
 
@@ -578,13 +564,8 @@ MPID_nem_mpich2_send_seg_header (MPID_Segment *segment, MPIDI_msg_sz_t *segment_
 	MPID_nem_fbox_mpich2_t *pbox = vc_ch->fbox_out;
 	int count = 10;
 
-#ifdef BLOCKING_FBOX
-	DO_PAPI3 (PAPI_reset (PAPI_EventSet));
-	MPID_nem_waitforlock ((MPID_nem_fbox_common_ptr_t)pbox, 0, count);
-#else /*BLOCKING_FBOX */
 	if (MPID_nem_islocked ((MPID_nem_fbox_common_ptr_t)pbox, 0, count))
 	    goto usequeue_l;
-#endif /*BLOCKING_FBOX */
 	{
 	    pbox->cell.pkt.mpich2.source  = MPID_nem_mem_region.local_rank;
 	    pbox->cell.pkt.mpich2.datalen = sizeof(MPIDI_CH3_Pkt_t) + segment_size;
@@ -933,7 +914,7 @@ MPID_nem_mpich2_test_recv (MPID_nem_cell_ptr_t *cell, int *in_fbox)
        This has been commented out for now because it breaks dynamic processes.
        Some other solution should be implemented eventually, possibly using a
        flag that is set whenever a port is opened. [goodell@ 2008-06-18] */
-    if ((MPID_NEM_NET_MODULE != MPID_NEM_NO_MODULE) /*&& (MPID_nem_mem_region.ext_procs > 0)*/)
+    if ((MPID_nem_num_netmods) /*&& (MPID_nem_mem_region.ext_procs > 0)*/)
     {
 	mpi_errno = MPID_nem_network_poll (MPID_NEM_POLL_IN);
         if (mpi_errno) MPIU_ERR_POP (mpi_errno);
@@ -1004,7 +985,7 @@ MPID_nem_mpich2_test_recv_wait (MPID_nem_cell_ptr_t *cell, int *in_fbox, int tim
        This has been commented out for now because it breaks dynamic processes.
        Some other solution should be implemented eventually, possibly using a
        flag that is set whenever a port is opened. [goodell@ 2008-06-18] */
-    if ((MPID_NEM_NET_MODULE != MPID_NEM_NO_MODULE) /*&& (MPID_nem_mem_region.ext_procs > 0)*/)
+    if ((MPID_nem_num_netmods) /*&& (MPID_nem_mem_region.ext_procs > 0)*/)
     {
 	mpi_errno = MPID_nem_network_poll (MPID_NEM_POLL_IN);
         if (mpi_errno) MPIU_ERR_POP (mpi_errno);
@@ -1058,7 +1039,7 @@ MPID_nem_mpich2_blocking_recv(MPID_nem_cell_ptr_t *cell, int *in_fbox)
 {
     int mpi_errno = MPI_SUCCESS;
     unsigned completions = MPIDI_CH3I_progress_completion_count;
-#ifndef ENABLE_NO_SCHED_YIELD
+#ifndef ENABLE_NO_YIELD
     int pollcount = 0;
 #endif
     DO_PAPI (PAPI_reset (PAPI_EventSet));
@@ -1071,7 +1052,6 @@ MPID_nem_mpich2_blocking_recv(MPID_nem_cell_ptr_t *cell, int *in_fbox)
     MPIU_Assert(0);
 #endif
 #endif
-
 
 #ifdef ENABLED_CHECKPOINTING
     MPID_nem_ckpt_maybe_take_checkpoint();
@@ -1096,7 +1076,7 @@ MPID_nem_mpich2_blocking_recv(MPID_nem_cell_ptr_t *cell, int *in_fbox)
        This has been commented out for now because it breaks dynamic processes.
        Some other solution should be implemented eventually, possibly using a
        flag that is set whenever a port is opened. [goodell@ 2008-06-18] */
-    if ((MPID_NEM_NET_MODULE != MPID_NEM_NO_MODULE) /*&& (MPID_nem_mem_region.ext_procs > 0)*/)
+    if ((MPID_nem_num_netmods) /*&& (MPID_nem_mem_region.ext_procs > 0)*/)
     {
 	mpi_errno = MPID_nem_network_poll (MPID_NEM_POLL_IN);
         if (mpi_errno) MPIU_ERR_POP (mpi_errno);
@@ -1115,7 +1095,7 @@ MPID_nem_mpich2_blocking_recv(MPID_nem_cell_ptr_t *cell, int *in_fbox)
            This has been commented out for now because it breaks dynamic processes.
            Some other solution should be implemented eventually, possibly using a
            flag that is set whenever a port is opened. [goodell@ 2008-06-18] */
-	if ((MPID_NEM_NET_MODULE != MPID_NEM_NO_MODULE) /*&& (MPID_nem_mem_region.ext_procs > 0)*/)
+	if ((MPID_nem_num_netmods) /*&& (MPID_nem_mem_region.ext_procs > 0)*/)
 	{            
 	    mpi_errno = MPID_nem_network_poll (MPID_NEM_POLL_IN);
             if (mpi_errno) MPIU_ERR_POP (mpi_errno);
@@ -1128,11 +1108,11 @@ MPID_nem_mpich2_blocking_recv(MPID_nem_cell_ptr_t *cell, int *in_fbox)
                 goto exit_l;
             }
 	}
-#ifndef ENABLE_NO_SCHED_YIELD
+#if !defined ENABLE_NO_YIELD
 	if (pollcount >= MPID_NEM_POLLS_BEFORE_YIELD)
 	{
 	    pollcount = 0;
-	    sched_yield();
+	    MPIDU_Yield();
 	}
 	++pollcount;
 #endif

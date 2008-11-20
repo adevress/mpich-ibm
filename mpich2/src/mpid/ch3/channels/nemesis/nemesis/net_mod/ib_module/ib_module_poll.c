@@ -5,7 +5,6 @@
 #define _GNU_SOURCE
 #include "mpidimpl.h"
 #include "mpid_nem_impl.h"
-#include "ib_module.h"
 #include "ib_module_impl.h"
 #include "ib_device.h"
 #include "ib_module_cm.h"
@@ -76,7 +75,7 @@ post_new_bufs:  pthread_spin_lock(
 
                 if (0 == post_new) {
                     NEM_IB_DBG("Posting ZERO buffers");
-                    sched_yield();
+                    MPIDU_Yield();
                     goto post_new_bufs;
                 }
 

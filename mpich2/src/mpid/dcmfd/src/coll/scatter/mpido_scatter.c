@@ -86,13 +86,13 @@ int MPIDO_Scatter(void *sendbuf,
                         recvbuf, recvcount, recvtype,
                         root, comm);
 
-  MPID_Ensure_Aint_fits_in_pointer (MPIR_VOID_PTR_CAST_TO_MPI_AINT sendbuf +
+  MPID_Ensure_Aint_fits_in_pointer (MPI_VOID_PTR_CAST_TO_MPI_AINT sendbuf +
 				    true_lb);
   sbuf = (char *) sendbuf + true_lb;
 
   if (recvbuf != MPI_IN_PLACE)
   {
-    MPID_Ensure_Aint_fits_in_pointer(MPIR_VOID_PTR_CAST_TO_MPI_AINT recvbuf +
+    MPID_Ensure_Aint_fits_in_pointer(MPI_VOID_PTR_CAST_TO_MPI_AINT recvbuf +
                                      true_lb);
     rbuf = (char *) recvbuf + true_lb;
   }

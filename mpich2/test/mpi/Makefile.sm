@@ -68,40 +68,29 @@ testingdual-mpirun:
 	./runtests -srcdir=$(srcdir) -tests=testlist \
 		-dualMode -xmlfile=summarydual.xml -nospawn -datestamp \
 		-usempirun -nofree -verbose -nodemap=TXYZ
-clean-local:
-	-rm -f summary.xml
-
 testingio-mpirun:
 	./runtests -srcdir=$(srcdir) -tests=iotestlist -datestamp \
          -xmlfile=summaryio.xml -norma -nospawn  \
          -usempirun -nofree -verbose
-#
-# The following are used to provide a target that is used to create a
-# distribution tarfile
-MPISVNHOME = @MPISVNHOME@
-PACKAGE    = mpi2test
-VERSION    = @VERSION@
+clean-local:
+	-rm -f summary.xml
 
-dist:
-	@version=${VERSION} ; \
-	prever=`echo ${VERSION} | sed -e 's/^[^-]*//'` ; \
-	if [ "$$prever" = "-SVN" ] ; then version=$${version}-`date "+%Y%m%d%H%M"` ; fi ; \
-	if [ -z "${TAG}" ] ; then tag=HEAD ; else tag=${TAG}; fi ; \
-	$(MAKE) version=$${version} tag=$${tag} doc=yes dist-with-version
+dist:	
+	if [ ! -d "@mpich2_top_srcdir@" ] ; then \
+	    echo "The dist target requires that the mpich2 source directory be provided" ; \
+	    exit 1 ; \
+	fi
+	if [ ! -d .tmp ] ; then mkdir .tmp ; else rm -rf .tmp && mkdir .tmp ; fi
+	cd .tmp && svn export https://svn.mcs.anl.gov/repos/mpi/mpich2/trunk/test/mpi mpi2test
+	cd .tmp/mpi2test && \
+	    svn export https://svn.mcs.anl.gov/repos/mpi/mpich2/trunk/confdb confdb
+	cd .tmp/mpi2test && \
+	    sed -e 's/AC_CONFIG_AUX_DIR.*/AC_CONFIG_AUX_DIR(confdb)/' \
+	        configure.in > conftmp.in && mv conftmp.in configure.in
+	cd .tmp/mpi2test && maint/updatefiles -mpich2dir=@mpich2_top_srcdir@
+	cd .tmp/mpi2test && @mpich2_top_srcdir@/maint/simplemake Makefile.sm
+	cd .tmp && tar cf mpi2test.tar mpi2test && gzip -9 mpi2test.tar 
+	if [ -s .tmp/mpi2test.tar.gz ] ; then \
+	    mv .tmp/mpi2test.tar.gz . ; rm -rf .tmp ; \
+	else echo "Could not create tarfile for test suite"; exit 1 ; fi
 
-dist-with-version:
-	@if [ -z "$(version)" ] ; then \
-	    echo "Must invoke with make version=value tag=value dist-with-version" ;\
-	    exit 1 ; fi
-	@if [ -z "$(tag)" ] ; then \
-	    echo "Must invoke with make version=value tag=value dist-with-version" ;\
-	    exit 1 ; fi
-	@echo ""; echo "Cutting version ${version} of the MPICH2 distribution from tag ${tag}" ; echo ""
-	if [ ! -d tmpdir ] ; then mkdir tmpdir ; fi
-	rm -f svnexp.log
-	( cd tmpdir && svn export $(MPISVNHOME)/mpich2/tags/release/${tag} mpich2 > svnexp.log 2>&1 ) || (echo "svn export failed; see tmpdir/svnexp.log" && exit 1 )
-	mv tmpdir/mpi2test tmpdir/${PACKAGE}-${version}
-	( cd tmpdir/${PACKAGE}-${version} && maint/updatefiles -distrib )
-	( cd tmpdir && tar cf ${PACKAGE}-${version}.tar ${PACKAGE}-${version} )
-	mv -f tmpdir/${PACKAGE}-${version}.tar .
-	rm -rf tmpdir

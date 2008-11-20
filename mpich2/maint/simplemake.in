@@ -237,7 +237,7 @@ $quiet = 0;
 # Definitions for each extension (these are the defs needed for each ext->o
 # extension)
 %extdef = ( 'c:o'   => 'CC              = @CC@
-CFLAGS          = @CFLAGS@
+CFLAGS          = @CFLAGS@ $(MPICH2_MAKE_CFLAGS)
 C_COMPILE       = $(CC) $(DEFS) $(INCLUDES) $(CFLAGS) $(CPPFLAGS)',
 	    'f:o'   => 'FC              = @FC@
 FFLAGS          = @FFLAGS@
@@ -1058,6 +1058,14 @@ sub ReadMfile {
 	}
     $origline = "";
     }
+
+    # For the simplemake maint target, see if smdir references 
+    # any of the autoconf directories (so that we'll include the 
+    # appropriate lines in the Makefile.in header)
+    if ($maint_targets && $smdir && $smdir ne "") {
+	&LookForAutoconfDirs( $smdir );
+    }
+
 }
 
 sub WriteMfile {
@@ -1504,7 +1512,7 @@ sub DefaultRules {
 		    # the lo rules have newlines in them, so we need to escape them,
 		    # as well as remove any @ prefixes
 		    my $escaped_rule = $extrules{$extkey};
-		    $escaped_rule =~ s/$newline(\t+)\@*/ ; \\$newline$1/g;
+		    $escaped_rule =~ s/$newline(\t+)\@*/ ; \\$newline$1echo /g;
 		    print FD "\t\@if [ \"x\$(VERBOSE)\" != \"x1\" ] ; then \\$newline";
 		    print FD "\t  echo \"$extstring{$extkey}\" ; \\$newline";
 		    print FD "\telse \\$newline";
@@ -2906,7 +2914,7 @@ sub LibraryBuild {
 	    &print_make_endline( FD );
 	    # COMMAND PRINTING
 	    print FD "\t\@if [ \"x\$(VERBOSE)\" != \"x1\" ] ; then \\$newline";
-	    print FD "\t  echo \"  AR              ${libloc}lib$libname.$libext\" ; \\$newline";
+	    print FD "\t  echo \"  AR cr ${libloc}lib$libname.$libext \$?\" ; \\$newline";
 	    print FD "\telse \\$newline";
 	    print FD "\t  echo \${AR} cr ${libloc}lib$libname.$libext \$? ; \\$newline";
 	    print FD "\tfi$newline";
@@ -2922,7 +2930,7 @@ sub LibraryBuild {
     if (!$dolib_member) {
         &print_make_endline( FD );
 	print FD "\t\@if [ \"x\$(VERBOSE)\" != \"x1\" ] ; then \\$newline";
-	print FD "\t  echo \"  AR              ${libloc}lib$libname.$libext \$?\" ; \\$newline";
+	print FD "\t  echo \"  AR cr ${libloc}lib$libname.$libext \$?\" ; \\$newline";
 	print FD "\telse \\$newline";
 	print FD "\t  echo \${AR} cr ${libloc}lib$libname.$libext \$? ; \\$newline";
 	print FD "\tfi$newline";
@@ -2960,14 +2968,17 @@ sub TargetLibraries {
 # LibraryTimestampClean - Add clean commands for library timestamps
 sub LibraryTimestampTarget {
     my ($fulllibname,$libstamp) = @_;
-    if ($fulllibname =~ /^\.\./ && !$fixup_for_timestamps) {
+    my $expandedFullName = &ExpandMakeVars( $fulllibname );
+    if ($expandedFullName =~ /^\.\./ && !$fixup_for_timestamps) {
 	$altalltargets{$fulllibname} = $libstamp;
     }
 }
 sub LibraryTimestampPrefix {
     my ($lib, $libloc) = @_;
 
-    if ($libloc =~ /^\.\./) {
+    my $expandedlibloc = &ExpandMakeVars( $libloc );
+
+    if ($expandedlibloc =~ /^\.\./) {
 	if (!$fixup_for_timestamps) {
 	    my $num = "";
 	    if (defined($libnum{$lib})) {
@@ -2979,7 +2990,8 @@ sub LibraryTimestampPrefix {
 }
 sub LibraryTimestampFix {
     my ($lib,$libloc) = @_;
-    if ($libloc =~ /^\.\./) {
+    my $expandedlibloc = &ExpandMakeVars( $libloc );
+    if ($expandedlibloc =~ /^\.\./) {
 	if ($fixup_for_timestamps) {
 	    my $SleepText = $Sleep;
 	    my $fulllibname = $libloc . "lib$lib.a";
@@ -3053,7 +3065,7 @@ sub TargetProfileLibraries {
 	    # Add these files as objects to the archive
 	    # COMMAND PRINTING
 	    print FD "\t\@if [ \"x\$(VERBOSE)\" != \"x1\" ] ; then \\$newline";
-	    print FD "\t  echo \"  AR              ${libloc}lib$proflib_name.a\" ; \\$newline";
+	    print FD "\t  echo \"  AR cr ${libloc}lib$proflib_name.a \$?\" ; \\$newline";
 	    print FD "\telse \\$newline";
 	    print FD "\t  echo \${AR} cr ${libloc}lib$proflib_name.a \$? ; \\$newline";
 	    print FD "\tfi$newline";
@@ -3103,11 +3115,11 @@ sub TargetProfileLibraries {
 		# Add these files as objects to the archive
 		# COMMAND PRINTING
 		print FD "\t\@if [ \"x\$(VERBOSE)\" != \"x1\" ] ; then \\$newline";
-		print FD "\t  echo \"  AR              \$?\" ; \\$newline";
+		print FD "\t  echo \"  AR cr ${libloc}lib$proflib_name.la \$?\" ; \\$newline";
 		print FD "\telse \\$newline";
-		print FD "\t  echo \${AR} cr ${libloc}lib$proflib_name.la ; \\$newline";
+		print FD "\t  echo \${AR} cr ${libloc}lib$proflib_name.la \$?; \\$newline";
 		print FD "\tfi$newline";
-		print FD "\t\@\${AR} cr ${libloc}lib$proflib_name.la$newline";
+		print FD "\t\@\${AR} cr ${libloc}lib$proflib_name.la \$?$newline";
 		# To handle timestamp problems with recursive makes, 
 		# add a delay
 		&LibraryTimestampFix( $proflib_name.".la", $libloc );
@@ -3332,6 +3344,11 @@ library, or new library name)\n" if $debug;
 # ===========================================================================
 sub TargetPrograms {
     foreach $pgm (keys(%programs)) {
+	# If there was a manual target, skip
+	if (defined($usertargets{$pgm})) { 
+	    print "Skipping generation of rule for $pgm because Makefile.sm already contains one\n";
+	    next; 
+	}
 	&print_make_line( FD,  "$pgm: " );
 	$pgmobjs = "";
 	foreach $sourcefile (split(/\s+/,$programs{$pgm})) {
@@ -3977,7 +3994,7 @@ sub TargetInstall {
 	if ($extradir =~ /^@/) {
 	    print FD "\tfor dir in $extradir - ; do \\$newline";
 	    print FD "\t\tif [ \"\$\$dir\" = \"-\" ] ; then break ; fi ;\\$newline";
-	    print FD "\t\t(cd \$\$dir && \$(MAKE) INSTALL_STRIP_FLAG=\$(INSTALL_STRIP_FLAG) install) ;\\$newline";
+	    print FD "\t\t(cd \$\$dir && \$(MAKE) INSTALL_STRIP_FLAG=\$(INSTALL_STRIP_FLAG) PACKAGE=\$(PACKAGE) install) ;\\$newline";
 	    print FD "\tdone$newline";
 	}
 	else {

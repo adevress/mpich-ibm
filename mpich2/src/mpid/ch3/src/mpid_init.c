@@ -82,6 +82,17 @@ int MPID_Init(int *argc, char ***argv, int requested, int *provided,
     if (mpi_errno) {
 	MPIU_ERR_SETANDJUMP(mpi_errno,MPI_ERR_OTHER, "**ch3|ch3_init");
     }
+    
+    /* FIXME: Why are pg_size and pg_rank handled differently? */
+    pg_size = MPIDI_PG_Get_size(pg);
+    MPIDI_Process.my_pg = pg;  /* brad : this is rework for shared memories 
+				* because they need this set earlier
+                                * for getting the business card
+                                */
+    MPIDI_Process.my_pg_rank = pg_rank;
+    /* FIXME: Why do we add a ref to pg here? */
+    MPIDI_PG_add_ref(pg);
+
 
     /*
      * Let the channel perform any necessary initialization
@@ -94,15 +105,8 @@ int MPID_Init(int *argc, char ***argv, int requested, int *provided,
 	MPIU_ERR_SETANDJUMP(mpi_errno,MPI_ERR_OTHER, "**ch3|ch3_init");
     }
 
-    /* FIXME: Why are pg_size and pg_rank handled differently? */
-    pg_size = MPIDI_PG_Get_size(pg);
-    MPIDI_Process.my_pg = pg;  /* brad : this is rework for shared memories 
-				* because they need this set earlier
-                                * for getting the business card
-                                */
-    MPIDI_Process.my_pg_rank = pg_rank;
-    /* FIXME: Why do we add a ref to pg here? */
-    MPIDI_PG_add_ref(pg);
+    mpi_errno = MPIU_Get_local_procs(pg_rank, pg_size, NULL, NULL, NULL);
+    if (mpi_errno) MPIU_ERR_POP(mpi_errno);
 
     /*
      * Initialize the MPI_COMM_WORLD object
@@ -135,6 +139,8 @@ int MPID_Init(int *argc, char ***argv, int requested, int *provided,
     }
 
     MPID_Dev_comm_create_hook (comm);
+    mpi_errno = MPIR_Comm_commit(comm);
+    if (mpi_errno) MPIU_ERR_POP(mpi_errno);
 
     /*
      * Initialize the MPI_COMM_SELF object
@@ -198,6 +204,8 @@ int MPID_Init(int *argc, char ***argv, int requested, int *provided,
     comm->vcr  = MPIR_Process.comm_world->vcr;
     
     MPID_Dev_comm_create_hook (comm);
+    mpi_errno = MPIR_Comm_commit(comm);
+    if (mpi_errno) MPIU_ERR_POP(mpi_errno);
 #endif
     
     /*

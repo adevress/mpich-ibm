@@ -31,6 +31,9 @@
 #define MPICH_ERROR_MSG_GENERIC 2
 #define MPICH_ERROR_MSG_ALL 8
 
+/* Common definition for the max hostname length to be used by
+ * different channels as well as the collectives. */
+
 /* Data computed by configure.  This is included *after* mpi.h because we
    do not want mpi.h to depend on any other files or configure flags */
 #include "mpichconf.h"
@@ -62,6 +65,18 @@
 #ifdef HAVE_SYS_TYPES_H
 #include <sys/types.h>
 #endif
+
+/* for MAXHOSTNAMELEN under Linux and OSX */
+#ifdef HAVE_SYS_PARAM_H
+#include <sys/param.h>
+#endif
+
+#if (!defined MAXHOSTNAMELEN) && (!defined MAX_HOSTNAME_LEN)
+#define MAX_HOSTNAME_LEN 256
+#elif !defined MAX_HOSTNAME_LEN
+#define MAX_HOSTNAME_LEN MAXHOSTNAMELEN
+#endif
+
 
 /* This allows us to keep names local to a single file when we can use
    weak symbols */
@@ -356,6 +371,10 @@ typedef enum MPID_Lang_t { MPID_LANG_C
    MPI_Datatype) */
 #include "mpihandlemem.h"
 
+/* This routine is used to install an attribute free routine for datatypes
+   at finalize-time */
+void MPIR_DatatypeAttrFinalize( void );
+
 /* ------------------------------------------------------------------------- */
 /* mpiobjref.h */
 /* ------------------------------------------------------------------------- */
@@ -528,8 +547,6 @@ void *MPIU_Handle_indirect_init( void *(**)[], int *, int, int, int, int );
 int MPIU_Handle_free( void *((*)[]), int );
 */
 /* Convert Handles to objects for MPI types that have predefined objects */
-/* Question.  Should this do ptr=0 first, particularly if doing --enable-strict
-   complication? */
 #define MPID_Getb_ptr(kind,a,bmsk,ptr)                                  \
 {                                                                       \
    switch (HANDLE_GET_KIND(a)) {                                        \
@@ -552,8 +569,6 @@ int MPIU_Handle_free( void *((*)[]), int );
 
 /* Convert handles to objects for MPI types that do _not_ have any predefined
    objects */
-/* Question.  Should this do ptr=0 first, particularly if doing --enable-strict
-   complication? */
 #define MPID_Get_ptr(kind,a,ptr)					\
 {									\
    switch (HANDLE_GET_KIND(a)) {					\
@@ -683,6 +698,7 @@ void MPIU_Param_finalize( void );
 int MPIU_GetEnvInt( const char *envName, int *val );
 int MPIU_GetEnvRange( const char *envName, int *lowPtr, int *highPtr );
 int MPIU_GetEnvBool( const char *envName, int *val );
+int MPIU_GetEnvStr( const char *envName, const char **val );
 
 /* See mpishared.h as well */
 /* ------------------------------------------------------------------------- */
@@ -1199,6 +1215,11 @@ typedef enum MPID_Comm_kind_t {
   byte orderings).  If the device does need to define this value, it should
   be defined in the file 'mpidpre.h'. 
 
+  Please note that the local_size and remote_size fields can be confusing.  For
+  intracommunicators both fields are always equal to the size of the
+  communicator.  For intercommunicators local_size is equal to the size of
+  local_group while remote_size is equal to the size of remote_group.
+
   Module:
   Communicator-DS
 
@@ -1210,8 +1231,8 @@ typedef enum MPID_Comm_kind_t {
 typedef struct MPID_Comm { 
     int           handle;        /* value of MPI_Comm for this structure */
     volatile int  ref_count;
-    int16_t       context_id;    /* Send context id.  See notes */
-    int16_t       recvcontext_id;/* Assigned context id */
+    MPIR_Context_id_t context_id; /* Send context id.  See notes */
+    MPIR_Context_id_t recvcontext_id; /* Send context id.  See notes */
     int           remote_size;   /* Value of MPI_Comm_(remote)_size */
     int           rank;          /* Value of MPI_Comm_rank */
     MPID_VCRT     vcrt;          /* virtual connecton reference table */
@@ -1230,6 +1251,18 @@ typedef struct MPID_Comm {
     MPID_Errhandler *errhandler; /* Pointer to the error handler structure */
     struct MPID_Comm    *local_comm; /* Defined only for intercomms, holds
 				        an intracomm for the local group */
+    int is_node_aware;           /* true if node topology info is available,
+                                    such as node_comm and node_roots_comm */
+    struct MPID_Comm *node_comm; /* Comm of processes in this comm that are on
+                                    the same node as this process. */
+    struct MPID_Comm *node_roots_comm; /* Comm of root processes for other nodes. */
+    int *intranode_table;        /* intranode_table[i] gives the rank in
+                                    node_comm of rank i in this comm or -1 if i
+                                    is not in this process' node_comm.
+                                    It is of size 'local_size'. */
+    int *internode_table;        /* internode_table[i] gives the rank in
+                                    node_roots_comm of rank i in this comm.
+                                    It is of size 'local_size'. */
     int           is_low_group;  /* For intercomms only, this boolean is
 				    set for all members of one of the 
 				    two groups of processes and clear for 
@@ -1303,11 +1336,29 @@ extern MPID_Comm MPID_Comm_direct[];
 #define MPID_CONTEXT_INTER_COLLA 2
 #define MPID_CONTEXT_INTER_COLLB 3
 
+/*
+ * The following must hold:
+ * MPIR_MAX_CONTEXT_MASK*32 <= 2**(sizeof(MPIR_Context_id_t) * 8 - 2)
+ * For a 16-bit context id field, this implies MPIR_MAX_CONTEXT_MASK <= 512
+ *
+ * MPIR_Context_id_t can hold 2**(sizeof(MPIR_Context_id_t) * 8)
+ * context IDs. Of these, the last two bits are used to determine the
+ * class of the context ID, so we only have
+ * 2**(sizeof(MPIR_Context_id_t) * 8 - 2) context IDs. We can use
+ * (2**(sizeof(MPIR_Context_id_t) * 8 - 2) / 32) integers to hold
+ * these many bits assuming each integer is 32 bits, i.e.,
+ * 2**(sizeof(MPIR_Context_id_t) * 8 - 7) integers. Finally, we want
+ * to reserve the second half of this set for temporary VCs in the
+ * dynamic process case. That leaves us with
+ * 2**(sizeof(MPIR_Context_id_t) * 8 - 8) integers.
+ */
+#define MPIR_MAX_CONTEXT_MASK (1 << ((sizeof(MPIR_Context_id_t) * 8) - 8))
+
 /* Utility routines.  Where possible, these are kept in the source directory
    with the other comm routines (src/mpi/comm, in mpicomm.h).  However,
    to create a new communicator after a spawn or connect-accept operation, 
    the device may need to create a new contextid */
-int MPIR_Get_contextid( MPID_Comm * );
+int MPIR_Get_contextid( MPID_Comm *, MPIR_Context_id_t *context_id );
 
 /* ------------------------------------------------------------------------- */
 
@@ -1408,6 +1459,7 @@ extern MPID_Request MPID_Request_direct[];
 */
 #ifdef HAVE_DEBUGGER_SUPPORT
 void MPIR_WaitForDebugger( void );
+void MPIR_DebuggerSetAborting( const char * );
 void MPIR_Sendq_remember(MPID_Request *, int, int, int );
 void MPIR_Sendq_forget(MPID_Request *);
 void MPIR_CommL_remember( MPID_Comm * );
@@ -1749,7 +1801,7 @@ extern MPIU_Object_alloc_t MPID_Op_mem;
 /* ------------------------------------------------------------------------- */
 
 /* ------------------------------------------------------------------------- */
-/* mpicoll.h (in src/mpi/coll? */
+/* mpicoll.h (in src/mpi/coll?) */
 /* ------------------------------------------------------------------------- */
 
 /* Collective operations */
@@ -2050,7 +2102,7 @@ extern MPICH_PerProcess_t MPIR_Process;
    macros to track the nesting level; otherwise, allow the timing module the
    opportunity to define the macros */
 #if defined(MPICH_DEBUG_FINE_GRAIN_NESTING)
-#   include "mpidu_func_nesting.h"
+#   include "mpiu_func_nesting.h"
 #elif defined(MPICH_DEBUG_MEMARENA)
 #   include "mpifuncmem.h"
 #elif defined(USE_DBG_LOGGING)
@@ -2576,7 +2628,10 @@ int MPID_Finalize(void);
 
 /* FIXME: the 4th argument isn't part of the original design and isn't documented */
 
-int MPID_Abort( MPID_Comm *comm, int mpi_errno, int exit_code, const char *error_msg );
+# if 0
+int MPID_Abort( MPID_Comm *comm, int mpi_errno, int exit_code, const char *error_msg ) ATTRIBUTE((noreturn));
+#endif
+/* FIXME: Should we turn off this flag and only declare MPID_Abort in mpiutil.h? */
 /* We want to also declare MPID_Abort in mpiutil.h if mpiimpl.h is not used */
 #define HAS_MPID_ABORT_DECL
 
@@ -3526,12 +3581,13 @@ extern MPI_User_function *MPIR_Op_table[];
 typedef int (MPIR_Op_check_dtype_fn) ( MPI_Datatype ); 
 extern MPIR_Op_check_dtype_fn *MPIR_Op_check_dtype_table[];
 
-#ifndef MPIR_MIN
+#if !defined MPIR_MIN
 #define MPIR_MIN(a,b) (((a)>(b))?(b):(a))
-#endif
-#ifndef MPIR_MAX
+#endif /* MPIR_MIN */
+
+#if !defined MPIR_MAX
 #define MPIR_MAX(a,b) (((b)>(a))?(b):(a))
-#endif
+#endif /* MPIR_MAX */
 
 int MPIR_Allgather(void *sendbuf, int sendcount, MPI_Datatype sendtype,
                    void *recvbuf, int recvcount, MPI_Datatype recvtype, 
@@ -3574,6 +3630,8 @@ int MPIR_Bcast_inter(void *buffer, int count, MPI_Datatype datatype,
 		     int root, MPID_Comm *comm_ptr);
 int MPIR_Bcast (void *buffer, int count, MPI_Datatype datatype, int
                 root, MPID_Comm *comm_ptr);
+int MPIR_Bcast_or_coll_fn (void *buffer, int count, MPI_Datatype datatype, int
+                root, MPID_Comm *comm_ptr);
 int MPIR_Exscan(void *sendbuf, void *recvbuf, int count, MPI_Datatype datatype,
                 MPI_Op op, MPID_Comm *comm_ptr );
 int MPIR_Gather (void *sendbuf, int sendcnt, MPI_Datatype sendtype,
@@ -3591,6 +3649,8 @@ int MPIR_Reduce_scatter_inter(void *sendbuf, void *recvbuf, int *recvcnts,
                               MPI_Datatype datatype, MPI_Op op, 
                               MPID_Comm *comm_ptr);
 int MPIR_Reduce(void *sendbuf, void *recvbuf, int count, MPI_Datatype datatype,
+                MPI_Op op, int root, MPID_Comm *comm_ptr );
+int MPIR_Reduce_or_coll_fn(void *sendbuf, void *recvbuf, int count, MPI_Datatype datatype,
                 MPI_Op op, int root, MPID_Comm *comm_ptr );
 int MPIR_Reduce_inter (void *sendbuf, void *recvbuf, int count, MPI_Datatype
                  datatype, MPI_Op op, int root, MPID_Comm *comm_ptr); 
@@ -3612,6 +3672,10 @@ int MPIR_Setup_intercomm_localcomm( MPID_Comm * );
 
 int MPIR_Comm_create( MPID_Comm ** );
 
+int MPIR_Comm_commit( MPID_Comm * );
+
+int MPIR_Comm_is_node_aware( MPID_Comm * );
+
 void MPIR_Free_err_dyncodes( void );
 
 
@@ -3628,5 +3692,14 @@ void MPIU_SetTimeout( int );
 int vsnprintf(char *str, size_t size, const char *format, va_list ap);
 # endif
 
+/* Routines for determining local and remote processes */
+
+int MPIU_Get_local_procs(int global_rank, int num_global, int *num_local_p, int **local_procs_p,  int *local_rank_p);
+int MPIU_Find_local_and_external(struct MPID_Comm *comm, int *local_size_p, int *local_rank_p, int **local_ranks_p,
+                                 int *external_size_p, int *external_rank_p, int **external_ranks_p,
+                                 int **intranode_table, int **internode_table_p);
+int MPIU_Get_internode_rank(MPID_Comm *comm_ptr, int r);
+int MPIU_Get_intranode_rank(MPID_Comm *comm_ptr, int r);
+int MPIU_Local_procs_finalize(void);
 
 #endif /* MPIIMPL_INCLUDED */

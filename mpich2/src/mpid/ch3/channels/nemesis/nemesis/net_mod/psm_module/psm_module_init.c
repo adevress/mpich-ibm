@@ -8,7 +8,19 @@
 #include "psm.h"
 #include "psm_mq.h"
 #include "mpid_nem_impl.h"
-#include "psm_module.h"
+
+MPID_nem_netmod_funcs_t MPIDI_nem_psm_module_funcs = {
+    MPID_nem_psm_module_init,
+    MPID_nem_psm_module_finalize,
+    MPID_nem_psm_module_ckpt_shutdown,
+    MPID_nem_psm_module_poll,
+    MPID_nem_psm_module_send,
+    MPID_nem_psm_module_get_business_card,
+    MPID_nem_psm_module_connect_to_root,
+    MPID_nem_psm_module_vc_init,
+    MPID_nem_psm_module_vc_destroy,
+    MPID_nem_psm_module_vc_terminate
+};
 
 #define MPIDI_CH3I_ENDPOINT_KEY "endpoint_id"
 #define MPIDI_CH3I_NIC_KEY      "nic_id"
@@ -26,8 +38,6 @@ psm_mq_t         MPID_nem_module_psm_mq;
 int              MPID_nem_module_psm_connected=0;
 static int       MPID_nem_module_psm_initialized=0;
 
-
-
 MPID_nem_psm_cell_ptr_t MPID_nem_module_psm_send_outstanding_request;
 int                     MPID_nem_module_psm_send_outstanding_request_num;
 MPID_nem_psm_cell_ptr_t MPID_nem_module_psm_recv_outstanding_request;
@@ -38,7 +48,6 @@ int             MPID_nem_module_psm_pendings_sends = 0;
 int             MPID_nem_module_psm_pendings_recvs = 0 ;
 int            *MPID_nem_module_psm_pendings_sends_array;
 int            *MPID_nem_module_psm_pendings_recvs_array;
-
 
 static MPID_nem_psm_req_queue_t _psm_send_free_req_q;
 static MPID_nem_psm_req_queue_t _psm_send_pend_req_q;
@@ -73,11 +82,25 @@ int init_psm( MPIDI_PG_t *pg_p )
 
    char        *kvs_name;
    
-   char        key[MPID_NEM_MAX_KEY_VAL_LEN], get_key[MPID_NEM_MAX_KEY_VAL_LEN];
-   char        val[MPID_NEM_MAX_KEY_VAL_LEN], get_val[MPID_NEM_MAX_KEY_VAL_LEN];
-   int         len = MPID_NEM_MAX_KEY_VAL_LEN;
-   
+   char        * key, * get_key;
+   char        * val, * get_val;
+   int         key_max_sz, val_max_sz, len;
+
    MPIU_CHKPMEM_DECL(1);
+   MPIU_CHKLMEM_DECL(5);
+
+   /* Allocate space for the pmi keys and vals */
+   pmi_errno = PMI_KVS_Get_key_length_max(&key_max_sz);
+   MPIU_ERR_CHKANDJUMP1(pmi_errno, mpi_errno, MPI_ERR_OTHER, "**fail", "**fail %d", pmi_errno);
+   MPIU_CHKLMEM_MALLOC(key, char *, key_max_sz, mpi_errno, "key");
+   MPIU_CHKLMEM_MALLOC(get_key, char *, key_max_sz, mpi_errno, "get_key");
+
+   pmi_errno = PMI_KVS_Get_value_length_max(&val_max_sz);
+   MPIU_ERR_CHKANDJUMP1(pmi_errno, mpi_errno, MPI_ERR_OTHER, "**fail", "**fail %d", pmi_errno);
+   MPIU_CHKLMEM_MALLOC(val, char *, val_max_sz, mpi_errno, "val");
+   MPIU_CHKLMEM_MALLOC(get_val, char *, val_max_sz, mpi_errno, "get_val");
+
+   len = val_max_sz;
 
    /* Fix me : mysteriously  MPIU_CHKPMEM_MALLOC fails here, when the regular MPIU_Malloc doesn't ... */
    MPIU_CHKPMEM_MALLOC (MPID_nem_module_psm_endpoint_addrs, psm_epaddr_t *, MPID_nem_mem_region.num_procs * sizeof(psm_epaddr_t), mpi_errno, "endpoints addr");
@@ -91,8 +114,9 @@ int init_psm( MPIDI_PG_t *pg_p )
 
    if (MPID_nem_mem_region.rank == 0)
    {
-       char uuid_val[MPID_NEM_MAX_KEY_VAL_LEN];
-       
+       char * uuid_val;
+
+       MPIU_CHKLMEM_MALLOC(uuid_val, char *, val_max_sz, mpi_errno, "uuid_val");
        psm_uuid_generate(MPID_nem_module_psm_uuid);
 
        /* Encode the generated UUID into a string and broadcast it to others */
@@ -112,7 +136,7 @@ int init_psm( MPIDI_PG_t *pg_p )
    if (MPID_nem_mem_region.rank != 0)
    {
        /* Get UUID from root and decode it */
-       pmi_errno = PMI_KVS_Get (kvs_name, MPIDI_CH3I_UUID_KEY, get_val, MPID_NEM_MAX_KEY_VAL_LEN);
+       pmi_errno = PMI_KVS_Get (kvs_name, MPIDI_CH3I_UUID_KEY, get_val, key_max_sz);
        MPIU_ERR_CHKANDJUMP1 (pmi_errno != PMI_SUCCESS, mpi_errno, MPI_ERR_OTHER, "**pmi_kvs_get", "**pmi_kvs_get %d", pmi_errno);
 
        ret = decode_buffer(get_val, (char*) MPID_nem_module_psm_uuid, sizeof(psm_uuid_t), &len);
@@ -133,8 +157,8 @@ int init_psm( MPIDI_PG_t *pg_p )
    MPIU_ERR_CHKANDJUMP1 (ret != PSM_OK, mpi_errno, MPI_ERR_OTHER, "**psm_mq_init", "**psm_mq_init %s", psm_error_get_string (ret));
 
    /* Broadcast endpoints to others */
-   MPIU_Snprintf (val, MPID_NEM_MAX_KEY_VAL_LEN, "%lld",MPID_nem_module_psm_local_endpoint_id);
-   MPIU_Snprintf (key, MPID_NEM_MAX_KEY_VAL_LEN, "Endpointid_key[%d]", MPID_nem_mem_region.rank);
+   MPIU_Snprintf (val, key_max_sz, "%lld",MPID_nem_module_psm_local_endpoint_id);
+   MPIU_Snprintf (key, key_max_sz, "Endpointid_key[%d]", MPID_nem_mem_region.rank);
 
    pmi_errno = PMI_KVS_Put (kvs_name, key, val);
    MPIU_ERR_CHKANDJUMP1 (pmi_errno != PMI_SUCCESS, mpi_errno, MPI_ERR_OTHER, "**pmi_kvs_put", "**pmi_kvs_put %d", pmi_errno);
@@ -151,9 +175,9 @@ int init_psm( MPIDI_PG_t *pg_p )
        if (index != MPID_nem_mem_region.rank)
        {
    
-           MPIU_Snprintf (get_key, MPID_NEM_MAX_KEY_VAL_LEN, "Endpointid_key[%d]", index);
+           MPIU_Snprintf (get_key, key_max_sz, "Endpointid_key[%d]", index);
            
-           pmi_errno = PMI_KVS_Get(kvs_name, get_key, get_val, MPID_NEM_MAX_KEY_VAL_LEN);
+           pmi_errno = PMI_KVS_Get(kvs_name, get_key, get_val, key_max_sz);
            ret = sscanf(get_val, "%lld", &MPID_nem_module_psm_endpoint_ids[index]);
            MPIU_ERR_CHKANDJUMP1 (ret != 1, mpi_errno, MPI_ERR_OTHER, "**business_card", "**business_card %s", get_val);
        }
@@ -195,6 +219,7 @@ int init_psm( MPIDI_PG_t *pg_p )
 
    MPIU_CHKPMEM_COMMIT();
    fn_exit:
+     MPIU_CHKLMEM_FREEALL();
      return mpi_errno;
    fn_fail:
      MPIU_CHKPMEM_REAP();
@@ -418,21 +443,35 @@ int MPID_nem_psm_module_exchange_endpoints(void)
     
     char         *kvs_name;
     
-    char         key[MPID_NEM_MAX_KEY_VAL_LEN], get_key[MPID_NEM_MAX_KEY_VAL_LEN];
-    char         val[MPID_NEM_MAX_KEY_VAL_LEN], get_val[MPID_NEM_MAX_KEY_VAL_LEN];
+    char         * key, * get_key;
+    char         * val, * get_val;
     int          size = sizeof(psm_uuid_t) + 1;
-    int          len = MPID_NEM_MAX_KEY_VAL_LEN;
-    
+    int          key_max_sz, val_max_sz, len;
+    MPIU_CHKLMEM_DECL(5);
+
     ret = psm_init(&verno_major, &verno_minor);
     MPIU_ERR_CHKANDJUMP1 (ret != PSM_OK, mpi_errno, MPI_ERR_OTHER, "**psm_init", "**psm_init %s", psm_error_get_string(ret));
+
+    /* Allocate space for the pmi keys and vals */
+    pmi_errno = PMI_KVS_Get_key_length_max(&key_max_sz);
+    MPIU_ERR_CHKANDJUMP1(pmi_errno, mpi_errno, MPI_ERR_OTHER, "**fail", "**fail %d", pmi_errno);
+    MPIU_CHKLMEM_MALLOC(key, char *, key_max_sz, mpi_errno, "key");
+    MPIU_CHKLMEM_MALLOC(get_key, char *, key_max_sz, mpi_errno, "get_key");
+
+    pmi_errno = PMI_KVS_Get_value_length_max(&val_max_sz);
+    MPIU_ERR_CHKANDJUMP1(pmi_errno, mpi_errno, MPI_ERR_OTHER, "**fail", "**fail %d", pmi_errno);
+    MPIU_CHKLMEM_MALLOC(val, char *, val_max_sz, mpi_errno, "val");
+    MPIU_CHKLMEM_MALLOC(get_val, char *, val_max_sz, mpi_errno, "get_val");
+    len = val_max_sz;
     
     mpi_errno = MPIDI_PG_GetConnKVSname (&kvs_name);
     if (mpi_errno) MPIU_ERR_POP (mpi_errno);
 
     if (MPID_nem_mem_region.rank == 0)
     {
-        char uuid_val[MPID_NEM_MAX_KEY_VAL_LEN];
-        
+        char * uuid_val;
+
+        MPIU_CHKLMEM_MALLOC(uuid_val, char *, val_max_sz, mpi_errno, "uuid_val");
         psm_uuid_generate(MPID_nem_module_psm_uuid);
 
         /* Pack UUID into character array */
@@ -482,7 +521,7 @@ int MPID_nem_psm_module_exchange_endpoints(void)
     
     if (MPID_nem_mem_region.rank != 0)
     {
-        pmi_errno = PMI_KVS_Get (kvs_name, MPIDI_CH3I_UUID_KEY, get_val, MPID_NEM_MAX_KEY_VAL_LEN);
+        pmi_errno = PMI_KVS_Get (kvs_name, MPIDI_CH3I_UUID_KEY, get_val, key_max_sz);
         MPIU_ERR_CHKANDJUMP1 (pmi_errno != PMI_SUCCESS, mpi_errno, MPI_ERR_OTHER, "**pmi_kvs_get", "**pmi_kvs_get %d", pmi_errno);
 
         ret = decode_buffer(get_val, (char*) MPID_nem_module_psm_uuid, sizeof(psm_uuid_t), &len);
@@ -513,8 +552,8 @@ int MPID_nem_psm_module_exchange_endpoints(void)
     ret = psm_mq_init(MPID_nem_module_psm_local_endpoint, PSM_MQ_ORDERMASK_ALL, NULL, 0, &MPID_nem_module_psm_mq);
     MPIU_ERR_CHKANDJUMP1 (ret != PSM_OK, mpi_errno, MPI_ERR_OTHER, "**psm_mq_init", "**psm_mq_init %s", psm_error_get_string (ret));
     
-    MPIU_Snprintf (val, MPID_NEM_MAX_KEY_VAL_LEN, "%lld",MPID_nem_module_psm_local_endpoint_id);
-    MPIU_Snprintf (key, MPID_NEM_MAX_KEY_VAL_LEN, "Endpointid[%d]", MPID_nem_mem_region.rank);
+    MPIU_Snprintf (val, key_max_sz, "%lld",MPID_nem_module_psm_local_endpoint_id);
+    MPIU_Snprintf (key, key_max_sz, "Endpointid[%d]", MPID_nem_mem_region.rank);
     
     for(index = 0; index < MPID_nem_mem_region.num_procs;index++)
     {
@@ -534,9 +573,9 @@ int MPID_nem_psm_module_exchange_endpoints(void)
         if (index != MPID_nem_mem_region.rank)
         {
             
-            MPIU_Snprintf (get_key, MPID_NEM_MAX_KEY_VAL_LEN, "Endpointid[%d]", index);
+            MPIU_Snprintf (get_key, key_max_sz, "Endpointid[%d]", index);
             
-            pmi_errno = PMI_KVS_Get(kvs_name, get_key, get_val, MPID_NEM_MAX_KEY_VAL_LEN);
+            pmi_errno = PMI_KVS_Get(kvs_name, get_key, get_val, key_max_sz);
             ret = sscanf(get_val, "%lld", &MPID_nem_module_psm_endpoint_ids[index]);
             MPIU_ERR_CHKANDJUMP1 (ret != 1, mpi_errno, MPI_ERR_OTHER, "**business_card", "**business_card %s", get_val);
         }
@@ -547,6 +586,7 @@ int MPID_nem_psm_module_exchange_endpoints(void)
     
 
  fn_exit:
+    MPIU_CHKLMEM_FREEALL();
     return mpi_errno;
  fn_fail:
     goto fn_exit;

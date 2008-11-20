@@ -55,24 +55,23 @@ int MPID_VCRT_Create(int size, MPID_VCRT *vcrt_ptr)
 {
     MPIDI_VCRT_t * vcrt;
     int mpi_errno = MPI_SUCCESS;
+    MPIU_CHKPMEM_DECL(1);
     MPIDI_STATE_DECL(MPID_STATE_MPID_VCRT_CREATE);
 
     MPIDI_FUNC_ENTER(MPID_STATE_MPID_VCRT_CREATE);
-    
-    vcrt = MPIU_Malloc(sizeof(MPIDI_VCRT_t) + (size - 1) * sizeof(MPIDI_VC_t *));
-    if (vcrt != NULL)
-    {
-	MPIU_Object_set_ref(vcrt, 1);
-	vcrt->size = size;
-	*vcrt_ptr = vcrt;
-    }
-    else
-    {
-	MPIU_ERR_SET(mpi_errno,MPI_ERR_OTHER,"**nomem");
-    }
 
+    MPIU_CHKPMEM_MALLOC(vcrt, MPIDI_VCRT_t *, sizeof(MPIDI_VCRT_t) + (size - 1) * sizeof(MPIDI_VC_t *),	mpi_errno, "**nomem");
+    MPIU_Object_set_ref(vcrt, 1);
+    vcrt->size = size;
+    *vcrt_ptr = vcrt;
+
+ fn_exit:
+    MPIU_CHKPMEM_COMMIT();
     MPIDI_FUNC_EXIT(MPID_STATE_MPID_VCRT_CREATE);
     return mpi_errno;
+ fn_fail:
+    MPIU_CHKPMEM_REAP();
+    goto fn_exit;
 }
 
 /*@
@@ -135,10 +134,8 @@ int MPID_VCRT_Release(MPID_VCRT vcrt, int isDisconnect )
 	/* FIXME: Need a better way to define how vc's are closed that 
 	 takes into account pending operations on vcs, including 
 	 close events received from other processes. */
-	/*
-	mpi_errno = MPIDI_CH3U_VC_FinishPending( vcrt );
-	if (mpi_errno) { MPIU_ERR_POP(mpi_errno); }
-	*/
+	/* mpi_errno = MPIDI_CH3U_VC_FinishPending( vcrt ); */
+        if (mpi_errno) { MPIU_ERR_POP(mpi_errno); }
 
 	for (i = 0; i < vcrt->size; i++)
 	{
@@ -300,10 +297,16 @@ int MPID_VCR_Get_lpid(MPID_VCR vcr, int * lpid_ptr)
 int MPID_GPID_GetAllInComm( MPID_Comm *comm_ptr, int local_size, 
 			    int local_gpids[], int *singlePG )
 {
+    int mpi_errno = MPI_SUCCESS;
     int i;
     int *gpid = local_gpids;
     int lastPGID = -1, pgid;
     MPID_VCR vc;
+    MPIDI_STATE_DECL(MPID_STATE_MPID_GPID_GETALLINCOMM);
+
+    MPIDI_FUNC_ENTER(MPID_STATE_MPID_GPID_GETALLINCOMM);
+
+    MPIU_Assert(comm_ptr->local_size == local_size);
     
     *singlePG = 1;
     for (i=0; i<comm_ptr->local_size; i++) {
@@ -319,14 +322,14 @@ int MPID_GPID_GetAllInComm( MPID_Comm *comm_ptr, int local_size,
 	    lastPGID = pgid;
 	}
 	*gpid++ = vc->pg_rank;
-	if (vc->pg_rank != vc->lpid) {
-	    return 1;
-/*	    printf( "Unexpected results %d != %d\n",
-	    vc->pg_rank, vc->lpid ); */
-	}
+
+        MPIU_DBG_MSG_FMT(COMM,VERBOSE, (MPIU_DBG_FDEST,
+                         "pgid=%d vc->pg_rank=%d",
+                         pgid, vc->pg_rank));
     }
     
-    return 0;
+    MPIDI_FUNC_EXIT(MPID_STATE_MPID_GPID_GETALLINCOMM);
+    return mpi_errno;
 }
 
 #undef FUNCNAME
@@ -680,7 +683,7 @@ int MPIDI_VC_Init( MPIDI_VC_t *vc, MPIDI_PG_t *pg, int rank )
     vc->rndvSend_fn           = MPIDI_CH3_RndvSend;
     vc->rndvRecv_fn           = MPIDI_CH3_RecvRndv;
     vc->eager_max_msg_sz      = MPIDI_CH3_EAGER_MAX_MSG_SIZE;
-    vc->sendNoncontig_fn      = MPIDI_CH3_SendNoncontig;
+    vc->sendNoncontig_fn      = MPIDI_CH3_SendNoncontig_iov;
     MPIU_CALL(MPIDI_CH3,VC_Init( vc ));
     MPIU_DBG_PrintVCState(vc);
 

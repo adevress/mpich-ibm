@@ -8,8 +8,8 @@
 
 #define set_request_info(rreq_, pkt_, msg_type_)		\
 {								\
-    (rreq_)->status.MPI_SOURCE = (pkt_)->match.rank;		\
-    (rreq_)->status.MPI_TAG = (pkt_)->match.tag;		\
+    (rreq_)->status.MPI_SOURCE = (pkt_)->match.parts.rank;	\
+    (rreq_)->status.MPI_TAG = (pkt_)->match.parts.tag;		\
     (rreq_)->status.count = (pkt_)->data_sz;			\
     (rreq_)->dev.sender_req_id = (pkt_)->sender_req_id;		\
     (rreq_)->dev.recv_data_sz = (pkt_)->data_sz;		\
@@ -89,9 +89,9 @@ int MPID_nem_lmt_RndvSend(MPID_Request **sreq_p, const void * buf, int count, MP
     sreq->ch.lmt_tmp_cookie.MPID_IOV_LEN = 0;
 	
     MPIDI_Pkt_init(rts_pkt, MPIDI_NEM_PKT_LMT_RTS);
-    rts_pkt->match.rank	      = comm->rank;
-    rts_pkt->match.tag	      = tag;
-    rts_pkt->match.context_id = comm->context_id + context_offset;
+    rts_pkt->match.parts.rank	      = comm->rank;
+    rts_pkt->match.parts.tag	      = tag;
+    rts_pkt->match.parts.context_id = comm->context_id + context_offset;
     rts_pkt->sender_req_id    = sreq->handle;
     rts_pkt->data_sz	      = data_sz;
 
@@ -165,11 +165,11 @@ static int pkt_RTS_handler(MPIDI_VC_t *vc, MPIDI_CH3_Pkt_t *pkt, MPIDI_msg_sz_t 
     MPIDI_FUNC_ENTER(MPID_STATE_PKT_RTS_HANDLER);
 
     MPIU_DBG_MSG_FMT(CH3_OTHER,VERBOSE,(MPIU_DBG_FDEST, "received LMT RTS pkt, sreq=0x%08x, rank=%d, tag=%d, context=%d, data_sz=" MPIDI_MSG_SZ_FMT,
-                                        rts_pkt->sender_req_id, rts_pkt->match.rank, rts_pkt->match.tag, rts_pkt->match.context_id,
+                                        rts_pkt->sender_req_id, rts_pkt->match.parts.rank, rts_pkt->match.parts.tag, rts_pkt->match.parts.context_id,
                                         rts_pkt->data_sz));
 
     rreq = MPIDI_CH3U_Recvq_FDP_or_AEU(&rts_pkt->match, &found);
-    MPIU_ERR_CHKANDJUMP(rreq == NULL, mpi_errno, MPI_ERR_OTHER, "**nomemreq");
+    MPIU_ERR_CHKANDJUMP1(!rreq, mpi_errno,MPI_ERR_OTHER, "**nomemreq", "**nomemuereq %d", MPIDI_CH3U_Recvq_count_unexp());
 
     set_request_info(rreq, rts_pkt, MPIDI_REQUEST_RNDV_MSG);
 
@@ -179,24 +179,29 @@ static int pkt_RTS_handler(MPIDI_VC_t *vc, MPIDI_CH3_Pkt_t *pkt, MPIDI_msg_sz_t 
     data_len = *buflen - sizeof(MPIDI_CH3_Pkt_t);
     data_buf = (char *)pkt + sizeof(MPIDI_CH3_Pkt_t);
 
-    if (rts_pkt->cookie_len == 0)
+
+
+    if (data_len < rts_pkt->cookie_len)
     {
-        rreq->ch.lmt_tmp_cookie.MPID_IOV_LEN = 0;
-        rreq->dev.iov_count = 0;
+        /* set for the cookie to be received into the tmp_cookie in the request */
+        MPIU_DBG_MSG(CH3_OTHER,VERBOSE,"haven't received entire cookie");
+        MPIU_CHKPMEM_MALLOC(rreq->ch.lmt_tmp_cookie.MPID_IOV_BUF, char *, rts_pkt->cookie_len, mpi_errno, "tmp cookie buf");
+        rreq->ch.lmt_tmp_cookie.MPID_IOV_LEN = rts_pkt->cookie_len;
+
+        rreq->dev.iov[0] = rreq->ch.lmt_tmp_cookie;
+        rreq->dev.iov_count = 1;
+        *rreqp = rreq;
         *buflen = sizeof(MPIDI_CH3_Pkt_t);
-        *rreqp = NULL;
 
         if (found)
         {
-            /* there's no cookie to receive, and we found a match, so handle the cts directly */
-            int complete;
+            /* set do_cts() to be called once we've received the entire cookie */
             MPIU_DBG_MSG(CH3_OTHER,VERBOSE,"posted request found");
-            mpi_errno = do_cts(vc, rreq, &complete);
-            if (mpi_errno) MPIU_ERR_POP (mpi_errno);
-            MPIU_Assert (complete);
+            rreq->dev.OnDataAvail = do_cts;
         }
         else
         {
+            /* receive the rest of the cookie and wait for a match */
             MPIU_DBG_MSG(CH3_OTHER,VERBOSE,"unexpected request allocated");
             rreq->dev.OnDataAvail = 0;
             MPIDI_CH3_Progress_signal_completion();
@@ -204,37 +209,45 @@ static int pkt_RTS_handler(MPIDI_VC_t *vc, MPIDI_CH3_Pkt_t *pkt, MPIDI_msg_sz_t 
     }
     else
     {
-        /* set for the cookie to be received into the tmp_cookie in the request */
-        MPIU_CHKPMEM_MALLOC(rreq->ch.lmt_tmp_cookie.MPID_IOV_BUF, char *, rts_pkt->cookie_len, mpi_errno, "tmp cookie buf");
-        rreq->ch.lmt_tmp_cookie.MPID_IOV_LEN = rts_pkt->cookie_len;
-
-        /* if all data has been received, copy it here, otherwise let channel do the copy */
-        if (data_len >= rts_pkt->cookie_len)
+        if (rts_pkt->cookie_len == 0)
         {
-            MPID_NEM_MEMCPY(rreq->ch.lmt_tmp_cookie.MPID_IOV_BUF, data_buf, rts_pkt->cookie_len);
+            /* there's no cookie to receive */
+            rreq->ch.lmt_tmp_cookie.MPID_IOV_LEN = 0;
+            rreq->dev.iov_count = 0;
+            *buflen = sizeof(MPIDI_CH3_Pkt_t);
             *rreqp = NULL;
-            *buflen = sizeof(MPIDI_CH3_Pkt_t) + rts_pkt->cookie_len;
         }
         else
         {
-            rreq->dev.iov[0] = rreq->ch.lmt_tmp_cookie;
-            rreq->dev.iov_count = 1;
-            *rreqp = rreq;
-            *buflen = sizeof(MPIDI_CH3_Pkt_t);
-
-            if (found)
-            {
-                rreq->dev.OnDataAvail = do_cts;
-            }
-            else
-            {
-                MPIU_DBG_MSG(CH3_OTHER,VERBOSE,"unexpected request allocated");
-                rreq->dev.OnDataAvail = 0;
-                MPIDI_CH3_Progress_signal_completion();
-            }
+            /* receive cookie into tmp_cookie in the request */
+            MPIU_DBG_MSG(CH3_OTHER,VERBOSE,"received entire cookie");
+            MPIU_CHKPMEM_MALLOC(rreq->ch.lmt_tmp_cookie.MPID_IOV_BUF, char *, rts_pkt->cookie_len, mpi_errno, "tmp cookie buf");
+            rreq->ch.lmt_tmp_cookie.MPID_IOV_LEN = rts_pkt->cookie_len;
+        
+            MPID_NEM_MEMCPY(rreq->ch.lmt_tmp_cookie.MPID_IOV_BUF, data_buf, rts_pkt->cookie_len);
+            *buflen = sizeof(MPIDI_CH3_Pkt_t) + rts_pkt->cookie_len;
+            *rreqp = NULL;
         }
+        
+        if (found)
+        {
+            /* have a matching request and the entire cookie (if any), call do_cts() */
+            int complete;
+            MPIU_DBG_MSG(CH3_OTHER,VERBOSE,"posted request found");
+            mpi_errno = do_cts(vc, rreq, &complete);
+            if (mpi_errno) MPIU_ERR_POP(mpi_errno);
+            MPIU_Assert(complete);
+        }
+        else
+        {
+            MPIU_DBG_MSG(CH3_OTHER,VERBOSE,"unexpected request allocated");
+            rreq->dev.OnDataAvail = 0;
+            MPIDI_CH3_Progress_signal_completion();
+        }
+
     }
 
+    
     MPIU_CHKPMEM_COMMIT();
  fn_exit:
     MPIDI_FUNC_EXIT(MPID_STATE_PKT_RTS_HANDLER);
