@@ -1499,7 +1499,8 @@ void recv_sm_cb(void *cd, const DCQuad *_mi, unsigned ct, size_t or,
         MPIDU_Onesided_ctl_t *mc = (MPIDU_Onesided_ctl_t *)_mi;
         MPIDU_Onesided_info_t *mi = (MPIDU_Onesided_info_t *)_mi;
 
-        switch (_mi[0].w0) {
+	// assert(mc->mpid_ctl_w0 == mi->mpid_info_w0);
+        switch (mc->mpid_ctl_w0) {
         /* The following all use msginfo as DCMF_Control_t (DCQuad[1]) */
         case MPID_MSGTYPE_COMPLETE:
                 MPID_assert_debug(ct == MPIDU_1SCTL_NQUADS);
@@ -1642,7 +1643,7 @@ DCMF_Request_t *recv_cb(void *cd, const DCQuad *_mi, unsigned ct,
         MPID_Win *win;
         MPIDU_Onesided_info_t *mi = (MPIDU_Onesided_info_t *)_mi;
 
-        switch (_mi[0].w0) {
+        switch (mi->mpid_info_w0) {
         /* The following all use msginfo as DCQuad[2] */
         case MPID_MSGTYPE_PUT:
 #ifdef USE_DCMF_PUT
