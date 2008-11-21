@@ -375,9 +375,9 @@ int  MPIDI_Irecv(void          * buf,
 int  MPIDI_DCMF_postSyncAck  (MPID_Request * req);
 /** \brief Cancel an MPI_Send(). */
 int  MPIDI_DCMF_postCancelReq(MPID_Request * req);
-void MPIDI_DCMF_procCancelReq(const MPIDI_DCMF_MsgInfo *info, unsigned peer);
+void MPIDI_DCMF_procCancelReq(const MPIDI_DCMF_MsgInfo *info, size_t peer);
 /** \brief This is the general PT2PT control message call-back */
-void MPIDI_BG2S_ControlCB    (void * clientdata, const DCMF_Control_t * p, unsigned peer);
+void MPIDI_BG2S_ControlCB    (void * clientdata, const DCMF_Control_t * p, size_t peer);
 /**
  * \brief Mark a request as cancel-pending
  * \param[in]  _req  The request to cancel

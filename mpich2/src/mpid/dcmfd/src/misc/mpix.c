@@ -13,7 +13,7 @@ unsigned MPIX_torus2rank (unsigned        x,
                          unsigned        z,
                          unsigned        t)
 {
-  unsigned rank;
+  size_t rank;
   int rc = DCMF_Messager_torus2rank(x, y, z, t, &rank);
   if(rc == DCMF_SUCCESS) return rank;
   else return (unsigned)-1;
@@ -45,7 +45,12 @@ void MPIX_rank2torus (unsigned        rank,
                      unsigned       *z,
                      unsigned       *t)
 {
-  DCMF_Messager_rank2torus (rank, x, y, z, t);
+  size_t _x, _y, _z, _t;
+  DCMF_Messager_rank2torus (rank, &_x, &_y, &_z, &_t);
+  *x = _x;
+  *y = _y;
+  *z = _z;
+  *t = _t;
 }
 
 #pragma weak PMI_Comm_rank2torus = MPIX_Comm_rank2torus
@@ -189,9 +194,9 @@ void MPIX_Dump_stacks()
   for (i = 1; i < size; i++)
     {
       if (strings != NULL)
-        fprintf(stderr, "\tFrame %d: %p: %s\n", i, array[i], strings[i]);
+        fprintf(stderr, "\tFrame %zd: %p: %s\n", i, array[i], strings[i]);
       else
-        fprintf(stderr, "\tFrame %d: %p\n", i, array[i]);
+        fprintf(stderr, "\tFrame %zd: %p\n", i, array[i]);
     }
 
   free(strings); /* Since this is not allocated by MPIU_Malloc, do not use MPIU_Free */
