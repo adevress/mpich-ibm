@@ -14,7 +14,7 @@
  *
  * \return The same as DCMF_Control()
  */
-static inline int MPIDI_DCMF_CtrlSend(MPIDI_DCMF_MsgInfo * control, unsigned peerrank)
+static inline int MPIDI_DCMF_CtrlSend(MPIDI_DCMF_MsgInfo * control, size_t peerrank)
 {
   int rc;
   MPID_assert_debug(sizeof(DCMF_Control_t) == sizeof(MPIDI_DCMF_MsgInfo));
@@ -114,7 +114,7 @@ int MPIDI_DCMF_postCancelReq(MPID_Request * req)
  * \param[in] info The contents of the control message as a MPIDI_DCMF_MsgInfo struct
  * \param[in] peer The rank of the node sending the data
  */
-void MPIDI_DCMF_procCancelReq(const MPIDI_DCMF_MsgInfo *info, unsigned peer)
+void MPIDI_DCMF_procCancelReq(const MPIDI_DCMF_MsgInfo *info, size_t peer)
 {
   MPIDI_DCMF_REQUEST_TYPE  type;
   MPIDI_DCMF_MsgInfo       ackinfo;
@@ -149,7 +149,7 @@ void MPIDI_DCMF_procCancelReq(const MPIDI_DCMF_MsgInfo *info, unsigned peer)
  * \param[in] info The contents of the control message as a MPIDI_DCMF_MsgInfo struct
  * \param[in] peer The rank of the node sending the data
  */
-static inline void MPIDI_DCMF_procCanelAck(MPIDI_DCMF_MsgInfo *info, unsigned peer)
+static inline void MPIDI_DCMF_procCanelAck(MPIDI_DCMF_MsgInfo *info, size_t peer)
 {
   MPID_Request *req = (MPID_Request *)info->msginfo.req;
   MPID_assert(req != NULL);
@@ -206,7 +206,7 @@ static inline void MPIDI_DCMF_procCanelAck(MPIDI_DCMF_MsgInfo *info, unsigned pe
  * \param[in] info The contents of the control message as a MPIDI_DCMF_MsgInfo struct
  * \param[in] peer The rank of the node sending the data
  */
-static inline void MPIDI_DCMF_procRzvAck(MPIDI_DCMF_MsgInfo *info, unsigned peer)
+static inline void MPIDI_DCMF_procRzvAck(MPIDI_DCMF_MsgInfo *info, size_t peer)
 {
   MPID_assert(info->msginfo.req != NULL);
   MPID_Request  * sreq = ((MPID_Request *)info->msginfo.req);
@@ -222,7 +222,7 @@ static inline void MPIDI_DCMF_procRzvAck(MPIDI_DCMF_MsgInfo *info, unsigned peer
  * \param[in] p    The contents of the control message as a DCMF_Control_t
  * \param[in] peer The rank of the node sending the data
  */
-void MPIDI_BG2S_ControlCB(void *clientdata, const DCMF_Control_t * p, unsigned peer)
+void MPIDI_BG2S_ControlCB(void *clientdata, const DCMF_Control_t * p, size_t peer)
 {
   MPID_assert_debug(sizeof(DCMF_Control_t) == sizeof(MPIDI_DCMF_MsgInfo));
   MPIDI_DCMF_MsgInfo * info = (MPIDI_DCMF_MsgInfo *) p;

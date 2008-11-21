@@ -323,37 +323,37 @@ void           MPID_Request_set_completed (MPID_Request *req);
  * \{
  */
 DCMF_Request_t * MPIDI_BG2S_RecvCB(void                     * clientdata,
-                                   const MPIDI_DCMF_MsgInfo * msginfo,
+                                   const DCQuad             * msginfo,
                                    unsigned                   count,
-                                   unsigned                   senderrank,
-                                   const unsigned             sndlen,
-                                   unsigned                 * rcvlen,
+                                   size_t                     senderrank,
+                                   const size_t               sndlen,
+                                   size_t                   * rcvlen,
                                    char                    ** rcvbuf,
                                    DCMF_Callback_t    * const cb_info);
 void MPIDI_BG2S_RecvShortCB(void                     * clientdata,
-                            const MPIDI_DCMF_MsgInfo * msginfo,
+                            const DCQuad             * msginfo,
                             unsigned                   count,
-                            unsigned                   senderrank,
+                            size_t                     senderrank,
                             const char               * sndbuf,
-                            unsigned                   sndlen);
+                            size_t                     sndlen);
 void MPIDI_BG2S_RecvRzvCB(void                         * clientdata,
-                          const MPIDI_DCMF_MsgEnvelope * rzv_envelope,
+                          const DCQuad                 * rzv_envelope,
                           unsigned                       count,
-                          unsigned                       senderrank,
+                          size_t                         senderrank,
                           const char                   * sndbuf,
-                          unsigned                       sndlen);
+                          size_t                         sndlen);
 void MPIDI_BG2S_SsmCtsCB(void                     * clientdata,
-                         const MPIDI_DCMF_MsgInfo * msginfo,
+                         const DCQuad             * msginfo,
                          unsigned                   count,
-                         unsigned                   senderrank,
+                         size_t                     senderrank,
                          const char               * sndbuf,
-                         unsigned                   sndlen);
+                         size_t                     sndlen);
 void MPIDI_BG2S_SsmAckCB(void                     * clientdata,
-                         const MPIDI_DCMF_MsgInfo * msginfo,
+                         const DCQuad             * msginfo,
                          unsigned                   count,
-                         unsigned                   senderrank,
+                         size_t                     senderrank,
                          const char               * sndbuf,
-                         unsigned                   sndlen);
+                         size_t                     sndlen);
 void MPIDI_DCMF_SendDoneCB    (void *sreq, DCMF_Error_t *err);
 void MPIDI_DCMF_RecvDoneCB    (void *rreq, DCMF_Error_t *err);
 void MPIDI_DCMF_RecvRzvDoneCB (void *rreq, DCMF_Error_t *err);

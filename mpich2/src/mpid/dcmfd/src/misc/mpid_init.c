@@ -100,9 +100,9 @@ int MPID_Init(int * argc,
           NULL,
           NULL,
         };
-      ssm_msg_config.cb_recv_short = (DCMF_RecvSendShort) MPIDI_BG2S_SsmCtsCB;
+      ssm_msg_config.cb_recv_short = MPIDI_BG2S_SsmCtsCB;
       DCMF_Send_register (&MPIDI_Protocols.ssm_cts, &ssm_msg_config);
-      ssm_msg_config.cb_recv_short = (DCMF_RecvSendShort) MPIDI_BG2S_SsmAckCB;
+      ssm_msg_config.cb_recv_short = MPIDI_BG2S_SsmAckCB;
       DCMF_Send_register (&MPIDI_Protocols.ssm_ack, &ssm_msg_config);
     }
   else
@@ -114,9 +114,9 @@ int MPID_Init(int * argc,
 	{
 	  DCMF_DEFAULT_SEND_PROTOCOL,
 	  DCMF_DefaultNetwork,
-	  (DCMF_RecvSendShort) MPIDI_BG2S_RecvShortCB,
+	  MPIDI_BG2S_RecvShortCB,
 	  NULL,
-	  (DCMF_RecvSend)      MPIDI_BG2S_RecvCB,
+	  MPIDI_BG2S_RecvCB,
 	  NULL,
 	};
       DCMF_Send_register (&MPIDI_Protocols.send, &default_config);
@@ -128,9 +128,9 @@ int MPID_Init(int * argc,
 	{
 	  DCMF_RZV_SEND_PROTOCOL,
 	  DCMF_DefaultNetwork,
-	  (DCMF_RecvSendShort) MPIDI_BG2S_RecvShortCB,
+	  MPIDI_BG2S_RecvShortCB,
 	  NULL,
-	  (DCMF_RecvSend)      MPIDI_BG2S_RecvCB,
+	  MPIDI_BG2S_RecvCB,
 	  NULL,
 	};
       dcmf_rc = DCMF_Send_register (&MPIDI_Protocols.mrzv, &rzv_config);
@@ -143,8 +143,8 @@ int MPID_Init(int * argc,
       /* ---------------------------------- */
       /* Register rzv point-to-point rts    */
       /* ---------------------------------- */
-      default_config.cb_recv_short = (DCMF_RecvSendShort) MPIDI_BG2S_RecvRzvCB;
-      default_config.cb_recv       = (DCMF_RecvSend)      NULL;
+      default_config.cb_recv_short = MPIDI_BG2S_RecvRzvCB;
+      default_config.cb_recv       = NULL;
       DCMF_Send_register (&MPIDI_Protocols.rzv, &default_config);
     }
 
@@ -161,7 +161,7 @@ int MPID_Init(int * argc,
     {
       DCMF_DEFAULT_CONTROL_PROTOCOL,
       DCMF_DefaultNetwork,
-      (DCMF_RecvControl) MPIDI_BG2S_ControlCB, NULL
+      MPIDI_BG2S_ControlCB, NULL
     };
   DCMF_Control_register (&MPIDI_Protocols.control, &control_config);
 
