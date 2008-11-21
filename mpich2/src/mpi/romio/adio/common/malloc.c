@@ -57,7 +57,7 @@ void *ADIOI_Malloc_fn(size_t size, int lineno, char *fname)
 	FPRINTF(stderr, "Out of memory in file %s, line %d\n", fname, lineno);
 	MPI_Abort(MPI_COMM_WORLD, 1);
     }
-    DBG_FPRINTF(stderr, "ADIOI_Malloc %s:<%d> %#.8X (%#X)\n", fname, lineno,(int) new, size);
+    DBG_FPRINTF(stderr, "ADIOI_Malloc %s:<%d> %p (%#zX)\n", fname, lineno, new, size);
     return new;
 }
 
@@ -71,7 +71,7 @@ void *ADIOI_Calloc_fn(size_t nelem, size_t elsize, int lineno, char *fname)
 	FPRINTF(stderr, "Out of memory in file %s, line %d\n", fname, lineno);
 	MPI_Abort(MPI_COMM_WORLD, 1);
     }
-    DBG_FPRINTF(stderr, "ADIOI_Calloc %s:<%d> %#.8X\n", fname, lineno, (int)new);
+    DBG_FPRINTF(stderr, "ADIOI_Calloc %s:<%d> %p\n", fname, lineno, new);
     return new;
 }
 
@@ -85,14 +85,14 @@ void *ADIOI_Realloc_fn(void *ptr, size_t size, int lineno, char *fname)
 	FPRINTF(stderr, "realloc failed in file %s, line %d\n", fname, lineno);
 	MPI_Abort(MPI_COMM_WORLD, 1);
     }
-    DBG_FPRINTF(stderr, "ADIOI_Realloc %s:<%d> %#.8X\n", fname, lineno, (int)new);
+    DBG_FPRINTF(stderr, "ADIOI_Realloc %s:<%d> %p\n", fname, lineno, new);
     return new;
 }
 
 
 void ADIOI_Free_fn(void *ptr, int lineno, char *fname)
 {
-    DBG_FPRINTF(stderr, "ADIOI_Free %s:<%d> %#.8X\n", fname, lineno, (int)ptr);
+    DBG_FPRINTF(stderr, "ADIOI_Free %s:<%d> %p\n", fname, lineno, ptr);
     if (!ptr) {
 	FPRINTF(stderr, "Attempt to free null pointer in file %s, line %d\n", fname, lineno);
 	MPI_Abort(MPI_COMM_WORLD, 1);
