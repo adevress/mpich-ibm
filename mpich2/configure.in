@@ -718,7 +718,7 @@ case "$enable_error_messages" in
 esac
 AC_DEFINE_UNQUOTED(MPICH_ERROR_MSG_LEVEL,$error_message_kind,[define to enable error messages])
 
-# ----------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
 #
 # enable-timing and with-logging
 #
@@ -1556,7 +1556,7 @@ if test "$ENABLE_SHLIB" != "none" -o "$enable_debuginfo" != "no" ; then
    CREATESHLIB=`pwd`/src/util/createshlib
 fi
 AC_SUBST(CREATESHLIB)
-# ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
 # Basic properties of the C compiler; some are needed for the language 
 # bindings tests.
 # Set CFLAGS for enable strict if necessary.  Do this *first* because
@@ -1572,7 +1572,11 @@ fi
 # some debugging macros may want to use a compiler-provided symbol
 # for the function name, and this check makes it possible to 
 # define such macros in a way that is always correct.
-PAC_CC_FUNCTION_NAME_SYMBOL
+dnl PAC_CC_FUNCTION_NAME_SYMBOL
+pac_cv_have__func__=no
+pac_cv_have_cap__func__=no
+pac_cv_have__function__=yes
+AC_DEFINE(HAVE__FUNCTION__,,[define if the compiler defines __FUNCTION__])
 
 # Check if $MPI_DEFAULT_COPTS is valid with $CC
 if test "$enable_default_optimize" = "yes" \
@@ -1624,7 +1628,7 @@ AC_SUBST(NO_WEAK_SYM)
 AC_SUBST(NO_WEAK_SYM_TARGET)
 AC_SUBST(PROFILE_DEF_MPI)
 
-# ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
 # Support for the language bindings: Fortran 77, Fortran 90, and C++
 #
 # First, we handle the case of no explicit enable/disable option.  In that
@@ -2796,7 +2800,7 @@ if test -z "$PMPIFLIBNAME" ; then
     PMPIFLIBNAME=$PMPILIBNAME
 fi
 
-# ----------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
 # 
 # Add the steps for debugger support
 BUILD_TVDLL=no
@@ -3021,18 +3025,19 @@ You may need to specify an additional argument to your C compiler to
 force it to allow unaligned accesses.)])
 fi
 # Check for __func__ (defined in C99) or __FUNCTION__ (defined in older GCC)
-AC_CACHE_CHECK([whether $CC supports __func__],pac_cv_cc_has___func__,
-[AC_TRY_COMPILE([],
- [const char *cp = __func__; ],pac_cv_cc_has___func__=yes,
-pac_cv_cc_has___func__=no)])
-if test "$pac_cv_cc_has___func__" != "yes" ; then
-    AC_CACHE_CHECK([whether $CC supports __FUNCTION__],pac_cv_cc_has___FUNCTION__,
-[AC_TRY_COMPILE([],
- [const char *cp = __FUNCTION__;],pac_cv_cc_has___FUNCTION__=yes,
-pac_cv_cc_has___FUNCTION__=no)])
-fi
+dnl AC_CACHE_CHECK([whether $CC supports __func__],pac_cv_cc_has___func__,
+dnl [AC_TRY_COMPILE([],
+dnl  [const char *cp = __func__; ],pac_cv_cc_has___func__=yes,
+dnl pac_cv_cc_has___func__=no)])
+dnl if test "$pac_cv_cc_has___func__" != "yes" ; then
+dnl     AC_CACHE_CHECK([whether $CC supports __FUNCTION__],pac_cv_cc_has___FUNCTION__,
+dnl [AC_TRY_COMPILE([],
+dnl  [const char *cp = __FUNCTION__;],pac_cv_cc_has___FUNCTION__=yes,
+dnl pac_cv_cc_has___FUNCTION__=no)])
+dnl fi
+pac_cv_cc_has___FUNCTION__=yes
 
-# ----------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
 # Attempt to support dependency handling
 # ----------------------------------------------------------------------------
 # Set a default for MAKE_DEPEND_C
@@ -3815,7 +3820,7 @@ if test -n "$MPIR_INTEGER16_CTYPE" ; then
    AC_DEFINE_UNQUOTED(MPIR_INTEGER16_CTYPE,$MPIR_INTEGER16_CTYPE,[C type to use for MPI_INTEGER16])
 fi
 
-# ----------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
 # We can now create the Fortran versions of the datatype values, along with
 # some of the other datatype-dependent sizes
 
@@ -5252,7 +5257,7 @@ if test "$ac_cv_func_fdopen" = "yes" ; then
 fi
 
 
-# ----------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
 # Support for timers.  The following code processes the 
 #  --enable-timer-type=name argument and selects the timer based on 
 # both that field and what configure is able to determine is available.
@@ -5725,7 +5730,7 @@ export LDFLAGS
 export F77
 export F90
 #
-# -----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 # Configure threads first.  This is necessary to obtain all required
 # definitions, flags, and libraries that the other subsystems will need
 #
