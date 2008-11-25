@@ -11,7 +11,7 @@ namespace classic {
       
       /** An interface for creating distributed array descriptors.
 	  
-      $Id$
+      $Id: DistArrayDescrFactoryPort.h,v 1.1 2003-08-01 00:41:53 manoj Exp $
       
       This interface allows users to create, clone, and destroy
       descriptors for distributed array objects.

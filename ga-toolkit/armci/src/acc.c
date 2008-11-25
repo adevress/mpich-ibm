@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: acc.c,v 1.13 2006-09-13 23:43:36 andriy Exp $ */
 
 #if defined(__crayx1)
 #else

@@ -1,4 +1,4 @@
-/* $Id$ 
+/* $Id: pgs.c,v 1.17.2.1 2007-05-04 22:04:32 manoj Exp $ 
  * Note: the general ARMCI copyright does not apply to code included in this file 
  *       Explicit permission is required to copy/modify this code. 
  */
@@ -19,6 +19,7 @@
 #include <elan4/dma.h>
 #include <elan4/registers.h>
 #include "pgs_thread.h"
+#include "armci.h"
 
 #if QSNETLIBS_VERSION_CODE < QSNETLIBS_VERSION(1,18,0)
 #define BINLOAD 1
@@ -27,7 +28,7 @@
 #endif
 
 
-extern void armci_die();
+/* extern void armci_die(); */
 extern int armci_me;
 
 #ifndef offsetof
@@ -939,7 +940,7 @@ ELAN_EVENT *elan_getbflag(void *pgs,u_int destvp, int lo, int hi, int wait, long
     if (!(rdesc = (PGS_REQDESC *)ACQUIRE_LH(pgsr)))
           elan_exception(pgsr->pr_state->elan_state, ELAN_ENOMEM,
                        "elan_getbuflag: failed to allocate descriptor");
-    //rdesc->r_qdmasize = BFLAGHSIZE;
+    /* rdesc->r_qdmasize = BFLAGHSIZE; */
     rdesc->r_qdmasize = 128; 
     rdesc->r_req.RangeLo = lo;
     rdesc->r_req.RangeHi = hi;
@@ -947,7 +948,7 @@ ELAN_EVENT *elan_getbflag(void *pgs,u_int destvp, int lo, int hi, int wait, long
     rdesc->r_vp = destvp;
     rdesc->r_req.req_type = PGS_BFLAG;
     rdesc->r_req.req_rvp = pgsstate->elan_state->vp;
-    //rdesc->r_req.src = rdesc->r_pbflags;
+    /* rdesc->r_req.src = rdesc->r_pbflags; */
     rdesc->r_req.src = MAIN2ELAN(pgsr->pr_rail->rail_ctx, _bflags);
     rdesc->r_req.dst = MAIN2ELAN(pgsr->pr_rail->rail_ctx, retval); 
     event = issueStridedRequest(pgsr, rdesc);
@@ -961,8 +962,8 @@ void elan_clearbflag(void *pgs, int which)
     pgsstate_t *pgsstate = (pgsstate_t *) pgs;
     PGS_RAIL *pgsr = pgsstate->pgs_rails;
     elan4_store64(0,_bflags+which); 
-//    bzero(pgsr->bflags+which,sizeof(bflag_t));
-//    MEMBAR_STORESTORE();
+    /* bzero(pgsr->bflags+which,sizeof(bflag_t));
+       MEMBAR_STORESTORE(); */
 }
 
 
@@ -1005,12 +1006,12 @@ static void _elan_pgsFree (ELAN_EVENT *event)
     PGS_RAIL    *pgsrail = r->r_event.handle;
     ELAN_RAIL   *rail = pgsrail->pr_rail;
 
-    // clear the descriptor for reuse
+    /* clear the descriptor for reuse */
     r->r_dests = 0;
 
     MUTEX_LOCK(&pgsrail->pr_mutex);
     
-    // reprime the software event
+    /* reprime the software event */
     r->r_done = 0;
     PRIMEEVENT_WORD(rail->rail_ctx, (E4_Event *)&r->r_elan->re_doneEvent, 1);
     

@@ -1,13 +1,9 @@
-/* $Id$ */
+/* $Id: memlock.c,v 1.24.2.3 2007-08-29 17:32:32 manoj Exp $ */
 #include "armcip.h"
 #include "locks.h"
 #include "copy.h"
 #include "memlock.h"
 #include <stdio.h>
-
-#ifdef ARMCIX
-#include "x/armcix.h"
-#endif
 
 #define DEBUG_ 0
 #define INVALID_VAL -9999999
@@ -189,7 +185,6 @@ void armci_lockmem(void *start, void *end, int proc)
         pend   = (char*)pstart + bytes;
      }
 #endif
-    
 #ifdef SGIALTIX
      if (proc == armci_me) {
     pstart = shmem_ptr(pstart,armci_me);
@@ -247,7 +242,9 @@ void armci_lockmem(void *start, void *end, int proc)
                   break;
 
               }
-              
+              /*
+              printf("%d: locking %ld-%ld (%d) conflict\n",
+                  armci_me,  */
             }
        }
         

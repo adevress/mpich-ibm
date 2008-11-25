@@ -232,7 +232,7 @@ char *argv[];
     pthread_setconcurrency(P);
     
     printf("the concurrency level is %d \n", pthread_getconcurrency());
-    pthread_setscope_np(4);
+    /*pthread_setscope_np(4);*/
     
     SlaveStart(MyNum);
 

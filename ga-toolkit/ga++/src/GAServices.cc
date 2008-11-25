@@ -72,6 +72,11 @@ GA::GAServices::createGA_Ghosts(int type, int ndim, int dims[], int width[],
   return GA;
 }
 
+int
+GA::GAServices::getDebug() {
+    return GA_Get_debug();
+}
+
 void 
 GA::GAServices::brdcst(void *buf, int lenbuf, int root) {
   GA_Brdcst(buf, lenbuf, root);
@@ -85,6 +90,11 @@ GA::GAServices::clusterNnodes() {
 int 
 GA::GAServices::clusterNodeid() {
   return GA_Cluster_nodeid();
+}
+
+int 
+GA::GAServices::clusterProcNodeid(int iproc) {
+  return GA_Cluster_proc_nodeid(iproc);
 }
 
 int 
@@ -167,6 +177,10 @@ GA::GAServices::memoryLimited() {
   return GA_Memory_limited();
 }
 
+void GA::GAServices::nbWait(GANbhdl *nbhandle) {
+  NGA_NbWait(nbhandle);
+}
+
 int
 GA::GAServices::nodeid() {
   return GA_Nodeid();
@@ -180,6 +194,11 @@ GA::GAServices::nodes() {
 void 
 GA::GAServices::printStats() {
   GA_Print_stats();
+}
+
+void
+GA::GAServices::setDebug(int dbg) {
+    return GA_Set_debug(dbg);
 }
 
 void 
@@ -211,3 +230,8 @@ int
 GA::GAServices::usesFAPI() {
   return GA_Uses_fapi();
 }
+
+double GA::GAServices::wtime() {
+    return GA_Wtime();
+}
+

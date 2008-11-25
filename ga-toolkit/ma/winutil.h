@@ -2,7 +2,7 @@
 #define _WINUTIL_H
 
 /*
- * $Id$
+ * $Id: winutil.h,v 1.2 2000-07-04 05:54:56 d3g001 Exp $
  */
 
 #define bzero(A,N) memset((A), 0, (N))

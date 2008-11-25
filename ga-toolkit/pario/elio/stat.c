@@ -1,3 +1,5 @@
+/* $Id: stat.c,v 1.20.10.3 2007-08-30 18:19:44 manoj Exp $ */
+
 #include "eliop.h"
 #include "chemio.h"
  
@@ -122,7 +124,7 @@ int  elio_stat(char *fname, stat_t *statinfo)
 	
 #   if defined(CRAY) || defined(NEC)
 	if(statfs(fname, &ufs_statfs, sizeof(ufs_statfs), 0) != 0)
-#elif defined (CATAMOUNT)
+#   elif defined (CATAMOUNT)
         statinfo->avail =2*1024*1024*128; 
         return(ELIO_OK);
 #   else

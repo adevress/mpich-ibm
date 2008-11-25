@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: shared.files.c,v 1.14 2002-11-09 06:05:40 sohirata Exp $ */
 /* DISCLAIMER
  *
  * This material was prepared as an account of work sponsored by an
@@ -100,7 +100,9 @@ Integer hndl;
 #       ifdef  PARAGON
           SF[hndl].fd = elio_gopen(SF[hndl].fname,ELIO_RW);
 #       else
-          SF[hndl].fd = elio_open(SF[hndl].fname,ELIO_RW, ELIO_SHARED);
+          if (ME() == 0) SF[hndl].fd = elio_open(SF[hndl].fname,ELIO_RW, ELIO_SHARED);
+          SYNC();
+          if (ME() != 0) SF[hndl].fd = elio_open(SF[hndl].fname,ELIO_RW, ELIO_SHARED);
 #       endif
 
         if(SF[hndl].fd==NULL) ERROR("sf_create: could not open file",0);
@@ -112,6 +114,58 @@ Integer hndl;
         return(ELIO_OK);
 }
 
+
+/**
+ * takes an additional input suffix which is appended to the filename instead
+ * of the handle. This will give users complete control over the filename as it
+ * is written to and read from disk. 
+ */
+Integer sf_create_suffix(fname, size_hard_limit, size_soft_limit,
+                   req_size, handle, suffix)
+        char *fname;
+        SFsize_t *size_hard_limit, *size_soft_limit, *req_size;
+        Integer *handle;
+        Integer *suffix;
+{
+Integer hndl;
+ 
+        SYNC();
+
+        /*** Get next free SF handle ***/
+        if( (hndl = sfi_get_handle()) == -1) 
+        {
+           ERROR("sf_create_suffix: too many shared files ",
+                 (int)_max_shared_files);
+        }
+        
+        *handle = hndl - SF_OFFSET;
+
+        /*generate file name(s) */
+        sprintf(SF[hndl].fname,"%s.%d",fname, (int) *suffix);
+
+#   ifdef  PARAGON
+        SF[hndl].fd = elio_gopen(SF[hndl].fname,ELIO_RW);
+#   else
+        if (ME() == 0)
+           SF[hndl].fd = elio_open(SF[hndl].fname,ELIO_RW, ELIO_SHARED);
+        
+        SYNC();
+        
+        if (ME() != 0)
+           SF[hndl].fd = elio_open(SF[hndl].fname,ELIO_RW, ELIO_SHARED);
+#   endif
+
+        if(SF[hndl].fd==NULL) ERROR("sf_create_suffix: could not open file",0);
+        if(SF[hndl].fd->fd==-1) ERROR("sf_create_suffix: descriptor -1",0);
+
+        SF[hndl].soft_size = *size_soft_limit;
+        SF[hndl].hard_size = *size_hard_limit;
+        SYNC();
+        
+        return(ELIO_OK);
+}
+
+/*****************************************************************************/
 
 Integer FATR sf_destroy_(s_a)
         Integer *s_a;                      /*input:SF handle */
@@ -130,6 +184,26 @@ Integer handle = *s_a+SF_OFFSET;
         sfi_release_handle(s_a);
 
         SYNC();
+
+        return(ELIO_OK);
+}
+
+/*\ close rw file and open as read only
+\*/
+Integer FATR sf_rwtor_(s_a)
+        Integer *s_a;     /* input:SF handle */
+{
+Integer handle = *s_a+SF_OFFSET;
+
+        elio_close(SF[handle].fd);
+#       ifdef  PARAGON
+          SF[handle].fd = elio_gopen(SF[handle].fname,ELIO_RW);
+#       else
+          SF[handle].fd = elio_open(SF[handle].fname,ELIO_R, ELIO_SHARED);
+#       endif
+
+        if(SF[handle].fd==NULL) ERROR("sf_open: could not open file",0);
+        if(SF[handle].fd->fd==-1) ERROR("sf_open: descriptor -1",0);
 
         return(ELIO_OK);
 }

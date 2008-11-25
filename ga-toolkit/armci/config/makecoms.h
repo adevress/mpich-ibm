@@ -30,7 +30,7 @@ ifeq ($(ARMCI_NETWORK),DCMFMPI)
       COMM_LIBS = -L$(MPI_LIB)
    endif
    DCMFMPI_LIB_NAME = -lfmpich.cnk -lmpich.cnk -ldcmfcoll.cnk -ldcmf.cnk  \
-   -lpthread -lrt -L${BG_RUNTIMEPATH}/SPI -lSPI.cna 
+   -lpthread -lrt -L${BGP_RUNTIMEPATH}/SPI -lSPI.cna 
    COMM_LIBS += $(DCMFMPI_LIB_NAME)
 endif
 ifeq ($(ARMCI_NETWORK),BGML)
@@ -75,31 +75,7 @@ ifeq ($(ARMCI_NETWORK),CRAY-SHMEM)
 endif
 
 ifeq ($(ARMCI_NETWORK),PORTALS)
-
-  ifndef PORTALS_NAL
-    PORTALS_NAL = p3nal\_utcp
-  endif
-
-  COMM_INCLUDES = -I/usr/local/include
-  COMM_LIBS = -L/usr/local/lib
-
-  ifdef PORTALS_INCLUDE
-    COMM_INCLUDES = -I$(PORTALS_INCLUDE)
-  endif
-
-  ifdef PORTALS_LIB
-    COMM_LIBS = -L$(PORTALS_LIB)
-  endif
-
-  COMM_DEFINES = -DPORTALS -DP3_NAL=\<$(PORTALS_NAL)\.h\>
-  ifndef PORTALS_LIB_NAMES
-    PORTALS_NAL_STR = utcp
-    PORTALS_LIB_NAMES = -lp3api -lp3lib -lp3rt -l$(PORTALS_NAL_STR)lib
-  endif
-
-#  COMM_LIBS += $(PORTALS_LIB_NAMES) 
-   COMM_LIBS += -lsma 
-
+  COMM_DEFINES = -DPORTALS
 endif
 
 ifeq ($(ARMCI_NETWORK),VIA)
@@ -122,7 +98,9 @@ ifeq ($(ARMCI_NETWORK),OPENIB)
   ifdef IB_LIB
     COMM_LIBS = -L$(IB_LIB)
   endif
-  IB_LIB_NAME = -libverbs
+  ifndef IB_LIB_NAME
+    IB_LIB_NAME = -libverbs
+  endif
   COMM_LIBS += $(IB_LIB_NAME)
 endif
 

@@ -1,7 +1,4 @@
-/* $Id$ */
-
 #include<stdio.h>
-
 /* Machine-dependent pthreads configuration and inline functions.
    powerpc version.
    Copyright (C) 1996, 1997, 1998, 2000, 2001 Free Software Foundation, Inc.
