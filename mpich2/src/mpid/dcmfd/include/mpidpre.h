@@ -68,37 +68,7 @@ typedef DCQuad DCMF_CollectiveProtocol_t[1];
 }
 #endif /* !MPID_Dev_datatype_destroy_hook */
 
-/**
- * ******************************************************************
- * \brief Mutexes for interrupt driven mode
- * ******************************************************************
- */
-#ifdef MPID_CS_ENTER
-#error "MPID_CS_ENTER is already defined"
-#endif
-#define MPID_DEFINES_MPID_CS 1
-#if (MPICH_THREAD_LEVEL != MPI_THREAD_MULTIPLE)
-#define MPID_CS_INITIALIZE() {}
-#define MPID_CS_FINALIZE()   {}
-#define MPID_CS_ENTER()      {}
-#define MPID_CS_EXIT()       {}
-#define MPID_CS_CYCLE()      {}
-#else
-#define MPID_CS_INITIALIZE()                                          \
-{                                                                     \
-  /* Create thread local storage for nest count that MPICH uses */    \
-  MPID_Thread_tls_create(NULL, &MPIR_ThreadInfo.thread_storage, NULL);   \
-}
-#define MPID_CS_FINALIZE()                                            \
-{                                                                     \
-  /* Destroy thread local storage created during MPID_CS_INITIALIZE */\
-  MPID_Thread_tls_destroy(&MPIR_ThreadInfo.thread_storage, NULL);	      \
-}
-#define MPID_CS_ENTER()      DCMF_CriticalSection_enter(0);
-#define MPID_CS_EXIT()       DCMF_CriticalSection_exit(0);
-#define MPID_CS_CYCLE()      DCMF_CriticalSection_cycle(0);
-#endif
-
+#include <mpidthread.h>
 
 typedef int                 MPIDI_VCR;
 typedef struct MPIDI_VCRT * MPID_VCRT;
