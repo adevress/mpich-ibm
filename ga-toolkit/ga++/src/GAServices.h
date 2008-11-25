@@ -193,7 +193,7 @@ class GAServices {
    GlobalArray * createGA_Ghosts(int type, int ndim, int dims[], 
 				 int width[], char *array_name, int map[], 
 				 int nblock[]);
-  
+
   /**
    * @param lenbuf      - length of buffer      [input]
    * @param buf[lenbuf] - data                  [input/output]
@@ -206,6 +206,14 @@ class GAServices {
    * \n This is a collective operation. 
    */
   void brdcst(void *buf, int lenbuf, int root);
+
+  /**
+   * Returns the current value of the internal debug flag. This is 0 if
+   * the debug flag is false, 1 if it is true.
+   * This is a local operation.
+   */
+  int getDebug();
+
 
   /**
    * This functions returns the total number of nodes that the program is 
@@ -222,6 +230,14 @@ class GAServices {
    * \n This is a  local operation. 
    */
   int clusterNodeid();
+
+  /**  
+   * This function returns the cluster node ID of the specified process.
+   * On SMP architectures with more than one processor per node, several
+   * processes may return the same node id. 
+   * \n This is a  local operation. 
+   */
+  int clusterProcNodeid(int iproc);
   
   /**
    * This function returns the number of processors available on node inode. 
@@ -411,6 +427,26 @@ class GAServices {
   int memoryLimited();
 
   /**
+   * Force completion of a nonblocking operation locally. Waiting on a
+   * nonblocking put or an accumulate operation assures that data was injected
+   * into the network and the user buffer can be now be reused. Completing a get
+   * operation assures data has arrived into the user memory and is ready for
+   * use. Wait operation ensures only local completion. Unlike their blocking
+   * counterparts, the nonblocking operations are not ordered with respect to
+   * the destination. Performance being one reason, the other reason is that by
+   * ensuring ordering we incur additional and possibly unnecessary overhead on
+   * applications that do not require their operations to be ordered. For cases
+   * where ordering is necessary, it can be done by calling a fence operation.
+   * The fence operation is provided to the user to confirm remote completion if
+   * needed.
+   *
+   * This is a local operation.
+   *
+   * @param nbhandle    - nonblocking handle                         [input]
+   */
+  void nbWait(GANbhdl *nbhandle);
+
+  /**
    * Returns the GA process id (0, ..., ga_Nnodes()-1) of the requesting 
    * compute process. This operation is local. 
    */
@@ -435,10 +471,25 @@ class GAServices {
   void printStats();
   
   /**
+   * @param dbg       - value to set internal flag           [input]
+   *
+   * This function sets an internal flag in the GA library to either true or
+   * false. The value of this flag can be recovered at any time using the
+   * getDebug function. The flag is set to false when the the GA library
+   * is initialized. This can be useful in a number of debugging situations,
+   * especially when examining the behavior of routines that are called in
+   * multiple locations in a code. 
+   *
+   * This is a local operation.
+   */
+  void setDebug(int dbg);
+
+  /**
    * @param limit    - the amount of memory in bytes per process    [input]
    * 
-   * Sets the amount of memory to be used (in bytes) per process. 
-   * \n This is a local operation. 
+   * Sets the amount of memory to be used (in bytes) per process.
+   * 
+   * This is a local operation. 
    */
   void setMemoryLimit(size_t limit);
   
@@ -475,6 +526,23 @@ class GAServices {
    * Returns "1" if uses fortran API, else returns "0"
    */
   int usesFAPI();
+      
+  /**
+   * This function return a wall (or elapsed) time on the calling
+   * processor. Returns time in seconds representing elapsed wall-clock time
+   * since an arbitrary time in the past. Example:
+   *
+   *     double starttime, endtime;
+   *     starttime = GA::SERVICES.wtime();
+   *     {{.... code snippet to be timed ....}}
+   *     endtime   = GA::SERVICES.wtime();
+   *     printf("Time taken = %lf seconds\n", endtime-starttime);
+   *
+   * This is a local operation.
+   * This function is only available in release 4.1 or greater.
+   */
+  double wtime();
+   
 };
 
 

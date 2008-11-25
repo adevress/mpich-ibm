@@ -1,4 +1,4 @@
-/* $Header$ */
+/* $Header: /tmp/hpctools/ga/tcgmsg/ipcv4.0/test.c,v 1.13 2004-04-01 02:04:57 manoj Exp $ */
 
 #include <stdio.h>
 #include <unistd.h>

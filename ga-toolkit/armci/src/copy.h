@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: copy.h,v 1.86.2.6 2007-08-29 17:32:32 manoj Exp $ */
 #ifndef _COPY_H_
 #define _COPY_H_
 
@@ -12,7 +12,7 @@
 #endif
 
 #if defined(NOFORT) || defined(HITACHI) || defined(CRAY_T3E)\
-        || defined(CRAY_SHMEM) || defined(BGML)
+        || defined(XT3) || defined(BGML)
 #  define MEMCPY
 #endif
 #if defined(LINUX64) && defined(SGIALTIX) && defined(MPI)
@@ -37,12 +37,12 @@
 #   define PTR_ALIGN
 #endif
 
-#if defined(NB_NONCONT) && !defined(CRAY_SHMEM) && !defined(QUADRICS)
-#error NB_NONCONT can only be defined for CRAY-SHMEM and ELAN
+#if defined(NB_NONCONT) && !defined(CRAY_SHMEM) && !defined(QUADRICS) && !defined(PORTALS)
+#error NB_NONCONT is only available on CRAY_SHMEM,QUADRICS and PORTALS
 #endif
 
 #if defined(SHMEM_HANDLE_SUPPORTED) && !defined(CRAY_SHMEM)
-#warning SHMEM_HANDLE_SUPPORTED should not be defined on a non CRAY_SHMEM network
+#error SHMEM_HANDLE_SUPPORTED should not be defined on a non CRAY_SHMEM network
 #endif
 
 /* 08/30/06 moved up here from lines 252-397, MEM_FENCE before FENCE_NODE */
@@ -193,9 +193,9 @@
 #   if   defined(QUADRICS)
 
 #       define armcill_nb_put(_dst, _src, _sz, _proc, _hdl)\
-               elan_put(elan_base->state,_src,_dst,(size_t)_sz,_proc)
+               _hdl = elan_put(elan_base->state,_src,_dst,(size_t)_sz,_proc)
 #       define armcill_nb_get(_dst, _src, _sz, _proc, _hdl)\
-               elan_get(elan_base->state,_src,_dst,(size_t)_sz,_proc)
+               _hdl =  elan_get(elan_base->state,_src,_dst,(size_t)_sz,_proc)
 #       define armcill_nb_wait(_hdl)\
                elan_wait(_hdl,100)
 
@@ -203,23 +203,18 @@
 
 #       define armcill_nb_wait(_hdl)\
                shmem_wait_nb(_hdl)
-
+/*VT:this should be ifdef'ed based on if shmem_handle is defined or not*/
 #       if defined (XT3)
 #           define armcill_nb_put(_dst, _src, _sz, _proc, _hdl)\
                    shmem_putmem(_dst, _src, (size_t)_sz, _proc)
-#       else
-#           define armcill_nb_put(_dst, _src, _sz, _proc, _hdl)\
-                   shmem_putmem_nb(_dst, _src, (size_t)_sz, _proc, _hdl)
-#       endif
-
-#       if defined (XT3)
 #           define armcill_nb_get(_dst, _src, _sz, _proc, _hdl)\
                    shmem_getmem(_dst, _src, (size_t)_sz, _proc)
 #       else
+#           define armcill_nb_put(_dst, _src, _sz, _proc, _hdl)\
+                   _hdl = shmem_putmem_nb(_dst, _src, (size_t)_sz, _proc, &(_hdl))
 #           define armcill_nb_get(_dst, _src, _sz, _proc, _hdl)\
-                   shmem_getmem_nb(_dst, _src, (size_t)_sz, _proc, _hdl)
+                   _hdl = shmem_getmem_nb(_dst, _src, (size_t)_sz, _proc, &(_hdl))
 #       endif
-
 #   endif
 
 #else
@@ -284,8 +279,10 @@
 #   elif defined(BGML)
 #   include "bgmldefs.h"
 #   define FENCE_NODE(p) BGML_WaitProc(p)    
+#   elif defined(ARMCIX)
+#     define FENCE_NODE(p) ARMCIX_Fence(p) 
 #   else
-#    define FENCE_NODE(p)
+#     define FENCE_NODE(p)
 #   endif   
 #   define UPDATE_FENCE_STATE(p, op, nissued)
 
@@ -427,8 +424,8 @@ extern void armci_elan_put_with_tracknotify(char *src,char *dst,int n,int proc, 
                  armci_copy(src,dst,n);\
               } else {\
               if(LAPI_Put(lapi_handle, (uint)proc, (uint)n, (dst), (src),\
-                 NULL, &ack_cntr.cntr, &cmpl_arr[proc].cntr))\
-                  ARMCI_Error("LAPI_put failed",0); else; }
+                NULL,&(ack_cntr[ARMCI_THREAD_IDX].cntr),&cmpl_arr[proc].cntr))\
+                  ARMCI_Error("LAPI_put failed",0); else;}
 
        /**** this copy is nonblocking and requires fence to complete!!! ****/
 #      define armci_get(src,dst,n,proc) \
@@ -436,7 +433,7 @@ extern void armci_elan_put_with_tracknotify(char *src,char *dst,int n,int proc, 
                  armci_copy(src,dst,n);\
               } else {\
               if(LAPI_Get(lapi_handle, (uint)proc, (uint)n, (src), (dst), \
-                 NULL, &get_cntr.cntr))\
+                 NULL, &(get_cntr[ARMCI_THREAD_IDX].cntr)))\
                  ARMCI_Error("LAPI_Get failed",0);else;}
 
 #      define ARMCI_NB_PUT(src,dst,n,proc,cmplt)\
@@ -459,13 +456,32 @@ extern void armci_elan_put_with_tracknotify(char *src,char *dst,int n,int proc, 
 #      define ARMCI_NB_TEST(cmplt,_succ) TEST_COUNTER((cmplt),(_succ))
        
 #elif defined(PORTALS)
-#define armci_put ARMCI_Put
-#define armci_get ARMCI_Get
+#      define armci_put(src,dst,n,proc) \
+            if(((proc)<=armci_clus_last) && ((proc>= armci_clus_first))){\
+               armci_copy(src,dst,n);\
+            } else { armci_portals_put((proc),(src), (dst),(n),NULL,0);}
+
+#      define armci_get(src,dst,n,proc)\
+            if(((proc)<=armci_clus_last) && ((proc>= armci_clus_first))){\
+               armci_copy(src,dst,n);\
+            } else { armci_portals_get((proc),(src), (dst),(n),NULL,0);}
+
+#      define ARMCI_NB_PUT(src,dst,n,proc,cmplt)\
+            nb_handle->tag=GET_NEXT_NBTAG();armci_portals_put((proc),(src),\
+                            (dst),(n),cmplt,nb_handle->tag)
+#      define ARMCI_NB_GET(src,dst,n,proc,cmplt)\
+            nb_handle->tag=GET_NEXT_NBTAG();armci_portals_get((proc),(src),\
+            (dst),(n),cmplt,nb_handle->tag)
+                                                                   
 
 #elif defined(BGML)
 #define armci_get(src, dst, n, p)   ARMCI_Get(src, dst, n, p)
 #define armci_put(src, dst, n, p)   ARMCI_Put(src, dst, n, p)
 
+#elif defined(ARMCIX)
+#define armci_get(src, dst, n, p)   ARMCI_Get(src, dst, n, p)
+#define armci_put(src, dst, n, p)   ARMCI_Put(src, dst, n, p)
+#define ARMCI_NB_WAIT(cmplt)        ARMCIX_Wait(&(cmplt))
 #else
 
 #      define armci_get(src,dst,n,p)    armci_copy((src),(dst),(n))

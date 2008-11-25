@@ -1,4 +1,4 @@
-/* $Header$ */
+/* $Header: /tmp/hpctools/ga/tcgmsg-mpi/farg.h,v 1.14 2005-11-24 01:14:27 manoj Exp $ */
 /*
   This include file defines ARGC_ and ARGV_ which are the appropriate
   global variables to get at the command argument list in the
@@ -41,8 +41,12 @@
 #endif
 
 #if defined(GFORTRAN)
+# ifdef EXT_INT
 #   define getarg_ _gfortran_getarg_i8
-#   define iargc_ _gfortran_iargc
+# else
+#   define getarg_ _gfortran_getarg_i4
+# endif
+#   define iargc_  _gfortran_iargc
 #endif
 
 #if defined(PGLINUX) /* PGI compilers on Linux */
@@ -89,11 +93,54 @@
 #if defined(HPUX)
 /* ARGC_ and ARGV_ are allocated and constructed in pbeginf */
 #else
-
-extern int ARGC_;
-extern char **ARGV_;
-
+  extern int ARGC_;
+  extern char **ARGV_;
 #endif
+
+#if defined(HPUX)    || defined(SUN)       || defined(SOLARIS)  || \
+    defined(PARAGON) || defined(FUJITSU)   || defined(WIN32)    || \
+    defined(LINUX64) || defined(NEC)       || defined(LINUX)    || \
+    defined(HITACHI) || defined(__crayx1)  || defined(BGL)      || \
+    defined (XLFMAC) || defined(ABSOFTMAC) || defined(GFORTRAN) || \
+   (defined(MACX) && defined(GFORTRAN))    || \
+   (defined(LINUX64) && defined(__alpha__))|| \
+   defined(BGP)
+#  define HAS_GETARG 1
+#endif
+
+#ifndef WIN32
+#  define FATR 
+#endif
+
+#ifdef WIN32
+#  define getarg_ GETARG
+#  define iargc_  IARGC
+#  include <windows.h>
+#  include "winutil.h"
+#  define NTYPE short
+   extern int  FATR iargc_(void);
+   extern void FATR getarg_( NTYPE *, char*, int, NTYPE*);
+#elif defined(HPUX)
+#   ifndef EXTNAME
+#     define hpargv_ hpargv
+#     define hpargc_ hpargc
+#   endif
+   extern int hpargv_();
+   extern int hpargc_();
+#else /* ALL OTHER PLATFORMS */
+   extern int iargc_();
+   extern void getarg_();
+#endif
+
+
+#if defined(__crayx1) 
+#  define getarg_  pxfgetarg_
+#  define IARGC  ipxfargc_
+#  define NTYPE  int 
+   extern void FATR getarg_( NTYPE *, char*, NTYPE*, NTYPE*, int);
+#endif
+
+
 
 /* Eample use
 

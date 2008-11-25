@@ -2,7 +2,7 @@
 #define _string_util_h
 
 /*
- * $Id$
+ * $Id: string-util.h,v 1.3 2000-07-04 05:54:56 d3g001 Exp $
  */
 
 /* 

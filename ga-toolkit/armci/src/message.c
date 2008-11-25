@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: message.c,v 1.58.6.4 2007-04-24 10:08:26 vinod Exp $ */
 #if defined(BGML)
 # include "bgml.h"
 #elif defined(PVM)
@@ -15,11 +15,13 @@
 #include "armcip.h"
 #include "copy.h"
 #include <stdio.h>
+#include <assert.h>
 #ifdef _POSIX_PRIORITY_SCHEDULING
 #ifndef HITACHI
 #  include <sched.h>
 #endif
 #endif
+#include "armci.h"
 
 #define DEBUG_ 0
 #if defined(SYSV) || defined(MMAP) ||defined (WIN32)
@@ -106,11 +108,40 @@ barrier_struct *_bar_buff;
 void **barr_snd_ptr,**barr_rcv_ptr;
 int _armci_barrier_init=0;
 int _armci_barrier_shmem=0;
+
+
+/*\
+ * Tree generation code
+\*/
+static void _dfs_bintree_parse(int *idlist, int index, int max, int *result)
+{
+int left = (int)2*index+1;
+int right = (int) 2*index+2;
+static int pos=0;
+int r_end,l_end;
+   l_end=pos++;
+   result[pos++]=idlist[index];
+   if(left<max)
+     _dfs_bintree_parse(idlist,left,max,result);
+   r_end=pos++;
+   result[l_end]=r_end;
+   if(right<max)
+     _dfs_bintree_parse(idlist,right,max,result);
+   result[r_end]=pos;
+   result[pos++]=idlist[index];
+}
+static int tree_unique_id=0;
+int armci_msg_generate_tree(int *idlist,int idlen,int *id_tree,int TREE)
+{
+   
+    /*for now everything is binary tree*/
+    _dfs_bintree_parse(idlist,0,idlen,id_tree);
+    return tree_unique_id++;
+}
+
 /*\
  *  *************************************************************
 \*/
-
-
 #ifdef CRAY
 char *mp_group_name = (char *)NULL;
 #else
@@ -363,8 +394,8 @@ static void _armci_msg_barrier(){
 #endif /*barrier enabled only for lapi*/
 void armci_msg_barrier()
 {
-#if defined(BGML) && !defined(MPI)
-   bgml_barrier (3);  // 3 is the class route for the tree
+#ifdef BGML
+  bgml_barrier (3); /* this is always faster than MPI_Barrier() */
 #elif defined(MPI)
      MPI_Barrier(MPI_COMM_WORLD);
 #  elif defined(PVM)
@@ -389,7 +420,7 @@ void armci_msg_barrier()
 
 int armci_msg_me()
 {
-#if defined(BGML) && !defined(MPI)
+#ifdef BGML
      return(BGML_Messager_rank());
 #  elif defined(MPI)
      int me;
@@ -405,7 +436,7 @@ int armci_msg_me()
 
 int armci_msg_nproc()
 {
-#if defined(BGML) && !defined(MPI)
+#ifdef BGML
    return(BGML_Messager_size());
 #elif defined(MPI)
      int nproc;
@@ -425,9 +456,10 @@ int armci_msg_nproc()
 #ifndef PVM
 double armci_timer()
 {
-#if defined(BGML) && !defined(MPI)
+#ifdef BGML
    return BGML_Timer();
 #  elif defined(MPI)
+
      return MPI_Wtime();
 #  else
      return TCGTIME_();
@@ -669,6 +701,11 @@ void armci_msg_bcast(void *buf, int len, int root)
 {
 int Root = armci_master;
 int nslave = armci_clus_info[armci_clus_me].nslave;
+
+#ifdef MPI_SPAWN
+    armci_msg_bcast_scope(SCOPE_ALL, (buf), (len), (root));
+    return;
+#endif
 #ifdef LAPI
     if(_armci_gop_init){_armci_msg_binomial_bcast(buf,len,root);return;}
 #endif
@@ -692,7 +729,7 @@ void armci_msg_brdcst(void* buffer, int len, int root)
 {
    if(!buffer)armci_die("armci_msg_brdcast: NULL pointer", len);
 
-#if defined(BGML) && !defined(MPI)
+#ifdef BGML
    BGTr_Bcast(root, buffer, len, PCLASS);
 # elif defined(MPI)
       MPI_Bcast(buffer, len, MPI_CHAR, root, MPI_COMM_WORLD);
@@ -709,18 +746,18 @@ void armci_msg_brdcst(void* buffer, int len, int root)
 
 void armci_msg_snd(int tag, void* buffer, int len, int to)
 {
-#if defined(BGML) && !defined(MPI)
-      /* We don't actually use armci_msg_snd in ARMCI. we use optimized 
+#  ifdef MPI
+      MPI_Send(buffer, len, MPI_CHAR, to, tag, MPI_COMM_WORLD);
+#  elif defined(PVM)
+      pvm_psend(pvm_gettid(mp_group_name, to), tag, buffer, len, PVM_BYTE);
+# elif defined(BGML)
+      /* We don't actually used armci_msg_snd in ARMCI. we use optimized 
        * collectives where
        * armci_msg_snd is used. If you build Global Arrays, the MPI flag is 
        * set, so that
        * will work fine 
        */
       armci_die("bgl shouldn't use armci_msg_snd", armci_me);
-#elif defined(MPI)
-      MPI_Send(buffer, len, MPI_CHAR, to, tag, MPI_COMM_WORLD);
-#  elif defined(PVM)
-      pvm_psend(pvm_gettid(mp_group_name, to), tag, buffer, len, PVM_BYTE);
 #  else
       long ttag=tag, llen=len, tto=to, block=1;
       SND_(&ttag, buffer, &llen, &tto, &block);
@@ -732,9 +769,7 @@ void armci_msg_snd(int tag, void* buffer, int len, int to)
 \*/
 void armci_msg_rcv(int tag, void* buffer, int buflen, int *msglen, int from)
 {
-#if defined(BGML) && !defined(MPI)
-   armci_die("bgl shouldn't use armci_msg_rcv", armci_me);
-#elif defined(MPI)
+#  ifdef MPI
       MPI_Status status;
       MPI_Recv(buffer, buflen, MPI_CHAR, from, tag, MPI_COMM_WORLD, &status);
       if(msglen) MPI_Get_count(&status, MPI_CHAR, msglen);
@@ -743,6 +778,8 @@ void armci_msg_rcv(int tag, void* buffer, int buflen, int *msglen, int from)
       pvm_precv(pvm_gettid(mp_group_name, from), tag, buffer, buflen, PVM_BYTE,
                 &src, &rtag, &mlen);
       if(msglen)*msglen=mlen;
+#elif defined(BGML)
+            armci_die("bgl shouldn't use armci_msg_rcv", armci_me);
 #  else
       long ttag=tag, llen=buflen, mlen, ffrom=from, sender, block=1;
       RCV_(&ttag, buffer, &llen, &mlen, &ffrom, &sender, &block);
@@ -753,9 +790,7 @@ void armci_msg_rcv(int tag, void* buffer, int buflen, int *msglen, int from)
 
 int armci_msg_rcvany(int tag, void* buffer, int buflen, int *msglen)
 {
-#if defined(BGML) && !defined(MPI)
-      armci_die("bgl shouldn't use armci_msg_rcvany", armci_me);
-#elif defined(MPI)
+#if defined(MPI)
       int ierr;
       MPI_Status status;
 
@@ -771,6 +806,8 @@ int armci_msg_rcvany(int tag, void* buffer, int buflen, int *msglen)
       pvm_precv(-1, tag, buffer, buflen, PVM_BYTE, &src, &rtag, &mlen);
       if(msglen)*msglen=mlen;
       return(pvm_getinst(mp_group_name,src));
+# elif defined (BGML)
+      armci_die("bgl shouldn't use armci_msg_rcvany", armci_me);
 #  else
       long ttag=tag, llen=buflen, mlen, ffrom=-1, sender, block=1;
       RCV_(&ttag, buffer, &llen, &mlen, &ffrom, &sender, &block);
@@ -1811,21 +1848,39 @@ void armci_exchange_address(void *ptr_ar[], int n)
 void armci_msg_group_barrier(ARMCI_Group *group)
 {
     ARMCI_iGroup *igroup = (ARMCI_iGroup *)group;
+#ifdef ARMCI_GROUP
+ {
+   int val=0;
+   armci_msg_group_igop(&val, 1, "+", group);
+ }
+#else
     MPI_Barrier((MPI_Comm)(igroup->icomm));
+#endif
 }
 void armci_grp_clus_brdcst(void *buf, int len, int grp_master,
                            int grp_clus_nproc, ARMCI_Group *mastergroup) {
     ARMCI_iGroup *igroup = (ARMCI_iGroup *)mastergroup;
     int i, *pid_list, root=0;
+#ifdef ARMCI_GROUP
+    ARMCI_Group group;
+    void ARMCI_Bcast_(void *buffer, int len, int root, ARMCI_Group *group);
+#else
     MPI_Group group_world;
     MPI_Group group;
     MPI_Comm comm;
     void ARMCI_Bcast_(void *buffer, int len, int root, ARMCI_Comm comm);
+#endif
  
     /* create a communicator for the processes with in a node */
     pid_list = (int *)malloc(grp_clus_nproc*sizeof(int));
     for(i=0; i<grp_clus_nproc; i++)  pid_list[i] = grp_master+i;
  
+
+#ifdef ARMCI_GROUP
+    ARMCI_Group_create_child(grp_clus_nproc, pid_list, &group, mastergroup);
+    ARMCI_Bcast_(buf, len, root, &group);
+    ARMCI_Group_free(&group);
+#else
     MPI_Comm_group((MPI_Comm)(igroup->icomm), &group_world);
     MPI_Group_incl(group_world, grp_clus_nproc, pid_list, &group);
  
@@ -1838,6 +1893,7 @@ void armci_grp_clus_brdcst(void *buf, int len, int grp_master,
     free(pid_list);
     MPI_Comm_free(&comm);     /* free the temporary communicator */
     MPI_Group_free(&group);
+#endif
 }
  
 

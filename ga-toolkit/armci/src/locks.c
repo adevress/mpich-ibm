@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: locks.c,v 1.15.6.1 2006-12-14 13:24:36 manoj Exp $ */
 #define _LOCKS_C_
 #include "armcip.h"
 #include "locks.h"
@@ -8,7 +8,9 @@
 #include <stdio.h>
 
 
+#if !defined(armci_die)
 extern void armci_die(char*,int);
+#endif
 
 #if defined(SPINLOCK) || defined(PMUTEXES)
 
@@ -41,7 +43,9 @@ void DeleteLocks(lockset_t lockid) {
 void CreateInitLocks(int num_locks, lockset_t *plockid)
 {
 int locks_per_proc, size;
-
+#ifdef BGML
+  fprintf(stderr,"createinitlocks\n");
+#endif
   ptr_arr = (void**)malloc(armci_nproc*sizeof(void*));
   locks_per_proc = (num_locks*armci_nclus)/armci_nproc + 1;
   size=locks_per_proc*sizeof(PAD_LOCK_T);

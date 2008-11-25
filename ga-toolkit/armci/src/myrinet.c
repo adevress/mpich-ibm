@@ -1,4 +1,4 @@
-/* $Id$
+/* $Id: myrinet.c,v 1.81 2006-09-12 23:21:21 andriy Exp $
  * DISCLAIMER
  *
  * This material was prepared as an account of work sponsored by an
@@ -291,7 +291,7 @@ static int pin_error(char *port, int bytes, void *ptr,  gm_status_t status)
     return FALSE;
 }
 
-int armci_pin_contig1(void *ptr, int bytes)
+int armci_pin_contig1(void *ptr, size_t bytes)
 {
     gm_status_t status;
 

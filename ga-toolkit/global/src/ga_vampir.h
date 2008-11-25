@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: ga_vampir.h,v 1.8.2.2 2007-09-25 22:39:44 d3g293 Exp $ */
 #ifndef _GA_VAMPIR_H_
 #define _GA_VAMPIR_H_
 
@@ -126,6 +126,7 @@
 #define GA_CDOT               32274
 #define GA_CDOT_PATCH         32273
 #define NGA_CDOT_PATCH        32272
+#define VT_GA_CGEMM           32271
 #include "ga_vampir.fh"
 
 extern void ga_vampir_init(); 

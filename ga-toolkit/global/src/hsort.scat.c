@@ -64,6 +64,7 @@ void ga_sort_scat_dcpl_(pn, v, i, j, base)
 {
 
   if (*pn < 2) return;
+
 #  undef SWAP  
 #  define SWAP(a,b) { \
     Integer ltmp; \
@@ -87,6 +88,7 @@ void ga_sort_scat_scpl_(pn, v, i, j, base)
 {
 
   if (*pn < 2) return;
+
 #  undef SWAP  
 #  define SWAP(a,b) { \
     Integer ltmp; \

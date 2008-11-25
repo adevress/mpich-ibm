@@ -1,31 +1,13 @@
-/* $Id$ */
 /* begin_generated_IBM_copyright_prolog                             */
 /*                                                                  */
-/* This is an automatically generated copyright prolog.             */
-/* After initializing,  DO NOT MODIFY OR MOVE                       */
-/* ---------------------------------------------------------------- */
-/* Product(s):                                                      */
-/* 5733-BG1                                                         */
-/*                                                                  */
-/* (C)Copyright IBM Corp. 2004, 2004                                */
-/* All rights reserved.                                             */
-/* US Government Users Restricted Rights -                          */
-/* Use, duplication or disclosure restricted                        */
-/* by GSA ADP Schedule Contract with IBM Corp.                      */
-/*                                                                  */
-/* Licensed Materials-Property of IBM                               */
+/* --------------------------------------------------------------   */
+/* (C)Copyright IBM Corp. 2007, 2008                                */
+/* IBM BSD License.                                                 */
 /* --------------------------------------------------------------   */
 /* end_generated_IBM_copyright_prolog                               */
 /********************************************************************/
 
-static char COPYRIGHT[] =
-"Licensed Materials - Property                                          \
- of IBM, 5733-BG1 (C) COPYRIGHT 2004, 2004                              \
- All Rights Reserved. US Government Users restricted Rights -           \
- Use, Duplication or Disclosure restricted by GSA ADP Schedule          \
- Contract with IBM Corp.";
-
-
+/* $Id: bgml.c 4216 2008-06-04 19:14:25Z manoj $ */
 
 #include <assert.h>
 #include "bgml.h"

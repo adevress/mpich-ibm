@@ -1,4 +1,4 @@
-/* $Id$ 
+/* $Id: bufalloc.c,v 1.2 2001-06-07 23:23:23 d3h325 Exp $ 
  * storage manager for a chunk of memory passed by user in armci_init_buf_alloc
  * derived from K&R that manages a chunk of memory
  */

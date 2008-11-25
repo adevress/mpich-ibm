@@ -1,6 +1,7 @@
 #include <mpi.h>
 #include "tcgmsgP.h"
 #include "armci.h"
+#include "mpi.h"
 
 #ifdef GA_USE_VAMPIR
 #include "tcgmsg_vampir.h"
@@ -75,15 +76,20 @@ long NXTVAL_(mproc)
 
 /*\ initialization for nxtval -- called in PBEGIN
 \*/
-void install_nxtval()
+void install_nxtval(int *argc, char **argv[])
 {
    int rc;
    int me = (int)NODEID_(), bytes, server;
 
-   void *ptr_ar[MAX_PROCESS];
+/*    void *ptr_ar[MAX_PROCESS]; */
+   void **ptr_ar;
 
-   rc = ARMCI_Init();
-   if(rc)Error("nxtv: armci_init failed",rc);
+   ptr_ar = (void **)malloc(sizeof(void *)*(int)NNODES_());
+   if(!ptr_ar) {
+     Error("malloc failed in install_nxtval", (long)NNODES_());
+   }
+   
+   ARMCI_Init_args(argc, argv);
    server = NXTV_SERVER;
 
    if(me== server) bytes = sizeof(long);
@@ -95,7 +101,8 @@ void install_nxtval()
    pnxtval_counter = (long*) ptr_ar[server];
    if(me==server)*pnxtval_counter = (long)0;
     
-   rc=MPI_Barrier(MPI_COMM_WORLD); 
+   free(ptr_ar);
+   rc=MPI_Barrier(MPI_COMM_WORLD);
    if(rc!=MPI_SUCCESS)Error("init_nxtval: barrier failed",0);
 }
 

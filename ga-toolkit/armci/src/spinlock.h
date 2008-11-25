@@ -1,12 +1,14 @@
-#if defined(LINUX) || defined(CYGWIN) || defined(BGML)
+#ifndef SPINLOCK_H
+#define SPINLOCK_H
 
-#if defined(PPC) && !defined(XLCLINUX) || defined(BGML)
-#include "tas-ppc.h"
-#define SPINLOCK  
-#define TESTANDSET(x) (! __compare_and_swap((long int *)(x),0,1)) 
-#endif
+#if defined(LINUX) || defined(CYGWIN) || defined(BGML) || defined(DCMF)
 
-#if defined(__i386__) || defined(__alpha) || defined(__ia64) || defined(__x86_64__)
+#if defined(PPC) && !defined(XLCLINUX) || defined(BGML) || defined(DCMF)
+#  include "tas-ppc.h"
+#  define SPINLOCK  
+#  define TESTANDSET(x) (! __compare_and_swap((long int *)(x),0,1)) 
+
+#elif defined(__i386__) || defined(__alpha) || defined(__ia64) || defined(__x86_64__) || defined(__PPC__) || defined(__PPC)
 #  define SPINLOCK 
 #  if defined(__GNUC__) && !defined(__INTEL_COMPILER)
 #     if defined(__i386__) || defined(__x86_64__) 
@@ -50,7 +52,7 @@
 #elif defined(MACX)
 #  define SPINLOCK  
 #  if defined(__GNUC__)
-#    if defined(__i386__)
+#    if defined(__i386__) || defined(__x86_64__)
 #      include "tas-i386.h"
 #      define TESTANDSET testandset
 #    else
@@ -119,14 +121,6 @@ double  lock[DBL_PAD];
 #endif
 #define PAD_LOCK_T pad_lock_t
 
-/* we got problems on IA64/Linux64 with Elan if inlining is used */
-#if defined(__GNUC__) && !defined(QUADRICS)
-#   define INLINE inline 
-#else
-#   define INLINE 
-#endif
-
-
 static INLINE void armci_init_spinlock(LOCK_T *mutex)
 {
   *mutex =0;
@@ -134,7 +128,7 @@ static INLINE void armci_init_spinlock(LOCK_T *mutex)
 
 static INLINE void armci_acquire_spinlock(LOCK_T *mutex)
 {
-#ifdef BGML
+#if defined(BGML) || defined(DCMF)
    return;
 #else
 int loop=0, maxloop =10;
@@ -164,7 +158,7 @@ int loop=0, maxloop =10;
 #else
 static INLINE void armci_release_spinlock(LOCK_T *mutex)
 {
-#ifdef BGML
+#if defined(BGML) || defined(DCMF)
    return;
 #else
 #ifdef MEMORY_BARRIER
@@ -180,3 +174,8 @@ static INLINE void armci_release_spinlock(LOCK_T *mutex)
 #endif
 
 #endif
+
+
+
+
+#endif/*SPINLOCK_H*/

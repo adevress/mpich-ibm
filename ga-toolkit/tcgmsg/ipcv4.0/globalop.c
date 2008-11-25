@@ -1,4 +1,4 @@
-/* $Header$ */
+/* $Header: /tmp/hpctools/ga/tcgmsg/ipcv4.0/globalop.c,v 1.8 2004-04-01 02:04:56 manoj Exp $ */
 #include <stdlib.h>
 #ifdef SEQUENT
 #include <strings.h>

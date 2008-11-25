@@ -1,4 +1,4 @@
-/* $Header$ */
+/* $Header: /tmp/hpctools/ga/tcgmsg/ipcv5.0/mdtob.c,v 1.2 1994-12-30 20:55:49 d3h325 Exp $ */
 
 #include "sndrcv.h"
 

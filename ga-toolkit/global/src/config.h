@@ -28,7 +28,7 @@
 #define MAXDIM  GA_MAX_DIM
 
 /* uncomment the following line to overwrite default max number of processors */
-/*#define MAX_NPROC 128*/
+#define MAX_NPROC 20000
 
 
 /* uncoment the following line to never use MA (Memory Allocator) for

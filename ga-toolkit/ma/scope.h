@@ -2,7 +2,7 @@
 #define _scope_h
 
 /* 
- * $Id$
+ * $Id: scope.h,v 1.4 1998-01-30 18:49:33 d3h325 Exp $
  */
 
 /* 

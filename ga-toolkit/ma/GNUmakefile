@@ -1,8 +1,9 @@
-# $Id$
+# $Id: GNUmakefile,v 1.5.6.3 2007-06-12 20:33:24 manoj Exp $
 #
 # Makefile for a portable dynamic memory allocator.
 
       LIBRARY = libma.a
+LIBRARY_SHARED= libma.so
   LIB_DISTRIB = ../lib
           OBJ = error.o f2c.o ma.o maf.o table.o
       HEADERS = macommon.h matypes.h macdecls.h \

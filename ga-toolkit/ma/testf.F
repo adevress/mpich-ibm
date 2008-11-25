@@ -1,5 +1,5 @@
 c
-c     $Id$
+c     $Id: testf.F,v 1.6 1997-02-26 20:39:23 d3h325 Exp $
 c
 
 c

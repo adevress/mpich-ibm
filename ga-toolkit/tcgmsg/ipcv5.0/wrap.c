@@ -1,4 +1,4 @@
-/* $Header$ */
+/* $Header: /tmp/hpctools/ga/tcgmsg/ipcv5.0/wrap.c,v 1.5 2004-04-01 02:23:05 manoj Exp $ */
 
 #include "sndrcv.h"
 #include "typesf2c.h"
