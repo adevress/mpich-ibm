@@ -28,9 +28,9 @@ DCMF_Protocol_t __fence_ack_protocol;
 void ARMCIX_DCMF_ReceiveFenceRequest (void           * clientdata,
                                       const DCQuad   * msginfo,
                                       unsigned         count,
-                                      unsigned         peer,
+                                      size_t           peer,
                                       const char     * src,
-                                      unsigned         bytes)
+                                      size_t           bytes)
 {
   DCMF_Callback_t * cb = (DCMF_Callback_t *) msginfo;
   DCMF_Control_t info;
@@ -59,11 +59,11 @@ void ARMCIX_DCMF_ReceiveFenceRequest (void           * clientdata,
  */
 void ARMCIX_DCMF_ReceiveFenceAck (void                 * clientdata,
                                   const DCMF_Control_t * info,
-                                  unsigned               peer)
+                                  size_t                 peer)
 {
   DCMF_Callback_t * cb = (DCMF_Callback_t *) info;
   if (cb->function)
-    cb->function(cb->clientdata);
+    cb->function(cb->clientdata, (DCMF_Error_t *)NULL);
 }
 
 
@@ -80,6 +80,7 @@ void ARMCIX_DCMF_Fence_register (ARMCIX_DCMF_Connection_t * connection_array)
 
   DCMF_Send_Configuration_t send_configuration = {
     DCMF_DEFAULT_SEND_PROTOCOL,
+    DCMF_DefaultNetwork,
     ARMCIX_DCMF_ReceiveFenceRequest,
     connection_array,
     NULL,
@@ -89,6 +90,7 @@ void ARMCIX_DCMF_Fence_register (ARMCIX_DCMF_Connection_t * connection_array)
 
   DCMF_Control_Configuration_t configuration = {
     DCMF_DEFAULT_CONTROL_PROTOCOL,
+    DCMF_DefaultNetwork,
     ARMCIX_DCMF_ReceiveFenceAck,
     connection_array
   };
@@ -159,7 +161,7 @@ void ARMCIX_AllFence ()
   cb->clientdata = (void *) &active;
 
   DCMF_Callback_t cb_null = { NULL, NULL };
-  DCMF_Callback_t cb_done = { (void(*)(void *)) ARMCIX_DCMF_request_free, NULL };
+  DCMF_Callback_t cb_done = { (void(*)(void *, DCMF_Error_t *)) ARMCIX_DCMF_request_free, NULL };
   for (peer = 0; peer < size; peer++)
   {
     ARMCIX_DCMF_Request_t * new_request = ARMCIX_DCMF_request_allocate (cb_null);

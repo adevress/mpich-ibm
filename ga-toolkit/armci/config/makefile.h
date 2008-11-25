@@ -46,9 +46,7 @@ else
 endif
 	   GLOB_DEFINES += -DDCMF -DMPI
 	   INCLUDES     += -I$(BGDRIVER)/comm/include 
-	   DCMF_INCLUDE += $(INCLUDES)
-           DCMF_LIBS    += $(LIBS)
-	   COPT          = -O0
+	   COPT          = -O3
 
 ifneq (,$(findstring mpif,$(_FC)))
          _FC = $(shell $(FC) -v 2>&1 | awk ' /g95/ { print "g95"; exit };/gcc version 4/ { print "gfortran"; exit }; /g77 version/ { print "g77"; exit }; /gcc version/ { print "g77"; exit }' )
@@ -85,12 +83,12 @@ endif
            FOPT_REN += -qEXTNAME
            GLOB_DEFINES +=  -DEXTNAME
            EXPLICITF = TRUE
-           FOPT=-O0
+           FOPT=-O3
            CPP = gcc -E -nostdinc -undef -P
            FCONVERT = $(CPP) $(CPP_FLAGS)  $< | sed '/^\#/D'  > $*.f
 else
 
- 	   FOPT = -O0 -fno-second-underscore
+ 	   FOPT = -O3 -fno-second-underscore
 endif
 
 endif

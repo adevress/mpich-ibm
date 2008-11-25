@@ -116,13 +116,13 @@ ARMCIX_DCMF_Request_t * ARMCIX_DCMF_request_allocate (DCMF_Callback_t cb_free)
   return (ARMCIX_DCMF_Request_t *) _request;
 }
 
-void ARMCIX_DCMF_request_free (ARMCIX_DCMF_Request_t * request)
+void ARMCIX_DCMF_request_free (ARMCIX_DCMF_Request_t * request, DCMF_Error_t * error)
 {
   ARMCIX_DCMF_RequestInfo_t * _request = (ARMCIX_DCMF_RequestInfo_t *) request;
 
   // Invoke the "free" callback if it is specified.
   if (_request->cb_free.function != NULL)
-    _request->cb_free.function (_request->cb_free.clientdata);
+    _request->cb_free.function (_request->cb_free.clientdata, (DCMF_Error_t *) NULL);
 
   // Return the request to the free request pool.
   _request->next = __armcix_dcmf_requestpool.head;
@@ -134,7 +134,7 @@ void ARMCIX_DCMF_request_free (ARMCIX_DCMF_Request_t * request)
  *
  * \param[in] clientdata Address of the variable to decrement
  */
-void ARMCIX_DCMF_cb_decrement (void * clientdata)
+void ARMCIX_DCMF_cb_decrement (void * clientdata, DCMF_Error_t * error)
 {
   unsigned * value = (unsigned *) clientdata;
   (*value)--;
@@ -145,7 +145,7 @@ void ARMCIX_DCMF_cb_decrement (void * clientdata)
  *
  * \param[in] clientdata The non-blocking handle to complete
  */
-void ARMCIX_DCMF_NbOp_cb_done (void * clientdata)
+void ARMCIX_DCMF_NbOp_cb_done (void * clientdata, DCMF_Error_t * error)
 {
   armci_ihdl_t nb_handle = (armci_ihdl_t) clientdata;
   armcix_dcmf_opaque_t * dcmf = (armcix_dcmf_opaque_t *) &nb_handle->cmpl_info;
@@ -162,9 +162,9 @@ void ARMCIX_DCMF_NbOp_cb_done (void * clientdata)
 void ARMCIX_DCMF_RecvMemregion1 (void           * clientdata,
                                  const DCQuad   * msginfo,
                                  unsigned         count,
-                                 unsigned         peer,
+                                 size_t           peer,
                                  const char     * src,
-                                 unsigned         bytes)
+                                 size_t           bytes)
 {
   ARMCIX_DCMF_Connection_t * connection = (ARMCIX_DCMF_Connection_t *) clientdata;
   memcpy (&connection[peer].remote_mem_region, src, bytes);
@@ -180,9 +180,9 @@ void ARMCIX_DCMF_RecvMemregion1 (void           * clientdata,
 DCMF_Request_t * ARMCIX_DCMF_RecvMemregion2 (void             * clientdata,
                                              const DCQuad     * msginfo,
                                              unsigned           count,
-                                             unsigned           peer,
-                                             unsigned           sndlen,
-                                             unsigned         * rcvlen,
+                                             size_t             peer,
+                                             size_t             sndlen,
+                                             size_t           * rcvlen,
                                              char            ** rcvbuf,
                                              DCMF_Callback_t  * cb_done)
 {
@@ -192,7 +192,7 @@ DCMF_Request_t * ARMCIX_DCMF_RecvMemregion2 (void             * clientdata,
   *rcvlen = sndlen;
   *rcvbuf = (char *) &connection[peer].remote_mem_region;
 
-  cb_done->function   = free;
+  cb_done->function   = (void (*)(void*, DCMF_Error_t *)) free;
   cb_done->clientdata = (void *) malloc (sizeof (DCMF_Request_t));
 
   return cb_done->clientdata;
@@ -226,16 +226,17 @@ void ARMCIX_DCMF_Connection_initialize ()
   DCMF_Protocol_t send_protocol;
   DCMF_Send_Configuration_t send_configuration = {
     DCMF_DEFAULT_SEND_PROTOCOL,
-    ARMCIX_DCMF_RecvMemregion1,
-    __connection,
-    ARMCIX_DCMF_RecvMemregion2,
-    __connection
+    DCMF_DefaultNetwork,
+    (DCMF_RecvSendShort) ARMCIX_DCMF_RecvMemregion1,
+    (void *) __connection,
+    (DCMF_RecvSend) ARMCIX_DCMF_RecvMemregion2,
+    (void *) __connection
   };
   DCMF_Send_register (&send_protocol, &send_configuration);
 
   DCMF_Request_t request;
   volatile unsigned active;
-  DCMF_Callback_t cb_done = { (void (*)(void*)) ARMCIX_DCMF_cb_decrement, (void *) &active };
+  DCMF_Callback_t cb_done = { (void (*)(void*, DCMF_Error_t *)) ARMCIX_DCMF_cb_decrement, (void *) &active };
 
   // Exchange the memory regions
   __memregions_to_receive = size;

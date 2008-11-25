@@ -96,7 +96,7 @@ int ARMCIX_NbGet (void * src, void * dst, int bytes, int proc, armci_ihdl_t nb_h
 
   DCMF_Callback_t cb_free = { ARMCIX_DCMF_NbOp_cb_done, nb_handle };
   ARMCIX_DCMF_Request_t * new_request = ARMCIX_DCMF_request_allocate (cb_free);
-  DCMF_Callback_t cb_done = { (void(*)(void *)) ARMCIX_DCMF_request_free, new_request };
+  DCMF_Callback_t cb_done = { (void(*)(void *, DCMF_Error_t *)) ARMCIX_DCMF_request_free, new_request };
 
   DCMF_Memregion_t * src_memregion = &__connection[proc].remote_mem_region;
   DCMF_Memregion_t * dst_memregion = &__connection[proc].local_mem_region;
@@ -178,7 +178,7 @@ int ARMCIX_NbGetV (armci_giov_t * darr, int len, int proc, armci_ihdl_t nb_handl
   DCMF_Memregion_t * dst_memregion = &__connection[proc].local_mem_region;
 
   DCMF_Callback_t cb_free = { ARMCIX_DCMF_NbOp_cb_done, nb_handle };
-  DCMF_Callback_t cb_done = { (void(*)(void *)) ARMCIX_DCMF_request_free, NULL };
+  DCMF_Callback_t cb_done = { (void(*)(void *, DCMF_Error_t *)) ARMCIX_DCMF_request_free, NULL };
   for (i = 0; i < len; i++)
   {
     for (j = 0; j < darr[i].ptr_array_len; j++)
@@ -223,7 +223,7 @@ unsigned ARMCIX_DCMF_GetS_recurse (void * src_ptr, int * src_stride_arr,
 
     DCMF_Callback_t cb_free = { ARMCIX_DCMF_NbOp_cb_done, nb_handle };
     ARMCIX_DCMF_Request_t * new_request = ARMCIX_DCMF_request_allocate (cb_free);
-    DCMF_Callback_t cb_done = { (void(*)(void *)) ARMCIX_DCMF_request_free, new_request };
+    DCMF_Callback_t cb_done = { (void(*)(void *, DCMF_Error_t *)) ARMCIX_DCMF_request_free, new_request };
 
     DCMF_Memregion_t * src_memregion = &__connection[proc].remote_mem_region;
     DCMF_Memregion_t * dst_memregion = &__connection[proc].local_mem_region;

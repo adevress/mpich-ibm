@@ -30,7 +30,7 @@ ifeq ($(ARMCI_NETWORK),DCMFMPI)
       COMM_LIBS = -L$(MPI_LIB)
    endif
    DCMFMPI_LIB_NAME = -lfmpich.cnk -lmpich.cnk -ldcmfcoll.cnk -ldcmf.cnk  \
-   -lpthread -lrt -L${BGP_RUNTIMEPATH}/SPI -lSPI.cna 
+   -lpthread -lrt -L${BG_RUNTIMEPATH}/SPI -lSPI.cna 
    COMM_LIBS += $(DCMFMPI_LIB_NAME)
 endif
 ifeq ($(ARMCI_NETWORK),BGML)

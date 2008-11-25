@@ -85,14 +85,14 @@ static inline size_t armcix_dcmf_va_to_offset (DCMF_Memregion_t * mr, void * va)
  *
  * \param[in] clientdata The variable to decrement
  */
-void ARMCIX_DCMF_cb_decrement (void * clientdata);
+void ARMCIX_DCMF_cb_decrement (void * clientdata, DCMF_Error_t * error);
 
 /**
  * \brief Callback function for non-blocking operations
  *
  * \param[in] clientdata The non-blocking handle to complete
  */
-void ARMCIX_DCMF_NbOp_cb_done (void * clientdata);
+void ARMCIX_DCMF_NbOp_cb_done (void * clientdata, DCMF_Error_t * error);
 
 /**
  * \brief Allocate a request from the free request pool
@@ -117,7 +117,7 @@ ARMCIX_DCMF_Request_t * ARMCIX_DCMF_request_allocate (DCMF_Callback_t cb_free);
  *
  * \see ARMCIX_DCMF_request_allocate
  */
-void ARMCIX_DCMF_request_free (ARMCIX_DCMF_Request_t * request);
+void ARMCIX_DCMF_request_free (ARMCIX_DCMF_Request_t * request, DCMF_Error_t * error);
 
 
 /**
