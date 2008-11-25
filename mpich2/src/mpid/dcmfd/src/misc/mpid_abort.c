@@ -77,5 +77,4 @@ int MPID_Abort(MPID_Comm * comm, int mpi_errno, int exit_code, const char *error
     exit(1);
   else
     abort();
-  return MPI_ERR_INTERN;
 }
