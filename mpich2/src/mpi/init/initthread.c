@@ -362,9 +362,6 @@ int MPIR_Init_thread(int * argc, char ***argv, int required,
     /* For any code in the device that wants to check for runtime 
        decisions on the value of isThreaded, set a provisional
        value here. We could let the MPID_Init routine override this */
-#ifdef HAVE_RUNTIME_THREADCHECK
-    MPIR_ThreadInfo.isThreaded = required == MPI_THREAD_MULTIPLE;
-#endif
     mpi_errno = MPID_Init(argc, argv, required, &thread_provided, 
 			  &has_args, &has_env);
     /* --BEGIN ERROR HANDLING-- */
@@ -383,13 +380,11 @@ int MPIR_Init_thread(int * argc, char ***argv, int required,
     /* --END ERROR HANDLING-- */
 
     /* Capture the level of thread support provided */
+#ifdef HAVE_RUNTIME_THREADCHECK
+    MPIR_ThreadInfo.isThreaded = (thread_provided == MPI_THREAD_MULTIPLE);
+#endif
     MPIR_ThreadInfo.thread_provided = thread_provided;
     if (provided) *provided = thread_provided;
-    /* FIXME: Rationalize this with the above */
-#ifdef HAVE_RUNTIME_THREADCHECK
-    MPIR_ThreadInfo.isThreaded = required == MPI_THREAD_MULTIPLE;
-    if (provided) *provided = required;
-#endif
 
     /* FIXME: Define these in the interface.  Does Timer init belong here? */
     MPIU_dbg_init(MPIR_Process.comm_world->rank);
