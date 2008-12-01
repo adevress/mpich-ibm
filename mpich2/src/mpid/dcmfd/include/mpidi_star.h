@@ -70,15 +70,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
    on, otherwise, it is off.
 */
 
-#define STAR_ALLTOALL_MIN 512
-#define STAR_ALLGATHER_MIN 512
-#define STAR_ALLGATHERV_MIN 512
-#define STAR_ALLREDUCE_MIN 512
-#define STAR_BCAST_MIN 512
-#define STAR_REDUCE_MIN 512
-#define STAR_GATHER_MIN 512
-#define STAR_SCATTER_MIN 512
-
 #define STAR_ALLOC(x,t,c) (x = (t *) MPIU_Malloc(sizeof(t) * c))
 
 
@@ -215,7 +206,7 @@ typedef struct STAR_Tuning_Session
      [1] holds ave of time measures of an algorithm over last
      INVOCS_PER_ALGORITHM
   */
-  double max[2];
+  double max[4];
 
   double tune_overhead; /* measure time overhead in tuning phase */
   double monitor_overhead; /* measures time overhead in monitor phase */
@@ -246,7 +237,15 @@ typedef struct
   /* env variable setting the use of STAR */
   int enabled;
 
-  int threshold; /* min message size to have star kick in */
+  int alltoall_threshold; /* min message size to have star kick in */
+  int allgather_threshold; /* min message size to have star kick in */
+  int allgatherv_threshold; /* min message size to have star kick in */
+  int allreduce_threshold; /* min message size to have star kick in */
+  int reduce_threshold; /* min message size to have star kick in */
+  int bcast_threshold; /* min message size to have star kick in */
+  int gather_threshold; /* min message size to have star kick in */
+  int scatter_threshold; /* min message size to have star kick in */
+                       
   /* flag to indicate where is the control coming from, App or within BG lib */
   unsigned char internal_control_flow;
 

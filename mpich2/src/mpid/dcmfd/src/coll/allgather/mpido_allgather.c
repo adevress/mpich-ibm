@@ -33,7 +33,7 @@ MPIDO_Allgather(void *sendbuf,
   MPID_Datatype * dt_null = NULL;
   MPI_Aint send_true_lb = 0;
   MPI_Aint recv_true_lb = 0;
-  int comm_size = comm->local_size;
+  int rc, comm_size = comm->local_size;
   size_t send_size = 0;
   size_t recv_size = 0;
 
@@ -41,8 +41,7 @@ MPIDO_Allgather(void *sendbuf,
                                              DCMF_ALLGATHER_ENVVAR);
 
   char use_tree_reduce, use_alltoall, use_rect_async, use_bcast;
-
-  int rc;
+  char *sbuf, *rbuf;
 
   /* no optimized allgather, punt to mpich */
   if (DCMF_INFO_ISSET(comm_prop, DCMF_USE_MPICH_ALLGATHER))
@@ -61,9 +60,8 @@ MPIDO_Allgather(void *sendbuf,
 			  recv_true_lb);
   send_size = recv_size;
   recv_size *= comm_size;
-  
-  MPID_Ensure_Aint_fits_in_pointer(MPIR_VOID_PTR_CAST_TO_MPI_AINT recvbuf
-				   + recv_true_lb + comm_size * send_size);
+
+  MPIDI_VerifyBuffer(recvbuf, rbuf, (recv_true_lb + comm_size * send_size));
   
   if (sendbuf != MPI_IN_PLACE)
   {
@@ -73,8 +71,7 @@ MPIDO_Allgather(void *sendbuf,
                             send_size,
                             dt_null,
                             send_true_lb);
-    MPID_Ensure_Aint_fits_in_pointer(MPIR_VOID_PTR_CAST_TO_MPI_AINT
-                                     sendbuf + send_true_lb);
+    MPIDI_VerifyBuffer(sendbuf, sbuf, send_true_lb);
   }
 
   /* verify everyone's datatype contiguity */
@@ -87,7 +84,7 @@ MPIDO_Allgather(void *sendbuf,
 
   /* Here is the Default code path or if coming from within another coll */
   if (!STAR_info.enabled || STAR_info.internal_control_flow ||
-      send_size < STAR_info.threshold) 
+      send_size < STAR_info.allgather_threshold) 
   {
     use_alltoall = 
       DCMF_INFO_ISSET(comm_prop, DCMF_USE_TORUS_ALLTOALL) &&
@@ -124,7 +121,7 @@ MPIDO_Allgather(void *sendbuf,
     {
       if (!DCMF_INFO_ISSET(comm_prop, DCMF_IRREG_COMM))
       {
-       if (comm_size <= 512)
+        if (comm_size <= 512)
         {
           if (use_tree_reduce && sendcount < 128 * comm_size)
             func = MPIDO_Allgather_allreduce;
@@ -158,79 +155,79 @@ MPIDO_Allgather(void *sendbuf,
       }
     }
          
-  if (!func)
-    return MPIR_Allgather(sendbuf, sendcount, sendtype,
+    if (!func)
+      return MPIR_Allgather(sendbuf, sendcount, sendtype,
+                            recvbuf, recvcount, recvtype,
+                            comm);
+
+    rc = (func)(sendbuf, sendcount, sendtype, recvbuf, recvcount, recvtype,
+                send_true_lb, recv_true_lb, send_size, recv_size, comm);
+  }  
+  else
+  {
+    STAR_Callsite collective_site;
+    void ** tb_ptr = (void **) MPIU_Malloc(sizeof(void *) *
+                                           STAR_info.traceback_levels);
+
+    /* set the internal control flow to disable internal star tuning */
+    STAR_info.internal_control_flow = 1;
+    
+    /* get backtrace info for caller to this func, use that as callsite_id */
+    backtrace(tb_ptr, STAR_info.traceback_levels);
+    
+    /* create a signature callsite info for this particular call site */
+    collective_site.call_type = ALLGATHER_CALL;
+    collective_site.comm = comm;
+    collective_site.bytes = recv_size;
+    collective_site.op_type_support = DCMF_SUPPORT_NOT_NEEDED;
+    collective_site.buff_attributes[0] = config.send_contig;
+    collective_site.buff_attributes[1] = config.recv_contig;
+    collective_site.buff_attributes[2] = config.recv_continuous;
+    
+    /* decide buffer alignment */
+    collective_site.buff_attributes[3] = 1; /* assume aligned */
+    if (((unsigned)sendbuf & 0x0F) || ((unsigned)recvbuf & 0x0F))
+      collective_site.buff_attributes[3] = 0; /* set to not aligned */
+    
+    collective_site.id = (int) tb_ptr[STAR_info.traceback_levels - 1];
+    
+    rc = STAR_Allgather(sbuf,
+                        sendcount,
+                        sendtype,
+                        rbuf,
+                        recvcount,
+                        recvtype,
+                        send_true_lb,
+                        recv_true_lb,
+                        send_size,
+                        recv_size,
+                        &collective_site,
+                        STAR_allgather_repository,
+                        STAR_info.allgather_algorithms);
+      
+    /* unset the internal control flow */
+    STAR_info.internal_control_flow = 0;
+      
+    if (rc == STAR_FAILURE)
+      rc = MPIR_Allgather(sendbuf, sendcount, sendtype,
                           recvbuf, recvcount, recvtype,
                           comm);
-
-  rc = (func)(sendbuf, sendcount, sendtype, recvbuf, recvcount, recvtype,
-              send_true_lb, recv_true_lb, send_size, recv_size, comm);
-}  
-else
-{
-  STAR_Callsite collective_site;
-  void ** tb_ptr = (void **) MPIU_Malloc(sizeof(void *) *
-                                         STAR_info.traceback_levels);
-
-  /* set the internal control flow to disable internal star tuning */
-  STAR_info.internal_control_flow = 1;
-    
-  /* get backtrace info for caller to this func, use that as callsite_id */
-  backtrace(tb_ptr, STAR_info.traceback_levels);
-    
-  /* create a signature callsite info for this particular call site */
-  collective_site.call_type = ALLGATHER_CALL;
-  collective_site.comm = comm;
-  collective_site.bytes = recv_size;
-  collective_site.op_type_support = DCMF_SUPPORT_NOT_NEEDED;
-  collective_site.buff_attributes[0] = config.send_contig;
-  collective_site.buff_attributes[1] = config.recv_contig;
-  collective_site.buff_attributes[2] = config.recv_continuous;
-    
-  /* decide buffer alignment */
-  collective_site.buff_attributes[3] = 1; /* assume aligned */
-  if (((unsigned)sendbuf & 0x0F) || ((unsigned)recvbuf & 0x0F))
-    collective_site.buff_attributes[3] = 0; /* set to not aligned */
-    
-  collective_site.id = (int) tb_ptr[STAR_info.traceback_levels - 1];
-    
-  rc = STAR_Allgather(sendbuf,
-                      sendcount,
-                      sendtype,
-                      recvbuf,
-                      recvcount,
-                      recvtype,
-                      send_true_lb,
-                      recv_true_lb,
-                      send_size,
-                      recv_size,
-                      &collective_site,
-                      STAR_allgather_repository,
-                      STAR_info.allgather_algorithms);
-      
-  /* unset the internal control flow */
-  STAR_info.internal_control_flow = 0;
-      
-  if (rc == STAR_FAILURE)
-    rc = MPIR_Allgather(sendbuf, sendcount, sendtype,
-                        recvbuf, recvcount, recvtype,
-                        comm);
-  MPIU_Free(tb_ptr);
-}
+    MPIU_Free(tb_ptr);
+  }
   
-return rc;
+  return rc;
 }
 
 #else /* !USE_CCMI_COLL */
 
 int MPIDO_Allgather(void *sendbuf,
-  int sendcount,
-  MPI_Datatype sendtype,
-  void *recvbuf,
-  int recvcount,
-  MPI_Datatype recvtype,
-  MPID_Comm * comm_ptr)
+                    int sendcount,
+                    MPI_Datatype sendtype,
+                    void *recvbuf,
+                    int recvcount,
+                    MPI_Datatype recvtype,
+                    MPID_Comm * comm_ptr)
 {
-MPID_abort();
+  MPID_abort();
 }
 #endif /* !USE_CCMI_COLL */

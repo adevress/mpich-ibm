@@ -26,7 +26,7 @@ int MPIDO_Gather(void *sendbuf,
   DCMF_Embedded_Info_Set * properties = &(comm->dcmf.properties);
   MPID_Datatype * data_ptr;
   MPI_Aint true_lb = 0;
-  char *sbuf =sendbuf, *rbuf=recvbuf;
+  char *sbuf = sendbuf, *rbuf = recvbuf;
   int success = 1, contig, send_bytes=-1, recv_bytes = 0;
   int rc = 0, rank = comm->rank;
 
@@ -52,14 +52,10 @@ int MPIDO_Gather(void *sendbuf,
       success = 0;
   }
   
-   /* Called MPIR_Reduce with *all* nodes have sendbuf==MPI_IN_PLACE won't
-    * work, so if MPICH Reduce is our only option, don't bother doing an
-    * optimized gather. This probably needs to check if we have a elligible
-    * reduce given the op/comm/type, but this is a reasonable check
-    */
   if (DCMF_INFO_ISSET(properties, DCMF_IRREG_COMM) ||
       DCMF_INFO_ISSET(properties, DCMF_USE_MPICH_GATHER) ||
       DCMF_INFO_ISSET(properties, DCMF_USE_MPICH_REDUCE) ||
+      !DCMF_INFO_ISSET(properties, DCMF_TREE_COMM) ||
       !DCMF_INFO_ISSET(properties, DCMF_USE_REDUCE_GATHER) ||
       mpid_hw.tSize > 1)
     return MPIR_Gather(sendbuf, sendcount, sendtype,
@@ -81,15 +77,8 @@ int MPIDO_Gather(void *sendbuf,
                        recvbuf, recvcount, recvtype,
                        root, comm);
 
-  
-  rbuf = (char *) recvbuf + true_lb;
-
-  if (sendbuf != MPI_IN_PLACE)
-  {
-    MPID_Ensure_Aint_fits_in_pointer(MPIR_VOID_PTR_CAST_TO_MPI_AINT sendbuf +
-                                     true_lb);
-    sbuf = (char *) sendbuf + true_lb;
-  }
+  MPIDI_VerifyBuffer(sendbuf, sbuf, true_lb);
+  MPIDI_VerifyBuffer(recvbuf, rbuf, true_lb);
   
   if (!STAR_info.enabled || STAR_info.internal_control_flow ||
       STAR_info.gather_algorithms == 1)

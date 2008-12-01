@@ -28,6 +28,7 @@ MPIDO_Alltoallw(void *sendbuf,
   int *tsndlen, *trcvlen, snd_contig, rcv_contig, rc ,i;
   MPI_Aint sdt_true_lb=0, rdt_true_lb=0;
   MPID_Datatype *dt_null = NULL;
+  char *sbuf = sendbuf, *rbuf = recvbuf;
   
   tsndlen = MPIU_Malloc(numprocs * sizeof(unsigned));
   trcvlen = MPIU_Malloc(numprocs * sizeof(unsigned));
@@ -44,10 +45,8 @@ MPIDO_Alltoallw(void *sendbuf,
     MPIDI_Datatype_get_info(1, recvtypes[i], rcv_contig, trcvlen[i],
                             dt_null, rdt_true_lb);
 
-    MPID_Ensure_Aint_fits_in_pointer(MPIR_VOID_PTR_CAST_TO_MPI_AINT sendbuf +
-                                     sdt_true_lb);
-    MPID_Ensure_Aint_fits_in_pointer(MPIR_VOID_PTR_CAST_TO_MPI_AINT recvbuf +
-                                     rdt_true_lb);
+    MPIDI_VerifyBuffer(sendbuf, sbuf, sdt_true_lb);
+    MPIDI_VerifyBuffer(recvbuf, rbuf, rdt_true_lb);
 
 
     if (DCMF_INFO_ISSET(properties, DCMF_USE_MPICH_ALLTOALLW) ||
@@ -89,11 +88,11 @@ MPIDO_Alltoallw(void *sendbuf,
   /* Create a message layer collective message      */
   /* ---------------------------------------------- */
 
-  rc = MPIDO_Alltoallw_torus((char *) sendbuf + sdt_true_lb,
+  rc = MPIDO_Alltoallw_torus(sbuf,
 			     sendcounts,
 			     senddispls,
 			     sendtypes,
-			     (char *) recvbuf + rdt_true_lb,
+			     rbuf,
 			     recvcounts,
 			     recvdispls,
 			     recvtypes,

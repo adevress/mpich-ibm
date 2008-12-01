@@ -38,6 +38,7 @@ MPIDO_Allgatherv(void *sendbuf,
   
   int i, rc, buffer_sum = 0, np = comm->local_size;
   char use_tree_reduce, use_alltoall, use_rect_async, use_bcast;
+  char *sbuf, *rbuf;
 
   DCMF_Embedded_Info_Set * comm_prop = &(comm->dcmf.properties);
   DCMF_Embedded_Info_Set * coll_prop = &MPIDI_CollectiveProtocols.properties;
@@ -66,9 +67,7 @@ MPIDO_Allgatherv(void *sendbuf,
                             send_size,
                             dt_null,
                             send_true_lb);
-      
-    MPID_Ensure_Aint_fits_in_pointer(MPIR_VOID_PTR_CAST_TO_MPI_AINT
-                                     sendbuf + send_true_lb);
+    MPIDI_VerifyBuffer(sendbuf, sbuf, send_true_lb);
   }
   
   if (displs[0])
@@ -89,8 +88,7 @@ MPIDO_Allgatherv(void *sendbuf,
   buffer_sum *= recv_size;
   msize = (double)buffer_sum / (double)np; 
   
-  MPID_Ensure_Aint_fits_in_pointer(MPIR_VOID_PTR_CAST_TO_MPI_AINT recvbuf +
-				   recv_true_lb + buffer_sum);
+  MPIDI_VerifyBuffer(recvbuf, rbuf, (recv_true_lb + buffer_sum));
   
   if (DCMF_INFO_ISSET(coll_prop, DCMF_USE_PREALLREDUCE_ALLGATHERV))
   {
@@ -100,7 +98,7 @@ MPIDO_Allgatherv(void *sendbuf,
   }
 
   if (!STAR_info.enabled || STAR_info.internal_control_flow ||
-      ((double)buffer_sum / (double)np) < STAR_info.threshold)
+      ((double)buffer_sum / (double)np) < STAR_info.allgather_threshold)
   {
     use_tree_reduce = DCMF_INFO_ISSET(comm_prop, DCMF_USE_TREE_ALLREDUCE) &&
       DCMF_INFO_ISSET(comm_prop,

@@ -24,7 +24,7 @@ MPIDO_Alltoallv(void *sendbuf,
                 MPID_Comm *comm_ptr)
 {
   DCMF_Embedded_Info_Set * properties = &(comm_ptr->dcmf.properties);
-  
+  char *sbuf = sendbuf, *rbuf = recvbuf;
   int numprocs = comm_ptr->local_size;
   int tsndlen, trcvlen, snd_contig, rcv_contig, rc ,i;
   MPI_Aint sdt_true_lb, rdt_true_lb;
@@ -34,10 +34,10 @@ MPIDO_Alltoallv(void *sendbuf,
 			  dt_null, sdt_true_lb);
   MPIDI_Datatype_get_info(1, recvtype, rcv_contig, trcvlen,
 			  dt_null, rdt_true_lb);
-  MPID_Ensure_Aint_fits_in_pointer(MPIR_VOID_PTR_CAST_TO_MPI_AINT sendbuf +
-				   sdt_true_lb);
-  MPID_Ensure_Aint_fits_in_pointer(MPIR_VOID_PTR_CAST_TO_MPI_AINT recvbuf +
-				   rdt_true_lb);
+
+  MPIDI_VerifyBuffer(sendbuf, sbuf, sdt_true_lb);
+  MPIDI_VerifyBuffer(recvbuf, rbuf, rdt_true_lb);
+  
   
   if (DCMF_INFO_ISSET(properties, DCMF_USE_MPICH_ALLTOALLV) ||
       !DCMF_INFO_ISSET(properties, DCMF_USE_TORUS_ALLTOALLV) ||
@@ -72,11 +72,11 @@ MPIDO_Alltoallv(void *sendbuf,
   /* Create a message layer collective message      */
   /* ---------------------------------------------- */
 
-  rc = MPIDO_Alltoallv_torus((char *) sendbuf + sdt_true_lb,
-			     sendcounts,
+  rc = MPIDO_Alltoallv_torus(sbuf,
+                             sendcounts,
 			     senddispls,
 			     sendtype,
-			     (char *)recvbuf + rdt_true_lb,
+			     rbuf,
 			     recvcounts,
 			     recvdispls,
 			     recvtype,

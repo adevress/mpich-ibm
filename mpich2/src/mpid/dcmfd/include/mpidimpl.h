@@ -389,6 +389,17 @@ void MPIDI_BG2S_ControlCB    (void * clientdata, const DCMF_Control_t * p, size_
   (_req)->dcmf.cancel_pending = TRUE;                   \
 }
 
+#define MPIDI_VerifyBuffer(_src_buff, _dst_buff, _data_lb)           \
+{                                                                    \
+  if (_src_buff == MPI_IN_PLACE)                                     \
+    _dst_buff = _src_buff;                                           \
+  else                                                               \
+  {                                                                  \
+    MPID_Ensure_Aint_fits_in_pointer(MPIR_VOID_PTR_CAST_TO_MPI_AINT  \
+                                     _src_buff + _data_lb);          \
+    _dst_buff = (char *) _src_buff + _data_lb;                       \
+  }                                                                  \
+}
 
 /** \brief Helper function when sending to self  */
 int MPIDI_Isend_self(const void    * buf,

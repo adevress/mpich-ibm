@@ -27,7 +27,8 @@ MPIDO_Alltoall(void *sendbuf,
 
   MPI_Aint sdt_true_lb, rdt_true_lb;
   MPID_Datatype *dt_null = NULL;
-
+  char *sbuf = sendbuf, *rbuf = recvbuf;
+  
   if (sendcount == 0 || recvcount == 0)
     return MPI_SUCCESS;
 
@@ -36,10 +37,8 @@ MPIDO_Alltoall(void *sendbuf,
   MPIDI_Datatype_get_info(recvcount, recvtype, rcv_contig,
 			  trcvlen, dt_null, rdt_true_lb);
 
-  MPID_Ensure_Aint_fits_in_pointer(MPIR_VOID_PTR_CAST_TO_MPI_AINT sendbuf +
-				   sdt_true_lb);
-  MPID_Ensure_Aint_fits_in_pointer(MPIR_VOID_PTR_CAST_TO_MPI_AINT recvbuf +
-				   rdt_true_lb);
+  MPIDI_VerifyBuffer(sendbuf, sbuf, sdt_true_lb);
+  MPIDI_VerifyBuffer(recvbuf, rbuf, rdt_true_lb);
   
   if (!snd_contig ||
       !rcv_contig ||
@@ -69,7 +68,8 @@ MPIDO_Alltoall(void *sendbuf,
   }
       
 
-  if (!STAR_info.enabled || STAR_info.internal_control_flow)
+  if (!STAR_info.enabled || STAR_info.internal_control_flow ||
+      tsndlen < STAR_info.alltoall_threshold)
   {
 
     if (!DCMF_INFO_ISSET(properties, DCMF_USE_TORUS_ALLTOALL))
@@ -77,10 +77,10 @@ MPIDO_Alltoall(void *sendbuf,
                            recvbuf, recvcount, recvtype,
                            comm);
 
-  rc = MPIDO_Alltoall_torus((char *) sendbuf + sdt_true_lb,
+    rc = MPIDO_Alltoall_torus(sbuf,
                               sendcount,
                               sendtype,
-                              (char *) recvbuf + rdt_true_lb,
+                              rbuf,
                               recvcount,
                               recvtype,
                               comm);
@@ -105,10 +105,10 @@ MPIDO_Alltoall(void *sendbuf,
     /* set the internal control flow to disable internal star tuning */
     STAR_info.internal_control_flow = 1;
 
-    rc = STAR_Alltoall((char *) sendbuf + sdt_true_lb,
+    rc = STAR_Alltoall(sbuf,
                        sendcount,
                        sendtype,
-                       (char *) recvbuf + rdt_true_lb,
+                       rbuf,
                        recvcount,
                        recvtype,
                        &collective_site,
@@ -131,14 +131,14 @@ MPIDO_Alltoall(void *sendbuf,
 #else /* !USE_CCMI_COLL */
 
 int MPIDO_Alltoall(void *sendbuf,
-		int sendcount,
-		MPI_Datatype sendtype,
-		void *recvbuf,
-		int recvcount,
-		MPI_Datatype recvtype,
-		MPID_Comm *comm_ptr)
+                   int sendcount,
+                   MPI_Datatype sendtype,
+                   void *recvbuf,
+                   int recvcount,
+                   MPI_Datatype recvtype,
+                   MPID_Comm *comm_ptr)
 {
-	MPID_abort();
+  MPID_abort();
 }
 
 #endif /* !USE_CCMI_COLL */

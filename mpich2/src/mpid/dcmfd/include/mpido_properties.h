@@ -199,9 +199,9 @@
 #define DCMF_USE_RECTRING_REDUCE                                          103
 #define DCMF_USE_TREE_REDUCE                                              104
 #define DCMF_USE_MPICH_REDUCE                                             105
+#define DCMF_USE_ALLREDUCE_REDUCE                                         106
+#define DCMF_USE_PREMALLOC_REDUCE                                         107
 /* Controls whether or not we reuse storage in reduce */
-#define DCMF_REDUCE_RESERVED1                                             106
-#define DCMF_REDUCE_RESERVED2                                             107
 #define DCMF_USE_STORAGE_REDUCE                                           108
 
 /* Reduce_scatter protocols */

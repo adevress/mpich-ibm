@@ -77,12 +77,22 @@ STAR_AssignBestAlgorithm(STAR_Tuning_Session * session)
   algorithms_times = session->algorithms_times;
   MPI = STAR_info.mpis[call_type];
 
-  STAR_ALLOC(tmp, double, total_algs * STAR_info.invocs_per_algorithm);
-  
+  STAR_ALLOC(tmp, double, (2 + total_algs * STAR_info.invocs_per_algorithm));
+
+  session->time[STAR_info.invocs_per_algorithm * total_algs] =
+    session->tune_overhead;
+  session->time[STAR_info.invocs_per_algorithm * total_algs + 1] =
+    session->comm_overhead;
+
   /* compute the max of all algorithms time among all processes */
   MPIDO_Allreduce(session->time, tmp,
-		  STAR_info.invocs_per_algorithm * total_algs,
+		  2 + STAR_info.invocs_per_algorithm * total_algs,
 		  MPI_DOUBLE, MPI_MAX, session->comm);
+  
+  session->tune_overhead = tmp[STAR_info.invocs_per_algorithm * total_algs] /
+                           session->tuning_calls;
+  session->comm_overhead = tmp[STAR_info.invocs_per_algorithm * total_algs+1] /
+                           session->tuning_calls;
 
 #ifdef VBL2
   if (DCMF_STAR_fd)
@@ -158,11 +168,11 @@ STAR_CreateTuningSession(STAR_Tuning_Session ** ptr,
 
   /* initialize the tuning session fields */
   memset((*ptr), 0, sizeof(STAR_Tuning_Session));
-
   STAR_ALLOC((*ptr) -> curr_invoc, unsigned, total_algs);
   STAR_ALLOC((*ptr) -> best, int, total_algs);
-  STAR_ALLOC((*ptr) -> algorithms_times, double, total_algs);
-  STAR_ALLOC((*ptr) -> time, double,total_algs*STAR_info.invocs_per_algorithm);
+  STAR_ALLOC((*ptr) -> algorithms_times, double, (total_algs + 2));
+  STAR_ALLOC((*ptr) -> time, double,
+             (2 + total_algs * STAR_info.invocs_per_algorithm));
 
   for (i = 0; i < total_algs; i++)
   {
@@ -491,8 +501,11 @@ STAR_CheckPerformanceOfBestAlg(STAR_Tuning_Session * session)
 
   /* reduce ave0 and ave1 over all processes using the max operation */
   
-  MPIDO_Allreduce(MPI_IN_PLACE, session->max, 2, MPI_DOUBLE, MPI_MAX,
+  MPIDO_Allreduce(MPI_IN_PLACE, session->max, 4, MPI_DOUBLE, MPI_MAX,
 		  session->comm);
+
+  session->monitor_overhead = session->max[2] / session->post_tuning_calls;
+  session->post_tuning_time = session->max[3] / session->post_tuning_calls;
 
   /* second is index of second best algorithm */
   second = session->best[1];
@@ -507,9 +520,10 @@ STAR_CheckPerformanceOfBestAlg(STAR_Tuning_Session * session)
   */
   best_time = 1.1 * session->algorithms_times[second];
   
+#ifdef VBL2
   if (DCMF_STAR_fd)
   {
-#ifdef VBL2
+
     fprintf(DCMF_STAR_fd, 
             "\n%s: comm: %s np: %d msize: %d Monitoring for %d invocs\n", 
             MPI, comm_shape_str[session -> comm -> dcmf.comm_shape], np, 
@@ -519,8 +533,8 @@ STAR_CheckPerformanceOfBestAlg(STAR_Tuning_Session * session)
             1.0E6 * session -> max[0], session -> repository[second].name,
             1.0E6 * session -> algorithms_times[second]);
     fflush(DCMF_STAR_fd);
-#endif
   }
+#endif
   
   /*
     more optimizations: we only switch to the second best algorithm when
@@ -558,10 +572,15 @@ STAR_CheckPerformanceOfBestAlg(STAR_Tuning_Session * session)
       STAR_SortAlgorithms(session);
       session->factor = 2;
     }
+    else
+    {
+      alg_index = session->best[0];
+      session->algorithms_times[alg_index] = session->max[0];
 #ifdef VBL2
-    else if (DCMF_STAR_fd)
-      fprintf(DCMF_STAR_fd,"**** Re-monitoring\n");
+      if (DCMF_STAR_fd)
+        fprintf(DCMF_STAR_fd,"**** Re-monitoring\n");
 #endif
+    }
   }
   else
   {
@@ -695,12 +714,17 @@ STAR_DisplayStatistics(MPID_Comm * comm)
 
 
       fprintf(DCMF_STAR_fd, "\nTuning Phase: Os: %.2lfus Oc: %.2lfus\n",
-              1.0E6 * ptr->tune_overhead / ptr->tuning_calls,
-              1.0E6 * ptr->comm_overhead / ptr->tuning_calls);
+              1.0E6 * ptr->tune_overhead,
+              1.0E6 * ptr->comm_overhead);
+      //1.0E6 * ptr->tune_overhead / ptr->tuning_calls,
+      //      1.0E6 * ptr->comm_overhead / ptr->tuning_calls);
      
       fprintf(DCMF_STAR_fd, "Monitoring Phase:  Os: %.2lfus Oc: %.2lfus\n",
-              1.0E6 * ptr->monitor_overhead / ptr->post_tuning_calls,
-              1.0E6 * ptr->post_tuning_time / ptr->post_tuning_calls);
+                          1.0E6 * ptr->monitor_overhead,
+              1.0E6 * ptr->post_tuning_time);
+
+      //1.0E6 * ptr->monitor_overhead * ptr->post_tuning_calls,
+      //      1.0E6 * ptr->post_tuning_time * ptr->post_tuning_calls);
       
       fprintf(DCMF_STAR_fd,
               "-----------------------------------------------------------\n");
@@ -797,13 +821,15 @@ STAR_ProcessMonitorPhase(STAR_Tuning_Session * session, double elapsed)
     return MPI_SUCCESS;
   }
 
-  session->post_tuning_time += elapsed;
+  session->max[3] += elapsed;
+  //session->post_tuning_time += elapsed;
   (session->post_tuning_calls)++;
 
   /* if have one algorithm, no need to monitor */
   if (session->total_tuned_algorithms == 1)
   {
-    session->monitor_overhead += ((DCMF_Timer() - initial_time) - elapsed);
+    session->max[2] += ((DCMF_Timer() - initial_time) - elapsed);
+    //    session->monitor_overhead += ((DCMF_Timer() - initial_time) - elapsed);
     return MPI_SUCCESS;
   }
 
@@ -828,7 +854,8 @@ STAR_ProcessMonitorPhase(STAR_Tuning_Session * session, double elapsed)
     STAR_CheckPerformanceOfBestAlg(session);
 
   /* this compute only STAR monitoring software/logic overhead */
-  session->monitor_overhead += ((DCMF_Timer() - initial_time) - elapsed);
+  session->max[2] += ((DCMF_Timer() - initial_time) - elapsed);
+  //session->monitor_overhead += ((DCMF_Timer() - initial_time) - elapsed);
   return MPI_SUCCESS;
 }
 
@@ -837,7 +864,6 @@ STAR_ProcessTuningPhase(STAR_Tuning_Session * session, double elapsed)
 {
   double initial_time;
   int alg_index, invoc;
-
 
   initial_time = session->initial_time;
 

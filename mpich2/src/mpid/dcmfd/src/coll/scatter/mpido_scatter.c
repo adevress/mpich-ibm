@@ -86,17 +86,9 @@ int MPIDO_Scatter(void *sendbuf,
                         recvbuf, recvcount, recvtype,
                         root, comm);
 
-  MPID_Ensure_Aint_fits_in_pointer (MPIR_VOID_PTR_CAST_TO_MPI_AINT sendbuf +
-				    true_lb);
-  sbuf = (char *) sendbuf + true_lb;
-
-  if (recvbuf != MPI_IN_PLACE)
-  {
-    MPID_Ensure_Aint_fits_in_pointer(MPIR_VOID_PTR_CAST_TO_MPI_AINT recvbuf +
-                                     true_lb);
-    rbuf = (char *) recvbuf + true_lb;
-  }
-
+  MPIDI_VerifyBuffer(sendbuf, sbuf, true_lb);
+  MPIDI_VerifyBuffer(recvbuf, rbuf, true_lb);
+  
   if (!STAR_info.enabled || STAR_info.internal_control_flow ||
       STAR_info.scatter_algorithms == 1)
   {

@@ -25,9 +25,8 @@ MPIDO_Allreduce(void * sendbuf,
   DCMF_Embedded_Info_Set * properties = &(comm->dcmf.properties);
   DCMF_Dt dcmf_data = DCMF_UNDEFINED_DT;
   DCMF_Op dcmf_op = DCMF_UNDEFINED_OP;
-  MPID_Datatype * data_ptr;
-  MPI_Aint data_true_lb = 0;
-  int rc, op_type_support, data_contig, data_size;
+  MPI_Aint data_true_lb, data_true_extent;
+  int rc, op_type_support, data_size;
   char *sbuf = sendbuf;
   char *rbuf = recvbuf;
 
@@ -47,29 +46,21 @@ MPIDO_Allreduce(void * sendbuf,
       (op_type_support == DCMF_NOT_SUPPORTED))
     return MPIR_Allreduce(sendbuf, recvbuf, count, datatype, op, comm);
 
-  MPIDI_Datatype_get_info(count, datatype, data_contig, data_size,
-			  data_ptr, data_true_lb);
+  PMPI_Type_get_true_extent(datatype, &data_true_lb, &data_true_extent);
+  data_size = count * data_true_extent;
 
-  MPID_Ensure_Aint_fits_in_pointer(MPIR_VOID_PTR_CAST_TO_MPI_AINT recvbuf +
-				   data_true_lb);
-
-  rbuf = ((char *) recvbuf + data_true_lb);
-
+  MPIDI_VerifyBuffer(recvbuf, rbuf, data_true_lb);
+  MPIDI_VerifyBuffer(sendbuf, sbuf, data_true_lb);
   if (sendbuf == MPI_IN_PLACE)
     sbuf = rbuf;
-  else
-  {
-    MPID_Ensure_Aint_fits_in_pointer(MPIR_VOID_PTR_CAST_TO_MPI_AINT sendbuf +
-                                     data_true_lb);
-    sbuf = ((char *) sendbuf + data_true_lb);
-  }
 
   dput_available = 
     DCMF_INFO_ISSET(properties, DCMF_USE_RRING_DPUT_SINGLETH_ALLREDUCE) &&
     !((unsigned)sbuf & 0x0F) && !((unsigned)rbuf & 0x0F);
 
+
   if (!STAR_info.enabled || STAR_info.internal_control_flow ||
-      data_size < STAR_info.threshold)
+      data_size < STAR_info.allreduce_threshold)
   {
     if(!userenvset)
     {
@@ -94,21 +85,16 @@ MPIDO_Allreduce(void * sendbuf,
 
       if(!func && (op_type_support != DCMF_NOT_SUPPORTED))
       {
+        
         if (data_size < 208)
         {
+               
           if(DCMF_INFO_ISSET(properties, 
                              DCMF_USE_SHORT_ASYNC_RECT_ALLREDUCE))
           {
-            /* MPIDI_Datatype_get_info doesn't account for padding in data_size
-               Simplest thing to do is hardcode the count limit for a couple
-               padded datatypes so that we don't attempt short async rectangle
-               with 208 or more bytes */
-            if(((datatype == MPI_DOUBLE_INT) && (count >= 13)) || // 13 * 16 = 208
-               ((datatype == MPI_SHORT_INT) && (count >= 26)))    // 26 * 8  = 208
-              ;
-            else
-              func = MPIDO_Allreduce_short_async_rect;
+            func = MPIDO_Allreduce_short_async_rect;
           }
+          
           if(!func && DCMF_INFO_ISSET(properties, 
                                       DCMF_USE_SHORT_ASYNC_BINOM_ALLREDUCE))
             func = MPIDO_Allreduce_short_async_binom;
@@ -165,14 +151,6 @@ MPIDO_Allreduce(void * sendbuf,
          DCMF_INFO_ISSET(properties, DCMF_USE_SHORT_ASYNC_RECT_ALLREDUCE) &&
          data_size < 208)
       {  
-        /* MPIDI_Datatype_get_info doesn't account for padding in data_size.
-           Simplest thing to do is hardcode the count limit for a couple padded
-           datatypes so that we don't attempt short async rectangle with 208 or
-           more bytes */
-        if(((datatype == MPI_DOUBLE_INT) && (count >= 13)) || // 13 * 16 = 208
-           ((datatype == MPI_SHORT_INT) && (count >= 26)))    // 26 * 8  = 208
-          ;
-        else
           func = MPIDO_Allreduce_short_async_rect;
       }
       if(!func &&

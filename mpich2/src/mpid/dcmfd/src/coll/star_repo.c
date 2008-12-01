@@ -70,12 +70,19 @@ STAR_Algorithm * STAR_barrier_repository;
 STAR_Info STAR_info =
   {
     enabled: 0,
-    threshold: 2048,
+    alltoall_threshold: 2048,
+    allgather_threshold: 2048,
+    allgatherv_threshold: 2048,
+    allreduce_threshold: 2048,
+    reduce_threshold: 2048,
+    bcast_threshold: 65536,
+    gather_threshold: 2048,
+    scatter_threshold: 2048,
     internal_control_flow: 0,
     agree_on_callsite: 1,
     traceback_levels: 3,
     debug: 0,
-    invocs_per_algorithm: 10,
+    invocs_per_algorithm: 2,
 
     bcast_algorithms: 0,
     barrier_algorithms: 0,
@@ -231,7 +238,7 @@ void STAR_InitRepositories()
 
   /* algorithms for Allreduce */
   curr = 0;
-  num = 5; 
+  num = 6; 
   STAR_info.allreduce_algorithms = num;
   STAR_allreduce_repository = malloc(alg_size * num);
   /*
@@ -296,6 +303,15 @@ void STAR_InitRepositories()
                             DCMF_TORUS_OP_TYPE,
                             DCMF_END_ARGS);
   
+  STAR_SetRepositoryElement(&STAR_allreduce_repository[curr++],
+			    (STAR_Func_Ptr)(&MPIDO_Allreduce_short_async_rect),
+			    0, 0,
+			    0, 208,
+			    "allreduce_async_short_rect",
+			    DCMF_RECT_COMM,
+                            DCMF_TORUS_OP_TYPE,
+                            DCMF_END_ARGS);
+
   STAR_SetRepositoryElement(&STAR_allreduce_repository[curr++],
 			    (STAR_Func_Ptr) (&MPIDO_Allreduce_async_rect),
 			    0, 0,
