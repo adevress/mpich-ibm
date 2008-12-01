@@ -38,10 +38,13 @@ MPIDO_Allreduce(void * sendbuf,
   if(count == 0)
     return MPI_SUCCESS;
 
+  op_type_support = MPIDI_ConvertMPItoDCMF(op, &dcmf_op, datatype, &dcmf_data);
+
   /* quick exit conditions */
   if (DCMF_INFO_ISSET(properties, DCMF_USE_MPICH_ALLREDUCE) ||
       DCMF_INFO_ISSET(properties, DCMF_IRREG_COMM) ||
-      HANDLE_GET_KIND(op) != HANDLE_KIND_BUILTIN)
+      HANDLE_GET_KIND(op) != HANDLE_KIND_BUILTIN ||
+      (op_type_support == DCMF_NOT_SUPPORTED))
     return MPIR_Allreduce(sendbuf, recvbuf, count, datatype, op, comm);
 
   MPIDI_Datatype_get_info(count, datatype, data_contig, data_size,
@@ -61,13 +64,9 @@ MPIDO_Allreduce(void * sendbuf,
     sbuf = ((char *) sendbuf + data_true_lb);
   }
 
-  op_type_support = MPIDI_ConvertMPItoDCMF(op, &dcmf_op, datatype, &dcmf_data);
-
-  dput_available = (op_type_support != DCMF_NOT_SUPPORTED) &&
+  dput_available = 
     DCMF_INFO_ISSET(properties, DCMF_USE_RRING_DPUT_SINGLETH_ALLREDUCE) &&
     !((unsigned)sbuf & 0x0F) && !((unsigned)rbuf & 0x0F);
-
-  extern int DCMF_TREE_SMP_SHORTCUT;
 
   if (!STAR_info.enabled || STAR_info.internal_control_flow ||
       data_size < STAR_info.threshold)
@@ -186,6 +185,9 @@ MPIDO_Allreduce(void * sendbuf,
          !((unsigned)sbuf & 0x0F) && !((unsigned)rbuf & 0x0F))
         func = MPIDO_Allreduce_rring_dput_singleth;
       
+      if (!func &&
+	  DCMF_INFO_ISSET(properties, DCMF_USE_ARECT_ALLREDUCE))
+	func = MPIDO_Allreduce_async_rect;
       if(!func &&
          DCMF_INFO_ISSET(properties, DCMF_USE_ARECTRING_ALLREDUCE))
         func = MPIDO_Allreduce_async_rectring;
