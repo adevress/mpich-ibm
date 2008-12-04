@@ -113,7 +113,7 @@ int MPIDI_Isend_self(const void    * buf,
       *request                   = sreq;
       sreq->comm                 = comm;
       sreq->kind                 = MPID_REQUEST_SEND;
-      MPID_Request_setMatch(sreq, match.rank, match.tag, match.context_id);
+      MPID_Request_setMatch(sreq, match.tag, match.rank, match.context_id);
       MPIR_Comm_add_ref(comm);
       sreq->status.count = data_sz;
       return MPI_SUCCESS;
