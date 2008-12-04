@@ -45,7 +45,7 @@ else
 	   CC     = mpixlc
 endif
 	   GLOB_DEFINES += -DDCMF -DMPI
-	   INCLUDES     += -I$(BGDRIVER)/comm/include 
+	   INCLUDES     += -I$(INSTALL_DIR)/include 
 	   COPT          = -O3
 
 ifneq (,$(findstring mpif,$(_FC)))
