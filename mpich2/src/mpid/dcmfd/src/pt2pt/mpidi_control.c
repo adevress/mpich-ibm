@@ -105,7 +105,6 @@ int MPIDI_DCMF_postCancelReq(MPID_Request * req)
                    NULL,
                    cancel->msginfo.quad,
                    DCQuad_sizeof(MPIDI_DCMF_MsgInfo));
-  return 0;
 }
 
 /**
