@@ -188,7 +188,7 @@ STAR_CreateTuningSession(STAR_Tuning_Session ** ptr,
   (*ptr) -> get_next_alg = TRUE;
   (*ptr) -> skip = 2;
   (*ptr) -> callsite_id = id;
-  (*ptr) -> factor = 2;
+  (*ptr) -> factor = 4;
   (*ptr) -> bytes = bytes;
   (*ptr) -> comm = comm;
   (*ptr) -> handle = comm->handle;
@@ -310,7 +310,8 @@ STAR_NextAlgorithm(STAR_Tuning_Session * session,
   if (!(bytes % sizeof(int))) 
     DCMF_INFO_SET(&tmp_comm, DCMF_BUFF_SIZE_MUL4);
 
-  if (op_type_support == DCMF_TREE_SUPPORT)
+  if (op_type_support == DCMF_TREE_SUPPORT ||
+      op_type_support == DCMF_TREE_MIN_SUPPORT)
     DCMF_INFO_SET(&tmp_comm, DCMF_TREE_OP_TYPE);
 
   if (op_type_support == DCMF_TORUS_SUPPORT)
@@ -354,7 +355,8 @@ STAR_NextAlgorithm(STAR_Tuning_Session * session,
     if (!skip)
     {
       if (DCMF_INFO_ISSET(alg_info, DCMF_TORUS_OP_TYPE) &&
-          op_type_support == DCMF_TREE_SUPPORT)
+          (op_type_support == DCMF_TREE_SUPPORT ||
+           op_type_support == DCMF_TREE_MIN_SUPPORT))
       {
         reset = 1;
         DCMF_INFO_SET(alg_info, DCMF_TREE_OP_TYPE);		
@@ -492,14 +494,16 @@ STAR_CheckPerformanceOfBestAlg(STAR_Tuning_Session * session)
   rank = session->comm->rank;
 
   /*
-    ave1 is the average algorithm communication time for the last
+    max[0] is the average algorithm communication time over the so far
+    monitoring calls. 
+    max[1] is the average algorithm communication time for the last
     INVOCS_PER_ALGORITHMS number of invocations
   */
 
   session->max[0] /= session->monitor_calls;
   session->max[1] /= STAR_info.invocs_per_algorithm;
 
-  /* reduce ave0 and ave1 over all processes using the max operation */
+  /* reduce max0 and max1 over all processes using the max operation */
   
   MPIDO_Allreduce(MPI_IN_PLACE, session->max, 4, MPI_DOUBLE, MPI_MAX,
 		  session->comm);
@@ -567,15 +571,15 @@ STAR_CheckPerformanceOfBestAlg(STAR_Tuning_Session * session)
         algorithm.
       */
       alg_index = session->best[0];
-      session->algorithms_times[alg_index] = session->max[0];
+      session->algorithms_times[alg_index] = session->max[1];
       session->best_alg_index = second;
       STAR_SortAlgorithms(session);
-      session->factor = 2;
+      session->factor = 4;
     }
     else
     {
       alg_index = session->best[0];
-      session->algorithms_times[alg_index] = session->max[0];
+      session->algorithms_times[alg_index] = session->max[1];
 #ifdef VBL2
       if (DCMF_STAR_fd)
         fprintf(DCMF_STAR_fd,"**** Re-monitoring\n");
@@ -690,6 +694,7 @@ STAR_DisplayStatistics(MPID_Comm * comm)
     total_algs = ptr->total_examined;
 
     if (call_type == ALLGATHER_CALL) bytes /= np;
+
     if (ptr->monitor_overhead)
     {
 
@@ -809,6 +814,8 @@ STAR_ProcessMonitorPhase(STAR_Tuning_Session * session, double elapsed)
 
   initial_time = session->initial_time;
 
+  session->max[3] += elapsed;
+
   /*
     if this is first time running in monitor phase, then trash a number of
     measurements since they are spoiled from the effect of the last
@@ -821,9 +828,9 @@ STAR_ProcessMonitorPhase(STAR_Tuning_Session * session, double elapsed)
     return MPI_SUCCESS;
   }
 
-  session->max[3] += elapsed;
+
   //session->post_tuning_time += elapsed;
-  (session->post_tuning_calls)++;
+  session->post_tuning_calls++;
 
   /* if have one algorithm, no need to monitor */
   if (session->total_tuned_algorithms == 1)

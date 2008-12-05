@@ -52,7 +52,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "mpidi_coll_prototypes.h"
 
 
-int
+inline int
 STAR_BestBcast(char * buff,
                int bytes,
                int root,

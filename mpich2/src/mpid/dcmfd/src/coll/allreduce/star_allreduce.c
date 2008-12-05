@@ -50,16 +50,16 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "mpidi_star.h"
 #include "mpidi_coll_prototypes.h"
 
-  int
-    STAR_BestAllreduce(char * sbuff,
-                       char * rbuff,
-                       int count,
-                       DCMF_Dt dcmf_data,
-                       DCMF_Op dcmf_op,
-                       MPI_Datatype datatype,
-                       MPID_Comm * comm,
-                       int index)
-
+int
+STAR_BestAllreduce(char * sbuff,
+                   char * rbuff,
+                   int count,
+                   DCMF_Dt dcmf_data,
+                   DCMF_Op dcmf_op,
+                   MPI_Datatype datatype,
+                   MPID_Comm * comm,
+                   int index)
+     
 {
   /* load the right algorithm in the function pointer and execute */
   allreduce_fptr best_func = STAR_allreduce_repository[index].func.allreduce_func;
@@ -88,7 +88,7 @@ STAR_Allreduce(void * sbuff,
   session = STAR_AssembleSession(collective_site, repo, total_algs);
 
   if (session->panic) return STAR_FAILURE;
-
+  
   /* if index is > -1, it means we are done tuning and have a valid index */
   if ((best_alg = session->best_alg_index) > -1)
   {

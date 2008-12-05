@@ -191,10 +191,10 @@ MPIDO_Allgather(void *sendbuf,
     
     collective_site.id = (int) tb_ptr[STAR_info.traceback_levels - 1];
     
-    rc = STAR_Allgather(sbuf,
+    rc = STAR_Allgather(sendbuf,
                         sendcount,
                         sendtype,
-                        rbuf,
+                        recvbuf,
                         recvcount,
                         recvtype,
                         send_true_lb,

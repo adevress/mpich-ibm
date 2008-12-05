@@ -441,7 +441,6 @@ void STAR_InitRepositories()
 			    0, 0,
 			    0, 0,
 			    "allgather_allreduce",
-			    DCMF_USE_TREE_ALLREDUCE,
 			    DCMF_SBUFF_CONTIG,
 			    DCMF_RBUFF_CONTIG,
 			    DCMF_RBUFF_CONTIN,

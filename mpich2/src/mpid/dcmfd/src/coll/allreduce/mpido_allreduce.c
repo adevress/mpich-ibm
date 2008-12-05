@@ -32,7 +32,7 @@ MPIDO_Allreduce(void * sendbuf,
 
   /* Did the user want to force a specific algorithm? */
   int userenvset = DCMF_INFO_ISSET(properties, DCMF_ALLREDUCE_ENVVAR);
-  int dput_available;
+  int dput_available, buffer_aligned = 0;
   
   if(count == 0)
     return MPI_SUCCESS;
@@ -41,12 +41,12 @@ MPIDO_Allreduce(void * sendbuf,
 
   /* quick exit conditions */
   if (DCMF_INFO_ISSET(properties, DCMF_USE_MPICH_ALLREDUCE) ||
-      DCMF_INFO_ISSET(properties, DCMF_IRREG_COMM) ||
+      //DCMF_INFO_ISSET(properties, DCMF_IRREG_COMM) ||
       HANDLE_GET_KIND(op) != HANDLE_KIND_BUILTIN ||
       (op_type_support == DCMF_NOT_SUPPORTED))
     return MPIR_Allreduce(sendbuf, recvbuf, count, datatype, op, comm);
 
-  PMPI_Type_get_true_extent(datatype, &data_true_lb, &data_true_extent);
+  NMPI_Type_get_true_extent(datatype, &data_true_lb, &data_true_extent);
   data_size = count * data_true_extent;
 
   MPIDI_VerifyBuffer(recvbuf, rbuf, data_true_lb);
@@ -54,10 +54,10 @@ MPIDO_Allreduce(void * sendbuf,
   if (sendbuf == MPI_IN_PLACE)
     sbuf = rbuf;
 
-  dput_available = 
-    DCMF_INFO_ISSET(properties, DCMF_USE_RRING_DPUT_SINGLETH_ALLREDUCE) &&
-    !((unsigned)sbuf & 0x0F) && !((unsigned)rbuf & 0x0F);
-
+  buffer_aligned = !((unsigned)sbuf & 0x0F) && !((unsigned)rbuf & 0x0F);
+  dput_available = buffer_aligned &&
+                   DCMF_INFO_ISSET(properties,
+                                   DCMF_USE_RRING_DPUT_SINGLETH_ALLREDUCE);
 
   if (!STAR_info.enabled || STAR_info.internal_control_flow ||
       data_size < STAR_info.allreduce_threshold)
@@ -213,9 +213,7 @@ MPIDO_Allreduce(void * sendbuf,
     collective_site.op_type_support = op_type_support;
 
     /* decide buffer alignment */
-    collective_site.buff_attributes[3] = 1; /* assume aligned */
-    if (((unsigned)sbuf & 0x0F) || ((unsigned)rbuf & 0x0F))
-      collective_site.buff_attributes[3] = 0; /* set to not aligned */
+    collective_site.buff_attributes[3] = buffer_aligned;
 
     rc = STAR_Allreduce(sbuf, rbuf, count, dcmf_data, dcmf_op,
                         datatype, &collective_site,
