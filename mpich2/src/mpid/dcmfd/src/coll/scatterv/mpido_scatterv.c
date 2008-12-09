@@ -119,7 +119,7 @@ int MPIDO_Scatterv(void *sendbuf,
       }
       else
       {
-        MPIDI_VerifyBuffer(sendbuf, newrecvbuf, true_lb);
+        MPIDI_VerifyBuffer(recvbuf, newrecvbuf, true_lb);
       }
       if(!optscatterv[0])
       {

@@ -23,7 +23,7 @@ int MPIDO_Reduce_scatter(void *sendbuf,
                          MPID_Comm * comm_ptr)
 {
   DCMF_Embedded_Info_Set * properties = &(comm_ptr->dcmf.properties);
-  int tcount=0, i, rc, nbytes = 0;
+  int tcount=0, i, rc;
   
   MPI_Aint dt_lb=0, extent;
   
@@ -60,7 +60,7 @@ int MPIDO_Reduce_scatter(void *sendbuf,
   }
   tcount+=recvcounts[size-1];
    
-  tempbuf = MPIU_Malloc(nbytes * sizeof(char) * tcount);
+  tempbuf = MPIU_Malloc(extent * sizeof(char) * tcount);
 
   if (!tempbuf)
   {
@@ -72,8 +72,8 @@ int MPIDO_Reduce_scatter(void *sendbuf,
                                 __LINE__, MPI_ERR_OTHER, "**nomem", 0);
   }
   
-  MPIDI_VerifyBuffer(sendbuf, sbuf, dt_lb);
-  
+  MPID_Ensure_Aint_fits_in_pointer(MPIR_VOID_PTR_CAST_TO_MPI_AINT sendbuf+ 
+ 				   dt_lb);
   rc = MPIDO_Reduce(sbuf,
 		    tempbuf, 
 		    tcount, 
