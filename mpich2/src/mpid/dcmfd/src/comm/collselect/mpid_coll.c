@@ -854,6 +854,7 @@ void MPIDI_Comm_setup_properties(MPID_Comm * comm, int initial_setup)
     
     if (!DCMF_INFO_ISSET(comm_prop, DCMF_RECT_COMM))
     {
+      DCMF_INFO_UNSET(comm_prop, DCMF_USE_RRING_DPUT_SINGLETH_ALLREDUCE);
       DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_BARRIER);
       DCMF_INFO_UNSET(comm_prop, DCMF_USE_ARECT_BCAST);
       DCMF_INFO_UNSET(comm_prop, DCMF_USE_RECT_BCAST);
