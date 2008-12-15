@@ -20,9 +20,9 @@ int MPIDO_Reduce_scatter(void *sendbuf,
                          int *recvcounts,
                          MPI_Datatype datatype,
                          MPI_Op op,
-                         MPID_Comm * comm_ptr)
+                         MPID_Comm * comm)
 {
-  DCMF_Embedded_Info_Set * properties = &(comm_ptr->dcmf.properties);
+  MPIDO_Embedded_Info_Set * properties = &(comm->dcmf.properties);
   int tcount=0, i, rc;
   
   MPID_Datatype *dt_ptr;
@@ -31,19 +31,21 @@ int MPIDO_Reduce_scatter(void *sendbuf,
   char *tempbuf;
   char *sbuf = sendbuf;
   int *displs;
-  int size = comm_ptr->local_size;
+  int size = comm->local_size;
 
-  if(DCMF_INFO_ISSET(properties, DCMF_USE_MPICH_REDUCESCATTER) ||
-     !DCMF_INFO_ISSET(properties, DCMF_USE_REDUCESCATTER) ||
+  if(MPIDO_INFO_ISSET(properties, MPIDO_USE_MPICH_REDUCESCATTER) ||
+     !MPIDO_INFO_ISSET(properties, MPIDO_USE_REDUCESCATTER) ||
      recvcounts[0] < 256 || 
      !MPIDI_IsTreeOp(op, datatype))
+  {
+    comm->dcmf.last_algorithm = MPIDO_USE_MPICH_REDUCESCATTER;
     return MPIR_Reduce_scatter(sendbuf, 
 			       recvbuf, 
 			       recvcounts, 
 			       datatype, 
 			       op, 
-			       comm_ptr);
-
+			       comm);
+  }
 
    NMPI_Type_get_true_extent(datatype, &dt_lb, &extent);
    MPID_Ensure_Aint_fits_in_int(extent);
@@ -84,7 +86,7 @@ int MPIDO_Reduce_scatter(void *sendbuf,
 		    datatype, 
 		    op, 
 		    0, 
-		    comm_ptr);
+		    comm);
   
   /* rank 0 has the entire buffer, need to split out our individual 
      piece does recvbuf need a dt_lb added? */
@@ -98,11 +100,13 @@ int MPIDO_Reduce_scatter(void *sendbuf,
                         tcount, 
                         datatype, 
                         0, 
-                        comm_ptr);
+                        comm);
   }
   
   MPIU_Free(tempbuf);
   MPIU_Free(displs);
+  
+  comm->dcmf.last_algorithm = MPIDO_USE_REDUCESCATTER;
 
   return rc;
 }

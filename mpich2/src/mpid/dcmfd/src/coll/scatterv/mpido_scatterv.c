@@ -21,20 +21,21 @@ int MPIDO_Scatterv(void *sendbuf,
                    int recvcount,
                    MPI_Datatype recvtype,
                    int root,
-                   MPID_Comm *comm_ptr)
+                   MPID_Comm *comm)
 {
-  DCMF_Embedded_Info_Set * properties = &(comm_ptr->dcmf.properties);
-  int rank = comm_ptr->rank, size = comm_ptr->local_size;
+  MPIDO_Embedded_Info_Set * properties = &(comm->dcmf.properties);
+  int rank = comm->rank, size = comm->local_size;
   int i, nbytes, sum=0, contig;
   MPID_Datatype *dt_ptr;
   MPI_Aint true_lb=0;
 
-  if (DCMF_INFO_ISSET(properties, DCMF_USE_MPICH_SCATTERV) ||
-      comm_ptr->comm_kind != MPID_INTRACOMM)
+  if (MPIDO_INFO_ISSET(properties, MPIDO_USE_MPICH_SCATTERV) ||
+      comm->comm_kind != MPID_INTRACOMM)
   {
+    comm->dcmf.last_algorithm = MPIDO_USE_MPICH_SCATTERV;
     return MPIR_Scatterv(sendbuf, sendcounts, displs, sendtype,
                          recvbuf, recvcount, recvtype, 
-                         root, comm_ptr);
+                         root, comm);
   }
 
     
@@ -49,8 +50,8 @@ int MPIDO_Scatterv(void *sendbuf,
     */
    int optscatterv[3];
 
-   optscatterv[0] = !DCMF_INFO_ISSET(properties, DCMF_USE_ALLTOALL_SCATTERV);
-   optscatterv[1] = !DCMF_INFO_ISSET(properties, DCMF_USE_BCAST_SCATTERV);
+   optscatterv[0] = !MPIDO_INFO_ISSET(properties, MPIDO_USE_ALLTOALL_SCATTERV);
+   optscatterv[1] = !MPIDO_INFO_ISSET(properties, MPIDO_USE_BCAST_SCATTERV);
    optscatterv[2] = 1;
 
    if(rank == root)
@@ -97,14 +98,14 @@ int MPIDO_Scatterv(void *sendbuf,
   /* set the internal control flow to disable internal star tuning */
   STAR_info.internal_control_flow = 1;
 
-   if(DCMF_INFO_ISSET(properties, DCMF_USE_PREALLREDUCE_SCATTERV))
+   if(MPIDO_INFO_ISSET(properties, MPIDO_USE_PREALLREDUCE_SCATTERV))
    {
       MPIDO_Allreduce(MPI_IN_PLACE,
 		  optscatterv,
 		  3,
 		  MPI_INT,
 		  MPI_BOR,
-		  comm_ptr);
+		  comm);
    }
   /* reset flag */
   STAR_info.internal_control_flow = 0;  
@@ -123,35 +124,38 @@ int MPIDO_Scatterv(void *sendbuf,
       }
       if(!optscatterv[0])
       {
-         return MPIDO_Scatterv_alltoallv(newsendbuf,
-                                         sendcounts,
-                                         displs,
-                                         sendtype,
-                                         newrecvbuf,
-                                         recvcount,
-                                         recvtype,
-                                         root,
-                                         comm_ptr);
-     
+        comm->dcmf.last_algorithm = MPIDO_USE_ALLTOALL_SCATTERV;
+        return MPIDO_Scatterv_alltoallv(newsendbuf,
+                                        sendcounts,
+                                        displs,
+                                        sendtype,
+                                        newrecvbuf,
+                                        recvcount,
+                                        recvtype,
+                                        root,
+                                        comm);
+        
       }
       else
       {
-         return MPIDO_Scatterv_bcast(newsendbuf,
-                                     sendcounts,
-                                     displs,
-                                     sendtype,
-                                     newrecvbuf,
-                                     recvcount,
-                                     recvtype,
-                                     root,
-                                     comm_ptr);
+        comm->dcmf.last_algorithm = MPIDO_USE_BCAST_SCATTERV;
+        return MPIDO_Scatterv_bcast(newsendbuf,
+                                    sendcounts,
+                                    displs,
+                                    sendtype,
+                                    newrecvbuf,
+                                    recvcount,
+                                    recvtype,
+                                    root,
+                                    comm);
       }
    } /* nothing valid to try, go to mpich */
    else
    {
+      comm->dcmf.last_algorithm = MPIDO_USE_MPICH_SCATTERV;
       return MPIR_Scatterv(sendbuf, sendcounts, displs, sendtype,
                            recvbuf, recvcount, recvtype,
-                           root, comm_ptr);
+                           root, comm);
    }
 }
 
@@ -165,7 +169,7 @@ int MPIDO_Scatterv(void *sendbuf,
                    int recvcount,
                    MPI_Datatype recvtype,
                    int root,
-                   MPID_Comm *comm_ptr)
+                   MPID_Comm *comm)
 {
   MPID_abort();
 }

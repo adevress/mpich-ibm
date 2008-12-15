@@ -27,8 +27,8 @@ MPIDO_Allgather(void *sendbuf,
    * *********************************
    */
   allgather_fptr func = NULL;
-  DCMF_Embedded_Info_Set * coll_prop = &MPIDI_CollectiveProtocols.properties;
-  DCMF_Embedded_Info_Set * comm_prop = &(comm->dcmf.properties);
+  MPIDO_Embedded_Info_Set * coll_prop = &MPIDI_CollectiveProtocols.properties;
+  MPIDO_Embedded_Info_Set * comm_prop = &(comm->dcmf.properties);
   MPIDO_Coll_config config = {1,1,1,1,1};
   MPID_Datatype * dt_null = NULL;
   MPI_Aint send_true_lb = 0;
@@ -37,18 +37,20 @@ MPIDO_Allgather(void *sendbuf,
   size_t send_size = 0;
   size_t recv_size = 0;
 
-  unsigned char userenvset = DCMF_INFO_ISSET(comm_prop,
-                                             DCMF_ALLGATHER_ENVVAR);
+  unsigned char userenvset = MPIDO_INFO_ISSET(comm_prop,
+                                             MPIDO_ALLGATHER_ENVVAR);
 
   char use_tree_reduce, use_alltoall, use_rect_async, use_bcast;
   char *sbuf, *rbuf;
 
   /* no optimized allgather, punt to mpich */
-  if (DCMF_INFO_ISSET(comm_prop, DCMF_USE_MPICH_ALLGATHER))
+  if (MPIDO_INFO_ISSET(comm_prop, MPIDO_USE_MPICH_ALLGATHER))
+  {
+    comm->dcmf.last_algorithm = MPIDO_USE_MPICH_ALLGATHER;
     return MPIR_Allgather(sendbuf, sendcount, sendtype,
 			  recvbuf, recvcount, recvtype,
 			  comm);
-  
+  }
   if ((sendcount < 1 && sendbuf != MPI_IN_PLACE) || recvcount < 1)
     return MPI_SUCCESS;
    
@@ -75,7 +77,7 @@ MPIDO_Allgather(void *sendbuf,
   }
 
   /* verify everyone's datatype contiguity */
-  if (DCMF_INFO_ISSET(coll_prop, DCMF_USE_PREALLREDUCE_ALLGATHER))
+  if (MPIDO_INFO_ISSET(coll_prop, MPIDO_USE_PREALLREDUCE_ALLGATHER))
   {
     STAR_info.internal_control_flow = 1;
     MPIDO_Allreduce(MPI_IN_PLACE, &config, 5, MPI_INT, MPI_BAND, comm);
@@ -87,79 +89,121 @@ MPIDO_Allgather(void *sendbuf,
       send_size < STAR_info.allgather_threshold) 
   {
     use_alltoall = 
-      DCMF_INFO_ISSET(comm_prop, DCMF_USE_TORUS_ALLTOALL) &&
-      DCMF_INFO_ISSET(comm_prop, DCMF_USE_ALLTOALL_ALLGATHER) &&
+      MPIDO_INFO_ISSET(comm_prop, MPIDO_USE_TORUS_ALLTOALL) &&
+      MPIDO_INFO_ISSET(comm_prop, MPIDO_USE_ALLTOALL_ALLGATHER) &&
       config.recv_contig && config.send_contig;
     /* The tree doesn't support reduce of chars for the operation we need,
      * so we change to ints. Therefore the size needs to be a multiple of
      * sizeof(int) */
-    use_bcast = DCMF_INFO_ISSET(comm_prop, DCMF_USE_BCAST_ALLGATHER); 
+    use_bcast = MPIDO_INFO_ISSET(comm_prop, MPIDO_USE_BCAST_ALLGATHER); 
 
     use_tree_reduce = 
-      DCMF_INFO_ISSET(comm_prop, DCMF_USE_TREE_ALLREDUCE) &&
-      DCMF_INFO_ISSET(comm_prop, DCMF_USE_ALLREDUCE_ALLGATHER) &&
+      MPIDO_INFO_ISSET(comm_prop, MPIDO_USE_TREE_ALLREDUCE) &&
+      MPIDO_INFO_ISSET(comm_prop, MPIDO_USE_ALLREDUCE_ALLGATHER) &&
       config.recv_contig && config.send_contig && 
       config.recv_continuous && (recv_size % sizeof(int) == 0);
 
     use_rect_async = 
-      DCMF_INFO_ISSET(comm_prop, DCMF_USE_ARECT_BCAST_ALLGATHER) &&
-      DCMF_INFO_ISSET(comm_prop, DCMF_USE_ARECT_BCAST) &&
+      MPIDO_INFO_ISSET(comm_prop, MPIDO_USE_ARECT_BCAST_ALLGATHER) &&
+      MPIDO_INFO_ISSET(comm_prop, MPIDO_USE_ARECT_BCAST) &&
       config.recv_contig && config.send_contig;
 
     if(userenvset)
     {
       if(use_tree_reduce)
+      {
         func = MPIDO_Allgather_allreduce;
+        comm->dcmf.last_algorithm = MPIDO_USE_ALLREDUCE_ALLGATHER;
+      }
       if(use_alltoall)
+      {
         func = MPIDO_Allgather_alltoall;
+        comm->dcmf.last_algorithm = MPIDO_USE_ALLTOALL_ALLGATHER;
+      }
       if(use_rect_async)
+      {
         func = MPIDO_Allgather_bcast_rect_async;
+        comm->dcmf.last_algorithm = MPIDO_USE_ARECT_BCAST_ALLGATHER;
+      }
       if(use_bcast)
+      {
         func = MPIDO_Allgather_bcast;
+        comm->dcmf.last_algorithm = MPIDO_USE_BCAST_ALLGATHER;
+      }
     }
     else
     {
-      if (!DCMF_INFO_ISSET(comm_prop, DCMF_IRREG_COMM))
+      if (!MPIDO_INFO_ISSET(comm_prop, MPIDO_IRREG_COMM))
       {
         if (comm_size <= 512)
         {
           if (use_tree_reduce && sendcount < 128 * comm_size)
+          {
             func = MPIDO_Allgather_allreduce;
+            comm->dcmf.last_algorithm = MPIDO_USE_ALLREDUCE_ALLGATHER;
+          }
           if (!func && use_bcast && sendcount >= 128 * comm_size)
+          {
             func = MPIDO_Allgather_bcast;
+            comm->dcmf.last_algorithm = MPIDO_USE_BCAST_ALLGATHER;
+          }
           if (!func && use_alltoall &&
               sendcount > 128 && sendcount <= 8*comm_size)
+          {
             func = MPIDO_Allgather_alltoall;
+            comm->dcmf.last_algorithm = MPIDO_USE_ALLTOALL_ALLGATHER;
+          }
           if (!func && use_rect_async && sendcount > 8*comm_size)
+          {
             func = MPIDO_Allgather_bcast_rect_async;
+            comm->dcmf.last_algorithm = MPIDO_USE_ARECT_BCAST_ALLGATHER;
+          }
         }
         else
         {
           if (use_tree_reduce && sendcount < 512)
+          {
             func = MPIDO_Allgather_allreduce;
+            comm->dcmf.last_algorithm = MPIDO_USE_ALLREDUCE_ALLGATHER;
+          }
           if (!func && use_alltoall &&
               sendcount > 128 * (512.0 / (float) comm_size) &&
               sendcount <= 128)
+          {
             func = MPIDO_Allgather_alltoall;
+            comm->dcmf.last_algorithm = MPIDO_USE_ALLTOALL_ALLGATHER;
+          }
           if (!func && use_rect_async &&
               sendcount >= 512 && sendcount <= 65536)
+          {
             func = MPIDO_Allgather_bcast_rect_async;
+            comm->dcmf.last_algorithm = MPIDO_USE_ARECT_BCAST_ALLGATHER;
+          }
           if (!func && use_bcast && sendcount > 65536)
+          {
             func = MPIDO_Allgather_bcast;
+            comm->dcmf.last_algorithm = MPIDO_USE_BCAST_ALLGATHER;
+          }
         }
       }
       else
       {
         if (sendcount >= 64 && use_alltoall)
+        {
           func = MPIDO_Allgather_alltoall;
+          comm->dcmf.last_algorithm = MPIDO_USE_ALLTOALL_ALLGATHER;
+        }
       }
     }
          
     if (!func)
+    {
+      comm->dcmf.last_algorithm = MPIDO_USE_MPICH_ALLGATHER;
       return MPIR_Allgather(sendbuf, sendcount, sendtype,
                             recvbuf, recvcount, recvtype,
                             comm);
-
+    }
+    
     rc = (func)(sendbuf, sendcount, sendtype, recvbuf, recvcount, recvtype,
                 send_true_lb, recv_true_lb, send_size, recv_size, comm);
   }  
@@ -179,7 +223,7 @@ MPIDO_Allgather(void *sendbuf,
     collective_site.call_type = ALLGATHER_CALL;
     collective_site.comm = comm;
     collective_site.bytes = recv_size;
-    collective_site.op_type_support = DCMF_SUPPORT_NOT_NEEDED;
+    collective_site.op_type_support = MPIDO_SUPPORT_NOT_NEEDED;
     collective_site.buff_attributes[0] = config.send_contig;
     collective_site.buff_attributes[1] = config.recv_contig;
     collective_site.buff_attributes[2] = config.recv_continuous;

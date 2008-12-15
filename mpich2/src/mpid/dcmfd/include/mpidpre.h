@@ -300,6 +300,7 @@ struct MPIDI_DCMF_Comm
   unsigned *rdispls;
   unsigned *sndcounters;
   unsigned *rcvcounters;
+  unsigned last_algorithm;
   unsigned bcast_iter;   /* async broadcast is only used every 32
 			  * steps to prevent too many unexpected
 			  * messages */
@@ -308,7 +309,7 @@ struct MPIDI_DCMF_Comm
   struct STAR_Tuning_Session * tuning_session;
   
   /* struct of bits holding info relavant to comm */
-  DCMF_Embedded_Info_Set properties;
+  MPIDO_Embedded_Info_Set properties;
 };
 
 /** \brief This defines the portion of MPID_Comm that is specific to the DCMF Device */

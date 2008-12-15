@@ -9,9 +9,9 @@
 
 #pragma weak PMI_torus2rank = MPIX_torus2rank
 unsigned MPIX_torus2rank (unsigned        x,
-                         unsigned        y,
-                         unsigned        z,
-                         unsigned        t)
+                          unsigned        y,
+                          unsigned        z,
+                          unsigned        t)
 {
   size_t rank;
   int rc = DCMF_Messager_torus2rank(x, y, z, t, &rank);
@@ -21,29 +21,29 @@ unsigned MPIX_torus2rank (unsigned        x,
 
 #pragma weak PMI_Comm_torus2rank = MPIX_Comm_torus2rank
 unsigned MPIX_Comm_torus2rank (MPI_Comm comm,
-                              unsigned x,
-                              unsigned y,
-                              unsigned z,
-                              unsigned t)
+                               unsigned x,
+                               unsigned y,
+                               unsigned z,
+                               unsigned t)
 {
   int rank, worldrank = MPIX_torus2rank(x, y, z, t);
   if (comm == MPI_COMM_WORLD) rank = worldrank;
   else
-    {
-      MPI_Group group_a, worldgroup;
-      PMPI_Comm_group (comm, &group_a);
-      PMPI_Comm_group (MPI_COMM_WORLD, &worldgroup);
-      PMPI_Group_translate_ranks (worldgroup, 1, &worldrank, group_a, &rank);
-    }
+  {
+    MPI_Group group_a, worldgroup;
+    PMPI_Comm_group (comm, &group_a);
+    PMPI_Comm_group (MPI_COMM_WORLD, &worldgroup);
+    PMPI_Group_translate_ranks (worldgroup, 1, &worldrank, group_a, &rank);
+  }
   return rank;
 }
 
 #pragma weak PMI_rank2torus = MPIX_rank2torus
 void MPIX_rank2torus (unsigned        rank,
-                     unsigned       *x,
-                     unsigned       *y,
-                     unsigned       *z,
-                     unsigned       *t)
+                      unsigned       *x,
+                      unsigned       *y,
+                      unsigned       *z,
+                      unsigned       *t)
 {
   size_t _x, _y, _z, _t;
   DCMF_Messager_rank2torus (rank, &_x, &_y, &_z, &_t);
@@ -55,21 +55,21 @@ void MPIX_rank2torus (unsigned        rank,
 
 #pragma weak PMI_Comm_rank2torus = MPIX_Comm_rank2torus
 void MPIX_Comm_rank2torus(MPI_Comm comm,
-                         unsigned rank,
-                         unsigned *x,
-                         unsigned *y,
-                         unsigned *z,
-                         unsigned *t)
+                          unsigned rank,
+                          unsigned *x,
+                          unsigned *y,
+                          unsigned *z,
+                          unsigned *t)
 {
   int worldrank;
   if (comm == MPI_COMM_WORLD) worldrank = rank;
   else
-    {
-      MPI_Group group_a, worldgroup;
-      PMPI_Comm_group (comm, &group_a);
-      PMPI_Comm_group (MPI_COMM_WORLD, &worldgroup);
-      PMPI_Group_translate_ranks (group_a, 1, (int*)&rank, worldgroup, &worldrank);
-    }
+  {
+    MPI_Group group_a, worldgroup;
+    PMPI_Comm_group (comm, &group_a);
+    PMPI_Comm_group (MPI_COMM_WORLD, &worldgroup);
+    PMPI_Group_translate_ranks (group_a, 1, (int*)&rank, worldgroup, &worldrank);
+  }
   MPIX_rank2torus (worldrank, x, y, z, t);
 }
 
@@ -93,13 +93,13 @@ int MPIX_Cart_comm_create(MPI_Comm *cart_comm)
 {
   int result;
   int rank, numprocs,
-      dims[4],
-      wrap[4],
-      coords[4];
+    dims[4],
+    wrap[4],
+    coords[4];
   int new_rank,
-      new_dims[4],
-      new_wrap[4],
-      new_coords[4];
+    new_dims[4],
+    new_wrap[4],
+    new_coords[4];
   DCMF_Hardware_t pers;
 
 
@@ -114,7 +114,7 @@ int MPIX_Cart_comm_create(MPI_Comm *cart_comm)
   dims[1]   = pers.zSize;
   dims[0]   = pers.tSize;
 
-/* This only works if MPI_COMM_WORLD is the full partition */
+  /* This only works if MPI_COMM_WORLD is the full partition */
   if (dims[3] * dims[2] * dims[1] * dims[0] != numprocs)
     return MPI_ERR_TOPOLOGY;
 
@@ -130,13 +130,13 @@ int MPIX_Cart_comm_create(MPI_Comm *cart_comm)
 
 
   result = PMPI_Cart_create(
-    MPI_COMM_WORLD,
-    4,
-    dims,
-    wrap,
-    0,
-    cart_comm
-  );
+                            MPI_COMM_WORLD,
+                            4,
+                            dims,
+                            wrap,
+                            0,
+                            cart_comm
+                            );
   if (result != MPI_SUCCESS) return result;
 
 
@@ -192,12 +192,12 @@ void MPIX_Dump_stacks()
   char **strings = backtrace_symbols(array, size);
   fprintf(stderr, "Dumping %zd frames:\n", size - 1);
   for (i = 1; i < size; i++)
-    {
-      if (strings != NULL)
-        fprintf(stderr, "\tFrame %zd: %p: %s\n", i, array[i], strings[i]);
-      else
-        fprintf(stderr, "\tFrame %zd: %p\n", i, array[i]);
-    }
+  {
+    if (strings != NULL)
+      fprintf(stderr, "\tFrame %zd: %p: %s\n", i, array[i], strings[i]);
+    else
+      fprintf(stderr, "\tFrame %zd: %p\n", i, array[i]);
+  }
 
   free(strings); /* Since this is not allocated by MPIU_Malloc, do not use MPIU_Free */
 }
@@ -258,3 +258,25 @@ int MPIX_Set_property(MPI_Comm comm, int prop, int value)
 
   return MPI_SUCCESS;
 }
+
+
+int MPIX_Get_coll_protocol(MPI_Comm comm, char * protocol, int length)
+{
+  MPID_Comm * comm_ptr;
+  MPID_Comm_get_ptr(comm, comm_ptr);
+  
+  if (!comm_ptr || comm == MPI_COMM_NULL)
+    return MPI_ERR_COMM;
+
+  if (!protocol || length <= 0)
+    return MPI_ERR_ARG;
+
+  if (comm_ptr->dcmf.last_algorithm >= DCMF_COLL_PROP)
+  {
+    strncpy(protocol, mpido_algorithms[comm_ptr->dcmf.last_algorithm -
+                                       DCMF_COLL_PROP], length);
+  }
+  
+  return MPI_SUCCESS;
+}
+

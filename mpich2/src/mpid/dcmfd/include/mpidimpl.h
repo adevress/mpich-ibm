@@ -103,7 +103,7 @@ extern MPIDI_Protocol_t MPIDI_Protocols;
 
 typedef struct
 {
-  DCMF_Embedded_Info_Set properties;
+  MPIDO_Embedded_Info_Set properties;
   unsigned char numcolors; /* number of colors for bcast/allreduce */
   unsigned numrequests;
   unsigned int bcast_asynccutoff;  

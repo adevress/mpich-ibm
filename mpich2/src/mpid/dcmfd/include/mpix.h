@@ -185,6 +185,17 @@ extern "C" {
    */
   int MPIX_Set_property(MPI_Comm comm, int prop, int value);
   
+  /**
+   * \brief Informs of the collective algorithm used in a collective operation.
+   *
+   * \param[in]  comm The communicator
+   * \param[out]  protocol The string to copy the algorithm into.
+   * \param[in] length The size of the protocol array
+   *
+   * \return MPI_SUCCESS
+   */
+  int MPIX_Get_coll_protocol(MPI_Comm comm, char * protocol, int length);
+
 #if defined(__cplusplus)
 }
 #endif

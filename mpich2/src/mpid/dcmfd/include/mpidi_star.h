@@ -144,7 +144,7 @@ typedef struct
   unsigned int bytes[2];
 
   /* stores properties of a given algorithm in bits pattern variable */
-  DCMF_Embedded_Info_Set properties;
+  MPIDO_Embedded_Info_Set properties;
 
   char name[64]; /* name of alltoall, allgather, bcast, ... algorithm */
 } STAR_Algorithm;
@@ -272,7 +272,7 @@ typedef struct
 } STAR_Info;
 
 extern STAR_Info STAR_info;
-extern FILE * DCMF_STAR_fd;
+extern FILE * MPIDO_STAR_fd;
 extern char * MPID_Executable_name;
 
 extern STAR_Algorithm * repository_ptr;
