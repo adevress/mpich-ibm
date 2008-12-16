@@ -212,8 +212,8 @@ int MPIX_Get_properties(MPI_Comm comm, int * array)
   if (!comm_ptr || comm == MPI_COMM_NULL)
     return MPI_ERR_COMM;
 
-  for (i = 0; i < DCMF_MAX_NUM_BITS; i++)
-    array[i] = DCMF_INFO_ISSET(&(comm_ptr->dcmf.properties), i);
+  for (i = 0; i < MPIDO_MAX_NUM_BITS; i++)
+    array[i] = MPIDO_INFO_ISSET(&(comm_ptr->dcmf.properties), i);
 
 
   return MPI_SUCCESS;
@@ -227,10 +227,10 @@ int MPIX_Get_property(MPI_Comm comm, int prop, int * result)
   if (!comm_ptr || comm == MPI_COMM_NULL)
     return MPI_ERR_COMM;
 
-  if (prop < 0 || prop > DCMF_MAX_NUM_BITS)
+  if (prop < 0 || prop > MPIDO_MAX_NUM_BITS)
     return MPI_ERR_ARG;
 
-  *result = DCMF_INFO_ISSET(&(comm_ptr->dcmf.properties), prop);
+  *result = MPIDO_INFO_ISSET(&(comm_ptr->dcmf.properties), prop);
   return MPI_SUCCESS; 
 }
 
@@ -243,17 +243,17 @@ int MPIX_Set_property(MPI_Comm comm, int prop, int value)
   if (!comm_ptr || comm == MPI_COMM_NULL)
     return MPI_ERR_COMM;
   
-  if (prop < 0 || prop > DCMF_MAX_NUM_BITS)
+  if (prop < 0 || prop > MPIDO_MAX_NUM_BITS)
     return MPI_ERR_ARG;
 
   if (!value)
-    DCMF_INFO_UNSET(&(comm_ptr->dcmf.properties), prop);
+    MPIDO_INFO_UNSET(&(comm_ptr->dcmf.properties), prop);
   else
-    DCMF_INFO_SET(&(comm_ptr->dcmf.properties), prop);
+    MPIDO_INFO_SET(&(comm_ptr->dcmf.properties), prop);
   
   /* if we are attempting changing a communicator property */
-  if (prop == DCMF_TREE_COMM || prop == DCMF_RECT_COMM ||
-      prop == DCMF_IRREG_COMM)
+  if (prop == MPIDO_TREE_COMM || prop == MPIDO_RECT_COMM ||
+      prop == MPIDO_IRREG_COMM)
     MPIDI_Comm_setup_properties(comm_ptr, 0);
 
   return MPI_SUCCESS;
@@ -271,10 +271,10 @@ int MPIX_Get_coll_protocol(MPI_Comm comm, char * protocol, int length)
   if (!protocol || length <= 0)
     return MPI_ERR_ARG;
 
-  if (comm_ptr->dcmf.last_algorithm >= DCMF_COLL_PROP)
+  if (comm_ptr->dcmf.last_algorithm >= MPIDO_COLL_PROP)
   {
     strncpy(protocol, mpido_algorithms[comm_ptr->dcmf.last_algorithm -
-                                       DCMF_COLL_PROP], length);
+                                       MPIDO_COLL_PROP], length);
   }
   
   return MPI_SUCCESS;
