@@ -48,7 +48,9 @@ MPIDO_Allreduce(void * sendbuf,
     comm->dcmf.last_algorithm = MPIDO_USE_MPICH_ALLREDUCE;
     return MPIR_Allreduce(sendbuf, recvbuf, count, datatype, op, comm);
   }
-  NMPI_Type_get_true_extent(datatype, &data_true_lb, &data_true_extent);
+  /* Type_get_extent should return the proper value */
+  PMPI_Type_get_extent(datatype, &data_true_lb, &data_true_extent);
+  MPID_Ensure_Aint_fits_in_int(data_true_extent);
   data_size = count * data_true_extent;
 
   MPIDI_VerifyBuffer(recvbuf, rbuf, data_true_lb);

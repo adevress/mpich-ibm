@@ -47,7 +47,11 @@ int MPIDO_Reduce_scatter(void *sendbuf,
 			       comm);
   }
 
-   NMPI_Type_get_true_extent(datatype, &dt_lb, &extent);
+   
+   /* Need to ensure we allocate enough memory, so need *larger* extent
+    * size. This appears to be MPI_Type_get_extent
+    */
+   PMPI_Type_get_extent(datatype, &dt_lb, &extent);
    MPID_Ensure_Aint_fits_in_int(extent);
 
    displs = MPIU_Malloc(size * sizeof(int));
@@ -66,7 +70,7 @@ int MPIDO_Reduce_scatter(void *sendbuf,
    tcount+=recvcounts[size-1];
 
   
-  tempbuf = MPIU_Malloc(extent * sizeof(char) * tcount);
+  tempbuf = MPIU_Malloc((int)extent * sizeof(char) * tcount);
   
   if (!tempbuf)
   {
