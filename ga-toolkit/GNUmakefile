@@ -13,7 +13,7 @@ endif
 
 # Makesure to avoid periods (i.e. dot) in GA_VERSION as that might(!) be problematic 
 # in Windows
- GA_VERSION = 4-0
+ GA_VERSION = 4-1-1
      TOPDIR = ga-$(GA_VERSION)
          RM = rm
       MKDIR = mkdir

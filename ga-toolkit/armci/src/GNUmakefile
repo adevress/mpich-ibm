@@ -1,7 +1,7 @@
 #$Id: GNUmakefile,v 1.103.2.18 2007-08-30 22:31:04 manoj Exp $
 
          FOPT = -O
-         COPT = -O0
+         COPT = -O
 
 OBJ= strided.o armci.o memory.o fence.o rmw.o acc.o kr_malloc.o\
  memlock.o pack.o vector.o clusterinfo.o mutex.o locks.o aggregate.o\
@@ -154,12 +154,11 @@ ifeq ($(ARMCI_NETWORK),VIA)
 endif
 
 ifeq ($(ARMCI_NETWORK),PORTALS)
-  OBJ += portals.o regions.o
-  OBJ += signaltrap.o 
+  OBJ += signaltrap.o portals.o regions.o 
 ifeq ($(TARGET),LINUX64)
-  LIB_DEFINES += -DACC_SMP #-DPUT_LOCAL_ONLY_COMPLETION
+  LIB_DEFINES += -DNO_SHM -DCLUSTER 
 endif
-  LIB_DEFINES += -DXT3
+  LIB_DEFINES += -DALLOW_PIN -DXT3
   EXTRA_LIBS += -lpthread
 endif
 
