@@ -17,6 +17,7 @@
 #include <errno.h>
 #endif
 #include "armci.h"
+#include "armcip.h"
 
 #define PAUSE_ON_ERROR__
 

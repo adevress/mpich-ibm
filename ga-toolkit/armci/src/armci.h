@@ -2,6 +2,9 @@
 /* ARMCI header file */
 #ifndef _ARMCI_H
 #define _ARMCI_H   
+#ifdef NO__FUNCTION__
+#define __FUNCTION__ "Unknown"
+#endif
 
 #if defined(__cplusplus) || defined(c_plusplus)
 extern "C" {
