@@ -161,7 +161,7 @@ void ARMCIX_DCMF_Rmw_register ()
 
   DCMF_Send_Configuration_t request_configuration = {
     DCMF_DEFAULT_SEND_PROTOCOL,
-    DCMF_DefaultNetwork,
+    DCMF_DEFAULT_NETWORK,
     ARMCIX_DCMF_RecvRMWRequest,
     NULL,
     NULL,
@@ -171,7 +171,7 @@ void ARMCIX_DCMF_Rmw_register ()
 
   DCMF_Control_Configuration_t response_configuration = {
     DCMF_DEFAULT_CONTROL_PROTOCOL,
-    DCMF_DefaultNetwork,
+    DCMF_DEFAULT_NETWORK,
     ARMCIX_DCMF_ReceiveRMWResponse,
     NULL
   };

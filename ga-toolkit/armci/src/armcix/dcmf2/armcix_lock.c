@@ -326,7 +326,7 @@ void ARMCIX_init_memlock (memlock_t * local_memlock_table)
 
   DCMF_Send_Configuration_t send_configuration = {
     DCMF_DEFAULT_SEND_PROTOCOL,
-    DCMF_DefaultNetwork,
+    DCMF_DEFAULT_NETWORK,
     ARMCIX_DCMF_RecvLockRequest,
     local_memlock_table,
     NULL,
@@ -336,7 +336,7 @@ void ARMCIX_init_memlock (memlock_t * local_memlock_table)
 
   DCMF_Control_Configuration_t ctrl_configuration = {
     DCMF_DEFAULT_CONTROL_PROTOCOL,
-    DCMF_DefaultNetwork,
+    DCMF_DEFAULT_NETWORK,
     ARMCIX_DCMF_RecvLockMessage,
     local_memlock_table
   };

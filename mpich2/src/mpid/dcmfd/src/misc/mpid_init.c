@@ -89,12 +89,12 @@ int MPID_Init(int * argc,
 
   if (MPIDI_Process.use_ssm)
     {
-      DCMF_Put_Configuration_t ssm_put_config = { DCMF_DEFAULT_PUT_PROTOCOL, DCMF_DefaultNetwork };
+      DCMF_Put_Configuration_t ssm_put_config = { DCMF_DEFAULT_PUT_PROTOCOL, DCMF_DEFAULT_NETWORK };
       DCMF_Put_register (&MPIDI_Protocols.ssm_put, &ssm_put_config);
       DCMF_Send_Configuration_t ssm_msg_config =
         {
           DCMF_DEFAULT_SEND_PROTOCOL,
-	  DCMF_DefaultNetwork,
+	  DCMF_DEFAULT_NETWORK,
           NULL,
           NULL,
           NULL,
@@ -113,7 +113,7 @@ int MPID_Init(int * argc,
       DCMF_Send_Configuration_t default_config =
 	{
 	  DCMF_DEFAULT_SEND_PROTOCOL,
-	  DCMF_DefaultNetwork,
+	  DCMF_DEFAULT_NETWORK,
 	  MPIDI_BG2S_RecvShortCB,
 	  NULL,
 	  MPIDI_BG2S_RecvCB,
@@ -127,7 +127,7 @@ int MPID_Init(int * argc,
       DCMF_Send_Configuration_t rzv_config =
 	{
 	  DCMF_RZV_SEND_PROTOCOL,
-	  DCMF_DefaultNetwork,
+	  DCMF_DEFAULT_NETWORK,
 	  MPIDI_BG2S_RecvShortCB,
 	  NULL,
 	  MPIDI_BG2S_RecvCB,
@@ -151,7 +151,7 @@ int MPID_Init(int * argc,
   /* --------------------------- */
   /* Register point-to-point get */
   /* --------------------------- */
-  DCMF_Get_Configuration_t get_config = { DCMF_DEFAULT_GET_PROTOCOL, DCMF_DefaultNetwork };
+  DCMF_Get_Configuration_t get_config = { DCMF_DEFAULT_GET_PROTOCOL, DCMF_DEFAULT_NETWORK };
   DCMF_Get_register (&MPIDI_Protocols.get, &get_config);
 
   /* ---------------------------------- */
@@ -160,7 +160,7 @@ int MPID_Init(int * argc,
   DCMF_Control_Configuration_t control_config =
     {
       DCMF_DEFAULT_CONTROL_PROTOCOL,
-      DCMF_DefaultNetwork,
+      DCMF_DEFAULT_NETWORK,
       MPIDI_BG2S_ControlCB, NULL
     };
   DCMF_Control_register (&MPIDI_Protocols.control, &control_config);
