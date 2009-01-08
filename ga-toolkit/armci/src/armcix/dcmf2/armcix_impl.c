@@ -226,7 +226,7 @@ void ARMCIX_DCMF_Connection_initialize ()
   DCMF_Protocol_t send_protocol;
   DCMF_Send_Configuration_t send_configuration = {
     DCMF_DEFAULT_SEND_PROTOCOL,
-    DCMF_DefaultNetwork,
+    DCMF_DEFAULT_NETWORK,
     (DCMF_RecvSendShort) ARMCIX_DCMF_RecvMemregion1,
     (void *) __connection,
     (DCMF_RecvSend) ARMCIX_DCMF_RecvMemregion2,
