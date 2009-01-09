@@ -33,7 +33,7 @@ typedef DCQuad DCMF_CollectiveProtocol_t[1];
 
 /* verify that the version of the installed dcmf library is compatible */
 #if (DCMF_VERSION_RELEASE == 0)
-  #if (DCMF_VERSION_MAJOR == 2)
+  #if (DCMF_VERSION_MAJOR == 3)
     #if (DCMF_VERSION_MINOR < 0)
       #error Incompatible dcmf minor version
     #endif

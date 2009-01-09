@@ -14,9 +14,15 @@ unsigned MPIX_torus2rank (unsigned        x,
                           unsigned        t)
 {
   size_t rank;
-  int rc = DCMF_Messager_torus2rank(x, y, z, t, &rank);
-  if(rc == DCMF_SUCCESS) return rank;
-  else return (unsigned)-1;
+  DCMF_Network network = DCMF_TORUS_NETWORK;
+  DCMF_NetworkCoord_t addr;
+  addr.network = DCMF_TORUS_NETWORK;
+  addr.torus.x = x;
+  addr.torus.y = y;
+  addr.torus.z = z;
+  addr.torus.t = t;
+  if (DCMF_Messager_network2rank(&addr, &rank, &network) == DCMF_SUCCESS) return rank;
+  return (unsigned) -1;
 }
 
 #pragma weak PMI_Comm_torus2rank = MPIX_Comm_torus2rank
@@ -45,12 +51,13 @@ void MPIX_rank2torus (unsigned        rank,
                       unsigned       *z,
                       unsigned       *t)
 {
-  size_t _x, _y, _z, _t;
-  DCMF_Messager_rank2torus (rank, &_x, &_y, &_z, &_t);
-  *x = _x;
-  *y = _y;
-  *z = _z;
-  *t = _t;
+  DCMF_NetworkCoord_t addr;
+  if (DCMF_Messager_rank2network(0, DCMF_DEFAULT_NETWORK, &addr) != DCMF_SUCCESS) abort();
+
+  *x = addr.torus.x;
+  *y = addr.torus.y;
+  *z = addr.torus.z;
+  *t = addr.torus.t;
 }
 
 #pragma weak PMI_Comm_rank2torus = MPIX_Comm_rank2torus

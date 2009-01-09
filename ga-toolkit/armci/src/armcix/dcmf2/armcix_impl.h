@@ -19,6 +19,19 @@
 #include "dcmf.h"
 #include "../armcix.h"
 
+/* Check that the version of the installed dcmf library is compatible */
+#if (DCMF_VERSION_RELEASE == 0)
+  #if (DCMF_VERSION_MAJOR == 3)
+    #if (DCMF_VERSION_MINOR < 0)
+      #error Incompatible dcmf minor version
+    #endif
+  #else
+    #error Incompatible dcmf major version
+  #endif
+#else
+  #error Incompatible dcmf release version
+#endif
+
 /*
 #define BLOCKING_OPERATIONS_REQUIRE_FENCE
 #warning remove the previous #define if blocking put/acc operations do not require a fence
