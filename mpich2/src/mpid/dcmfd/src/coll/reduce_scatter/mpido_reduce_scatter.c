@@ -25,7 +25,6 @@ int MPIDO_Reduce_scatter(void *sendbuf,
   MPIDO_Embedded_Info_Set * properties = &(comm->dcmf.properties);
   int tcount=0, i, rc;
   
-  MPID_Datatype *dt_ptr;
   MPI_Aint dt_lb=0, extent=0;
   
   char *tempbuf;
@@ -101,7 +100,7 @@ int MPIDO_Reduce_scatter(void *sendbuf,
                         displs, 
                         datatype,
                         recvbuf, 
-                        tcount, 
+                        recvcounts[comm->rank], 
                         datatype, 
                         0, 
                         comm);
