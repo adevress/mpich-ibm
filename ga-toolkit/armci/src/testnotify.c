@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: testnotify.c,v 1.4 2003-08-21 22:51:12 d3h325 Exp $ */
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>

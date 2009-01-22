@@ -7,7 +7,104 @@
 #include "mpido_coll.h"
 #include <stdarg.h>
 
-inline void DCMF_MSET_INFO(DCMF_Embedded_Info_Set * set, ...)
+char * mpido_algorithms[] = {"MPIDO_USE_ABCAST_ALLGATHER",                    
+                             "MPIDO_USE_ABINOM_BCAST_ALLGATHER",
+                             "MPIDO_USE_ALLTOALL_ALLGATHER",
+                             "MPIDO_USE_ARECT_BCAST_ALLGATHER",
+                             "MPIDO_USE_ALLREDUCE_ALLGATHER",
+                             "MPIDO_USE_BCAST_ALLGATHER",
+                             "MPIDO_USE_BINOM_BCAST_ALLGATHER",
+                             "MPIDO_USE_RECT_BCAST_ALLGATHER",
+                             "MPIDO_USE_RECT_DPUT_ALLGATHER",
+                             "MPIDO_USE_MPICH_ALLGATHER",
+                             "MPIDO_ALLGATHER_RESERVED1",
+                             "MPIDO_USE_PREALLREDUCE_ALLGATHER",
+                             "MPIDO_USE_ALLREDUCE_ALLGATHERV",
+                             "MPIDO_USE_BCAST_ALLGATHERV",
+                             "MPIDO_USE_ALLTOALL_ALLGATHERV",
+                             "MPIDO_USE_ABCAST_ALLGATHERV",
+                             "MPIDO_USE_ARECT_BCAST_ALLGATHERV",
+                             "MPIDO_USE_ABINOM_BCAST_ALLGATHERV",
+                             "MPIDO_USE_RECT_BCAST_ALLGATHERV",
+                             "MPIDO_USE_BINOM_BCAST_ALLGATHERV",
+                             "MPIDO_USE_RECT_DPUT_ALLGATHERV",
+                             "MPIDO_USE_MPICH_ALLGATHERV",
+                             "MPIDO_ALLGATHERV_RESERVED1",
+                             "MPIDO_USE_PREALLREDUCE_ALLGATHERV",
+                             "MPIDO_USE_TREE_ALLREDUCE",
+                             "MPIDO_USE_CCMI_TREE_ALLREDUCE",
+                             "MPIDO_USE_PIPELINED_TREE_ALLREDUCE",
+                             "MPIDO_USE_RECT_ALLREDUCE",
+                             "MPIDO_USE_RECTRING_ALLREDUCE",
+                             "MPIDO_USE_BINOM_ALLREDUCE",
+                             "MPIDO_USE_ARECT_ALLREDUCE",
+                             "MPIDO_USE_ARECTRING_ALLREDUCE",
+                             "MPIDO_USE_ABINOM_ALLREDUCE",
+                             "MPIDO_USE_SHORT_ASYNC_RECT_ALLREDUCE",
+                             "MPIDO_USE_SHORT_ASYNC_BINOM_ALLREDUCE",
+                             "MPIDO_USE_RRING_DPUT_SINGLETH_ALLREDUCE",
+                             "MPIDO_USE_MPICH_ALLREDUCE",
+                             "MPIDO_ALLREDUCE_RESERVED1",
+                             "MPIDO_USE_STORAGE_ALLREDUCE",
+                             "MPIDO_USE_TORUS_ALLTOALL",
+                             "MPIDO_USE_MPICH_ALLTOALL",
+                             "MPIDO_USE_TORUS_ALLTOALLV",
+                             "MPIDO_USE_MPICH_ALLTOALLV",
+                             "MPIDO_USE_TORUS_ALLTOALLW",
+                             "MPIDO_USE_MPICH_ALLTOALLW",
+                             "MPIDO_ALLTOALL_RESERVED1",
+                             "MPIDO_USE_PREMALLOC_ALLTOALL",
+                             "MPIDO_USE_BINOM_BARRIER",
+                             "MPIDO_USE_GI_BARRIER",
+                             "MPIDO_USE_RECT_BARRIER",
+                             "MPIDO_USE_MPICH_BARRIER",
+                             "MPIDO_USE_BINOM_LBARRIER",
+                             "MPIDO_USE_LOCKBOX_LBARRIER",
+                             "MPIDO_USE_RECT_LOCKBOX_LBARRIER",
+                             "MPIDO_BARRIER_RESERVED1",
+                             "MPIDO_USE_ABINOM_BCAST",
+                             "MPIDO_USE_ARECT_BCAST",
+                             "MPIDO_USE_BINOM_BCAST",
+                             "MPIDO_USE_BINOM_SINGLETH_BCAST",
+                             "MPIDO_USE_RECT_BCAST",
+                             "MPIDO_USE_RECT_DPUT_BCAST",
+                             "MPIDO_USE_RECT_SINGLETH_BCAST",
+                             "MPIDO_USE_SCATTER_GATHER_BCAST",
+                             "MPIDO_USE_TREE_BCAST",
+                             "MPIDO_USE_MPICH_BCAST",
+                             "MPIDO_BCAST_RESERVED1",
+                             "MPIDO_BCAST_RESERVED2",
+                             "MPIDO_USE_MPICH_EXSCAN",
+                             "MPIDO_USE_REDUCE_GATHER",
+                             "MPIDO_USE_MPICH_GATHER",
+                             "MPIDO_GATHER_RESERVED1",
+                             "MPIDO_USE_MPICH_GATHERV",
+                             "MPIDO_GATHERV_RESERVED1",
+                             "MPIDO_USE_BINOM_REDUCE",
+                             "MPIDO_USE_CCMI_TREE_REDUCE",
+                             "MPIDO_USE_RECT_REDUCE",
+                             "MPIDO_USE_RECTRING_REDUCE",
+                             "MPIDO_USE_TREE_REDUCE",
+                             "MPIDO_USE_MPICH_REDUCE",
+                             "MPIDO_USE_ALLREDUCE_REDUCE",
+                             "MPIDO_USE_PREMALLOC_REDUCE",
+                             "MPIDO_USE_STORAGE_REDUCE",
+                             "MPIDO_USE_REDUCESCATTER",
+                             "MPIDO_USE_MPICH_REDUCESCATTER",
+                             "MPIDO_REDUCESCATTER_RESERVED1",
+                             "MPIDO_USE_MPICH_SCAN",
+                             "MPIDO_SCAN_RESERVED1",
+                             "MPIDO_USE_BCAST_SCATTER",
+                             "MPIDO_USE_MPICH_SCATTER",
+                             "MPIDO_SCATTER_RESERVED1",
+                             "MPIDO_USE_BCAST_SCATTERV",
+                             "MPIDO_USE_ALLTOALL_SCATTERV",
+                             "MPIDO_USE_ALLREDUCE_SCATTERV",
+                             "MPIDO_USE_MPICH_SCATTERV",
+                             "MPIDO_SCATTERV_RESERVED1",
+                             "MPIDO_USE_PREALLREDUCE_SCATTERV"};
+
+void MPIDO_MSET_INFO(MPIDO_Embedded_Info_Set * set, ...)
 {
   va_list arg_ptr;
   int value = 0;
@@ -18,25 +115,25 @@ inline void DCMF_MSET_INFO(DCMF_Embedded_Info_Set * set, ...)
   
   do
   {
-    DCMF_INFO_SET(set, value);
+    MPIDO_INFO_SET(set, value);
     value = va_arg(arg_ptr, int);      
   }
-  while (value > DCMF_END_ARGS);
+  while (value > MPIDO_END_ARGS);
   
   va_end(arg_ptr);
 }
 
-inline int DCMF_INFO_MET(DCMF_Embedded_Info_Set *s, DCMF_Embedded_Info_Set *d)
+int MPIDO_INFO_MET(MPIDO_Embedded_Info_Set *s, MPIDO_Embedded_Info_Set *d)
 {
-  int i, j = sizeof(DCMF_Embedded_Info_Set) / sizeof(DCMF_Embedded_Info_Mask);
+  int i, j = sizeof(MPIDO_Embedded_Info_Set) / sizeof(MPIDO_Embedded_Info_Mask);
   for (i = 0; i < j; i++)
-    if ((DCMF_INFO_BITS (s)[i] & DCMF_INFO_BITS (d)[i]) != 
-	DCMF_INFO_BITS (s)[i])
+    if ((MPIDO_INFO_BITS (s)[i] & MPIDO_INFO_BITS (d)[i]) != 
+	MPIDO_INFO_BITS (s)[i])
       return 0;
   return 1;
 }
 
-inline int DCMF_AllocateAlltoallBuffers(MPID_Comm * comm)
+int MPIDO_AllocateAlltoallBuffers(MPID_Comm * comm)
 {
   int numprocs = comm->local_size;
   if (!comm->dcmf.sndlen)
@@ -112,7 +209,7 @@ int MPIDI_IsTreeOp(MPI_Op op, MPI_Datatype datatype)
 int MPIDI_ConvertMPItoDCMF(MPI_Op op, DCMF_Op *dcmf_op,
                            MPI_Datatype datatype, DCMF_Dt *dcmf_dt)
 {
-  int rc = DCMF_TREE_SUPPORT;
+  int rc = MPIDO_TREE_SUPPORT;
 
   switch(op)
   {
@@ -121,9 +218,9 @@ int MPIDI_ConvertMPItoDCMF(MPI_Op op, DCMF_Op *dcmf_op,
     break;
   case MPI_PROD:
     if(datatype == MPI_COMPLEX || datatype == MPI_DOUBLE_COMPLEX)
-      return DCMF_NOT_SUPPORTED;
+      return MPIDO_NOT_SUPPORTED;
     *dcmf_op = DCMF_PROD;
-    rc = DCMF_TORUS_SUPPORT;
+    rc = MPIDO_TORUS_SUPPORT;
     break;
   case MPI_MAX:
     *dcmf_op = DCMF_MAX;
@@ -137,9 +234,9 @@ int MPIDI_ConvertMPItoDCMF(MPI_Op op, DCMF_Op *dcmf_op,
        datatype == MPI_UNSIGNED|| datatype == MPI_UNSIGNED_LONG)
     {
       *dcmf_op = DCMF_LAND;
-      rc = DCMF_TORUS_SUPPORT;
+      rc = MPIDO_TORUS_SUPPORT;
     }
-    else return DCMF_NOT_SUPPORTED;
+    else return MPIDO_NOT_SUPPORTED;
     break;
   case MPI_LOR:
     if(datatype == MPI_LOGICAL || datatype == MPI_INT ||
@@ -147,9 +244,9 @@ int MPIDI_ConvertMPItoDCMF(MPI_Op op, DCMF_Op *dcmf_op,
        datatype == MPI_UNSIGNED|| datatype == MPI_UNSIGNED_LONG)
     {
       *dcmf_op = DCMF_LOR;
-      rc = DCMF_TORUS_SUPPORT;
+      rc = MPIDO_TORUS_SUPPORT;
     }
-    else return DCMF_NOT_SUPPORTED;
+    else return MPIDO_NOT_SUPPORTED;
     break;
   case MPI_LXOR:
     if(datatype == MPI_LOGICAL || datatype == MPI_INT ||
@@ -157,9 +254,9 @@ int MPIDI_ConvertMPItoDCMF(MPI_Op op, DCMF_Op *dcmf_op,
        datatype == MPI_UNSIGNED|| datatype == MPI_UNSIGNED_LONG)
     {
       *dcmf_op = DCMF_LXOR;
-      rc = DCMF_TORUS_SUPPORT;
+      rc = MPIDO_TORUS_SUPPORT;
     }
-    else return DCMF_NOT_SUPPORTED;
+    else return MPIDO_NOT_SUPPORTED;
     break;
   case MPI_BAND:
     if(datatype == MPI_LONG || datatype == MPI_INTEGER ||
@@ -168,7 +265,7 @@ int MPIDI_ConvertMPItoDCMF(MPI_Op op, DCMF_Op *dcmf_op,
     {
       *dcmf_op = DCMF_BAND;
     }
-    else return DCMF_NOT_SUPPORTED;
+    else return MPIDO_NOT_SUPPORTED;
     break;
   case MPI_BOR:
     if(datatype == MPI_LONG || datatype == MPI_INTEGER ||
@@ -177,7 +274,7 @@ int MPIDI_ConvertMPItoDCMF(MPI_Op op, DCMF_Op *dcmf_op,
     {
       *dcmf_op = DCMF_BOR;
     }
-    else return DCMF_NOT_SUPPORTED;
+    else return MPIDO_NOT_SUPPORTED;
     break;
   case MPI_BXOR:
     if(datatype == MPI_LONG || datatype == MPI_INTEGER ||
@@ -186,7 +283,7 @@ int MPIDI_ConvertMPItoDCMF(MPI_Op op, DCMF_Op *dcmf_op,
     {
       *dcmf_op = DCMF_BXOR;
     }
-    else return DCMF_NOT_SUPPORTED;
+    else return MPIDO_NOT_SUPPORTED;
     break;
   case MPI_MAXLOC:
     *dcmf_op = DCMF_MAXLOC;
@@ -197,7 +294,7 @@ int MPIDI_ConvertMPItoDCMF(MPI_Op op, DCMF_Op *dcmf_op,
   default:
     *dcmf_dt = DCMF_UNDEFINED_DT;
     *dcmf_op = DCMF_UNDEFINED_OP;
-    return DCMF_NOT_SUPPORTED;
+    return MPIDO_NOT_SUPPORTED;
   }
   
   int rc_tmp = rc;
@@ -207,13 +304,13 @@ int MPIDI_ConvertMPItoDCMF(MPI_Op op, DCMF_Op *dcmf_op,
   case MPI_SIGNED_CHAR:
   case MPI_CHARACTER:
     *dcmf_dt = DCMF_SIGNED_CHAR;
-    return DCMF_TORUS_SUPPORT;
+    return MPIDO_TORUS_SUPPORT;
     break;
 
   case MPI_UNSIGNED_CHAR:
   case MPI_BYTE:
     *dcmf_dt = DCMF_UNSIGNED_CHAR;
-    return DCMF_TORUS_SUPPORT;
+    return MPIDO_TORUS_SUPPORT;
     break;
 
   case MPI_INT:
@@ -240,23 +337,23 @@ int MPIDI_ConvertMPItoDCMF(MPI_Op op, DCMF_Op *dcmf_op,
   case MPI_REAL:
     *dcmf_dt = DCMF_FLOAT;
     if(op != MPI_MAX || op != MPI_MIN )
-      return DCMF_TORUS_SUPPORT;
+      return MPIDO_TORUS_SUPPORT;
     break;
 
   case MPI_DOUBLE:
   case MPI_DOUBLE_PRECISION:
     *dcmf_dt = DCMF_DOUBLE;
-      if(rc == DCMF_TORUS_SUPPORT)
-         rc_tmp = DCMF_TORUS_SUPPORT;
-      else
-         rc_tmp = DCMF_TREE_MIN_SUPPORT;
-      break;
+    if(rc == MPIDO_TORUS_SUPPORT)
+      rc_tmp = MPIDO_TORUS_SUPPORT;
+    else
+      rc_tmp = MPIDO_TREE_MIN_SUPPORT;
+    break;
 
   case MPI_LONG_DOUBLE:
     *dcmf_dt = DCMF_LONG_DOUBLE;
     if(op == MPI_LAND || op == MPI_LOR || op == MPI_LXOR)
-      return DCMF_NOT_SUPPORTED;
-    return DCMF_TORUS_SUPPORT;
+      return MPIDO_NOT_SUPPORTED;
+    return MPIDO_TORUS_SUPPORT;
     break;
 
   case MPI_LONG_LONG:
@@ -265,12 +362,12 @@ int MPIDI_ConvertMPItoDCMF(MPI_Op op, DCMF_Op *dcmf_op,
 
   case MPI_DOUBLE_COMPLEX:
     *dcmf_dt = DCMF_DOUBLE_COMPLEX;
-    return DCMF_TORUS_SUPPORT;
+    return MPIDO_TORUS_SUPPORT;
     break;
 
   case MPI_COMPLEX:
     *dcmf_dt = DCMF_SINGLE_COMPLEX;
-    return DCMF_TORUS_SUPPORT;
+    return MPIDO_TORUS_SUPPORT;
     break;
 
   case MPI_LOGICAL:
@@ -306,9 +403,10 @@ int MPIDI_ConvertMPItoDCMF(MPI_Op op, DCMF_Op *dcmf_op,
   default:
     *dcmf_dt = DCMF_UNDEFINED_DT;
     *dcmf_op = DCMF_UNDEFINED_OP;
-    return DCMF_NOT_SUPPORTED;
+    return MPIDO_NOT_SUPPORTED;
   }
-  if(rc_tmp == DCMF_TORUS_SUPPORT || rc_tmp == DCMF_TREE_MIN_SUPPORT)
+  if(rc_tmp == MPIDO_TORUS_SUPPORT || rc_tmp == MPIDO_TREE_MIN_SUPPORT)
     return rc_tmp;
   return rc;
 }
+

@@ -1492,14 +1492,15 @@ int MPIDU_valid_group_rank(int lpid, MPID_Group *grp) {
  *
  * \ref msginfo_usage
  */
-void recv_sm_cb(void *cd, const DCQuad *_mi, unsigned ct, unsigned or,
-                        const char *sb, const unsigned sl) {
+void recv_sm_cb(void *cd, const DCQuad *_mi, unsigned ct, size_t or,
+                        const char *sb, const size_t sl) {
         MPID_Win *win;
         char *rb;
         MPIDU_Onesided_ctl_t *mc = (MPIDU_Onesided_ctl_t *)_mi;
         MPIDU_Onesided_info_t *mi = (MPIDU_Onesided_info_t *)_mi;
 
-        switch (_mi[0].w0) {
+	// assert(mc->mpid_ctl_w0 == mi->mpid_info_w0);
+        switch (mc->mpid_ctl_w0) {
         /* The following all use msginfo as DCMF_Control_t (DCQuad[1]) */
         case MPID_MSGTYPE_COMPLETE:
                 MPID_assert_debug(ct == MPIDU_1SCTL_NQUADS);
@@ -1608,7 +1609,7 @@ void recv_sm_cb(void *cd, const DCQuad *_mi, unsigned ct, unsigned or,
  * \param[in] or	Origin node lpid
  * \return	nothing
  */
-void recv_ctl_cb(void *cd, const DCMF_Control_t *ctl, unsigned or) {
+void recv_ctl_cb(void *cd, const DCMF_Control_t *ctl, size_t or) {
         recv_sm_cb(cd, (const DCQuad *)ctl, MPIDU_1SCTL_NQUADS, or, NULL, 0);
 }
 
@@ -1635,14 +1636,14 @@ void recv_ctl_cb(void *cd, const DCMF_Control_t *ctl, unsigned or) {
  * \ref msginfo_usage
  */
 DCMF_Request_t *recv_cb(void *cd, const DCQuad *_mi, unsigned ct,
-                        unsigned or, const unsigned sl, unsigned *rl,
+                        size_t or, const size_t sl, size_t *rl,
                         char **rb, DCMF_Callback_t *cb)
 {
         DCMF_Request_t *req;
         MPID_Win *win;
         MPIDU_Onesided_info_t *mi = (MPIDU_Onesided_info_t *)_mi;
 
-        switch (_mi[0].w0) {
+        switch (mi->mpid_info_w0) {
         /* The following all use msginfo as DCQuad[2] */
         case MPID_MSGTYPE_PUT:
 #ifdef USE_DCMF_PUT

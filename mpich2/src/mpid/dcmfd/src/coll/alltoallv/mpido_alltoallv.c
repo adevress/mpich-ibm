@@ -21,11 +21,11 @@ MPIDO_Alltoallv(void *sendbuf,
                 int *recvcounts,
                 int *recvdispls,
                 MPI_Datatype recvtype,
-                MPID_Comm *comm_ptr)
+                MPID_Comm *comm)
 {
-  DCMF_Embedded_Info_Set * properties = &(comm_ptr->dcmf.properties);
-  
-  int numprocs = comm_ptr->local_size;
+  MPIDO_Embedded_Info_Set * properties = &(comm->dcmf.properties);
+  char *sbuf = sendbuf, *rbuf = recvbuf;
+  int numprocs = comm->local_size;
   int tsndlen, trcvlen, snd_contig, rcv_contig, rc ,i;
   MPI_Aint sdt_true_lb, rdt_true_lb;
   MPID_Datatype *dt_null = NULL;
@@ -34,21 +34,23 @@ MPIDO_Alltoallv(void *sendbuf,
 			  dt_null, sdt_true_lb);
   MPIDI_Datatype_get_info(1, recvtype, rcv_contig, trcvlen,
 			  dt_null, rdt_true_lb);
-  MPID_Ensure_Aint_fits_in_pointer(MPI_VOID_PTR_CAST_TO_MPI_AINT sendbuf +
-				   sdt_true_lb);
-  MPID_Ensure_Aint_fits_in_pointer(MPI_VOID_PTR_CAST_TO_MPI_AINT recvbuf +
-				   rdt_true_lb);
+
+  MPIDI_VerifyBuffer(sendbuf, sbuf, sdt_true_lb);
+  MPIDI_VerifyBuffer(recvbuf, rbuf, rdt_true_lb);
   
-  if (DCMF_INFO_ISSET(properties, DCMF_USE_MPICH_ALLTOALLV) ||
-      !DCMF_INFO_ISSET(properties, DCMF_USE_TORUS_ALLTOALLV) ||
+  
+  if (MPIDO_INFO_ISSET(properties, MPIDO_USE_MPICH_ALLTOALLV) ||
+      !MPIDO_INFO_ISSET(properties, MPIDO_USE_TORUS_ALLTOALLV) ||
       !snd_contig ||
       !rcv_contig ||
       tsndlen != trcvlen)
+  {
+    comm->dcmf.last_algorithm = MPIDO_USE_MPICH_ALLTOALLV;
     return MPIR_Alltoallv(sendbuf, sendcounts, senddispls, sendtype,
 			  recvbuf, recvcounts, recvdispls, recvtype,
-			  comm_ptr);
-  
-  if (!DCMF_AllocateAlltoallBuffers(comm_ptr))
+			  comm);
+  }
+  if (!MPIDO_AllocateAlltoallBuffers(comm))
     return MPIR_Err_create_code(MPI_SUCCESS,
 				MPIR_ERR_RECOVERABLE,
 				"MPI_Alltoallv",
@@ -61,26 +63,26 @@ MPIDO_Alltoallv(void *sendbuf,
   /* ---------------------------------------------- */
   for (i = 0; i < numprocs; i++)
   {
-    comm_ptr->dcmf.sndlen [i] = tsndlen * sendcounts[i];
-    comm_ptr->dcmf.sdispls[i] = tsndlen * senddispls[i];
-    comm_ptr->dcmf.rcvlen [i] = trcvlen * recvcounts[i];
-    comm_ptr->dcmf.rdispls[i] = trcvlen * recvdispls[i];
+    comm->dcmf.sndlen [i] = tsndlen * sendcounts[i];
+    comm->dcmf.sdispls[i] = tsndlen * senddispls[i];
+    comm->dcmf.rcvlen [i] = trcvlen * recvcounts[i];
+    comm->dcmf.rdispls[i] = trcvlen * recvdispls[i];
   }
 
 
   /* ---------------------------------------------- */
   /* Create a message layer collective message      */
   /* ---------------------------------------------- */
-
-  rc = MPIDO_Alltoallv_torus((char *) sendbuf + sdt_true_lb,
-			     sendcounts,
+  comm->dcmf.last_algorithm = MPIDO_USE_TORUS_ALLTOALLV;
+  rc = MPIDO_Alltoallv_torus(sbuf,
+                             sendcounts,
 			     senddispls,
 			     sendtype,
-			     (char *)recvbuf + rdt_true_lb,
+			     rbuf,
 			     recvcounts,
 			     recvdispls,
 			     recvtype,
-			     comm_ptr);
+			     comm);
   return rc;
 }
 
@@ -94,7 +96,7 @@ int MPIDO_Alltoallv(void *sendbuf,
                     int *recvcounts,
                     int *recvdispls,
                     MPI_Datatype recvtype,
-                    MPID_Comm *comm_ptr)
+                    MPID_Comm *comm)
 {
   MPID_abort();
 }

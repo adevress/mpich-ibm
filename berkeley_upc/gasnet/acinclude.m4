@@ -44,7 +44,8 @@ GASNET_FUN_BEGIN([$0])
     program_suffix=NONE
   fi
   # undo transforms caused by empty prefix/suffix
-  if test "$program_transform_name" = 's,^,,' || \
+  if test "$program_prefix$program_suffix" = "NONENONE" || \
+     test "$program_transform_name" = 's,^,,' || \
      test "$program_transform_name" = 's,$$,,' || \
      test "$program_transform_name" = 's,$$,,;s,^,,' ; then
     program_transform_name="s,x,x,"

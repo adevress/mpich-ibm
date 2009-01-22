@@ -1,4 +1,4 @@
-/** $Id$
+/** $Id: aggregate.c,v 1.6 2003-10-22 22:12:14 d3h325 Exp $
  * Aggregate Put/Get requests
  */
 
@@ -294,7 +294,7 @@ void armci_agg_complete(armci_ihdl_t nb_handle, int condition) {
     if(i<0) return; /* implies this handle has no requests at all */
     
 #if 0
-    printf("%d: Hey Buddy! Aggregation Complete to remote process %d (%d:%d requests)\n", 
+    printf("%d: Aggregation Complete to remote process %d (%d:%d requests)\n", 
 	   armci_me, nb_handle->proc, index, aggr[index]->request_len);
 #endif
 

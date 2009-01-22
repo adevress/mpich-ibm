@@ -1,4 +1,4 @@
-/* $Header$ */
+/* $Header: /tmp/hpctools/ga/tcgmsg/ipcv4.0/llog.c,v 1.6 2004-04-01 02:04:57 manoj Exp $ */
 
 #include <stdio.h>
 

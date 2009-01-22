@@ -73,8 +73,10 @@ int MPID_Abort(MPID_Comm * comm, int mpi_errno, int exit_code, const char *error
   if (!env) env = getenv("DCMF_COREONMPIABORT");
   if (!env) env = getenv("DCMF_COREONABORT");
   MPID_Abort_core(comm, mpi_errno, exit_code, error_msg);
-  if ( (strncasecmp("no", env, 2)==0) || (strncasecmp("exit", env, 4)==0) || (strncmp("0", env, 1)==0) )
-    exit(1);
-  else
-    abort();
+
+  if (env != NULL)
+    if ( (strncasecmp("no", env, 2)==0) || (strncasecmp("exit", env, 4)==0) || (strncmp("0", env, 1)==0) )
+      exit(1);
+
+  abort();
 }

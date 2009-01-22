@@ -1,4 +1,4 @@
-#$Id$
+#$Id: GNUmakefile,v 1.2 2005-05-29 03:30:32 vinod Exp $
          FOPT = -g
          COPT = -O3
 

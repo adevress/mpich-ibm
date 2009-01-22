@@ -1,4 +1,4 @@
-/* $Header$ */
+/* $Header: /tmp/hpctools/ga/tcgmsg/ipcv4.0/random.c,v 1.8 2002-05-14 22:12:14 d3h325 Exp $ */
 
 /*
  * Copyright (c) 1983 Regents of the University of California.

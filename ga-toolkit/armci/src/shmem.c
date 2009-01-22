@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: shmem.c,v 1.87.2.2 2007-09-10 23:31:32 manoj Exp $ */
 /* System V shared memory allocation and managment
  *
  * Interface:
@@ -299,8 +299,8 @@ long x=0;
      uval = getenv("ARMCI_DEFAULT_SHMMAX"); 
      if(uval != NULL){
        sscanf(uval,"%ld",&x);
-       if(x<1L || x> 2048L){ 
-          fprintf(stderr,"incorrect ARMCI_DEFAULT_SHMMAX should be <1,2048>mb and 2^N Found=%ld\n",x);
+       if(x<1L || x> 8192L){ 
+          fprintf(stderr,"incorrect ARMCI_DEFAULT_SHMMAX should be <1,8192>mb and 2^N Found=%ld\n",x);
           x=0;
        }
      }
@@ -915,6 +915,18 @@ int armci_get_shmem_info(char *addrp,  int* shmid, long *shmoffset,
     return 1;
 }
 
+long armci_shm_reg_size(int i, long id)
+{
+     if(i<0 || i>= MAX_REGIONS)armci_die("armci_shmem_reg_size: bad i",i); 
+     return region_list[i].sz;
+}
+
+void* armci_shm_reg_ptr(int i)
+{
+     if(i<0 || i>= MAX_REGIONS)armci_die("armci_shmem_reg_ptr: bad i",i); 
+     return (void *)region_list[i].addr;
+}
+
 Header *armci_get_shmem_ptr(int shmid, long shmoffset, size_t shmsize) 
 {
 /* returns, address of the shared memory region based on shmid, offset.
@@ -1009,7 +1021,11 @@ static char *temp;
     POST_ALLOC_CHECK(temp,size);
     region_list[reg].addr = temp; 
     region_list[reg].attached = 1;
-
+    region_list[reg].sz= size;
+#if defined(OPENIB)
+    /*SK: Tested only for OPENIB*/
+/*     armci_region_register_loc(temp, size); */
+#endif
   }
 
   if(STAMP)
@@ -1077,6 +1093,11 @@ size_t sz = (size_t)size;
          printf("%d:allocate:attach:id=%d paddr=%p size=%ld\n",armci_me,id,temp,size);
          fflush(stdout);
        }
+#if !defined(AIX) && !defined(HPUX64)
+       /* delete segment id so that OS cleans it when all attached processes are gone */
+       if(shmctl( id, IPC_RMID, (struct shmid_ds *)NULL))
+          fprintf(stderr,"failed to remove shm id=%d\n",id);
+#endif
 
     }
     POST_ALLOC_CHECK(temp,sz);

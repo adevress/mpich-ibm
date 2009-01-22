@@ -34,7 +34,7 @@ DIAG =
 #
 GA_TRACE = 
 
-SUBDIRS     = src testing trace X examples/boltzmann
+SUBDIRS     = src testing trace X examples
 MAKESUBDIRS = for dir in $(SUBDIRS); do $(MAKE)  -C $$dir $@ || exit 1 ; done
 
 ifndef TARGET 
@@ -55,6 +55,9 @@ ifeq ($(MSG_COMMS),MPI)
 endif
 endif
 ifdef USE_SCALAPACK
+   TESTS += testspd.x
+endif
+ifdef USE_SCALAPACK_I8
    TESTS += testspd.x
 endif
 

@@ -1,4 +1,4 @@
-/* $Header$ */
+/* $Header: /tmp/hpctools/ga/tcgmsg-mpi/evon.c,v 1.4 2003-07-10 15:12:01 d3h325 Exp $ */
 #ifdef __crayx1
 #undef CRAY
 #endif

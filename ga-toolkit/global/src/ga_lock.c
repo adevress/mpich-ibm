@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: ga_lock.c,v 1.6 2002-01-18 19:52:12 vinod Exp $ */
 #include "global.h"
 #include "globalp.h"
 #include "message.h"

@@ -22,174 +22,194 @@ MPIDO_Allreduce(void * sendbuf,
 		MPID_Comm * comm)
 {
   allreduce_fptr func = NULL;
-  DCMF_Embedded_Info_Set * properties = &(comm->dcmf.properties);
+  MPIDO_Embedded_Info_Set * properties = &(comm->dcmf.properties);
   DCMF_Dt dcmf_data = DCMF_UNDEFINED_DT;
   DCMF_Op dcmf_op = DCMF_UNDEFINED_OP;
-  MPID_Datatype * data_ptr;
-  MPI_Aint data_true_lb = 0;
-  int rc, op_type_support, data_contig, data_size;
+  MPI_Aint data_true_lb, data_true_extent;
+  int rc, op_type_support, data_size;
   char *sbuf = sendbuf;
   char *rbuf = recvbuf;
 
   /* Did the user want to force a specific algorithm? */
-  int userenvset = DCMF_INFO_ISSET(properties, DCMF_ALLREDUCE_ENVVAR);
-  int dput_available;
+  int userenvset = MPIDO_INFO_ISSET(properties, MPIDO_ALLREDUCE_ENVVAR);
+  int dput_available, buffer_aligned = 0;
   
   if(count == 0)
     return MPI_SUCCESS;
 
-  /* quick exit conditions */
-  if (DCMF_INFO_ISSET(properties, DCMF_USE_MPICH_ALLREDUCE) ||
-      DCMF_INFO_ISSET(properties, DCMF_IRREG_COMM) ||
-      HANDLE_GET_KIND(op) != HANDLE_KIND_BUILTIN)
-    return MPIR_Allreduce(sendbuf, recvbuf, count, datatype, op, comm);
-
-  MPIDI_Datatype_get_info(count, datatype, data_contig, data_size,
-			  data_ptr, data_true_lb);
-
-  MPID_Ensure_Aint_fits_in_pointer(MPI_VOID_PTR_CAST_TO_MPI_AINT recvbuf +
-				   data_true_lb);
-
-  rbuf = ((char *) recvbuf + data_true_lb);
-
-  if (sendbuf == MPI_IN_PLACE)
-    sbuf = rbuf;
-  else
-  {
-    MPID_Ensure_Aint_fits_in_pointer(MPI_VOID_PTR_CAST_TO_MPI_AINT sendbuf +
-                                     data_true_lb);
-    sbuf = ((char *) sendbuf + data_true_lb);
-  }
-
   op_type_support = MPIDI_ConvertMPItoDCMF(op, &dcmf_op, datatype, &dcmf_data);
 
-  dput_available = (op_type_support != DCMF_NOT_SUPPORTED) &&
-    DCMF_INFO_ISSET(properties, DCMF_USE_RRING_DPUT_SINGLETH_ALLREDUCE) &&
-    !((unsigned)sbuf & 0x0F) && !((unsigned)rbuf & 0x0F);
+  /* quick exit conditions */
+  if (MPIDO_INFO_ISSET(properties, MPIDO_USE_MPICH_ALLREDUCE) ||
+      //MPIDO_INFO_ISSET(properties, MPIDO_IRREG_COMM) ||
+      HANDLE_GET_KIND(op) != HANDLE_KIND_BUILTIN ||
+      (op_type_support == MPIDO_NOT_SUPPORTED))
+  {
+    comm->dcmf.last_algorithm = MPIDO_USE_MPICH_ALLREDUCE;
+    return MPIR_Allreduce(sendbuf, recvbuf, count, datatype, op, comm);
+  }
+  /* Type_get_extent should return the proper value */
+  PMPI_Type_get_extent(datatype, &data_true_lb, &data_true_extent);
+  MPID_Ensure_Aint_fits_in_int(data_true_extent);
+  data_size = count * data_true_extent;
 
-  extern int DCMF_TREE_SMP_SHORTCUT;
+  MPIDI_VerifyBuffer(recvbuf, rbuf, data_true_lb);
+  MPIDI_VerifyBuffer(sendbuf, sbuf, data_true_lb);
+  if (sendbuf == MPI_IN_PLACE)
+    sbuf = rbuf;
+
+  buffer_aligned = !((unsigned)sbuf & 0x0F) && !((unsigned)rbuf & 0x0F);
+  dput_available = buffer_aligned &&
+                   MPIDO_INFO_ISSET(properties,
+                                   MPIDO_USE_RRING_DPUT_SINGLETH_ALLREDUCE);
 
   if (!STAR_info.enabled || STAR_info.internal_control_flow ||
-      data_size < STAR_info.threshold)
+      data_size < STAR_info.allreduce_threshold)
   {
     if(!userenvset)
     {
-      if ((op_type_support == DCMF_TREE_SUPPORT ||
-           op_type_support == DCMF_TREE_MIN_SUPPORT) &&
-          DCMF_INFO_ISSET(properties, DCMF_TREE_COMM))
+      if ((op_type_support == MPIDO_TREE_SUPPORT ||
+           op_type_support == MPIDO_TREE_MIN_SUPPORT) &&
+          MPIDO_INFO_ISSET(properties, MPIDO_TREE_COMM))
       {
-        if (DCMF_INFO_ISSET(properties, DCMF_USE_TREE_ALLREDUCE))
+        if (MPIDO_INFO_ISSET(properties, MPIDO_USE_TREE_ALLREDUCE))
+        {
           func = MPIDO_Allreduce_global_tree;
-        
-        else if (DCMF_INFO_ISSET(properties, DCMF_USE_CCMI_TREE_ALLREDUCE))
+          comm->dcmf.last_algorithm = MPIDO_USE_TREE_ALLREDUCE;
+        }
+        else if (MPIDO_INFO_ISSET(properties, MPIDO_USE_CCMI_TREE_ALLREDUCE))
+        {
           func = MPIDO_Allreduce_tree;
-        
-        else if (DCMF_INFO_ISSET(properties,
-                                 DCMF_USE_PIPELINED_TREE_ALLREDUCE))
+          comm->dcmf.last_algorithm = MPIDO_USE_CCMI_TREE_ALLREDUCE;
+        }
+        else if (MPIDO_INFO_ISSET(properties,
+                                 MPIDO_USE_PIPELINED_TREE_ALLREDUCE))
+        {
           func = MPIDO_Allreduce_pipelined_tree;
-
-        if (dput_available && data_size >= 32768 &&
-            op_type_support != DCMF_TREE_SUPPORT)
+          comm->dcmf.last_algorithm = MPIDO_USE_PIPELINED_TREE_ALLREDUCE;
+        }
+        if (dput_available && data_size >= 524288 &&
+            op_type_support != MPIDO_TREE_SUPPORT)
           func = NULL;
       }
 
-      if(!func && (op_type_support != DCMF_NOT_SUPPORTED))
+      if(!func && (op_type_support != MPIDO_NOT_SUPPORTED))
       {
+        
         if (data_size < 208)
         {
-          if(DCMF_INFO_ISSET(properties, 
-                             DCMF_USE_SHORT_ASYNC_RECT_ALLREDUCE))
+               
+          if(MPIDO_INFO_ISSET(properties, 
+                             MPIDO_USE_SHORT_ASYNC_RECT_ALLREDUCE))
           {
-            /* MPIDI_Datatype_get_info doesn't account for padding in data_size
-               Simplest thing to do is hardcode the count limit for a couple
-               padded datatypes so that we don't attempt short async rectangle
-               with 208 or more bytes */
-            if(((datatype == MPI_DOUBLE_INT) && (count >= 13)) || // 13 * 16 = 208
-               ((datatype == MPI_SHORT_INT) && (count >= 26)))    // 26 * 8  = 208
-              ;
-            else
-              func = MPIDO_Allreduce_short_async_rect;
+            func = MPIDO_Allreduce_short_async_rect;
+            comm->dcmf.last_algorithm = MPIDO_USE_SHORT_ASYNC_RECT_ALLREDUCE;
           }
-          if(!func && DCMF_INFO_ISSET(properties, 
-                                      DCMF_USE_SHORT_ASYNC_BINOM_ALLREDUCE))
+          
+          if(!func && MPIDO_INFO_ISSET(properties, 
+                                      MPIDO_USE_SHORT_ASYNC_BINOM_ALLREDUCE))
+          {
             func = MPIDO_Allreduce_short_async_binom;
-          if (!func && DCMF_INFO_ISSET(properties, 
-                                       DCMF_USE_ABINOM_ALLREDUCE))
+            comm->dcmf.last_algorithm = MPIDO_USE_SHORT_ASYNC_BINOM_ALLREDUCE;
+          }
+          if (!func && MPIDO_INFO_ISSET(properties, 
+                                       MPIDO_USE_ABINOM_ALLREDUCE))
           {
             func = MPIDO_Allreduce_async_binom;
+            comm->dcmf.last_algorithm = MPIDO_USE_ABINOM_ALLREDUCE;
           }
         }
         
         if(!func && data_size <= 16384)
         {
-          if (DCMF_INFO_ISSET(properties, DCMF_USE_ARECT_ALLREDUCE))
+          if (MPIDO_INFO_ISSET(properties, MPIDO_USE_ARECT_ALLREDUCE))
           {
             func = MPIDO_Allreduce_async_rect;
+            comm->dcmf.last_algorithm = MPIDO_USE_ARECT_ALLREDUCE;
           }
         }
         
         if(!func && data_size > 16384)
         {
-          if(DCMF_INFO_ISSET(properties, 
-                             DCMF_USE_RRING_DPUT_SINGLETH_ALLREDUCE) &&
+          if(MPIDO_INFO_ISSET(properties, 
+                             MPIDO_USE_RRING_DPUT_SINGLETH_ALLREDUCE) &&
              !((unsigned)sbuf & 0x0F) && !((unsigned)rbuf & 0x0F))
           {
             func = MPIDO_Allreduce_rring_dput_singleth;
+            comm->dcmf.last_algorithm = MPIDO_USE_RRING_DPUT_SINGLETH_ALLREDUCE;
           }
-          if(!func && DCMF_INFO_ISSET(properties, 
-                                      DCMF_USE_ARECTRING_ALLREDUCE))
+          if(!func && MPIDO_INFO_ISSET(properties, 
+                                      MPIDO_USE_ARECTRING_ALLREDUCE))
           {
             func = MPIDO_Allreduce_async_rectring;
+            comm->dcmf.last_algorithm = MPIDO_USE_ARECTRING_ALLREDUCE;
           }
         }
       }
     }
     else
     {
-      if (op_type_support == DCMF_TREE_SUPPORT ||
-          op_type_support == DCMF_TREE_MIN_SUPPORT)
+      if (op_type_support == MPIDO_TREE_SUPPORT ||
+          op_type_support == MPIDO_TREE_MIN_SUPPORT)
       {
-        if (DCMF_INFO_ISSET(properties, DCMF_USE_TREE_ALLREDUCE) &&
-            DCMF_INFO_ISSET(properties, DCMF_USE_SMP_TREE_SHORTCUT))
+        if (MPIDO_INFO_ISSET(properties, MPIDO_USE_TREE_ALLREDUCE) &&
+            MPIDO_INFO_ISSET(properties, MPIDO_USE_SMP_TREE_SHORTCUT))
+        {
           func = MPIDO_Allreduce_global_tree;
-        if (!func && DCMF_INFO_ISSET(properties, DCMF_USE_CCMI_TREE_ALLREDUCE))
+          comm->dcmf.last_algorithm = MPIDO_USE_TREE_ALLREDUCE;
+        }
+        if (!func && MPIDO_INFO_ISSET(properties, MPIDO_USE_CCMI_TREE_ALLREDUCE))
+        {
           func = MPIDO_Allreduce_tree;
+          comm->dcmf.last_algorithm = MPIDO_USE_CCMI_TREE_ALLREDUCE;
+        }
         if (!func &&
-            DCMF_INFO_ISSET(properties, DCMF_USE_PIPELINED_TREE_ALLREDUCE))
+            MPIDO_INFO_ISSET(properties, MPIDO_USE_PIPELINED_TREE_ALLREDUCE))
+        {
           func = MPIDO_Allreduce_pipelined_tree;
+          comm->dcmf.last_algorithm = MPIDO_USE_PIPELINED_TREE_ALLREDUCE;
+        }
       }
       
-      if(!func && DCMF_INFO_ISSET(properties, DCMF_USE_ABINOM_ALLREDUCE))
+      if(!func && MPIDO_INFO_ISSET(properties, MPIDO_USE_ABINOM_ALLREDUCE))
+      {
         func = MPIDO_Allreduce_async_binom;
-      
+        comm->dcmf.last_algorithm = MPIDO_USE_ABINOM_ALLREDUCE;
+      }
       if(!func &&
-         DCMF_INFO_ISSET(properties, DCMF_USE_SHORT_ASYNC_RECT_ALLREDUCE) &&
+         MPIDO_INFO_ISSET(properties, MPIDO_USE_SHORT_ASYNC_RECT_ALLREDUCE) &&
          data_size < 208)
       {  
-        /* MPIDI_Datatype_get_info doesn't account for padding in data_size.
-           Simplest thing to do is hardcode the count limit for a couple padded
-           datatypes so that we don't attempt short async rectangle with 208 or
-           more bytes */
-        if(((datatype == MPI_DOUBLE_INT) && (count >= 13)) || // 13 * 16 = 208
-           ((datatype == MPI_SHORT_INT) && (count >= 26)))    // 26 * 8  = 208
-          ;
-        else
-          func = MPIDO_Allreduce_short_async_rect;
+        func = MPIDO_Allreduce_short_async_rect;
+        comm->dcmf.last_algorithm = MPIDO_USE_SHORT_ASYNC_RECT_ALLREDUCE;
       }
       if(!func &&
-         DCMF_INFO_ISSET(properties, DCMF_USE_SHORT_ASYNC_BINOM_ALLREDUCE) &&
+         MPIDO_INFO_ISSET(properties, MPIDO_USE_SHORT_ASYNC_BINOM_ALLREDUCE) &&
          data_size < 208)
+      {
         func = MPIDO_Allreduce_short_async_binom;
-      
-      if(!func &&
-         DCMF_INFO_ISSET(properties, DCMF_USE_RRING_DPUT_SINGLETH_ALLREDUCE) &&
-         !((unsigned)sbuf & 0x0F) && !((unsigned)rbuf & 0x0F))
-        func = MPIDO_Allreduce_rring_dput_singleth;
-      
-      if(!func &&
-         DCMF_INFO_ISSET(properties, DCMF_USE_ARECTRING_ALLREDUCE))
-        func = MPIDO_Allreduce_async_rectring;
+        comm->dcmf.last_algorithm = MPIDO_USE_SHORT_ASYNC_BINOM_ALLREDUCE;
+      }
 
+      if(!func &&
+         MPIDO_INFO_ISSET(properties, MPIDO_USE_RRING_DPUT_SINGLETH_ALLREDUCE) &&
+         !((unsigned)sbuf & 0x0F) && !((unsigned)rbuf & 0x0F))
+      {
+        func = MPIDO_Allreduce_rring_dput_singleth;
+        comm->dcmf.last_algorithm = MPIDO_USE_RRING_DPUT_SINGLETH_ALLREDUCE;
+      }
+      if (!func &&
+	  MPIDO_INFO_ISSET(properties, MPIDO_USE_ARECT_ALLREDUCE))
+      {
+	func = MPIDO_Allreduce_async_rect;
+        comm->dcmf.last_algorithm = MPIDO_USE_ARECT_ALLREDUCE;
+      }
+      if(!func &&
+         MPIDO_INFO_ISSET(properties, MPIDO_USE_ARECTRING_ALLREDUCE))
+      {
+        func = MPIDO_Allreduce_async_rectring;
+        comm->dcmf.last_algorithm = MPIDO_USE_ARECTRING_ALLREDUCE;
+      }
     }
          
     if (func)
@@ -208,6 +228,7 @@ MPIDO_Allreduce(void * sendbuf,
     else
     {
       rc = MPIR_Allreduce(sendbuf, recvbuf, count, datatype, op, comm);
+      comm->dcmf.last_algorithm = MPIDO_USE_MPICH_ALLREDUCE;
     }
   }
 
@@ -233,9 +254,7 @@ MPIDO_Allreduce(void * sendbuf,
     collective_site.op_type_support = op_type_support;
 
     /* decide buffer alignment */
-    collective_site.buff_attributes[3] = 1; /* assume aligned */
-    if (((unsigned)sbuf & 0x0F) || ((unsigned)rbuf & 0x0F))
-      collective_site.buff_attributes[3] = 0; /* set to not aligned */
+    collective_site.buff_attributes[3] = buffer_aligned;
 
     rc = STAR_Allreduce(sbuf, rbuf, count, dcmf_data, dcmf_op,
                         datatype, &collective_site,

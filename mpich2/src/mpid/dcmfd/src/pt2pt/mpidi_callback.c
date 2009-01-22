@@ -18,14 +18,15 @@
  * \returns    Storage for the DCMF to use for managing the message
  */
 DCMF_Request_t * MPIDI_BG2S_RecvCB(void                     * clientdata,
-                                   const MPIDI_DCMF_MsgInfo * msginfo,
+                                   const DCQuad             * msgquad,
                                    unsigned                   count,
-                                   unsigned                   senderrank,
-                                   const unsigned             sndlen,
-                                   unsigned                 * rcvlen,
+                                   size_t                     senderrank,
+                                   const size_t               sndlen,
+                                   size_t                   * rcvlen,
                                    char                    ** rcvbuf,
                                    DCMF_Callback_t    * const cb_info)
 {
+  const MPIDI_DCMF_MsgInfo *msginfo = (const MPIDI_DCMF_MsgInfo *)msgquad;
   MPID_Request * rreq = NULL;
   int found;
   *rcvlen = sndlen;

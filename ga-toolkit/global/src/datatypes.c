@@ -1,4 +1,4 @@
-/* $Id$
+/* $Id: datatypes.c,v 1.9.10.1 2006-12-14 13:24:47 manoj Exp $
  * conversion of MA identifiers between C to Fortran data types 
  * Note that ga_type_c2f(MT_F_INT) == MT_F_INT 
  */

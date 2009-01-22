@@ -23,10 +23,10 @@ int MPIDO_Gather(void *sendbuf,
                  int root,
                  MPID_Comm *comm)
 {
-  DCMF_Embedded_Info_Set * properties = &(comm->dcmf.properties);
+  MPIDO_Embedded_Info_Set * properties = &(comm->dcmf.properties);
   MPID_Datatype * data_ptr;
   MPI_Aint true_lb = 0;
-  char *sbuf =sendbuf, *rbuf=recvbuf;
+  char *sbuf = sendbuf, *rbuf = recvbuf;
   int success = 1, contig, send_bytes=-1, recv_bytes = 0;
   int rc = 0, rank = comm->rank;
 
@@ -52,14 +52,18 @@ int MPIDO_Gather(void *sendbuf,
       success = 0;
   }
   
-  if (DCMF_INFO_ISSET(properties, DCMF_IRREG_COMM) ||
-      DCMF_INFO_ISSET(properties, DCMF_USE_MPICH_GATHER) ||
-      !DCMF_INFO_ISSET(properties, DCMF_USE_REDUCE_GATHER) ||
+  if (MPIDO_INFO_ISSET(properties, MPIDO_IRREG_COMM) ||
+      MPIDO_INFO_ISSET(properties, MPIDO_USE_MPICH_GATHER) ||
+      MPIDO_INFO_ISSET(properties, MPIDO_USE_MPICH_REDUCE) ||
+      !MPIDO_INFO_ISSET(properties, MPIDO_TREE_COMM) ||
+      !MPIDO_INFO_ISSET(properties, MPIDO_USE_REDUCE_GATHER) ||
       mpid_hw.tSize > 1)
+  {
+    comm->dcmf.last_algorithm = MPIDO_USE_MPICH_GATHER;
     return MPIR_Gather(sendbuf, sendcount, sendtype,
                        recvbuf, recvcount, recvtype,
                        root, comm);
-  
+  }
 
   /* set the internal control flow to disable internal star tuning */
   STAR_info.internal_control_flow = 1;
@@ -75,23 +79,19 @@ int MPIDO_Gather(void *sendbuf,
                        recvbuf, recvcount, recvtype,
                        root, comm);
 
-  
-  rbuf = (char *) recvbuf + true_lb;
-
-  if (sendbuf != MPI_IN_PLACE)
-  {
-    MPID_Ensure_Aint_fits_in_pointer(MPI_VOID_PTR_CAST_TO_MPI_AINT sendbuf +
-                                     true_lb);
-    sbuf = (char *) sendbuf + true_lb;
-  }
+  MPIDI_VerifyBuffer(sendbuf, sbuf, true_lb);
+  MPIDI_VerifyBuffer(recvbuf, rbuf, true_lb);
   
   if (!STAR_info.enabled || STAR_info.internal_control_flow ||
       STAR_info.gather_algorithms == 1)
   {
-    if (DCMF_INFO_ISSET(properties, DCMF_USE_REDUCE_GATHER))
+    if (MPIDO_INFO_ISSET(properties, MPIDO_USE_REDUCE_GATHER))
+    {
+      comm->dcmf.last_algorithm = MPIDO_USE_REDUCE_GATHER;
       return MPIDO_Gather_reduce(sbuf, sendcount, sendtype,
                                  rbuf, recvcount, recvtype,
-                                 root, comm);    
+                                 root, comm);
+    }
   }
   else
   {
@@ -128,7 +128,7 @@ int MPIDO_Gather(void *sendbuf,
       collective_site.call_type = GATHER_CALL;
       collective_site.comm = comm;
       collective_site.bytes = send_bytes;
-      collective_site.op_type_support = DCMF_SUPPORT_NOT_NEEDED;
+      collective_site.op_type_support = MPIDO_SUPPORT_NOT_NEEDED;
       collective_site.id = id;
 
       rc = STAR_Gather(sbuf, sendcount, sendtype,

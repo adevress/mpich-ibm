@@ -31,18 +31,33 @@ typedef struct{
         lapi_cntr_t *cntr;
 }msg_tag_t;
 
+#ifdef LAPI_RDMA
+typedef struct region_memhdl{
+        void *start;
+        lapi_user_pvo_t pvo;
+} region_memhdl_t;
 
+#define HAS_RDMA_GET
+#define REGIONS_REQUIRE_MEMHDL
+#define ARMCI_MEMHDL_T region_memhdl_t
+
+extern void armci_client_direct_send(int p, void *src_buf, void *dst_buf,
+                                     int len, void** contextptr, int nbtag,
+                                     ARMCI_MEMHDL_T *lochdl,
+                                     ARMCI_MEMHDL_T *remhdl); /* LAPI RDMA */
+#endif /* LAPI_RDMA */
 extern lapi_cmpl_t *cmpl_arr;	/* completion state array, dim=NPROC */
-extern lapi_cmpl_t  ack_cntr;	/* ACK counter used in handshaking protocols
+extern lapi_cmpl_t *ack_cntr;	/* ACK counter used in handshaking protocols
 				   between origin and target */
 extern lapi_cmpl_t  buf_cntr;	/* AM data buffer counter    */
-extern lapi_cmpl_t  get_cntr;	/* lapi_get counter    */
+extern lapi_cmpl_t *get_cntr;	/* lapi_get counter    */
 extern lapi_cmpl_t  hdr_cntr;	/* AM header buffer counter  */
 extern int intr_status;
 
 extern void armci_init_lapi(void);  /* initialize LAPI data structures*/
 extern void armci_term_lapi(void);  /* destroy LAPI data structures */
 extern void armci_lapi_send(msg_tag_t, void*, int, int); /* LAPI send */
+
 
 #define BUF_EXTRA_FIELD_T     lapi_cmpl_t
 #define EXTRA_MSG_BUFLEN_DBL  (sizeof(lapi_cmpl_t)>>3)
@@ -118,7 +133,7 @@ int _val_;\
 #define PENDING_OPER(p) cmpl_arr[(p)].oper
 
 
-#define WAIT_FOR_GETS CLEAR_COUNTER(get_cntr)
-#define WAIT_FOR_PUTS CLEAR_COUNTER(ack_cntr)
+#define WAIT_FOR_GETS CLEAR_COUNTER(get_cntr[ARMCI_THREAD_IDX])
+#define WAIT_FOR_PUTS CLEAR_COUNTER(ack_cntr[ARMCI_THREAD_IDX])
 
 #endif

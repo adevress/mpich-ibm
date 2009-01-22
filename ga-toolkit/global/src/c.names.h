@@ -39,6 +39,7 @@
 #define  ga_gather_                GA_GATHER
 #define  ga_get_                   GA_GET
 #define  ga_nbwait_                GA_NBWAIT
+#define  ga_nbtest_                GA_NBTEST
 #define  ga_nbget_                 GA_NBGET
 #define  ga_has_ghosts_            GA_HAS_GHOSTS
 #define  ga_pgroup_get_default_    GA_PGROUP_GET_DEFAULT
@@ -142,6 +143,9 @@
 #define  nga_access_               NGA_ACCESS
 #define  nga_access_ghosts_        NGA_ACCESS_GHOSTS
 #define  nga_access_ghost_element_ NGA_ACCESS_GHOST_ELEMENT
+#define  nga_access_block_         NGA_ACCESS_BLOCK
+#define  nga_access_block_grid_    NGA_ACCESS_BLOCK_GRID
+#define  nga_access_block_segment_ NGA_ACCESS_BLOCK_SEGMENT
 #define  nga_add_patch_            NGA_ADD_PATCH
 #define  nga_copy_patch_           NGA_COPY_PATCH
 #define  nga_create_               NGA_CREATE
@@ -162,6 +166,8 @@
 #define  ga_set_irreg_distr_       GA_SET_IRREG_DISTR
 #define  ga_set_irreg_flag_        GA_SET_IRREG_FLAG
 #define  ga_set_ghost_corner_flag_ GA_SET_GHOST_CORNER_FLAG
+#define  ga_set_block_cyclic_      GA_SET_BLOCK_CYCLIC
+#define  ga_set_block_cyclic_proc_grid_   GA_SET_BLOCK_CYCLIC_PROC_GRID
 #define  ga_get_dimension_         GA_GET_DIMENSION
 #define  ga_allocate_              GA_ALLOCATE
 #define  ga_pgroup_create_         GA_PGROUP_CREATE
@@ -174,11 +180,18 @@
 #define  nga_gather_               NGA_GATHER
 #define  nga_get_                  NGA_GET
 #define  nga_nbwait_               NGA_NBWAIT
+#define  nga_nbtest_               NGA_NBTEST
 #define  nga_nbget_                NGA_NBGET
 #define  nga_idot_patch_           NGA_IDOT_PATCH
 #define  nga_inquire_              NGA_INQUIRE
 #define  nga_locate_               NGA_LOCATE
 #define  nga_locate_region_        NGA_LOCATE_REGION
+#define  nga_locate_num_blocks_    NGA_LOCATE_NUM_BLOCKS
+#define  ga_total_blocks_          GA_TOTAL_BLOCKS
+#define  ga_get_proc_index_        GA_GET_PROC_INDEX
+#define  ga_get_block_info_        GA_GET_BLOCK_INFO
+#define  ga_uses_proc_grid_        GA_USES_PROC_GRID
+#define  ga_get_proc_grid_         GA_GET_PROC_GRID
 #define  nga_matmul_patch_         NGA_MATMUL_PATCH
 #define  nga_periodic_acc_         NGA_PERIODIC_ACC
 #define  nga_periodic_get_         NGA_PERIODIC_GET
@@ -190,6 +203,12 @@
 #define  nga_read_inc_             NGA_READ_INC
 #define  nga_release_              NGA_RELEASE
 #define  nga_release_update_       NGA_RELEASE_UPDATE
+#define  nga_release_block_        NGA_RELEASE_BLOCK
+#define  nga_release_block_grid_   NGA_RELEASE_BLOCK_GRID
+#define  nga_release_update_block_ NGA_RELEASE_UPDATE_BLOCK
+#define  nga_release_update_block_grid_    NGA_RELEASE_UPDATE_BLOCK_GRID
+#define  nga_release_block_segment_        NGA_RELEASE_BLOCK_SEGMENT
+#define  nga_release_update_block_segment_ NGA_RELEASE_UPDATE_BLOCK_SEGMENT
 #define  nga_scale_patch_          NGA_SCALE_PATCH
 #define  nga_scatter_              NGA_SCATTER
 #define  nga_scatter_acc_          NGA_SCATTER_ACC
@@ -238,6 +257,8 @@
 #define  ga_free_                  GA_FREE
 #define  ga_malloc_                GA_MALLOC
 #define  ga_wtime_                 GA_WTIME
+#define  ga_set_debug_             GA_SET_DEBUG
+#define  ga_get_debug_             GA_GET_DEBUG
 
 #elif defined(F2C2_)
 
@@ -277,6 +298,7 @@
 #define  ga_gather_                ga_gather__              
 #define  ga_get_                   ga_get__                 
 #define  ga_nbwait_                ga_nbwait__                 
+#define  ga_nbtest_                ga_nbtest__                 
 #define  ga_nbget_                 ga_nbget__                 
 #define  ga_has_ghosts_            ga_has_ghosts__          
 #define  ga_pgroup_get_default_    ga_pgroup_get_default__                
@@ -381,6 +403,9 @@
 #define  nga_access_               nga_access__             
 #define  nga_access_ghosts_        nga_access_ghosts__      
 #define  nga_access_ghost_element_ nga_access_ghost_element__      
+#define  nga_access_block_         nga_access_block__             
+#define  nga_access_block_grid_    nga_access_block_grid__             
+#define  nga_access_block_segment_ nga_access_block_segment__             
 #define  nga_add_patch_            nga_add_patch__          
 #define  nga_copy_patch_           nga_copy_patch__         
 #define  nga_create_               nga_create__             
@@ -401,6 +426,8 @@
 #define  ga_set_irreg_distr_       ga_set_irreg_distr__
 #define  ga_set_irreg_flag_        ga_set_irreg_flag__
 #define  ga_set_ghost_corner_flag_ ga_set_ghost_corner_flag__
+#define  ga_set_block_cyclic_      ga_set_block_cyclic__
+#define  ga_set_block_cyclic_proc_grid_   ga_set_block_cyclic_proc_grid__
 #define  ga_get_dimension_         ga_get_dimension__
 #define  ga_allocate_              ga_allocate__
 #define  ga_pgroup_create_         ga_pgroup_create__ 
@@ -413,10 +440,17 @@
 #define  nga_gather_               nga_gather__             
 #define  nga_get_                  nga_get__                
 #define  nga_nbwait_               nga_nbwait__                
+#define  nga_nbtest_               nga_nbtest__                
 #define  nga_nbget_                nga_nbget__                
 #define  nga_idot_patch_           nga_idot_patch__         
 #define  nga_inquire_              nga_inquire__            
 #define  nga_locate_               nga_locate__             
+#define  nga_locate_num_blocks_    nga_locate_num_blocks__
+#define  ga_total_blocks_          ga_total_blocks__
+#define  ga_get_proc_index_        ga_get_proc_index__
+#define  ga_get_block_info_        ga_get_block_info__
+#define  ga_uses_proc_grid_        ga_uses_proc_grid__
+#define  ga_get_proc_grid_         ga_get_proc_grid__
 #define  nga_locate_region_        nga_locate_region__     
 #define  nga_matmul_patch_         nga_matmul_patch__     
 #define  nga_periodic_acc_         nga_periodic_acc__    
@@ -429,6 +463,12 @@
 #define  nga_read_inc_             nga_read_inc__           
 #define  nga_release_              nga_release__            
 #define  nga_release_update_       nga_release_update__  
+#define  nga_release_block_        nga_release_block__
+#define  nga_release_block_grid_   nga_release_block_grid__
+#define  nga_release_update_block_ nga_release_update_block__
+#define  nga_release_update_block_grid_    nga_release_update_block_grid__
+#define  nga_release_block_segment_        nga_release_block_segment__
+#define  nga_release_update_block_segment_ nga_release_update_block_segment__
 #define  nga_scale_patch_          nga_scale_patch__        
 #define  nga_scatter_              nga_scatter__            
 #define  nga_scatter_acc_          nga_scatter_acc__        
@@ -476,7 +516,9 @@
 #define  ga_zgemm_                 ga_zgemm__
 #define  ga_free_                  ga_free__
 #define  ga_malloc_                ga_malloc__
-#define  ga_wtime_                 ga_wtime__
+#define  ga_wtime_                ga_wtime__
+#define  ga_set_debug_             ga_set_debug__
+#define  ga_get_debug_             ga_get_debug__
 
 #endif
 

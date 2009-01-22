@@ -107,9 +107,9 @@ xb_sgemm (char *transa, char *transb, int *M, int *N, int *K,
     printf("m=%d, n=%d, k=%d\n", m, n, k);
     printf("alpha=%f, beta=%f\n", alpha_i, beta_i);
     printf("\n");	  
-    //for(i=0; i<m*k; i++)  printf("%.1f ", *A++); printf("\n\n");
-    //for(i=0; i<n*k; i++)  printf("%.1f ", *B++); printf("\n\n");
-    //for(i=0; i<n*k; i++)  printf("%.1f ", *C++); printf("\n");
+    /* for(i=0; i<m*k; i++)  printf("%.1f ", *A++); printf("\n\n"); */
+    /* for(i=0; i<n*k; i++)  printf("%.1f ", *B++); printf("\n\n"); */
+    /* for(i=0; i<n*k; i++)  printf("%.1f ", *C++); printf("\n"); */
 #endif
     
     /* Test for error conditions */

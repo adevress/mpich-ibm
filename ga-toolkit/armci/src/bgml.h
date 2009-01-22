@@ -1,12 +1,14 @@
 /* begin_generated_IBM_copyright_prolog                             */
 /*                                                                  */
-/* ---------------------------------------------------------------- */
-/* (C)Copyright IBM Corp.  2007, 2008                               */
-/* IBM BSD License                                                  */
-/* ---------------------------------------------------------------- */
-/*                                                                  */
+/* --------------------------------------------------------------   */
+/* (C)Copyright IBM Corp. 2007, 2008                                */
+/* IBM BSD License.                                                 */
+/* --------------------------------------------------------------   */
 /* end_generated_IBM_copyright_prolog                               */
-/* $Id$ */
+/********************************************************************/
+
+/* $Id: bgml.h 4218 2008-06-04 19:15:30Z manoj $ */
+
 /*!
  * \file bgml.h
  * \brief Common external message layer interface.
@@ -334,7 +336,7 @@ extern "C"
    * The external API does not reveal the internal structure of the object.
    */
 
-  typedef BGQuad BG1S_t[32] __attribute__((__aligned__(16)));
+  typedef BGQuad BG1S_t[32];
   
   /**
    * \brief Generalized I/O vector data type/

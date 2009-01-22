@@ -371,13 +371,7 @@ C        None
 C
 C     CHANGE HISTORY -
 C
-C        $Log$
-C        Revision 1.1  2008/05/02 17:56:19  jratt
-C        Initial revision
-C
-C        Revision 1.1  2002/10/16 00:15:29  d3h325
-C        JN: missing tests
-C
+C        $Log: not supported by cvs2svn $
 CPVCS    
 CPVCS       Rev 1.2   08/03/95 13:53:18   dcg
 CPVCS    replace print * with writloga calls

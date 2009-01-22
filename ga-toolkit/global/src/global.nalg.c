@@ -42,32 +42,35 @@ int _i;\
 
 void FATR ga_zero_(Integer *g_a)
 {
-Integer ndim, type, me, elems, p_handle;
-void *ptr;
-register Integer i;
-int local_sync_begin,local_sync_end;
+  Integer ndim, type, me, elems, p_handle;
+  Integer num_blocks;
+  void *ptr;
+  register Integer i;
+  int local_sync_begin,local_sync_end;
 
 #ifdef GA_USE_VAMPIR
-   vampir_begin(GA_ZERO,__FILE__,__LINE__);
+  vampir_begin(GA_ZERO,__FILE__,__LINE__);
 #endif
 
-   local_sync_begin = _ga_sync_begin; local_sync_end = _ga_sync_end;
-   _ga_sync_begin = 1; _ga_sync_end=1; /*remove any previous masking*/
-   p_handle = ga_get_pgroup_(g_a);
-   
-   if(local_sync_begin) ga_pgroup_sync_(&p_handle);
+  local_sync_begin = _ga_sync_begin; local_sync_end = _ga_sync_end;
+  _ga_sync_begin = 1; _ga_sync_end=1; /*remove any previous masking*/
+  p_handle = ga_get_pgroup_(g_a);
 
-   me = ga_pgroup_nodeid_(&p_handle);
+  if(local_sync_begin) ga_pgroup_sync_(&p_handle);
 
-   ga_check_handle(g_a, "ga_zero");
-   GA_PUSH_NAME("ga_zero");
+  me = ga_pgroup_nodeid_(&p_handle);
 
-   nga_inquire_internal_(g_a, &type, &ndim, dims);
-   elems = ga_pgroup_get_world_();
-   nga_distribution_(g_a, &me, lo, hi);
+  ga_check_handle(g_a, "ga_zero");
+  GA_PUSH_NAME("ga_zero");
 
-   if ( lo[0]> 0 ){ /* base index is 1: we get 0 if no elements stored on p */
- 
+  num_blocks = ga_total_blocks_(g_a);
+
+  nga_inquire_internal_(g_a, &type, &ndim, dims);
+  if (num_blocks < 0) {
+    nga_distribution_(g_a, &me, lo, hi);
+
+    if ( lo[0]> 0 ){ /* base index is 1: we get 0 if no elements stored on p */
+
       if (ga_has_ghosts_(g_a)) {
         nga_zero_patch_(g_a,lo,hi);
 #ifdef GA_USE_VAMPIR
@@ -113,12 +116,49 @@ int local_sync_begin,local_sync_end;
 
       /* release access to the data */
       nga_release_update_(g_a, lo, hi);
-   } 
+    } 
+  } else {
+    nga_access_block_segment_ptr(g_a, &me, &ptr, &elems);
+    switch (type){
+      int *ia;
+      double *da;
+      float *fa;
+      long *la;
+      long long *lla;
+      case C_INT:
+        ia = (int*)ptr;
+        for(i=0;i<elems;i++) ia[i]  = 0;
+        break;
+      case C_DCPL:
+        elems *=2;
+      case C_DBL:
+        da = (double*)ptr;
+        for(i=0;i<elems;i++) da[i] = 0;
+        break;
+      case C_SCPL:
+        elems *=2;
+      case C_FLOAT:
+        fa = (float*)ptr;
+        for(i=0;i<elems;i++) fa[i]  = 0;
+        break;
+      case C_LONG:
+      la = (long*)ptr;
+      for(i=0;i<elems;i++) la[i]  = 0;
+      break;                                 
+      case C_LONGLONG:
+      lla = (long long*)ptr;
+      for(i=0;i<elems;i++) lla[i]  = 0;
+      break;                                 
+      default: ga_error(" wrong data type ",type);
+    }
 
-   if(local_sync_end)ga_pgroup_sync_(&p_handle);
-   GA_POP_NAME;
+    /* release access to the data */
+    nga_release_update_block_segment_(g_a, &me);
+  }
+  if(local_sync_end)ga_pgroup_sync_(&p_handle);
+  GA_POP_NAME;
 #ifdef GA_USE_VAMPIR
-   vampir_end(GA_ZERO,__FILE__,__LINE__);
+  vampir_end(GA_ZERO,__FILE__,__LINE__);
 #endif
 }
 
@@ -195,6 +235,8 @@ Integer  ndim, ndimb, type, typeb, me_a, me_b;
 Integer dimsb[MAXDIM],i;
 Integer nseg;
 Integer a_grp, b_grp, anproc, bnproc;
+Integer num_blocks_a, num_blocks_b;
+Integer blocks[MAXDIM], block_dims[MAXDIM];
 void *ptr_a, *ptr_b;
 int local_sync_begin,local_sync_end,use_put;
 
@@ -211,6 +253,8 @@ int local_sync_begin,local_sync_end,use_put;
    me_b = ga_pgroup_nodeid_(&b_grp);
    anproc = ga_get_pgroup_size_(&a_grp);
    bnproc = ga_get_pgroup_size_(&b_grp);
+   num_blocks_a = ga_total_blocks_(g_a);
+   num_blocks_b = ga_total_blocks_(g_b);
    if (anproc <= bnproc) {
      use_put = 1;
    } else {
@@ -246,21 +290,100 @@ int local_sync_begin,local_sync_end,use_put;
         Copy operation is straightforward */
 
      if (use_put) {
-       nga_distribution_(g_a, &me_a, lo, hi);
-     } else {
-       nga_distribution_(g_b, &me_b, lo, hi);
-     }
-
-     if(lo[0]>0){
-       if (use_put) {
-          nga_access_ptr(g_a, lo, hi, &ptr_a, ld);
-          nga_put_(g_b, lo, hi, ptr_a, ld);
+       if (num_blocks_a < 0) {
+         nga_distribution_(g_a, &me_a, lo, hi);
+         if(lo[0]>0){
+           nga_access_ptr(g_a, lo, hi, &ptr_a, ld);
+           nga_put_(g_b, lo, hi, ptr_a, ld);
+         }
        } else {
-          nga_access_ptr(g_b, lo, hi, &ptr_b, ld);
-          nga_get_(g_a, lo, hi, ptr_b, ld);
+         if (!ga_uses_proc_grid_(g_a)) {
+           for (i=me_a; i<num_blocks_a; i += anproc) {
+             nga_distribution_(g_a, &i, lo, hi);
+             if (lo[0]>0) {
+               nga_access_block_ptr(g_a, &i, &ptr_a, ld);
+               nga_put_(g_b, lo, hi, ptr_a, ld);
+             }
+           }
+         } else {
+           Integer proc_index[MAXDIM], index[MAXDIM];
+           Integer topology[MAXDIM], chk;
+           ga_get_proc_index_(g_a, &me_a, proc_index);
+           ga_get_proc_index_(g_a, &me_a, index);
+           ga_get_block_info_(g_a, blocks, block_dims);
+           ga_get_proc_grid_(g_a, topology);
+           while (index[ndim-1] < blocks[ndim-1]) {
+             /* find bounding coordinates of block */
+             chk = 1;
+             for (i = 0; i < ndim; i++) {
+               lo[i] = index[i]*block_dims[i]+1;
+               hi[i] = (index[i] + 1)*block_dims[i];
+               if (hi[i] > dims[i]) hi[i] = dims[i];
+               if (hi[i] < lo[i]) chk = 0;
+             }
+             if (chk) {
+               nga_access_block_grid_ptr(g_a, index, &ptr_a, ld);
+               nga_put_(g_b, lo, hi, ptr_a, ld);
+             }
+             /* increment index to get next block on processor */
+             index[0] += topology[0];
+             for (i = 0; i < ndim; i++) {
+               if (index[i] >= blocks[i] && i<ndim-1) {
+                 index[i] = proc_index[i];
+                 index[i+1] += topology[i+1];
+               }
+             }
+           }
+         }
+       }
+     } else {
+       if (num_blocks_b < 0) {
+         nga_distribution_(g_b, &me_b, lo, hi);
+         if(lo[0]>0){
+           nga_access_ptr(g_b, lo, hi, &ptr_b, ld);
+           nga_get_(g_a, lo, hi, ptr_b, ld);
+         }
+       } else {
+         if (!ga_uses_proc_grid_(g_a)) {
+           for (i=me_b; i<num_blocks_b; i += bnproc) {
+             nga_distribution_(g_b, &i, lo, hi);
+             if (lo[0]>0) {
+               nga_access_block_ptr(g_b, &i, &ptr_b, ld);
+               nga_get_(g_a, lo, hi, ptr_b, ld);
+             }
+           }
+         } else {
+           Integer proc_index[MAXDIM], index[MAXDIM];
+           Integer topology[MAXDIM], chk;
+           ga_get_proc_index_(g_b, &me_b, proc_index);
+           ga_get_proc_index_(g_b, &me_b, index);
+           ga_get_block_info_(g_b, blocks, block_dims);
+           ga_get_proc_grid_(g_b, topology);
+           while (index[ndim-1] < blocks[ndim-1]) {
+             /* find bounding coordinates of block */
+             chk = 1;
+             for (i = 0; i < ndim; i++) {
+               lo[i] = index[i]*block_dims[i]+1;
+               hi[i] = (index[i] + 1)*block_dims[i];
+               if (hi[i] > dims[i]) hi[i] = dims[i];
+               if (hi[i] < lo[i]) chk = 0;
+             }
+             if (chk) {
+               nga_access_block_grid_ptr(g_b, index, &ptr_b, ld);
+               nga_get_(g_a, lo, hi, ptr_b, ld);
+             }
+             /* increment index to get next block on processor */
+             index[0] += topology[0];
+             for (i = 0; i < ndim; i++) {
+               if (index[i] >= blocks[i] && i<ndim-1) {
+                 index[i] = proc_index[i];
+                 index[i+1] += topology[i+1];
+               }
+             }
+           }
+         }
        }
      }
-   
    } else {
      /* One global array is mirrored and the other is not */
      if (ga_is_mirrored_(g_a)) {
@@ -327,6 +450,7 @@ float fsum=0.0;
 void *ptr_a, *ptr_b;
 int alen;
 Integer a_grp, b_grp;
+Integer num_blocks_a, num_blocks_b;
 
 Integer andim, adims[MAXDIM];
 Integer bndim, bdims[MAXDIM];
@@ -339,6 +463,18 @@ Integer bndim, bdims[MAXDIM];
    if (a_grp != b_grp)
      ga_error("Both arrays must be defined on same group",0L);
    me = ga_pgroup_nodeid_(&a_grp);
+
+   /* Check to see if either GA is block cyclic distributed */
+   num_blocks_a = ga_total_blocks_(g_a);
+   num_blocks_b = ga_total_blocks_(g_b);
+   if (num_blocks_a >= 0 || num_blocks_b >= 0) {
+     nga_inquire_internal_(g_a, &type, &andim, adims);
+     nga_inquire_internal_(g_b, &type, &bndim, bdims);
+     ngai_dot_patch(g_a, "n", one_arr, adims, g_b, "n", one_arr, bdims,
+         value);
+     GA_POP_NAME;
+     return;
+   }
 
    if(ga_compare_distr_(g_a,g_b) == FALSE ||
       ga_has_ghosts_(g_a) || ga_has_ghosts_(g_b)) {
@@ -627,36 +763,39 @@ void FATR gai_cdot_(g_a, g_b, retval)
  
 void FATR ga_scale_(Integer *g_a, void* alpha)
 {
-Integer ndim, type, me, elems, grp_id;
-register Integer i;
-void *ptr;
-int local_sync_begin,local_sync_end;
+  Integer ndim, type, me, elems, grp_id;
+  register Integer i;
+  Integer num_blocks;
+  void *ptr;
+  int local_sync_begin,local_sync_end;
 
 #ifdef GA_USE_VAMPIR
-   vampir_begin(GA_SCALE,__FILE__,__LINE__);
+  vampir_begin(GA_SCALE,__FILE__,__LINE__);
 #endif
 
-   local_sync_begin = _ga_sync_begin; local_sync_end = _ga_sync_end;
-   _ga_sync_begin = 1; _ga_sync_end=1; /*remove any previous masking*/
-   grp_id = ga_get_pgroup_(g_a);
-   if(local_sync_begin)ga_pgroup_sync_(&grp_id);
+  local_sync_begin = _ga_sync_begin; local_sync_end = _ga_sync_end;
+  _ga_sync_begin = 1; _ga_sync_end=1; /*remove any previous masking*/
+  grp_id = ga_get_pgroup_(g_a);
+  if(local_sync_begin)ga_pgroup_sync_(&grp_id);
 
-   me = ga_pgroup_nodeid_(&grp_id);
+  me = ga_pgroup_nodeid_(&grp_id);
 
-   ga_check_handle(g_a, "ga_scale");
-   GA_PUSH_NAME("ga_scale");
+  ga_check_handle(g_a, "ga_scale");
+  GA_PUSH_NAME("ga_scale");
+  num_blocks = ga_total_blocks_(g_a);
 
-   nga_inquire_internal_(g_a, &type, &ndim, dims);
-   nga_distribution_(g_a, &me, lo, hi);
-   if (ga_has_ghosts_(g_a)) {
-     nga_scale_patch_(g_a, lo, hi, alpha);
+  nga_inquire_internal_(g_a, &type, &ndim, dims);
+  if (num_blocks < 0) {
+    nga_distribution_(g_a, &me, lo, hi);
+    if (ga_has_ghosts_(g_a)) {
+      nga_scale_patch_(g_a, lo, hi, alpha);
 #ifdef GA_USE_VAMPIR
-     vampir_end(GA_SCALE,__FILE__,__LINE__);
+      vampir_end(GA_SCALE,__FILE__,__LINE__);
 #endif
-     return;
-   }
+      return;
+    }
 
-   if ( lo[0]> 0 ){ /* base index is 1: we get 0 if no elements stored on p */
+    if ( lo[0]> 0 ){ /* base index is 1: we get 0 if no elements stored on p */
 
       nga_access_ptr(g_a, lo, hi, &ptr, ld);
       GET_ELEMS(ndim,lo,hi,ld,&elems);
@@ -670,17 +809,17 @@ int local_sync_begin,local_sync_end;
         long long *lla;
         float *fa;
         case C_INT:
-           ia = (int*)ptr;
-           for(i=0;i<elems;i++) ia[i]  *= *(int*)alpha;
-           break;
+        ia = (int*)ptr;
+        for(i=0;i<elems;i++) ia[i]  *= *(int*)alpha;
+        break;
         case C_LONG:
-           la = (long*)ptr;
-           for(i=0;i<elems;i++) la[i]  *= *(long*)alpha;
-           break;
+        la = (long*)ptr;
+        for(i=0;i<elems;i++) la[i]  *= *(long*)alpha;
+        break;
         case C_LONGLONG:
-           lla = (long long*)ptr;
-           for(i=0;i<elems;i++) lla[i]  *= *(long long*)alpha;
-           break;
+        lla = (long long*)ptr;
+        for(i=0;i<elems;i++) lla[i]  *= *(long long*)alpha;
+        break;
         case C_DCPL:
            ca = (DoubleComplex*)ptr;
            scale= *(DoubleComplex*)alpha;
@@ -700,24 +839,76 @@ int local_sync_begin,local_sync_end;
            }
            break;
         case C_DBL:
-           da = (double*)ptr;
-           for(i=0;i<elems;i++) da[i] *= *(double*)alpha;
-           break;
+        da = (double*)ptr;
+        for(i=0;i<elems;i++) da[i] *= *(double*)alpha;
+        break;
         case C_FLOAT:
-           fa = (float*)ptr;
-           for(i=0;i<elems;i++) fa[i]  *= *(float*)alpha;
-           break;       
+        fa = (float*)ptr;
+        for(i=0;i<elems;i++) fa[i]  *= *(float*)alpha;
+        break;       
         default: ga_error(" wrong data type ",type);
       }
 
       /* release access to the data */
       nga_release_update_(g_a, lo, hi);
-   }
-
-   GA_POP_NAME;
-   if(local_sync_end)ga_pgroup_sync_(&grp_id); 
+    }
+  } else {
+    nga_access_block_segment_ptr(g_a, &me, &ptr, &elems);
+    switch (type){
+      int *ia;
+      double *da;
+      DoubleComplex *ca, scale;
+      SingleComplex *cfa, cfscale;
+      long *la;
+      long long *lla;
+      float *fa;
+      case C_INT:
+      ia = (int*)ptr;
+      for(i=0;i<elems;i++) ia[i]  *= *(int*)alpha;
+      break;
+      case C_LONG:
+      la = (long*)ptr;
+      for(i=0;i<elems;i++) la[i]  *= *(long*)alpha;
+      break;
+      case C_LONGLONG:
+      lla = (long long*)ptr;
+      for(i=0;i<elems;i++) lla[i]  *= *(long long*)alpha;
+      break;
+      case C_DCPL:
+      ca = (DoubleComplex*)ptr;
+      scale= *(DoubleComplex*)alpha;
+      for(i=0;i<elems;i++){
+        DoubleComplex val = ca[i]; 
+        ca[i].real = scale.real*val.real  - val.imag * scale.imag;
+        ca[i].imag = scale.imag*val.real  + val.imag * scale.real;
+      }
+      break;
+      case C_SCPL:
+      cfa = (SingleComplex*)ptr;
+      cfscale= *(SingleComplex*)alpha;
+      for(i=0;i<elems;i++){
+        SingleComplex val = cfa[i]; 
+        cfa[i].real = cfscale.real*val.real  - val.imag * cfscale.imag;
+        cfa[i].imag = cfscale.imag*val.real  + val.imag * cfscale.real;
+      }
+      break;
+      case C_DBL:
+      da = (double*)ptr;
+      for(i=0;i<elems;i++) da[i] *= *(double*)alpha;
+      break;
+      case C_FLOAT:
+      fa = (float*)ptr;
+      for(i=0;i<elems;i++) fa[i]  *= *(float*)alpha;
+      break;       
+      default: ga_error(" wrong data type ",type);
+    }
+    /* release access to the data */
+    nga_release_update_block_segment_(g_a, &me);
+  }
+  GA_POP_NAME;
+  if(local_sync_end)ga_pgroup_sync_(&grp_id); 
 #ifdef GA_USE_VAMPIR
-   vampir_end(GA_SCALE,__FILE__,__LINE__);
+  vampir_end(GA_SCALE,__FILE__,__LINE__);
 #endif
 }
 
@@ -755,7 +946,9 @@ int local_sync_begin,local_sync_end;
    me = ga_pgroup_nodeid_(&a_grp);
    if((ga_compare_distr_(g_a,g_b) == FALSE) ||
       (ga_compare_distr_(g_a,g_c) == FALSE) ||
-       ga_has_ghosts_(g_a) || ga_has_ghosts_(g_b) || ga_has_ghosts_(g_c)) {
+       ga_has_ghosts_(g_a) || ga_has_ghosts_(g_b) || ga_has_ghosts_(g_c) ||
+       ga_total_blocks_(g_a) > 0 || ga_total_blocks_(g_b) > 0 ||
+       ga_total_blocks_(g_c) > 0) {
        /* distributions not identical */
        nga_inquire_internal_(g_a, &type, &andim, adims);
        nga_inquire_internal_(g_b, &type, &bndim, bdims);
@@ -881,9 +1074,7 @@ int local_sync_begin,local_sync_end;
                   for(i=0; i<elems; i++)
                       llc[i] = ( *(long long*)alpha *lla[i] +
                                  *(long long*)beta  * llb[i] );
-              break;
-        default:
-           ga_error(" wrong data type ",type);
+                
        }
 
        /* release access to the data */
@@ -942,13 +1133,15 @@ int i;
 }
 
 
-
 void FATR ga_transpose_(Integer *g_a, Integer *g_b)
 {
 Integer me = ga_nodeid_();
+Integer nproc = ga_nnodes_(); 
 Integer atype, btype, andim, adims[MAXDIM], bndim, bdims[MAXDIM];
 Integer lo[2],hi[2];
 int local_sync_begin,local_sync_end;
+Integer num_blocks_a;
+char *ptr_tmp, *ptr_a;
 
 #ifdef GA_USE_VAMPIR
     vampir_begin(GA_TRANSPOSE,__FILE__,__LINE__);
@@ -968,37 +1161,129 @@ int local_sync_begin,local_sync_end;
     if(bndim != 2 || andim != 2) ga_error("dimension must be 2",0);
     if(atype != btype ) ga_error("array type mismatch ", 0L);
 
-    nga_distribution_(g_a, &me, lo, hi);
+    num_blocks_a = ga_total_blocks_(g_a);
 
-    if(lo[0]>0){
-       Integer nelem, ld, lob[2], hib[2], nrow, ncol;
-       char *ptr_tmp, *ptr_a;
-       int i, size=GAsizeofM(atype);
-       
-       nrow   = hi[0] -lo[0]+1;
-       ncol   = hi[1] -lo[1]+1; 
-       nelem  = nrow*ncol;
-       lob[0] = lo[1]; lob[1] = lo[0];
-       hib[0] = hi[1]; hib[1] = hi[0];
-       
-       /* allocate memory for transposing elements locally */
-       ptr_tmp = (char *) ga_malloc(nelem, atype, "transpose_tmp");
+    if (num_blocks_a < 0) {
+      nga_distribution_(g_a, &me, lo, hi);
 
-       /* get access to local data */
-       nga_access_ptr(g_a, lo, hi, &ptr_a, &ld);
-   
-       for(i = 0; i < ncol; i++){
+      if(lo[0]>0){
+        Integer nelem, lob[2], hib[2], nrow, ncol;
+        int i, size=GAsizeofM(atype);
+
+        nrow   = hi[0] -lo[0]+1;
+        ncol   = hi[1] -lo[1]+1; 
+        nelem  = nrow*ncol;
+        lob[0] = lo[1]; lob[1] = lo[0];
+        hib[0] = hi[1]; hib[1] = hi[0];
+
+        /* allocate memory for transposing elements locally */
+        ptr_tmp = (char *) ga_malloc(nelem, atype, "transpose_tmp");
+
+        /* get access to local data */
+        nga_access_ptr(g_a, lo, hi, &ptr_a, ld);
+
+        for(i = 0; i < ncol; i++){
           char *ptr = ptr_tmp + i*size;
 
           gai_local_transpose(atype, ptr_a, nrow, ncol*size, ptr);
-          ptr_a += ld*size;
-       }
+          ptr_a += ld[0]*size;
+        }
 
-       nga_release_(g_a, lo, hi); 
+        nga_release_(g_a, lo, hi); 
 
-       nga_put_(g_b, lob, hib,ptr_tmp ,&ncol);
+        nga_put_(g_b, lob, hib, ptr_tmp ,&ncol);
 
-       ga_free(ptr_tmp);
+        ga_free(ptr_tmp);
+      }
+    } else {
+      Integer idx, lod[MAXDIM], hid[MAXDIM];
+      Integer offset, jtot, last;
+      Integer blocks[MAXDIM], block_dims[MAXDIM];
+      Integer nelem, lob[2], hib[2], nrow, ncol;
+      int i, size=GAsizeofM(atype);
+
+      /* allocate memory for transposing elements locally */
+      ga_get_block_info_(g_a, blocks, block_dims);
+
+      /* Simple block-cyclic data distribution */
+      nelem = block_dims[0]*block_dims[1];
+      ptr_tmp = (char *) ga_malloc(nelem, atype, "transpose_tmp");
+      if (!ga_uses_proc_grid_(g_a)) {
+        for (idx = me; idx < num_blocks_a; idx += nproc) {
+          nga_distribution_(g_a, &idx, lo, hi);
+          nga_access_block_ptr(g_a, &idx, &ptr_a, ld);
+
+          nrow   = hi[0] -lo[0]+1;
+          ncol   = hi[1] -lo[1]+1; 
+          nelem  = nrow*ncol;
+          lob[0] = lo[1]; lob[1] = lo[0];
+          hib[0] = hi[1]; hib[1] = hi[0];
+          for(i = 0; i < ncol; i++){
+            char *ptr = ptr_tmp + i*size;
+
+            gai_local_transpose(atype, ptr_a, nrow, ncol*size, ptr);
+            ptr_a += ld[0]*size;
+          }
+          nga_put_(g_b, lob, hib, ptr_tmp ,&ncol);
+
+          nga_release_update_block_(g_a, &idx);
+        }
+      } else {
+        /* Uses scalapack block-cyclic data distribution */
+        Integer lod[MAXDIM], hid[MAXDIM], chk;
+        Integer proc_index[MAXDIM], index[MAXDIM];
+        Integer topology[MAXDIM], ichk;
+
+        ga_get_proc_index_(g_a, &me, proc_index);
+        ga_get_proc_index_(g_a, &me, index);
+        ga_get_block_info_(g_a, blocks, block_dims);
+        ga_get_proc_grid_(g_a, topology);
+        /* Verify that processor has data */
+        ichk = 1;
+        for (i=0; i<andim; i++) {
+          if (index[i]<0 || index[i] >= blocks[i]) {
+            ichk = 0;
+          }
+        }
+
+        if (ichk) {
+          nga_access_block_grid_ptr(g_a, index, &ptr_a, ld);
+          while (index[andim-1] < blocks[andim-1]) {
+            /* find bounding coordinates of block */
+            chk = 1;
+            for (i = 0; i < andim; i++) {
+              lo[i] = index[i]*block_dims[i]+1;
+              hi[i] = (index[i] + 1)*block_dims[i];
+              if (hi[i] > adims[i]) hi[i] = adims[i];
+              if (hi[i] < lo[i]) chk = 0;
+            }
+            if (chk) {
+              nga_access_block_grid_ptr(g_a, index, &ptr_a, ld);
+              nrow   = hi[0] -lo[0]+1;
+              ncol   = hi[1] -lo[1]+1; 
+              nelem  = nrow*ncol;
+              lob[0] = lo[1]; lob[1] = lo[0];
+              hib[0] = hi[1]; hib[1] = hi[0];
+              for(i = 0; i < ncol; i++){
+                char *ptr = ptr_tmp + i*size;
+                gai_local_transpose(atype, ptr_a, nrow, block_dims[0]*size, ptr);
+                ptr_a += ld[0]*size;
+              }
+              nga_put_(g_b, lob, hib, ptr_tmp ,&block_dims[0]);
+              nga_release_update_block_(g_a, index);
+            }
+            /* increment index to get next block on processor */
+            index[0] += topology[0];
+            for (i = 0; i < andim; i++) {
+              if (index[i] >= blocks[i] && i<andim-1) {
+                index[i] = proc_index[i];
+                index[i+1] += topology[i+1];
+              }
+            }
+          }
+        }
+      }
+      ga_free(ptr_tmp);
     }
 
     if(local_sync_end)ga_sync_();
@@ -1009,6 +1294,3 @@ int local_sync_begin,local_sync_end;
 #endif
 
 }
-    
-
-    

@@ -22,4 +22,4 @@ char **getComponentList() {
 }
 
 }
-static char id[]="$Id$";
+static char id[]="$Id: TestComponent_wrapper.cxx,v 1.1 2003-08-01 00:41:02 manoj Exp $";

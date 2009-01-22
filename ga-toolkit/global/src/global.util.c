@@ -1,4 +1,4 @@
-/*$Id$*/
+/*$Id: global.util.c,v 1.48.6.6 2007-05-18 08:19:23 manoj Exp $*/
 /*
  * module: global.util.c
  * author: Jarek Nieplocha
@@ -1062,7 +1062,7 @@ Integer FATR ga_cluster_procid_(Integer *node, Integer *loc_proc_id)
 #endif
 /*\ wrapper for wallclock timer. Returns an alapsed time on calling process
 \*/
-DoublePrecision FATR ga_wtime_()
+DoublePrecision FATR ga_wtime_() 
 {
     double wtime=0.0;
 #ifdef MPI
@@ -1070,6 +1070,5 @@ DoublePrecision FATR ga_wtime_()
 #else
     wtime =  TCGTIME_();
 #endif
-    return (DoublePrecision)wtime;
+    return (DoublePrecision)wtime; 
 }
-

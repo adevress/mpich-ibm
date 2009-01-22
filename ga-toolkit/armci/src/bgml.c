@@ -1,15 +1,13 @@
 /* begin_generated_IBM_copyright_prolog                             */
 /*                                                                  */
-/* ---------------------------------------------------------------- */
-/* (C)Copyright IBM Corp.  2007, 2008                               */
-/* IBM BSD License                                                  */
-/* ---------------------------------------------------------------- */
-/*                                                                  */
+/* --------------------------------------------------------------   */
+/* (C)Copyright IBM Corp. 2007, 2008                                */
+/* IBM BSD License.                                                 */
+/* --------------------------------------------------------------   */
 /* end_generated_IBM_copyright_prolog                               */
-/* $Id$ */
+/********************************************************************/
 
-static char COPYRIGHT[] =
-"(C)Copyright IBM Corp.  2007, 2008\nIBM BSD License.";
+/* $Id: bgml.c 4216 2008-06-04 19:14:25Z manoj $ */
 
 #include <assert.h>
 #include "bgml.h"
@@ -17,7 +15,6 @@ static char COPYRIGHT[] =
 #include <unistd.h>
 #include "memlock.h"
 #include<stdio.h>
-
 
 void wait_callback(void *clientdata)
 {

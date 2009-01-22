@@ -20,6 +20,7 @@ include ../armci/config/makemp.h
 include ../armci/config/makecoms.h
 
 LIBRARY = libtcgmsg-mpi.a
+LIBRARY_SHARED = libtcgmsg-mpi.so
 LIB_DISTRIB = ../lib
 INCDIR = ../include
 LIB_INCLUDES += -I$(INCDIR) -I../armci/src $(MP_INCLUDES)
@@ -42,6 +43,10 @@ ifeq ($(TARGET),HPUX)
 endif
 ifeq ($(TARGET),HPUX64)
         EXTRA_OBJ += hpuxargs.o
+endif
+
+ifeq ($(ARMCI_NETWORK),PORTALS)
+        LIB_DEFINES += -DXT3
 endif
 
 
@@ -105,7 +110,7 @@ $(patsubst %,$(FULL_LIBRARY_PATH)(%),$(OBJ))      : tcgmsgP.h
 $(patsubst %,$(FULL_LIBRARY_PATH)(%),evon.o)      : evlog.h
 $(patsubst %,$(FULL_LIBRARY_PATH)(%),evlog.o)     : evlog.h
 $(patsubst %,$(FULL_LIBRARY_PATH)(%),pfilecopy.o) : msgtypesc.h
-$(patsubst %,$(FULL_LIBRARY_PATH)(%),pbeginf.o))  : farg.h
+$(patsubst %,$(FULL_LIBRARY_PATH)(%),pbeginf.o))  : ../tcgmsg/farg.h
 tcgmsgP.h: srftoc.h
 sndrcv.h: msgtypesc.h
 srftoc.h: sndrcv.h

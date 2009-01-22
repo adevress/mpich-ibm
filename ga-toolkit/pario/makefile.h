@@ -48,7 +48,7 @@ ifeq ($(TARGET), BGL)
                   -D_LARGEFILE64_SOURCE
 endif
 
-ifeq ($(TARGET), DCMF)
+ifeq ($(TARGET), BGP)
 	LIB_DEFINES += -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE \
                   -D_LARGEFILE64_SOURCE
 endif
@@ -70,8 +70,8 @@ endif
 #
   ifeq ($(TARGET), BGL)
     LIB_DEFINES += -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE \
-                   -D_LARGEFILE64_SOURCE 
-  endif  
+                   -D_LARGEFILE64_SOURCE
+  endif
 
   LIB_DEFINES += -DLARGE_FILES
 endif

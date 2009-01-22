@@ -21,21 +21,30 @@
 int MPIDO_Barrier(MPID_Comm * comm)
 {
   int rc;
-  DCMF_Embedded_Info_Set * properties = &(comm->dcmf.properties);
+  MPIDO_Embedded_Info_Set * properties = &(comm->dcmf.properties);
   
-  if(DCMF_INFO_ISSET(properties, DCMF_USE_MPICH_BARRIER))
+  if(MPIDO_INFO_ISSET(properties, MPIDO_USE_MPICH_BARRIER))
+  {
+    comm->dcmf.last_algorithm = MPIDO_USE_MPICH_BARRIER;
     return MPIR_Barrier(comm);
-
-  if (DCMF_INFO_ISSET(properties, DCMF_USE_GI_BARRIER))
+  }
+  if (MPIDO_INFO_ISSET(properties, MPIDO_USE_GI_BARRIER))
+  {
+    comm->dcmf.last_algorithm = MPIDO_USE_GI_BARRIER;
     rc = MPIDO_Barrier_gi(comm);
-  //else if (DCMF_INFO_ISSET(properties, DCMF_USE_RECT_BARRIER))
+  }
+  //else if (MPIDO_INFO_ISSET(properties, MPIDO_USE_RECT_BARRIER))
   //  rc = MPIDO_Barrier_rect(comm);
   else
+  {
+    //    comm->dcmf.last_algorithm = MPIDO_USE_DCMF_BARRIER;
     rc = MPIDO_Barrier_dcmf(comm);
-
+  }
   if (rc != DCMF_SUCCESS)
+  {
+    comm->dcmf.last_algorithm = MPIDO_USE_MPICH_BARRIER;
     rc = MPIR_Barrier(comm);
-  
+  }
   return rc;
 }
 

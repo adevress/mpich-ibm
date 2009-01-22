@@ -18,7 +18,8 @@ Date: 2/28/2002
 #include "sndrcv.h"
 #endif
 
-#define N 4			/* dimension of matrices */
+#define N 100			/* dimension of matrices */
+#define BLOCK_SIZE 32           /* dimension of blocks (if used) */
 
 #define OP_SHIFT_DIAGONAL 1
 #define OP_SET_DIAGONAL 2
@@ -30,9 +31,17 @@ Date: 2/28/2002
 #define OP_MEDIAN_PATCH         8
 #define OP_SCALE_ROWS           9
 #define OP_SCALE_COLS           10
+#define OP_ZERO_DIAGONAL        11
 
 # define THRESH 1e-5
 #define MISMATCHED(x,y) ABS((x)-(y))>=THRESH
+
+/*#define BLOCK_CYCLIC*/
+/*#define USE_SCALAPACK*/
+
+#ifdef USE_SCALAPACK
+#define BLOCK_CYCLIC
+#endif
 
 
 void  test_scale_cols (int g_a, int g_v)
@@ -879,7 +888,7 @@ test_median_patch (int g_a, int *alo, int *ahi, int g_b, int *blo, int *bhi,
     GA_Error ("duplicate failed: E", 4);
   GA_Zero (g_e);
 
-  NGA_Add_patch (alpha, g_c, clo, chi, beta, g_m, mlo, mhi, g_e, alo, ahi);
+  NGA_Add_patch (alpha, g_c, clo, chi, beta, g_m, mlo, mhi, g_e, mlo, mhi);
   switch (type)
     {
     case C_INT:
@@ -1152,8 +1161,82 @@ test_median (int g_a, int g_b, int g_c, int g_m)
   GA_Fill (g_b, val2);
   GA_Fill (g_c, val3);
 
-
   GA_Median (g_a, g_b, g_c, g_m);
+
+  /*
+  if (type == C_INT) {
+    int achk[100000];
+    int ii,jj,ndim,atype;
+    int lo[2],hi[2],ld[2],dims[2];
+    NGA_Inquire(g_a,&atype,&ndim,dims);
+    for (ii=0; ii<ndim; ii++) {
+      lo[ii] = 0;
+      hi[ii] = dims[ii]-1;
+      ld[ii] = dims[ii];
+    }
+    NGA_Get(g_a,lo,hi,achk,&ld[1]);
+    if (me == 0) {
+      for (ii=0; ii<dims[0]; ii++) {
+        printf("\n");
+        for (jj=0; jj<dims[1]; jj++) {
+          printf("%8d",achk[ii*ld[1]+jj]);
+        }
+      }
+      printf("\n");
+    }
+    printf("\n");
+    NGA_Inquire(g_b,&atype,&ndim,dims);
+    for (ii=0; ii<ndim; ii++) {
+      lo[ii] = 0;
+      hi[ii] = dims[ii]-1;
+      ld[ii] = dims[ii];
+    }
+    NGA_Get(g_b,lo,hi,achk,&ld[1]);
+    if (me == 0) {
+      for (ii=0; ii<dims[0]; ii++) {
+        printf("\n");
+        for (jj=0; jj<dims[1]; jj++) {
+          printf("%8d",achk[ii*ld[1]+jj]);
+        }
+      }
+      printf("\n");
+    }
+    printf("\n");
+    NGA_Inquire(g_c,&atype,&ndim,dims);
+    for (ii=0; ii<ndim; ii++) {
+      lo[ii] = 0;
+      hi[ii] = dims[ii]-1;
+      ld[ii] = dims[ii];
+    }
+    NGA_Get(g_c,lo,hi,achk,&ld[1]);
+    if (me == 0) {
+      for (ii=0; ii<dims[0]; ii++) {
+        printf("\n");
+        for (jj=0; jj<dims[1]; jj++) {
+          printf("%8d",achk[ii*ld[1]+jj]);
+        }
+      }
+      printf("\n");
+    }
+    printf("\n");
+    NGA_Inquire(g_m,&atype,&ndim,dims);
+    for (ii=0; ii<ndim; ii++) {
+      lo[ii] = 0;
+      hi[ii] = dims[ii]-1;
+      ld[ii] = dims[ii];
+    }
+    NGA_Get(g_m,lo,hi,achk,&ld[1]);
+    if (me == 0) {
+      for (ii=0; ii<dims[0]; ii++) {
+        printf("\n");
+        for (jj=0; jj<dims[1]; jj++) {
+          printf("%8d",achk[ii*ld[1]+jj]);
+        }
+      }
+      printf("\n");
+    }
+  }
+  */
 
   /*
     The result array should        be g_c due to the value I chose: 
@@ -1913,6 +1996,233 @@ test_set_diagonal (int g_a, int g_v)
 }
 
 void
+test_zero_diagonal (int g_a)
+{
+
+
+  int me = GA_Nodeid (), nproc = GA_Nnodes ();
+  void *val;
+  int ival = -2;
+  double dval = -2.0;
+  float fval = -2.0;
+  long lval = -2;
+  DoubleComplex dcval;
+  SingleComplex fcval;
+
+  int idot, iresult, ldot, lresult, g_b;
+  int ialpha, ibeta;
+  long lalpha, lbeta;
+  double fdot, ddot, fresult, dresult;
+  float falpha, fbeta;
+  double dalpha, dbeta;
+  DoubleComplex zdot, zresult;
+  DoubleComplex zalpha, zbeta;
+  SingleComplex cdot, cresult;
+  SingleComplex calpha, cbeta;
+  int vdims;
+  void *alpha, *beta;
+
+  int type, ndim, dims[MAXDIM];
+
+  NGA_Inquire (g_a, &type, &ndim, dims);
+  dcval.real = -2.0;
+  dcval.imag = -0.0;
+
+  fcval.real = -2.0;
+  fcval.imag = -0.0;
+
+  vdims = MIN(dims[0],dims[1]);
+
+  switch (type)
+  {
+    case C_INT:
+      val = (void *)&ival;
+      break;
+    case C_DCPL:
+      val = (void *)&dcval;
+      break;
+    case C_SCPL:
+      val = (void *)&fcval;
+      break;
+    case C_DBL:
+      val = (void *)&dval;
+      break;
+    case C_FLOAT:
+      val = (void *)&fval;
+      break;
+    case C_LONG:
+      val = (void *)&lval;
+      break;
+    default:
+      ga_error ("test_zero_diagonal:wrong data type.", type);
+  }
+
+
+  if (me == 0)
+    printf ("Testing GA_Zero_diagonal...");
+  GA_Fill (g_a, val);
+  GA_Zero_diagonal (g_a);
+  g_b = GA_Duplicate(g_a, "tmp_array");
+  GA_Fill (g_b, val);
+  /*
+  if (type == C_INT) {
+    int achk[100000];
+    int ii,jj,ndim,atype;
+    int lo[2],hi[2],ld[2],dims[2];
+    NGA_Inquire(g_a,&atype,&ndim,dims);
+    for (ii=0; ii<ndim; ii++) {
+      lo[ii] = 0;
+      hi[ii] = dims[ii]-1;
+      ld[ii] = dims[ii];
+    }
+    NGA_Get(g_a,lo,hi,achk,&ld[1]);
+    if (me == 0) {
+      for (ii=0; ii<dims[0]; ii++) {
+        printf("\n");
+        for (jj=0; jj<dims[1]; jj++) {
+          printf("%8d",achk[ii*ld[1]+jj]);
+        }
+      }
+      printf("\n");
+    }
+    printf("\n");
+    NGA_Inquire(g_b,&atype,&ndim,dims);
+    for (ii=0; ii<ndim; ii++) {
+      lo[ii] = 0;
+      hi[ii] = dims[ii]-1;
+      ld[ii] = dims[ii];
+    }
+    NGA_Get(g_b,lo,hi,achk,&ld[1]);
+    if (me == 0) {
+      for (ii=0; ii<dims[0]; ii++) {
+        printf("\n");
+        for (jj=0; jj<dims[1]; jj++) {
+          printf("%8d",achk[ii*ld[1]+jj]);
+        }
+      }
+      printf("\n");
+    }
+    printf("\n");
+  }
+  */
+
+  switch (type)
+  {
+    case C_INT:
+      ialpha = -1;
+      ibeta = 1;
+      alpha = (void*)&ialpha;
+      beta = (void*)&ibeta;
+      GA_Add(alpha,g_a,beta,g_b,g_a);
+      idot = vdims * ival * ival;
+      iresult = GA_Idot (g_a, g_a);
+      if (me == 0)
+      {
+        if (MISMATCHED (idot, iresult))
+          printf ("not ok.\n");
+        else
+          printf ("ok.\n");
+      }
+      break;
+    case C_LONG:
+      lalpha = -1;
+      lbeta = 1;
+      alpha = (void*)&lalpha;
+      beta = (void*)&lbeta;
+      GA_Add(alpha,g_a,beta,g_b,g_a);
+      ldot = ((long) vdims) * lval * lval;
+      lresult = GA_Ldot (g_a, g_a);
+      if (me == 0)
+      {
+        if (MISMATCHED (ldot, lresult))
+          printf ("not ok.\n");
+        else
+          printf ("ok.\n");
+      }
+      break;
+    case C_FLOAT:
+      falpha = -1.0;
+      fbeta = 1.0;
+      alpha = (void*)&falpha;
+      beta = (void*)&fbeta;
+      GA_Add(alpha,g_a,beta,g_b,g_a);
+      fdot = ((float) vdims) * fval * fval;
+      fresult = GA_Fdot (g_a, g_a);
+      if (me == 0)
+      {
+        if (MISMATCHED (fdot, fresult))
+          printf ("not ok.\n");
+        else
+          printf ("ok.\n");
+      }
+      break;
+    case C_DBL:
+      dalpha = -1.0;
+      dbeta = 1.0;
+      alpha = (void*)&dalpha;
+      beta = (void*)&dbeta;
+      GA_Add(alpha,g_a,beta,g_b,g_a);
+      ddot = ((double) vdims) * dval * dval;
+      dresult = GA_Ddot (g_a, g_a);
+      if (me == 0)
+      {
+        if (MISMATCHED (ddot, dresult))
+          printf ("not ok.\n");
+        else
+          printf ("ok.\n");
+      }
+      break;
+    case C_DCPL:
+      zalpha.real = -1.0;
+      zalpha.imag = 0.0;
+      zbeta.real = 1.0;
+      zbeta.imag = 0.0;
+      alpha = (void*)&zalpha;
+      beta = (void*)&zbeta;
+      GA_Add(alpha,g_a,beta,g_b,g_a);
+      zdot.real =
+        ((double) vdims) * (dcval.real * dcval.real -
+                               dcval.imag * dcval.imag);
+      zdot.imag = ((double) dims[0]) * (2.0 * dcval.real * dcval.imag);
+      zresult = GA_Zdot (g_a, g_a);
+      if (me == 0)
+      {
+        if (MISMATCHED (zdot.real, zresult.real)
+            || MISMATCHED (zdot.imag, zresult.imag))
+          printf ("not ok.\n");
+        else
+          printf ("ok.\n");
+      }
+      break;
+    case C_SCPL:
+      calpha.real = -1.0;
+      calpha.imag = 0.0;
+      cbeta.real = 1.0;
+      cbeta.imag = 0.0;
+      alpha = (void*)&calpha;
+      beta = (void*)&cbeta;
+      GA_Add(alpha,g_a,beta,g_b,g_a);
+      cdot.real =
+        ((float ) vdims) * (fcval.real * fcval.real -
+                               fcval.imag * fcval.imag);
+      cdot.imag = ((float ) dims[0]) * (2.0 * fcval.real * fcval.imag);
+      cresult = GA_Cdot (g_a, g_a);
+      if (me == 0)
+      {
+        if (MISMATCHED (cdot.real, cresult.real)
+            || MISMATCHED (cdot.imag, cresult.imag))
+          printf ("not ok.\n");
+        else
+          printf ("ok.\n");
+      }
+      break;
+    default:
+      ga_error ("test_zero_diagonal:wrong data type:", type);
+  }
+  GA_Destroy(g_b);
+}
+
+void
 test_shift_diagonal (int g_a)
 {
 
@@ -2062,13 +2372,26 @@ do_work (int type, int op)
   int dims[2] = { N,		/*N columns */
 		  N + 2			/*N+2 rows */
   };
-  int vdim;
+  int vdim, i;
   int lo[2], hi[2];
 
 
   int atype, andim, adims[2];
   int vtype, vndim, vdims;
+  int block_size[2], proc_grid[2], proc_cnt;
 
+  proc_cnt = 1;
+  for (i = 0; i<2; i++) {
+    block_size[i] = BLOCK_SIZE;
+  }
+
+  if (nproc%2 == 0) {
+    proc_grid[0] = 2;
+    proc_grid[1] = nproc/2;
+  } else {
+    proc_grid[0] = nproc;
+    proc_grid[1] = 1;
+  }
 
   lo[0] = 1;
   hi[0] = dims[0] - 1;
@@ -2080,16 +2403,40 @@ do_work (int type, int op)
     {
 
     case OP_SHIFT_DIAGONAL:
+#ifndef BLOCK_CYCLIC
       g_a = NGA_Create (type, 2, dims, "A", NULL);
       if (!g_a)
 	GA_Error ("create failed: A", n);
+#else
+      g_a = GA_Create_handle();
+      GA_Set_data(g_a, 2, dims, type);
+      GA_Set_array_name(g_a,"A");
+#ifdef USE_SCALAPACK
+      GA_Set_block_cyclic_proc_grid(g_a, block_size, proc_grid);
+#else
+      GA_Set_block_cyclic(g_a, block_size);
+#endif
+      GA_Allocate(g_a);
+#endif
       test_shift_diagonal (g_a);
       GA_Destroy (g_a);
       break;
     case OP_SET_DIAGONAL:
+#ifndef BLOCK_CYCLIC
       g_a = NGA_Create (type, 2, dims, "A", NULL);
       if (!g_a)
 	GA_Error ("create failed: A", n);
+#else
+      g_a = GA_Create_handle();
+      GA_Set_data(g_a, 2, dims, type);
+      GA_Set_array_name(g_a,"A");
+#ifdef USE_SCALAPACK
+      GA_Set_block_cyclic_proc_grid(g_a, block_size, proc_grid);
+#else
+      GA_Set_block_cyclic(g_a, block_size);
+#endif
+      GA_Allocate(g_a);
+#endif
       /*find out the diagonal length of the matrix A */
       vdim = MIN (dims[0], dims[1]);
       g_v = NGA_Create (type, 1, &vdim, "V", NULL);
@@ -2099,23 +2446,67 @@ do_work (int type, int op)
       GA_Destroy (g_a);
       GA_Destroy (g_v);
       break;
-    case OP_ADD_DIAGONAL:
+    case OP_ZERO_DIAGONAL:
+#ifndef BLOCK_CYCLIC
       g_a = NGA_Create (type, 2, dims, "A", NULL);
       if (!g_a)
 	GA_Error ("create failed: A", n);
+#else
+      g_a = GA_Create_handle();
+      GA_Set_data(g_a, 2, dims, type);
+      GA_Set_array_name(g_a,"A");
+#ifdef USE_SCALAPACK
+      GA_Set_block_cyclic_proc_grid(g_a, block_size, proc_grid);
+#else
+      GA_Set_block_cyclic(g_a, block_size);
+#endif
+      GA_Allocate(g_a);
+#endif
+      test_zero_diagonal (g_a);
+      GA_Destroy (g_a);
+      break;
+    case OP_ADD_DIAGONAL:
+#ifndef BLOCK_CYCLIC
+      g_a = NGA_Create (type, 2, dims, "A", NULL);
+      if (!g_a)
+	GA_Error ("create failed: A", n);
+#else
+      g_a = GA_Create_handle();
+      GA_Set_data(g_a, 2, dims, type);
+      GA_Set_array_name(g_a,"A");
+#ifdef USE_SCALAPACK
+      GA_Set_block_cyclic_proc_grid(g_a, block_size, proc_grid);
+#else
+      GA_Set_block_cyclic(g_a, block_size);
+#endif
+      GA_Allocate(g_a);
+#endif
       /*find out the diagonal length of the matrix A */
       vdim = MIN (dims[0], dims[1]);
       g_v = NGA_Create (type, 1, &vdim, "V", NULL);
       if (!g_v)
 	GA_Error ("create failed:V", n);
+      vdim = MIN (dims[0], dims[1]);
       test_add_diagonal (g_a, g_v);
       GA_Destroy (g_a);
       GA_Destroy (g_v);
       break;
     case OP_GET_DIAGONAL:
+#ifndef BLOCK_CYCLIC
       g_a = NGA_Create (type, 2, dims, "A", NULL);
       if (!g_a)
 	GA_Error ("create failed: A", n);
+#else
+      g_a = GA_Create_handle();
+      GA_Set_data(g_a, 2, dims, type);
+      GA_Set_array_name(g_a,"A");
+#ifdef USE_SCALAPACK
+      GA_Set_block_cyclic_proc_grid(g_a, block_size, proc_grid);
+#else
+      GA_Set_block_cyclic(g_a, block_size);
+#endif
+      GA_Allocate(g_a);
+#endif
       /*find out the diagonal length of the matrix A */
       vdim = MIN (dims[0], dims[1]);
       g_v = NGA_Create (type, 1, &vdim, "V", NULL);
@@ -2126,25 +2517,61 @@ do_work (int type, int op)
       GA_Destroy (g_v);
       break;
     case OP_NORM1:
+#ifndef BLOCK_CYCLIC
       g_a = NGA_Create (type, 2, dims, "A", NULL);
       if (!g_a)
 	GA_Error ("create failed: A", n);
+#else
+      g_a = GA_Create_handle();
+      GA_Set_data(g_a, 2, dims, type);
+      GA_Set_array_name(g_a,"A");
+#ifdef USE_SCALAPACK
+      GA_Set_block_cyclic_proc_grid(g_a, block_size, proc_grid);
+#else
+      GA_Set_block_cyclic(g_a, block_size);
+#endif
+      GA_Allocate(g_a);
+#endif
       test_norm1 (g_a);
       GA_Destroy (g_a);
       break;
 
     case OP_NORM_INFINITY:
+#ifndef BLOCK_CYCLIC
       g_a = NGA_Create (type, 2, dims, "A", NULL);
       if (!g_a)
 	GA_Error ("create failed: A", n);
+#else
+      g_a = GA_Create_handle();
+      GA_Set_data(g_a, 2, dims, type);
+      GA_Set_array_name(g_a,"A");
+#ifdef USE_SCALAPACK
+      GA_Set_block_cyclic_proc_grid(g_a, block_size, proc_grid);
+#else
+      GA_Set_block_cyclic(g_a, block_size);
+#endif
+      GA_Allocate(g_a);
+#endif
       test_norm_infinity (g_a);
       GA_Destroy (g_a);
       break;
 
     case OP_MEDIAN:
+#ifndef BLOCK_CYCLIC
       g_a = NGA_Create (type, 2, dims, "A", NULL);
       if (!g_a)
 	GA_Error ("create failed: A", n);
+#else
+      g_a = GA_Create_handle();
+      GA_Set_data(g_a, 2, dims, type);
+      GA_Set_array_name(g_a,"A");
+#ifdef USE_SCALAPACK
+      GA_Set_block_cyclic_proc_grid(g_a, block_size, proc_grid);
+#else
+      GA_Set_block_cyclic(g_a, block_size);
+#endif
+      GA_Allocate(g_a);
+#endif
       /*duplicate g_a */
       g_b = GA_Duplicate (g_a, "B");
       if (!g_b)
@@ -2170,9 +2597,21 @@ do_work (int type, int op)
       break;
 
     case OP_MEDIAN_PATCH:
+#ifndef BLOCK_CYCLIC
       g_a = NGA_Create (type, 2, dims, "A", NULL);
       if (!g_a)
 	GA_Error ("create failed: A", n);
+#else
+      g_a = GA_Create_handle();
+      GA_Set_data(g_a, 2, dims, type);
+      GA_Set_array_name(g_a,"A");
+#ifdef USE_SCALAPACK
+      GA_Set_block_cyclic_proc_grid(g_a, block_size, proc_grid);
+#else
+      GA_Set_block_cyclic(g_a, block_size);
+#endif
+      GA_Allocate(g_a);
+#endif
       /*duplicate g_a */
       g_b = GA_Duplicate (g_a, "B");
       if (!g_b)
@@ -2193,9 +2632,21 @@ do_work (int type, int op)
       GA_Destroy (g_m);
       break;
     case OP_SCALE_ROWS:
+#ifndef BLOCK_CYCLIC
       g_a = NGA_Create (type, 2, dims, "A", NULL);
       if (!g_a)
 	GA_Error ("create failed: A", n);
+#else
+      g_a = GA_Create_handle();
+      GA_Set_data(g_a, 2, dims, type);
+      GA_Set_array_name(g_a,"A");
+#ifdef USE_SCALAPACK
+      GA_Set_block_cyclic_proc_grid(g_a, block_size, proc_grid);
+#else
+      GA_Set_block_cyclic(g_a, block_size);
+#endif
+      GA_Allocate(g_a);
+#endif
       /*find out the diagonal length of the matrix A */
       vdim = dims[1];
       g_v = NGA_Create (type, 1, &vdim, "V", NULL);
@@ -2206,9 +2657,21 @@ do_work (int type, int op)
       GA_Destroy (g_v);
       break;
     case OP_SCALE_COLS:
+#ifndef BLOCK_CYCLIC
       g_a = NGA_Create (type, 2, dims, "A", NULL);
       if (!g_a)
         GA_Error ("create failed: A", n);
+#else
+      g_a = GA_Create_handle();
+      GA_Set_data(g_a, 2, dims, type);
+      GA_Set_array_name(g_a,"A");
+#ifdef USE_SCALAPACK
+      GA_Set_block_cyclic_proc_grid(g_a, block_size, proc_grid);
+#else
+      GA_Set_block_cyclic(g_a, block_size);
+#endif
+      GA_Allocate(g_a);
+#endif
       /*find out the diagonal length of the matrix A */
       vdim = dims[0];
       g_v = NGA_Create (type, 1, &vdim, "V", NULL);
@@ -2262,7 +2725,7 @@ main (argc, argv)
     GA_Error ("MA_init failed", stack + heap);	/* initialize memory allocator */
 
 
-  for (op = 1; op < 11; op++)
+  for (op = 1; op < 12; op++)
     {
       if(me == 0) printf ("\n\n");
       if (me == 0)

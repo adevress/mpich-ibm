@@ -103,7 +103,7 @@ extern MPIDI_Protocol_t MPIDI_Protocols;
 
 typedef struct
 {
-  DCMF_Embedded_Info_Set properties;
+  MPIDO_Embedded_Info_Set properties;
   unsigned char numcolors; /* number of colors for bcast/allreduce */
   unsigned numrequests;
   unsigned int bcast_asynccutoff;  
@@ -323,37 +323,37 @@ void           MPID_Request_set_completed (MPID_Request *req);
  * \{
  */
 DCMF_Request_t * MPIDI_BG2S_RecvCB(void                     * clientdata,
-                                   const MPIDI_DCMF_MsgInfo * msginfo,
+                                   const DCQuad             * msginfo,
                                    unsigned                   count,
-                                   unsigned                   senderrank,
-                                   const unsigned             sndlen,
-                                   unsigned                 * rcvlen,
+                                   size_t                     senderrank,
+                                   const size_t               sndlen,
+                                   size_t                   * rcvlen,
                                    char                    ** rcvbuf,
                                    DCMF_Callback_t    * const cb_info);
 void MPIDI_BG2S_RecvShortCB(void                     * clientdata,
-                            const MPIDI_DCMF_MsgInfo * msginfo,
+                            const DCQuad             * msginfo,
                             unsigned                   count,
-                            unsigned                   senderrank,
+                            size_t                     senderrank,
                             const char               * sndbuf,
-                            unsigned                   sndlen);
+                            size_t                     sndlen);
 void MPIDI_BG2S_RecvRzvCB(void                         * clientdata,
-                          const MPIDI_DCMF_MsgEnvelope * rzv_envelope,
+                          const DCQuad                 * rzv_envelope,
                           unsigned                       count,
-                          unsigned                       senderrank,
+                          size_t                         senderrank,
                           const char                   * sndbuf,
-                          unsigned                       sndlen);
+                          size_t                         sndlen);
 void MPIDI_BG2S_SsmCtsCB(void                     * clientdata,
-                         const MPIDI_DCMF_MsgInfo * msginfo,
+                         const DCQuad             * msginfo,
                          unsigned                   count,
-                         unsigned                   senderrank,
+                         size_t                     senderrank,
                          const char               * sndbuf,
-                         unsigned                   sndlen);
+                         size_t                     sndlen);
 void MPIDI_BG2S_SsmAckCB(void                     * clientdata,
-                         const MPIDI_DCMF_MsgInfo * msginfo,
+                         const DCQuad             * msginfo,
                          unsigned                   count,
-                         unsigned                   senderrank,
+                         size_t                     senderrank,
                          const char               * sndbuf,
-                         unsigned                   sndlen);
+                         size_t                     sndlen);
 void MPIDI_DCMF_SendDoneCB    (void *sreq, DCMF_Error_t *err);
 void MPIDI_DCMF_RecvDoneCB    (void *rreq, DCMF_Error_t *err);
 void MPIDI_DCMF_RecvRzvDoneCB (void *rreq, DCMF_Error_t *err);
@@ -375,9 +375,9 @@ int  MPIDI_Irecv(void          * buf,
 int  MPIDI_DCMF_postSyncAck  (MPID_Request * req);
 /** \brief Cancel an MPI_Send(). */
 int  MPIDI_DCMF_postCancelReq(MPID_Request * req);
-void MPIDI_DCMF_procCancelReq(const MPIDI_DCMF_MsgInfo *info, unsigned peer);
+void MPIDI_DCMF_procCancelReq(const MPIDI_DCMF_MsgInfo *info, size_t peer);
 /** \brief This is the general PT2PT control message call-back */
-void MPIDI_BG2S_ControlCB    (void * clientdata, const DCMF_Control_t * p, unsigned peer);
+void MPIDI_BG2S_ControlCB    (void * clientdata, const DCMF_Control_t * p, size_t peer);
 /**
  * \brief Mark a request as cancel-pending
  * \param[in]  _req  The request to cancel
@@ -389,6 +389,17 @@ void MPIDI_BG2S_ControlCB    (void * clientdata, const DCMF_Control_t * p, unsig
   (_req)->dcmf.cancel_pending = TRUE;                   \
 }
 
+#define MPIDI_VerifyBuffer(_src_buff, _dst_buff, _data_lb)           \
+{                                                                    \
+  if (_src_buff == MPI_IN_PLACE)                                     \
+    _dst_buff = _src_buff;                                           \
+  else                                                               \
+  {                                                                  \
+    MPID_Ensure_Aint_fits_in_pointer(MPI_VOID_PTR_CAST_TO_MPI_AINT  \
+                                     _src_buff + _data_lb);          \
+    _dst_buff = (char *) _src_buff + _data_lb;                       \
+  }                                                                  \
+}
 
 /** \brief Helper function when sending to self  */
 int MPIDI_Isend_self(const void    * buf,

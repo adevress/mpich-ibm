@@ -1228,8 +1228,8 @@ int MPIDU_valid_group_rank(int lpid, MPID_Group *grp);
  *
  * \ref msginfo_usage
  */
-void recv_sm_cb(void *cd, const DCQuad *_mi, unsigned ct, unsigned or,
-                        const char *sb, const unsigned sl);
+void recv_sm_cb(void *cd, const DCQuad *_mi, unsigned ct, size_t or,
+                        const char *sb, const size_t sl);
 
 /**
  * \brief Callback for DCMF_Control() messages
@@ -1240,7 +1240,7 @@ void recv_sm_cb(void *cd, const DCQuad *_mi, unsigned ct, unsigned or,
  * \param[in] or	Origin node lpid
  * \return	nothing
  */
-void recv_ctl_cb(void *cd, const DCMF_Control_t *ctl, unsigned or);
+void recv_ctl_cb(void *cd, const DCMF_Control_t *ctl, size_t or);
 
 /**
  * \brief Callback for Accumulate recv completion
@@ -1289,7 +1289,7 @@ void accum_cb(void *v, DCMF_Error_t *);
  * \ref msginfo_usage
  */
 DCMF_Request_t *recv_cb(void *cd, const DCQuad *_mi, unsigned ct,
-                        unsigned or, const unsigned sl, unsigned *rl,
+                        size_t or, const size_t sl, size_t *rl,
                         char **rb, DCMF_Callback_t *cb);
 
 void mpidu_init_lock(MPID_Win *win);

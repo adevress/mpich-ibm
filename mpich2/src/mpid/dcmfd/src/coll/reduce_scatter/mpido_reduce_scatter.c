@@ -20,63 +20,68 @@ int MPIDO_Reduce_scatter(void *sendbuf,
                          int *recvcounts,
                          MPI_Datatype datatype,
                          MPI_Op op,
-                         MPID_Comm * comm_ptr)
+                         MPID_Comm * comm)
 {
-  DCMF_Embedded_Info_Set * properties = &(comm_ptr->dcmf.properties);
+  MPIDO_Embedded_Info_Set * properties = &(comm->dcmf.properties);
   int tcount=0, i, rc;
   
-  int contig, nbytes;
-  MPID_Datatype *dt_ptr;
   MPI_Aint dt_lb=0, extent=0;
   
   char *tempbuf;
   char *sbuf = sendbuf;
   int *displs;
-  int size = comm_ptr->local_size;
+  int size = comm->local_size;
 
-  if(DCMF_INFO_ISSET(properties, DCMF_USE_MPICH_REDUCESCATTER) ||
-     !DCMF_INFO_ISSET(properties, DCMF_USE_REDUCESCATTER) ||
+  if(MPIDO_INFO_ISSET(properties, MPIDO_USE_MPICH_REDUCESCATTER) ||
+     !MPIDO_INFO_ISSET(properties, MPIDO_USE_REDUCESCATTER) ||
      recvcounts[0] < 256 || 
      !MPIDI_IsTreeOp(op, datatype))
+  {
+    comm->dcmf.last_algorithm = MPIDO_USE_MPICH_REDUCESCATTER;
     return MPIR_Reduce_scatter(sendbuf, 
 			       recvbuf, 
 			       recvcounts, 
 			       datatype, 
 			       op, 
-			       comm_ptr);
+			       comm);
+  }
 
-  MPIDI_Datatype_get_info(1, 
-			  datatype, 
-			  contig, 
-			  nbytes, 
-			  dt_ptr, 
-			  dt_lb);
-
-   NMPI_Type_get_true_extent(datatype, &dt_lb, &extent);
+   
+   /* Need to ensure we allocate enough memory, so need *larger* extent
+    * size. This appears to be MPI_Type_get_extent
+    */
+   PMPI_Type_get_extent(datatype, &dt_lb, &extent);
    MPID_Ensure_Aint_fits_in_int(extent);
 
+   displs = MPIU_Malloc(size * sizeof(int));
+   if(!displs)
+    return MPIR_Err_create_code(MPI_SUCCESS, 
+                                MPIR_ERR_RECOVERABLE,
+                                "MPI_Reduce_scatter",
+                                __LINE__, MPI_ERR_OTHER, "**nomem", 0);
   
-  for(i = 0; i < size; i++)
-    tcount += recvcounts[i];
+   displs[0] = 0;
+   for(i = 0; i < size-1; i++)
+   {
+      tcount += recvcounts[i];
+      displs[i+1]=displs[i]+recvcounts[i];
+   }
+   tcount+=recvcounts[size-1];
+
   
-  tempbuf = MPIU_Malloc(extent * sizeof(char) * tcount);
-  displs = MPIU_Malloc(size * sizeof(int));
+  tempbuf = MPIU_Malloc((int)extent * sizeof(char) * tcount);
   
-  if (!tempbuf || !displs)
+  if (!tempbuf)
   {
-    if(tempbuf)
-      MPIU_Free(tempbuf);
+    if(displs)
+      MPIU_Free(displs);
     return MPIR_Err_create_code(MPI_SUCCESS, 
                                 MPIR_ERR_RECOVERABLE,
                                 "MPI_Reduce_scatter",
                                 __LINE__, MPI_ERR_OTHER, "**nomem", 0);
   }
   
-  memset(displs, 0, size*sizeof(int));
-  
-  MPID_Ensure_Aint_fits_in_pointer(MPI_VOID_PTR_CAST_TO_MPI_AINT sendbuf+ 
-				   dt_lb);
-  sbuf = (char *)sendbuf + dt_lb;
+  MPIDI_VerifyBuffer(sendbuf, sbuf, dt_lb);
   
   rc = MPIDO_Reduce(sbuf,
 		    tempbuf, 
@@ -84,7 +89,7 @@ int MPIDO_Reduce_scatter(void *sendbuf,
 		    datatype, 
 		    op, 
 		    0, 
-		    comm_ptr);
+		    comm);
   
   /* rank 0 has the entire buffer, need to split out our individual 
      piece does recvbuf need a dt_lb added? */
@@ -95,14 +100,16 @@ int MPIDO_Reduce_scatter(void *sendbuf,
                         displs, 
                         datatype,
                         recvbuf, 
-                        tcount/size, 
+                        recvcounts[comm->rank], 
                         datatype, 
                         0, 
-                        comm_ptr);
+                        comm);
   }
   
   MPIU_Free(tempbuf);
   MPIU_Free(displs);
+  
+  comm->dcmf.last_algorithm = MPIDO_USE_REDUCESCATTER;
 
   return rc;
 }

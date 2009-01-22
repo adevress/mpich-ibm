@@ -16,12 +16,13 @@
  * \param[in]  sndbuf     Where the data is stored
  */
 void MPIDI_BG2S_RecvShortCB(void                     * clientdata,
-                            const MPIDI_DCMF_MsgInfo * msginfo,
+                            const DCQuad             * msgquad,
                             unsigned                   count,
-                            unsigned                   senderrank,
+                            size_t                     senderrank,
                             const char               * sndbuf,
-                            unsigned                   sndlen)
+                            size_t                     sndlen)
 {
+  const MPIDI_DCMF_MsgInfo *msginfo = (const MPIDI_DCMF_MsgInfo *)msgquad;
   MPID_Request * rreq = NULL;
   int found;
   int rcvlen = sndlen;

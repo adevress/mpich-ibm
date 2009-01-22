@@ -23,11 +23,12 @@ MPIDO_Alltoall(void *sendbuf,
 {
   int i, numprocs = comm->local_size;
   int tsndlen, trcvlen, snd_contig, rcv_contig, rc;
-  DCMF_Embedded_Info_Set * properties = &(comm -> dcmf.properties);
+  MPIDO_Embedded_Info_Set * properties = &(comm -> dcmf.properties);
 
   MPI_Aint sdt_true_lb, rdt_true_lb;
   MPID_Datatype *dt_null = NULL;
-
+  char *sbuf = sendbuf, *rbuf = recvbuf;
+  
   if (sendcount == 0 || recvcount == 0)
     return MPI_SUCCESS;
 
@@ -36,20 +37,21 @@ MPIDO_Alltoall(void *sendbuf,
   MPIDI_Datatype_get_info(recvcount, recvtype, rcv_contig,
 			  trcvlen, dt_null, rdt_true_lb);
 
-  MPID_Ensure_Aint_fits_in_pointer(MPI_VOID_PTR_CAST_TO_MPI_AINT sendbuf +
-				   sdt_true_lb);
-  MPID_Ensure_Aint_fits_in_pointer(MPI_VOID_PTR_CAST_TO_MPI_AINT recvbuf +
-				   rdt_true_lb);
+  MPIDI_VerifyBuffer(sendbuf, sbuf, sdt_true_lb);
+  MPIDI_VerifyBuffer(recvbuf, rbuf, rdt_true_lb);
   
   if (!snd_contig ||
       !rcv_contig ||
       tsndlen != trcvlen ||
-      DCMF_INFO_ISSET(properties, DCMF_USE_MPICH_ALLTOALL))
+      !MPIDO_INFO_ISSET(properties, MPIDO_USE_TORUS_ALLTOALL) ||
+      MPIDO_INFO_ISSET(properties, MPIDO_USE_MPICH_ALLTOALL))
+  {
+    comm->dcmf.last_algorithm = MPIDO_USE_MPICH_ALLTOALL;
     return MPIR_Alltoall(sendbuf, sendcount, sendtype,
 			 recvbuf, recvcount, recvtype,
 			 comm);
-
-  if (!DCMF_AllocateAlltoallBuffers(comm))
+  }
+  if (!MPIDO_AllocateAlltoallBuffers(comm))
     return MPIR_Err_create_code(MPI_SUCCESS,
 				MPIR_ERR_RECOVERABLE,
 				"MPI_Alltoall",
@@ -69,18 +71,14 @@ MPIDO_Alltoall(void *sendbuf,
   }
       
 
-  if (!STAR_info.enabled || STAR_info.internal_control_flow)
+  if (!STAR_info.enabled || STAR_info.internal_control_flow ||
+      tsndlen < STAR_info.alltoall_threshold)
   {
-
-    if (!DCMF_INFO_ISSET(properties, DCMF_USE_TORUS_ALLTOALL))
-      return MPIR_Alltoall(sendbuf, sendcount, sendtype,
-                           recvbuf, recvcount, recvtype,
-                           comm);
-
-  rc = MPIDO_Alltoall_torus((char *) sendbuf + sdt_true_lb,
+    comm->dcmf.last_algorithm = MPIDO_USE_TORUS_ALLTOALL;
+    rc = MPIDO_Alltoall_torus(sbuf,
                               sendcount,
                               sendtype,
-                              (char *) recvbuf + rdt_true_lb,
+                              rbuf,
                               recvcount,
                               recvtype,
                               comm);
@@ -99,16 +97,16 @@ MPIDO_Alltoall(void *sendbuf,
     collective_site.call_type = ALLTOALL_CALL;
     collective_site.comm = comm;
     collective_site.bytes = tsndlen;
-    collective_site.op_type_support = DCMF_SUPPORT_NOT_NEEDED;
+    collective_site.op_type_support = MPIDO_SUPPORT_NOT_NEEDED;
     collective_site.id = (int) tb_ptr[STAR_info.traceback_levels - 1];
 
     /* set the internal control flow to disable internal star tuning */
     STAR_info.internal_control_flow = 1;
 
-    rc = STAR_Alltoall((char *) sendbuf + sdt_true_lb,
+    rc = STAR_Alltoall(sbuf,
                        sendcount,
                        sendtype,
-                       (char *) recvbuf + rdt_true_lb,
+                       rbuf,
                        recvcount,
                        recvtype,
                        &collective_site,
@@ -131,14 +129,14 @@ MPIDO_Alltoall(void *sendbuf,
 #else /* !USE_CCMI_COLL */
 
 int MPIDO_Alltoall(void *sendbuf,
-		int sendcount,
-		MPI_Datatype sendtype,
-		void *recvbuf,
-		int recvcount,
-		MPI_Datatype recvtype,
-		MPID_Comm *comm_ptr)
+                   int sendcount,
+                   MPI_Datatype sendtype,
+                   void *recvbuf,
+                   int recvcount,
+                   MPI_Datatype recvtype,
+                   MPID_Comm *comm_ptr)
 {
-	MPID_abort();
+  MPID_abort();
 }
 
 #endif /* !USE_CCMI_COLL */

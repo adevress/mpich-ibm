@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: lapi2.c,v 1.18.2.3 2007-07-02 05:24:34 d3p687 Exp $ */
 #define DEBUG 0
 #define DSCR_SIZE 4096*8  /*given that bufsize=30000*8,conservative,indeed*/
 
@@ -249,9 +249,16 @@ int dsize=3*sizeof(void*);
     }
     else{
        if(op==GET)
-         o_cmpl = &get_cntr;
+#if 0
+	     o_cmpl = &get_cntr;
        else
          o_cmpl = &ack_cntr;
+#else
+	   /* multithreaded lapi uses array of counters (one per thread) */
+	     o_cmpl = get_cntr; /* same as &(get_cntr[0]) */
+       else
+         o_cmpl = ack_cntr; /* same as &(ack_cntr[0]) */
+#endif
     }
     /*CONTIG protocol: used for 1D(contiguous) or if stride is very large in
       a multi strided case*/
