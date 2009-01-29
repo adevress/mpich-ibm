@@ -178,7 +178,9 @@ extern void gasnete_init() {
    bzero(&get_config, sizeof(DCMF_Get_Configuration_t));
    
    put_config.protocol=DCMF_DEFAULT_PUT_PROTOCOL;
+   put_config.network=DCMF_DEFAULT_NETWORK;
    get_config.protocol=DCMF_DEFAULT_GET_PROTOCOL;
+   get_config.network=DCMF_DEFAULT_NETWORK;
    
    /*intialize the memregions and try to pin entire VM space*/
    GASNETC_DCMF_LOCK();

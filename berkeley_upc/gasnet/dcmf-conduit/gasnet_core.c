@@ -179,6 +179,7 @@ DCMF_Send_Protocol gasnetc_get_protocol(gasnetc_dcmf_send_category_t sendcat) {
 #define REGISTER_SEND_HANDLER(AMTYPE, AMCATEGORY, SENDPROTOCOL) do {  \
     DCMF_Send_Configuration_t config; memset(&config, 0, sizeof(DCMF_Send_Configuration_t)); \
     config.protocol = gasnetc_get_protocol(SENDPROTOCOL);     \
+    config.network = DCMF_DEFAULT_NETWORK;			\
     config.cb_recv_short = gasnetc_dcmf_handle_am_short;    \
     config.cb_recv_short_clientdata = NULL;       \
     config.cb_recv = gasnetc_dcmf_handle_am_header;     \
@@ -224,6 +225,7 @@ static void gasnetc_dcmf_init(gasnet_node_t* mynode, gasnet_node_t *nodes) {
     bzero(&short_msg_config,  sizeof(DCMF_Control_Configuration_t));
     
     short_msg_config.protocol = nack_config.protocol = ack_config.protocol =DCMF_DEFAULT_CONTROL_PROTOCOL;
+    short_msg_config.network = nack_config.network = ack_config.network =DCMF_DEFAULT_NETWORK;
     ack_config.cb_recv = gasnetc_ack_msg_cb;
     nack_config.cb_recv = gasnetc_add_to_nack_list_cb;
   

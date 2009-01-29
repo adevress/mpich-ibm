@@ -23,7 +23,8 @@ DCMF_Protocol_t __get_protocol;
 void ARMCIX_DCMF_Get_register ()
 {
   DCMF_Get_Configuration_t configuration = {
-    DCMF_DEFAULT_GET_PROTOCOL
+    DCMF_DEFAULT_GET_PROTOCOL,
+    DCMF_DEFAULT_NETWORK
   };
   DCMF_Get_register (&__get_protocol, &configuration);
 }
