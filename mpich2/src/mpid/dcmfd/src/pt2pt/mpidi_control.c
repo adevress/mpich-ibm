@@ -122,7 +122,7 @@ void MPIDI_DCMF_procCancelReq(const MPIDI_DCMF_MsgInfo *info, size_t peer)
   assert(info != NULL);
   assert(info->msginfo.req != NULL);
 
-  sreq=MPIDI_Recvq_FDURSTC(info->msginfo.req,
+  sreq=MPIDI_Recvq_FDUR(info->msginfo.req,
                            info->msginfo.MPIrank,
                            info->msginfo.MPItag,
                            info->msginfo.MPIctxt);

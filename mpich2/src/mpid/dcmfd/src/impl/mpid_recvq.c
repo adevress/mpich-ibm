@@ -169,7 +169,7 @@ int MPIDI_Recvq_FU(int source, int tag, int context_id, MPI_Status * status)
  * \param [in]  context_id Find by Context ID (communicator)
  * \return      The matching UE request or NULL
  */
-MPID_Request * MPIDI_Recvq_FDURSTC (MPID_Request * req, int source, int tag, int context_id)
+MPID_Request * MPIDI_Recvq_FDUR (MPID_Request * req, int source, int tag, int context_id)
 {
   MPID_Request * prev_rreq          = NULL; /* previous request in queue */
   MPID_Request * cur_rreq           = NULL; /* current request in queue */
@@ -194,73 +194,6 @@ MPID_Request * MPIDI_Recvq_FDURSTC (MPID_Request * req, int source, int tag, int
             MPID_Request_getMatchCtxt(cur_rreq)   == context_id &&
             MPID_Request_getMatchRank(cur_rreq)   == source     &&
             MPID_Request_getMatchTag(cur_rreq)    == tag)
-          {
-            matching_prev_rreq = prev_rreq;
-            matching_cur_rreq  = cur_rreq;
-            break;
-          }
-        prev_rreq = cur_rreq;
-        cur_rreq  = cur_rreq->dcmf.next;
-      }
-
-    /* ----------------------- */
-    /* found nothing; return   */
-    /* ----------------------- */
-    if (matching_cur_rreq == NULL)
-      goto fn_exit;
-
-    /* --------------------------------------------------------------------- */
-    /* adjust the "next" pointer of the request previous to the matching one */
-    /* --------------------------------------------------------------------- */
-    if (matching_prev_rreq != NULL)
-      matching_prev_rreq->dcmf.next = matching_cur_rreq->dcmf.next;
-    else
-      recvq.unexpected_head = matching_cur_rreq->dcmf.next;
-
-    /* --------------------------------------- */
-    /* adjust the request queue's tail pointer */
-    /* --------------------------------------- */
-    if (matching_cur_rreq->dcmf.next == NULL)
-      recvq.unexpected_tail = matching_prev_rreq;
-  }
- fn_exit:
-  MPIDI_Recvq_unlock();
-
-#ifdef USE_STATISTICS
-  MPIDI_Statistics_time(MPIDI_Statistics.recvq.unexpected_search, search_length);
-#endif
-
-  return (matching_cur_rreq);
-}
-
-
-/**
- * \brief Find a request in the unexpected queue and dequeue it
- * \param [in]  req        Find by address of request object on sender
- * \return      The matching UE request or NULL
- */
-MPID_Request * MPIDI_Recvq_FDUR (MPID_Request * req)
-{
-  MPID_Request * prev_rreq          = NULL; /* previous request in queue */
-  MPID_Request * cur_rreq           = NULL; /* current request in queue */
-  MPID_Request * matching_cur_rreq  = NULL; /* matching request in queue */
-  MPID_Request * matching_prev_rreq = NULL; /* previous in queue to match */
-#ifdef USE_STATISTICS
-    unsigned search_length = 0;
-#endif
-
-  /* ----------------------- */
-  /* first we do the finding */
-  /* ----------------------- */
-  MPIDI_Recvq_lock();
-  {
-    cur_rreq = recvq.unexpected_head;
-    while(cur_rreq != NULL)
-      {
-#ifdef USE_STATISTICS
-        ++search_length;
-#endif
-        if (MPID_Request_getPeerRequest(cur_rreq) == req)
           {
             matching_prev_rreq = prev_rreq;
             matching_cur_rreq  = cur_rreq;

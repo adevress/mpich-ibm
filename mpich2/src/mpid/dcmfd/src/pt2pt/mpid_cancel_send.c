@@ -23,8 +23,10 @@ MPID_Cancel_send_rsm(MPID_Request * sreq)
   /* ------------------------------------ */
   if (MPID_Request_isSelf(sreq))
     {
-      MPID_Request * rreq;
-      rreq = MPIDI_Recvq_FDUR(sreq);
+      int source     = MPID_Request_getMatchRank(sreq);
+      int tag        = MPID_Request_getMatchTag (sreq);
+      int context_id = MPID_Request_getMatchCtxt(sreq);
+      MPID_Request * rreq = MPIDI_Recvq_FDUR(sreq, source, tag, context_id);
       if (rreq)
         {
           MPID_assert(rreq->partner_request == sreq);
