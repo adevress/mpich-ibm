@@ -20,7 +20,7 @@ typedef struct {
 } MPIDO_Coll_config;
 
 /* Helpers */
-int DCMF_AllocateAlltoallBuffers(MPID_Comm * comm);
+int MPIDO_AllocateAlltoallBuffers(MPID_Comm * comm);
 
 int MPIDI_ConvertMPItoDCMF(MPI_Op op,
                            DCMF_Op *dcmf_op,

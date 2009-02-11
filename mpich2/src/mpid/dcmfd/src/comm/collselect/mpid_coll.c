@@ -13,7 +13,7 @@ char* MPID_Executable_name = NULL;
 
 #ifdef USE_CCMI_COLL
 
-#warning reasonable hack for now
+/* #warning reasonable hack for now */
 #define MAXGEOMETRIES 65536
 
 static DCMF_Geometry_t *mpid_geometrytable[MAXGEOMETRIES];
