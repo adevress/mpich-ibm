@@ -222,16 +222,12 @@ struct MPIDI_DCMF_MsgInfo_t
     unsigned   MPIrank;     /**< match rank             */
     uint16_t   MPIctxt;     /**< match context          */
 
-    uint16_t   type:8;      /**< message type           */
-    uint16_t   isSelf:1;    /**< message sent to self   */
+    MPIDI_DCMF_REQUEST_TYPE type:4; /**< message type   */
     uint16_t   isSync:1;    /**< set for sync sends     */
-
-    uint16_t   isRzv:1;     /**< use pt2pt rendezvous   */
+    uint16_t   isRzv :1;    /**< use pt2pt rendezvous   */
 
     /* These are not currently in use : */
-    uint16_t   isResend:1;    /**< Unused: this message is a re-send */
-    uint16_t   isSending:1;   /**< Unused: message is currently being sent */
-    uint16_t   extra_flags:3; /**< Unused */
+    uint16_t   extra:10;    /**< Unused */
 };
 
 typedef union MPIDI_DCMF_MsgInfo
@@ -258,9 +254,8 @@ typedef union
 struct MPIDI_DCMF_Request
 {
   MPIDI_DCMF_MsgEnvelope    envelope;
+  struct MPID_Request     * next;         /**< Link to next req. in queue */
   unsigned                  peerrank;     /**< The other guy's rank       */
-
-  MPIDI_DCMF_CA ca;                       /**< Completion action          */
 
   char                    * userbuf;      /**< User buffer                */
   unsigned                  userbufcount; /**< Userbuf data count         */
@@ -270,14 +265,13 @@ struct MPIDI_DCMF_Request
   MPI_Datatype              datatype;     /**< Data type of message       */
   struct MPID_Datatype    * datatype_ptr; /**< Info about the datatype    */
 
+  int                       isSelf;       /**< message sent to self       */
   int                     cancel_pending; /**< Cancel State               */
   MPIDI_DCMF_REQUEST_STATE  state;        /**< The tranfser state         */
+  MPIDI_DCMF_CA             ca;           /**< Completion action          */
 
   DCMF_Request_t            msg;          /**< The message layer request  */
-
   DCMF_Memregion_t          memregion;    /**< Rendezvous rcv memregion   */
-
-  struct MPID_Request     * next;         /**< Link to next req. in queue */
 };
 /** \brief This defines the portion of MPID_Request that is specific to the DCMF Device */
 #define MPID_DEV_REQUEST_DECL        struct MPIDI_DCMF_Request dcmf;

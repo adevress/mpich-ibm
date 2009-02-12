@@ -287,9 +287,9 @@ void           MPID_Request_set_completed (MPID_Request *req);
 
 #define MPID_Request_getCA(_req)                ({ (_req)->dcmf.ca;                                               })
 #define MPID_Request_getPeerRank(_req)          ({ (_req)->dcmf.peerrank;                                         })
+#define MPID_Request_isSelf(_req)               ({ (_req)->dcmf.isSelf;                                           })
 #define MPID_Request_getPeerRequest(_req)       ({ (_req)->dcmf.envelope.envelope.msginfo.msginfo.req;            })
 #define MPID_Request_getType(_req)              ({ (_req)->dcmf.envelope.envelope.msginfo.msginfo.type;           })
-#define MPID_Request_isSelf(_req)               ({ (_req)->dcmf.envelope.envelope.msginfo.msginfo.isSelf;         })
 #define MPID_Request_isSync(_req)               ({ (_req)->dcmf.envelope.envelope.msginfo.msginfo.isSync;         })
 #define MPID_Request_isRzv(_req)                ({ (_req)->dcmf.envelope.envelope.msginfo.msginfo.isRzv;          })
 #define MPID_Request_getMatchTag(_req)          ({ (_req)->dcmf.envelope.envelope.msginfo.msginfo.MPItag;         })
@@ -298,9 +298,9 @@ void           MPID_Request_set_completed (MPID_Request *req);
 
 #define MPID_Request_setCA(_req, _ca)           ({ (_req)->dcmf.ca                                       = (_ca); })
 #define MPID_Request_setPeerRank(_req,_r)       ({ (_req)->dcmf.peerrank                                 = (_r);  })
+#define MPID_Request_setSelf(_req,_t)           ({ (_req)->dcmf.isSelf                                   = (_t);  })
 #define MPID_Request_setPeerRequest(_req,_r)    ({ (_req)->dcmf.envelope.envelope.msginfo.msginfo.req    = (_r);  })
 #define MPID_Request_setType(_req,_t)           ({ (_req)->dcmf.envelope.envelope.msginfo.msginfo.type   = (_t);  })
-#define MPID_Request_setSelf(_req,_t)           ({ (_req)->dcmf.envelope.envelope.msginfo.msginfo.isSelf = (_t);  })
 #define MPID_Request_setSync(_req,_t)           ({ (_req)->dcmf.envelope.envelope.msginfo.msginfo.isSync = (_t);  })
 #define MPID_Request_setRzv(_req,_t)            ({ (_req)->dcmf.envelope.envelope.msginfo.msginfo.isRzv  = (_t);  })
 #define MPID_Request_setMatch(_req,_tag,_rank,_ctxtid)                  \

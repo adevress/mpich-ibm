@@ -69,6 +69,7 @@ MPID_Request * MPID_Request_create()
   dcmf->cancel_pending           = FALSE;
   dcmf->state                    = MPIDI_DCMF_INITIALIZED;
   MPID_Request_setCA  (req, MPIDI_DCMF_CA_COMPLETE);
+  MPID_Request_setSelf(req, 0);
   MPID_Request_setType(req, MPIDI_DCMF_REQUEST_TYPE_RECV);
 
   return req;
