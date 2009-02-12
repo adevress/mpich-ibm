@@ -222,7 +222,7 @@ struct MPIDI_DCMF_MsgInfo_t
     unsigned   MPIrank;     /**< match rank             */
     uint16_t   MPIctxt;     /**< match context          */
 
-    MPIDI_DCMF_REQUEST_TYPE type:4; /**< message type   */
+    uint16_t   type:4;      /**< message type           */
     uint16_t   isSync:1;    /**< set for sync sends     */
     uint16_t   isRzv :1;    /**< use pt2pt rendezvous   */
 
