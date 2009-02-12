@@ -55,6 +55,10 @@
  *   message sizes. 
  *   - Default is 32.
  *
+ * - DCMF_RMA_PENDING - Maximum outstanding RMA requests.
+ *   Limits number of DCMF_Request objects allocated by MPI Onesided operations.
+ *   - Default is 1000.
+ *
  * - DCMF_TREE_SMP_SHORTCUT -
  * Boolean indicating that a collective capable of using the
  * collective network should bypass the CCMI layer and call 
@@ -499,11 +503,6 @@ MPIDI_Env_setup()
       MPIDI_Process.optimized.tree = 1;
     }
   }
-#warning someone needs to update this description
-  /*
-   * - DCMF_RMA_PENDING - Don't know what this does. 
-   * Default is 1000.
-   */
   
   dval = 1000;
   ENV_Int(getenv("DCMF_RMA_PENDING"), &dval);
