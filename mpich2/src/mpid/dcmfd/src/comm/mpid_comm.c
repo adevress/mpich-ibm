@@ -144,6 +144,7 @@
  *   - TREE - Use the collective network. This is the default on MPI_COMM_WORLD and 
  *     duplicates of MPI_COMM_WORLD in MPI_THREAD_SINGLE mode.  This provides
  *     the fastest possible broadcast.
+ *   - CCMI - Use the CCMI collective network protocol.  This is off by default.
  *   - AR - Use the asynchronous rectangle protocol. This is the default
  *     for small messages on rectangular subcommunicators.  The cutoff between
  *     async and sync can be controlled with DCMF_ASYNCCUTOFF.
@@ -338,6 +339,8 @@
  *     subcommunicators.
  *   - GI - Use the GI network.  This is the default for MPI_COMM_WORLD and
  *     duplicates of MPI_COMM_WORLD in MPI_THREAD_SINGLE mode.
+ *   - CCMI - Use the CCMI GI network protocol.  This is off by
+ *     default.
  *   - Default varies based on the communicator.  See above.
  *
  * - DCMF_STAR: turns on the STAR-MPI mechanism that tunes MPI collectives.
@@ -520,6 +523,7 @@ MPIDI_Env_setup()
   /* default setting of flags for the mpidi_coll_protocol object */
   MPIDO_MSET_INFO(properties, 
                   MPIDO_USE_GI_BARRIER,
+                  MPIDO_USE_CCMI_GI_BARRIER,
                   MPIDO_USE_SMP_TREE_SHORTCUT,
                   MPIDO_USE_RECT_BARRIER,
                   MPIDO_USE_BINOM_BARRIER,
@@ -534,6 +538,7 @@ MPIDI_Env_setup()
                   MPIDO_USE_ABINOM_BCAST,
                   MPIDO_USE_SCATTER_GATHER_BCAST,
                   MPIDO_USE_TREE_BCAST, 
+                  MPIDO_USE_CCMI_TREE_BCAST, 
                   MPIDO_USE_STORAGE_ALLREDUCE,
                   MPIDO_USE_RECT_ALLREDUCE,
                   MPIDO_USE_SHORT_ASYNC_RECT_ALLREDUCE,
@@ -644,6 +649,7 @@ MPIDI_Env_setup()
   if(envopts != NULL)
   {
     MPIDO_INFO_UNSET(properties, MPIDO_USE_TREE_BCAST);
+    MPIDO_INFO_UNSET(properties, MPIDO_USE_CCMI_TREE_BCAST);
     MPIDO_INFO_UNSET(properties, MPIDO_USE_RECT_BCAST);
     MPIDO_INFO_UNSET(properties, MPIDO_USE_ARECT_BCAST);
     MPIDO_INFO_UNSET(properties, MPIDO_USE_BINOM_BCAST);
@@ -694,10 +700,14 @@ MPIDI_Env_setup()
     {
       MPIDO_INFO_SET(properties, MPIDO_USE_SCATTER_GATHER_BCAST);
     }
+    else if(strncasecmp(envopts, "C", 1) == 0) /* Tree */
+    {
+      MPIDO_INFO_SET(properties, MPIDO_USE_CCMI_TREE_BCAST);
+    }
     else
     {
       fprintf(stderr,
-              "Valid bcasts are: M, AR, AB, R, B, T, D, SR, SB, and SG. Using MPICH\n");
+              "Valid bcasts are: M, AR, AB, R, B, T, C, D, SR, SB, and SG. Using MPICH\n");
       MPIDO_INFO_SET(properties, MPIDO_USE_MPICH_BCAST);
     }
   } 
@@ -1056,16 +1066,25 @@ MPIDI_Env_setup()
     else if(strncasecmp(envopts, "B", 1) == 0) /* Binomial */
     {
       MPIDO_INFO_UNSET(properties, MPIDO_USE_GI_BARRIER);
+      MPIDO_INFO_UNSET(properties, MPIDO_USE_CCMI_GI_BARRIER);
       MPIDO_INFO_UNSET(properties, MPIDO_USE_RECT_BARRIER);
     }
     else if(strncasecmp(envopts, "G", 1) == 0) /* GI */
     {
+      MPIDO_INFO_UNSET(properties, MPIDO_USE_CCMI_GI_BARRIER);
       MPIDO_INFO_UNSET(properties, MPIDO_USE_BINOM_BARRIER);
       MPIDO_INFO_UNSET(properties, MPIDO_USE_RECT_BARRIER);
     }
     else if(strncasecmp(envopts, "R", 1) == 0) /* Rect */
     {
+      MPIDO_INFO_UNSET(properties, MPIDO_USE_CCMI_GI_BARRIER);
       MPIDO_INFO_UNSET(properties, MPIDO_USE_BINOM_BARRIER);
+      MPIDO_INFO_UNSET(properties, MPIDO_USE_GI_BARRIER);
+    }
+    else if(strncasecmp(envopts, "C", 1) == 0) /* GI */
+    {
+      MPIDO_INFO_UNSET(properties, MPIDO_USE_BINOM_BARRIER);
+      MPIDO_INFO_UNSET(properties, MPIDO_USE_RECT_BARRIER);
       MPIDO_INFO_UNSET(properties, MPIDO_USE_GI_BARRIER);
     }
     else

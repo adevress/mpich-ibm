@@ -259,12 +259,12 @@ void MPIDI_Coll_register(void)
     barrier_proto = DCMF_TORUS_RECTANGLE_BARRIER_PROTOCOL; 
 
 
-   if (MPIDO_INFO_ISSET(properties, MPIDO_USE_GI_BARRIER))
+   if (MPIDO_INFO_ISSET(properties, MPIDO_USE_CCMI_GI_BARRIER))
    {
       if (BARRIER_REGISTER(DCMF_GI_BARRIER_PROTOCOL,
          &MPIDI_CollectiveProtocols.gi_barrier,
          &barrier_config) != DCMF_SUCCESS)
-      MPIDO_INFO_UNSET(properties, MPIDO_USE_GI_BARRIER);
+      MPIDO_INFO_UNSET(properties, MPIDO_USE_CCMI_GI_BARRIER);
    }
   if (!MPIDO_INFO_ISSET(properties, MPIDO_USE_RECT_BARRIER) &&
       MPIDO_INFO_ISSET(properties, MPIDO_USE_BINOM_BARRIER))
@@ -382,12 +382,12 @@ void MPIDI_Coll_register(void)
    /* --------------------------------------------------- */
    /* Register all other bcast protocols needed/requested */
    /* --------------------------------------------------- */
-   if(MPIDO_INFO_ISSET(properties, MPIDO_USE_TREE_BCAST))
+   if(MPIDO_INFO_ISSET(properties, MPIDO_USE_CCMI_TREE_BCAST))
      {
        if(BROADCAST_REGISTER(DCMF_TREE_BROADCAST_PROTOCOL,
 			     &MPIDI_CollectiveProtocols.tree_bcast,
 			     &broadcast_config) != DCMF_SUCCESS)
-	 MPIDO_INFO_UNSET(properties, MPIDO_USE_TREE_BCAST);
+	 MPIDO_INFO_UNSET(properties, MPIDO_USE_CCMI_TREE_BCAST);
      }
 
    if(BROADCAST_REGISTER(DCMF_TORUS_RECTANGLE_BROADCAST_PROTOCOL,
@@ -420,7 +420,8 @@ void MPIDI_Coll_register(void)
                &MPIDI_CollectiveProtocols.tree_allreduce,
                &allreduce_config) != DCMF_SUCCESS)
       {
-         MPIDO_INFO_UNSET(properties, MPIDO_USE_TREE_ALLREDUCE);
+
+        MPIDO_INFO_UNSET(properties, MPIDO_USE_TREE_ALLREDUCE);
          MPIDO_INFO_UNSET(properties, MPIDO_USE_CCMI_TREE_ALLREDUCE);
       }
    }
@@ -889,6 +890,7 @@ void MPIDI_Comm_setup_properties(MPID_Comm * comm, int initial_setup)
    if(!MPIDO_INFO_ISSET(comm_prop, MPIDO_GLOBAL_CONTEXT))
    {
      MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_GI_BARRIER);
+     MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_CCMI_GI_BARRIER);
    }
    
    if (!MPIDO_INFO_ISSET(comm_prop, MPIDO_GLOBAL_CONTEXT) ||

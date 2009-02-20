@@ -100,6 +100,12 @@ MPIDO_Bcast(void *buffer,
         func = MPIDO_Bcast_scatter_gather;
         comm->dcmf.last_algorithm = MPIDO_USE_SCATTER_GATHER_BCAST;
       }
+      if ((!func || userenvset) &&
+          MPIDO_INFO_ISSET(properties, MPIDO_USE_CCMI_TREE_BCAST))
+      {
+        func = MPIDO_Bcast_CCMI_tree;
+        comm->dcmf.last_algorithm = MPIDO_USE_CCMI_TREE_BCAST;
+      }
     }
 
     if(!func && (data_size <= 8192 || userenvset))
@@ -132,6 +138,12 @@ MPIDO_Bcast(void *buffer,
       {
         func = MPIDO_Bcast_scatter_gather;
         comm->dcmf.last_algorithm = MPIDO_USE_SCATTER_GATHER_BCAST;
+      }
+      if ((!func || userenvset) &&
+          MPIDO_INFO_ISSET(properties, MPIDO_USE_CCMI_TREE_BCAST))
+      {
+        func = MPIDO_Bcast_CCMI_tree;
+        comm->dcmf.last_algorithm = MPIDO_USE_CCMI_TREE_BCAST;
       }
     }
 
@@ -180,6 +192,18 @@ MPIDO_Bcast(void *buffer,
         func = MPIDO_Bcast_scatter_gather;
         comm->dcmf.last_algorithm = MPIDO_USE_SCATTER_GATHER_BCAST;
       }
+      if ((!func || userenvset) &&
+          MPIDO_INFO_ISSET(properties, MPIDO_USE_CCMI_TREE_BCAST))
+      {
+        func = MPIDO_Bcast_CCMI_tree;
+        comm->dcmf.last_algorithm = MPIDO_USE_CCMI_TREE_BCAST;
+      }
+      if ((!func || userenvset) &&
+          MPIDO_INFO_ISSET(properties, MPIDO_USE_CCMI_TREE_BCAST))
+      {
+        func = MPIDO_Bcast_CCMI_tree;
+        comm->dcmf.last_algorithm = MPIDO_USE_CCMI_TREE_BCAST;
+      }
     }
 
     if(!func && (data_size > 65536 || userenvset))
@@ -219,6 +243,12 @@ MPIDO_Bcast(void *buffer,
       {
         func = MPIDO_Bcast_scatter_gather;
         comm->dcmf.last_algorithm = MPIDO_USE_SCATTER_GATHER_BCAST;
+      }
+      if ((!func || userenvset) &&
+          MPIDO_INFO_ISSET(properties, MPIDO_USE_CCMI_TREE_BCAST))
+      {
+        func = MPIDO_Bcast_CCMI_tree;
+        comm->dcmf.last_algorithm = MPIDO_USE_CCMI_TREE_BCAST;
       }
     }
     
