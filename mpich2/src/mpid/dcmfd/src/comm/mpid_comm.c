@@ -145,6 +145,8 @@
  *     duplicates of MPI_COMM_WORLD in MPI_THREAD_SINGLE mode.  This provides
  *     the fastest possible broadcast.
  *   - CCMI - Use the CCMI collective network protocol.  This is off by default.
+ *   - CDPUT - Use the CCMI collective network protocol with
+ *     DPUT. This is off by default.
  *   - AR - Use the asynchronous rectangle protocol. This is the default
  *     for small messages on rectangular subcommunicators.  The cutoff between
  *     async and sync can be controlled with DCMF_ASYNCCUTOFF.
