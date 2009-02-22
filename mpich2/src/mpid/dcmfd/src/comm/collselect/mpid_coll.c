@@ -390,6 +390,14 @@ void MPIDI_Coll_register(void)
 	 MPIDO_INFO_UNSET(properties, MPIDO_USE_CCMI_TREE_BCAST);
      }
 
+   if(MPIDO_INFO_ISSET(properties, MPIDO_USE_CCMI_TREE_DPUT_BCAST))
+     {
+       if(BROADCAST_REGISTER(DCMF_TREE_DPUT_BROADCAST_PROTOCOL,
+			     &MPIDI_CollectiveProtocols.tree_dput_bcast,
+			     &broadcast_config) != DCMF_SUCCESS)
+	 MPIDO_INFO_UNSET(properties, MPIDO_USE_CCMI_TREE_DPUT_BCAST);
+     }
+
    if(BROADCAST_REGISTER(DCMF_TORUS_RECTANGLE_BROADCAST_PROTOCOL,
 			 &MPIDI_CollectiveProtocols.rectangle_bcast,
 			 &broadcast_config) != DCMF_SUCCESS)

@@ -231,7 +231,8 @@
 #define MPIDO_USE_PREALLREDUCE_SCATTERV                                    122
 
 #define MPIDO_USE_CCMI_TREE_BCAST                                          123
-#define MPIDO_USE_CCMI_GI_BARRIER                                          124
+#define MPIDO_USE_CCMI_TREE_DPUT_BCAST                                     124
+#define MPIDO_USE_CCMI_GI_BARRIER                                          125
 
 extern char * mpido_algorithms[];
 #endif

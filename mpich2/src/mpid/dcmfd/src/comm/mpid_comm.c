@@ -539,6 +539,7 @@ MPIDI_Env_setup()
                   MPIDO_USE_SCATTER_GATHER_BCAST,
                   MPIDO_USE_TREE_BCAST, 
                   MPIDO_USE_CCMI_TREE_BCAST, 
+                  MPIDO_USE_CCMI_TREE_DPUT_BCAST, 
                   MPIDO_USE_STORAGE_ALLREDUCE,
                   MPIDO_USE_RECT_ALLREDUCE,
                   MPIDO_USE_SHORT_ASYNC_RECT_ALLREDUCE,
@@ -650,6 +651,7 @@ MPIDI_Env_setup()
   {
     MPIDO_INFO_UNSET(properties, MPIDO_USE_TREE_BCAST);
     MPIDO_INFO_UNSET(properties, MPIDO_USE_CCMI_TREE_BCAST);
+    MPIDO_INFO_UNSET(properties, MPIDO_USE_CCMI_TREE_DPUT_BCAST);
     MPIDO_INFO_UNSET(properties, MPIDO_USE_RECT_BCAST);
     MPIDO_INFO_UNSET(properties, MPIDO_USE_ARECT_BCAST);
     MPIDO_INFO_UNSET(properties, MPIDO_USE_BINOM_BCAST);
@@ -680,7 +682,7 @@ MPIDI_Env_setup()
     {
       MPIDO_INFO_SET(properties, MPIDO_USE_BINOM_BCAST);
     }
-    else if(strncasecmp(envopts, "T", 1) == 0) /* Tree */
+    else if(strncasecmp(envopts, "T", 1) == 0) /* Global Tree */
     {
       MPIDO_INFO_SET(properties, MPIDO_USE_TREE_BCAST);
     }
@@ -700,14 +702,18 @@ MPIDI_Env_setup()
     {
       MPIDO_INFO_SET(properties, MPIDO_USE_SCATTER_GATHER_BCAST);
     }
-    else if(strncasecmp(envopts, "C", 1) == 0) /* Tree */
+    else if(strncasecmp(envopts, "C", 1) == 0) /* CCMI Tree */
     {
       MPIDO_INFO_SET(properties, MPIDO_USE_CCMI_TREE_BCAST);
+    }
+    else if(strncasecmp(envopts, "CD", 1) == 0) /* CCMI Tree dput*/
+    {
+      MPIDO_INFO_SET(properties, MPIDO_USE_CCMI_TREE_DPUT_BCAST);
     }
     else
     {
       fprintf(stderr,
-              "Valid bcasts are: M, AR, AB, R, B, T, C, D, SR, SB, and SG. Using MPICH\n");
+              "Valid bcasts are: M, AR, AB, R, B, T, C, CD, D, SR, SB, and SG. Using MPICH\n");
       MPIDO_INFO_SET(properties, MPIDO_USE_MPICH_BCAST);
     }
   } 

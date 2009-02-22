@@ -123,6 +123,7 @@ typedef struct
 
   /* Optimized broadcast protocols and usage flags */
   DCMF_CollectiveProtocol_t tree_bcast;
+  DCMF_CollectiveProtocol_t tree_dput_bcast;
   DCMF_CollectiveProtocol_t rectangle_bcast;
   DCMF_CollectiveProtocol_t async_rectangle_bcast;
   DCMF_CollectiveProtocol_t binomial_bcast;
