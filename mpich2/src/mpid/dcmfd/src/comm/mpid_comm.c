@@ -702,13 +702,13 @@ MPIDI_Env_setup()
     {
       MPIDO_INFO_SET(properties, MPIDO_USE_SCATTER_GATHER_BCAST);
     }
+    else if(strncasecmp(envopts, "CD", 2) == 0) /* CCMI Tree dput*/
+    {
+      MPIDO_INFO_SET(properties, MPIDO_USE_CCMI_TREE_DPUT_BCAST);
+    }
     else if(strncasecmp(envopts, "C", 1) == 0) /* CCMI Tree */
     {
       MPIDO_INFO_SET(properties, MPIDO_USE_CCMI_TREE_BCAST);
-    }
-    else if(strncasecmp(envopts, "CD", 1) == 0) /* CCMI Tree dput*/
-    {
-      MPIDO_INFO_SET(properties, MPIDO_USE_CCMI_TREE_DPUT_BCAST);
     }
     else
     {
