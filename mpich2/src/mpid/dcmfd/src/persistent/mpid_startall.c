@@ -72,6 +72,15 @@ int MPID_Startall(int count, MPID_Request * requests[])
                                   preq->comm,
                                   BSEND_INIT,
                                   &preq->partner_request);
+            /*
+             * MPICH2 maintains an independant reference to the child,
+             * but doesn't refcount it.  Since they actually call
+             * MPI_Test() on the child request (which will release a
+             * ref iff the request is complete), we have to increment
+             * the ref_count so that it doesn't get freed from under
+             * us.
+             */
+            MPIU_Object_add_ref(preq->partner_request);
             break;
           }
 
@@ -87,8 +96,17 @@ int MPID_Startall(int count, MPID_Request * requests[])
         preq->status.MPI_ERROR = MPI_SUCCESS;
         if (MPID_Request_getType(preq) == MPIDI_DCMF_REQUEST_TYPE_BSEND)
           {
+            /*
+             * Complete a persistent Bsend immediately.
+             *
+             * Because the child of a persistent Bsend is just a
+             * normal Isend on a temp buffer, we don't need to wait on
+             * the child when the user calls MPI_Wait on the parent.
+             * Therefore, disconnect the cc_ptr link to the child and
+             * mark the parent complete.
+             */
             preq->cc = 0;
-            preq->cc_ptr = &preq->cc;  /* Complete BSENDs immediately */
+            preq->cc_ptr = &preq->cc;
           }
         else
           preq->cc_ptr = &preq->partner_request->cc;

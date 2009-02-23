@@ -111,6 +111,20 @@ int MPI_Cancel(MPI_Request *request)
 	    {
 		if (request_ptr->partner_request->kind != MPID_UREQUEST)
 		{
+                    /* jratt@us.ibm.com: I don't know about the bsend
+                     * comment below, but the CC crap on the next line
+                     * is *really* needed for persistent Bsend request
+                     * cancels.  The CC of the parent was disconnected
+                     * from the child to allow an MPI_Wait in
+                     * user-level to complete immediately
+                     * (mpid/dcmfd/src/persistent/mpid_startall.c).
+                     * However, if the user tries to cancel the parent
+                     * (and thereby cancels the child), we cannot just
+                     * say the request is done.  We need to re-link
+                     * the parent's cc_ptr to the child CC, thus
+                     * causing an MPI_Wait on the parent to block
+                     * until the child is canceled or completed.
+                     */
 		    request_ptr->cc_ptr = request_ptr->partner_request->cc_ptr;
 		    mpi_errno = MPID_Cancel_send(request_ptr->partner_request);
 		    if (mpi_errno) goto fn_fail;
