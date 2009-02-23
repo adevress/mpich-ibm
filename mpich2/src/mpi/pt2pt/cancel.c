@@ -111,6 +111,7 @@ int MPI_Cancel(MPI_Request *request)
 	    {
 		if (request_ptr->partner_request->kind != MPID_UREQUEST)
 		{
+		    request_ptr->cc_ptr = request_ptr->partner_request->cc_ptr;
 		    mpi_errno = MPID_Cancel_send(request_ptr->partner_request);
 		    if (mpi_errno) goto fn_fail;
 		}

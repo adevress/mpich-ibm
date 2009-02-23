@@ -25,16 +25,16 @@ rqstatus 2
 rqfreeb 4
 greq1 1
 probe-unexp 4
-#probenull 1 # temporay disable until fixed. issue 7051
+probenull 1
 # For testing, scancel will run with 1 process as well
 scancel 2
 scancel2 2
-#pscancel 2 # temporay disable until fixed. issue 7051
+pscancel 2
 rcancel 2
 cancelrecv 2
 isendselfprobe 1
 # Inactive, persistent requests are not handled correctly in MPICH2 1.0.3
 # and earlier.
-#inactivereq 1 # temporay disable until fixed. issue 7051
+inactivereq 1
 waittestnull 1
 waitany-null 1
