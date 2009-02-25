@@ -198,7 +198,8 @@ void MPIDI_Coll_register(void)
   /* ---------------------------------- */
   /* Register global allreduce          */
   /* ---------------------------------- */
-  if(MPIDO_INFO_ISSET(properties, MPIDO_USE_TREE_ALLREDUCE))
+  if((MPIDO_INFO_ISSET(properties, MPIDO_USE_TREE_ALLREDUCE)) || 
+     (MPIDO_INFO_ISSET(properties, MPIDO_USE_TREE_REDUCE)))
   {
     gallreduce_config.protocol = DCMF_TREE_GLOBALALLREDUCE_PROTOCOL;
     rc = DCMF_GlobalAllreduce_register(&MPIDI_Protocols.globalallreduce,
@@ -218,15 +219,7 @@ void MPIDI_Coll_register(void)
       MPIDO_INFO_UNSET(properties, MPIDO_USE_TREE_REDUCE);
     }
   }
-  else /* not registering the global allreduce, so don't use it for reduce 
-        * either. 
-        */
-  {
-    if(MPIDO_INFO_ISSET(properties, MPIDO_USE_TREE_REDUCE))
-      MPIDO_INFO_UNSET(properties, MPIDO_USE_TREE_REDUCE);
-  }
       
-
 
   /* register first barrier protocols now */
   barrier_config.cb_geometry = getGeometryRequest;

@@ -59,15 +59,6 @@
  *   Limits number of DCMF_Request objects allocated by MPI Onesided operations.
  *   - Default is 1000.
  *
- * - DCMF_TREE_SMP_SHORTCUT -
- * Boolean indicating that a collective capable of using the
- * collective network should bypass the CCMI layer and call 
- *      the Collective Network Device directly.
- *      Possible values:
- *      - 0 (false) - The CCMI layer will be used.
- *      - 1 (true)  - The CCMI layer will be bypassed.
- *      - Default is 1.
- *
  * - DCMF_INTERRUPT -
  * - DCMF_INTERRUPTS - Turns on interrupt driven communications. This
  *   can be beneficial to some applications and is required if you are
@@ -526,7 +517,6 @@ MPIDI_Env_setup()
   MPIDO_MSET_INFO(properties, 
                   MPIDO_USE_GI_BARRIER,
                   MPIDO_USE_CCMI_GI_BARRIER,
-                  MPIDO_USE_SMP_TREE_SHORTCUT,
                   MPIDO_USE_RECT_BARRIER,
                   MPIDO_USE_BINOM_BARRIER,
                   MPIDO_USE_LOCKBOX_LBARRIER,
@@ -600,12 +590,6 @@ MPIDI_Env_setup()
     }
   }
 
-  int smp_shortcut=1;
-  ENV_Int(getenv("DCMF_TREE_SMP_SHORTCUT"), &smp_shortcut);
-  if(!smp_shortcut)
-    MPIDO_INFO_UNSET(properties, MPIDO_USE_SMP_TREE_SHORTCUT);
-
-      
   envopts = getenv("DCMF_SCATTERV");
   if(envopts != NULL)
   {

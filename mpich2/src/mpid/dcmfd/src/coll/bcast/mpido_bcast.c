@@ -68,8 +68,7 @@ MPIDO_Bcast(void *buffer,
   {
     if (data_size <= 1024 || userenvset)
     {
-      if (MPIDO_INFO_ISSET(properties, MPIDO_USE_TREE_BCAST) &&
-          MPIDO_INFO_ISSET(properties, MPIDO_USE_SMP_TREE_SHORTCUT))
+      if (MPIDO_INFO_ISSET(properties, MPIDO_USE_TREE_BCAST))
       {
         func = MPIDO_Bcast_tree;
         comm->dcmf.last_algorithm = MPIDO_USE_TREE_BCAST;

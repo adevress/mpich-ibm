@@ -50,7 +50,7 @@
 #define MPIDO_BUFF_SIZE_MUL4                                               13
 #define MPIDO_BUFF_ALIGNED                                                 14
 #define MPIDO_THREADED_MODE                                                15
-#define MPIDO_USE_SMP_TREE_SHORTCUT                                        16
+/*#define MPIDO_USE_SMP_TREE_SHORTCUT                                      16*/
 
 /*******************/
 /* Collective bits */

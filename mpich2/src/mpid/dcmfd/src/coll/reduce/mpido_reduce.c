@@ -74,23 +74,20 @@ int MPIDO_Reduce(void * sendbuf,
         we need to see when reduce via allreduce is good, susect around 32K
         and then basically turn it on. It is off by default.
       */
-      
-      if ((op_type_support == MPIDO_TREE_SUPPORT ||
-           op_type_support == MPIDO_TREE_MIN_SUPPORT) &&
-          MPIDO_INFO_ISSET(properties, MPIDO_USE_TREE_REDUCE))
-      {
-
-        if(MPIDO_INFO_ISSET(properties, MPIDO_USE_SMP_TREE_SHORTCUT))
-        {
-          func = MPIDO_Reduce_global_tree;
-          comm->dcmf.last_algorithm = MPIDO_USE_TREE_REDUCE;
-        }
-        else
-        {
-          func = MPIDO_Reduce_tree;
-          comm->dcmf.last_algorithm = MPIDO_USE_CCMI_TREE_REDUCE;
-        }
-      }
+      if (op_type_support == MPIDO_TREE_SUPPORT ||
+           op_type_support == MPIDO_TREE_MIN_SUPPORT)
+	{
+	  if (MPIDO_INFO_ISSET(properties, MPIDO_USE_TREE_REDUCE))
+	    {
+	      func = MPIDO_Reduce_global_tree;
+	      comm->dcmf.last_algorithm = MPIDO_USE_TREE_REDUCE;
+	    }
+	  else if(MPIDO_INFO_ISSET(properties, MPIDO_USE_CCMI_TREE_REDUCE))
+	    {
+	      func = MPIDO_Reduce_tree;
+	      comm->dcmf.last_algorithm = MPIDO_USE_CCMI_TREE_REDUCE;
+	    }
+	}
        
       if (!func && op_type_support != MPIDO_NOT_SUPPORTED)
       {
@@ -126,17 +123,17 @@ int MPIDO_Reduce(void * sendbuf,
         comm->dcmf.last_algorithm = MPIDO_USE_BINOM_REDUCE;
       }
       if(!func &&
-         MPIDO_INFO_ISSET(properties, MPIDO_USE_TREE_REDUCE) && 
-         MPIDO_INFO_ISSET(properties, MPIDO_USE_SMP_TREE_SHORTCUT) &&
-         op_type_support == MPIDO_TREE_SUPPORT)
+         MPIDO_INFO_ISSET(properties, MPIDO_USE_TREE_REDUCE) &&
+         (op_type_support == MPIDO_TREE_SUPPORT ||
+         op_type_support == MPIDO_TREE_MIN_SUPPORT))
       {
         func = MPIDO_Reduce_global_tree;
         comm->dcmf.last_algorithm = MPIDO_USE_TREE_REDUCE;
       }
       if(!func &&
-         MPIDO_INFO_ISSET(properties, MPIDO_USE_TREE_REDUCE) && 
-         !MPIDO_INFO_ISSET(properties, MPIDO_USE_SMP_TREE_SHORTCUT) &&
-         op_type_support == MPIDO_TREE_SUPPORT)
+         MPIDO_INFO_ISSET(properties, MPIDO_USE_CCMI_TREE_REDUCE) &&
+         (op_type_support == MPIDO_TREE_SUPPORT ||
+         op_type_support == MPIDO_TREE_MIN_SUPPORT))
       {
         func = MPIDO_Reduce_tree;
         comm->dcmf.last_algorithm = MPIDO_USE_CCMI_TREE_REDUCE;
