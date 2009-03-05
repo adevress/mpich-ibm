@@ -80,7 +80,8 @@ int MPID_Startall(int count, MPID_Request * requests[])
              * the ref_count so that it doesn't get freed from under
              * us.
              */
-            MPIU_Object_add_ref(preq->partner_request);
+            if (preq->partner_request != NULL)
+              MPIU_Object_add_ref(preq->partner_request);
             break;
           }
 
