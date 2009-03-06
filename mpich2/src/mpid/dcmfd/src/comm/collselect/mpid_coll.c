@@ -820,35 +820,16 @@ void MPIDI_Comm_setup_properties(MPID_Comm * comm, int initial_setup)
   comm_prop = &(comm -> dcmf.properties);
   coll_prop = &MPIDI_CollectiveProtocols.properties;
 
-  if (comm->comm_kind != MPID_INTRACOMM || comm->local_size <= 4)
-    MPIDO_MSET_INFO(comm_prop,
-                    MPIDO_USE_MPICH_BARRIER,
-                    MPIDO_USE_MPICH_BCAST,
-                    MPIDO_USE_MPICH_ALLTOALL,
-                    MPIDO_USE_MPICH_ALLTOALLW,
-                    MPIDO_USE_MPICH_ALLTOALLV,
-                    MPIDO_USE_MPICH_ALLGATHER,
-                    MPIDO_USE_MPICH_ALLGATHERV,
-                    MPIDO_USE_MPICH_ALLREDUCE,
-                    MPIDO_USE_MPICH_REDUCE,
-                    MPIDO_USE_MPICH_GATHER,
-                    MPIDO_USE_MPICH_SCATTER,
-                    MPIDO_USE_MPICH_SCATTERV,
-                    MPIDO_USE_MPICH_REDUCESCATTER,
-                    MPIDO_END_ARGS);
-	
-  else
-  {
-    /* 
-       we basically be optimistic and assume all conditions are available 
-       for all protocols based on the mpidi_protocol properties. As such, we 
-       copy the informative bits from coll_prop to comm_prop. Then, we check 
-       the geometry bits of the communicator to uncheck any bit for a 
-       protocol 
-    */
-
-    if (initial_setup)
-      MPIDO_INFO_OR(coll_prop, comm_prop);
+  /* 
+     we basically be optimistic and assume all conditions are available 
+     for all protocols based on the mpidi_protocol properties. As such, we 
+     copy the informative bits from coll_prop to comm_prop. Then, we check 
+     the geometry bits of the communicator to uncheck any bit for a 
+     protocol 
+  */
+  
+  if (initial_setup)
+    DCMF_INFO_OR(coll_prop, comm_prop);
 
     if(messager_config.thread_level == DCMF_THREAD_MULTIPLE)
     {
@@ -908,6 +889,23 @@ void MPIDI_Comm_setup_properties(MPID_Comm * comm, int initial_setup)
      /*      MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_BCAST_SCATTER); */
      MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_REDUCESCATTER);
    }
-  } 
   
+  if (comm->comm_kind != MPID_INTRACOMM || comm->local_size <= 4)
+    MPIDO_MSET_INFO(comm_prop,
+                    MPIDO_USE_MPICH_BARRIER,
+                    MPIDO_USE_MPICH_ALLTOALL,
+                    MPIDO_USE_MPICH_ALLTOALLW,
+                    MPIDO_USE_MPICH_ALLTOALLV,
+                    MPIDO_USE_MPICH_ALLGATHER,
+                    MPIDO_USE_MPICH_ALLGATHERV,
+                    MPIDO_USE_MPICH_ALLREDUCE,
+                    MPIDO_USE_MPICH_REDUCE,
+                    MPIDO_USE_MPICH_GATHER,
+                    MPIDO_USE_MPICH_SCATTER,
+                    MPIDO_USE_MPICH_SCATTERV,
+                    MPIDO_USE_MPICH_REDUCESCATTER,
+                    MPIDO_END_ARGS);
+  if (comm->comm_kind != MPID_INTRACOMM || comm->local_size <= 3)
+    MPIDO_SET_INFO(comm_prop, MPIDO_USE_MPICH_BCAST);
+	
 }
