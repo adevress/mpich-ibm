@@ -829,7 +829,7 @@ void MPIDI_Comm_setup_properties(MPID_Comm * comm, int initial_setup)
   */
   
   if (initial_setup)
-    DCMF_INFO_OR(coll_prop, comm_prop);
+    MPIDO_INFO_OR(coll_prop, comm_prop);
 
     if(messager_config.thread_level == DCMF_THREAD_MULTIPLE)
     {
@@ -906,6 +906,6 @@ void MPIDI_Comm_setup_properties(MPID_Comm * comm, int initial_setup)
                     MPIDO_USE_MPICH_REDUCESCATTER,
                     MPIDO_END_ARGS);
   if (comm->comm_kind != MPID_INTRACOMM || comm->local_size <= 3)
-    MPIDO_SET_INFO(comm_prop, MPIDO_USE_MPICH_BCAST);
+    MPIDO_INFO_SET(comm_prop, MPIDO_USE_MPICH_BCAST);
 	
 }
