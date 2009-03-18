@@ -26,35 +26,21 @@ static void fake_an_open(char *fname, int access_mode,
 
     ADIOI_ZOIDFS_makeattribs(&attribs);
 
-    /* similar to PVFS v2: 
-     *	- lookup the file
-     *	- if CREATE flag passed in 
-     *	    - create the file if CREATE flag passed in
-     *	    - if *that* fails, lookup file again
-     *	- else return error
+    /* zoidfs_create succeeds even if a file already exists, so we can do
+     * our job with fewer calls than in other cases.  However, we need to
+     * be careful with ADIO_EXCL.
      */
-    ret = zoidfs_lookup(NULL, NULL, fname, &handle);
-    if (ret == ZFSERR_NOENT) {
-	/* file does not exist. create it, but only if given apropriate flag */
-	if (access_mode & ADIO_CREATE) {
-	    ret = zoidfs_create(NULL, NULL, 
-		    fname, &attribs, &handle, &created);
-	    if (ret == ZFSERR_EXIST) {
-		/* could have case where many independent processes are trying
-		 * to create the same file.  At this point another  process
-		 * could have created the file between our lookup and create
-		 * calls.  If so, just look up the file */
-		ret = zoidfs_lookup(NULL, NULL, fname, &handle);
-		if (ret != ZFS_OK) {
-		    o_status->error = ret;
-		    return;
-		}
-	    }
+    if (access_mode & ADIO_CREATE) {
+	ret = zoidfs_create(NULL, NULL, 
+			    fname, &attribs, &handle, &created);
+	if ((ret == ZFS_OK) && !created && (access_mode & ADIO_EXCL)) {
+	    /* lookup should not succeed if opened with EXCL */
+	    o_status->error = ZFSERR_EXIST;
+	    return;
 	}
-    } else if ((ret == ZFS_OK) && (access_mode & ADIO_EXCL)) {
-	/* lookup should not successd if opened with EXCL */
-	o_status->error = ZFSERR_EXIST;
-	return;
+    }
+    else {
+	ret = zoidfs_lookup(NULL, NULL, fname, &handle);
     }
 
     o_status->error = ret;
@@ -73,7 +59,7 @@ static void fake_an_open(char *fname, int access_mode,
  * special handling when CREATE is set.  */
 void ADIOI_ZOIDFS_Open(ADIO_File fd, int *error_code)
 {
-    int rank, ret;
+    int rank;
     static char myname[] = "ADIOI_ZOIDFS_OPEN";
     ADIOI_ZOIDFS_object *zoidfs_obj_ptr;
 
@@ -81,12 +67,13 @@ void ADIOI_ZOIDFS_Open(ADIO_File fd, int *error_code)
      * doing the error checking.  define a struct for both the object reference
      * and the error code to broadcast to all the processors */
 
-    open_status o_status = {0, 0}; 
+    open_status o_status;
     MPI_Datatype open_status_type;
     MPI_Datatype types[2] = {MPI_INT, MPI_BYTE};
     int lens[2] = {1, sizeof(ADIOI_ZOIDFS_object)};
     MPI_Aint offsets[2];
     
+    memset(&o_status, 0, sizeof(o_status));
     zoidfs_obj_ptr = (ADIOI_ZOIDFS_object *) 
 	ADIOI_Malloc(sizeof(ADIOI_ZOIDFS_object));
     /* --BEGIN ERROR HANDLING-- */

@@ -10,7 +10,9 @@ $abs_mpich2srcdir = "@abs_mpich2srcdir@";
 $includedir = ".";
 $skipAction = 0;
 $makefilebase = "Makefile.base";
-$ranliblib    = 1;
+$ranliblib    = 1;   # only set to 0 on systems where ar 
+                     # computes a symbol table index.  Also see RANLIBNEEDED
+                     # environment variable
 $useinclude = 0;     # set to 1 to make the Makefiles refer to a single
                      # base makefile.
 $include_list = "";
@@ -66,7 +68,6 @@ else {
 if (defined($ENV{"CHECKTARGETS"})) {
     $gCheckForTargets = 1;
 }
-
 $autoconf_args = ""; # Extra arguments for autoconf
 $acincdir_arg = "-l";
 
@@ -141,6 +142,16 @@ else {
     $Sleep = $SleepSlow;
 }
 
+# Check environment variable to see if ranlib is needed.
+if (defined($ENV{"RANLIBNEEDED"})) {
+    my $val = $ENV{"RANLIBNEEDED"};
+    if ($val eq "YES" || $val eq "yes" || $val == 1) {
+	$ranliblib = 1;
+    }
+    elsif ($val eq "NO" || $val eq "no" || $val == 0) {
+	$ranliblib = 0;
+    }
+}
 
 #
 # Output File end-of-line character
@@ -340,6 +351,7 @@ $docdir_name =               "docdir          = \@docdir\@";
 # datarootdir is new in autoconf 2.60, and is needed for other
 # dirs like mandir (much as prefix and execprefix are also needed)
 $datarootdir_name =          "datarootdir     = \@datarootdir\@";
+$datadir_name =              "datadir         = \@datadir\@";
 $sysconfdir_name =           "sysconfdir      = \@sysconfdir\@";
 $pkgconfigdir_name =         "pkgconfigdir    = \@libdir\@/pkgconfig";
 $builddir_name =             "builddir        = \@builddir\@";
@@ -360,14 +372,15 @@ $top_builddir_name =         "top_builddir    = \@master_top_builddir\@";
 	     'includedir' => $includedir_name,
 	     'master_top_srcdir' => $master_topsrcdir_name,
 	     'top_builddir' => $top_builddir_name,
-	     'builddir'   => $builddir_name,
+	     'builddir'     => $builddir_name,
 	     'abs_builddir' => $abs_builddir_name,
-	     'mandir'     => $mandir_name,
-	     'datarootdir' => $datarootdir_name,
-	     'htmldir'    => $htmldir_name,
-	     'docdir'     => $docdir_name,
-	     'sysconfdir' => $sysconfdir_name,
+	     'mandir'       => $mandir_name,
+	     'datarootdir'  => $datarootdir_name,
+	     'htmldir'      => $htmldir_name,
+	     'docdir'       => $docdir_name,
+	     'sysconfdir'   => $sysconfdir_name,
 	     'pkgconfigdir' => $pkgconfigdir_name,
+	     'datadir'      => $datadir_name,
 	    );
 
 #InstallDirFromKind maps XXX from install_XXX into the GNU name
@@ -375,11 +388,13 @@ $top_builddir_name =         "top_builddir    = \@master_top_builddir\@";
 		 'SHLIB' => 'libdir',    # SHLIB also signals library to build
 		 'DLLLIB' => 'libdir',   # DLLLIB also signals library to build
 		 'BIN' => 'bindir',
+		 'SCRIPT' => 'bindir', 
 		 'INCLUDE' => 'includedir', 
 		 'MAN' => 'mandir',
 		 'HTML' => 'htmldir',
 		 'DOC' => 'docdir',
 		 'ETC' => 'sysconfdir',
+		 'DATADIR' => 'datadir',
 		 'PKGCONFIG' => 'pkgconfigdir',
 		);
 # We add the -p switch to install for the libraries because libraries
@@ -395,6 +410,7 @@ $top_builddir_name =         "top_builddir    = \@master_top_builddir\@";
 # CREATESHLIB is a special script for shared libraries
 %install_methods = ( 'LIB'     => '$(INSTALL_DATA)',
 		     'BIN'     => '$(INSTALL_PROGRAM) $(INSTALL_STRIP_FLAG)',
+		     'SCRIPT'  => '$(INSTALL_SCRIPT)',
 		     'SHLIB'   => '$(CREATESHLIB) --mode=install',
 		     'DLLLIB'  => '$(CREATESHLIB) --mode=install',
 		     'INCLUDE' => '$(INSTALL_DATA)',
@@ -402,6 +418,7 @@ $top_builddir_name =         "top_builddir    = \@master_top_builddir\@";
 		     'HTML'    => '$(INSTALL_DATA)',
 		     'DOC'     => '$(INSTALL_DATA)',
 		     'ETC'     => '$(INSTALL_DATA)',
+		     'PKGCONFIG' => '$(INSTALL_DATA)',
 		    );
 %uninstall_methods = ( 'SHLIB'   => '$(CREATESHLIB) --mode=uninstall',
                        'DLLLIB'  => '$(CREATESHLIB) --mode=uninstall',
@@ -417,6 +434,7 @@ $top_builddir_name =         "top_builddir    = \@master_top_builddir\@";
 		   'sysconfdir'  => 'prefix',
 		   'exec_prefix' => 'prefix',
 		   'pkgconfigdir'=> 'libdir exec_prefix prefix',
+		   'datadir'     => 'prefix',
 		  );
 # etc.
 #
@@ -1256,6 +1274,7 @@ sub DefaultVariables {
     if (scalar(%install_files) || scalar(%optinstall_files)) { 
 	print FD "INSTALL         = \@INSTALL\@$newline";
 	print FD "INSTALL_PROGRAM = \@INSTALL_PROGRAM\@$newline";
+        print FD "INSTALL_SCRIPT  = \@INSTALL_SCRIPT\@$newline";
 	print FD "INSTALL_DATA    = \@INSTALL_DATA\@$newline";
 	printMakeVariable( FD, "MKDIR_P", "\@MKDIR_P\@" );
     }
@@ -1285,6 +1304,9 @@ sub DefaultVariables {
     foreach $dir (keys(%install_files),keys(%optinstall_files)) {
 	# Handle the derived dirs for the install directories
 	$dir = $InstallDirFromKind{$dir};
+	if (!defined($required_dirs{$dir})) {
+	    print STDERR "Warning: No entry $dir in required_dirs\n"; 
+	}
 	foreach $rdir (split(/\s+/,$required_dirs{$dir})) {
 	    if (!defined($dir_added{$rdir})) {
 		print FD "$dirdefs{$rdir}$newline";
@@ -1296,6 +1318,9 @@ sub DefaultVariables {
 	$dir = $InstallDirFromKind{$dir};
 	if (!defined($dir_added{$dir})) {
 	    #$resultdir = $dirdefs{$dir};
+	    if (!defined($dirdefs{$dir})) {
+		print STDERR "Warning: no entry $dir in dirdefs\n";
+	    }
 	    print FD "$dirdefs{$dir}$newline";
 	    $dir_added{$dir} = 1;
 	}
@@ -1815,14 +1840,36 @@ sub SaveSrcNames {
 sub FindPgmSrcType {
     $pgm = $_[0];
     $pgmsrc = $_[1];
+    # Also keep track of the types seen
+    my %exttypes;
+    my $firstext = "";
     foreach $file (split(/\s+/,$pgmsrc)) {
 	($name,$ext) = split('\.',$file);
 	if ($name eq $pgm) {
 	    $pgmlinktypes{$ext} = 1;
 	    return $ext;
 	}
+	else {
+	    $exttypes{$ext} = 1;
+	    if ($firstext eq "") { $firstext = $ext; }
+	}
     }
-    return "c";
+    if (defined($exttypes{"c"})) {
+	$pgmlinktypes{"c"} = 1;
+	return "c";
+    }
+    elsif (defined($exttypes{"cxx"})) {
+	$pgmlinktypes{"cxx"} = 1;
+	return "cxx";
+    }
+    elsif (defined($exttypes{"f90"})) {
+	$pgmlinktypes{"f90"} = 1;
+	return "f90";
+    }
+    else {
+	$pgmlinktypes{$firstext} = 1;
+	return $firstext;
+    }
 }
 
 sub ClearVars {

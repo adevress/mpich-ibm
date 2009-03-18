@@ -7,7 +7,6 @@
 #include "hydra.h"
 #include "csi.h"
 #include "pmci.h"
-#include "bsci.h"
 #include "demux.h"
 
 HYD_Status HYD_CSI_Finalize(void)
@@ -17,22 +16,10 @@ HYD_Status HYD_CSI_Finalize(void)
     HYDU_FUNC_ENTER();
 
     status = HYD_PMCI_Finalize();
-    if (status != HYD_SUCCESS) {
-        HYDU_Error_printf("process manager finalize returned an error\n");
-        goto fn_fail;
-    }
-
-    status = HYD_BSCI_Finalize();
-    if (status != HYD_SUCCESS) {
-        HYDU_Error_printf("bootstrap server finalize returned an error\n");
-        goto fn_fail;
-    }
+    HYDU_ERR_POP(status, "error returned from PM finalize\n");
 
     status = HYD_DMX_Finalize();
-    if (status != HYD_SUCCESS) {
-        HYDU_Error_printf("demux engine finalize returned an error\n");
-        goto fn_fail;
-    }
+    HYDU_ERR_POP(status, "error returned from demux finalize\n");
 
   fn_exit:
     HYDU_FUNC_EXIT();

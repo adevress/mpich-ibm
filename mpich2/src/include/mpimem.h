@@ -328,8 +328,8 @@ if (pointer_) { \
     stmt_;\
 }}
 #define MPIU_CHKLMEM_FREEALL() \
-    { while (mpiu_chklmem_stk_sp_ > 0) {\
-       MPIU_Free( mpiu_chklmem_stk_[--mpiu_chklmem_stk_sp_] ); } }
+    do { while (mpiu_chklmem_stk_sp_ > 0) {\
+       MPIU_Free( mpiu_chklmem_stk_[--mpiu_chklmem_stk_sp_] ); } } while(0)
 #endif /* HAVE_ALLOCA */
 #define MPIU_CHKLMEM_MALLOC(pointer_,type_,nbytes_,rc_,name_) \
     MPIU_CHKLMEM_MALLOC_ORJUMP(pointer_,type_,nbytes_,rc_,name_)
@@ -398,11 +398,21 @@ if (!(pointer_)) { \
     stmt_;\
 }}
 
-/* Provide a fallback snprintf for systems that do not have one */
 /* Define attribute as empty if it has no definition */
 #ifndef ATTRIBUTE
 #define ATTRIBUTE(a)
 #endif
+
+#if defined(HAVE_STRNCASECMP)
+#   define MPIU_Strncasecmp strncasecmp
+#elif defined(HAVE_STRNICMP)
+#   define MPIU_Strncasecmp strnicmp
+#else
+/* FIXME: Provide a fallback function ? */
+#   error "No function defined for case-insensitive strncmp"
+#endif
+
+/* Provide a fallback snprintf for systems that do not have one */
 #ifdef HAVE_SNPRINTF
 #define MPIU_Snprintf snprintf
 /* Sometimes systems don't provide prototypes for snprintf */

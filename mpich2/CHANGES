@@ -1,5 +1,5 @@
 ===============================================================================
-                               Changes in 1.1 (a1 and a2)
+                               Changes in 1.1
 ===============================================================================
 
 - OVERALL: Added MPI 2.1 support.
@@ -7,11 +7,15 @@
 - OVERALL: Nemesis is now the default configuration channel with a
   completely new TCP communication module.
 
-- OVERALL: Initial support for shared-memory aware collective
-  communication operations.
+- OVERALL: Windows support for nemesis.
 
-- PM/PMI: Initial support for the new Hydra process management
-  framework (current support is only for ssh).
+- OVERALL: Added a new Myrinet MX network module for nemesis.
+
+- OVERALL: Initial support for shared-memory aware collective
+  communication operations.  Currently MPI_Bcast, MPI_Reduce, MPI_Allreduce,
+  and MPI_Scan.
+
+- OVERALL: Improved handling of MPI Attributes.
 
 - OVERALL: Support for BlueGene/P through the DCMF library (thanks to
   IBM for the patch).
@@ -21,12 +25,25 @@
 - OVERALL: Added automatic as well as statically runtime configurable
   receive timeout variation for MPD (thanks to OSU for the patch).
 
+- OVERALL: Improved performance for MPI_Allgatherv and MPI_Gatherv.
+
+- PM/PMI: Initial support for the new Hydra process management
+  framework (current support is for ssh and fork).
+
 - ROMIO: Added support for MPI_Type_create_resized and
   MPI_Type_create_indexed_block datatypes in ROMIO.
 
+- ROMIO: Optimized Lustre ADIO driver (thanks to Weikuan Yu for
+  initial work and Sun for further improvements).
+
 - Many other bug fixes, memory leak fixes and code cleanup. A full
-list of changes is available using:
-  svn log -r813:HEAD https://svn.mcs.anl.gov/repos/mpi/mpich2/tags/release/mpich2-1.1a2
+  list of changes is available using:
+
+  svn log -r813:HEAD https://svn.mcs.anl.gov/repos/mpi/mpich2/tags/release/mpich2-1.1b1
+
+  ... or at the following link:
+
+  https://trac.mcs.anl.gov/projects/mpich2/log/mpich2/tags/release/mpich2-1.1b1?action=follow_copy&rev=HEAD&stop_rev=813&mode=follow_copy
 
 
 ===============================================================================

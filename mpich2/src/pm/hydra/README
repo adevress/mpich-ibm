@@ -4,7 +4,11 @@ General
 Hydra is a process management system for starting parallel jobs,
 especially MPICH2 jobs. Hydra is designed to natively work with
 multiple daemons such as ssh, pbs, slurm and sge. However, in the
-current release, only ssh is supported.
+current release, only ssh and fork are supported.
+
+More detailed documentation of the internal workings of Hydra are
+available here:
+http://wiki.mcs.anl.gov/mpich2/index.php/Hydra_Process_Management_Framework
 
 How to use Hydra
 ----------------
@@ -15,8 +19,7 @@ To use hydra, mpich2 needs to be configured with the configure option
 Once MPICH2 has been built with Hydra, the Hydra commands are in
 mpich2/bin, or the bin subdirectory of the install directory if you
 have done an install.  You should put this (bin) directory in your
-PATH in your .cshrc or .bashrc, so that it will be picked up by the
-mpd's that are started remotely:
+PATH in your .cshrc or .bashrc for usage convenience:
 
 Put in .cshrc:  setenv PATH /home/you/mpich2/bin:$PATH
 
@@ -38,7 +41,7 @@ job on. This file may or may not include the local machine.
 
 To run your application on these nodes, use mpiexec:
 
- $ mpiexec -n 4 -f hosts ./app
+ $ mpiexec -f hosts -n 4 ./app
 
 
 Environment settings
@@ -54,11 +57,29 @@ when the "-f" option is not provided to mpiexec.
     setenv HYDRA_HOST_FILE <path_to_host_file>/hosts
 
 
-HYDRA_USE_LOCALHOST: This variable forces Hydra to run all processes
-on the local machine.
+Bootstrap servers
+-----------------
 
-  For bash:
-    export HYDRA_USE_LOCALHOST=1
+Hydra supports SSH and FORK bootstrap servers to launch processes. You
+can pick these through the mpiexec option --bootstrap:
 
-  For csh/tcsh:
-    setenv HYDRA_USE_LOCALHOST 1
+ $ mpiexec --bootstrap ssh -f hosts -n 4 ./app
+
+ (or)
+
+ $ mpiexec --bootstrap fork -f hosts -n 4 ./app
+
+This can also be controlled by using the HYDRA_BOOTSTRAP environment
+variable.
+
+The default bootstrap server is ssh.
+
+
+X Forwarding
+------------
+
+X-forwarding is specific to each bootstrap server. Some servers do it
+by default, while some don't. For ssh, this is disabled by default. To
+enable it, you should use the option --enable-x to mpiexec.
+
+ $ mpiexec --enable-x -f hosts -n 4 ./app

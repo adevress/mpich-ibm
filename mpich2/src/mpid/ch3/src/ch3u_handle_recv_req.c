@@ -144,7 +144,7 @@ int MPIDI_CH3_ReqHandler_PutRespDerivedDTComplete( MPIDI_VC_t *vc ATTRIBUTE((unu
 						   int *complete )
 {
     int mpi_errno = MPI_SUCCESS;
-    MPID_Datatype *new_dtp;
+    MPID_Datatype *new_dtp = NULL;
     MPIDI_STATE_DECL(MPID_STATE_MPIDI_CH3_REQHANDLER_PUTRESPDERIVEDDTCOMPLETE);
     
     MPIDI_FUNC_ENTER(MPID_STATE_MPIDI_CH3_REQHANDLER_PUTRESPDERIVEDDTCOMPLETE);
@@ -195,7 +195,7 @@ int MPIDI_CH3_ReqHandler_AccumRespDerivedDTComplete( MPIDI_VC_t *vc ATTRIBUTE((u
 						     int *complete )
 {
     int mpi_errno = MPI_SUCCESS;
-    MPID_Datatype *new_dtp;
+    MPID_Datatype *new_dtp = NULL;
     MPI_Aint true_lb, true_extent, extent;
     void *tmp_buf;
     MPIU_THREADPRIV_DECL;
@@ -274,7 +274,7 @@ int MPIDI_CH3_ReqHandler_GetRespDerivedDTComplete( MPIDI_VC_t *vc,
 						   int *complete )
 {
     int mpi_errno = MPI_SUCCESS;
-    MPID_Datatype *new_dtp;
+    MPID_Datatype *new_dtp = NULL;
     MPIDI_CH3_Pkt_t upkt;
     MPIDI_CH3_Pkt_get_resp_t * get_resp_pkt = &upkt.get_resp;
     MPID_Request * sreq;
@@ -555,7 +555,8 @@ static int create_derived_datatype(MPID_Request *req, MPID_Datatype **dtp)
     MPIDI_FUNC_ENTER(MPID_STATE_CREATE_DERIVED_DATATYPE);
 
     dtype_info = req->dev.dtype_info;
-    dataloop = req->dev.dataloop;
+    /* FIXME: What is this variable for (it is never referenced)? */
+    dataloop   = req->dev.dataloop;
 
     /* allocate new datatype object and handle */
     new_dtp = (MPID_Datatype *) MPIU_Handle_obj_alloc(&MPID_Datatype_mem);
@@ -573,7 +574,7 @@ static int create_derived_datatype(MPID_Request *req, MPID_Datatype **dtp)
     new_dtp->cache_id     = 0;
     new_dtp->name[0]      = 0;
     new_dtp->is_contig = dtype_info->is_contig;
-    new_dtp->n_contig_blocks = dtype_info->n_contig_blocks; 
+    new_dtp->max_contig_blocks = dtype_info->max_contig_blocks; 
     new_dtp->size = dtype_info->size;
     new_dtp->extent = dtype_info->extent;
     new_dtp->dataloop_size = dtype_info->dataloop_size;
@@ -680,7 +681,7 @@ static int do_accumulate_op(MPID_Request *rreq)
         last  = SEGMENT_IGNORE_LAST;
         
         MPID_Datatype_get_ptr(rreq->dev.datatype, dtp);
-        vec_len = dtp->n_contig_blocks * rreq->dev.user_count + 1; 
+        vec_len = dtp->max_contig_blocks * rreq->dev.user_count + 1; 
         /* +1 needed because Rob says so */
         dloop_vec = (DLOOP_VECTOR *)
             MPIU_Malloc(vec_len * sizeof(DLOOP_VECTOR));

@@ -24,6 +24,9 @@ char MPID_nem_hostname[MAX_HOSTNAME_LEN] = "UNKNOWN";
 
 static MPID_nem_queue_ptr_t net_free_queue;
 
+static int get_local_procs(MPIDI_PG_t *pg, int our_pg_rank, int *num_local_p,
+                           int **local_procs_p, int *local_rank_p);
+
 #ifndef MIN
 #define MIN( a , b ) ((a) >  (b)) ? (b) : (a)
 #endif /* MIN */
@@ -45,7 +48,8 @@ MPID_nem_init (int rank, MPIDI_PG_t *pg_p, int has_parent)
 #undef FCNAME
 #define FCNAME MPIDI_QUOTE(FUNCNAME)
 int
-_MPID_nem_init (int pg_rank, MPIDI_PG_t *pg_p, int ckpt_restart, int has_parent)
+_MPID_nem_init (int pg_rank, MPIDI_PG_t *pg_p, int ckpt_restart, 
+		int has_parent ATTRIBUTE((unused)) )
 {
     int    mpi_errno       = MPI_SUCCESS;
     int    pmi_errno;
@@ -68,8 +72,10 @@ _MPID_nem_init (int pg_rank, MPIDI_PG_t *pg_p, int ckpt_restart, int has_parent)
     MPID_nem_queue_t *free_queues_p = NULL;
     MPID_nem_barrier_t *barrier_region_p = NULL;
     pid_t *pids_p = NULL;
+#ifdef USE_ATOMIC_EMULATION
+    MPIDU_Process_lock_t *process_lock;
+#endif
     
-
     MPIU_CHKPMEM_DECL(9);
 
     /* Make sure the nemesis packet is no larger than the generic
@@ -101,7 +107,7 @@ _MPID_nem_init (int pg_rank, MPIDI_PG_t *pg_p, int ckpt_restart, int has_parent)
 
     MPID_nem_hostname[MAX_HOSTNAME_LEN-1] = '\0';
 
-    mpi_errno = MPIU_Get_local_procs(pg_rank, num_procs, &num_local, &local_procs, &local_rank);
+    mpi_errno = get_local_procs(pg_p, pg_rank, &num_local, &local_procs, &local_rank);
     if (mpi_errno) MPIU_ERR_POP(mpi_errno);
 
 #ifdef MEM_REGION_IN_HEAP
@@ -148,30 +154,33 @@ _MPID_nem_init (int pg_rank, MPIDI_PG_t *pg_p, int ckpt_restart, int has_parent)
            communication is allocated it will probably be mapped at a
            different location for each process
         */
-        char *handle;
+        MPIU_SHMW_Hnd_t handle;
 	int size = (local_rank * 65536) + 65536;
 	char *base_addr;
 
-        mpi_errno = MPID_nem_allocate_shared_memory (&base_addr, size, &handle);
+        mpi_errno = MPIU_SHMW_Hnd_init(&handle);
+        if(mpi_errno != MPI_SUCCESS) { MPIU_ERR_POP(mpi_errno); }
+
+        mpi_errno = MPIU_SHMW_Seg_create_and_attach(handle, size, &base_addr, 0);
         /* --BEGIN ERROR HANDLING-- */
         if (mpi_errno)
         {
-            MPID_nem_remove_shared_memory (handle);
-            MPIU_Free (handle);
+            MPIU_SHMW_Seg_remove(handle);
+            MPIU_SHMW_Hnd_finalize(&handle);
             MPIU_ERR_POP (mpi_errno);
         }
         /* --END ERROR HANDLING-- */
 
-        mpi_errno = MPID_nem_remove_shared_memory (handle);
+        mpi_errno = MPIU_SHMW_Seg_remove(handle);
         /* --BEGIN ERROR HANDLING-- */
         if (mpi_errno)
         {
-            MPIU_Free (handle);
+            MPIU_SHMW_Hnd_finalize(&handle);
             MPIU_ERR_POP (mpi_errno);
         }
         /* --END ERROR HANDLING-- */
 
-        MPIU_Free (handle);
+        MPIU_SHMW_Hnd_finalize(&handle);
     }
     /*fprintf(stderr,"[%i] -- address shift ok \n",pg_rank); */
 #endif  /*FORCE_ASYM */
@@ -210,18 +219,29 @@ _MPID_nem_init (int pg_rank, MPIDI_PG_t *pg_p, int ckpt_restart, int has_parent)
     mpi_errno = MPIDI_CH3I_Seg_alloc(num_local * sizeof(pid_t), (void **)&pids_p);
     if (mpi_errno) MPIU_ERR_POP(mpi_errno);
 
+#ifdef USE_ATOMIC_EMULATION
+    /* Request process lock region */
+    mpi_errno = MPIDI_CH3I_Seg_alloc(sizeof(MPIDU_Process_lock_t), (void **)&process_lock);
+    if (mpi_errno) MPIU_ERR_POP(mpi_errno);
+#endif
     
     /* Actually allocate the segment and assign regions to the pointers */
     mpi_errno = MPIDI_CH3I_Seg_commit(&MPID_nem_mem_region.memory, num_local, local_rank);
     if (mpi_errno) MPIU_ERR_POP (mpi_errno);
 
     
+#ifdef USE_ATOMIC_EMULATION
+    /* Init process lock */
+    mpi_errno = MPIDU_Interprocess_lock_init(process_lock, local_rank == 0);
+    if (mpi_errno) MPIU_ERR_POP (mpi_errno);
+#endif
+
     /* init shared collectives barrier region */
     mpi_errno = MPID_nem_barrier_vars_init(MPID_nem_mem_region.barrier_vars);
     if (mpi_errno) MPIU_ERR_POP (mpi_errno);
 
     /* set up local process barrier region */
-    mpi_errno = MPID_nem_barrier_init(barrier_region_p);
+    mpi_errno = MPID_nem_barrier_init(num_local, barrier_region_p);
     if (mpi_errno) MPIU_ERR_POP (mpi_errno);
 
     /* global barrier */
@@ -460,7 +480,8 @@ MPID_nem_vc_init (MPIDI_VC_t *vc)
 #endif
 
         vc_ch->lmt_copy_buf        = NULL;
-        vc_ch->lmt_copy_buf_handle = NULL;
+        mpi_errno = MPIU_SHMW_Hnd_init(&(vc_ch->lmt_copy_buf_handle));
+        if(mpi_errno != MPI_SUCCESS) { MPIU_ERR_POP(mpi_errno); }
         vc_ch->lmt_queue.head      = NULL;
         vc_ch->lmt_queue.tail      = NULL;
         vc_ch->lmt_active_lmt      = NULL;
@@ -489,7 +510,14 @@ MPID_nem_vc_init (MPIDI_VC_t *vc)
 
         MPIU_DBG_MSG_FMT(VC, VERBOSE, (MPIU_DBG_FDEST, "vc using %s netmod for rank %d pg %s",
                                        MPID_nem_netmod_strings[MPID_nem_netmod_id], vc->pg_rank,
-                                       (vc->pg == MPIDI_Process.my_pg ? "my_pg" : (char *)vc->pg->id)));
+                                       ((vc->pg == MPIDI_Process.my_pg) 
+                                        ? "my_pg" 
+                                        :   ((vc->pg)
+                                            ? ((char *)vc->pg->id)
+                                            : "unknown"
+                                            )
+                                        )
+                                    ));
         
         mpi_errno = MPID_nem_netmod_func->vc_init(vc);
 	if (mpi_errno) MPIU_ERR_POP(mpi_errno);
@@ -551,3 +579,59 @@ int MPID_nem_connect_to_root (const char *business_card, MPIDI_VC_t *new_vc)
 {
     return MPID_nem_netmod_func->connect_to_root (business_card, new_vc);
 }
+
+/* get_local_procs() determines which processes are local and
+   should use shared memory
+ 
+   If an output variable pointer is NULL, it won't be set.
+
+   Caller should NOT free any returned buffers.
+
+   Note that this is really only a temporary solution as it only
+   calculates these values for processes MPI_COMM_WORLD, i.e., not for
+   spawned or attached processes.
+*/
+#undef FUNCNAME
+#define FUNCNAME get_local_procs
+#undef FCNAME
+#define FCNAME MPIDI_QUOTE(FUNCNAME)
+static int get_local_procs(MPIDI_PG_t *pg, int our_pg_rank, int *num_local_p,
+                           int **local_procs_p, int *local_rank_p)
+{
+    int mpi_errno = MPI_SUCCESS;
+    int *procs;
+    int i;
+    int num_local = 0;
+    MPID_Node_id_t our_node_id;
+    MPIU_CHKPMEM_DECL(1);
+
+    MPIU_Assert(our_pg_rank < pg->size);
+    our_node_id = pg->vct[our_pg_rank].node_id;
+
+    MPIU_CHKPMEM_MALLOC(procs, int *, pg->size * sizeof(int), mpi_errno, "local process index array");
+
+    for (i = 0; i < pg->size; ++i) {
+        if (our_node_id == pg->vct[i].node_id) {
+            if (i == our_pg_rank && local_rank_p != NULL) {
+                *local_rank_p = num_local;
+            }
+            procs[num_local] = i;
+            ++num_local;
+        }
+    }
+
+    MPIU_CHKPMEM_COMMIT();
+
+    if (num_local_p != NULL)
+        *num_local_p = num_local;
+    if (local_procs_p != NULL)
+        *local_procs_p = procs;
+fn_exit:
+    return mpi_errno;
+fn_fail:
+    /* --BEGIN ERROR HANDLING-- */
+    MPIU_CHKPMEM_REAP();
+    goto fn_exit;
+    /* --END ERROR HANDLING-- */
+}
+

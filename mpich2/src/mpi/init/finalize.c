@@ -38,7 +38,9 @@ typedef struct Finalize_func_t {
     int  priority;           /* priority is used to control the order
 				in which the callbacks are invoked */
 } Finalize_func_t;
-#define MAX_FINALIZE_FUNC 16
+/* When full debugging is enabled, each MPI handle type has a finalize handler
+   installed to detect unfreed handles.  */
+#define MAX_FINALIZE_FUNC 32
 static Finalize_func_t fstack[MAX_FINALIZE_FUNC];
 static int fstack_sp = 0;
 static int fstack_max_priority = 0;
@@ -140,12 +142,12 @@ int MPI_Finalize( void )
        in MPID_Finalize) */
     if (MPIR_Process.attr_free && MPIR_Process.comm_self->attributes) {
         mpi_errno = MPIR_Process.attr_free( MPI_COMM_SELF,
-					    MPIR_Process.comm_self->attributes);
+					    &MPIR_Process.comm_self->attributes);
 	MPIR_Process.comm_self->attributes = 0;
     }
     if (MPIR_Process.attr_free && MPIR_Process.comm_world->attributes) {
         mpi_errno = MPIR_Process.attr_free( MPI_COMM_WORLD, 
-                                         MPIR_Process.comm_world->attributes);
+                                            &MPIR_Process.comm_world->attributes);
 	MPIR_Process.comm_world->attributes = 0;
     }
 

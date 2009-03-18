@@ -97,7 +97,7 @@ MPICH_PerThread_t  MPIR_Thread = { 0 };
 MPICH_PerThread_t  MPIR_ThreadSingle = { 0 };
 #endif
 
-#if defined(MPICH_IS_THREADED)
+#if defined(MPICH_IS_THREADED) && !defined(MPID_DEFINES_MPID_CS)
 /* This routine is called when a thread exits; it is passed the value 
    associated with the key.  In our case, this is simply storage allocated
    with MPIU_Calloc */
@@ -272,7 +272,6 @@ int MPIR_Init_thread(int * argc, char ***argv, int required,
        to the C++ compiler (e.g., under more non-GNU compilers, including
        Solaris and IRIX). */
     MPIR_Process.cxx_call_op_fn = 0;
-    MPIR_Process.cxx_call_delfn = 0;
 
 #endif
     /* This allows the device to select an alternative function for 
@@ -286,8 +285,8 @@ int MPIR_Init_thread(int * argc, char ***argv, int required,
     MPIR_Process.comm_world		    = MPID_Comm_builtin + 0;
     MPIR_Process.comm_world->handle	    = MPI_COMM_WORLD;
     MPIU_Object_set_ref( MPIR_Process.comm_world, 1 );
-    MPIR_Process.comm_world->context_id	    = 0; /* XXX */
-    MPIR_Process.comm_world->recvcontext_id = 0;
+    MPIR_Process.comm_world->context_id	    = 0 << MPID_CONTEXT_PREFIX_SHIFT;
+    MPIR_Process.comm_world->recvcontext_id = 0 << MPID_CONTEXT_PREFIX_SHIFT;
     MPIR_Process.comm_world->attributes	    = NULL;
     MPIR_Process.comm_world->local_group    = NULL;
     MPIR_Process.comm_world->remote_group   = NULL;
@@ -303,8 +302,8 @@ int MPIR_Init_thread(int * argc, char ***argv, int required,
     MPIR_Process.comm_self		    = MPID_Comm_builtin + 1;
     MPIR_Process.comm_self->handle	    = MPI_COMM_SELF;
     MPIU_Object_set_ref( MPIR_Process.comm_self, 1 );
-    MPIR_Process.comm_self->context_id	    = 4; /* XXX */
-    MPIR_Process.comm_self->recvcontext_id  = 4; /* XXX */
+    MPIR_Process.comm_self->context_id	    = 1 << MPID_CONTEXT_PREFIX_SHIFT;
+    MPIR_Process.comm_self->recvcontext_id  = 1 << MPID_CONTEXT_PREFIX_SHIFT;
     MPIR_Process.comm_self->attributes	    = NULL;
     MPIR_Process.comm_self->local_group	    = NULL;
     MPIR_Process.comm_self->remote_group    = NULL;
@@ -319,8 +318,8 @@ int MPIR_Init_thread(int * argc, char ***argv, int required,
     MPIR_Process.icomm_world		    = MPID_Comm_builtin + 2;
     MPIR_Process.icomm_world->handle	    = MPIR_ICOMM_WORLD;
     MPIU_Object_set_ref( MPIR_Process.icomm_world, 1 );
-    MPIR_Process.icomm_world->context_id    = 8; 
-    MPIR_Process.icomm_world->recvcontext_id= 8;
+    MPIR_Process.icomm_world->context_id    = 2 << MPID_CONTEXT_PREFIX_SHIFT;
+    MPIR_Process.icomm_world->recvcontext_id= 2 << MPID_CONTEXT_PREFIX_SHIFT;
     MPIR_Process.icomm_world->attributes    = NULL;
     MPIR_Process.icomm_world->local_group   = NULL;
     MPIR_Process.icomm_world->remote_group  = NULL;
@@ -385,10 +384,8 @@ int MPIR_Init_thread(int * argc, char ***argv, int required,
     /* Capture the level of thread support provided */
     MPIR_ThreadInfo.thread_provided = thread_provided;
     if (provided) *provided = thread_provided;
-    /* FIXME: Rationalize this with the above */
 #ifdef HAVE_RUNTIME_THREADCHECK
-    MPIR_ThreadInfo.isThreaded = required == MPI_THREAD_MULTIPLE;
-    if (provided) *provided = required;
+    MPIR_ThreadInfo.isThreaded = (thread_provided == MPI_THREAD_MULTIPLE);
 #endif
 
     /* FIXME: Define these in the interface.  Does Timer init belong here? */
@@ -501,7 +498,9 @@ int MPI_Init_thread( int *argc, char ***argv, int required, int *provided )
        MPIR_ThreadInfo.isThreaded hasn't been initialized yet.
     */
     /*   */
+#if MPIU_THREAD_GRANULARITY == MPIU_THREAD_GRANULARITY_GLOBAL
     MPID_CS_ENTER();
+#endif
 
 #if 0
     /* Create the thread-private region if necessary and go ahead 
@@ -534,7 +533,9 @@ int MPI_Init_thread( int *argc, char ***argv, int required, int *provided )
     /* ... end of body of routine ... */
     
     MPID_MPI_INIT_FUNC_EXIT(MPID_STATE_MPI_INIT_THREAD);
+#if MPIU_THREAD_GRANULARITY == MPIU_THREAD_GRANULARITY_GLOBAL
     MPID_CS_EXIT();
+#endif
     return mpi_errno;
     
   fn_fail:

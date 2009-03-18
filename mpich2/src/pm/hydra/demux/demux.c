@@ -5,8 +5,7 @@
  */
 
 #include "hydra.h"
-#include "hydra_sock.h"
-#include "hydra_mem.h"
+#include "hydra_utils.h"
 #include "demux.h"
 
 static int num_cb_fds = 0;
@@ -22,27 +21,6 @@ typedef struct HYD_DMXI_Callback {
 
 static HYD_DMXI_Callback_t *cb_list = NULL;
 
-static void print_callback_list()
-{
-    HYD_DMXI_Callback_t *run;
-    int i, j;
-
-    run = cb_list;
-    i = 0;
-    printf("Callback list: ");
-    while (run) {
-        for (j = 0; j < run->num_fds; j++) {
-            if (run->fd[j] == -1)
-                continue;
-
-            printf("%d ", run->fd[j]);
-            i++;
-        }
-        run = run->next;
-    }
-    printf("\n");
-}
-
 HYD_Status HYD_DMX_Register_fd(int num_fds, int *fd, HYD_Event_t events,
                                HYD_Status(*callback) (int fd, HYD_Event_t events))
 {
@@ -52,13 +30,10 @@ HYD_Status HYD_DMX_Register_fd(int num_fds, int *fd, HYD_Event_t events,
 
     HYDU_FUNC_ENTER();
 
-    for (i = 0; i < num_fds; i++) {
-        if (fd[i] < 0) {
-            HYDU_Error_printf("registering bad fd %d\n", fd[i]);
-            status = HYD_INTERNAL_ERROR;
-            goto fn_fail;
-        }
-    }
+    for (i = 0; i < num_fds; i++)
+        if (fd[i] < 0)
+            HYDU_ERR_SETANDJUMP1(status, HYD_INTERNAL_ERROR, "registering bad fd %d\n",
+                                 fd[i]);
 
     HYDU_MALLOC(cb_element, HYD_DMXI_Callback_t *, sizeof(HYD_DMXI_Callback_t), status);
     cb_element->num_fds = num_fds;
@@ -110,9 +85,8 @@ HYD_Status HYD_DMX_Deregister_fd(int fd)
     }
 
     /* FD is not found */
-    HYDU_Error_printf("couldn't find the fd to deregister: %d\n", fd);
-    status = HYD_INTERNAL_ERROR;
-    goto fn_fail;
+    HYDU_ERR_SETANDJUMP1(status, HYD_INTERNAL_ERROR,
+                         "could not find fd to deregister: %d\n", fd);
 
   fn_exit:
     HYDU_FUNC_EXIT();
@@ -123,10 +97,10 @@ HYD_Status HYD_DMX_Deregister_fd(int fd)
 }
 
 
-HYD_Status HYD_DMX_Wait_for_event(void)
+HYD_Status HYD_DMX_Wait_for_event(int time)
 {
     int total_fds, i, j, events, ret;
-    HYD_DMXI_Callback_t *cb_element, *run;
+    HYD_DMXI_Callback_t *run;
     struct pollfd *pollfds = NULL;
     HYD_Status status = HYD_SUCCESS;
 
@@ -156,15 +130,17 @@ HYD_Status HYD_DMX_Wait_for_event(void)
     total_fds = i;
 
     while (1) {
-        ret = poll(pollfds, total_fds, HYD_CSU_Time_left());
+        ret = poll(pollfds, total_fds, time);
         if (ret < 0) {
             if (errno == EINTR) {
-                /* We were interrupted by a system call; loop back */
-                continue;
+                /* We were interrupted by a system call; this is not
+                 * an error case in the regular sense; but the upper
+                 * layer needs to gracefully cleanup the processes. */
+                status = HYD_SUCCESS;
+                goto fn_exit;
             }
-            HYDU_Error_printf("poll error (errno: %d)\n", errno);
-            status = HYD_SOCK_ERROR;
-            goto fn_fail;
+            HYDU_ERR_SETANDJUMP1(status, HYD_SOCK_ERROR, "poll error (%s)\n",
+                                 HYDU_String_error(errno));
         }
         break;
     }
@@ -184,10 +160,7 @@ HYD_Status HYD_DMX_Wait_for_event(void)
                     events |= HYD_STDOUT;
 
                 status = run->callback(pollfds[i].fd, events);
-                if (status != HYD_SUCCESS) {
-                    HYDU_Error_printf("callback returned error status\n", errno);
-                    goto fn_fail;
-                }
+                HYDU_ERR_POP(status, "callback returned error status\n");
             }
 
             i++;

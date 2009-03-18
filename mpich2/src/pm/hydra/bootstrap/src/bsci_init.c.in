@@ -1,0 +1,57 @@
+/* -*- Mode: C; c-basic-offset:4 ; -*- */
+/*
+ *  (C) 2008 by Argonne National Laboratory.
+ *      See COPYRIGHT in top-level directory.
+ */
+
+#include "hydra_base.h"
+#include "bsci.h"
+#include "bscu.h"
+
+struct HYD_BSCI_fns HYD_BSCI_fns;
+
+char *HYD_BSCI_comp_array[] = { @hydra_bss_name_array@ };
+HYD_Status(*HYD_BSCI_comp_init[])(void) = { @hydra_bss_init_array@ };
+
+HYD_Status HYD_BSCI_init(char *bootstrap)
+{
+    int i;
+    HYD_Status status = HYD_SUCCESS;
+
+    HYDU_FUNC_ENTER();
+
+    HYD_BSCI_fns.launch_procs = NULL;
+    HYD_BSCI_fns.get_usize = NULL;
+    HYD_BSCI_fns.wait_for_completion = NULL;
+    HYD_BSCI_fns.finalize = NULL;
+
+    i = 0;
+    for (i = 0; HYD_BSCI_comp_array[i]; i++) {
+        if (!strcmp(bootstrap, HYD_BSCI_comp_array[i])) {
+            status = (*HYD_BSCI_comp_init[i])();
+            break;
+        }
+    }
+
+    if (HYD_BSCI_comp_array[i] == NULL)
+        HYDU_ERR_SETANDJUMP1(status, HYD_INTERNAL_ERROR,
+                             "unrecognized bootstrap server: %s\n", bootstrap);
+
+    /* This function is mandatory */
+    if (HYD_BSCI_fns.launch_procs == NULL)
+        HYDU_ERR_SETANDJUMP(status, HYD_INTERNAL_ERROR,
+                            "mandatory bootstrap launch function undefined\n");
+    if (HYD_BSCI_fns.get_usize == NULL)
+        HYD_BSCI_fns.get_usize = HYD_BSCU_get_usize;
+    if (HYD_BSCI_fns.wait_for_completion == NULL)
+        HYD_BSCI_fns.wait_for_completion = HYD_BSCU_wait_for_completion;
+    if (HYD_BSCI_fns.finalize == NULL)
+        HYD_BSCI_fns.finalize = HYD_BSCU_finalize;
+
+  fn_exit:
+    HYDU_FUNC_EXIT();
+    return status;
+
+  fn_fail:
+    goto fn_exit;
+}
