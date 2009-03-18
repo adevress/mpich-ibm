@@ -7,20 +7,10 @@
 #ifndef BSCU_H_INCLUDED
 #define BSCU_H_INCLUDED
 
-#include "hydra.h"
-#include "hydra_sig.h"
-#include "bsci.h"
+#include "hydra_base.h"
 
-HYD_Status HYD_BSCU_Init_exit_status(void);
-HYD_Status HYD_BSCU_Finalize_exit_status(void);
-HYD_Status HYD_BSCU_Init_io_fds(void);
-HYD_Status HYD_BSCU_Finalize_io_fds(void);
-HYD_Status HYD_BSCU_Create_process(char **client_arg, int *in, int *out, int *err, int *pid);
-HYD_Status HYD_BSCU_Wait_for_completion(void);
-HYD_Status HYD_BSCU_Append_env(HYD_Env_t * env_list, char **client_arg, int id);
-HYD_Status HYD_BSCU_Append_exec(char **exec, char **client_arg);
-HYD_Status HYD_BSCU_Append_wdir(char **client_arg);
-HYD_Status HYD_BSCU_Set_common_signals(void (*handler) (int));
-void HYD_BSCU_Signal_handler(int signal);
+HYD_Status HYD_BSCU_finalize(void);
+HYD_Status HYD_BSCU_get_usize(int *size);
+HYD_Status HYD_BSCU_wait_for_completion(void);
 
-#endif /* BSCI_H_INCLUDED */
+#endif /* BSCU_H_INCLUDED */

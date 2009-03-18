@@ -4,9 +4,7 @@
  *      See COPYRIGHT in top-level directory.
  */
 
-#include "hydra.h"
-#include "hydra_env.h"
-#include "hydra_mem.h"
+#include "hydra_utils.h"
 
 HYD_Status HYDU_Env_global_list(HYD_Env_t ** env_list)
 {
@@ -27,14 +25,11 @@ HYD_Status HYDU_Env_global_list(HYD_Env_t ** env_list)
         env_value = strtok(NULL, "=");
         env->env_name = MPIU_Strdup(env_name);
         env->env_value = env_value ? MPIU_Strdup(env_value) : NULL;
-        env->env_type = HYD_ENV_STATIC;
         HYDU_FREE(env_str);
 
         status = HYDU_Env_add_to_list(env_list, *env);
-        if (status != HYD_SUCCESS) {
-            HYDU_Error_printf("launcher returned error adding env to list\n");
-            goto fn_fail;
-        }
+        HYDU_ERR_POP(status, "unable to add env to list\n");
+
         HYDU_Env_free(env);
 
         i++;
@@ -46,21 +41,6 @@ HYD_Status HYDU_Env_global_list(HYD_Env_t ** env_list)
 
   fn_fail:
     goto fn_exit;
-}
-
-
-char *HYDU_Env_type_str(HYD_Env_type_t type)
-{
-    char *str;
-
-    if (type == HYD_ENV_STATIC)
-        str = MPIU_Strdup("STATIC");
-    else if (type == HYD_ENV_AUTOINC)
-        str = MPIU_Strdup("AUTOINC");
-    else
-        str = NULL;
-
-    return str;
 }
 
 
@@ -82,96 +62,9 @@ HYD_Env_t *HYDU_Env_dup(HYD_Env_t env)
     return tenv;
 
   fn_fail:
-    if (status != HYD_SUCCESS)
-        HYDU_Error_printf("freeing temporary env structure\n");
     if (tenv)
         HYDU_FREE(tenv);
     tenv = NULL;
-    goto fn_exit;
-}
-
-
-HYD_Env_t *HYDU_Env_found_in_list(HYD_Env_t * env_list, HYD_Env_t * env)
-{
-    HYD_Env_t *run;
-
-    HYDU_FUNC_ENTER();
-
-    run = env_list;
-    while (run->next) {
-        if (!strcmp(run->env_name, env->env_name))
-            goto fn_exit;
-        run = run->next;
-    }
-    run = NULL;
-
-    goto fn_exit;
-
-  fn_exit:
-    HYDU_FUNC_EXIT();
-    return run;
-}
-
-
-HYD_Status HYDU_Env_add_to_list(HYD_Env_t ** env_list, HYD_Env_t env)
-{
-    HYD_Env_t *run, *tenv;
-    HYD_Status status = HYD_SUCCESS;
-
-    HYDU_FUNC_ENTER();
-
-    tenv = HYDU_Env_dup(env);
-    if (tenv == NULL) {
-        HYDU_Error_printf("unable to dup environment\n");
-        status = HYD_INTERNAL_ERROR;
-        goto fn_fail;
-    }
-
-    tenv->next = NULL;
-
-    /* Add the structure to the end of the list */
-    if (*env_list == NULL) {
-        *env_list = tenv;
-    }
-    else {
-        run = *env_list;
-
-        while (1) {
-            if (!strcmp(run->env_name, env.env_name)) {
-                /* If we found an entry for this environment variable, just update it */
-                if (run->env_value != NULL && tenv->env_value != NULL) {
-                    HYDU_FREE(run->env_value);
-                    run->env_value = MPIU_Strdup(tenv->env_value);
-                }
-                else if (run->env_value != NULL) {
-                    HYDU_FREE(run->env_value);
-                    run->env_value = NULL;
-                }
-                else if (env.env_value != NULL) {
-                    run->env_value = MPIU_Strdup(tenv->env_value);
-                }
-                run->env_type = tenv->env_type;
-
-                HYDU_FREE(tenv->env_name);
-                if (tenv->env_value)
-                    HYDU_FREE(tenv->env_value);
-                HYDU_FREE(tenv);
-
-                break;
-            }
-            else if (run->next == NULL) {
-                run->next = tenv;
-                break;
-            }
-            run = run->next;
-        }
-    }
-
-  fn_exit:
-    HYDU_FUNC_EXIT();
-    return status;
-
-  fn_fail:
     goto fn_exit;
 }
 
@@ -187,11 +80,7 @@ HYD_Env_t *HYDU_Env_listdup(HYD_Env_t * env)
     tenv = NULL;
     while (run) {
         status = HYDU_Env_add_to_list(&tenv, *run);
-        if (status != HYD_SUCCESS) {
-            HYDU_Error_printf("unable to add env to list\n");
-            tenv = NULL;
-            goto fn_fail;
-        }
+        HYDU_ERR_POP(status, "unable to add env to list\n");
         run = run->next;
     }
 
@@ -200,12 +89,12 @@ HYD_Env_t *HYDU_Env_listdup(HYD_Env_t * env)
     return tenv;
 
   fn_fail:
+    tenv = NULL;
     goto fn_exit;
 }
 
 
-HYD_Status HYDU_Env_create(HYD_Env_t ** env, char *env_name, char *env_value,
-                           HYD_Env_type_t env_type, int start)
+HYD_Status HYDU_Env_create(HYD_Env_t ** env, char *env_name, char *env_value)
 {
     HYD_Status status = HYD_SUCCESS;
 
@@ -214,8 +103,7 @@ HYD_Status HYDU_Env_create(HYD_Env_t ** env, char *env_name, char *env_value,
     HYDU_MALLOC(*env, HYD_Env_t *, sizeof(HYD_Env_t), status);
     (*env)->env_name = MPIU_Strdup(env_name);
     (*env)->env_value = env_value ? MPIU_Strdup(env_value) : NULL;
-    (*env)->env_type = env_type;
-    (*env)->start_val = start;
+    (*env)->next = NULL;
 
   fn_exit:
     HYDU_FUNC_EXIT();
@@ -259,4 +147,120 @@ HYD_Status HYDU_Env_free_list(HYD_Env_t * env)
 
     HYDU_FUNC_EXIT();
     return status;
+}
+
+
+HYD_Env_t *HYDU_Env_found_in_list(HYD_Env_t * env_list, HYD_Env_t env)
+{
+    HYD_Env_t *run;
+
+    HYDU_FUNC_ENTER();
+
+    run = env_list;
+    while (run->next) {
+        if (!strcmp(run->env_name, env.env_name))
+            goto fn_exit;
+        run = run->next;
+    }
+    run = NULL;
+
+  fn_exit:
+    HYDU_FUNC_EXIT();
+    return run;
+}
+
+
+HYD_Status HYDU_Env_add_to_list(HYD_Env_t ** env_list, HYD_Env_t env)
+{
+    HYD_Env_t *run, *tenv;
+    HYD_Status status = HYD_SUCCESS;
+
+    HYDU_FUNC_ENTER();
+
+    tenv = HYDU_Env_dup(env);
+    if (tenv == NULL)
+        HYDU_ERR_SETANDJUMP(status, HYD_INTERNAL_ERROR, "unable to dup env\n");
+
+    tenv->next = NULL;
+
+    /* Add the structure to the end of the list */
+    if (*env_list == NULL) {
+        *env_list = tenv;
+    }
+    else {
+        run = *env_list;
+
+        while (1) {
+            if (!strcmp(run->env_name, env.env_name)) {
+                /* If we found an entry for this environment variable, just update it */
+                if (run->env_value != NULL && tenv->env_value != NULL) {
+                    HYDU_FREE(run->env_value);
+                    run->env_value = MPIU_Strdup(tenv->env_value);
+                }
+                else if (run->env_value != NULL) {
+                    HYDU_FREE(run->env_value);
+                    run->env_value = NULL;
+                }
+                else if (env.env_value != NULL) {
+                    run->env_value = MPIU_Strdup(tenv->env_value);
+                }
+
+                HYDU_FREE(tenv->env_name);
+                if (tenv->env_value)
+                    HYDU_FREE(tenv->env_value);
+                HYDU_FREE(tenv);
+
+                break;
+            }
+            else if (run->next == NULL) {
+                run->next = tenv;
+                break;
+            }
+            run = run->next;
+        }
+    }
+
+  fn_exit:
+    HYDU_FUNC_EXIT();
+    return status;
+
+  fn_fail:
+    goto fn_exit;
+}
+
+
+HYD_Status HYDU_Env_assign_form(HYD_Env_t env, char **env_str)
+{
+    int i;
+    char *tmp[HYDU_NUM_JOIN_STR];
+    HYD_Status status = HYD_SUCCESS;
+
+    HYDU_FUNC_ENTER();
+
+    i = 0;
+    tmp[i++] = MPIU_Strdup(env.env_name);
+    tmp[i++] = MPIU_Strdup("=");
+    tmp[i++] = env.env_value ? MPIU_Strdup(env.env_value) : MPIU_Strdup("");
+    tmp[i++] = NULL;
+
+    status = HYDU_String_alloc_and_join(tmp, env_str);
+    HYDU_ERR_POP(status, "unable to join strings\n");
+
+  fn_exit:
+    HYDU_FUNC_EXIT();
+    return status;
+
+  fn_fail:
+    goto fn_exit;
+}
+
+
+void HYDU_Env_putenv(char *env_str)
+{
+    HYDU_FUNC_ENTER();
+
+    MPIU_PutEnv(env_str);
+
+    HYDU_FUNC_EXIT();
+    return;
 }

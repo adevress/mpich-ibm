@@ -8,18 +8,33 @@
 #define MPID_NEM_DATATYPES_H
 
 #include "mpid_nem_debug.h"
+#include "mpid_nem_atomics.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
-#include <sys/mman.h>
+#ifdef HAVE_SYS_MMAN_H
+    #include <sys/mman.h>
+#endif
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <fcntl.h>
-#include <unistd.h>
+#ifdef HAVE_UNISTD_H
+    #include <unistd.h>
+#endif
 #include <string.h>
 #include <limits.h>
-#include <sched.h>
+#ifdef HAVE_SCHED_H
+    #include <sched.h>
+#endif
 #include "mpichconf.h"
+
+/* FIXME We are using this as an interprocess lock in the queue code, although
+   it's not strictly guaranteed to work for this scenario.  These should really
+   use the "process locks" code, but it's in such terrible shape that it doesn't
+   really work for us right now.  Also, because it has some inline assembly it's
+   not really a fair comparison for studying the impact of atomic instructions.
+   [goodell@ 2009-01-16] */
+#include "mpid_thread.h"
 
 #define MPID_NEM_OFFSETOF(struc, field) ((int)(&((struc *)0)->field))
 #define MPID_NEM_CACHE_LINE_LEN 64
@@ -169,7 +184,7 @@ typedef union
 /* This should always be exactly the size of a pointer */
 typedef struct MPID_nem_cell_rel_ptr
 {
-    char *p;
+    MPIDU_Atomic_ptr_t p;
 }
 MPID_nem_cell_rel_ptr_t;
 
@@ -185,9 +200,9 @@ typedef struct MPID_nem_cell
 #if MPID_NEM_CELL_HEAD_LEN != SIZEOF_VOID_P
     char padding[MPID_NEM_CELL_HEAD_LEN - sizeof(MPID_nem_cell_rel_ptr_t)];
 #endif
-    MPID_nem_pkt_t pkt;
+    volatile MPID_nem_pkt_t pkt;
 } MPID_nem_cell_t;
-typedef volatile MPID_nem_cell_t *MPID_nem_cell_ptr_t;
+typedef MPID_nem_cell_t *MPID_nem_cell_ptr_t;
 
 typedef struct MPID_nem_abs_cell
 {
@@ -217,14 +232,20 @@ typedef MPID_nem_abs_cell_t *MPID_nem_abs_cell_ptr_t;
 
 typedef struct MPID_nem_queue
 {
-    volatile MPID_nem_cell_rel_ptr_t head;
-    volatile MPID_nem_cell_rel_ptr_t tail;
+    MPID_nem_cell_rel_ptr_t head;
+    MPID_nem_cell_rel_ptr_t tail;
 #if MPID_NEM_CACHE_LINE_LEN != (2 * SIZEOF_VOID_P)
     char padding1[MPID_NEM_CACHE_LINE_LEN - 2 * sizeof(MPID_nem_cell_rel_ptr_t)];
 #endif
     MPID_nem_cell_rel_ptr_t my_head;
 #if MPID_NEM_CACHE_LINE_LEN != SIZEOF_VOID_P
     char padding2[MPID_NEM_CACHE_LINE_LEN - sizeof(MPID_nem_cell_rel_ptr_t)];
+#endif
+#if !defined(MPID_NEM_USE_LOCK_FREE_QUEUES)
+    /* see FIXME in mpid_nem_queue.h */
+#define MPID_nem_queue_mutex_t MPID_Thread_mutex_t
+    MPID_nem_queue_mutex_t lock;
+    char padding3[MPID_NEM_CACHE_LINE_LEN - sizeof(MPID_Thread_mutex_t)];
 #endif
 } MPID_nem_queue_t, *MPID_nem_queue_ptr_t;
 

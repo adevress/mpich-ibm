@@ -332,8 +332,8 @@ extern MPIDI_Process_t MPIDI_Process;
     (sreq_)->dev.segment_ptr	   = NULL;                      \
     (sreq_)->dev.OnDataAvail	   = NULL;                      \
     (sreq_)->dev.OnFinal	   = NULL;                      \
-    (sreq_)->dev.iov_count	   = NULL;                      \
-    (sreq_)->dev.iov_offset	   = NULL;                      \
+    (sreq_)->dev.iov_count	   = 0;                         \
+    (sreq_)->dev.iov_offset	   = 0;                         \
 }
 
 /* This is the receive request version of MPIDI_Request_create_sreq */
@@ -627,6 +627,50 @@ typedef enum MPIDI_VC_State
 
 struct MPID_Comm;
 
+#ifdef ENABLE_COMM_OVERRIDES
+typedef struct MPIDI_Comm_ops
+{
+    /* Overriding calls in case of matching-capable interfaces */
+    int (*recv_posted)(struct MPIDI_VC *vc, struct MPID_Request *req);
+    
+    int (*send)(struct MPIDI_VC *vc, const void *buf, int count, MPI_Datatype datatype,
+		int dest, int tag, MPID_Comm *comm, int context_offset,
+		struct MPID_Request **request);
+    int (*rsend)(struct MPIDI_VC *vc, const void *buf, int count, MPI_Datatype datatype,
+		 int dest, int tag, MPID_Comm *comm, int context_offset,
+		 struct MPID_Request **request);
+    int (*ssend)(struct MPIDI_VC *vc, const void *buf, int count, MPI_Datatype datatype,
+		 int dest, int tag, MPID_Comm *comm, int context_offset,
+		 struct MPID_Request **request );
+    int (*isend)(struct MPIDI_VC *vc, const void *buf, int count, MPI_Datatype datatype,
+		 int dest, int tag, MPID_Comm *comm, int context_offset,
+		 struct MPID_Request **request );
+    int (*irsend)(struct MPIDI_VC *vc, const void *buf, int count, MPI_Datatype datatype,
+		  int dest, int tag, MPID_Comm *comm, int context_offset,
+		  struct MPID_Request **request );
+    int (*issend)(struct MPIDI_VC *vc, const void *buf, int count, MPI_Datatype datatype,
+		  int dest, int tag, MPID_Comm *comm, int context_offset,
+		  struct MPID_Request **request );
+    
+    int (*send_init)(struct MPIDI_VC *vc, const void *buf, int count, MPI_Datatype datatype,
+		     int dest, int tag, MPID_Comm *comm, int context_offset,
+		     struct MPID_Request **request );
+    int (*bsend_init)(struct MPIDI_VC *vc, const void *buf, int count, MPI_Datatype datatype,
+		      int dest, int tag, MPID_Comm *comm, int context_offset,
+		      struct MPID_Request **request);
+    int (*rsend_init)(struct MPIDI_VC *vc, const void *buf, int count, MPI_Datatype datatype,
+		      int dest, int tag, MPID_Comm *comm, int context_offset,
+		      struct MPID_Request **request );
+    int (*ssend_init)(struct MPIDI_VC *vc, const void *buf, int count, MPI_Datatype datatype,
+		      int dest, int tag, MPID_Comm *comm, int context_offset,
+		      struct MPID_Request **request );
+    int (*startall)(struct MPIDI_VC *vc, int count,  struct MPID_Request *requests[]);
+    
+    int (*cancel_send)(struct MPIDI_VC *vc,  struct MPID_Request *sreq);
+    int (*cancel_recv)(struct MPIDI_VC *vc,  struct MPID_Request *rreq);
+} MPIDI_Comm_ops_t;
+#endif
+
 typedef struct MPIDI_VC
 {
     /* XXX - need better comment */
@@ -650,6 +694,9 @@ typedef struct MPIDI_VC
 
     /* Local process ID */
     int lpid;
+
+    /* The node id of this process, used for topologically aware collectives. */
+    MPID_Node_id_t node_id;
 
     /* port name tag */ 
     int port_name_tag; /* added to handle dynamic process mgmt */
@@ -687,6 +734,10 @@ typedef struct MPIDI_VC
     int (* sendNoncontig_fn)( struct MPIDI_VC *vc, struct MPID_Request *sreq,
 			      void *header, MPIDI_msg_sz_t hdr_sz );
 
+#ifdef ENABLE_COMM_OVERRIDES
+    MPIDI_Comm_ops_t *comm_ops;    
+#endif
+
 #ifdef MPICH_IS_THREADED    
 #if MPIU_THREAD_GRANULARITY == MPIU_THREAD_GRANULARITY_PER_OBJECT
     MPID_Thread_mutex_t pobj_mutex;
@@ -697,8 +748,13 @@ typedef struct MPIDI_VC
        this has a very generous size, though this may shrink later (a channel
        can always allocate storage and hang it off of the end).  This 
        is necessary to allow dynamic loading of channels at MPI_Init time. */
-/* The ssm channel needs a *huge* space for the VC.  We need to fix that. */
+    /* The ssm channel needs a *huge* space for the VC.  We need to fix that. 
+       Note also that for dynamically-loaded channels, the VCs must all be the
+       same size, so MPIDI_CH3_VC_SIZE should not be overridden when building
+       multiple channels that will be used together */
+#ifndef MPIDI_CH3_VC_SIZE
 #define MPIDI_CH3_VC_SIZE 256
+#endif
     int32_t channel_private[MPIDI_CH3_VC_SIZE];
 # if defined(MPIDI_CH3_VC_DECL)
     MPIDI_CH3_VC_DECL
@@ -1168,6 +1224,9 @@ int MPIDI_CH3I_BCFree( char *publish_bc );
 /* Inform the process group of our connection information string (business
    card) */
 int MPIDI_PG_SetConnInfo( int rank, const char *connString );
+
+/* Fill in the node_id information for each VC in the given PG. */
+int MPIDI_Populate_vc_node_ids(MPIDI_PG_t *pg, int our_pg_rank);
 
 /* NOTE: Channel function prototypes are in mpidi_ch3_post.h since some of the 
    macros require their declarations. */
@@ -1764,13 +1823,7 @@ int MPIDI_CH3_ReqHandler_GetSendRespComplete( MPIDI_VC_t *, MPID_Request *,
 #elif MPIU_THREAD_GRANULARITY == MPIU_THREAD_GRANULARITY_PER_OBJECT
 #if 1
 /* There is a per object lock */
-/* FIXME: dprintf is a temporary hack here.  It must be removed (use DBG_MSG
-   if a non-temporary version is desired) */
-/* FIXME: Note that __FUNCTION__ is not standard C - HAVE__FUNCTION__ 
-   is defined by configure if present */
-#define dprintf(...)
 #define MPIU_THREAD_CS_ENTER_CH3COMM(_context) {\
-   dprintf("Entering lock in %s\n", __FUNCTION__); \
    MPIU_THREAD_CHECK_BEGIN MPIU_THREAD_CS_ENTER_POBJ_LOCKNAME(_context->pobj_mutex) MPIU_THREAD_CHECK_END \
 }
 #define MPIU_THREAD_CS_EXIT_CH3COMM(_context) \

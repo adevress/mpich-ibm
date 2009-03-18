@@ -64,6 +64,8 @@ struct-ezhov_SOURCES = struct-ezhov.c
 
 pairtype-size-extent_SOURCES = pairtype-size-extent.c
 
+struct-derived-zeros_SOURCES = struct-derived-zeros.c
+
 localpack_SOURCES = localpack.c
 
 lbub_SOURCES = lbub.c

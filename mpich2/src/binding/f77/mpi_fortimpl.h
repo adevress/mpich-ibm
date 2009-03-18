@@ -88,11 +88,20 @@
 
 /* mpi.h includes the definitions of MPI_Fint */
 #include "mpi.h"
+#include "mpitypedefs.h"
 
 /* Include prototypes of helper functions.
    These include MPIR_Keyval_set_fortran, fortran90, and 
    Grequest_set_lang_f77 */
 #include "mpi_f77interface.h"
+/* Include the attribute access routines that permit access to the 
+   attribute or its pointer, needed for cross-language access to attributes */
+#include "mpi_attr.h"
+
+/* mpi_lang.h - Prototypes for language specific routines. Currently used to
+ * set keyval attribute callbacks
+ */
+#include "mpi_lang.h"
 
 /* If there is no MPI I/O support, and we are still using MPIO_Request,
    make sure that one is defined */
@@ -186,6 +195,8 @@ typedef char *MPID_FCHAR_T;
 #define MPIU_Free(a)      free((void *)(a))
 #endif
 
+/* To avoid constant allocation/deallocation of temporary arrays, define
+   a small default, predefined array size. */
 #ifndef MPIR_USE_LOCAL_ARRAY
 #define MPIR_USE_LOCAL_ARRAY 32
 #endif

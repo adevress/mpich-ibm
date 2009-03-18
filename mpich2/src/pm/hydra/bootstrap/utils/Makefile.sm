@@ -1,3 +1,4 @@
+# -*- Mode: Makefile; -*-
 #
 # (C) 2008 by Argonne National Laboratory.
 #     See COPYRIGHT in top-level directory.
@@ -6,7 +7,7 @@
 HYDRA_LIB_PATH = ../../lib
 
 libhydra_a_DIR = ${HYDRA_LIB_PATH}
-libhydra_a_SOURCES = bscu_init.c bscu_finalize.c bscu_args.c bscu_wait.c bscu_launch.c bscu_signal.c
+libhydra_a_SOURCES = bscu_wait.c bscu_usize.c bscu_finalize.c
 INCLUDES = -I${abs_srcdir}/../../include \
 	-I${abs_srcdir}/../../../../include \
 	-I../../include \

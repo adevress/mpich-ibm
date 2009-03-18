@@ -2,7 +2,7 @@
                               Known Deficiencies
 -------------------------------------------------------------------------------
 
-- The new SMP-aware collectives added in 1.1.0a2 do not perform as well in some
+- The new SMP-aware collectives added in 1.1a2 do not perform as well in some
   cases as the non-SMP-aware collectives on machines with multiple-processors.
   This can be true particularly for MPI_Bcast with message sizes larger than
   12KiB and MPI_Reduce with message sizes larger than 2KiB.  If you find this is
@@ -18,7 +18,13 @@
   stdin and may also have problems if there is data on stdin that is not
   consumed by the program. 
 
-- The Hydra process manager does not work on Solaris at this time.
+- The Hydra process manager does not work on Solaris and does not
+  support dynamic processes at this time.
+
+- The --enable-strict configure option is broken when using sigaction
+  and friends; this causes some of the process managers (e.g., hydra,
+  remshell) to not work correctly. --enable-strict=posix is the
+  recommended configure option.
 
 - Only the ch3:sock and ch3:nemesis channels support thread safety.
  
@@ -56,6 +62,11 @@
   --enable-g=log .  This is an "alpha test" of the dllchan; try it if you'd 
   like, and let us know what does and does not work, but know that fixes will
   probably wait for the next release.
+
+- The SMPD process manager does not work reliably with threaded MPI processes.
+  This will be fixed in the next release
+  MPI_Comm_spawn() does not currently work for >= 256 arguments with smpd.
+  This will be fixed in the next release. 
 
 - C++ Binding:
   

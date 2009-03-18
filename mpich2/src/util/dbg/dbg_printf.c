@@ -362,7 +362,7 @@ static double timeOrigin = 0.0;
 static int MPIU_DBG_Usage( const char *, const char * );
 static int MPIU_DBG_OpenFile( void );
 static int setDBGClass( const char * );
-static int SetDBGLevel( const char *, const char *([]) );
+static int SetDBGLevel( const char *, const char *(names[]) );
 static int MPIU_DBG_Get_filename(char *filename, int len);
 
 int MPIU_DBG_Outevent( const char *file, int line, int class, int kind, 
@@ -706,8 +706,20 @@ int MPIU_DBG_Init( int *argc_p, char ***argv_p, int has_args, int has_env,
         
         MPIU_DBG_Get_filename(filename, MAXPATHLEN);
         ret = rename(temp_filename, filename);
-        if (ret)
-            MPIU_Error_printf( "Could not rename temp log file to %s\n", filename );
+        if (ret){
+            /* Retry renaming file after closing it */
+            fclose(MPIU_DBG_fp);
+            ret = rename(temp_filename, filename);
+            if(ret){
+                MPIU_Error_printf("Could not rename temp log file to %s\n", filename );
+            }
+            else{
+                MPIU_DBG_fp = fopen(filename, "a+");
+                if(MPIU_DBG_fp == NULL){
+                    MPIU_Error_printf("Error re-opening log file, %s\n", filename);
+                }
+            }
+        }
     }
 
     mpiu_dbg_initialized = MPIU_DBG_INITIALIZED;

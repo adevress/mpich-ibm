@@ -14,6 +14,11 @@
 #include <stdio.h>
 #include <ctype.h>
 
+
+#if defined( HAVE_PUTENV ) && defined( NEEDS_PUTENV_DECL )
+extern int putenv(char *string);
+#endif
+
 #ifndef isascii
 #define isascii(c) (((c)&~0x7f)==0)
 #endif
@@ -415,4 +420,9 @@ int MPIU_GetEnvStr( const char *envName, const char **val )
     }
 
     return 0;
+}
+
+int MPIU_PutEnv( char *name_val )
+{
+    return putenv( name_val );
 }

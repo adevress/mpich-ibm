@@ -9,6 +9,7 @@
 
 #include "mpidi_ch3_conf.h"
 #include "mpidimpl.h"
+#include "mpiu_os_wrappers.h"
 #include "mpidu_process_locks.h"
 
 #if defined(HAVE_ASSERT_H)
@@ -129,8 +130,8 @@ typedef struct MPIDI_CH3I_VC
     int (* lmt_done_recv)(struct MPIDI_VC *vc, struct MPID_Request *req);
 
     /* LMT shared memory copy-buffer ptr */
-    volatile struct MPID_nem_copy_buf *lmt_copy_buf;
-    char *lmt_copy_buf_handle;
+    struct MPID_nem_copy_buf *lmt_copy_buf;
+    MPIU_SHMW_Hnd_t lmt_copy_buf_handle;
     int lmt_buf_num;
     MPIDI_msg_sz_t lmt_surfeit;
     struct {struct MPID_nem_lmt_shm_wait_element *head, *tail;} lmt_queue;

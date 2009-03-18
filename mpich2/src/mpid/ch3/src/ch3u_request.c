@@ -179,6 +179,8 @@ void MPIDI_CH3_Request_destroy(MPID_Request * req)
  * by the segment contained in the request structure.
  * If the density of IOV is not sufficient, pack the data into a send/receive 
  * buffer and point the IOV at the buffer.
+ *
+ * Expects sreq->dev.OnFinal to be initialized (even if it's NULL).
  */
 #undef FUNCNAME
 #define FUNCNAME MPIDI_CH3U_Request_load_send_iov
@@ -356,10 +358,10 @@ int MPIDI_CH3U_Request_load_recv_iov(MPID_Request * const rreq)
 	MPIU_Assert(last > 0);
 	MPID_Segment_unpack_vector(rreq->dev.segment_ptr, 
 				   rreq->dev.segment_first,
-				   &last, rreq->dev.iov, &rreq->dev.iov_count);
+				   &last, &rreq->dev.iov[rreq->dev.iov_offset], &rreq->dev.iov_count);
 	MPIU_DBG_MSG_FMT(CH3_CHANNEL,VERBOSE,(MPIU_DBG_FDEST,
-   "post-upv: first=" MPIDI_MSG_SZ_FMT ", last=" MPIDI_MSG_SZ_FMT ", iov_n=%d",
-			  rreq->dev.segment_first, last, rreq->dev.iov_count));
+   "post-upv: first=" MPIDI_MSG_SZ_FMT ", last=" MPIDI_MSG_SZ_FMT ", iov_n=%d, iov_offset=%d",
+			  rreq->dev.segment_first, last, rreq->dev.iov_count, rreq->dev.iov_offset));
 	MPIU_Assert(rreq->dev.iov_count >= 0 && rreq->dev.iov_count <= 
 		    MPID_IOV_LIMIT);
 

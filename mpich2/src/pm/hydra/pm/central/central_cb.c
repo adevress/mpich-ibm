@@ -5,8 +5,7 @@
  */
 
 #include "hydra.h"
-#include "hydra_mem.h"
-#include "hydra_sock.h"
+#include "hydra_utils.h"
 #include "pmcu_pmi.h"
 #include "pmci.h"
 #include "bsci.h"
@@ -14,6 +13,7 @@
 #include "central.h"
 
 int HYD_PMCD_Central_listenfd;
+HYD_Handle handle;
 
 /*
  * HYD_PMCD_Central_cb: This is the core PMI server part of the
@@ -54,30 +54,33 @@ HYD_Status HYD_PMCD_Central_cb(int fd, HYD_Event_t events)
 
     if (fd == HYD_PMCD_Central_listenfd) {      /* Someone is trying to connect to us */
         status = HYDU_Sock_accept(fd, &accept_fd);
-        if (status != HYD_SUCCESS) {
-            HYDU_Error_printf("sock utils returned error when accepting connection\n");
-            goto fn_fail;
-        }
+        HYDU_ERR_POP(status, "accept error\n");
 
         status = HYD_DMX_Register_fd(1, &accept_fd, HYD_STDOUT, HYD_PMCD_Central_cb);
-        if (status != HYD_SUCCESS) {
-            HYDU_Error_printf("demux engine returned error when registering fd\n");
-            goto fn_fail;
-        }
+        HYDU_ERR_POP(status, "unable to register fd\n");
     }
     else {
         status = HYDU_Sock_readline(fd, buf, HYD_TMPBUF_SIZE, &linelen);
-        if (status != HYD_SUCCESS) {
-            HYDU_Error_printf("sock utils returned error when reading PMI line\n");
-            goto fn_fail;
-        }
+        HYDU_ERR_POP(status, "PMI read line error\n");
 
         if (linelen == 0) {
-            status = HYD_DMX_Deregister_fd(fd);
+            /* This is not a clean close. If a finalize was called, we
+             * would have deregistered this socket. The application
+             * might have aborted. Just cleanup all the processes */
+            status = HYD_PMCD_Central_cleanup();
             if (status != HYD_SUCCESS) {
-                HYDU_Error_printf("unable to deregister fd %d\n", fd);
+                HYDU_Warn_printf("bootstrap server returned error cleaning up processes\n");
+                status = HYD_SUCCESS;
                 goto fn_fail;
             }
+
+            status = HYD_DMX_Deregister_fd(fd);
+            if (status != HYD_SUCCESS) {
+                HYDU_Warn_printf("unable to deregister fd %d\n", fd);
+                status = HYD_SUCCESS;
+                goto fn_fail;
+            }
+
             close(fd);
             goto fn_exit;
         }
@@ -125,10 +128,7 @@ HYD_Status HYD_PMCD_Central_cb(int fd, HYD_Event_t events)
 
             if (status == HYD_SUCCESS) {
                 status = HYD_DMX_Deregister_fd(fd);
-                if (status != HYD_SUCCESS) {
-                    HYDU_Error_printf("unable to deregister fd %d\n", fd);
-                    goto fn_fail;
-                }
+                HYDU_ERR_POP(status, "unable to register fd\n");
                 close(fd);
             }
         }
@@ -142,16 +142,12 @@ HYD_Status HYD_PMCD_Central_cb(int fd, HYD_Event_t events)
             /* Cleanup all the processes and return. We don't need to
              * check the return status since we are anyway returning
              * an error */
-            HYD_BSCI_Cleanup_procs();
-
-            status = HYD_INTERNAL_ERROR;
+            HYD_PMCD_Central_cleanup();
+            status = HYD_SUCCESS;
             goto fn_fail;
         }
 
-        if (status != HYD_SUCCESS) {
-            HYDU_Error_printf("PMI server function returned an error\n");
-            goto fn_fail;
-        }
+        HYDU_ERR_POP(status, "PMI server returned error\n");
     }
 
   fn_exit:
@@ -161,4 +157,69 @@ HYD_Status HYD_PMCD_Central_cb(int fd, HYD_Event_t events)
 
   fn_fail:
     goto fn_exit;
+}
+
+
+HYD_Status HYD_PMCD_Central_cleanup(void)
+{
+    struct HYD_Proc_params *proc_params;
+    struct HYD_Partition_list *partition;
+    int fd;
+    enum HYD_Proxy_cmds cmd;
+    HYD_Status status = HYD_SUCCESS, overall_status = HYD_SUCCESS;
+
+    HYDU_FUNC_ENTER();
+
+    /* FIXME: Instead of doing this from this process itself, fork a
+     * bunch of processes to do this. */
+    /* Connect to all proxies and send a KILL command */
+    cmd = KILLALL_PROCS;
+    for (proc_params = handle.proc_params; proc_params; proc_params = proc_params->next) {
+        for (partition = proc_params->partition; partition; partition = partition->next) {
+            status = HYDU_Sock_connect(partition->name, handle.proxy_port, &fd);
+            if (status != HYD_SUCCESS) {
+                HYDU_Warn_printf("unable to connect to the proxy on %s\n", partition->name);
+                overall_status = HYD_INTERNAL_ERROR;
+                continue;       /* Move on to the next proxy */
+            }
+
+            status = HYDU_Sock_write(fd, &cmd, sizeof(cmd));
+            if (status != HYD_SUCCESS) {
+                HYDU_Warn_printf("unable to send data to the proxy on %s\n", partition->name);
+                overall_status = HYD_INTERNAL_ERROR;
+                continue;       /* Move on to the next proxy */
+            }
+
+            close(fd);
+        }
+    }
+
+    HYDU_FUNC_EXIT();
+
+    return overall_status;
+}
+
+
+void HYD_PMCD_Central_signal_cb(int signal)
+{
+    HYDU_FUNC_ENTER();
+
+    if (signal == SIGINT || signal == SIGQUIT || signal == SIGTERM
+#if defined SIGSTOP
+        || signal == SIGSTOP
+#endif /* SIGSTOP */
+#if defined SIGCONT
+        || signal == SIGCONT
+#endif /* SIGSTOP */
+) {
+        /* There's nothing we can do with the return value for now. */
+        HYD_PMCD_Central_cleanup();
+        exit(-1);
+    }
+    else {
+        /* Ignore other signals for now */
+    }
+
+    HYDU_FUNC_EXIT();
+    return;
 }

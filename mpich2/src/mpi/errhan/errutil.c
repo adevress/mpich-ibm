@@ -962,6 +962,14 @@ static int vsnprintf_mpi(char *str, size_t maxlen, const char *fmt_orig,
 	    ll = va_arg(list, long long);
 	    MPIU_Snprintf(str, maxlen, "%lld", ll);
 	    break;
+        case (int)'x':
+            d = va_arg(list, int);
+            MPIU_Snprintf(str, maxlen, "%x", d);
+            break;
+        case (int)'X':
+            ll = va_arg(list, long long);
+            MPIU_Snprintf(str, maxlen, "%llx", ll);
+            break;
 	case (int)'i':
 	    i = va_arg(list, int);
 	    switch (i)
@@ -2019,8 +2027,9 @@ static void MPIR_Err_print_stack_string(int errcode, char *str, int maxlen )
     return;
 }
 
+/* FIXME: Remove the bogus fn argument from all uses of this routine */
 static int ErrGetInstanceString( int errorcode, char *msg, int num_remaining, 
-				 MPIR_Err_get_class_string_func_t fn )
+				 MPIR_Err_get_class_string_func_t fn ATTRIBUTE((unused)) )
 {
     int len;
 

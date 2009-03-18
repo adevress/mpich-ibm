@@ -9,6 +9,7 @@
 
 #include "my_papi_defs.h"
 #include "mpidi_ch3_impl.h"
+#include "mpimem.h"
 #include "mpid_nem_net_module_defs.h"
 #include "mpid_nem_atomics.h"
 #include "mpid_nem_defs.h"
@@ -17,6 +18,9 @@
 #include "mpid_nem_nets.h"
 #include "mpid_nem_queue.h"
 #include "mpid_nem_generic_queue.h"
+#include "mpiu_os_wrappers.h"
+
+
 
 #define MPID_NEM__BYPASS_Q_MAX_VAL  ((MPID_NEM_MPICH2_DATA_LEN) - (sizeof(MPIDI_CH3_Pkt_t)))
 
@@ -34,27 +38,6 @@ int MPID_nem_choose_netmod(void);
 
 #define MPID_nem_mpich2_release_fbox(cell) (MPID_nem_mem_region.mailboxes.in[(cell)->pkt.mpich2.source]->mpich2.flag.value = 0, \
 					    MPI_SUCCESS)
-
-/* Shared memory allocation utility functions */
-/* MPID_nem_allocate_shared_memory allocates a shared mem region of
-   size "length" and attaches to it.  "handle" points to a string
-   descriptor for the region to be passed in to
-   MPID_nem_attach_shared_memory.  "handle" is dynamically allocated
-   and should be freed by the caller.*/
-int MPID_nem_allocate_shared_memory (char **buf_p, const int length, char *handle[]);
-
-/* MPID_nem_attach_shared_memory attaches to shared memory previously
- * allocated by MPID_nem_allocate_shared_memory */
-int MPID_nem_attach_shared_memory (char **buf_p, const int length, const char handle[]);
-
-/* MPID_nem_remove_shared_memory removes the OS descriptor associated
-   with the handle.  Once all processes detatch from the region the OS
-   resource will be destroyed. */
-int MPID_nem_remove_shared_memory (const char handle[]);
-
-/* MPID_nem_detach_shared_memory detaches the shared memory region
- * from this process */
-int MPID_nem_detach_shared_memory (const char *buf_p, const int length);
 
 /* initialize shared-memory MPI_Barrier variables */
 int MPID_nem_barrier_vars_init (MPID_nem_barrier_vars_t *barrier_region);
@@ -135,9 +118,9 @@ typedef union MPIDI_CH3_nem_pkt
         MPIU_DBG_MSG(CH3_OTHER,VERBOSE,"sending rndv RTS packet");                                      \
         (rts_pkt)->cookie_len = (s_cookie_len);                                                         \
                                                                                                         \
-        _iov[0].MPID_IOV_BUF = (rts_pkt);                                                               \
+        _iov[0].MPID_IOV_BUF = (MPID_IOV_BUF_CAST)(rts_pkt);                                            \
         _iov[0].MPID_IOV_LEN = sizeof(*(rts_pkt));                                                      \
-        _iov[1].MPID_IOV_BUF = (s_cookie_buf);                                                          \
+        _iov[1].MPID_IOV_BUF = (MPID_IOV_BUF_CAST)(s_cookie_buf);                                       \
         _iov[1].MPID_IOV_LEN = (s_cookie_len);                                                          \
                                                                                                         \
         MPIU_DBG_MSGPKT((vc), (rts_pkt)->match.parts.tag, (rts_pkt)->match.parts.context_id, (rts_pkt)->match.parts.rank, \
@@ -180,9 +163,9 @@ typedef union MPIDI_CH3_nem_pkt
         _cts_pkt->cookie_len = (r_cookie_len);                                                          \
         _cts_pkt->data_sz = (rreq)->ch.lmt_data_sz;                                                     \
                                                                                                         \
-        _iov[0].MPID_IOV_BUF = _cts_pkt;                                                                \
+        _iov[0].MPID_IOV_BUF = (MPID_IOV_BUF_CAST)_cts_pkt;                                             \
         _iov[0].MPID_IOV_LEN = sizeof(*_cts_pkt);                                                       \
-        _iov[1].MPID_IOV_BUF = (r_cookie_buf);                                                          \
+        _iov[1].MPID_IOV_BUF = (MPID_IOV_BUF_CAST)(r_cookie_buf);                                       \
         _iov[1].MPID_IOV_LEN = (r_cookie_len);                                                          \
                                                                                                         \
         mpi_errno = MPIDI_CH3_iStartMsgv((vc), _iov, (r_cookie_len) ? 2 : 1, &_cts_req);                \
@@ -196,7 +179,7 @@ typedef union MPIDI_CH3_nem_pkt
         
 #define MPID_nem_lmt_send_COOKIE(vc, rreq, r_cookie_buf, r_cookie_len) do {                                     \
         MPIDI_CH3_Pkt_t _upkt;                                                                                  \
-        MPID_nem_pkt_lmt_cookie_t * const _cookie_pkt = (MPID_nem_pkt_lmt_cookie_t *)&_upkt;                                      \
+        MPID_nem_pkt_lmt_cookie_t * const _cookie_pkt = (MPID_nem_pkt_lmt_cookie_t *)&_upkt;                    \
         MPID_Request *_cookie_req;                                                                              \
         MPID_IOV _iov[2];                                                                                       \
                                                                                                                 \
@@ -205,9 +188,9 @@ typedef union MPIDI_CH3_nem_pkt
         _cookie_pkt->req_id = (rreq)->ch.lmt_req_id;                                                            \
         _cookie_pkt->cookie_len = (r_cookie_len);                                                               \
                                                                                                                 \
-        _iov[0].MPID_IOV_BUF = _cookie_pkt;                                                                     \
+        _iov[0].MPID_IOV_BUF = (MPID_IOV_BUF_CAST)_cookie_pkt;                                                  \
         _iov[0].MPID_IOV_LEN = sizeof(*_cookie_pkt);                                                            \
-        _iov[1].MPID_IOV_BUF = (r_cookie_buf);                                                                  \
+        _iov[1].MPID_IOV_BUF = (MPID_IOV_BUF_CAST)(r_cookie_buf);                                               \
         _iov[1].MPID_IOV_LEN = (r_cookie_len);                                                                  \
                                                                                                                 \
         mpi_errno = MPIDI_CH3_iStartMsgv((vc), _iov, (r_cookie_len) ? 2 : 1, &_cookie_req);                     \
@@ -221,7 +204,7 @@ typedef union MPIDI_CH3_nem_pkt
         
 #define MPID_nem_lmt_send_DONE(vc, rreq) do {                                                                   \
         MPIDI_CH3_Pkt_t _upkt;                                                                                  \
-        MPID_nem_pkt_lmt_done_t * const _done_pkt = (MPID_nem_pkt_lmt_done_t *)&_upkt;                                            \
+        MPID_nem_pkt_lmt_done_t * const _done_pkt = (MPID_nem_pkt_lmt_done_t *)&_upkt;                          \
         MPID_Request *_done_req;                                                                                \
                                                                                                                 \
         MPIU_DBG_MSG(CH3_OTHER,VERBOSE,"sending rndv DONE packet");                                             \
