@@ -152,8 +152,7 @@ MPIDO_Allreduce(void * sendbuf,
       if (op_type_support == MPIDO_TREE_SUPPORT ||
           op_type_support == MPIDO_TREE_MIN_SUPPORT)
       {
-        if (MPIDO_INFO_ISSET(properties, MPIDO_USE_TREE_ALLREDUCE) &&
-            MPIDO_INFO_ISSET(properties, MPIDO_USE_SMP_TREE_SHORTCUT))
+        if (MPIDO_INFO_ISSET(properties, MPIDO_USE_TREE_ALLREDUCE))
         {
           func = MPIDO_Allreduce_global_tree;
           comm->dcmf.last_algorithm = MPIDO_USE_TREE_ALLREDUCE;

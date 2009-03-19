@@ -52,7 +52,7 @@ void MPIX_rank2torus (unsigned        rank,
                       unsigned       *t)
 {
   DCMF_NetworkCoord_t addr;
-  if (DCMF_Messager_rank2network(0, DCMF_DEFAULT_NETWORK, &addr) != DCMF_SUCCESS) abort();
+  if (DCMF_Messager_rank2network(rank, DCMF_DEFAULT_NETWORK, &addr) != DCMF_SUCCESS) abort();
 
   *x = addr.torus.x;
   *y = addr.torus.y;

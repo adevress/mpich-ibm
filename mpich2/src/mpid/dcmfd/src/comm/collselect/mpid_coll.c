@@ -13,7 +13,7 @@ char* MPID_Executable_name = NULL;
 
 #ifdef USE_CCMI_COLL
 
-#warning reasonable hack for now
+/* #warning reasonable hack for now */
 #define MAXGEOMETRIES 65536
 
 static DCMF_Geometry_t *mpid_geometrytable[MAXGEOMETRIES];
@@ -198,7 +198,8 @@ void MPIDI_Coll_register(void)
   /* ---------------------------------- */
   /* Register global allreduce          */
   /* ---------------------------------- */
-  if(MPIDO_INFO_ISSET(properties, MPIDO_USE_TREE_ALLREDUCE))
+  if((MPIDO_INFO_ISSET(properties, MPIDO_USE_TREE_ALLREDUCE)) || 
+     (MPIDO_INFO_ISSET(properties, MPIDO_USE_TREE_REDUCE)))
   {
     gallreduce_config.protocol = DCMF_TREE_GLOBALALLREDUCE_PROTOCOL;
     rc = DCMF_GlobalAllreduce_register(&MPIDI_Protocols.globalallreduce,
@@ -218,15 +219,7 @@ void MPIDI_Coll_register(void)
       MPIDO_INFO_UNSET(properties, MPIDO_USE_TREE_REDUCE);
     }
   }
-  else /* not registering the global allreduce, so don't use it for reduce 
-        * either. 
-        */
-  {
-    if(MPIDO_INFO_ISSET(properties, MPIDO_USE_TREE_REDUCE))
-      MPIDO_INFO_UNSET(properties, MPIDO_USE_TREE_REDUCE);
-  }
       
-
 
   /* register first barrier protocols now */
   barrier_config.cb_geometry = getGeometryRequest;
@@ -259,12 +252,12 @@ void MPIDI_Coll_register(void)
     barrier_proto = DCMF_TORUS_RECTANGLE_BARRIER_PROTOCOL; 
 
 
-   if (MPIDO_INFO_ISSET(properties, MPIDO_USE_GI_BARRIER))
+   if (MPIDO_INFO_ISSET(properties, MPIDO_USE_CCMI_GI_BARRIER))
    {
       if (BARRIER_REGISTER(DCMF_GI_BARRIER_PROTOCOL,
          &MPIDI_CollectiveProtocols.gi_barrier,
          &barrier_config) != DCMF_SUCCESS)
-      MPIDO_INFO_UNSET(properties, MPIDO_USE_GI_BARRIER);
+      MPIDO_INFO_UNSET(properties, MPIDO_USE_CCMI_GI_BARRIER);
    }
   if (!MPIDO_INFO_ISSET(properties, MPIDO_USE_RECT_BARRIER) &&
       MPIDO_INFO_ISSET(properties, MPIDO_USE_BINOM_BARRIER))
@@ -382,12 +375,20 @@ void MPIDI_Coll_register(void)
    /* --------------------------------------------------- */
    /* Register all other bcast protocols needed/requested */
    /* --------------------------------------------------- */
-   if(MPIDO_INFO_ISSET(properties, MPIDO_USE_TREE_BCAST))
+   if(MPIDO_INFO_ISSET(properties, MPIDO_USE_CCMI_TREE_BCAST))
      {
        if(BROADCAST_REGISTER(DCMF_TREE_BROADCAST_PROTOCOL,
 			     &MPIDI_CollectiveProtocols.tree_bcast,
 			     &broadcast_config) != DCMF_SUCCESS)
-	 MPIDO_INFO_UNSET(properties, MPIDO_USE_TREE_BCAST);
+	 MPIDO_INFO_UNSET(properties, MPIDO_USE_CCMI_TREE_BCAST);
+     }
+
+   if(MPIDO_INFO_ISSET(properties, MPIDO_USE_CCMI_TREE_DPUT_BCAST))
+     {
+       if(BROADCAST_REGISTER(DCMF_TREE_DPUT_BROADCAST_PROTOCOL,
+			     &MPIDI_CollectiveProtocols.tree_dput_bcast,
+			     &broadcast_config) != DCMF_SUCCESS)
+	 MPIDO_INFO_UNSET(properties, MPIDO_USE_CCMI_TREE_DPUT_BCAST);
      }
 
    if(BROADCAST_REGISTER(DCMF_TORUS_RECTANGLE_BROADCAST_PROTOCOL,
@@ -420,7 +421,8 @@ void MPIDI_Coll_register(void)
                &MPIDI_CollectiveProtocols.tree_allreduce,
                &allreduce_config) != DCMF_SUCCESS)
       {
-         MPIDO_INFO_UNSET(properties, MPIDO_USE_TREE_ALLREDUCE);
+
+        MPIDO_INFO_UNSET(properties, MPIDO_USE_TREE_ALLREDUCE);
          MPIDO_INFO_UNSET(properties, MPIDO_USE_CCMI_TREE_ALLREDUCE);
       }
    }
@@ -818,35 +820,16 @@ void MPIDI_Comm_setup_properties(MPID_Comm * comm, int initial_setup)
   comm_prop = &(comm -> dcmf.properties);
   coll_prop = &MPIDI_CollectiveProtocols.properties;
 
-  if (comm->comm_kind != MPID_INTRACOMM || comm->local_size <= 4)
-    MPIDO_MSET_INFO(comm_prop,
-                    MPIDO_USE_MPICH_BARRIER,
-                    MPIDO_USE_MPICH_BCAST,
-                    MPIDO_USE_MPICH_ALLTOALL,
-                    MPIDO_USE_MPICH_ALLTOALLW,
-                    MPIDO_USE_MPICH_ALLTOALLV,
-                    MPIDO_USE_MPICH_ALLGATHER,
-                    MPIDO_USE_MPICH_ALLGATHERV,
-                    MPIDO_USE_MPICH_ALLREDUCE,
-                    MPIDO_USE_MPICH_REDUCE,
-                    MPIDO_USE_MPICH_GATHER,
-                    MPIDO_USE_MPICH_SCATTER,
-                    MPIDO_USE_MPICH_SCATTERV,
-                    MPIDO_USE_MPICH_REDUCESCATTER,
-                    MPIDO_END_ARGS);
-	
-  else
-  {
-    /* 
-       we basically be optimistic and assume all conditions are available 
-       for all protocols based on the mpidi_protocol properties. As such, we 
-       copy the informative bits from coll_prop to comm_prop. Then, we check 
-       the geometry bits of the communicator to uncheck any bit for a 
-       protocol 
-    */
-
-    if (initial_setup)
-      MPIDO_INFO_OR(coll_prop, comm_prop);
+  /* 
+     we basically be optimistic and assume all conditions are available 
+     for all protocols based on the mpidi_protocol properties. As such, we 
+     copy the informative bits from coll_prop to comm_prop. Then, we check 
+     the geometry bits of the communicator to uncheck any bit for a 
+     protocol 
+  */
+  
+  if (initial_setup)
+    MPIDO_INFO_OR(coll_prop, comm_prop);
 
     if(messager_config.thread_level == DCMF_THREAD_MULTIPLE)
     {
@@ -889,6 +872,7 @@ void MPIDI_Comm_setup_properties(MPID_Comm * comm, int initial_setup)
    if(!MPIDO_INFO_ISSET(comm_prop, MPIDO_GLOBAL_CONTEXT))
    {
      MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_GI_BARRIER);
+     MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_CCMI_GI_BARRIER);
    }
    
    if (!MPIDO_INFO_ISSET(comm_prop, MPIDO_GLOBAL_CONTEXT) ||
@@ -905,6 +889,23 @@ void MPIDI_Comm_setup_properties(MPID_Comm * comm, int initial_setup)
      /*      MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_BCAST_SCATTER); */
      MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_REDUCESCATTER);
    }
-  } 
   
+  if (comm->comm_kind != MPID_INTRACOMM || comm->local_size <= 4)
+    MPIDO_MSET_INFO(comm_prop,
+                    MPIDO_USE_MPICH_BARRIER,
+                    MPIDO_USE_MPICH_ALLTOALL,
+                    MPIDO_USE_MPICH_ALLTOALLW,
+                    MPIDO_USE_MPICH_ALLTOALLV,
+                    MPIDO_USE_MPICH_ALLGATHER,
+                    MPIDO_USE_MPICH_ALLGATHERV,
+                    MPIDO_USE_MPICH_ALLREDUCE,
+                    MPIDO_USE_MPICH_REDUCE,
+                    MPIDO_USE_MPICH_GATHER,
+                    MPIDO_USE_MPICH_SCATTER,
+                    MPIDO_USE_MPICH_SCATTERV,
+                    MPIDO_USE_MPICH_REDUCESCATTER,
+                    MPIDO_END_ARGS);
+  if (comm->comm_kind != MPID_INTRACOMM || comm->local_size <= 3)
+    MPIDO_INFO_SET(comm_prop, MPIDO_USE_MPICH_BCAST);
+	
 }

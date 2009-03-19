@@ -85,7 +85,18 @@ int MPIDI_Isend_self(const void    * buf,
   /* ------------------------------------------ */
   rreq->status.MPI_SOURCE = rank;
   rreq->status.MPI_TAG    = tag;
-  rreq->status.count      = count * MPID_Datatype_get_basic_size(datatype);
+   MPID_Datatype *dataptr;
+   int size;
+   if(HANDLE_GET_KIND(datatype) == HANDLE_KIND_BUILTIN)
+   {
+      size = MPID_Datatype_get_basic_size(datatype);
+   }
+   else
+   {
+      MPID_Datatype_get_ptr(datatype, dataptr);
+      size = dataptr->size;
+   }
+   rreq->status.count      = count * size;
 
   if (found)
     {

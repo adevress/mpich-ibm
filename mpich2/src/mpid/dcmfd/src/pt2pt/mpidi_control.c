@@ -122,7 +122,7 @@ void MPIDI_DCMF_procCancelReq(const MPIDI_DCMF_MsgInfo *info, size_t peer)
   assert(info != NULL);
   assert(info->msginfo.req != NULL);
 
-  sreq=MPIDI_Recvq_FDURSTC(info->msginfo.req,
+  sreq=MPIDI_Recvq_FDUR(info->msginfo.req,
                            info->msginfo.MPIrank,
                            info->msginfo.MPItag,
                            info->msginfo.MPIctxt);
@@ -239,6 +239,12 @@ void MPIDI_BG2S_ControlCB(void *clientdata, const DCMF_Control_t * p, size_t pee
       MPIDI_DCMF_procRzvAck(info, peer);
       break;
     default:
+      printf("Bad msginfo type: 0x%08x  %u  %d\n", info->msginfo.type, info->msginfo.type, info->msginfo.type);
+      printf("Quad:\n");
+      printf("    w0: 0x%08x  %u\n", info->quad[0].w0, info->quad[0].w0);
+      printf("    w1: 0x%08x  %u\n", info->quad[0].w1, info->quad[0].w1);
+      printf("    w2: 0x%08x  %u\n", info->quad[0].w2, info->quad[0].w2);
+      printf("--> w3: 0x%08x  %u\n", info->quad[0].w3, info->quad[0].w3);
       MPID_abort();
     }
   MPID_Progress_signal();

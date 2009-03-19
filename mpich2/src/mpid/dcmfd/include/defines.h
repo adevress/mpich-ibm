@@ -72,7 +72,7 @@ extern void MPIDO_MSET_INFO(MPIDO_Embedded_Info_Set * set, ...);
 /* this sees if bits pattern in s are in d */
 extern int MPIDO_INFO_MET(MPIDO_Embedded_Info_Set *s, MPIDO_Embedded_Info_Set *d);
 
-enum MPIDO_SUPPORTED {
+enum {
   MPIDO_TREE_SUPPORT        =  0,
   MPIDO_TORUS_SUPPORT       =  1,
   MPIDO_TREE_MIN_SUPPORT    =  2,

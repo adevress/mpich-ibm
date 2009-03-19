@@ -26,7 +26,7 @@ void ARMCIX_DCMF_Put_register (ARMCIX_DCMF_Connection_t * connection_array)
 {
   DCMF_CriticalSection_enter (0);
 
-  DCMF_Put_Configuration_t put_configuration = { DCMF_DEFAULT_PUT_PROTOCOL };
+  DCMF_Put_Configuration_t put_configuration = { DCMF_DEFAULT_PUT_PROTOCOL, DCMF_DEFAULT_NETWORK };
   DCMF_Put_register (&__put_protocol, &put_configuration);
 
   DCMF_CriticalSection_exit (0);

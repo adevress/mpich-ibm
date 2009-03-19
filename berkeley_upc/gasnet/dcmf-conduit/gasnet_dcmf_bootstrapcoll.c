@@ -217,6 +217,7 @@ void gasnetc_dcmf_bootstrapExchange(void *src, size_t nbytes, void *dst) {
     cb_args->nbytes = nbytes;
     
     config.protocol = DCMF_EAGER_SEND_PROTOCOL;
+    config.network = DCMF_DEFAULT_NETWORK;
     config.cb_recv_short = gasnetc_bootstrapExchange_recv_short_cb;
     config.cb_recv_short_clientdata = cb_args;
     config.cb_recv = gasnetc_bootstrapExchange_recv_cb;

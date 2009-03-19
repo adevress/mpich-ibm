@@ -12,6 +12,7 @@
 /* Bcast prototypes */
 int MPIDO_Bcast_tree(void *, int, int, MPID_Comm *);
 int MPIDO_Bcast_CCMI_tree(void *, int, int, MPID_Comm *);
+int MPIDO_Bcast_CCMI_tree_dput(void *, int, int, MPID_Comm *);
 int MPIDO_Bcast_binom_sync(void *, int, int, MPID_Comm *);
 int MPIDO_Bcast_rect_sync(void *, int, int, MPID_Comm *);
 int MPIDO_Bcast_binom_async(void *, int, int, MPID_Comm *);

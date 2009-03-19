@@ -50,7 +50,7 @@
 #define MPIDO_BUFF_SIZE_MUL4                                               13
 #define MPIDO_BUFF_ALIGNED                                                 14
 #define MPIDO_THREADED_MODE                                                15
-#define MPIDO_USE_SMP_TREE_SHORTCUT                                        16
+/*#define MPIDO_USE_SMP_TREE_SHORTCUT                                      16*/
 
 /*******************/
 /* Collective bits */
@@ -229,6 +229,10 @@
 #define MPIDO_USE_MPICH_SCATTERV                                           120
 #define MPIDO_SCATTERV_RESERVED1                                           121
 #define MPIDO_USE_PREALLREDUCE_SCATTERV                                    122
+
+#define MPIDO_USE_CCMI_TREE_BCAST                                          123
+#define MPIDO_USE_CCMI_TREE_DPUT_BCAST                                     124
+#define MPIDO_USE_CCMI_GI_BARRIER                                          125
 
 extern char * mpido_algorithms[];
 #endif

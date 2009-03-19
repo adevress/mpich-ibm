@@ -55,14 +55,9 @@
  *   message sizes. 
  *   - Default is 32.
  *
- * - DCMF_TREE_SMP_SHORTCUT -
- * Boolean indicating that a collective capable of using the
- * collective network should bypass the CCMI layer and call 
- *      the Collective Network Device directly.
- *      Possible values:
- *      - 0 (false) - The CCMI layer will be used.
- *      - 1 (true)  - The CCMI layer will be bypassed.
- *      - Default is 1.
+ * - DCMF_RMA_PENDING - Maximum outstanding RMA requests.
+ *   Limits number of DCMF_Request objects allocated by MPI Onesided operations.
+ *   - Default is 1000.
  *
  * - DCMF_INTERRUPT -
  * - DCMF_INTERRUPTS - Turns on interrupt driven communications. This
@@ -140,6 +135,9 @@
  *   - TREE - Use the collective network. This is the default on MPI_COMM_WORLD and 
  *     duplicates of MPI_COMM_WORLD in MPI_THREAD_SINGLE mode.  This provides
  *     the fastest possible broadcast.
+ *   - CCMI - Use the CCMI collective network protocol.  This is off by default.
+ *   - CDPUT - Use the CCMI collective network protocol with
+ *     DPUT. This is off by default.
  *   - AR - Use the asynchronous rectangle protocol. This is the default
  *     for small messages on rectangular subcommunicators.  The cutoff between
  *     async and sync can be controlled with DCMF_ASYNCCUTOFF.
@@ -334,6 +332,8 @@
  *     subcommunicators.
  *   - GI - Use the GI network.  This is the default for MPI_COMM_WORLD and
  *     duplicates of MPI_COMM_WORLD in MPI_THREAD_SINGLE mode.
+ *   - CCMI - Use the CCMI GI network protocol.  This is off by
+ *     default.
  *   - Default varies based on the communicator.  See above.
  *
  * - DCMF_STAR: turns on the STAR-MPI mechanism that tunes MPI collectives.
@@ -499,11 +499,6 @@ MPIDI_Env_setup()
       MPIDI_Process.optimized.tree = 1;
     }
   }
-#warning someone needs to update this description
-  /*
-   * - DCMF_RMA_PENDING - Don't know what this does. 
-   * Default is 1000.
-   */
   
   dval = 1000;
   ENV_Int(getenv("DCMF_RMA_PENDING"), &dval);
@@ -521,7 +516,7 @@ MPIDI_Env_setup()
   /* default setting of flags for the mpidi_coll_protocol object */
   MPIDO_MSET_INFO(properties, 
                   MPIDO_USE_GI_BARRIER,
-                  MPIDO_USE_SMP_TREE_SHORTCUT,
+                  MPIDO_USE_CCMI_GI_BARRIER,
                   MPIDO_USE_RECT_BARRIER,
                   MPIDO_USE_BINOM_BARRIER,
                   MPIDO_USE_LOCKBOX_LBARRIER,
@@ -535,6 +530,8 @@ MPIDI_Env_setup()
                   MPIDO_USE_ABINOM_BCAST,
                   MPIDO_USE_SCATTER_GATHER_BCAST,
                   MPIDO_USE_TREE_BCAST, 
+                  MPIDO_USE_CCMI_TREE_BCAST, 
+                  MPIDO_USE_CCMI_TREE_DPUT_BCAST, 
                   MPIDO_USE_STORAGE_ALLREDUCE,
                   MPIDO_USE_RECT_ALLREDUCE,
                   MPIDO_USE_SHORT_ASYNC_RECT_ALLREDUCE,
@@ -593,12 +590,6 @@ MPIDI_Env_setup()
     }
   }
 
-  int smp_shortcut=1;
-  ENV_Int(getenv("DCMF_TREE_SMP_SHORTCUT"), &smp_shortcut);
-  if(!smp_shortcut)
-    MPIDO_INFO_UNSET(properties, MPIDO_USE_SMP_TREE_SHORTCUT);
-
-      
   envopts = getenv("DCMF_SCATTERV");
   if(envopts != NULL)
   {
@@ -645,6 +636,8 @@ MPIDI_Env_setup()
   if(envopts != NULL)
   {
     MPIDO_INFO_UNSET(properties, MPIDO_USE_TREE_BCAST);
+    MPIDO_INFO_UNSET(properties, MPIDO_USE_CCMI_TREE_BCAST);
+    MPIDO_INFO_UNSET(properties, MPIDO_USE_CCMI_TREE_DPUT_BCAST);
     MPIDO_INFO_UNSET(properties, MPIDO_USE_RECT_BCAST);
     MPIDO_INFO_UNSET(properties, MPIDO_USE_ARECT_BCAST);
     MPIDO_INFO_UNSET(properties, MPIDO_USE_BINOM_BCAST);
@@ -675,7 +668,7 @@ MPIDI_Env_setup()
     {
       MPIDO_INFO_SET(properties, MPIDO_USE_BINOM_BCAST);
     }
-    else if(strncasecmp(envopts, "T", 1) == 0) /* Tree */
+    else if(strncasecmp(envopts, "T", 1) == 0) /* Global Tree */
     {
       MPIDO_INFO_SET(properties, MPIDO_USE_TREE_BCAST);
     }
@@ -695,10 +688,18 @@ MPIDI_Env_setup()
     {
       MPIDO_INFO_SET(properties, MPIDO_USE_SCATTER_GATHER_BCAST);
     }
+    else if(strncasecmp(envopts, "CD", 2) == 0) /* CCMI Tree dput*/
+    {
+      MPIDO_INFO_SET(properties, MPIDO_USE_CCMI_TREE_DPUT_BCAST);
+    }
+    else if(strncasecmp(envopts, "C", 1) == 0) /* CCMI Tree */
+    {
+      MPIDO_INFO_SET(properties, MPIDO_USE_CCMI_TREE_BCAST);
+    }
     else
     {
       fprintf(stderr,
-              "Valid bcasts are: M, AR, AB, R, B, T, D, SR, SB, and SG. Using MPICH\n");
+              "Valid bcasts are: M, AR, AB, R, B, T, C, CD, D, SR, SB, and SG. Using MPICH\n");
       MPIDO_INFO_SET(properties, MPIDO_USE_MPICH_BCAST);
     }
   } 
@@ -1057,16 +1058,25 @@ MPIDI_Env_setup()
     else if(strncasecmp(envopts, "B", 1) == 0) /* Binomial */
     {
       MPIDO_INFO_UNSET(properties, MPIDO_USE_GI_BARRIER);
+      MPIDO_INFO_UNSET(properties, MPIDO_USE_CCMI_GI_BARRIER);
       MPIDO_INFO_UNSET(properties, MPIDO_USE_RECT_BARRIER);
     }
     else if(strncasecmp(envopts, "G", 1) == 0) /* GI */
     {
+      MPIDO_INFO_UNSET(properties, MPIDO_USE_CCMI_GI_BARRIER);
       MPIDO_INFO_UNSET(properties, MPIDO_USE_BINOM_BARRIER);
       MPIDO_INFO_UNSET(properties, MPIDO_USE_RECT_BARRIER);
     }
     else if(strncasecmp(envopts, "R", 1) == 0) /* Rect */
     {
+      MPIDO_INFO_UNSET(properties, MPIDO_USE_CCMI_GI_BARRIER);
       MPIDO_INFO_UNSET(properties, MPIDO_USE_BINOM_BARRIER);
+      MPIDO_INFO_UNSET(properties, MPIDO_USE_GI_BARRIER);
+    }
+    else if(strncasecmp(envopts, "C", 1) == 0) /* GI */
+    {
+      MPIDO_INFO_UNSET(properties, MPIDO_USE_BINOM_BARRIER);
+      MPIDO_INFO_UNSET(properties, MPIDO_USE_RECT_BARRIER);
       MPIDO_INFO_UNSET(properties, MPIDO_USE_GI_BARRIER);
     }
     else

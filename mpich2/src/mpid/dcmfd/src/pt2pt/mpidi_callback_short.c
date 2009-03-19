@@ -29,7 +29,10 @@ void MPIDI_BG2S_RecvShortCB(void                     * clientdata,
 
   /* Handle cancel requests */
   if (msginfo->msginfo.type == MPIDI_DCMF_REQUEST_TYPE_CANCEL_REQUEST)
-    return MPIDI_DCMF_procCancelReq(msginfo, senderrank);
+    {
+      MPIDI_DCMF_procCancelReq(msginfo, senderrank);
+      return;
+    }
 
   /* -------------------------- */
   /*      match request         */
