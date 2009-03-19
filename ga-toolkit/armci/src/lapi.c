@@ -3,6 +3,7 @@
  
 #include <pthread.h>
 #include <stdio.h>
+#include <strings.h>
 #include "lapidefs.h"
 #include "armcip.h"
 #include "copy.h"
@@ -14,14 +15,34 @@
 #define ERROR(str,val) armci_die((str),(val))
 #define BUF_TO_EVBUF(buf) ((lapi_cmpl_t*)(((char*)buf) - sizeof(lapi_cmpl_t)))
 
+char err_msg_buf[LAPI_MAX_ERR_STRING]; /* for error msg returned by LAPI */
 
+/*
+** macro to check return code of function calls. keeps return
+** code checking logic from needing to be in main logic
+*/
+#define CHECK(func_and_args)                                      \
+{                                                                 \
+    int rc;                                                       \
+    if ((rc = (func_and_args)) != LAPI_SUCCESS) {                 \
+        LAPI_Msg_string(rc, err_msg_buf);                         \
+        fprintf(stderr,                                           \
+                "LAPI ERROR: %s, rc = %d\n", err_msg_buf, rc);    \
+        armci_die("LAPI Error", 0);                               \
+    }                                                             \
+}
+
+#ifdef ARMCI_ENABLE_GPC_CALLS
+    extern gpc_buf_t *gpc_req;
+#endif
 int lapi_max_uhdr_data_sz; /* max  data payload */
 lapi_cmpl_t *cmpl_arr;     /* completion state array, dim=NPROC */
 lapi_cmpl_t  hdr_cntr;     /* AM header buffer counter  */
 lapi_cmpl_t  buf_cntr;     /* AM data buffer counter    */
-lapi_cmpl_t  ack_cntr;     /* ACK counter used in handshaking protocols
+lapi_cmpl_t*  ack_cntr;    /* ACK counter used in handshaking protocols
                               between origin and target */
-lapi_cmpl_t  get_cntr;     /* counter used with lapi_get  */
+lapi_cmpl_t*  get_cntr;    /* counter used with lapi_get  */
+lapi_user_cxt_t *lapi_remote_cxt; /* Remote context for RDMA call */
 
 int intr_status;
 lapi_info_t     lapi_info;
@@ -57,6 +78,10 @@ int whofrom, msglen;
 request_header_t *msginfo = (request_header_t *)save;
 char *descr= (char*)(msginfo+1), *buf=MessageRcvBuffer;
 int buflen=MSG_BUFLEN;
+#ifdef ARMCI_ENABLE_GPC_CALLS
+  extern pthread_t data_server;
+  data_server = pthread_self();
+#endif
 
    if(DEBUG_)
       fprintf(stderr,"%d:CH:op=%d from=%d datalen=%d dscrlen=%d\n", armci_me,
@@ -131,7 +156,7 @@ void* armci_header_handler(lapi_handle_t *t_hndl, void *uhdr, uint *t_uhdrlen,
 lapi_handle_t hndl = *t_hndl;
 uint uhdrlen = *t_uhdrlen;
 request_header_t *msginfo = (request_header_t *)uhdr;
-
+          
    if(DEBUG_)
         fprintf(stderr,"%d:HH: op=%d from %d\n",armci_me,msginfo->operation,
                 msginfo->from);
@@ -194,12 +219,20 @@ lapi_cntr_t *pcmpl_cntr, *pcntr = &(BUF_TO_EVBUF(msginfo)->cntr);
 int rc;
 
       msginfo->tag.cntr= pcntr;
-      msginfo->tag.buf = msginfo+1;
+#ifdef ARMCI_ENABLE_GPC_CALLS
+      if(msginfo->operation==GET && msginfo->format==VECTOR && msginfo->ehlen){ 
+        msginfo->tag.buf = (char *)(msginfo+1)+msginfo->dscrlen;
+      }
+      else 
+#endif
+        msginfo->tag.buf = msginfo+1;
 
       if(msginfo->operation==GET || msginfo->operation==LOCK){
 
          SET_COUNTER(*(lapi_cmpl_t*)pcntr,1);/*dataarrive in same buf*/
-
+         /*The GPC case. Note that we don't use the parameter len*/
+         if(msginfo->format==VECTOR && msginfo->ehlen > 0) 
+       msglen += msginfo->datalen;
          if(lapi_max_uhdr_data_sz < msginfo->dscrlen){
 
             msginfo->dscrlen = -msginfo->dscrlen; /* no room for descriptor */
@@ -240,7 +273,7 @@ int rc;
                   UPDATE_FENCE_STATE(msginfo->to, msginfo->operation, 1);
 
       if((rc=LAPI_Amsend(lapi_handle,(uint)msginfo->to,
-			 (void*)armci_header_handler, msginfo, msglen, NULL, 0,
+             (void*)armci_header_handler, msginfo, msglen, NULL, 0,
                          NULL, pcntr, pcmpl_cntr))) armci_die("AM failed",rc);
 
       if(DEBUG_) fprintf(stderr,"%d sending req=%d to %d\n",
@@ -264,7 +297,6 @@ void armci_send_strided(int proc, request_header_t *msginfo, char *bdata,
 \*/
 void armci_send_data(request_header_t* msginfo, void *data)
 {
-/*     fprintf(stderr,"%d: sending %d bytes (%lf) to %d adr=(%x,%x)\n",armci_me, msginfo->datalen, *(double*)data, msginfo->from, msginfo->tag.buf, MessageSndBuffer);*/
      armci_lapi_send(msginfo->tag, data, msginfo->datalen, msginfo->from);
 }
 
@@ -283,7 +315,13 @@ char* armci_rcv_data(int proc, request_header_t *msginfo)
 {
 lapi_cmpl_t *pcntr=BUF_TO_EVBUF(msginfo);
      CLEAR_COUNTER((*pcntr));
-     return (char*)(msginfo+1);
+#ifdef ARMCI_ENABLE_GPC_CALLS
+     if(msginfo->operation==GET && msginfo->format==VECTOR && msginfo->ehlen){
+       return((char *)(msginfo+1)+msginfo->dscrlen);
+     }
+     else
+#endif
+       return (char*)(msginfo+1);
 }
 
 
@@ -318,7 +356,8 @@ void armci_init_lapi()
 int rc, p;
 int lapi_max_uhdr_sz;
 lapi_cmpl_t *pcntr;
-
+lapi_remote_cxt_t util_cxt;  /* For call to obtain rCxt */
+ 
 #ifndef TCGMSG
     rc = LAPI_Init(&lapi_handle, &lapi_info);
     if(rc) ERROR("lapi_init failed",rc);
@@ -336,7 +375,18 @@ lapi_cmpl_t *pcntr;
     /* allocate memory for completion state array */
     cmpl_arr = (lapi_cmpl_t*)malloc(armci_nproc*sizeof(lapi_cmpl_t));
     if(cmpl_arr==NULL) ERROR("armci_init_lapi:malloc for cmpl_arr failed",0);
-     
+
+    /* allocate memory for ack and get counters, 1 if not thread safe */
+#ifdef THREAD_SAFE
+    ack_cntr = calloc(armci_user_threads.max, sizeof(lapi_cmpl_t));
+    get_cntr = calloc(armci_user_threads.max, sizeof(lapi_cmpl_t));
+#else
+    ack_cntr = calloc(1, sizeof(lapi_cmpl_t));
+    get_cntr = calloc(1, sizeof(lapi_cmpl_t));
+#endif
+    if (!(ack_cntr && get_cntr))
+        ERROR("armci_init_lapi:calloc for ack or get counters failed",0);
+
     /* initialize completion state array */
     for(p = 0; p< armci_nproc; p++){
         rc = LAPI_Setcntr(lapi_handle, &cmpl_arr[p].cntr, 0);
@@ -346,25 +396,49 @@ lapi_cmpl_t *pcntr;
     }
 
      /* initialize ack/buf/hdr counters */
-     rc = LAPI_Setcntr(lapi_handle, &ack_cntr.cntr, 0);
-     if(rc) ERROR("armci_init_lapi: LAPI_Setcntr failed (ack)",rc);
-     ack_cntr.val = 0;
+#ifdef THREAD_SAFE
+#   define N armci_user_threads.max
+#else
+#   define N 1
+#endif
+     for (p = 0; p < N; p++) {
+        rc = LAPI_Setcntr(lapi_handle, &(ack_cntr[p].cntr), 0);
+        if(rc) ERROR("armci_init_lapi: LAPI_Setcntr failed (ack)",rc);
+        ack_cntr[p].val = 0;
+
+        rc = LAPI_Setcntr(lapi_handle, &(get_cntr[p].cntr), 0);
+        if(rc) ERROR("armci_init_lapi: LAPI_Setcntr failed (get)",rc);
+        get_cntr[p].val = 0;
+     }
      rc = LAPI_Setcntr(lapi_handle, &hdr_cntr.cntr, 0);
      if(rc) ERROR("armci_init_lapi: LAPI_Setcntr failed (hdr)",rc);
      hdr_cntr.val = 0;
-     rc = LAPI_Setcntr(lapi_handle, &buf_cntr.cntr, 0); 
+     rc = LAPI_Setcntr(lapi_handle, &buf_cntr.cntr, 0);
      if(rc) ERROR("armci_init_lapi: LAPI_Setcntr failed (buf)",rc);
      buf_cntr.val = 0;
-     rc = LAPI_Setcntr(lapi_handle, &get_cntr.cntr, 0); 
-     if(rc) ERROR("armci_init_lapi: LAPI_Setcntr failed (get)",rc);
-     get_cntr.val = 0;
 #if 0
      pcntr = (lapi_cmpl_t*)MessageSndBuffer;
-     rc = LAPI_Setcntr(lapi_handle, &pcntr->cntr, 0); 
+     rc = LAPI_Setcntr(lapi_handle, &pcntr->cntr, 0);
      if(rc) ERROR("armci_init_lapi: LAPI_Setcntr failed (bufcntr)",rc);
      pcntr->val = 0;
 #endif
-     
+
+#ifdef LAPI_RDMA
+     /* allocate rCxt */
+     lapi_remote_cxt = (lapi_user_cxt_t*)malloc(armci_nproc *
+                                                sizeof(lapi_user_cxt_t));
+     if(lapi_remote_cxt==NULL) ERROR("armci_init_lapi: rCxt malloc failed",0);
+
+     /* obtain remote context "rCxt" for RDMA Operation of all procs */
+     for(p = 0; p< armci_nproc; p++){
+        if(p==armci_me) continue;
+        util_cxt.Util_type   = LAPI_REMOTE_RCXT;
+        util_cxt.operation   = LAPI_RDMA_ACQUIRE;
+        util_cxt.dest        = p;
+        CHECK(LAPI_Util(lapi_handle, (lapi_util_t *) &util_cxt));
+        lapi_remote_cxt[p]   =  util_cxt.usr_rcxt;
+     }
+#endif
 
 #if  !defined(LAPI2)
 
@@ -378,12 +452,44 @@ lapi_cmpl_t *pcntr;
 
      /* initialize buffer managment module */
      _armci_buf_init();
+
+#ifdef LAPI_RDMA
+     CHECK((LAPI_Gfence(lapi_handle)));
+#endif
+#ifdef ARMCI_ENABLE_GPC_CALLS
+    gpc_req = (gpc_buf_t *)malloc(sizeof(gpc_buf_t)*MAX_GPC_REQ);
+    if(gpc_req==NULL)armci_die("malloc for gpc failed",sizeof(gpc_buf_t));
+    gpc_init();
+#endif
 }
-       
+
 
 void armci_term_lapi()
 {
+int p;
+lapi_remote_cxt_t util_cxt;  /* For call to obtain rCxt */
+
+#ifdef LAPI_RDMA 
+     CHECK((LAPI_Gfence(lapi_handle)));
+
+     /* release remote context "rCxt" for RDMA Operation of all procs */
+     for(p = 0; p< armci_nproc; p++){
+        if(p==armci_me) continue;
+        util_cxt.Util_type   = LAPI_REMOTE_RCXT;
+        util_cxt.operation   = LAPI_RDMA_RELEASE;
+        util_cxt.dest        = p;
+        util_cxt.usr_rcxt    = lapi_remote_cxt[p];
+        CHECK(LAPI_Util(lapi_handle, (lapi_util_t *) &util_cxt));
+     }
+     free(lapi_remote_cxt);
+#endif
+     
+#ifndef TCGMSG
+     CHECK((LAPI_Term(lapi_handle))); /* terminate the LAPI handle */
+#endif
      free(cmpl_arr);
+     free(ack_cntr);
+     free(get_cntr);
 }
 
 /* primitive pseudo message-passing on top of lapi */ 
@@ -411,7 +517,7 @@ void armci_lapi_send(msg_tag_t tag, void* data, int len, int p)
 /* subroutine versions of macros disabling and enabling interrupts */
 void intr_off_()
 {
-	INTR_OFF;
+    INTR_OFF;
 }
 
 void intr_on_()
@@ -431,6 +537,162 @@ void print_counters_()
   fflush(stdout);
 }
 
+#ifdef LAPI_RDMA 
+/* LAPI Put RDMA */
+void armci_client_direct_send(int p, void *src_buf, void *dst_buf,
+                              int len, void** contextptr, int nbtag,
+                              ARMCI_MEMHDL_T *lochdl,ARMCI_MEMHDL_T *remhdl) {
+
+    lapi_xfer_t      xfer_struct;   /* Data structure for the xfer call */
+    lapi_rdma_tag_t  lapi_rdma_tag; /* RDMA notification tag */
+    uint src_offset, tgt_offset;
+    int  val, rc;
+
+    /* can be any number that fits in ushort */
+    lapi_rdma_tag = 22;
+
+    /* CHECK: offset problem. what if client and server attached (shmat) at
+       diff address */ 
+    src_offset = (char *)src_buf- (char *)lochdl->start;
+    tgt_offset = (char *)dst_buf - (char *)remhdl->start;
+
+#if DEBUG_
+    printf("%d: Doing LAPI_Xfer (RDMA Put): dst=%d srchdl_start=%p remhdl_start=%p (bytes=%ld src_off=%d tgt_off=%d)\n", armci_me, p, lochdl->start, remhdl->start, len, src_offset, tgt_offset); fflush(stdout);
+#endif
+
+    bzero(&xfer_struct, sizeof(xfer_struct));
+    xfer_struct.HwXfer.Xfer_type    = LAPI_RDMA_XFER;
+    xfer_struct.HwXfer.tgt          = p;
+    /*xfer_struct.HwXfer.op         = LAPI_RDMA_PUT|LAPI_RCNTR_UPDATE;*/
+    xfer_struct.HwXfer.op           = LAPI_RDMA_PUT;
+    xfer_struct.HwXfer.rdma_tag     = lapi_rdma_tag;
+    xfer_struct.HwXfer.remote_cxt   = lapi_remote_cxt[p];
+    xfer_struct.HwXfer.src_pvo      = lochdl->pvo;
+    xfer_struct.HwXfer.tgt_pvo      = remhdl->pvo;
+    xfer_struct.HwXfer.src_offset   = src_offset;
+    xfer_struct.HwXfer.tgt_offset   = tgt_offset;
+    xfer_struct.HwXfer.len          = (ulong) (len);  
+    xfer_struct.HwXfer.shdlr        = (scompl_hndlr_t *) NULL;
+    xfer_struct.HwXfer.sinfo        = (void *) NULL;
+    xfer_struct.HwXfer.org_cntr     = &(ack_cntr->cntr);
+
+    /* Initiate RDMA Xfer */
+    if((rc = LAPI_Xfer(lapi_handle, &xfer_struct)) != LAPI_SUCCESS) {
+        LAPI_Msg_string(rc, err_msg_buf);
+        fprintf(stderr, "LAPI ERROR: %s, rc = %d\n", err_msg_buf, rc);
+        armci_die("LAPI_Xfer (RDMA Put) failed", 0);
+    }
+
+    /* wait for RDMA completion */
+    rc = LAPI_Waitcntr(lapi_handle, &(ack_cntr->cntr),1,&val);
+    if(rc != LAPI_SUCCESS) {
+        LAPI_Msg_string(rc, err_msg_buf);
+        fprintf(stderr, "LAPI ERROR: %s, rc = %d\n", err_msg_buf, rc);
+        armci_die("LAPI_Waitcntr (RDMA Put) failed", 0);
+    }
+
+    /* CHECK((LAPI_Fence(lapi_handle))); */
+
+#if DEBUG_
+    printf("%d: Completed LAPI_Xfer RDMA (Put): dst=%d\n", armci_me, p);
+#endif
+}
+
+/* LAPI Get RDMA */
+void armci_client_direct_get(int p, void *src_buf, void *dst_buf, 
+			     int len, void** cptr, int nbtag,
+			     ARMCI_MEMHDL_T *lochdl, ARMCI_MEMHDL_T *remhdl) {
+
+    lapi_xfer_t      xfer_struct;   /* Data structure for the xfer call */
+    lapi_rdma_tag_t  lapi_rdma_tag; /* RDMA notification tag */
+    uint src_offset, tgt_offset;
+    int  val, rc;
+
+    /* can be any number that fits in ushort */
+    lapi_rdma_tag = 21;
+
+    /* CHECK: offset problem. what if client and server attached (shmat) at
+       diff address */ 
+    src_offset = (char *)dst_buf- (char *)lochdl->start;
+    tgt_offset = (char *)src_buf - (char *)remhdl->start;
+
+#if DEBUG_
+    printf("%d: Doing LAPI_Xfer (RDMA Get): dst=%d srchdl_start=%p remhdl_start=%p (bytes=%ld src_off=%d tgt_off=%d)\n", armci_me, p, lochdl->start, remhdl->start, len, src_offset, tgt_offset); fflush(stdout);
+#endif
+    bzero(&xfer_struct, sizeof(xfer_struct));
+    xfer_struct.HwXfer.Xfer_type    = LAPI_RDMA_XFER;
+    xfer_struct.HwXfer.tgt          = p;
+    /*xfer_struct.HwXfer.op         = LAPI_RDMA_GET|LAPI_RCNTR_UPDATE;*/
+    xfer_struct.HwXfer.op           = LAPI_RDMA_GET;
+    xfer_struct.HwXfer.rdma_tag     = lapi_rdma_tag;
+    xfer_struct.HwXfer.remote_cxt   = lapi_remote_cxt[p];
+    xfer_struct.HwXfer.src_pvo      = lochdl->pvo;
+    xfer_struct.HwXfer.tgt_pvo      = remhdl->pvo;
+    xfer_struct.HwXfer.src_offset   = src_offset;
+    xfer_struct.HwXfer.tgt_offset   = tgt_offset;
+    xfer_struct.HwXfer.len          = (ulong) (len);  
+    xfer_struct.HwXfer.shdlr        = (scompl_hndlr_t *) NULL;
+    xfer_struct.HwXfer.sinfo        = (void *) NULL;
+    xfer_struct.HwXfer.org_cntr     = &(get_cntr->cntr);
+
+    /* Initiate RDMA Xfer */
+    if((rc = LAPI_Xfer(lapi_handle, &xfer_struct)) != LAPI_SUCCESS) {
+        LAPI_Msg_string(rc, err_msg_buf);
+        fprintf(stderr, "LAPI ERROR: %s, rc = %d\n", err_msg_buf, rc);
+        armci_die("LAPI_Xfer (RDMA Get) failed", 0);
+    }
+
+    /* wait for RDMA completion */
+    rc = LAPI_Waitcntr(lapi_handle, &(get_cntr->cntr),1,&val);
+    if(rc != LAPI_SUCCESS) {
+        LAPI_Msg_string(rc, err_msg_buf);
+        fprintf(stderr, "LAPI ERROR: %s, rc = %d\n", err_msg_buf, rc);
+        armci_die("LAPI_Waitcntr (RDMA Get) failed", 0);
+    }
+
+#if DEBUG_
+    printf("%d: Completed LAPI_Xfer (RDMA Get): dst=%d\n", armci_me, p);
+#endif
+
+}
+
+int armci_pin_contig_hndl(void *ptr, int bytes, ARMCI_MEMHDL_T *memhdl)
+{
+
+  lapi_get_pvo_t util_pvo;     /* For call to obtain PVO */
+  int rc;
+
+  /* translate and pin the buffer to the adapter */
+  util_pvo.Util_type = LAPI_XLATE_ADDRESS;
+  util_pvo.length    = bytes;
+  util_pvo.usr_pvo   = 0;
+  util_pvo.address   = ptr;
+  util_pvo.operation = LAPI_RDMA_ACQUIRE;
+  /*bzero(ptr, bytes);*/ /* CHECK: Is touching the entire shmem sgement feasible */
+  if((rc=LAPI_Util(lapi_handle, (lapi_util_t *) &util_pvo)) != LAPI_SUCCESS) {
+    return 0;
+  }
+
+  memhdl->pvo   = util_pvo.usr_pvo;
+  memhdl->start = ptr;
+
+#if DEBUG_
+  printf("\n%d:armci_pin_contig_hndl(): memhdl(pvo)=%ld ptr=%p bytes=%ld\n",
+	 armci_me, (long)memhdl->pvo, ptr, bytes);fflush(stdout);
+#endif
+
+  return 1;
+}
+
+void armci_network_client_deregister_memory(ARMCI_MEMHDL_T *mh)
+{
+}
+
+
+void armci_network_server_deregister_memory(ARMCI_MEMHDL_T *mh)
+{
+}
+#endif /* LAPI_RDMA */
 
 #ifdef AIX
 
@@ -474,3 +736,4 @@ atomic_p word_addr = (atomic_p)lock;
 #ifdef LAPI2
 #include "lapi2.c"
 #endif
+

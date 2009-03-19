@@ -37,9 +37,9 @@
  * ====================================================================
  *
  * Module: st2c.c
- * $Revision: 1.19 $
- * $Date: 2006/01/04 23:39:51 $
- * $Author: wychen $
+ * $Revision: 1.20 $
+ * $Date: 2008/10/15 02:08:38 $
+ * $Author: ciancu $
  * $Source: /var/local/cvs/compilers/open64/osprey1.0/be/whirl2c/st2c.cxx,v $
  *
  * Revision history:
@@ -72,7 +72,7 @@
  * ====================================================================
  */
 #ifdef _KEEP_RCS_ID
-static char *rcs_id = "$Source: /var/local/cvs/compilers/open64/osprey1.0/be/whirl2c/st2c.cxx,v $ $Revision: 1.19 $";
+static char *rcs_id = "$Source: /var/local/cvs/compilers/open64/osprey1.0/be/whirl2c/st2c.cxx,v $ $Revision: 1.20 $";
 #endif /* _KEEP_RCS_ID */
 
 #include "whirl2c_common.h"
@@ -617,7 +617,8 @@ ST2C_decl_var(TOKEN_BUFFER tokens, const ST *st, CONTEXT context)
 
    if (ST_is_initialized(st) && !Stab_No_Linkage(st)) /* initialize */
    {
-      ST2C_basic_decl(tokens, st, context); /*type, name, storage class*/
+     
+     ST2C_basic_decl(tokens, st, context); /*type, name, storage class*/
       inito = Find_INITO_For_Symbol(st);
       if (inito != 0)
       {

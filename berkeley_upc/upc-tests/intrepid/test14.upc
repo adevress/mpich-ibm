@@ -34,16 +34,31 @@ test14 ()
   if (MYTHREAD == 0)
     {
       if (res)
-	abort ();
+        {
+	  fprintf (stderr, "Error: null PTS test 'if (res)' failed.\n");
+	  abort ();
+        }
       if (res != 0)
-	abort ();
+        {
+	  fprintf (stderr, "Error: null PTS test 'if (res !=0)' failed.\n");
+	  abort ();
+	}
       p = (int *)res;
       if (p)
-	abort ();
+        {
+	  fprintf (stderr, "Error: null PTS to local test 'if (p)' failed.\n");
+	  abort ();
+	}
       if ((int *) res != 0)
-	abort ();
+        {
+	  fprintf (stderr, "Error: null PTS to local test 'if ((int *) res != 0)' failed.\n");
+	  abort ();
+	}
       if (0 != (int *) res)
-	abort ();
+        {
+	  fprintf (stderr, "Error: null PTS to local test 'if (0 != (int *) res)' failed.\n");
+	  abort ();
+	}
       printf ("test14: test assignment, comparison, and conversion of a null shared pointer - passed.\n");
     }
 }

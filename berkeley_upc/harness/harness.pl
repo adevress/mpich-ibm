@@ -59,6 +59,9 @@ my @ALL_TESTSUITES = ();
 my $AGAIN_CODE = 1;
 # my $FAILURE_CODE = 2;
 
+# runjobs.pl 'slack'
+my $slack = 15;
+
 my %SYS_ENV = ();
 my $DASHLINE = "="x78 . "\n";
 # prepend the default options set in the environment (if any)
@@ -79,9 +82,12 @@ my $warning_blacklist = '^'.
   '(.*?warning: called from here.*?)|'.
   '(.*? -diag_error .*?)|'.
   '(.*?Warning: -xarch=native has been explicitly specified.*?)|'.
+  '(.*?\(E\) Error in message set [0-9]+, unable to retrieve message [0-9]+.*?)|'.
   '(.*?libm.\S+ is not used for resolving any symbol.*?)|'.
   '(.*?In function .*?(\n.*?warning: .*? misused, please use .*?)+)|'.
-  '(.*?In function .*?(\n.*?warning: passing argument .*? of \'_gasnet_.*?\' discards qualifiers.*?)+)|'.
+  '(.*?In function .*?(\n.*?warning: passing argument .*? of \'(_gasnet_.*?|fh_request_free)\' discards qualifiers.*?)+)|'.
+  '((ld: 0711-224 WARNING: Duplicate symbol: (__fe_def_env|_?gasnet[it]_).*?\n)+ld: 0711-345.*?)|' .
+  '(ld.*?: WARNING 105: Common symbol "_?gasnet[it]_.*?)|' .
   '())$';
 
 my $mydir = $0;
@@ -111,6 +117,7 @@ my $recompile = undef;
 my $optimize = 0;
 my $trans_opt = 0;
 my $runjobs = undef;
+my $compileonly = undef;
 my @run_lists = ();
 my $no_queue_list = undef;
 my $nthread_default = 2;    # number of UPC threads
@@ -156,7 +163,7 @@ if (! defined($ENV{TOP_SRCDIR})) {
 }
 my $top_src_path = $ENV{TOP_SRCDIR};
 my $harness_src_path = "$top_src_path/harness";
-my $top_bld_path = undef;
+my $top_work_path = undef;
 my $harness_bld_path = undef;
 my $startdir = getcwd();
 $harness_bld_path = $0;
@@ -171,15 +178,19 @@ while (readlink($harness_bld_path)) {
 $harness_bld_path = dirname($harness_bld_path);    # from File::Basename
 chdir($harness_bld_path) or die "Can't cd to '$harness_bld_path': $!\n";
 $harness_bld_path = getcwd(); # use absolute path
-chdir("$harness_bld_path/..") or die "Can't cd to '$harness_bld_path/..': $!\n";
-$top_bld_path = getcwd(); # use absolute path
+
+chdir('..') or die "Can't cd to '$harness_bld_path/..': $!\n";
+$ENV{TOP_BUILDDIR} = getcwd(); # for use in harness.conf files
+
 chdir($startdir) or die "Can't cd to '$startdir': $!\n";
-$ENV{TOP_BUILDDIR} = $top_bld_path; # for use in harness.conf files
 
 my $logdir = undef;
 my ($datestamp, $timestamp) = &gen_timestamp();
 
 &parse_args();
+
+# Set LANG=C in the environment to ensure consistent compiler messages
+$ENV{'LANG'} = 'C';
 
 my $make = $compiler_spec{gmake};
 
@@ -210,6 +221,7 @@ my $runjobs_script = sprintf("%s/runjobs",$harness_bld_path);
 my $system_queues = $sysconf->{queues};
 my $run_env = $sysconf->{run_env};
 my $run_env_default = $sysconf->{run_env_default};
+my $endjob_cmd = $sysconf->{endjob_cmd};
 my $batchsys = lc($sysconf->{batch_sys});
 my $submit_cmd = "";
 my $gen_qscript = undef;
@@ -234,6 +246,9 @@ if ($batchsys eq "loadleveler") {
 } elsif ($batchsys eq "lsf") {
     $submit_cmd = $sysconf->{submit_cmd} || "bsub <";
     $gen_qscript = \&gen_lsf_qscript;
+} elsif ($batchsys eq "slurm") {
+    $submit_cmd = $sysconf->{submit_cmd} || "sbatch";
+    $gen_qscript = \&gen_slurm_qscript;
 } elsif ($batchsys eq "interactive") {
     # "interactive" is now an alias for "shell" with an empty submit_cmd
     $sysconf->{batch_sys} = "shell";
@@ -273,6 +288,7 @@ if (defined($sysconf->{max_nodes_to_run})) {
 # build the top level dirs, if they do not already exist
 &mk_dir($logdir);
 &start_log();
+unlink($run_report_file);
 	   
 # Set useful upcc variables that might be needed by harness expansions 
 $ENV{"AR"} = $compiler_spec{ar}; 
@@ -552,7 +568,7 @@ sub get_suite_srcbld_paths {
       }
     }
     my $bld_suite = $src_suite;
-    $bld_suite =~ s/$top_src_path/$top_bld_path/;
+    $bld_suite =~ s/$top_src_path/$top_work_path/;
     return ($src_suite,$bld_suite);
 }
 # ======================================================================
@@ -692,6 +708,11 @@ sub run_suite {
 	    $runit = (-x $code);
 	}
 
+	if ($compileonly) {
+	    &logit("CompileOnly, removing $suite/$code");
+	    &remove_binary($conf);
+	    next;
+	}
 	if (defined($conf->{NoLink})) {
 	    &logit("NoLink, will not submit $suite/$code");
 	    next;
@@ -774,7 +795,7 @@ sub close_runlist {
 	    if ($status == 0) {
 	        &logit("Job $script submitted to batch system:\n$submit $qpath\n$out");
 	    } else {
-	        &logit("Job submission of [$qpath] failed with exit code $status:\n$submit $qpath\n$out");
+	        &error("Job submission of [$qpath] failed with exit code $status:\n$submit $qpath\n$out");
 	    }
         }
     }
@@ -808,6 +829,7 @@ sub parse_known {
     $modestr = "all" if (!$modestr);
     $descstr = trim_ends($descstr);
     $descstr = '(No comment given)' if (!$descstr);
+    $descstr =~ tr/';//d;
     $featurestr = trim_ends($featurestr);
     $featurestr = "all" if (!$featurestr);
     my $featureexpr = " $featurestr ";
@@ -986,16 +1008,26 @@ sub time_in_sec {
 }
 
 # ======================================================================
-# convert a string of the form HHH:MM:SS to minites
+# convert a time in seconds to a string of the form HHH:MM:SS
 # ======================================================================
-sub time_in_min {
-    my $str = shift;
+sub secs_to_HMS {
+   my $secs = shift;
+   my $hrs = int($secs / 3600);
+   $secs -= 3600 * $hrs;
+   my $mins = int($secs / 60);
+   $secs -= 60 * $mins;
+   return sprintf("%d:%02d:%02d", $hrs, $mins, $secs);
+}
 
-    if ($str =~ /^(\d+):(\d+):(\d+)$/) {
-	return 60*$1 + $2;
-    } else {
-	&fatal("time_in_min: invalid input [$str]");
-    }
+# ======================================================================
+# convert a time in seconds to a string of the form HHH:MM
+# ======================================================================
+sub secs_to_HM {
+   my $secs = shift;
+   my $hrs = int($secs / 3600);
+   $secs -= 3600 * $hrs;
+   my $mins = int($secs / 60);
+   return sprintf("%d:%02d", $hrs, $mins);
 }
 
 # ======================================================================
@@ -1020,7 +1052,18 @@ sub select_runlist {
 	my $numproc = $rlist->{nproc};
 	my $timelimit = $rlist->{timelimit};
 
-	if ( ($nproc == $numproc) && (($runtime < $timelimit) || ($timelimit == 0))) {
+	if ( ($nproc == $numproc) && ((($runtime + $slack) < $timelimit) || ($timelimit == 0))) {
+	    # If adding one more entry would exceed threshold, then close the runlist now.
+	    # The check for non-zero $totaltime prevents closing an empty runlist
+	    my $totaltime = $rlist->{totaltime};
+	    my $threshold = $rlist->{submit_threshold};
+	    if ($threshold && $totaltime && (($totaltime + $runtime) >= $threshold)) {
+	        &close_runlist($rlist);
+		# Remove the now submitted runlist and continue as if no match found
+	        @run_lists = grep($_ != $rlist, @run_lists);
+		last;
+	    }
+
 	    return $rlist;
 	}
     }
@@ -1062,7 +1105,7 @@ sub select_runlist {
 
 	# yea, we found a queue.  Now lets start a new
 	# script to run this job
-	my $rlist = &new_runlist($q,$nodes,$tpn,$nproc);
+	my $rlist = &new_runlist($q,$nodes,$tpn,$nproc,($runtime + $slack + $slop));
 
 	push(@run_lists,$rlist);
 
@@ -1088,6 +1131,7 @@ sub new_runlist {
     my $nodes = shift;
     my $tpn = shift;
     my $nproc = shift;
+    my $mintime = shift;
 
     if (! defined($runlist_num{$nodes})) {
 	$runlist_num{$nodes} = 0;
@@ -1098,6 +1142,19 @@ sub new_runlist {
     my $runlistname = sprintf("runlist_%03d_%d",$nproc,$rl_num);
     my $runlistpath = "$logdir/$runlistname";
     my $max_qtime_sec = &time_in_sec($q->{Q_maxtime});
+
+    my $threshold = 0;
+    if ($sysconf->{submit_threshold}) {
+    	if (!$max_qtime_sec) {
+	    $threshold = $sysconf->{submit_threshold};
+    	} elsif ($sysconf->{submit_threshold} < $max_qtime_sec) {
+	    $threshold = $sysconf->{submit_threshold};
+	    # Shorten qtime UNLESS it would be too short for the current job
+	    $max_qtime_sec = (($threshold > $mintime) ?  $threshold : $mintime);
+	} else {
+	    $threshold = $max_qtime_sec;
+	}
+    }
 
     my $fh = new IO::File("> $runlistpath");
     &fatal("Could not create script [$runlistpath]") if !defined($fh);
@@ -1110,7 +1167,9 @@ sub new_runlist {
 		 'queue'         => $q,
 		 'timelimit'     => $max_qtime_sec,
 		 'fh'            => $fh,
-		 'numjobs'       => 0
+		 'numjobs'       => 0,
+		 'submit_threshold' => $threshold,
+		 'totaltime'     => 0
 		 };
 
     &logit("Allocating new runlist [$runlistname] with $nproc processes and $max_qtime_sec seconds");
@@ -1138,6 +1197,17 @@ sub output_run_env {
     printf $bf ("export ${key}\n");
   }
   printf $bf ("# --- END SYSCONF VARS ---\n");
+}
+
+sub output_endjob_cmds {
+  my $bf = shift;
+
+  printf $bf ("# --- BEGIN CLEANUP COMMANDS ---\n");
+  foreach my $cmd ($endjob_cmd) {
+    &logit("adding cleanup cmd: $cmd");
+    printf $bf ("$cmd\n");
+  }
+  printf $bf ("# --- END CLEANUP COMMANDS ---\n");
 }
 
 sub get_jobname {
@@ -1184,10 +1254,9 @@ sub gen_ll_qscript {
     my $qpath = sprintf("%s/%s",$logdir,$scriptname);
     my $outpath = sprintf("%s/out_%03d",$logdir,$jobnum);
     my $errpath = sprintf("%s/err_%03d",$logdir,$jobnum);
-    my $max_qtime_sec = &time_in_sec($q->{Q_maxtime});
+    my $max_qtime_sec = $rlist->{timelimit};
 
     $rlist->{qpath} = $qpath;
-    $rlist->{timelimit} = $max_qtime_sec;
 
     my $bf = new IO::File("> $qpath");
     &fatal("Could not create script [$qpath]") if !defined($bf);
@@ -1214,7 +1283,7 @@ sub gen_ll_qscript {
     printf $bf ("\#@ class            = %s\n",$q->{Q_name});
     printf $bf ("\#@ node             = %d\n",$rlist->{nodes});
     printf $bf ("\#@ total_tasks      = %d\n",$nproc);
-    printf $bf ("\#@ wall_clock_limit = %s\n",$q->{Q_maxtime});
+    printf $bf ("\#@ wall_clock_limit = %s\n",&secs_to_HMS($max_qtime_sec));
     printf $bf ("\#@ queue\n");
 
     printf $bf ("\n");
@@ -1240,8 +1309,7 @@ sub gen_ll_qscript {
     printf $bf ("\n");
 
     my $rpt = basename($run_report_file);
-    unlink($run_report_file);
-    printf $bf ("\$RUNJOBS $logdir ${runlistfile} $rpt \'\' \$TIMELIM >> \$RUNLOG 2>&1\n");
+    printf $bf ("\$RUNJOBS $logdir ${runlistfile} $rpt \'\' \$TIMELIM $slack >> \$RUNLOG 2>&1\n");
     printf $bf ("status=\$\?\n");
     printf $bf ("echo STATUS = \$status >> \$RUNLOG\n");
     printf $bf ("if \[ \$status -eq ${AGAIN_CODE} \] ; then\n");
@@ -1250,6 +1318,7 @@ sub gen_ll_qscript {
     printf $bf ("fi\n\n");
     printf $bf ("echo >> \$RUNLOG\n");
     printf $bf ("date >> \$RUNLOG\n");
+    output_endjob_cmds($bf);
     undef $bf;
 
     return $rlist;
@@ -1273,10 +1342,9 @@ sub gen_pbs_qscript {
     my $qpath = sprintf("%s/%s",$logdir,$scriptname);
     my $outpath = sprintf("%s/out_%03d",$logdir,$jobnum);
     my $errpath = sprintf("%s/err_%03d",$logdir,$jobnum);
-    my $max_qtime_sec = &time_in_sec($q->{Q_maxtime});
+    my $max_qtime_sec = $rlist->{timelimit};
 
     $rlist->{qpath} = $qpath;
-    $rlist->{timelimit} = $max_qtime_sec;
 
     my $bf = new IO::File("> $qpath");
     &fatal("Could not create script [$qpath]") if !defined($bf);
@@ -1293,18 +1361,22 @@ sub gen_pbs_qscript {
       $reslist .= "size=".$rlist->{nodes};
     } elsif ($q->{Q_usemppwidth}) {
       $reslist .= "mppwidth=".$rlist->{nodes};
+    } elsif ($q->{Q_usencpus}) {
+      # No nodes= if batch system allocates CPUs rather than nodes
     } else {
       $reslist .= "nodes=".$rlist->{nodes};
     }
     if ($q->{Q_usemppnppn}) {
       $reslist .= ",mppnppn=".$rlist->{tpn};
+    } elsif ($q->{Q_usencpus}) {
+      $reslist .= "ncpus=".$rlist->{tpn};
     } elsif (!$q->{Q_noppn}) {
       $reslist .= ":ppn=".$rlist->{tpn};
     } else {
       &logit("WARNING: Q_noppn set, but ppn=".$rlist->{tpn}) if ($rlist->{tpn} != 1);
     }
     $reslist .= $q->{Q_nodeattrib} if ($q->{Q_nodeattrib});
-    printf $bf ("#PBS -l $reslist,walltime=%s\n", $q->{Q_maxtime});
+    printf $bf ("#PBS -l $reslist,walltime=%s\n", &secs_to_HMS($max_qtime_sec));
     printf $bf ("#PBS -o $outpath\n");
     printf $bf ("#PBS -e $errpath\n");
     printf $bf ("#PBS -q %s\n",$q->{Q_name});
@@ -1342,8 +1414,7 @@ sub gen_pbs_qscript {
     printf $bf ("\n");
 
     my $rpt = basename($run_report_file);
-    unlink($run_report_file);
-    printf $bf ("\$RUNJOBS $logdir ${runlistfile} $rpt \'\' \$TIMELIM >> \$RUNLOG 2>&1\n");
+    printf $bf ("\$RUNJOBS $logdir ${runlistfile} $rpt \'\' \$TIMELIM $slack >> \$RUNLOG 2>&1\n");
     printf $bf ("status=\$\?\n");
     printf $bf ("echo STATUS = \$status >> \$RUNLOG\n");
     printf $bf ("if \[ \$status -eq ${AGAIN_CODE} \] ; then\n");
@@ -1352,6 +1423,7 @@ sub gen_pbs_qscript {
     printf $bf ("fi\n\n");
     printf $bf ("echo >> \$RUNLOG\n");
     printf $bf ("date >> \$RUNLOG\n");
+    output_endjob_cmds($bf);
     undef $bf;
 
     return $rlist;
@@ -1374,14 +1446,13 @@ sub gen_sge_qscript {
     my $qpath = sprintf("%s/%s",$logdir,$scriptname);
     my $outpath = sprintf("%s/out_%03d",$logdir,$jobnum);
     my $errpath = sprintf("%s/err_%03d",$logdir,$jobnum);
-    my $max_qtime_sec = &time_in_sec($q->{Q_maxtime});
+    my $max_qtime_sec = $rlist->{timelimit};
     my $parenv = $q->{Q_pe} || "mpich";
 
-    my $reslist = "h_rt=$q->{Q_maxtime}";
+    my $reslist = "h_rt=" . &secs_to_HMS($max_qtime_sec);
     $reslist .= ",$q->{Q_nodeattrib}" if ($q->{Q_nodeattrib});
 
     $rlist->{qpath} = $qpath;
-    $rlist->{timelimit} = $max_qtime_sec;
 
     my $bf = new IO::File("> $qpath");
     &fatal("Could not create script [$qpath]") if !defined($bf);
@@ -1425,8 +1496,7 @@ sub gen_sge_qscript {
     printf $bf ("\n");
 
     my $rpt = basename($run_report_file);
-    unlink($run_report_file);
-    printf $bf ("\$RUNJOBS $logdir ${runlistfile} $rpt \'\' \$TIMELIM >> \$RUNLOG 2>&1\n");
+    printf $bf ("\$RUNJOBS $logdir ${runlistfile} $rpt \'\' \$TIMELIM $slack >> \$RUNLOG 2>&1\n");
     printf $bf ("status=\$\?\n");
     printf $bf ("echo STATUS = \$status >> \$RUNLOG\n");
     printf $bf ("if \[ \$status -eq ${AGAIN_CODE} \] ; then\n");
@@ -1435,6 +1505,7 @@ sub gen_sge_qscript {
     printf $bf ("fi\n\n");
     printf $bf ("echo >> \$RUNLOG\n");
     printf $bf ("date >> \$RUNLOG\n");
+    output_endjob_cmds($bf);
     undef $bf;
 
     return $rlist;
@@ -1456,12 +1527,11 @@ sub gen_rms_allocate_qscript {
     my $qpath = sprintf("%s/%s",$logdir,$scriptname);
     my $outpath = sprintf("%s/out_%03d",$logdir,$jobnum);
     my $errpath = sprintf("%s/err_%03d",$logdir,$jobnum);
-    my $max_qtime_sec = &time_in_sec($q->{Q_maxtime});
+    my $max_qtime_sec = $rlist->{timelimit};
     my $nodes = $rlist->{nodes};
     my $nproc = $rlist->{nproc};
 
     $rlist->{qpath} = $qpath;
-    $rlist->{timelimit} = $max_qtime_sec;
 
     # Assemble arguments.
     my $submit = "$submit_cmd > $outpath 2> $errpath -N $nodes -n $nproc";
@@ -1514,8 +1584,7 @@ sub gen_rms_allocate_qscript {
     printf $bf ("\n");
 
     my $rpt = basename($run_report_file);
-    unlink($run_report_file);
-    printf $bf ("\$RUNJOBS $logdir ${runlistfile} $rpt \'\' \$TIMELIM >> \$RUNLOG 2>&1\n");
+    printf $bf ("\$RUNJOBS $logdir ${runlistfile} $rpt \'\' \$TIMELIM $slack >> \$RUNLOG 2>&1\n");
     printf $bf ("status=\$\?\n");
     printf $bf ("echo STATUS = \$status >> \$RUNLOG\n");
     printf $bf ("if \[ \$status -eq ${AGAIN_CODE} \] ; then\n");
@@ -1524,6 +1593,7 @@ sub gen_rms_allocate_qscript {
     printf $bf ("fi\n\n");
     printf $bf ("echo >> \$RUNLOG\n");
     printf $bf ("date >> \$RUNLOG\n");
+    output_endjob_cmds($bf);
     undef $bf;
 
     return $rlist;
@@ -1546,12 +1616,10 @@ sub gen_lsf_qscript {
     my $qpath = sprintf("%s/%s",$logdir,$scriptname);
     my $outpath = sprintf("%s/out_%03d",$logdir,$jobnum);
     my $errpath = sprintf("%s/err_%03d",$logdir,$jobnum);
-    my $max_qtime_sec = &time_in_sec($q->{Q_maxtime});
-    my $max_qtime_min = &time_in_min($q->{Q_maxtime});
-    my $qtime = sprintf("%d:%02d", $max_qtime_min/60, $max_qtime_min%60); # HHH:MM
+    my $max_qtime_sec = $rlist->{timelimit};
+    my $qtime = &secs_to_HM($max_qtime_sec);
 
     $rlist->{qpath} = $qpath;
-    $rlist->{timelimit} = $max_qtime_sec;
 
     my $bf = new IO::File("> $qpath");
     &fatal("Could not create script [$qpath]") if !defined($bf);
@@ -1594,8 +1662,7 @@ sub gen_lsf_qscript {
     printf $bf ("\n");
 
     my $rpt = basename($run_report_file);
-    unlink($run_report_file);
-    printf $bf ("\$RUNJOBS $logdir ${runlistfile} $rpt \'\' \$TIMELIM >> \$RUNLOG 2>&1\n");
+    printf $bf ("\$RUNJOBS $logdir ${runlistfile} $rpt \'\' \$TIMELIM $slack >> \$RUNLOG 2>&1\n");
     printf $bf ("status=\$\?\n");
     printf $bf ("echo STATUS = \$status >> \$RUNLOG\n");
     printf $bf ("if \[ \$status -eq ${AGAIN_CODE} \] ; then\n");
@@ -1604,6 +1671,85 @@ sub gen_lsf_qscript {
     printf $bf ("fi\n\n");
     printf $bf ("echo >> \$RUNLOG\n");
     printf $bf ("date >> \$RUNLOG\n");
+    output_endjob_cmds($bf);
+    undef $bf;
+
+    return $rlist;
+}
+
+# =======================================================================
+# Generate a SLURM queue script
+# =======================================================================
+sub gen_slurm_qscript {
+    my $rlist = shift;
+    
+    my $jobnum = $job_number;
+    $job_number++;
+
+    my $q = $rlist->{queue};
+
+    my $runlistfile = $rlist->{listname};
+    my $jobname = get_jobname($jobnum);
+    my $scriptname = sprintf("qscript_%03d",$jobnum);
+    my $qpath = sprintf("%s/%s",$logdir,$scriptname);
+    my $outpath = sprintf("%s/out_%03d",$logdir,$jobnum);
+    my $errpath = sprintf("%s/err_%03d",$logdir,$jobnum);
+    my $max_qtime_sec = $rlist->{timelimit};
+    my $qtime = &secs_to_HMS($max_qtime_sec);
+
+    $rlist->{qpath} = $qpath;
+
+    my $bf = new IO::File("> $qpath");
+    &fatal("Could not create script [$qpath]") if !defined($bf);
+    chmod +(0777 & ~umask), $qpath;
+
+    # write the header for a SLURM job
+    printf $bf ("#!/bin/sh\n");
+    printf $bf ("#SBATCH -J $jobname\n");
+    printf $bf ("#SBATCH -o $outpath\n");
+    printf $bf ("#SBATCH -e $errpath\n");
+    printf $bf ("#SBATCH -n %d\n", $rlist->{nproc});
+    printf $bf ("#SBATCH -t $qtime\n");
+    printf $bf ("#SBATCH -p %s\n", $q->{Q_name});
+    if ($q->{Q_noppn}) {
+      &logit("WARNING: Q_noppn set, but ppn=".$rlist->{tpn}) if ($rlist->{tpn} != 1);
+    } else {
+      printf $bf ("#SBATCH --ntasks-per-node=%d\n", $rlist->{tpn});
+    }
+
+    printf $bf ("\n");
+    printf $bf ("QSCRIPT=$qpath\n");
+    printf $bf ("RUNJOBS=${runjobs_script}\n");
+    my $runlog = sprintf("%s/run_%03d.log",$logdir,$jobnum);
+    unlink($runlog);
+    printf $bf ("RUNLOG=$runlog\n");
+    printf $bf ("TIMELIM=${max_qtime_sec}\n");
+    printf $bf ("export QSCRIPT\n");
+    printf $bf ("export RUNJOBS\n");
+    printf $bf ("export RUNLOG\n");
+    printf $bf ("export TIMELIM\n");
+    printf $bf ("\n");
+
+    output_run_env($bf);
+
+    printf $bf ("echo Starting new batch run >> \$RUNLOG\n");
+    printf $bf ("date >> \$RUNLOG\n");
+    printf $bf ("echo \"NODES\" >> \$RUNLOG\n");
+    printf $bf ("echo \$SLURM_NODELIST >> \$RUNLOG\n");
+    printf $bf ("echo >> \$RUNLOG\n");
+    printf $bf ("\n");
+
+    my $rpt = basename($run_report_file);
+    printf $bf ("\$RUNJOBS $logdir ${runlistfile} $rpt \'\' \$TIMELIM $slack >> \$RUNLOG 2>&1\n");
+    printf $bf ("status=\$\?\n");
+    printf $bf ("echo STATUS = \$status >> \$RUNLOG\n");
+    printf $bf ("if \[ \$status -eq ${AGAIN_CODE} \] ; then\n");
+    printf $bf ("   echo Will resubmit job [\$QSCRIPT] >> \$RUNLOG\n");
+    printf $bf ("   $resubmit_cmd \$QSCRIPT >> \$RUNLOG 2>&1\n");
+    printf $bf ("fi\n\n");
+    printf $bf ("echo >> \$RUNLOG\n");
+    printf $bf ("date >> \$RUNLOG\n");
+    output_endjob_cmds($bf);
     undef $bf;
 
     return $rlist;
@@ -1654,12 +1800,12 @@ sub gen_shell_qscript {
 
     printf $bf ("echo Running test jobs $shell_cmd, with output to \$RUNLOG\n");
     my $rpt = basename($run_report_file);
-    unlink($run_report_file);
-    printf $bf ("\$RUNJOBS $logdir ${runlistfile} $rpt \'\' 0 >> \$RUNLOG 2>&1\n");
+    printf $bf ("\$RUNJOBS $logdir ${runlistfile} $rpt \'\' 0 $slack >> \$RUNLOG 2>&1\n");
     printf $bf ("status=\$\?\n");
     printf $bf ("echo STATUS = \$status >> \$RUNLOG\n");
     printf $bf ("echo >> \$RUNLOG\n");
     printf $bf ("date >> \$RUNLOG\n");
+    output_endjob_cmds($bf);
     undef $bf;
 
     chmod 0755, $qpath;
@@ -1720,6 +1866,7 @@ sub submit_test {
     if (defined($rlist)) {
 	my $fh = $rlist->{fh};
 	$rlist->{numjobs}++;
+	$rlist->{totaltime} += $runtime;
 	my $cnt = $rlist->{numjobs};
 
 	print $fh ($run_entry);
@@ -1748,6 +1895,25 @@ sub submit_test {
     
 }
 
+#   remove the binary and .o files if they exist    
+sub remove_binary {
+    my $conf = shift;
+    my $files = $conf->{Files};
+    my $binary = $conf->{TestName};
+    my $binary_gdb = $binary . ".gdb";
+    unlink($binary) if (-e $binary);
+    unlink($binary_gdb) if (-e $binary_gdb);
+    my $file;
+    foreach $file (split(/\s+/,$files)) {
+	$file =~ s/\.[a-z]+$//;
+	$file .= ".o";
+        if (-e $file) {
+	  print "Removing $file\n" if $debug;
+	  unlink($file) or die "Failed to remove '$file': $!\n";
+        }
+    }
+}
+
 # ======================================================================
 # Compile the testcase.
 # Note the return value of 1 means to continue on to run the code.
@@ -1767,7 +1933,6 @@ sub compile_test {
     }
     my $files = $conf->{Files};
     my $binary = $conf->{TestName};
-    my $binary_gdb = $binary . ".gdb";
     my $nolink = defined($conf->{NoLink});
     my $expect = "pass";
     if (defined($conf->{CompileResult})) {
@@ -1775,18 +1940,7 @@ sub compile_test {
     }
     my $do_trans = (! defined($conf->{NoTrans})) && ($compiler_spec{upc_trans_option} ne "");
 
-#   remove the binary and .o files if they exist    
-    unlink($binary) if (-e $binary);
-    unlink($binary_gdb) if (-e $binary_gdb);
-    my $file;
-    foreach $file (split(/\s+/,$files)) {
-	$file =~ s/\.[a-z]+$//;
-	$file .= ".o";
-        if (-e $file) {
-	  print "Removing $file\n" if $debug;
-	  unlink($file) or die "Failed to remove '$file': $!\n";
-        }
-    }
+    &remove_binary($conf);
 
     my $cmd;
     my $bldcmd = $conf->{BuildCmd};
@@ -2736,9 +2890,11 @@ sub parse_args {
     my $ppn = undef;
     my $conduit = undef;
     my $lpath = undef;
+    my $wpath = undef;
     my $max_nodes = undef;
     my $compiler_featurelist = undef;
     my $shell_cmd = undef;
+    my $submit_threshold = undef;
     my $status = GetOptions(
 			    'help'           => \$opt_help,
 			    'debug'          => \$debug,
@@ -2749,6 +2905,7 @@ sub parse_args {
 			    'nocompile'      => \$nocompile,
 			    'norc'           => \$norc,
 			    'norun'          => \$norun,
+			    'compileonly'    => \$compileonly,
 			    'dryrun'         => \$dryrun,
 			    'sysconf=s'      => \$sysconf_file,
 			    'compiler_spec=s'=> \$compiler_spec_file,
@@ -2764,6 +2921,7 @@ sub parse_args {
 			    'repo=s'         => \$repoacct,
 			    'network=s'      => \$conduit,
 			    'logdir=s'       => \$lpath,
+			    'workdir=s'      => \$wpath,
 			    'runlimit=i'     => \$default_runtime,
 			    'clean'          => \$clean_build,
 			    'keep!'          => \$keep_binary,
@@ -2773,6 +2931,7 @@ sub parse_args {
 			    'O'              => \$optimize,
 			    'opt'            => \$trans_opt,
 			    'shell_cmd=s'    => \$shell_cmd,
+			    'submit_threshold=i' => \$submit_threshold,
 			    );
 
     if (! $status) {
@@ -2815,6 +2974,7 @@ sub parse_args {
     $sysconf->{num_pthreads} = $npthread if defined($npthread);
     $sysconf->{network} = $conduit if defined($conduit);
     $sysconf->{shell_cmd} = $shell_cmd if defined($shell_cmd);
+    $sysconf->{submit_threshold} = $submit_threshold if defined($submit_threshold);
 
     $compiler_featurelist = $compiler_spec{feature_list} if (!defined($compiler_featurelist));
     @compiler_features = map { s/^\s+//g; s/\s+$//g; lc($_) } split(/[, ]/,$compiler_featurelist);
@@ -2882,6 +3042,18 @@ sub parse_args {
     unless ($logdir =~ m@^/@) {
         $logdir = cwd() . "/$logdir";
     }
+
+    if (defined($wpath)) {
+	$top_work_path = $wpath;
+    } elsif (defined($sysconf->{buildroot})) {
+	$top_work_path = sprintf("%s/%s",$sysconf->{logroot},$timestamp);
+    } else {
+	$top_work_path = "$harness_bld_path/..";
+    }
+    chdir($top_work_path) or die "Can't cd to '$top_work_path': $!\n";
+    $top_work_path = getcwd(); # use absolute path
+    chdir($startdir) or die "Can't cd to '$startdir': $!\n";
+
     if ($sysconf->{network} eq "smp" && $sysconf->{num_pthreads} > 0 && 
         $sysconf->{nthread_default} != $sysconf->{num_pthreads}) {
 	$sysconf->{nthread_default} = $sysconf->{num_pthreads};
@@ -2970,6 +3142,8 @@ using environment variable \$HARNESS_FLAGS):
                          actually compile or run any tests.  This is an alias for
                          -nocompile -norun.  This flag does not supress the copy of
                          the test suite.
+   -compileonly       Only copy and compile the test suite - deletes the generated
+                         binaries and does not generate or submit run scripts.
    -sysconf=file      Specify the system configuration file.
    -threads=N         Specify default number of UPC threads.
    -pthreads=N        Specify number of pthreads per process.
@@ -2980,20 +3154,33 @@ using environment variable \$HARNESS_FLAGS):
                          suite(s) that match this pattern will be compiled/run.
    -logdir=path       Optionally specify the location of the logging directory.  
                          If not specified, the harness will create a date and
-			 timestamped directory within the build tree as follows:
+                         timestamped directory within the build tree as follows:
                          BUILD_TREE_ROOT/harness/logroot/YYYYMMDD_HHMMSS.
-			 This is where the logs, the batch queue scripts and
-			 the compile and run reports will be placed.
+                         This is where the logs, the batch queue scripts and
+                         the compile and run reports will be placed.
+   -workdir=path      Optionally specify the location of the working directory.  
+                         If not specified, the harness will use BUILD_TREE_ROOT.
+                         The given directory must exist.
    -norc              Pass '-norc' to upcc compiler.
    -runlimit=N        Default runtime limit (in seconds) for each test
    -timeout_multiplier=N.M  Multiplier to adjust all time limits based on system 
                       performance and load. Use values > 1.0 to compensate for  
                       slow systems that encounter false negatives due to timeouts.
+   -submit_threshold=N   If non-zero, queue scripts will be submitted for execution
+                         when their accumulated worst-case running time approaches
+                         this threshold (when adding the next job would exceed it).
+                         This results in submitting more shorter-running jobs, than
+                         not using this option.
+                         For systems where compilation is slow and queue wait times
+                         are short, this can dramatically improve time to completion.
+                         If you cannot (or must not) submit batch jobs from inside
+                         a batch job, use this option to ensure each batch job is
+                         fully self-contained.
    -clean             Remove and re-copy build directory testsuite before running
    -keep              Do not remove the app binary after the test run
-	              -nokeep will always remove the app binary after the test run
+                      -nokeep will always remove the app binary after the test run
                          By default, the runjobs script will remove the
-			 application binary if and only if the test passes.
+                         application binary if and only if the test passes.
    -compiler_spec=file Compiler spec file containing parameters defining how to
                       run the UPC compiler, defaults to $compiler_spec_file
    -upc_home=path     Override the upc_home variable in the compiler_spec file with given path.
@@ -3021,7 +3208,7 @@ using environment variable \$HARNESS_FLAGS):
    -suite=name        Specify the name of test suite(s) to run.  You need only
                       specify the unique trailing part of the name.
                       For example, -suite=cpi,gwu would select upc-examples/cpi
-		      and upc-tests/gwu.  NOTE: the argument may be a comma 
+                      and upc-tests/gwu.  NOTE: the argument may be a comma 
                       seperated list or this option may be repeated.
                       The default is to run all the test suites.
                       The current set of suites to choose from is:

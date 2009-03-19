@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: memlock.c,v 1.24.2.3 2007-08-29 17:32:32 manoj Exp $ */
 #include "armcip.h"
 #include "locks.h"
 #include "copy.h"
@@ -129,6 +129,9 @@ int i=factor*100000;
 \*/
 void armci_lockmem(void *start, void *end, int proc)
 {
+#ifdef ARMCIX
+  ARMCIX_Lockmem (start, end, proc);
+#else
      register void* pstart, *pend;
      register  int slot, avail=0;
      int turn=0, conflict=0;
@@ -182,7 +185,6 @@ void armci_lockmem(void *start, void *end, int proc)
         pend   = (char*)pstart + bytes;
      }
 #endif
-    
 #ifdef SGIALTIX
      if (proc == armci_me) {
     pstart = shmem_ptr(pstart,armci_me);
@@ -240,7 +242,9 @@ void armci_lockmem(void *start, void *end, int proc)
                   break;
 
               }
-              
+              /*
+              printf("%d: locking %ld-%ld (%d) conflict\n",
+                  armci_me,  */
             }
        }
         
@@ -260,7 +264,7 @@ void armci_lockmem(void *start, void *end, int proc)
 
      NATIVE_UNLOCK(lock,proc);
      locked_slot = avail;
-
+#endif /* ! ARMCIX */
 }
         
 
@@ -268,6 +272,10 @@ void armci_lockmem(void *start, void *end, int proc)
 \*/
 void armci_unlockmem(int proc)
 {
+#ifdef ARMCIX
+  ARMCIX_Unlockmem (proc);
+#else
+
      void *null[2] = {NULL,NULL};
      memlock_t *memlock_table;
 
@@ -287,7 +295,7 @@ void armci_unlockmem(int proc)
 
      memlock_table = (memlock_t*)memlock_table_array[proc];
      armci_put(null,&memlock_table[locked_slot].start,2*sizeof(void*),proc);
-
+#endif /* ! ARMCIX */
 }
 
 

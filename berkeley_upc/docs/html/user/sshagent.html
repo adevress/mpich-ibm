@@ -8,10 +8,14 @@
 
 <h2>A short ssh-agent tutorial</h2>
 
-<p><i>Note: this tutorial is only relevant to UPC users if 
+<p><i>Note: this tutorial is only relevant to UPC users if any of the following are true
     <ol> 
         <li> You are using ssh to launch UDP-based UPC programs
         with <a href="upcrun.html">upcrun</a>;
+        <li> You are using ssh to launch vapi- or ibv-based UPC programs
+        with <a href="upcrun.html">upcrun</a>, because spawning such programs
+	via MPI is disabled (either when your Berkeley UPC compiler was
+	configured, or by an environment variable setting);
     <li> Your Berkeley UPC installation is
     configured to use a remote UPC-to-C translator via ssh.  (This is the case if
     you are asked for a password when you try to compile a UPC program with
@@ -109,8 +113,8 @@ Now that we've got the basics covered, here are some more ssh pointers:
         <p><li>If your window manager allows you to specify an
         <tt>~/.xsession</tt> file to launch programs during X startup, you can
         add lines in it to launch ssh-agent at startup (and also pop up a window
-        to ask you your password).  See <a
-            href="http://www.csua.berkeley.edu/ssh-howto.html#xsession">http://www.csua.berkeley.edu/ssh-howto.html#xsession</a>
+        to ask you your password).  
+	See <a href="http://en.opensuse.org/Using_ssh-agent_globally_for_X_session">this guide</a>
         for details. 
     
         <p><li>You can set up your computer to boot into a command line instead

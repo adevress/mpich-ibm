@@ -1,4 +1,4 @@
-/* $Id$ interface to keep track of memory regions accross the cluster */
+/* $Id: regions.c,v 1.14.2.3 2007-10-05 16:51:51 manoj Exp $ interface to keep track of memory regions accross the cluster */
 /* 
  * armci_region_init - allocates list of regions, initialization
  * armci_region_register_shm - registers shared memory on the current node
@@ -10,12 +10,29 @@
  *
  */
 
+
+/*7/7/06
+ * REGIONS REQUIRE MEMHDL was for all networks like via, infiniband, etc.. 
+ * which had a handle associated with remote/local memory required for
+ * rdma. Coincidentally all these networks also used a server thread.
+ * so server_regions were allocated and enabled when REGIONS_REQUIRE_MEMHDL
+ * was defined.
+ * With Catamount, we require portals memory descriptors to be stored
+ * there is no server but we still need the server_regions to post match all
+ * md to accept all incomming requests
+ */
+
 #include "armcip.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include "copy.h"
 
-#define MAX_REGIONS 8
+/*this should match similar def in portals.c vapi.c and openib.c */
+#ifdef PORTALS
+#  define MAX_REGIONS 24
+#else
+#  define MAX_REGIONS 8
+#endif
 
 typedef struct {
   void *start;
@@ -37,17 +54,18 @@ static armci_reglist_t  *serv_regions;        /* server regions */
 #endif
 static armci_reglist_t loc_regions_arr;       /* local memory */
 static void *needs_pin_shmptr=NULL, *needs_pin_ptr=NULL;
-static int  needs_pin_shmsize=0, needs_pin_size=0;
+static size_t  needs_pin_shmsize=0, needs_pin_size=0;
 
 #ifdef REGIONS_REQUIRE_MEMHDL
-extern int armci_pin_contig_hndl(void *ptr,int bytes, ARMCI_MEMHDL_T *memhdl);
-extern int armci_server_pin_contig(void *ptr,int bytes, ARMCI_MEMHDL_T *memhdl);
+extern int armci_pin_contig_hndl(void *ptr, size_t bytes, ARMCI_MEMHDL_T *memhdl);
+extern int armci_server_pin_contig(void *ptr, size_t bytes, ARMCI_MEMHDL_T *memhdl);
 #else
-extern int armci_pin_contig1(void *ptr, int bytes);
+extern int armci_pin_contig1(void *ptr, size_t bytes);
 #endif
 static void **exch_list=(void**)0;
 static char exch_loc[MAX_REGIONS];
 static char exch_rem[MAX_REGIONS];
+void armci_serv_register_req(void *start,long bytes, ARMCI_MEMHDL_T *reg_mem);
 
 
 static int armci_region_record(void *start, void *end, armci_reglist_t *reg)
@@ -68,33 +86,55 @@ static int armci_region_record(void *start, void *end, armci_reglist_t *reg)
 
 static void armci_region_register(void *start, long size, armci_reglist_t *reg)
 {
-     if(reg->n >= MAX_REGIONS) return;
-     if(armci_nclus<=1)return;
+     int regid;
+    ARMCI_PR_DBG("enter",0);
+    if(reg->n >= MAX_REGIONS) return;
+    if(armci_nclus<=1)return;
+
+    regid = reg->n;
 
 #ifdef REGIONS_REQUIRE_MEMHDL
-     if(!armci_pin_contig_hndl(start,(int)size, &((reg->list+reg->n)->memhdl))){
+#  if defined(PORTALS)
+     /*we really shouldn't have network specific ifdef's here but this is an
+      * exception to avoid significant code change in the portals layer
+      * ARMCI portals layer maintains a list of memory descriptors for each
+      * region allocated. It uses them in a round robin fashion. We store it
+      * in the memhdl to identify which memory region the memory used by a
+      * communication call corresponds to.
+      */
+     (reg->list+(regid))->memhdl.regid=regid;
+#  endif
+     
+     if(!armci_pin_contig_hndl(start, size, &((reg->list+reg->n)->memhdl))){
         printf("%d pin failed %p bytes=%ld\n",armci_me,start,size);
         fflush(stdout); return; 
      }
 #else
-     if(!armci_pin_contig1(start, (int) size)){
+     if(!armci_pin_contig1(start, size)){
         printf("%d pin failed %p bytes=%ld\n",armci_me,start,size);
         fflush(stdout); return; 
      }
 #endif
 
-     (void)armci_region_record(start,((char*)start)+size,reg);
+     (void) armci_region_record(start,((char*)start)+size,reg);
 }
 
 
 void armci_region_register_shm(void *start, long size)
 {
-     if(allow_pin)
-         armci_region_register(start, size, clus_regions+armci_clus_me);     
-     else{
-         needs_pin_shmptr = start;
-         needs_pin_shmsize= size;
-     }
+armci_reglist_t *reg = clus_regions+armci_clus_me;
+    if(allow_pin)
+      armci_region_register(start, size, clus_regions+armci_clus_me);     
+    else{
+      needs_pin_shmptr = start;
+      needs_pin_shmsize= size;
+    }
+
+#ifdef PORTALS
+    /* we mark the region as local region so that portals layer uses
+     * the md from memhdl instead of any region list*/
+    (reg->list+(reg->n-1))->memhdl.islocal=0;
+#endif    
 
 #if 0
      if(allow_pin){
@@ -107,12 +147,26 @@ void armci_region_register_shm(void *start, long size)
 
 void armci_region_register_loc(void *start, long size)
 {
+     armci_reglist_t *reg = &loc_regions_arr;
      if(allow_pin)armci_region_register(start, size, &loc_regions_arr);
      else{
          needs_pin_ptr = start;
          needs_pin_size= size;
      }
-#if 0
+     
+#ifdef PORTALS
+     {
+        extern int _armci_malloc_local_region;
+        if(_armci_malloc_local_region){
+           (reg->list+(reg->n-1))->memhdl.islocal=1;
+           _armci_malloc_local_region=0;
+        }
+        else
+           (reg->list+(reg->n-1))->memhdl.islocal=0;
+     }
+#endif
+
+#ifdef DEBUG_
      if(allow_pin){
         printf("\n%d:%d registered local %p bytes=%ld\n",armci_me,allow_pin,start,size);
         fflush(stdout);
@@ -132,23 +186,22 @@ void armci_region_clus_record(int node, void *start, long size)
 
 void armci_region_init()
 { 
-     allow_pin =1; 
-     clus_regions=(armci_reglist_t*)calloc(armci_nclus,sizeof(armci_reglist_t));
-     if(!clus_regions)armci_die("armci_region_init: calloc failed",armci_nclus);
+    ARMCI_PR_DBG("enter",0);
+    allow_pin =1; 
+    clus_regions=(armci_reglist_t*)calloc(armci_nclus,sizeof(armci_reglist_t));
+    if(!clus_regions)armci_die("armci_region_init: calloc failed",armci_nclus);
 #ifdef REGIONS_REQUIRE_MEMHDL
-     serv_regions=(armci_reglist_t*)calloc(armci_nclus,sizeof(armci_reglist_t));
-     if(!serv_regions)armci_die("armci_region_init: calloc failed",armci_nclus);
+    serv_regions=(armci_reglist_t*)calloc(armci_nclus,sizeof(armci_reglist_t));
+    if(!serv_regions)armci_die("armci_region_init: calloc failed",armci_nclus);
 #endif
-     exch_list = (void**)calloc(2*armci_nclus, sizeof(void*));
-     if(!exch_list) armci_die("armci_region_init: calloc 2 failed",armci_nclus);
-     bzero(exch_loc,sizeof(exch_loc));
-     bzero(exch_rem,sizeof(exch_rem));
+    exch_list = (void**)calloc(2*armci_nclus, sizeof(void*));
+    if(!exch_list) armci_die("armci_region_init: calloc 2 failed",armci_nclus);
+    bzero(exch_loc,sizeof(exch_loc));
+    bzero(exch_rem,sizeof(exch_rem));
 
-#if 0
-     printf("%d: initialized regions\n",armci_me); fflush(stdout);
-#endif
-     if(needs_pin_ptr) armci_region_register_loc(needs_pin_ptr,needs_pin_size); 
-     if(needs_pin_shmptr) armci_region_register_shm(needs_pin_shmptr,needs_pin_shmsize); 
+    if(needs_pin_ptr) armci_region_register_loc(needs_pin_ptr,needs_pin_size); 
+    if(needs_pin_shmptr) armci_region_register_shm(needs_pin_shmptr,needs_pin_shmsize); 
+    ARMCI_PR_DBG("exit",0);
 } 
 
 void armci_region_destroy()
@@ -161,16 +214,16 @@ ARMCI_MEMHDL_T *loc_memhdl;
     if(!allow_pin) return;
     for(i=0; i<reg->n; i++){
 #ifdef REGIONS_REQUIRE_MEMHDL
-       loc_memhdl=&((reg->list+i)->memhdl);
-       armci_network_client_deregister_memory(loc_memhdl);
+      loc_memhdl=&((reg->list+i)->memhdl);
+      armci_network_client_deregister_memory(loc_memhdl);
 #endif
     }
 
     reg=clus_regions+armci_clus_me;
     for(i=0; i<reg->n; i++){
 #ifdef REGIONS_REQUIRE_MEMHDL
-       loc_memhdl=&((reg->list+i)->memhdl);
-       armci_network_client_deregister_memory(loc_memhdl);
+      loc_memhdl=&((reg->list+i)->memhdl);
+      armci_network_client_deregister_memory(loc_memhdl);
 #endif
     }
 }
@@ -181,45 +234,51 @@ armci_reglist_t *reg;
 int i;
 #ifdef REGIONS_REQUIRE_MEMHDL
 ARMCI_MEMHDL_T *loc_memhdl;
+    ARMCI_PR_DBG("enter",0);
     reg=serv_regions+armci_clus_me;
-#endif
     for(i=0; i<reg->n; i++){
-#ifdef REGIONS_REQUIRE_MEMHDL
        loc_memhdl=&((reg->list+i)->memhdl);
        armci_network_server_deregister_memory(loc_memhdl);
-#endif
     }
+    ARMCI_PR_DBG("exit",0);
+#endif
 }
  
 
 int armci_region_clus_found(int node, void *start, int size)
 {
-    armci_reglist_t *reg=clus_regions+node;
-    int i,found=-1;
+armci_reglist_t *reg=clus_regions+node;
+int i,found=-1;
     if(!allow_pin) return 0;
     if(node > armci_nclus || node <0 ) 
-               armci_die("armci_region_clus_found: bad node ",node);
+      armci_die("armci_region_clus_found: bad node ",node);
     for(i=0; i<reg->n; i++)
-        if((reg->list+i)->start <= start && (reg->list+i)->end > start){found=i; break;}
+      if((reg->list+i)->start <= start && (reg->list+i)->end > start){
+        found=i; break;
+      }
     
     return(found);
 }
 
 int armci_region_loc_found(void *start, int size)
 {
-     armci_reglist_t *reg = &loc_regions_arr;
-     int i,found=-1;
-     if(!allow_pin) return 0;
-     for(i=0; i<reg->n; i++)
-        if((reg->list+i)->start <= start && (reg->list+i)->end > start){found=i; break;}
-#if 0
-     if(found){
-        printf("%d: found loc %d n=%ld (%p,%p) %p\n",armci_me,found,reg->n,
+armci_reglist_t *reg = &loc_regions_arr;
+int i,found=-1;
+    ARMCI_PR_DBG("enter",0);
+    if(!allow_pin) return 0;
+    for(i=0; i<reg->n; i++)
+      if((reg->list+i)->start <= start && (reg->list+i)->end > start){
+        found=i; 
+        break;
+      }
+#ifdef DEBUG
+    if(found){
+      printf("%d: found loc %d n=%ld (%p,%p) %p\n",armci_me,found,reg->n,
                (reg->list)->start,(reg->list)->end, start); fflush(stdout);
-     }
+    }
 #endif
-
-     return(found);
+    ARMCI_PR_DBG("exit",0);
+    return(found);
 }
 
 #ifdef REGIONS_REQUIRE_MEMHDL
@@ -232,7 +291,9 @@ int armci_region_both_found_hndl(void *loc, void *rem, int size, int node,
      /* first scan for local */
      for(i=0; i<reg->n; i++){
         if((reg->list+i)->start <= loc && (reg->list+i)->end > loc){
-	   /* printf("\n%d: loc found \n",armci_me); */
+#if 0
+	  printf("\n%d:loc found %d %p\n",armci_me,i,loc);
+#endif
 	  found=1; break;
 	}
 #if 0
@@ -248,7 +309,6 @@ int armci_region_both_found_hndl(void *loc, void *rem, int size, int node,
          reg=clus_regions+armci_clus_me;
          for(i=0; i<reg->n; i++){
            if((reg->list+i)->start <= loc && (reg->list+i)->end > loc){
-	      /* printf("\n%d: clus found \n",armci_me); */
 	     found=1; break;
 	   }
 #if 0
@@ -260,6 +320,7 @@ int armci_region_both_found_hndl(void *loc, void *rem, int size, int node,
 #endif
 	 }
      }
+
 #ifdef PORTALS
      if(found!=1){
         *loc_memhdl=NULL;
@@ -268,15 +329,16 @@ int armci_region_both_found_hndl(void *loc, void *rem, int size, int node,
 #else
      if(!found) return 0;
 #endif
-     else {*loc_memhdl=&((reg->list+i)->memhdl);}
-      
+     else {*loc_memhdl=&((reg->list+i)->memhdl);} 
 
      /* now check remote shared */
      reg=serv_regions+node;
      for(i=0; i<reg->n; i++){
          if((reg->list+i)->start <= rem && (reg->list+i)->end > rem){
-	    /* printf("\n%d: serv found \n",armci_me); */
-		 found=2;break;
+#if 0
+	    printf("\n%d: serv found %d %p %p\n",armci_me,i,rem,(reg->list+i)->start);
+#endif
+            found=2;break;
 	 }
 #if 0
 	 else {
@@ -491,12 +553,20 @@ void armci_global_region_exchange(void *start, long size)
 	  clreglist = &(loc_regions_arr); 
 	else
 	  clreglist = (clus_regions+armci_clus_me); 
-#ifdef DATA_SERVER
+#if defined(DATA_SERVER) || defined(PORTALS)
+#  if defined(PORTALS)
+        ((reglist->list+reglist->n)->memhdl).regid=(reglist->n);
+#  endif
 	armci_serv_register_req((clreglist->list+foundclus)->start,((char *)(clreglist->list+foundclus)->end-(char *)((clreglist->list+foundclus)->start)),&((reglist->list+reglist->n)->memhdl));
 #endif
 	(void)armci_region_record((clreglist->list+foundclus)->start,(clreglist->list+foundclus)->end,reglist);
-#if 0
-	printf("\n%d:serv recording %p from %d n=%d \n",armci_me,(clreglist->list+foundclus)->start,armci_clus_me,reglist->n);fflush(stdout);
+
+#ifdef LAPI_RDMA
+        armci_copy(&(clreglist->list+foundclus)->memhdl, &(reglist->list+foundclus)->memhdl, sizeof(ARMCI_MEMHDL_T));
+#endif
+
+#if DEBUG
+	printf("\n%d:serv recording st=%p end=%p sz=%d from %d n=%d sz=%d\n",armci_me,(clreglist->list+foundclus)->start,(clreglist->list+foundclus)->end,(clreglist->list+foundclus)->end-(clreglist->list+foundclus)->start,armci_clus_me,reglist->n,sizeof(ARMCI_MEMHDL_T));fflush(stdout);
 #endif
 	foundserv=armci_region_serv_found(armci_clus_me, start,size);
 	reg = (serv_regions+armci_clus_me)->list+foundserv; 

@@ -1,4 +1,4 @@
-/* $Header$ */
+/* $Header: /tmp/hpctools/ga/tcgmsg/ipcv4.0/msgtypesc.h,v 1.4 1995-02-24 02:17:28 d3h325 Exp $ */
 
 #ifndef MSGTYPES_H_
 #define MSGTYPES_H_

@@ -70,16 +70,16 @@ max_nodes_to_run = 8
 queues = [
         {
           Q_name     => regular, 
-          Q_maxnode  => 380,     
+          Q_maxnode  => 48,     
           Q_minnode  => 1,       
-	  Q_maxtpn   => 16,      
+	  Q_maxtpn   => 8,      
 	  Q_maxtime  => 8:00:00
         },
         {
           Q_name     => debug,   
-          Q_maxnode  => 24,      
+          Q_maxnode  => 8,      
           Q_minnode  => 1,       
-	  Q_maxtpn   => 16,      
+	  Q_maxtpn   => 8,      
 	  Q_maxtime  => 00:29:30 
         }
 ]
@@ -108,3 +108,4 @@ max_proc_per_node = 8
 
 min_num_nodes = 1
 
+run_env_default = { GASNET_MAX_SEGSIZE => '512M' }

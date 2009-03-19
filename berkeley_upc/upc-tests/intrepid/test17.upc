@@ -66,8 +66,7 @@ test17()
 	  got = *p;
 	  if (got != expected)
 	    {
-	      fprintf(stderr,
-		"test17: error at element %d. Expected %d, got %d.\n",
+	      fprintf(stderr, "test17: error at element %d. Expected %d, got %d.\n",
 		i, expected, got);
 	      abort ();
 	    }
@@ -76,8 +75,8 @@ test17()
       expected = FACTOR*THREADS;
       if (got != expected)
         {
-	  fprintf(stderr,
-	    "test17: error: loop iteration mismatch. Expected %d, got %d.\n", expected, got);
+	  fprintf(stderr, "test17: error: loop iteration mismatch."
+	                  " Expected %d, got %d.\n", expected, got);
 	  abort ();
 	}
       printf ("test17: test indirection via a shared pointer to shared, and pointer comparison, for pointers with blocking factors - passed.\n");
@@ -88,5 +87,5 @@ int
 main()
 {
   test17 ();
-  exit (0);
+  return 0;
 }

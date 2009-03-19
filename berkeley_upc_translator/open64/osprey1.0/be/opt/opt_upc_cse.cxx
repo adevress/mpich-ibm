@@ -603,16 +603,20 @@ void CSE_NODE::Adjust_def_point() {
   }
 
   switch (_def_point.bb->Kind()) {
-  case BB_WHILEEND: 
-    {
+
+    /*
+      case BB_WHILEEND: 
+      {
       STMTREP* branch = _def_point.bb->Branch_stmtrep();
       if (branch->Rhs()->Contains(_shared_cr)) {
-	//fprintf(stderr, "shared variable used in loop branch\n");
-	//we should leave the nonblocking call at the merge node
-	return;
+      //fprintf(stderr, "shared variable used in loop branch\n");
+      //we should leave the nonblocking call at the merge node
+      return;
       }
-    }
-    //fallthru
+      }
+      //fallthru
+      */
+
   case BB_DOEND: 
     //We have to distinguish the case where the cr is in the loop body vs.
     //where the cr is in bbs after the loop
@@ -650,19 +654,6 @@ void CSE_NODE::Adjust_def_point() {
   if (!Is_add()) {
     Fix_speculative_load();
   }
-  /*
-  if (!Is_add() && num_uses == 1) {
-    BB_NODE* use_bb = _use_stmts[0]->Bb();
-    while (!use_bb->Postdominates(_def_point.bb)) {
-      _def_point.stmt = NULL;
-      _def_point.bb = _def_point.bb->Ipdom();
-      if (!_def_point.bb->Dominates(use_bb)) {
-	_def_point.bb = use_bb;
-	break;
-      }
-    }
-  }
-  */
 }
 
 sync_handle_t *UPC_CSE::Create_sync_handle(ST* st) { 
@@ -723,6 +714,7 @@ void UPC_CSE::Merge_node() {
 //   Insert the necessary syncs for each use of the variable
 //
 void UPC_CSE::Code_gen(bool is_add) {
+ 
 
   DYN_ARRAY<CSE_NODE*> *array;
   array = (is_add) ? &_pre_adds : &_new_cses;
@@ -1500,6 +1492,7 @@ CSE_NODE::Print(FILE* file) {
   fprintf(file, "%d uses:\n", num_uses);
   for (int i=0; i <= _use_stmts.Lastidx(); i++) {
     _use_stmts[i]->Print(file);
+    fprintf(file, "\n");
   }
   fprintf(file, "---------------------------------\n");
 }

@@ -1,6 +1,6 @@
 /*   $Source: /var/local/cvs/gasnet/portals-conduit/gasnet_core_fwd.h,v $
- *     $Date: 2007/10/31 05:13:59 $
- * $Revision: 1.9 $
+ *     $Date: 2008/11/06 16:01:35 $
+ * $Revision: 1.14 $
  * Description: GASNet header for PORTALS conduit core (forward definitions)
  * Copyright 2002, Dan Bonachea <bonachea@cs.berkeley.edu>
  * Terms of use are as specified in license.txt
@@ -13,7 +13,7 @@
 #ifndef _GASNET_CORE_FWD_H
 #define _GASNET_CORE_FWD_H
 
-#define GASNET_CORE_VERSION      1.1
+#define GASNET_CORE_VERSION      1.2
 #define GASNET_CORE_VERSION_STR  _STRINGIFY(GASNET_CORE_VERSION)
 #define GASNET_CORE_NAME         PORTALS
 #define GASNET_CORE_NAME_STR     _STRINGIFY(GASNET_CORE_NAME)
@@ -46,6 +46,20 @@
 
   /* this can be used to add conduit-specific 
      statistical collection values (see gasnet_trace.h) */
+#if PLATFORM_OS_CATAMOUNT
+  #define GASNETC_FIREHOSE_STATS(CNT,VAL,TIME) /*empty*/
+#else
+  #define GASNETC_FIREHOSE_STATS(CNT,VAL,TIME)  \
+        CNT(C, FH_OP_ALLOC_BUF, count)          \
+        CNT(C, FH_OP_ALLOC, count)              \
+        CNT(C, FH_OP_FREE, count)               \
+        CNT(C, GET_FH, count)                   \
+        CNT(C, PUT_FH, count)                   \
+        CNT(C, LONG_FH, count)                  \
+        TIME(C, FIREHOSE_MOVE, processing time) \
+        VAL(C, FIREHOSE_PIN, pages)             \
+        VAL(C, FIREHOSE_UNPIN, pages)
+#endif
 #define GASNETC_CONDUIT_STATS(CNT,VAL,TIME)     \
         CNT(C, CHUNK_ALLOC, count)              \
         CNT(C, CHUNK_FREE, count)               \
@@ -63,6 +77,10 @@
 	CNT(C, PUT_RAR, count)                  \
 	CNT(C, PUT_BB, count)                   \
 	CNT(C, PUT_TMPMD, count)                \
-        VAL(C, EVENT_CNT, numreaped)
+	CNT(C, LONG_PACKED, count)              \
+	CNT(C, LONG_RAR, count)                 \
+	CNT(C, LONG_TMPMD, count)               \
+	GASNETC_FIREHOSE_STATS(CNT,VAL,TIME)	\
+        VAL(C, EVENT_REAP, numreaped)
 
 #endif

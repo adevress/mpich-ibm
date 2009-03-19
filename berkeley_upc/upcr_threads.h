@@ -3,7 +3,7 @@
  *
  * Jason Duell <jcduell@lbl.gov>
  *
- * $Id: upcr_threads.h,v 1.58 2007/10/20 01:40:11 phargrov Exp $
+ * $Id: upcr_threads.h,v 1.59 2008/02/19 03:43:37 bonachea Exp $
  */
 
 #ifndef UPCR_THREADS_H
@@ -244,7 +244,7 @@ typedef struct upcri_pthreadinfo {
 } upcri_pthreadinfo_t;
 
 /* must be less than GASNet's pthread limit */
-#define UPCR_MAX_PTHREADS 250
+#define UPCR_MAX_PTHREADS GASNETT_MAX_THREADS
 
 extern upcri_pthreadinfo_t **upcri_pthreadtoinfo;  /* map of all pthread infos */
 

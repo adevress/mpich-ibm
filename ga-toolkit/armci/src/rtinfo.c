@@ -1,4 +1,4 @@
-/* $Id$ Run-time system configuration */
+/* $Id: rtinfo.c,v 1.1 2003-03-20 00:57:27 d3h325 Exp $ Run-time system configuration */
 
 #include <stdio.h>
 #include <string.h>

@@ -631,10 +631,13 @@ place_union_field (rli, field)
 			       DECL_SIZE_UNIT (field), rli->offset));
 }
 
+extern void Pad_Field_for_UPC_Align(tree, unsigned int,  unsigned int, unsigned int );
+
 /* RLI contains information about the layout of a RECORD_TYPE.  FIELD
    is a FIELD_DECL to be added after those fields already present in
    T.  (FIELD is not actually added to the TYPE_FIELDS list here;
    callers that desire that behavior must manually perform that step.)  */
+
 
 void
 place_field (rli, field)
@@ -650,6 +653,9 @@ place_field (rli, field)
   /* The type of this field.  */
   tree type = TREE_TYPE (field);
  
+  
+  
+  
   /* If FIELD is static, then treat it like a separate variable, not
      really like a structure field.  If it is a FUNCTION_DECL, it's a
      method.  In both cases, all we do is lay out the decl, and we do
@@ -704,6 +710,9 @@ place_field (rli, field)
 #ifdef ADJUST_FIELD_ALIGN
   desired_align = ADJUST_FIELD_ALIGN (field, desired_align);
 #endif
+
+Pad_Field_for_UPC_Align(type, actual_align, known_align, desired_align);
+
 
   /* Record must have at least as much alignment as any field.
      Otherwise, the alignment of the field within the record is

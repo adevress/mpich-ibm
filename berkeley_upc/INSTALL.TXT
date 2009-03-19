@@ -1,0 +1,648 @@
+--------------------------------------------------------------------------------
+Berkeley UPC runtime installation/configuration instructions
+--------------------------------------------------------------------------------
+
+This is the runtime and front-end components of the Berkeley UPC system.  The
+runtime is one of two components in the Berkeley UPC system: the other is the
+UPC-to-C translator.  
+
+To use Berkeley UPC, you must 
+    - Build (and optionally install) this package.
+    - Configure the 'upcc' front-end to the compiler to point to an
+      instance of either our UPC-to-C translator (see SPECIFYING THE LOCATION OF THE
+      UPC-TO-C TRANSLATOR, below), or the GCC UPC binary UPC compiler (see 
+      GCC UPC BINARY COMPILER SUPPORT, below).  By default, 'upcc' will point to
+      a public version of our UPC-to-C translator, which is accessed via HTTP
+      over the Internet.
+
+System requirements: you must have the following software on your system:
+    - A POSIX-like environment, i.e., a version of Unix, or for Windows systems,
+      the 'Cygwin' toolkit (http://www.cygwin.com/).
+    - GNU make (version 3.79 or newer)
+    - Perl (version 5.005 or newer).
+    - The following standard Unix tools: a Bourne-compatible shell, 'awk',
+      'env', 'tail', 'sed', 'basename', 'dirname', and 'tar'.
+    - A C compiler.  We explicitly support most compilers in widespread use
+      today, including GNU gcc, IBM VisualAge, HP/Compaq C, Intel C, Portland
+      Group C, SunPro C, MIPSPro C, Cray C, PathScale C, and NEC C.  Any other
+      C89-compliant compiler is likely to work.
+    - An MPI-1.1 or newer compliant MPI implementation, if you wish to run UPC
+      over MPI (or mix UPC with MPI code).
+    - A C++ compiler, if you wish to run UPC over UDP.
+
+Follow these steps to build the runtime:
+
+0) Skip this step if you're building from a tarball, and/or if there is already
+   a 'configure' script in this directory.
+
+   Otherwise, run
+
+        ./Bootstrap
+
+   Ignore the warnings from autoheader/autoconf, etc.  This step is needed to
+   generate the 'configure' script used in step #1.  
+   
+   If you use this step, you must also have the GNU autotools installed on your
+   system (autoconf, automake, and, if totalview support is desired, libtool).
+
+1) Configure the build by running 
+
+        ./configure CC=<C compiler> CXX=<C++ compiler> \
+                    MPI_CC=<MPI compiler> [options] 
+
+   in this directory. Or, if you wish to build in a separate directory, use
+
+        mkdir /my/build/directory
+        cd /my/build/directory
+        <path-to-src>/configure CC=<C compiler> CXX=<C++ compiler> \
+                                MPI_CC=<MPI compiler> [options] 
+
+   Note that any setting of CFLAGS or CXXFLAGS will be ignored/discarded by
+   configure.  Any flags that are required (e.g. for the correct ABI) must
+   be included in the values of CC, CXX and MPI_CC.
+   
+   You need to be careful to select the correct options for your system.  The
+   various types of options you need to consider are descibed in the sections
+   that follow.  The final section, TROUBLESHOOTING CONFIGURE, includes info
+   on resolving problems that may occur at configure time.
+   
+   INSTALLATION LOCATION
+
+   By default the runtime will be installed into the '/usr/local/berkeley_upc'
+   tree:  to select a different root directory for the install, use the
+   '--prefix=dir' option. We recommend installation in an empty, dedicated
+   directory to eliminate the possibility of filename conflicts with existing
+   software.  Use './configure --help' to see a complete list of options.
+
+   CHOOSING THE BACK-END C and C++ COMPILERS
+
+   It is very important that you set the 'CC' and 'CXX' variables (either in
+   your environment, or on the command line as shown above) to the name of the
+   C/C++ compilers that you wish to use to build UPC executables:  the compiler
+   used at configuration time will be embedded in the runtime installation, and
+   will be used to compile all UPC programs after they are translated to C.
+   Because Berkeley UPC is a source-to-source compiler, the selection of
+   backend compiler is crucial to the operation and performance of our product
+   even *after* installation - ie the backend compiler must continue to work
+   correctly for all users for the entire lifetime of the Berkeley UPC install,
+   and directly affects the performance of compiled UPC applications. 
+
+   Specifically, you should not use a "private" copy of a backend compiler to
+   install Berkeley UPC for all users, and if the backend compiler install
+   changes, one must generally also reconfigure-rebuild-reinstall Berkeley UPC
+   to ensure stable operation. 
+
+   For performance reasons, use of the native C/C++ compilers is generally
+   recommended over gcc.  The performance of the C++ and MPI_CC compilers (which
+   are only used to build the runtime libraries) are less critical than the
+   performance of CC (which is used to build translated UPC code) - but all three
+   must be binary (ABI) compatible.
+
+   Certain older versions of gcc (notably gcc-2.96, and gcc-3.2.x) have
+   well-known bugs that prevent correct compilation of Berkeley UPC programs.
+   You will get an error message if you try to use one of these versions of gcc.
+   Try again using a more recent version of gcc.
+
+   Current versions of the gcc 4.x compiler, on the other hand, have a subtle
+   optimizer error which can occasionally affect correctness of shared-local
+   accesses in UPC (i.e., shared accesses that result in node-local accesses at
+   runtime).  If this problem manifests on your system, you may wish to rebuild
+   with either a 3.x version of gcc, or use one of several workaround that
+   eliminates the bug under gcc 4.x (but at some performance cost).  See the
+   Berkeley UPC User's Guide's "Known Bugs and Limitations" for details.
+
+   Once configuration is complete, the values of CC/CXX are ignored by the
+   Berkeley UPC compiler front end (upcc):  if you wish to provide a choice of
+   multiple back-end C compilers for your UPC users, you must use separate
+   builds of the runtime for each compiler.  
+
+   If you wish to support running UPC programs over UDP (this is generally the
+   fastest way to run on an Ethernet-based cluster), you also need to set 'CXX'
+   to a working C++ compiler.  If you do not wish to support UDP-based
+   executables, or do not have a working C++ compiler, you can pass
+   '--disable-udp' or '--without-cxx', in which case you do not need to specify CXX.
+
+   You may include flags in the values of CC/CXX as needed (for instance, on the
+   IBM SP, to build 64 bit executables you might use CC="xlc -q64" and CXX='xlC
+   -q64").  
+   
+   The configure script will default to using 'gcc/g++' or 'cc/c++' if CC or CXX
+   are not manually specified - note that on many supercomputing platforms, the
+   vendor C compiler provides superior runtime performance to gcc, so you should
+   strongly consider using it rather than defaulting to gcc.
+
+   CHOOSING THE MPI COMPILER
+
+   The configure script will generally determine the correct way to compile MPI
+   applications on your system.  However, you may need to set MPI_CC in certain
+   cases.  In particular, on the IBM SP, for 64 bit MPI applications you may
+   need to set MPI_CC="mpcc -q64" or MPI_CC="mpcc_r -q64" (mpcc_r is the
+   multithreaded MPI compiler:  on the SP platform we have been using for
+   testing, only mpcc_r will work for 64 bit applications).
+
+   The runtime does not need to know how to compile C++ MPI applications, so
+   there is no MPI_CXX variable to set.
+
+   If you do not have an MPI compiler on your system, the 'configure' script
+   will simply disable MPI support.  If you have an MPI implemention on your
+   system, but it is broken, you may force Berkeley UPC to ignore it by passing
+   '--without-mpi-cc' to configure (note:  having Berkeley UPC use a broken MPI
+   can also affect other certain networks, such as Myrinet/GM or
+   InfiniBand/VAPI.  If you have trouble using these networks, and you have a
+   broken MPI on your system, try rebuilding with '--without-mpi-cc').
+
+   LOW-LEVEL NETWORK APIs SUPPORTED
+
+   By default, our 'configure' script will attempt to determine which network
+   APIs are available on your system.  All networks which are discovered will be
+   supported in the UPC runtime build.   The following network APIs are
+   currently supported: 
+   
+                +----------------------------------+
+                | NETWORK/SYSTEM     | NETWORK API |
+                +--------------------+-------------+
+                | Quadrics/elan      |  elan       |
+                +--------------------+-------------+
+                | Myrinet/GM         |  gm         |
+                +--------------------+-------------+
+                | IBM SP/LAPI        |  lapi       |
+                +--------------------+-------------+
+                | InfiniBand/VAPI    |  vapi       |
+                +--------------------+-------------+
+                | OpenIB/OpenFabrics |  ibv        |
+                |   InfiniBand Verbs |             |
+                +--------------------+-------------+
+                | SHMEM (SGI Altix,  |  shmem      |
+                |        Cray X1)    |             |
+                +--------------------+-------------+
+                | Portals (Cray XT3) |  portals    |
+                +--------------------+-------------+
+                | DCMF (IBM BG/P)    |  dcmf       |
+                +--------------------+-------------+
+                | Dolphin SCI        |  sci        |
+                +--------------------+-------------+
+                | MPI                |  mpi        |
+                +--------------------+-------------+
+                | UDP                |  udp        |
+                +--------------------+-------------+
+                | No network         |  smp        |   
+                |   (single process) |             |
+                +----------------------------------+
+
+   If you do not wish to support a particular network API, you may pass
+   '--disable-NETWORK_API'.  The most common case for this is '--disable-udp',
+   on systems which do not support C++ (our UDP network layer is the only
+   component of our runtime that requires C++).
+   
+   If 'configure' fails to detect one of these network APIs, but you know it
+   exists on your system, try passing '--enable-NETWORK_API' (where NETWORK_API
+   is one of the values shown above).  This will cause the configure script to
+   fail when that network is not found, with an error message stating the name
+   of any environment variables that were used to try to locate the network's
+   headers/libraries.  Set the environment variables to the correct location,
+   and re-run 'configure'.  
+   
+   Example:  Joe Sysadmin has installed your system's Myrinet headers/libraries
+   into '/usr/local/neat_stuff/gm'.  Run 'configure --enable-gm', and you will
+   see something like
+
+     checking for GM_INCLUDE in environment... 
+        no, defaulting to "/usr/local/gm/include"
+     checking for GM_LIB in environment... 
+        no, defaulting to "/usr/local/gm/lib"
+
+   Set GM_INCLUDE to '/usr/local/neat_stuff/gm/include' and GM_LIB to
+   '/usr/local/neat_stuff/gm/lib', then rerun configure.  The 'gm' network
+   should now be detected correctly.
+   
+   SUPPORT FOR HYBRID MPI/UPC APPLICATIONS
+
+   Berkeley UPC contains experimental support for applications which mix UPC and
+   MPI code in the same application (or even in the same file).  At present,
+   this requires setting CC and MPI_CC to your MPI compiler (ex: 'CC=mpicc
+   MPI_CC=mpicc') at configure time.  If you wish to support hybrid MPI/UPC
+   applications which use UDP as the UPC network layer, you must also set CXX to
+   an MPI C++ compiler (ex: 'CXX=mpiCC').  Note that this is NOT needed to
+   simply run UPC applications which use MPI as the underlying network layer: it
+   is only required if you wish to explicitly call MPI functions within user
+   code in an application that also contains UPC code.  On some configurations
+   (ex: Tru64/Alphaservers with the HP 'cc' compiler), there is no special MPI
+   compiler, and plain 'cc'/'cxx' should be passed for CC/CXX: such systems may
+   require that 'upcc' be passed '-lmpi' at link time to resolve MPI symbols.
+   Support for MPI interoperability is currently not available for the 'smp'
+   (single-node SMP) network layer.  Note that when MPI interoperability is
+   enabled, upcc will compile all UPC programs (even those not containing MPI
+   code, nor running on top of MPI) with the MPI compiler: it is thus generally
+   best to use a separate upcc installation specifically for MPI/UPC hybrid
+   compilation. 
+
+   HETEROGENEOUS SYSTEMS
+
+   The UPC language model assumes a reasonable degree of homogeneity amongst
+   the hardware nodes participating in a given UPC job. Berkeley UPC allows
+   some amount of heterogeneity in the hardware configuration of nodes in a
+   distributed UPC job - in general, nodes can safely differ in CPU clock
+   speed, CPU count, memory size, NIC count and other such hardware variations
+   that are generally hidden below the OS and ABI boundary. However, other
+   high-level system properties must be identical across nodes to ensure
+   correct operation. Specifically, all participating processes in a UPC job
+   must run the exact same compiled UPC executable (or an identical copy of the
+   binary), which implies that all nodes must agree on any properties affecting
+   that compatibility, which specifically includes:
+
+    - Object code ABI - all CPUs used in the job must support the ABI used to
+      compile the application executable. For example, this means you can mix
+      various flavors of x86-compatible CPU's, but you may need to pass special
+      compile flags to the backend C compiler to ensure it generates code which
+      can run on any of the CPUs (eg for gcc, you may need something like 'upcc
+      -Wc,-march=i586' to use the Intel Pentium processor ABI as the common
+      denominator). This requirement also implies that CPU's with no common ABI
+      (such as PowerPC and x86) cannot be mixed in a single UPC job.
+    - Operating System ABI - the UPC runtime makes various system calls, which
+      must be binary compatible across the operating systems running on each
+      node. This means you can probably get away with small variations in an OS
+      version number, but you cannot mix nodes running totally different OS
+      software.
+    - Shared Library Uniformity - if dynamic linking is used to build the
+      application, any shared libraries used (eg libc) must be installed and
+      compatible across all nodes.  Sometimes this problem can be avoided by
+      linking statically (eg 'upcc -Wl,-static').
+    - Identical Network Drivers - for native network conduits, GASNet generally
+      requires all nodes to be running identical versions of the underlying
+      vendor network drivers.
+
+   SUPPORT FOR THE TOTALVIEW DEBUGGER
+
+   Berkeley UPC applications can now be debugged with the Totalview debugger
+   (http://www.etnus.com/TotalView/).  Support is so far limited to x86 systems
+   using either MPI or Quadrics/elan for the network layer (although the
+   infrastructure is in place for other configurations:  try it and you may get
+   lucky!).  To enable Totalview support, include this option in your invocation
+   of the Berkeley UPC runtime configure to activate the totalview conf:
+
+     --with-multiconf=+dbg_tv
+
+   (if your configure line already includes a --with-multiconf clause, then
+   append ",+dbg_tv" to the existing value).
+
+   PERFORMANCE INSTRUMENTATION SUPPORT
+
+   Berkeley UPC supports the Global-Address-Space Profiling (GASP) performance 
+   instrumentation interface, which can be used to plug in third-party performance
+   tools to measure and visualize performance of UPC programs. One such tool 
+   includes the Parallel Performance Wizard (PPW): http://ppw.hcs.ufl.edu/
+   To use the GASP instrumentation support, include this option in your invocation
+   of the Berkeley UPC runtime configure to activate the instrumented conf:
+   
+     --with-multiconf=+opt_inst
+
+   (if your configure line already includes a --with-multiconf clause, then
+   append ",+opt_inst" to the existing value).
+   Then build as usual and follow the instructions provided with the
+   performance tool software. Note GASP instrumentation support is off by
+   default, and UPC code built using the instrumented conf will require
+   linking with a GASP performance tool.
+
+   'PACKED', 'UNPACKED', AND 'SYMMETRIC' SHARED POINTERS
+
+   The Berkeley UPC runtime supports three different implementations for shared
+   pointers: one which is implemented with a C structure, another 'packed' one
+   which uses a 64 bit integral value to store all the fields in a shared
+   pointer, and a 'symmetric' variant that optimizes an important class of
+   shared pointers (those with either blocksize==1 or indefinite blocksize) by
+   using regular C pointers (the packed representation is used for the general
+   case).  The 'packed' implementation is the default, and should be best for
+   most users.  Symmetric pointers currently require shared-memory semantics,
+   and thus work only on certain machines with -network=shmem, and/or for
+   programs compiled with '-network=smp' (i.e. no network) on any system
+   supporting pthreads.  They generally provide the fastest performance on
+   configurations that support them, but are currently still experimental.  To
+   use them, pass '--enable-sptr-symmetric'.  Struct shared pointers are
+   primarily useful for increasing the UPC_MAX_BLOCKSIZE supported by the 
+   implementation, and for debugging by the members of the Berkeley UPC effort (as
+   they provide more type safety than the other versions).  To use them, pass
+   '--disable-sptr-packed'.
+
+   TRADING-OFF MAXIMUM 'THREADS', BLOCKSIZE, AND HEAP SIZE
+
+   The default 'packed' shared pointer representation stores all the fields of a
+   shared pointer (address, thread, and phase offset) in a single 64-bit integer
+   type.  The limited number of bits forces each element to have a maximum
+   value.  By default, 32 bit systems use 22 bits for the phase offset, 10 for
+   the thread field, and 32 for the address field, resulting in a maximum
+   blocksize of 4194304, a maximum of 1024 threads per application, and
+   4 GB maximum of shared memory per thread,    The default for 64 bit systems
+   are 20,10,34 bits, respectively, or 2097152 max blocksize/1024 threads/16 GB.
+
+   You can adjust the number of bits that is assigned to each subfield of packed
+   shared pointers at configure time, via the '--with-sptr-packed-bits' flag.
+   The flag must be passed three comma-separated integers, representing the
+   number of bits for the phase, thread, and address fields (in that order),
+   with the total adding up to 64 bits.  For instance,
+
+        --with-sptr-packed-bits=8,20,36
+
+   limits the maximum number of threads to 256, but expands the maximum shared
+   memory per thread to 64 GB.  
+
+   If you find that 64 bits is not enough to contain the maximum values you need
+   for your system, pass '--disable-sptr-packed', and your UPC build will use
+   'struct' based pointers, which are slower, but have larger maximum values.
+
+   PTHREADS SUPPORT
+
+   Berkeley UPC supports pthreaded UPC executables, which use shared memory for
+   optimal communication between UPC threads that are part of the same Unix
+   process (otherwise the network is used).  By default, support for pthreads is
+   provided if ./configure can find a working pthreads library on your system.
+   Pass --disable-pthreads if you do not want pthreads support, or
+   --enable-pthreads if you want the configuration to fail if pthreads cannot be
+   found.  Note that even when pthreads are supported, they are not used by
+   default (many scientific libraries are not safe for use with pthreads): you
+   must pass the '-pthreads' flag to upcc to compile a pthreaded executable.
+
+   If you wish to use a pthreads library other than the one that is installed in
+   the standard /usr/include,/usr/lib directories, you must set both
+   PTHREADS_INCLUDE and PTHREADS_LIB to the directories where the pthread.h and
+   libpthread.{a,so} files live.  
+
+   GCC UPC BINARY COMPILER SUPPORT
+
+   The Berkeley UPC runtime also works with the GCC UPC compiler
+   (http://www.intrepid.com), versions 3.3.2.6 or above.   Unlike Berkeley UPC's
+   UPC-to-C translator, which translates UPC into C code, GCC UPC compiles
+   directly to object code.  To use the GCC UPC compiler, first download,
+   compile, and install it.  Then, run configure with the environment variable
+   GCCUPC_TRANS set to the full absolute path to the installed 'upc' executable,
+   and a --with-multiconf option as follows:
+
+   To enable both the BUPC and GCC UPC translators, invoke configure as
+
+       env GCCUPC_TRANS=<PATH_TO_UPC> <path-to-src>/configure \
+                     --with-multiconf=+dbg_gccupc,+opt_gccupc [options]
+
+   OR, to build for GCC UPC only use the following:
+
+       env GCCUPC_TRANS=<PATH_TO_UPC> <path-to-src>/configure \
+                     --with-multiconf=dbg_gccupc,opt_gccupc [options]
+
+   Additionally, it is recommended to use the 'gcc' that is installed with
+   GCC UPC (this is not always necessary, but it may be required for pthreads
+   support if your system copy of 'gcc' is less recent than the GCC UPC one).
+   To do so, set "CC=/gccupc_install/bin/gcc" in the configure command.  GCC UPC
+   supports building pthreaded UPC applications only on systems where the recent
+   '__thread' attribute is supported by gcc (this includes recent versions of
+   Linux on x86 processors).  Although GCC UPC works on several architectures,
+   it has primarily been tested with Berkeley UPC as its runtime on x86/Linux,
+   Opteron/Linux, Itanium/Linux and Cray XT-3 systems.
+
+   CROSS-COMPILATION (Cray XT, IBM BlueGene, and others)
+
+   UPCR has support for cross-compilation, on systems where the
+   target nodes are unable to run the configure script and/or C compiler.
+
+   * Cray XT Systems:
+
+   Link the appropriate cross-configure script into your top-level source directory:
+
+     cd <path-to-src>
+     ln -s gasnet/other/contrib/cross-configure-crayxt-cnl .  (for Compute-Node Linux)
+        - or -
+     ln -s gasnet/other/contrib/cross-configure-crayxt-catamount .  (for Catamount)
+
+   Then invoke cross-configure-crayxt-* in the same way you'd invoke configure,
+   according to the directions in the previous sections.  See docs/README.CrayXT
+   for detailed instructions on building for the Cray XT platform.
+
+   * IBM BlueGene/P: 
+
+   Link the appropriate cross-configure script into your top-level source directory:
+
+     cd <path-to-src>
+     ln -s gasnet/other/contrib/cross-configure-bgp .
+     
+   Then invoke cross-configure-bgp in the same way you'd invoke configure,
+   according to the directions in the previous sections.  See gasnet/dcmf-conduit/README
+   for detailed instructions on building for the BlueGene/P platform and 
+   utilizing the DCMF-based high-performance network.
+   
+   * Generic Instructions (other platforms):
+
+     1. Build the program 'gasnet/other/cross-configure-help.c' using the target
+	compiler (the one that builds executables for your compute nodes). If
+	compilation fails, try tweaking one of the test control variables in
+	that file (and you'll need to manually indicate the result for that
+	test). This program basically precomputes all the runtime values that
+	configure will need and outputs a script that feeds the canned answers
+	to configure.
+     2. Run the built program on one of the compute nodes and save the output
+        into a file in the top-level source directory named "cross-configure".
+     3. Set the new script to be executable: 'chmod +x cross-configure'.
+     4. Edit the 'cross-configure' script for completeness, notably setting the 
+        full path to your target compilers.
+     5. Run cross-configure with the same options you'd pass to configure, as
+        documented above (eg. see cross-configure --help).
+
+   TROUBLESHOOTING CONFIGURE
+
+   Here are some problems that users have reported encountering in the configure
+   step and their recommended solutions.
+
+   a) If you see the following
+        configure error: User requested --enable-debug but MPI_CC or MPI_CFLAGS has
+        enabled optimization (-O) or disabled assertions (-DNDEBUG). Try setting
+        MPI_CC='[SOMETHING]  -O0 -UNDEBUG' or changing MPI_CFLAGS
+      please resist the urge to add --disable-debug, because that will not work.
+
+      The Berkeley UPC configure is attempting to build both normal (optimized)
+      and debugging (assertions enabled) versions of the GASNet libraries.
+      The recommended course of action is to set MPI_CC (but not MPI_CFLAGS) as
+      described in the error message.
+
+      However, if for some reason you cannot do so, or if you want or need to
+      disable building or debugging libraries, the correct method is to add
+           --with-multiconf=-dbg,-dbg_tv,-dbg_gccupc
+      to your configure arguments to disable all of the debug configurations.
+
+   b) While less common than (a), it is possible to see a similar message for
+      CC/CFLAGS or CXX/CXXFLAGS.  The same recomendations in (a) hold in these
+      cases as well.
+
+   c) Configure appears to ignore my CFLAGS and/or CXXFLAGS.
+      Yes, that is by design.  Any options required for the correct ABI must
+      be included in CC, CXX and MPI_CC.
+
+   d) If you see
+        configure: error: cannot use both --with-gccupc and --with-translator!
+      then please see the "GCC UPC BINARY COMPILER SUPPORT" section above.
+
+      The --with-gccupc configure option from previous releases is no longer
+      supported.  Passing --without-translator will not resolve this.
+
+2) Build the release via
+
+        gmake
+
+   Note that GNU make is required (it may simply be called 'make' on your
+   system: run 'make --version' to see).
+
+   Note:  The C compiler on the Cray X1 has been observed to fail intermittently
+   while compiling Berkeley UPC, with complaints about encountering a
+   segmentation fault.  If you observe this, keep running 'make', and the
+   compilation will eventually succeed.
+
+3) You will see both 'dbg' and 'opt' subdirectories of your build directory.
+   Each of these has a 'upcc.conf' file, which contains settings for debug and
+   optimized UPC compilations.  You should edit both of these upcc.conf files to
+   make sure the settings below are configured correctly and/or to your liking.
+   (Generally, you will want the same settings for both dbg and opt, so you'll
+   make the same changes to each file.)
+
+    CHOOSING THE DEFAULT NETWORK
+
+    The 'default_network' setting determines which network API UPC programs will
+    be compiled to use by default.  By default, './configure' will have chosen
+    one of the lower-level APIs available on your system, or 'mpi' if only MPI
+    is available.  You may choose any of the APIs listed in the 'conduits'
+    setting for the default.
+
+    For cluster systems which only have Ethernet networking hardware, UDP is
+    probably the best choice, as MPI will typically add additional overhead.
+    Systems equipped with a supported high-performance network should definitely
+    use that API instead of either UDP or MPI (which both have much higher
+    latencies and CPU overheads than most low-level network APIs).
+
+    SPECIFYING THE LOCATION OF THE UPC-TO-C TRANSLATOR
+
+    If you are using the Berkeley UPC-to-C translator, the 'translator'
+    setting needs to point to an instance of the Berkeley UPC-to-C translator.
+
+    By default, the runtime is configured to point to a public version of our
+    translator on our webserver, http://upc-translator.lbl.gov.  This allows you
+    to compile UPC programs without building the translator yourself.  The
+    latency for remote HTTP compilation is generally quite tolerable, and you
+    may find that the easiest way to use our system is to keep this default
+    setting.
+
+    Alternatively, you can download and build our translator code (see
+    http://upc.lbl.gov/download), and use it either locally, or remotely via
+    HTTP on your own web server, or ssh.  To configure for a local translator,
+    provide the full path to the translator (the correct setting is printed at
+    the end of running 'make' or 'make install' on the translator source):
+
+        translator = /foo/bar/upc_translator_install/targ
+
+    To configure for remote translation via HTTP, you will need to set up the
+    'upcc.cgi' script (located in this package's 'contrib' directory) on your
+    web server.   Instructions are provided in the comments within the
+    'upcc.cgi' file.  Once you have set up the web server, simply use the URL to
+    the upcc.cgi script as the value of your upcc.conf's 'translator' setting:
+
+        translator = http://myserver.foo.org/path/to/upcc.cgi
+
+    To configure for remote translation via SSH, simply put the hostname of the
+    remote system, followed by a colon, and then the path to the translator:
+
+        translator = no.peeking.mil:/home/translator_install/targ
+
+    The upcc front-end will use automatically 'scp' and 'ssh' to do the
+    translation phase remotely when it sees this syntax.  Using ssh is
+    generally the slowest compilation method, and also involves the most user
+    education (your users will want to use public/private keys and 'ssh-agent'
+    to avoid having to type their password in 3 times during each compilation:
+    see the UPC Users' Guide for details), so we recommend avoiding it if
+    possible.
+
+    Note that you can use a translator that was built as a 32-bit executable
+    with a runtime configured for 64 bits, and vice-versa:  any translator can
+    target either bit size.  The translator also emits platform-independent C
+    code, so you may built it on a different architecture than the runtime.
+
+    CHOOSING THE DEFAULT AMOUNT OF SHARED HEAP MEMORY 
+
+    The 'shared_heap' parameter in upcc.conf provides the default amount of a
+    UPC process's memory space that will be reserved for shared memory  (since
+    Berkeley UPC allocates static shared variables on the shared heap, this
+    number is the total limit for all shared memory in a program).  While this
+    parameter can be overridden by users (either by passing the '-shared-heap'
+    flag to upcc, or--on most platforms--by setting the UPC_SHARED_HEAP_SIZE
+    environment variable), it is important that you set a sensible default
+    value.  Programs will die from shared memory exhaustion if the value is too
+    small.  But too large of a value could potentially limit the amount of
+    memory that the regular, unshared heap (used by malloc(), etc) can allocate.
+    A decent rule of thumb might be half of physical memory, divided by the
+    number of CPUs.  The value may be specified in either megabytes/gigabytes:
+    append 'MB' or 'GB' to the numeric value (ex: "2GB").  No space between the
+    value and the MB/GB is allowed). Megabytes are assumed by default.
+
+    If you are using a pinning-based network (such as Infiniband or Myrinet),
+    and you wish to use very large amounts of memory for your applications
+    (close to or greater than physical memory), you may need to reconfigure with
+    'configure --enable-segment-large' and rebuild the runtime.  This option is
+    not enabled by default, as it may increase remote access times.
+
+    OTHER UPCC.CONF OPTIONS
+
+    You may enable 'smart_output' if you are a heretic, and believe that a
+    compiler should create an executable called 'foo' by default when 'foo.c' is
+    compiled, instead of 'a.out'.
+
+    You may provide a set of default flags that should be passed to upcc when it
+    is invoked (for instance, if there is some special setting that needs to be
+    passed to the backend C compiler or linker).  Note that users can override
+    this (and all other upcc.conf settings) in their own $HOME/.upccrc file, so
+    it is not a fail-proof enforcement mechanism.
+
+4) Test that your build and configuration are at least minimally OK by running
+
+        ./upcc --version
+
+   You should see some information about the UPC release, and also about the
+   available and default networks that you are configured for.
+
+5) Before installing, try building and running some of the tests and examples in
+   the 'upc-examples' and/or 'upc-tests' subsdirectories.  
+   To build and run a simple "hello world" UPC program for each of your
+   supported networks, do
+
+        gmake tests-hello
+
+   After the tests are built, you will see a message instructing you how to run
+   the tests that were created.  For each test, you should see
+
+           Welcome to Berkeley UPC!!!
+            - Hello from thread 0
+            - Hello from thread 1
+
+   If hello.upc compiles for a particular network, but 'upcrun' does not run it
+   correctly, you may need to adjust your upcrun.conf file to run jobs correctly
+   on your system.  See at the man page for upcrun, and the instructions in
+   upcrun.conf.
+
+   If you suspect that there is a bug in Berkeley UPC that is preventing it from
+   working on your system, please search our online bug reporting system, to see
+   if someone else has reported a similar problem:
+
+        http://upc-bugs.lbl.gov/bugzilla/
+
+   If no one appears to have had the same problem with Berkeley UPC as you,
+   create a new bug report, providing as much detail as possible (such as the
+   command line you passed to 'configure', and the output of 'upcc -V').  Attach
+   your config.log file to your bug report after you submit it.
+
+6) The GASNet networking layer used by Berkeley UPC provides various additional
+   parameters that control job launching and/or performance tuning for specific
+   networks.  Each supported network has a README file in the gasnet source tree
+   (which is part of this UPC distribution).  While we have generally selected
+   sensible default options, it is worth your time to read the READMEs for the
+   networks that your installation will support:  you may find settings that
+   allow programs to run faster on your machine, or workarounds for known bugs.
+
+7) Install the release to the directory tree you selected at ./configure time
+   via
+
+        make install
+
+   You may wish to change your user's PATH to include the 'bin' subdirectory of
+   your install tree, and/or the MANPATH to include the 'man' subdirectory.
+

@@ -2,8 +2,8 @@
 // ====================================================================
 //
 // Module: opt_canon.cxx
-// $Revision: 1.2 $
-// $Date: 2003/03/04 06:16:02 $
+// $Revision: 1.3 $
+// $Date: 2007/02/20 22:35:18 $
 // $Author: wychen $
 // $Source: /var/local/cvs/compilers/open64/osprey1.0/be/opt/opt_canon.cxx,v $
 //
@@ -59,7 +59,7 @@
 
 #ifdef _KEEP_RCS_ID
 #define opt_canon_CXX	"opt_canon.cxx"
-static char *rcs_id = 	opt_canon_CXX"$Revision: 1.2 $";
+static char *rcs_id = 	opt_canon_CXX"$Revision: 1.3 $";
 #endif /* _KEEP_RCS_ID */
 
 #include "defs.h"
@@ -109,6 +109,12 @@ CANON_CR::Trim_to_16bits(WN *wn, CODEMAP *htable)
   const OPCODE op = WN_opcode(wn);
   MTYPE typ;
   INT64 multiple32K;
+
+  //there's no reason to apply this bit-trimming voodoo magic 
+  //when we're doing source-to-source translation 
+  if (Compile_Upc) {
+    return;
+  }
 
   if (Scale() >= (- 0x8000) && Scale() <= 0x7fff)
     return;

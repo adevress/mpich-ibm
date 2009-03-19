@@ -31,6 +31,7 @@ foreach my $comp ($gcc, $cc) {
   my $out = `$comp $tmpfile 2>&1 > /dev/null`;
   $out =~ s/^$tmpfile.?\s*$//;
   $out =~ s/^.*?: INFO: .*\n//; # silly Cray target message on XT4
+  $out =~ s/^NOTE: your trial license will expire.*\n//; # PGI trial warning
   if ($out) {
     die "$out\nERROR: '$comp' does not appear to be a functional C preprocessor!\n";
   }

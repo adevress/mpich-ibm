@@ -254,7 +254,7 @@ c
       endif
       me = ga_nodeid()
       nproc = ga_nnodes()
-      if (istep.ge.3930438) then
+      if (istep.ge.68365721.and.istep.le.68365723) then
         debug = .false.
       else
         debug = .false.
@@ -332,7 +332,7 @@ c   Try to protect against numerical roundoff by checking that different
 c   particle collides with sphere or that collision time is significantly
 c   greater than zero if it is the same particle
 c
-            if (.not.(ii.eq.cllsn_isav.and.tcut.lt.1.0d-10)) then
+            if (.not.(ii.eq.cllsn_isav.and.tcut.lt.1.0d-03)) then
               dtmax = tcut
               tsav = tcut
               iat = ii
@@ -341,6 +341,7 @@ c
               write(6,101) ii, tcut, istep
   101         format('Rejected collision of atom ',i8,' at time ',
      +               f16.8,' at step ',i8)
+              failsafe = 1
             endif
           else if (tcut.lt.0.0d00) then
             write(6,*) ga_nodeid(),' vn ',vn,istep
@@ -381,15 +382,15 @@ c
         endif
       end do 
 c
+c   Check to see if a collision occured on another processor
+c
       ibuf(1) = iat
       ibuf(2) = failsafe
       if (debug) write(6,*) me,' iat = ',iat,istep
       if (debug) write(6,*) me,' failsafe = ',failsafe,istep
       if (debug) write(6,*) me,' ibuf(1) = ',ibuf(1),istep
       if (debug) write(6,*) me,' ibuf(2) = ',ibuf(2),istep
-      call ga_sync
       call ga_igop(5,ibuf,2,'+')
-      call ga_sync
       if (debug) write(6,*) me,' ibuf(1) = ',ibuf(1),istep
       if (debug) write(6,*) me,' ibuf(2) = ',ibuf(2),istep
 c
@@ -420,14 +421,17 @@ c
         return
       endif
 c
-c   Check to find minimum time if collisions occur on more than one
-c   processor.
+c   At this point, a collision has been detected on at least on
+c   processor. Check to find minimum time if collisions occur on more
+c   than one processor.
 c
       if (iat.eq.0) then
         tsav = tau
       endif
       a = tsav
       call ga_dgop(6,a,1,'min')
+c
+c   Find mass of particle that has first collision with confining sphere
 c
       if (a.eq.tsav) then
         b = mass(iat)
@@ -522,6 +526,15 @@ c
             if (debug) write(6,155) me,5,tmin,istep
           else if (tchk.lt.0.0d00) then
             write(6,*) ga_nodeid(),' Returned negative value at 3',istep
+            failsafe = 1
+          else
+c
+c  This case should theoretically be impossible, but it may occur because of
+c  roundoff
+c
+            write(6,*) me,' tchk greater than or equal to tmin',istep
+            write(6,*) me,' tchk = ',tchk,istep
+            write(6,*) me,' tmin = ',tmin,istep
             failsafe = 1
           endif
         endif
@@ -619,7 +632,7 @@ c
 c  A particle lies outside the cutoff. Find particle that crosses
 c  cutoff first.
 c
-      if (istep.ge.3930439) then
+      if (istep.ge.68365721.and.istep.le.68365723) then
         debug = .false.
       else
         debug = .false.
@@ -944,14 +957,28 @@ c
 c  Bin the current value of r_cluster
 c
       double precision dr
-      integer ir
+      integer ir, isample
       if (nocluster) return
+c
+c  Find bin
+c
       dr = r_cluster - cl_lower
       ir = int(dr/mc_step) + 1
       if (ir.le.0) ir = 1
       if (ir.gt.mcbins) ir = mcbins
       mc_cnt = mc_cnt + 1
-      r_distr(ir) = r_distr(ir) + 1
+c
+c  Find slice for statistics
+c
+      if (istep.gt.mc_start) then
+        isample = int(10.0d00*(dble(istep-mc_start)-0.5d00)
+     +          / dble(nstep-mc_start)) + 1
+        if (isample.gt.10) isample = 10
+      else
+        isample = 1
+      endif
+      r_cnt(isample) = r_cnt(isample) + 1
+      r_distr(ir,isample) = r_distr(ir,isample) + 1
       return
       end
 c
@@ -960,9 +987,12 @@ c
 c
 c  Print out the distribution of r_cluster
 c
-      double precision rdist(MAXBINS), norm, r
+      double precision rdist(MAXBINS), norm, r, normi
       double precision rdist2(MAXBINS), sum
-      integer itot, i
+      double precision sigr(MAXBINS),sigr2(MAXBINS)
+      double precision sig2(MAXBINS),sig2_2(MAXBINS)
+      double precision rdisti(MAXBINS,10),rdisti2(MAXBINS,10)
+      integer itot, i, j, isample
       character*32 filename
 c
       if (nocluster) return
@@ -980,37 +1010,92 @@ c
   102 format('cl.distr.',i3)
   103 format('cl.distr.',i4)
 c
-      if (istep.ge.nstep) then
-        itot = nstep - equil_2
-      else
-        itot = istep - equil_2
-      endif
-      if (itot.le.0) return
-      norm = mc_step*dble(mc_cnt)
+c  Evaluate normalized distribution and uncertainty for P(r)
+c
+      if (mc_cnt.lt.0) return
+      norm = dble(mc_cnt)
+      do i = 1, mcbins
+        rdist(i) = 0.0d00
+        rdist2(i) = 0.0d00
+        sig2(i) = 0.0d00
+        sig2_2(i) = 0.0d00
+        sigr(i) = 0.0d00
+        sigr2(i) = 0.0d00
+        do j = 1, 10
+          rdisti(i,j) = 0.0d00
+          rdisti2(i,j) = 0.0d00
+        end do
+      end do
+      do j = 1, 10
+        normi = dble(r_cnt(j))
+        do i = 1, mcbins
+          rdist(i) = rdist(i) + dble(r_distr(i,j))/norm
+          rdisti(i,j) = dble(r_distr(i,j))/normi
+        end do
+      end do
+      do j = 1, 10
+        do i = 1, mcbins
+          sig2(i) = sig2(i) + rdisti(i,j)**2
+        end do
+      end do
+      do i = 1, mcbins
+        sigr(i) = (sig2(i)-10.0d00*rdist(i)**2)/9.0d00
+      end do
+c
+c  Uncertainty at the 95% confidence level
+c
+      do i = 1, mcbins
+        sigr(i) = 2.23d00*sqrt(sigr(i)/10.d00)
+      end do
       sum = 0.0d00
       do i = 1, mcbins
-        rdist(i) = dble(r_distr(i))/norm
         sum = sum + rdist(i)
       end do
       do i = 1, mcbins
         rdist(i) = rdist(i)/(sum*mc_step)
+        sigr(i) = sigr(i)/(sum*mc_step)
+      end do
+c
+c  Evaluate normalized distribution and uncertainty for P(V)
+c
+      do j = 1, 10
+        normi = dble(r_cnt(j))
+        do i = 1, mcbins
+          r = cl_lower + (dble(i)-0.5d00)*mc_step
+          rdist2(i) = rdist2(i) + dble(r_distr(i,j))/(r**2*norm)
+          rdisti2(i,j) = dble(r_distr(i,j))/(r**2*normi)
+        end do
+      end do
+      do j = 1, 10
+        do i = 1, mcbins
+          sig2_2(i) = sig2_2(i) + rdisti2(i,j)**2
+        end do
+      end do
+      do i = 1, mcbins
+        sigr2(i) = (sig2_2(i)-10.0d00*rdist2(i)**2)/9.0d00
+      end do
+c
+c  Uncertainty at the 95% confidence level
+c
+      do i = 1, mcbins
+        sigr2(i) = 2.23d00*sqrt(sigr2(i)/10.d00)
       end do
       sum = 0.0d00
       do i = 1, mcbins
-        r = cl_lower + (dble(i)-0.5d00)*mc_step
-        rdist2(i) = rdist(i)/(r**2)
         sum = sum + rdist2(i)
       end do
       do i = 1, mcbins
         rdist2(i) = rdist2(i)/(sum*mc_step)
+        sigr2(i) = sigr2(i)/(sum*mc_step)
       end do
 c
       if (ga_nodeid().eq.0) then
         open(unit=2,file=filename,status='unknown')
         do i = 1, mcbins
           r = cl_lower + (dble(i)-0.5d00)*mc_step
-          write(2,200) r, rdist(i), rdist2(i)
-  200     format(f12.4,'	',f16.8,'	',f16.8)
+          write(2,200) r, rdist(i), rdist2(i),sigr(i),sigr2(i)
+  200     format(f12.4,'	',f16.8,'	',f16.8,'       ',
+     +           f16.8,'       'f16.8)
         end do
         close(2)
       endif
@@ -1023,14 +1108,17 @@ c
 c
 c  clear the distribution of r_cluster
 c
-      double precision rdist(MAXBINS), norm, r
-      integer itot, i
+      integer itot, i, j
 c
       if (nocluster) return
-      do i = 1, MAXBINS
-        r_distr(i) = 0
+      do j = 1, 10
+        do i = 1, MAXBINS
+          r_distr(i,j) = 0
+        end do
+        r_cnt(j) = 0
       end do
       mc_cnt = 0
+      mc_start = istep
 c
       return
       end
@@ -1050,17 +1138,17 @@ c
         if (ga_nodeid().eq.0.and.l_rad) then
           open(unit=3,file="win1.dat",status='unknown')
           do i = 1, mcbins
-            write(3,*) i, r_distr(i)
+            write(3,*) i, r_distr(i,1)
           end do
         endif
         ilow = 0
         ihi = 0
         do i = 1, mcbins
-          if (r_distr(i).gt.0.and.ilow.eq.0) then
+          if (r_distr(i,1).gt.0.and.ilow.eq.0) then
             ilow = i-1
             if (ilow.lt.1) ilow = 1
           endif
-          if (ilow.gt.0.and.ihi.eq.0.and.r_distr(i).eq.0) then
+          if (ilow.gt.0.and.ihi.eq.0.and.r_distr(i,1).eq.0) then
             ihi = i
           endif
         end do
@@ -1080,13 +1168,13 @@ c
         ihi = 0
         imax = 0
         do i = 1, mcbins
-c          if (r_distr(i).gt.0.and.ilow.eq.0) then
+c          if (r_distr(i,1).gt.0.and.ilow.eq.0) then
 c            ilow = i-1
 c            if (ilow.lt.1) ilow = 1
 c          endif
-          if (r_distr(i).gt.imax) then
+          if (r_distr(i,1).gt.imax) then
             ihi = i
-            imax = r_distr(i)
+            imax = r_distr(i,1)
           endif
         end do
         if (ihi.eq.0) ihi = mcbins
@@ -1099,10 +1187,8 @@ c          endif
       endif
       cl_upper = 3.5d00
       cl_lower = 0.5d00
-      cl_upper = 3.0d00
-      cl_lower = 0.0d00
-      cl_upper = 2.5d00
-      cl_lower = 0.0d00
+      cl_upper = 4.5d00
+      cl_lower = 0.5d00
       mc_step = (cl_upper-cl_lower)/dble(mcbins)
       call cluster_clear_binr
       return

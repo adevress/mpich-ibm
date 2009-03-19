@@ -84,9 +84,8 @@ case "$HOST" in
   ;;
   
   i686-apple-darwin*) # Intel OSX 10.4 host
-	experimental;
 	requireILP32;
-  	echo "targ_g4_osx"
+  	echo "targ_ia32_osx"
   ;;
 
   powerpc-apple-darwin*) # PPC OSX 10.4 host

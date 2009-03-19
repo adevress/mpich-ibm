@@ -1,6 +1,6 @@
 /* The Berkeley UPC Runtime Specification
- * Version: 3.9
- * $Revision: 1.23 $
+ * Version: 3.10
+ * $Revision: 1.25 $
  * Copyright 2002-4, Dan Bonachea <bonachea@cs.berkeley.edu>
  */
 
@@ -672,6 +672,17 @@ typedef ??? upcr_phase_t;
 */
 void *upcr_shared_to_local(upcr_shared_ptr_t sptr);
 void *upcr_pshared_to_local(upcr_pshared_ptr_t sptr);
+
+/* Convert a pointer-to-shared into a virtual address usable by the calling thread
+   The pointer target must refer to shared memory with affinity to the calling thread, 
+   or otherwise to shared memory which the calling thread has the ability to access 
+   directly via load/store to virtual memory, otherwise the call is erroneous.
+   The extent of memory which falls into the latter category is implementation-dependent
+   and may be empty. Furthermore, the virtual addresses returned by this function
+   are only guaranteed to be valid on the calling thread.
+*/
+void *upcr_shared_to_processlocal(upcr_shared_ptr_t sptr);
+void *upcr_pshared_to_processlocal(upcr_pshared_ptr_t sptr);
 
 /* Convert a local ptr into the current thread's shared memory space into 
    a shared pointer appropriate for use in remote operations from other threads. 
@@ -1630,18 +1641,19 @@ void upcr_lock_free(upcr_shared_ptr_t lockptr);
  * cannot contain line breaks.
  */
 
-/* UPCR_TLD_DEFINE(name, initval, size) must be used when declaring
+/* UPCR_TLD_DEFINE(name, size, align) must be used when declaring
  * unshared global/static variables that the user has initialized.  The
- * macro takes the variable name of the value, and the size (in bytes, as a
+ * macro takes the variable name of the value, and the size and required
+ * structure alignment of that type (in bytes, as a
  * single literal number--'sizeof', expressions like '3 + 4', etc., are not
  * allowed).  So the UPC compiler should transform 
  *
  *	int foo = 5;
  *
- * on a platform with 4 byte integers into
+ * on a platform with 4 byte integers and 4-byte integer structure alignment into
  *
  *	int
- *	UPCR_TLD_DEFINE(foo, 4) = 5;
+ *	UPCR_TLD_DEFINE(foo, 4, 4) = 5;
  *
  * Unshared pointers to shared types (i.e. thread local variables
  * with type upcr_shared_ptr_t or upcr_pshared_ptr_t) should be initialized
@@ -1657,14 +1669,14 @@ void upcr_lock_free(upcr_shared_ptr_t lockptr);
  *
  *     typedef int _type_natural_nums[3];
  *     _type_natural_nums
- *     UPCR_TLD_DEFINE(natural_nums, 12) = { 1, 2, 3 };
+ *     UPCR_TLD_DEFINE(natural_nums, 12, 4) = { 1, 2, 3 };
  *
  *     typedef void (*_type_int_taker)(int);
  *     _type_int_taker
- *     UPCR_TLD_DEFINE(int_taker, 4) = &print_int;
+ *     UPCR_TLD_DEFINE(int_taker, 4, 4) = &print_int;
  *
  * For variables that are not explictly initialized by the user,
- * UPCR_TLD_DEFINE_TENTATIVE(name, size) must be used.  The macro
+ * UPCR_TLD_DEFINE_TENTATIVE(name, size, align) must be used.  The macro
  * works the same way as UPCR_TLD_DEFINE, except that it should not be
  * followed by "= initializer_expr."
  *
@@ -1673,8 +1685,8 @@ void upcr_lock_free(upcr_shared_ptr_t lockptr);
  * Runtime documentation on the Berkeley UPC web site.
  */
 
-#define UPCR_TLD_DEFINE(name, size)
-#define UPCR_TLD_DEFINE_TENTATIVE(name, size)
+#define UPCR_TLD_DEFINE(name, size, align)
+#define UPCR_TLD_DEFINE_TENTATIVE(name, size, align)
 
 /* UPCR_TLD_ADDR: retrieve the address of the current thread's representative
    of the TLD variable with the given name (name must be a simple identifier)

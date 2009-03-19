@@ -3020,6 +3020,32 @@ intrn_info_t intrn_info[INTRINSIC_LAST+1] = {
 
   { /* TYPE_EXPR */
     BYVAL, PURE, NO_SIDEEFFECTS, DOES_RETURN, NOT_ACTUAL, NOT_CGINTRINSIC,
-      sizeof(int) == 4 ? IRETURN_I4 : IRETURN_I8, "upcr_type_exp", "TYPE_EXPR", "upcr_type_exp"}
+      sizeof(int) == 4 ? IRETURN_I4 : IRETURN_I8, "upcr_type_exp", "TYPE_EXPR", "upcr_type_exp"},
+ {
+     BYVAL, PURE, SIDEEFFECTS, DOES_RETURN, NOT_ACTUAL, NOT_CGINTRINSIC,
+     IRETURN_I4, "upcrt_new_redist_ref", "VEC_NEW_RR", "upcrt_new_redist_ref"},
 
+{
+  BYVAL, PURE, SIDEEFFECTS, DOES_RETURN, NOT_ACTUAL, NOT_CGINTRINSIC,
+    IRETURN_I4, "upcrt_new_lmad_local", "VEC_NEW_LMAD_TARG", "upcrt_new_lmad_local"},
+{ 
+  BYVAL, PURE, SIDEEFFECTS, DOES_RETURN, NOT_ACTUAL, NOT_CGINTRINSIC,
+    IRETURN_V, "upcrt_loop_1R", "VEC_LOOP_1RS1", "upcrt_loop_1R"},    
+{ 
+  BYVAL, PURE, SIDEEFFECTS, DOES_RETURN, NOT_ACTUAL, NOT_CGINTRINSIC,
+    IRETURN_V, "upcrt_analyze_1RS1", "VEC_ANAL_1RS1", "upcrt_analyze_1RS1"},    
+{
+  BYVAL, PURE, NO_SIDEEFFECTS, DOES_RETURN, NOT_ACTUAL, NOT_CGINTRINSIC,
+    IRETURN_I4, "upcrt_strips_1RS1", "VEC_GETSTR_1RS1", "upcrt_strips_1RS1"},
+
+ {
+    BYVAL, NOT_PURE, SIDEEFFECTS, DOES_RETURN, NOT_ACTUAL, NOT_CGINTRINSIC,
+    IRETURN_V, "upcrt_advance_1RS1", "VEC_ADVD_1RS1", "upcrt_advance_1RS1"},
+ 
+{
+   BYVAL, PURE, SIDEEFFECTS, DOES_RETURN, NOT_ACTUAL, NOT_CGINTRINSIC,
+    IRETURN_PV, "upcrt_get_address_1RS1", "VEC_GET_LADDR_1RS1", "upcrt_get_address_1RS1"},
+{
+  BYVAL, NOT_PURE, SIDEEFFECTS, DOES_RETURN, NOT_ACTUAL, NOT_CGINTRINSIC,
+    IRETURN_V, "upcrt_finalize_1RS1", "VEC_FIND_1RS1", "upcrt_finalize_1RS1"},
 }; //end of intrinsics

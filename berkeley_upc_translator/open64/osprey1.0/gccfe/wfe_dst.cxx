@@ -37,12 +37,12 @@
  * ====================================================================
  *
  * Module: dst.c
- * $Revision: 1.31 $
- * $Date: 2006/08/27 06:21:02 $
- * $Author: wychen $
- * $Revision: 1.31 $
- * $Date: 2006/08/27 06:21:02 $
- * $Author: wychen $
+ * $Revision: 1.33 $
+ * $Date: 2008/11/03 18:42:06 $
+ * $Author: ciancu $
+ * $Revision: 1.33 $
+ * $Date: 2008/11/03 18:42:06 $
+ * $Author: ciancu $
  * $Source: /var/local/cvs/compilers/open64/osprey1.0/gccfe/wfe_dst.cxx,v $
  *
  * Revision history:
@@ -64,7 +64,7 @@
  */
 
 #ifdef _KEEP_RCS_ID
-static char *rcs_id = "$Source: /var/local/cvs/compilers/open64/osprey1.0/gccfe/wfe_dst.cxx,v $ $Revision: 1.31 $";
+static char *rcs_id = "$Source: /var/local/cvs/compilers/open64/osprey1.0/gccfe/wfe_dst.cxx,v $ $Revision: 1.33 $";
 #endif /* _KEEP_RCS_ID */
 #if defined(__MACH__) && defined(__APPLE__)
 #else
@@ -79,8 +79,9 @@ static char *rcs_id = "$Source: /var/local/cvs/compilers/open64/osprey1.0/gccfe/
 #include "srcpos.h"
 #include "symtab.h"
 #include "gnu_config.h"
-#include "gnu/flags.h"
+#include <setjmp.h>
 extern "C" {
+#include "gnu/flags.h"
 #include "gnu/system.h"
 #include "gnu/tree.h"
 #include "gnu/input.h"

@@ -19,6 +19,16 @@ struct gasnete_coll_autotune_info_t_ {
   size_t pipe_seg_size;
 };
 
+GASNETI_ALWAYS_INLINE(gasnete_coll_nextpower2)
+size_t gasnete_coll_nextpower2(size_t n)
+{
+  size_t x;
+  if(n==0) return 0;
+  x=1;
+  while(x < n) x<<=1;
+  return x;
+}
+
 
 /* These "set" routines are only intended for testing purposes. Eventually 
    The "get tree" routines will be the primary method of picking trees*/
@@ -29,6 +39,7 @@ gasnete_coll_autotune_info_t* gasnete_coll_autotune_init(gasnet_node_t mynode, g
   char *default_tree_type;
   gasnet_node_t default_tree_fanout;
   size_t dissem_limit;
+  size_t temp_size;
   size_t dissem_limit_per_thread;
   
   ret = gasneti_malloc(sizeof(gasnete_coll_autotune_info_t));
@@ -44,25 +55,27 @@ gasnete_coll_autotune_info_t* gasnete_coll_autotune_init(gasnet_node_t mynode, g
   ret->gather_tree_type = gasnete_coll_make_tree_type(gasneti_getenv_withdefault("GASNET_COLL_GATHER_GEOM", default_tree_type),
                                                      MIN(total_nodes, gasneti_getenv_int_withdefault("GASNET_COLL_GATHER_ARITY", default_tree_fanout, 0)));
   
-  dissem_limit = gasneti_getenv_int_withdefault("GASNET_COLL_GATHER_ALL_DISSEM_LIMIT", GASNETE_COLL_DEFAULT_DISSEM_LIMIT, 1);
-  dissem_limit_per_thread = gasneti_getenv_int_withdefault("GASNET_COLL_GATHER_ALL_DISSEM_LIMIT_PER_THREAD", dissem_limit/my_images, 1);
-  if(dissem_limit_per_thread*my_images != dissem_limit) {
+  dissem_limit_per_thread = gasneti_getenv_int_withdefault("GASNET_COLL_GATHER_ALL_DISSEM_LIMIT_PER_THREAD", GASNETE_COLL_DEFAULT_DISSEM_LIMIT_PER_THREAD, 1);
+  temp_size = gasnete_coll_nextpower2(dissem_limit_per_thread*my_images);
+  dissem_limit = gasneti_getenv_int_withdefault("GASNET_COLL_GATHER_ALL_DISSEM_LIMIT", temp_size, 1);
+  if(temp_size != dissem_limit) {
     if(mynode == 0) {
       fprintf(stderr, "WARNING: Conflicting environment values for GASNET_COLL_GATHER_ALL_DISSEM_LIMIT (%ld) and GASNET_COLL_GATHER_ALL_DISSEM_LIMIT_PER_THREAD (%ld)\n", (long int) dissem_limit, (long int) dissem_limit_per_thread);
-      fprintf(stderr, "WARNING: Using: %ld\n", (long int) MIN(dissem_limit, dissem_limit_per_thread));
+      fprintf(stderr, "WARNING: Using: %ld\n", (long int) MIN(dissem_limit, temp_size));
     }
   }
-  ret->gather_all_dissem_limit = MIN(dissem_limit, dissem_limit_per_thread*my_images);
+  ret->gather_all_dissem_limit = MIN(dissem_limit, temp_size);
   
-  dissem_limit = gasneti_getenv_int_withdefault("GASNET_COLL_EXCHANGE_DISSEM_LIMIT", GASNETE_COLL_DEFAULT_DISSEM_LIMIT, 1);
-  dissem_limit_per_thread = gasneti_getenv_int_withdefault("GASNET_COLL_EXCHANGE_DISSEM_LIMIT_PER_THREAD", dissem_limit/(my_images*my_images), 1);
-  if(dissem_limit_per_thread*my_images*my_images != dissem_limit) {
+  dissem_limit_per_thread = gasneti_getenv_int_withdefault("GASNET_COLL_EXCHANGE_DISSEM_LIMIT_PER_THREAD", GASNETE_COLL_DEFAULT_DISSEM_LIMIT_PER_THREAD, 1);
+  temp_size = gasnete_coll_nextpower2(dissem_limit_per_thread*my_images*my_images);
+  dissem_limit = gasneti_getenv_int_withdefault("GASNET_COLL_EXCHANGE_DISSEM_LIMIT", temp_size, 1);
+  if(temp_size != dissem_limit) {
     if(mynode == 0) {
-      fprintf(stderr, "WARNING: Conflicting environment values for GASNET_COLL_EXCHANGE_DISSEM_LIMIT (%ld) and GASNET_COLL_EXCHANGE_DISSEM_LIMIT_PER_THREAD (%ld)\n", (long int) dissem_limit, (long int) dissem_limit_per_thread);
-      fprintf(stderr, "WARNING: Using: %ld\n", (long int) MIN(dissem_limit, dissem_limit_per_thread));
+      fprintf(stderr, "WARNING: Conflicting environment values for GASNET_COLL_EXCHANGE_DISSEM_LIMIT (%ld) and GASNET_COLL_EXCHANGE_DISSEM_LIMIT_PER_THREAD (%ld)\n", (long int) dissem_limit, (long int) temp_size);
+      fprintf(stderr, "WARNING: Using: %ld\n", (long int) MIN(dissem_limit, temp_size));
     }
   }
-  ret->exchange_dissem_limit = MIN(dissem_limit, dissem_limit_per_thread*my_images*my_images);
+  ret->exchange_dissem_limit = MIN(dissem_limit, temp_size);
   
   if(min_scratch_size < total_images) {
     gasneti_fatalerror("SCRATCH SPACE TOO SMALL Please set it to at least (%ld bytes) through the GASNET_COLL_SCRATCH_SIZE environment variable", (long int) total_images);
@@ -83,7 +96,7 @@ gasnete_coll_autotune_info_t* gasnete_coll_autotune_init(gasnet_node_t mynode, g
   if(ret->pipe_seg_size*total_images > gasnet_AMMaxLongRequest()) {
     if(mynode == 0) {
       fprintf(stderr, "WARNING: GASNET_COLL_PIPE_SEG_SIZE (%d bytes) * total images (%d) has to be less than max size for an AMLong for this conduit (%ld)\n", 
-              (int)ret->pipe_seg_size, total_images, (long int) gasnet_AMMaxLongRequest());
+              (int)ret->pipe_seg_size, (int)total_images, (long int) gasnet_AMMaxLongRequest());
       fprintf(stderr, "WARNING: Using %ld bytes for GASNET_COLL_PIPE_SEG_SIZE instead\n", (long int) gasnet_AMMaxLongRequest()/total_images);
       ret->pipe_seg_size = gasnet_AMMaxLongRequest()/total_images;
     }

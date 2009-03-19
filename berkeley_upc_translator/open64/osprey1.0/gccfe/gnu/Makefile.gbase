@@ -114,6 +114,12 @@ ifeq ($(BUILD_COMPILER), GNU)
 TARGDEFS = -D__MIPS_AND_IA64_ELF_H
 endif
 
+ifeq ($(BUILD_OS), OSX)
+ifneq ($(BUILD_OSX_INTEL), YES)
+TARGDEFS += -DWORDS_BIG_ENDIAN=1
+TARGDEFS += -DHOST_WORDS_BIG_ENDIAN
+endif
+endif
 #----------------------------------------------------------------------
 #  List of directories, and source files of interest
 #----------------------------------------------------------------------

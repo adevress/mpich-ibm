@@ -3,9 +3,9 @@
 // ====================================================================
 //
 // Module: opt_emit_template.h
-// $Revision: 1.21 $
-// $Date: 2006/02/18 02:01:18 $
-// $Author: wychen $
+// $Revision: 1.23 $
+// $Date: 2008/10/14 22:56:10 $
+// $Author: ciancu $
 // $Source: /var/local/cvs/compilers/open64/osprey1.0/be/opt/opt_emit_template.h,v $
 //
 // Revision history:
@@ -363,7 +363,13 @@ Gen_exp_wn(CODEREP *exp, EMITTER *emitter)
 	//due to copy propagation, shared scalar variables may be replaced
 	//by an equivalent value that is private.
 	//we need to drop the cast in such a case to prevent whirl2c warnings
+	// bug 1937 - this is bad decision since  it will associate an LDID with a 
+	// CK_OP(tas) and it confuses the DU_MANAGER code
+	fprintf(stderr, "WARNING : Cast on scalar type involved in assignment to share\n");
+	fprintf(stderr, "WARNING : Most likely to result in incorrect code generation with --opt\n");
+	fdump_tree(stderr, wn);
 	wn = WN_kid0(wn);
+
       }
 
       // we may want to do a little tiny simplification
@@ -1169,6 +1175,10 @@ Gen_stmt_wn(STMTREP *srep, STMT_CONTAINER *stmt_container, EMITTER *emitter)
   case OPR_IO:	// one of the "black-box" statements
     rwn = WN_COPY_Tree_With_Map(srep->Black_box_wn());
     emitter->Alias_Mgr()->Gen_black_box_alias(rwn);
+    break;
+
+  case OPR_COMMENT:  //should only see this in UPC code
+    rwn = srep->Black_box_wn();
     break;
 
   default:

@@ -1,8 +1,9 @@
-# $Id$
+# $Id: GNUmakefile,v 1.22.6.1 2007-06-12 20:33:46 manoj Exp $
 #
 # Makefile for a portable dynamic memory allocator.
 
       LIBRARY = libtcgmsg.a
+LIBRARY_SHARED= libtcgmsg.so
   LIB_DISTRIB = ../../lib
 OBJ =  brdcst.o    nodeid.o    setdbg.o                          \
           checkbyte.o llog.o      nxtval.o    shmem.o     synch.o   \

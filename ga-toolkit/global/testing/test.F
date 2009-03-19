@@ -1,4 +1,4 @@
-c $Id$
+c $Id: test.F,v 1.64.2.11 2007-04-06 22:37:35 d3g293 Exp $
 c vector boxes lack arithmetic precision 
 #ifdef CRAY_YMP
 # define THRESH 1d-10
@@ -16,10 +16,19 @@ c vector boxes lack arithmetic precision
 
 c#define NEW_API
 c#define MIRROR
-c#define GA3
+#define GA3
 c#define NGA_GATSCAT
+c#define BLOCK_CYCLIC
+c#define USE_SCALAPACK_DISTR
 
 #define MEM_INC 1000
+
+#ifdef BLOCK_CYCLIC
+#  define NEW_API
+#  undef MIRROR
+#else
+#  undef USE_SCALAPAC_DISTR
+#endif
 
       program main
       implicit none
@@ -229,7 +238,10 @@ c
       double precision crap, sum1, sum2, x
       double precision nwords
       logical found
-      integer lprocs,inode,iproc,nnodes
+      integer lprocs,inode,iproc,nnodes,lproc
+#ifdef BLOCK_CYCLIC
+      integer block_size(2), proc_grid(2)
+#endif
       intrinsic int
       iran(i) = int(util_drand(0)*real(i)) + 1
 c     
@@ -240,6 +252,16 @@ c
       nnodes = ga_cluster_nnodes()
       iproc = mod(me,lprocs)
       nloop = Min(maxloop,n)
+#ifdef BLOCK_CYCLIC
+      block_size(1) = 32
+      block_size(2) = 32
+#ifdef USE_SCALAPACK_DISTR
+      if (mod(nproc,2).ne.0)
+     +  call ga_error("Available procs must be divisible by 2",0)
+      proc_grid(1) = 2
+      proc_grid(2) = nproc/2
+#endif
+#endif
 c     
 c     a() is a local copy of what the global array should start as
 c
@@ -269,6 +291,13 @@ c     call setdbg(1)
       dims(2) = n
       call ga_set_data(g_a,ndim,dims,MT_DBL)
       call ga_set_array_name(g_a,'a')
+#ifdef BLOCK_CYCLIC
+#ifdef USE_SCALAPACK_DISTR
+      call ga_set_block_cyclic_proc_grid(g_a,block_size,proc_grid)
+#else
+      call ga_set_block_cyclic(g_a,block_size)
+#endif
+#endif
 #  ifdef MIRROR
       p_mirror = ga_pgroup_get_mirror()
       call ga_set_pgroup(g_a,p_mirror)
@@ -298,7 +327,12 @@ c     check if handle is valid. be quiet unless error
 C
       if(.not.ga_valid_handle(g_a)) call ga_error("invalid handle",g_a)
 c
+#ifndef MIRROR
       call ga_distribution(g_a,me,ilo, ihi, jlo, jhi)
+#else
+      lproc = me - ga_cluster_procid(inode,0)
+      call ga_distribution(g_a, lproc, ilo, ihi, jlo, jhi)
+#endif
       call ga_sync()
 c     
 c     Zero the array
@@ -527,6 +561,13 @@ c     overlapping accumulate
       g_b = ga_create_handle()
       call ga_set_data(g_b,ndim,dims,MT_DBL)
       call ga_set_array_name(g_b,'b')
+#ifdef BLOCK_CYCLIC
+#ifdef USE_SCALAPACK_DISTR
+      call ga_set_block_cyclic_proc_grid(g_b,block_size,proc_grid)
+#else
+      call ga_set_block_cyclic(g_b,block_size)
+#endif
+#endif
 #  ifdef MIRROR
       call ga_set_pgroup(g_b,p_mirror)
 #  endif
@@ -761,7 +802,6 @@ c
          call ffflush(6)
       endif
 c
-
       do j = 1,10 
        call ga_sync()
 #ifndef MIRROR
@@ -807,8 +847,8 @@ c          v(loop) = DSIN(a(ilo,jlo)+b(ilo,jlo))
            call ga_get(g_a,ilo,ilo,jlo,jlo,w(loop),1)
 c          if(v(loop)  .ne. w(loop))then 
            if(w(loop)  .ne. 1d0 *(ilo+jlo) )then 
-             write(6,*)me,' scatter ', ilo,',',jlo,',',w(loop) 
-     &             ,' ', 1d0 *(ilo+jlo) 
+             write(6,927)me,ilo,jlo,w(loop),1d0 *(ilo+jlo),loop
+  927        format(i3,' scatter ',i5,',',i5,',',f7.1,',',f7.1,',',i5)
              call ffflush(6)
              call ga_error('... exiting ',0)
            endif
@@ -966,6 +1006,13 @@ c
       g_c = ga_create_handle()
       call ga_set_data(g_c,ndim,dims,MT_DBL)
       call ga_set_array_name(g_c,'c')
+#ifdef BLOCK_CYCLIC
+#ifdef USE_SCALAPACK_DISTR
+      call ga_set_block_cyclic_proc_grid(g_c,block_size,proc_grid)
+#else
+      call ga_set_block_cyclic(g_c,block_size)
+#endif
+#endif
       if (.not.ga_allocate(g_c)) then
 #else
       if (.not. nga_create(MT_DBL, ndim, dims, 'c', chunk, g_c)) then
@@ -1108,7 +1155,7 @@ c
       double precision crap, real
       double precision nwords
       complex   x, sum1, sum2, factor
-      integer lprocs, inode, iproc
+      integer lprocs, inode, iproc, lproc
       intrinsic int
       iran(i) = int(util_drand(0)*real(i)) + 1
 c
@@ -1188,7 +1235,12 @@ c     call setdbg(1)
          call ga_error('ga_create failed for second array ',0)
       endif
 
+#ifndef MIRROR
       call ga_distribution(g_a,me,ilo, ihi, jlo, jhi)
+#else
+      lproc = me - ga_cluster_procid(inode,0)
+      call ga_distribution(g_a, lproc, ilo, ihi, jlo, jhi)
+#endif
       call ga_sync()
 c
 c     Zero the array
@@ -1229,7 +1281,7 @@ c
       endif
       call ga_sync()
 c
-      inc = (n-1)/20 + 1
+      inc = (n-1)/4 + 1
       ij = 0
       do j = 1, n, inc
          do i = 1, n, inc
@@ -1642,6 +1694,7 @@ c
 c
       end
 c-----------------------------------------------------------------
+
       subroutine check_complex()
       implicit none
 #include "mafdecls.fh"
@@ -1670,7 +1723,10 @@ c
       double precision crap, real
       double precision nwords
       double complex   x, sum1, sum2, factor
-      integer lprocs, inode, iproc
+      integer lprocs, inode, iproc, lproc
+#ifdef BLOCK_CYCLIC
+      integer block_size(2), proc_grid(2)
+#endif
       intrinsic int
       iran(i) = int(util_drand(0)*real(i)) + 1
 c
@@ -1681,6 +1737,16 @@ c
       nnodes = ga_cluster_nnodes()
       iproc = mod(me,lprocs)
       nloop = Min(maxloop,n)
+#ifdef BLOCK_CYCLIC
+      block_size(1) = 32
+      block_size(2) = 32
+#ifdef USE_SCALAPACK_DISTR
+      if (mod(nproc,2).ne.0)
+     +  call ga_error("Available procs must be divisible by 2",0)
+      proc_grid(1) = 2
+      proc_grid(2) = nproc/2
+#endif
+#endif
 c
 c     a() is a local copy of what the global array should start as
 c
@@ -1708,6 +1774,13 @@ c     call setdbg(1)
       g_a = ga_create_handle()
       call ga_set_data(g_a,ndim,dims,MT_DCPL)
       call ga_set_array_name(g_a,'a')
+#ifdef BLOCK_CYCLIC
+#ifdef USE_SCALAPACK_DISTR
+      call ga_set_block_cyclic_proc_grid(g_a,block_size,proc_grid)
+#else
+      call ga_set_block_cyclic(g_a,block_size)
+#endif
+#endif
 #  ifdef MIRROR
       p_mirror = ga_pgroup_get_mirror()
       call ga_set_pgroup(g_a,p_mirror)
@@ -1735,6 +1808,13 @@ c     call setdbg(1)
       g_b = ga_create_handle()
       call ga_set_data(g_b,ndim,dims,MT_DCPL)
       call ga_set_array_name(g_b,'b')
+#ifdef BLOCK_CYCLIC
+#ifdef USE_SCALAPACK_DISTR
+      call ga_set_block_cyclic_proc_grid(g_b,block_size,proc_grid)
+#else
+      call ga_set_block_cyclic(g_b,block_size)
+#endif
+#endif
 #  ifdef MIRROR
       call ga_set_pgroup(g_b,p_mirror)
 #  endif
@@ -1750,7 +1830,12 @@ c     call setdbg(1)
          call ga_error('ga_create failed for second array ',0)
       endif
 
+#ifndef MIRROR
       call ga_distribution(g_a,me,ilo, ihi, jlo, jhi)
+#else
+      lproc = me - ga_cluster_procid(inode,0)
+      call ga_distribution(g_a, lproc, ilo, ihi, jlo, jhi)
+#endif
       call ga_sync()
 c
 c     Zero the array
@@ -2227,9 +2312,15 @@ c
       parameter (nloop = 100)
       integer maxproc
       parameter (maxproc = 128)
-      integer map(5,maxproc), found, np,k
       double precision crap, sum1, real
       integer buf
+#ifdef BLOCK_CYCLIC
+      integer block_size(2), proc_grid(2)
+      integer map(4,maxproc), block_list(maxproc), found, np,k
+      integer blo(2),bhi(2)
+#else
+      integer map(5,maxproc), found, np,k
+#endif
       intrinsic int
       iran(i) = int(util_drand(0)*real(i)) + 1
 c     
@@ -2239,6 +2330,16 @@ c
       lprocs = ga_cluster_nprocs(inode)
       nnodes = ga_cluster_nnodes()
       iproc = mod(me,lprocs)
+#ifdef BLOCK_CYCLIC
+      block_size(1) = 32
+      block_size(2) = 32
+#ifdef USE_SCALAPACK_DISTR
+      if (mod(nproc,2).ne.0)
+     +  call ga_error("Available procs must be divisible by 2",0)
+      proc_grid(1) = 2
+      proc_grid(2) = nproc/2
+#endif
+#endif
 c     
 c     a() is a local copy of what the global array should start as
 c
@@ -2263,6 +2364,13 @@ c
       g_a = ga_create_handle()
       call ga_set_data(g_a,ndim,dims,MT_INT)
       call ga_set_array_name(g_a,'a')
+#ifdef BLOCK_CYCLIC
+#ifdef USE_SCALAPACK_DISTR
+      call ga_set_block_cyclic_proc_grid(g_a,block_size,proc_grid)
+#else
+      call ga_set_block_cyclic(g_a,block_size)
+#endif
+#endif
 #  ifdef MIRROR
       p_mirror = ga_pgroup_get_mirror()
       call ga_set_pgroup(g_a,p_mirror)
@@ -2458,9 +2566,15 @@ c
 #else
       lproc = nnodes-iproc-1
       lproc = inode*lprocs + lproc
+      lproc = lprocs - me-ga_cluster_procid(inode,0)
 #endif
 c
+#ifndef MIRROR
       call ga_distribution(g_a,lproc,ilo,ihi,jlo,jhi)
+#else
+      lproc = me - ga_cluster_procid(inode,0)
+      call ga_distribution(g_a, lproc, ilo, ihi, jlo, jhi)
+#endif
 c
       dimi = ihi-ilo
       dimj = jhi-jlo
@@ -2478,15 +2592,22 @@ c        write(6,*) me,'..',ilo,ihi,jlo,jhi,'.',dimi,dimj,'..',i,j
 c        call ffflush(6)
          buf = ga_read_inc(g_a,i,j,inc)
          if(a(i,j).ne. buf)then   
-            write(6,*)me,'READ_inc ', i,',',j,',', a(i,j),' ',buf,me 
+            write(6,114) me,ilo,ihi,jlo,jhi
+            write(6,112) me,i,j,a(i,j),buf,loop
+c            write(6,*)me,'READ_inc ', i,',',j,',', a(i,j),' ',buf,me 
             call ffflush(6)
          endif
+  112    format(i3,' READ_inc ',i3,',',i3,',',i8,' ',i8,' loop ',i8)
          call ga_get(g_a, i,i,j,j, buf,1) 
          a(i,j) = a(i,j)+inc 
          if(a(i,j).ne.  buf)then   
-            write(6,*)me,'read_INC ', i,',',j,',', a(i,j),' ',buf,me
+            write(6,114) me,ilo,ihi,jlo,jhi
+            write(6,113) me,i,j,a(i,j),buf,loop
+c            write(6,*)me,'read_INC ', i,',',j,',', a(i,j),' ',buf,me
             call ffflush(6)
          endif
+  113    format(i3,' read_INC ',i3,',',i3,',',i8,' ',i8,' loop ',i8)
+  114    format(i3,' ilo ',i3,' ihi ',i3,' jlo ',i3,' jhi ',i3)
        enddo
       endif
       call ga_sync()
@@ -2564,8 +2685,15 @@ c
          call ffflush(6)
       endif
 
-      if(.not.ga_locate_region(g_a, 1, n, 1, n, map, np))
-     $   call ga_error('ga_locate_region failed',n)
+#ifndef BLOCK_CYCLIC
+      status =  ga_locate_region(g_a, 1, n, 1, n, map, np)
+#else
+      blo(1) = 1
+      bhi(1) = n
+      blo(2) = 1
+      bhi(2) = n
+      status = nga_locate_region(g_a, blo, bhi, map, block_list, np)
+#endif
       found = 0
       do j=1,n
          do i=1,n
@@ -2580,16 +2708,25 @@ c
       call ga_sync()
       do k = 1, np
 #ifndef MIRROR
+#ifndef BLOCK_CYCLIC
          if(map(5,k).eq.me)then
+#else
+         if(mod(block_list(k),nproc).eq.me)then
+#endif
 #else
          if(map(5,k).eq.iproc)then
 #endif
+#ifndef BLOCK_CYCLIC
                 if(found.eq.1) then
                     write(6,*)'double entry in map for proc ',me
                     call ffflush(6)
                 endif
                 do j= map(3,k), map(4,k)
                         do i= map(1,k), map(2,k)
+#else
+                do j= map(2,k), map(4,k)
+                        do i= map(1,k), map(3,k)
+#endif
 #ifndef MIRROR
                         b(i,j)=1*me
 #else
@@ -2597,8 +2734,13 @@ c
 #endif
                         enddo
                 enddo
+#ifndef BLOCK_CYCLIC
                 call ga_put(g_a, map(1,k),map(2,k),map(3,k),map(4,k),
      &                 b(map(1,k),map(3,k)),n)
+#else
+                call ga_put(g_a, map(1,k),map(3,k),map(2,k),map(4,k),
+     &                 b(map(1,k),map(2,k)),n)
+#endif
                 found = 1
          endif
       enddo
@@ -2606,14 +2748,25 @@ c
 c
       do k = 1, np
 #ifndef MIRROR
+#ifndef BLOCK_CYCLIC
          if(map(5,k).eq.me)then
+#else
+         if(mod(block_list(k),nproc).eq.me)then
+#endif
 #else
          if(map(5,k).eq.iproc)then
 #endif
+#ifndef BLOCK_CYCLIC
                 call ga_get(g_a, map(1,k),map(2,k),map(3,k),map(4,k),
      &                 a(map(1,k),map(3,k)),n)
                 do j= map(3,k), map(4,k)
                       do i= map(1,k), map(2,k)
+#else
+                call ga_get(g_a, map(1,k),map(3,k),map(2,k),map(4,k),
+     &                 a(map(1,k),map(2,k)),n)
+                do j= map(2,k), map(4,k)
+                      do i= map(1,k), map(3,k)
+#endif
                         if(b(i,j).ne.a(i,j)) then
                            write(6,*)
      &                     'proc ',me, 'overlap with ',a(i,j)
@@ -2679,7 +2832,10 @@ c---------------------------------------------------------------------
       double precision crap
       real x, sum1, sum2
       logical found
-      integer lprocs, inode, iproc
+      integer lprocs, inode, iproc, lproc
+#ifdef BLOCK_CYCLIC
+      integer block_size(2), proc_grid(2)
+#endif
       intrinsic int
       iran(i) = int(util_drand(0)*real(i)) + 1
 
@@ -2690,6 +2846,16 @@ c---------------------------------------------------------------------
       nnodes = ga_cluster_nnodes()
       iproc = mod(me,lprocs)
       nloop = Min(maxloop,n)
+#ifdef BLOCK_CYCLIC
+      block_size(1) = 32
+      block_size(2) = 32
+#ifdef USE_SCALAPACK_DISTR
+      if (mod(nproc,2).ne.0)
+     +  call ga_error("Available procs must be divisible by 2",0)
+      proc_grid(1) = 2
+      proc_grid(2) = nproc/2
+#endif
+#endif
 c     
 c     a() is a local copy of what the global array should start as
 c
@@ -2716,6 +2882,13 @@ c
       g_a = ga_create_handle()
       call ga_set_data(g_a,ndim,dims,MT_REAL)
       call ga_set_array_name(g_a,'a')
+#ifdef BLOCK_CYCLIC
+#ifdef USE_SCALAPACK_DISTR
+      call ga_set_block_cyclic_proc_grid(g_a,block_size,proc_grid)
+#else
+      call ga_set_block_cyclic(g_a,block_size)
+#endif
+#endif
 #  ifdef MIRROR
       write(6,*) 'Getting p_mirror'
       p_mirror = ga_pgroup_get_mirror()
@@ -2744,7 +2917,12 @@ c     check if handle is valid. be quiet unless error
 C
       if(.not.ga_valid_handle(g_a)) call ga_error("invalid handle",g_a)
 c
+#ifndef MIRROR
       call ga_distribution(g_a,me,ilo, ihi, jlo, jhi)
+#else
+      lproc = me - ga_cluster_procid(inode,0)
+      call ga_distribution(g_a, lproc, ilo, ihi, jlo, jhi)
+#endif
       call ga_sync()      
 c     
 c     Zero the array
@@ -3164,7 +3342,6 @@ c
          call ffflush(6)
       endif
 c
- 
       do j = 1,10
        call ga_sync()
 #ifndef MIRROR
@@ -3290,10 +3467,13 @@ c_____________________________________________________________
 #include "mafdecls.fh"
 #include "global.fh"
 #include "testutil.fh"
-      double precision sum
-      integer isum, ibuf(2)
-      integer me, nproc
-      real fsum
+      integer n
+      parameter (n=10000)
+      double precision sum(n)
+      double complex zsum(n), check(n)
+      integer isum(n), ibuf(2)
+      integer me, nproc, i
+      real fsum(n)
 c
       nproc = ga_nnodes()
       me = ga_nodeid()
@@ -3301,23 +3481,23 @@ c
       call ga_sync()
       if (me .eq. 0) then
          write(6,*)
-         write(6,*)'> Checking ga_igop'
+         write(6,*)'> Checking ga_gop (integer)'
          write(6,*)
          call ffflush(6)
       endif
-      ibuf(1) = 1
-      ibuf(2) =  me
-      call ga_igop(10000, ibuf, 2, '+')
-      if(ibuf(1).ne.nproc)then
-        call ga_error('ga_igop error',isum)
-      endif
-      if(ibuf(2).ne.((nproc-1)*nproc/2))then
-        call ga_error('ga_igop error -2',isum)
-      endif
+      do i = 1, n 
+         isum(i) =  i + me
+      enddo
+      call ga_gop(MT_INT, isum, n, '+')
+      do i = 1, n 
+         if(isum(i).ne.(i*nproc + (nproc-1)*nproc/2))then
+            call ga_error('ga_gop error -2',isum(i))
+         endif
+      enddo
       call ga_sync()
       if (me.eq.0) then
          write(6,*)
-         write(6,*) ' ga_igop is  OK'
+         write(6,*) ' ga_gop (integer) is  OK'
          write(6,*)
       endif
       call ga_sync()
@@ -3325,38 +3505,70 @@ c
       call ga_sync()
       if (me .eq. 0) then
          write(6,*)
-         write(6,*)'> Checking ga_dgop'
+         write(6,*)'> Checking ga_gop (double)'
          write(6,*)
          call ffflush(6)
       endif
-      sum = 1d0 * me
-      call ga_dgop(10000, sum, 1, '+')
-      if(Int(sum).ne.((nproc-1)*nproc/2))then
-        call ga_error('ga_dgop error',Int(sum))
-      endif
+      do i = 1, n
+         sum(i) = i + 1d0 * me
+      enddo
+      call ga_gop(MT_DBL, sum, n, '+')
+      do i = 1, n
+         if(Int(sum(i)).ne.(i*nproc + (nproc-1)*nproc/2))then
+            call ga_error('ga_gop error',Int(sum(i)))
+         endif
+      enddo
       call ga_sync()
       if (me.eq.0) then
          write(6,*)
-         write(6,*) ' ga_dgop is  OK'
+         write(6,*) ' ga_gop (double) is  OK'
          write(6,*)
       endif
 c
       call ga_sync()
       if (me .eq. 0) then
          write(6,*)
-         write(6,*)'> Checking ga_sgop'
+         write(6,*)'> Checking ga_gop (real)'
          write(6,*)
          call ffflush(6)
       endif
-      fsum = 1.0 * me
-      call ga_sgop(10000, fsum, 1, '+')
-      if(Int(sum).ne.((nproc-1)*nproc/2))then
-        call ga_error('ga_fgop error',Int(sum))
-      endif
+      do i = 1, n 
+         fsum(i) = i + 1.0 * me
+      enddo
+      call ga_gop(MT_REAL, fsum, n, '+')
+      do i = 1, n 
+         if(Int(fsum(i)).ne.(i*nproc + (nproc-1)*nproc/2))then
+            call ga_error('ga_gop error',Int(fsum(i)))
+         endif
+      enddo
       call ga_sync()
       if (me.eq.0) then
          write(6,*)
-         write(6,*) ' ga_sgop is  OK'
+         write(6,*) ' ga_gop (real) is  OK'
+         write(6,*)
+      endif
+c
+      call ga_sync()
+      if (me .eq. 0) then
+         write(6,*)
+         write(6,*)'> Checking ga_gop (double complex)'
+         write(6,*)
+         call ffflush(6)
+      endif
+      do i = 1, n
+         zsum(i) = cmplx(i+1d0, i + 1d0 * me)
+         check(i)= cmplx(nproc*i+nproc*1d0, nproc*i+(nproc-1)*nproc/2)
+      enddo
+      call ga_gop(MT_DCPL, zsum, n, '+')
+      do i = 1, n 
+         if(zsum(i).ne.check(i)) then
+            call ga_error('ga_gop error', 1)
+         endif
+      enddo
+      call ga_sync()
+      if (me.eq.0) then
+         write(6,*)
+         write(6,*) ' ga_gop (double complex) is  OK'
          write(6,*)
       endif
 c                                   
@@ -3616,5 +3828,4 @@ c
       endif
 c
       end
-
 

@@ -1,6 +1,6 @@
 /*   $Source: /var/local/cvs/gasnet/gasnet.h,v $
- *     $Date: 2006/09/15 23:24:25 $
- * $Revision: 1.56 $
+ *     $Date: 2008/10/11 07:45:27 $
+ * $Revision: 1.59 $
  * Description: GASNet Header
  * Copyright 2002, Dan Bonachea <bonachea@cs.berkeley.edu>
  * Terms of use are as specified in license.txt
@@ -87,7 +87,7 @@
   #define GASNETI_STATS_CONFIG nostats
 #endif
 
-#if defined(GASNET_SRCLINES)
+#if defined(GASNET_SRCLINES) || defined(GASNET_DEBUG)
   #define GASNETI_SRCLINES_FORCE
 #endif
 #if defined(GASNET_SRCLINES) || defined(GASNET_TRACE)
@@ -330,6 +330,11 @@ GASNETI_END_EXTERNC
   #ifndef GASNETE_EXTRA_CONFIG_INFO
     #define GASNETE_EXTRA_CONFIG_INFO
   #endif
+  #ifdef GASNETI_BUG1389_WORKAROUND
+    #define GASNETC_BUG1389_CONFIG_INFO ",ConservativeLocalCopy"
+  #else
+    #define GASNETC_BUG1389_CONFIG_INFO
+  #endif
   #define GASNET_CONFIG_STRING                                            \
              "RELEASE=" _STRINGIFY(GASNETI_RELEASE_VERSION) ","           \
              "SPEC=" _STRINGIFY(GASNET_SPEC_VERSION_MAJOR) "."            \
@@ -350,6 +355,7 @@ GASNETI_END_EXTERNC
              _STRINGIFY(GASNETI_ATOMIC_CONFIG) ","                        \
              _STRINGIFY(GASNETI_ATOMIC32_CONFIG) ","                      \
              _STRINGIFY(GASNETI_ATOMIC64_CONFIG)                          \
+             GASNETC_BUG1389_CONFIG_INFO                                  \
              GASNETC_EXTRA_CONFIG_INFO                                    \
              GASNETE_EXTRA_CONFIG_INFO                                    
 #endif
@@ -379,6 +385,7 @@ extern int GASNETI_LINKCONFIG_IDIOTCHECK(_CONCAT(EXTENDED_,GASNET_EXTENDED_NAME)
 static int *gasneti_linkconfig_idiotcheck();
 /* use of void* here avoids a tinyc bug */
 static void *_gasneti_linkconfig_idiotcheck = (void *)&gasneti_linkconfig_idiotcheck;
+GASNETI_USED
 static int *gasneti_linkconfig_idiotcheck() {
   static int val;
   val +=  GASNETI_LINKCONFIG_IDIOTCHECK(GASNETI_THREAD_MODEL)

@@ -23,4 +23,4 @@ char **getComponentList() {
 }
 
 }
-static char id[]="$Id$";
+static char id[]="$Id: GAServices_wrapper.cxx,v 1.1 2003-08-01 00:41:54 manoj Exp $";

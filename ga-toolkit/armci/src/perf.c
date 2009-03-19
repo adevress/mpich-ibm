@@ -2,7 +2,7 @@
  *    Author: Jialin Ju, PNNL
  */
 
-/* $Id$ */
+/* $Id: perf.c,v 1.21 2006-09-12 23:21:21 andriy Exp $ */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -493,7 +493,7 @@ int main(int argc, char **argv)
     }
     
     /* initialize ARMCI */
-    ARMCI_Init();
+    ARMCI_Init_args(&argc, &argv);
 
     if(!me)printf("\n             Performance of Basic Blocking Communication Operations\n");
     MP_BARRIER();

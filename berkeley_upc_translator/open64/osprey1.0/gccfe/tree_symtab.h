@@ -50,11 +50,16 @@
 extern int Scope_level;
 extern int For_scope;
 
+extern int compiling_upc;
+
 /* mark the "char" type, which should be distinct from MTYPE_I1 or MTYPE_U1 */
 extern TY_IDX char_ty;
 
 /* Calculate the block size of a type */
 extern int Type_Tree_Block_Size(tree type_tree);
+extern "C" void Pad_Field_for_UPC_Align(tree type,
+					unsigned int actual_align, unsigned int known_align, 
+					unsigned int desired_align);
 
 extern TY_IDX Create_TY_For_Tree (tree, TY_IDX idx = TY_IDX_ZERO);
 extern "C" ST* Create_ST_For_Tree (tree);

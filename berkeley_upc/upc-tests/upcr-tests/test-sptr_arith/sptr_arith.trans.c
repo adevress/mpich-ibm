@@ -1,3 +1,4 @@
+#define _IN_UPCR_GLOBFILES_C 1  /* tests internal functionality, eg upcri_shared_to_remote */
 #include "upcr.h" /* MUST come first */
 /***************************************************************************** 
  * Correctness tests for shared pointer arithmetic.

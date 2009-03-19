@@ -2,16 +2,16 @@ AC_DEFUN([cv_prefix],[upcr_cv_])
 
 dnl Berkeley UPC package version number
 dnl See README.developers for the version numbering scheme
-AC_DEFUN([UPCR_VERSION_LIT],[2.6.0])
+AC_DEFUN([UPCR_VERSION_LIT],[2.8.0])
 
 AC_DEFUN([UPCR_INIT_VERSIONS], [
 
   dnl set this to default translator for this release
-  default_translator="http://upc-translator.lbl.gov/upcc-2.6.0.cgi"
+  default_translator="http://upc-translator.lbl.gov/upcc-2.8.0.cgi"
 
   dnl version of the runtime spec adhered to
   UPCR_RUNTIME_SPEC_MAJOR=3
-  UPCR_RUNTIME_SPEC_MINOR=9
+  UPCR_RUNTIME_SPEC_MINOR=10
   RUNTIME_SPEC="${UPCR_RUNTIME_SPEC_MAJOR}.${UPCR_RUNTIME_SPEC_MINOR}"
 
   dnl UPC language specification identifier (ie __UPC_VERSION__)

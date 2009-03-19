@@ -1,4 +1,4 @@
-c $Id$
+c $Id: pg2test.F,v 1.6 2004-12-01 22:39:46 manoj Exp $
 c vector boxes lack arithmetic precision 
 #ifdef CRAY_YMP
 # define THRESH 1d-10
@@ -1775,8 +1775,7 @@ c
          call ffflush(6)
       endif
 
-      if(.not.ga_locate_region(g_a, 1, n, 1,n, map,np))
-     $   call ga_error('ga_locate_region failed',n)
+      status = ga_locate_region(g_a, 1, n, 1,n, map,np)
       found = 0
       do j=1,n
          do i=1,n

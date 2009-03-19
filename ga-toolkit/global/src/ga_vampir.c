@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: ga_vampir.c,v 1.11.2.1 2006-12-22 13:05:21 manoj Exp $ */
 #include "ga_vampir.h"
 
 void ga_vampir_init() {

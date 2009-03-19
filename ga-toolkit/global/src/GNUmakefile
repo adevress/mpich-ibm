@@ -16,14 +16,14 @@ HEADERS = ga.h global.h global.fh c.names.h
 ifndef LIBRARY
   LIBRARY = libglobal.a
 endif
-
+  LIBRARY_SHARED = libglobal.so
 #---------------------- file list ---------------------------------
 # core of the library
 GA_CORE = base.o onesided.o nbutil.o ghosts.o global.util.o collect.o decomp.o \
             capi.o global.nalg.o global.npatch.o ga_trace.o datatypes.o ga_malloc.o
 
 # extra interfaces
-GA_EXTRA = global.periodic.o sparse.o select.o ghosts.o DP.o hsort.scat.o \
+GA_EXTRA = global.periodic.o sparse.o select.o DP.o hsort.scat.o \
 		ga_solve_seq.o
 ifdef GA_USE_VAMPIR
    GA_EXTRA += ga_vampir.o
@@ -46,16 +46,36 @@ ifeq ($(DIAG),PAR)
 else
      GA_LIN_ALG += peigstubs.o
 endif
+
+# use scalapack
+ifdef USE_SCALAPACK
+  ifdef USE_SCALAPACK_I8
+error:
+	@echo Cannot define USE_SCALAPACK and USE_SCALAPACK_I8 together
+	exit 1
+  endif
+endif
 ifdef USE_SCALAPACK
      GA_LIN_ALG += scalapack.o
 else
+  ifdef USE_SCALAPACK_I8
+     GA_LIN_ALG += scalapack.o
+    LIB_DEFINES += -DSCALAPACK_I8
+  else
      GA_LIN_ALG += sclstubs.o
+  endif
 endif
 
 OBJ = $(GA_CORE) $(GA_EXTRA) $(GA_LIN_ALG) 
 
 ifeq ($(TARGET),NEC)
 OBJ_FRAGILE = global.armci.o
+endif
+
+CRAY_XT_NETWORKS = PORTALS CRAY-SHMEM
+ifeq ($(ARMCI_NETWORK),$(findstring $(ARMCI_NETWORK),$(CRAY_XT_NETWORKS)))
+  GA_EXTRA += ga_dgemmf.o
+  LIB_DEFINES += -DXT3
 endif
 
 #--------------------------- extra definitions ---------------------
@@ -71,6 +91,9 @@ endif
     LIB_DEFINES += -DNO_GA_STATS
   endif
   LIB_INCLUDES += -I../../armci/src -I$(INCDIR)
+  ifeq ($(ARMCI_NETWORK), MPI-SPAWN)
+    LIB_DEFINES += -DMPI_SPAWN
+  endif
 
 #we USE_MPI requires us to acces MPI headers to handle ga_mpi_communicator
 ifdef USE_MPI

@@ -1,6 +1,6 @@
 /*   $Source: /var/local/cvs/gasnet/other/portable_platform.h,v $
- *     $Date: 2007/10/17 02:06:59 $
- * $Revision: 1.16 $
+ *     $Date: 2008/09/15 20:16:41 $
+ * $Revision: 1.23 $
  * Description: Portable platform detection header
  * Copyright 2006, Dan Bonachea <bonachea@cs.berkeley.edu>
  */
@@ -103,7 +103,12 @@
   #else
     #define PLATFORM_COMPILER_PGI_C  1
   #endif
-  #if defined(__PGIC__) && defined(__PGIC_MINOR__) && defined(__PGIC_PATCHLEVEL__)
+  #if __PGIC__ == 99 
+    /* bug 2230: PGI versioning was broken for some platforms in 7.0
+                 no way to know exact version, but provide something slightly more accurate */
+    #define PLATFORM_COMPILER_VERSION 0x070000
+    #define PLATFORM_COMPILER_VERSION_STR "7.?-?"
+  #elif defined(__PGIC__) && defined(__PGIC_MINOR__) && defined(__PGIC_PATCHLEVEL__)
     #define PLATFORM_COMPILER_VERSION \
             PLATFORM_COMPILER_VERSION_INT(__PGIC__,__PGIC_MINOR__,__PGIC_PATCHLEVEL__)
     #define PLATFORM_COMPILER_VERSION_STR \
@@ -410,7 +415,7 @@
 
 #ifndef _PLATFORM_COMPILER_MISC_VERSION_STR
   #ifdef __VERSION__
-    #define _PLATFORM_COMPILER_MISC_VERSION_STR "|misc:"_STRINGIFY(__VERSION__)
+    #define _PLATFORM_COMPILER_MISC_VERSION_STR "|misc:"__VERSION__
   #else
     #define _PLATFORM_COMPILER_MISC_VERSION_STR
   #endif
@@ -453,6 +458,10 @@
 #elif defined(__blrts) || defined(__blrts__) || defined(__gnu_blrts__)
   #define PLATFORM_OS_BLRTS 1
   #define PLATFORM_OS_FAMILYNAME BLRTS
+
+#elif defined(GASNETI_ARCH_BGP) || defined(__bgp__)
+  #define PLATFORM_OS_BGP 1
+  #define PLATFORM_OS_FAMILYNAME BGP
 
 #elif defined(__K42)
   #define PLATFORM_OS_K42 1
@@ -498,7 +507,8 @@
   #define PLATFORM_OS_SOLARIS 1
   #define PLATFORM_OS_FAMILYNAME SOLARIS
 
-#elif (defined(__APPLE__) && defined(__MACH__))
+#elif (defined(__APPLE__) && defined(__MACH__)) || \
+      defined(__osx86__) /* PGI on OSX */
   #define PLATFORM_OS_DARWIN 1
   #define PLATFORM_OS_FAMILYNAME DARWIN
 
@@ -611,7 +621,13 @@
     defined(_MIPS_ARCH) || defined(__R4000)
   #define PLATFORM_ARCH_MIPS 1
   #define PLATFORM_ARCH_FAMILYNAME MIPS
-  #define PLATFORM_ARCH_BIG_ENDIAN 1
+  #ifdef _MIPSEL /* MIPS cores support both little and big endian modes */
+    /* SiCortex */
+    #define PLATFORM_ARCH_LITTLE_ENDIAN 1
+  #else
+    /* IRIX */
+    #define PLATFORM_ARCH_BIG_ENDIAN 1
+  #endif
 
 #elif defined(__sparc) || defined(__sparc__) || \
     defined(__sparclet__) || defined(__sparclite__) || \
@@ -652,6 +668,16 @@
   #define PLATFORM_ARCH_FAMILYNAME MICROBLAZE
   #define PLATFORM_ARCH_BIG_ENDIAN 1
   #define _PLATFORM_ARCH_32 1
+
+#elif defined(__arm__)
+  #define PLATFORM_ARCH_ARM 1
+  #define PLATFORM_ARCH_FAMILYNAME ARM
+  #define _PLATFORM_ARCH_32 1
+  #if defined(__ARMEB__)
+    #define PLATFORM_ARCH_BIG_ENDIAN 1
+  #elif defined(__ARMEL__)
+    #define PLATFORM_ARCH_LITTLE_ENDIAN 1
+  #endif
 
 #else /* unknown CPU */
   #define PLATFORM_ARCH_UNKNOWN 1

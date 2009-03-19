@@ -3,8 +3,8 @@
 // ====================================================================
 //
 // Module: wn_instrument.cxx
-// $Revision: 1.1.1.1 $
-// $Date: 2001/10/30 16:59:44 $
+// $Revision: 1.2 $
+// $Date: 2008/10/15 02:08:30 $
 // $Author: ciancu $
 // $Source: /var/local/cvs/compilers/open64/osprey1.0/be/com/wn_instrument.cxx,v $
 //
@@ -78,11 +78,42 @@
 #define USE_STANDARD_TYPES
 
 #include <stdlib.h>
+#if (__GNUC__ < 4)
 #include <algo.h>  // STL
 #include <vector.h>
 #include <stack.h>
 #include <list.h>
 #include <set.h>
+#else 
+#if(__GNUC__ == 4 && __GNUC_MINOR__ <= 2)
+#include <algo.h>  // STL
+#include <vector.h>
+#include <stack.h>
+#include <list.h>
+#include <set.h>
+#else
+#if(__GNUC__ == 4 && __GNUC_MINOR__ == 3)
+#include <algorithm>
+#include <vector>
+#include <stack>
+#include <list>
+#include <set>
+#else
+
+// #include <algorithm>
+// #include <vector>
+// #include <stack>
+// #include <list>
+// #include <set>
+
+#include <stl_algo.h>  // STL
+#include <stl_vector.h>
+#include <stl_stack.h>
+#include <stl_list.h>
+#include <stl_set.h>
+#endif
+#endif
+#endif
 
 // #include "stab.h"
 #include "mempool.h"

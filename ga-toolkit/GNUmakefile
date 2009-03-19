@@ -1,11 +1,11 @@
-# $Id$
+# $Id: GNUmakefile,v 1.10 2007-06-12 22:00:23 manoj Exp $
 #
 # This makefile has to be processed by GNU make
 #
 EXPERIMENTAL=SGI64 LAPI64 CYGWIN HITACHI CATAMOUNT
 SUPPORTED_TARGETS = SOLARIS SOLARIS64 SGI SGI_N32 SGITFP HPUX HPUX64 IBM IBM64 CRAY-SV1 cray-sv2
 SUPPORTED_TARGETS+= LAPI DECOSF LINUX LINUX64 CRAY-T3E CRAY-YMP CYGNUS CYGWIN INTERIX
-SUPPORTED_TARGETS+= FUJITSU-VPP FUJITSU-VPP64 NEC MACX BGL $(EXPERIMENTAL)
+SUPPORTED_TARGETS+= FUJITSU-VPP FUJITSU-VPP64 NEC MACX MACX64 BGL BGP $(EXPERIMENTAL)
 ALL_SUPPORTED_TARGETS = $(SUPPORTED_TARGETS) WIN32
 ifndef TARGET
  TARGET=UNDEFINED
@@ -13,7 +13,7 @@ endif
 
 # Makesure to avoid periods (i.e. dot) in GA_VERSION as that might(!) be problematic 
 # in Windows
- GA_VERSION = 4-0-8
+ GA_VERSION = 4-1-1
      TOPDIR = ga-$(GA_VERSION)
          RM = rm
       MKDIR = mkdir
@@ -33,8 +33,19 @@ endif
      MP_VER = MPI
 endif
 
+ifeq ($(ARMCI_NETWORK),MPI-SPAWN)
+ifeq ($(MSG_COMMS),TCGMSG)
+error: 
+	@echo Cannot define MSG_COMMS=TCGMSG, when ARMCI_NETWORK=MPI-SPAWN
+endif
+endif
+
 ifdef GA_C_CORE
 ifdef USE_SCALAPACK
+error:
+	@echo Cannot define GA_C_CORE and SCALAPACK together
+endif
+ifdef USE_SCALAPACK_I8
 error:
 	@echo Cannot define GA_C_CORE and SCALAPACK together
 endif

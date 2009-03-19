@@ -110,7 +110,7 @@ uninstall-local:
 distclean-local clean-local:
 	rm -f $(script_drivers) upcc upcrun
 	@builddir="`pwd`" ; srcdir="`cd $(top_srcdir) ; pwd`" ; \
-         if test "$builddir" != "$srcdir" ; then                \
+         if test "$$builddir" != "$$srcdir" ; then              \
 	   echo "rm -f $(files_we_copy)" ;                      \
 	   rm -f $(files_we_copy) || exit $$? ;                 \
          fi

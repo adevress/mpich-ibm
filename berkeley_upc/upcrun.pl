@@ -41,7 +41,7 @@ my %conf = (
     totalview_exec          => 'totalview',
     totalview_timeout       => '120'
 );
-my (@all_conduits) = ('mpi', 'udp', 'elan', 'lapi', 'gm', 'smp', 'vapi', 'ibv', 'sci', 'shmem', 'portals');
+my (@all_conduits) = ('mpi', 'udp', 'elan', 'lapi', 'gm', 'smp', 'vapi', 'ibv', 'sci', 'shmem', 'portals', 'dcmf');
 foreach (@all_conduits) {
     $conf{$_."_spawn"}       = 'nodefault';
     $conf{$_."_spawn_nodes"} = '';
@@ -1137,10 +1137,6 @@ $misc_data = "features:  ".$$upcrexe_miscinfo{UPCRConfigureFeatures}; write;
 $misc_data = "timestamp: ".$$upcrexe_miscinfo{UPCRBuildTimestamp}; write;
 print "  GASNet Configuration:\n";
 $misc_data = $gasnetlib_ctuple; write;
-if ($misc_data = upcc_decode($$upcrexe_miscinfo{GASNetConduitConfig})) {
-  print "  GASNet Conduit Configuration:\n";
-  write;
-}
 
 }
 

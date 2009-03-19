@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: locks.h,v 1.28.2.4 2006-12-21 23:50:48 manoj Exp $ */
 #ifndef _ARMCI_LOCKS_H_
 #define _ARMCI_LOCKS_H_
 #include <sys/types.h>
@@ -6,13 +6,17 @@
 #define NUM_LOCKS MAX_LOCKS 
 
 #ifndef EXTERN
+#ifdef ARMCIX
+#   define EXTERN
+#else
 #   define EXTERN extern
+#endif
 #endif
 #ifdef QUADRICS
 #include <elan/elan.h>
 #endif
 
-#if !defined(CYGNUS) && !defined(QUADRICS) && !defined(XT3) ||defined(ELAN_ACC)
+#if !defined(CYGNUS) && !defined(QUADRICS) && !defined(XT3) || defined(ELAN_ACC)
 #include "spinlock.h"
 #endif
 
@@ -39,14 +43,14 @@
 #endif
 
 
-#if (defined(SPINLOCK) || defined(PMUTEXES) || defined(HITACHI)) && !defined(BGML)
+#if (defined(SPINLOCK) || defined(PMUTEXES) || defined(HITACHI)) && !(defined(BGML) || defined(DCMF))
 #  include "shmem.h"
    typedef struct {
      long off;
      long idlist[SHMIDLEN];
    }lockset_t;
    extern lockset_t lockid;
-#elif defined(BGML)
+#elif defined(BGML) || defined(DCMF)
    typedef int lockset_t;
 #endif
 
@@ -148,7 +152,7 @@ extern void armcill_unlock(int m, int proc);
 
 
 #elif defined(CRAY_T3E) || defined(QUADRICS) || defined(__crayx1)\
-        || defined(CATAMOUNT) || defined(CRAY_SHMEM)
+        || defined(CATAMOUNT) || defined(CRAY_SHMEM) || defined(PORTALS)
 #  include <limits.h>
 #  if defined(CRAY) || defined(XT3)
 #    include <mpp/shmem.h>

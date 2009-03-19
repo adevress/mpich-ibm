@@ -54,7 +54,7 @@ extern rtx expand_upc_shared_bit_field_ref PARAMS((tree, int, tree, rtx, enum ma
 extern rtx expand_upc_shared_ptr_sum PARAMS((tree, enum expand_modifier));
 extern rtx expand_upc_shared_ptr_diff PARAMS((tree, enum expand_modifier));
 extern void set_threads_value PARAMS((char *));
-
+int x_x_simp_safe PARAMS((tree, tree));
 
 
 #define UPC_MAX_BLOCK_SIZE 0xffffff

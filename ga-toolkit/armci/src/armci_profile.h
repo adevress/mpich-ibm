@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: armci_profile.h,v 1.5 2005-11-30 10:20:53 vinod Exp $ */
 
 enum events {ARMCI_PROF_GET=0, ARMCI_PROF_PUT, ARMCI_PROF_ACC, /* get/put/acc */
 	     ARMCI_PROF_GETS, ARMCI_PROF_PUTS, ARMCI_PROF_ACCS, /* strided */

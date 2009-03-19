@@ -1,6 +1,7 @@
 #include "ga++.h"
 
 #define GA_DATA_TYPE     C_DBL
+#define INVALID_HANDLE   -1000
 
 static int sTmpVar = 0;
 
@@ -11,14 +12,57 @@ static int sTmpVar = 0;
 
 
 GA::GlobalArray::GlobalArray(int type, int ndim, int dims[], char *arrayname,
-			 int chunk[]) {
+                             int chunk[]) {
   mHandle = NGA_Create(type, ndim, dims, arrayname, chunk);
   if(!mHandle)  GA_Error((char *)" GA creation failed",0);
 }
 
 GA::GlobalArray::GlobalArray(int type, int ndim, int dims[], char *arrayname,
-                         int block[], int maps[]) {
+                             int chunk[], GA::PGroup * p_handle) {
+  mHandle = NGA_Create_config(type, ndim, dims, arrayname, chunk,
+                              p_handle->handle());
+  if(!mHandle)  GA_Error((char *)" GA creation failed",0);
+}
+
+GA::GlobalArray::GlobalArray(int type, int ndim, int64_t dims[],
+                             char *arrayname, int64_t chunk[]) {
+  mHandle = NGA_Create64(type, ndim, dims, arrayname, chunk);
+  if(!mHandle)  GA_Error((char *)" GA creation failed",0);
+}
+
+GA::GlobalArray::GlobalArray(int type, int ndim, int64_t dims[],
+                             char *arrayname, int64_t chunk[],
+                             GA::PGroup * p_handle) {
+  mHandle = NGA_Create_config64(type, ndim, dims, arrayname, chunk,
+                                p_handle->handle());
+  if(!mHandle)  GA_Error((char *)" GA creation failed",0);
+}
+
+GA::GlobalArray::GlobalArray(int type, int ndim, int dims[], char *arrayname,
+                             int block[], int maps[]) {
   mHandle = NGA_Create_irreg(type, ndim, dims, arrayname, block, maps);
+  if(!mHandle) GA_Error((char *)" GA creation failed",0);
+}
+
+GA::GlobalArray::GlobalArray(int type, int ndim, int dims[], char *arrayname,
+                             int block[], int maps[], GA::PGroup * p_handle) {
+  mHandle = NGA_Create_irreg_config(type, ndim, dims, arrayname, block, maps,
+                                    p_handle->handle());
+  if(!mHandle) GA_Error((char *)" GA creation failed",0);
+}
+
+GA::GlobalArray::GlobalArray(int type, int ndim, int64_t dims[],
+                             char *arrayname, int64_t block[],
+                             int64_t maps[]) {
+  mHandle = NGA_Create_irreg64(type, ndim, dims, arrayname, block, maps);
+  if(!mHandle) GA_Error((char *)" GA creation failed",0);
+}
+
+GA::GlobalArray::GlobalArray(int type, int ndim, int64_t dims[],
+                             char *arrayname, int64_t block[], int64_t maps[],
+                             GA::PGroup * p_handle) {
+  mHandle = NGA_Create_irreg_config64(type, ndim, dims, arrayname, block, maps,
+                                      p_handle->handle());
   if(!mHandle) GA_Error((char *)" GA creation failed",0);
 }
 
@@ -29,10 +73,27 @@ GA::GlobalArray::GlobalArray(int type, int ndim, int dims[], int width[],
 }
 
 GA::GlobalArray::GlobalArray(int type, int ndim, int dims[], int width[], 
+			     char *arrayname, int chunk[],
+                             GA::PGroup * p_handle, char ghosts) {
+  mHandle = NGA_Create_ghosts_config(type, ndim, dims, width, arrayname, chunk,
+                                     p_handle->handle());
+  if(!mHandle)  GA_Error((char *)" GA creation failed",0);
+}
+
+GA::GlobalArray::GlobalArray(int type, int ndim, int dims[], int width[], 
 			     char *arrayname, int block[], int maps[], 
 			     char ghosts) {
   mHandle = NGA_Create_ghosts_irreg(type, ndim, dims, width, arrayname, block, 
 				    maps);
+  if(!mHandle) GA_Error((char *)" GA creation failed",0);
+}
+
+GA::GlobalArray::GlobalArray(int type, int ndim, int dims[], int width[], 
+			     char *arrayname, int block[], int maps[],
+                             GA::PGroup * p_handle,
+			     char ghosts) {
+  mHandle = NGA_Create_ghosts_irreg_config(type, ndim, dims, width, arrayname,
+                                           block, maps, p_handle->handle());
   if(!mHandle) GA_Error((char *)" GA creation failed",0);
 }
 
@@ -51,22 +112,13 @@ GA::GlobalArray::GlobalArray(const GA::GlobalArray &g_a) {
 }
 
 GA::GlobalArray::GlobalArray() {
-  char temp_name[20];
-  int n_dim;
-  int *dimensions;
-  
-  sprintf(temp_name, "tmpGA%d", sTmpVar++);
-  n_dim = DEF_NDIM;
-  dimensions = new int [n_dim];    
-  for(int i=0; i<n_dim; i++) dimensions[i] = DEF_DIMS;
-  mHandle = NGA_Create(GA_DATA_TYPE, n_dim, dimensions, temp_name, NULL);
+  mHandle = GA_Create_handle();
   if(!mHandle) GA_Error((char *)" GA creation failed",0);
-  //free(dimensions);
-  delete[] dimensions;
 }
 
 GA::GlobalArray::~GlobalArray() {
- 
+  GA_Destroy(mHandle); 
+  mHandle = INVALID_HANDLE;
 }
 
 
@@ -82,6 +134,27 @@ GA::GlobalArray::acc(int lo[], int hi[], void *buf, int ld[], void *alpha) const
 void 
 GA::GlobalArray::access(int lo[], int hi[], void *ptr, int ld[]) const {
   NGA_Access(mHandle, lo, hi, ptr, ld);
+}
+
+void 
+GA::GlobalArray::access(int64_t lo[], int64_t hi[], void *ptr,
+                        int64_t ld[]) const {
+  NGA_Access64(mHandle, lo, hi, ptr, ld);
+}
+
+void
+GA::GlobalArray::accessBlock(int idx, void *ptr, int ld[]) const {
+    NGA_Access_block(mHandle, idx, ptr, ld);
+}
+                                                                                                                                          
+void
+GA::GlobalArray::accessBlockGrid(int index[], void *ptr, int ld[]) const {
+    NGA_Access_block_grid(mHandle, index, ptr, ld);
+}
+                                                                                                                                          
+void
+GA::GlobalArray::accessBlockSegment(int proc, void *ptr, int *len) const {
+    NGA_Access_block_segment(mHandle, proc, ptr, len);
 }
 
 void 
@@ -108,6 +181,11 @@ GA::GlobalArray::addPatch (void *alpha,
 			   int clo[], int chi[]) const {
   NGA_Add_patch(alpha, g_a->mHandle, alo, ahi, beta, 
 		g_b->mHandle, blo, bhi, mHandle, clo, chi);
+}
+
+int
+GA::GlobalArray::allocate() const {
+  return GA_Allocate(mHandle);
 }
 
 void  
@@ -144,8 +222,9 @@ GA::GlobalArray::ddotPatch(char ta, int alo[], int ahi[],
 }
 
 void 
-GA::GlobalArray::destroy() const {
+GA::GlobalArray::destroy() {
   GA_Destroy(mHandle);
+  mHandle = INVALID_HANDLE;
 }
 
 void 
@@ -189,6 +268,11 @@ GA::GlobalArray::distribution(int me, int* lo, int* hi) const {
   NGA_Distribution(mHandle, me, lo, hi);
 }
 
+void 
+GA::GlobalArray::distribution(int me, int64_t* lo, int64_t* hi) const {
+  NGA_Distribution64(mHandle, me, lo, hi);
+}
+
 float 
 GA::GlobalArray::fdot(const GA::GlobalArray * g_a) const {
   return GA_Fdot(mHandle, g_a->mHandle);
@@ -220,6 +304,17 @@ GA::GlobalArray::gather(void *v, int * subsarray[], int n) const {
 void 
 GA::GlobalArray::get(int lo[], int hi[], void *buf, int ld[])  const {
   NGA_Get(mHandle, lo, hi, buf, ld);
+}
+
+void 
+GA::GlobalArray::get(int64_t lo[], int64_t hi[], void *buf,
+                     int64_t ld[]) const {
+  NGA_Get64(mHandle, lo, hi, buf, ld);
+}
+
+void
+GA::GlobalArray::getBlockInfo(int num_blocks[], int block_dims[]) {
+  GA_Get_block_info(mHandle, num_blocks, block_dims);
 }
 
 int 
@@ -296,14 +391,59 @@ GA::GlobalArray::matmulPatch(char transa, char transb, void* alpha, void *beta,
 		  g_b->mHandle, blo, bhi, mHandle, clo, chi);
 }
 
+void
+GA::GlobalArray::mergeDistrPatch(int alo[], int ahi[], GlobalArray *g_b,
+                                 int blo[], int bhi[]) {
+  NGA_Merge_distr_patch(mHandle, alo, ahi, g_b->mHandle, blo, bhi);
+}
+
+void
+GA::GlobalArray::mergeMirrored() {
+  GA_Merge_mirrored(mHandle);
+}
+
+void
+GA::GlobalArray::nbAcc(int lo[], int hi[], void *buf, int ld[], void *alpha,
+                       GANbhdl *nbhandle) {
+  NGA_NbAcc(mHandle, lo, hi, buf, ld, alpha, nbhandle);
+}
+
+void
+GA::GlobalArray::nbGet(int lo[], int hi[], void *buf, int ld[], GANbhdl *nbhandle) {
+  NGA_NbGet(mHandle, lo, hi, buf, ld, nbhandle);
+}
+
+void
+GA::GlobalArray::nbGetGhostDir(int mask[], GANbhdl *nbhandle)
+{
+  NGA_NbGet_ghost_dir(mHandle, mask, nbhandle);
+}
+
 void 
 GA::GlobalArray::nblock(int numblock[])  const {
   GA_Nblock(mHandle, numblock);
 }
 
+void
+GA::GlobalArray::nbPut(int lo[], int hi[], void *buf, int ld[], GANbhdl *nbhandle) {
+  NGA_NbPut(mHandle, lo, hi, buf, ld, nbhandle);
+}
+
 int 
 GA::GlobalArray::ndim()  const {
   return GA_Ndim(mHandle);
+}
+
+void
+GA::GlobalArray::pack(const GA::GlobalArray *g_dest,
+                      const GA::GlobalArray *g_mask,
+                      int lo, int hi, int *icount) const {
+    GA_Pack(mHandle, g_dest->mHandle, g_mask->mHandle, lo, hi, icount);
+}
+
+void
+GA::GlobalArray::patchEnum(int lo, int hi, int istart, int inc) {
+  GA_Patch_enum(mHandle, lo, hi, istart, inc);
 }
 
 void 
@@ -352,6 +492,12 @@ GA::GlobalArray::put(int lo[], int hi[], void *buf, int ld[])  const {
   NGA_Put(mHandle, lo, hi, buf, ld);
 }
 
+void 
+GA::GlobalArray::put(int64_t lo[], int64_t hi[], void *buf,
+                     int64_t ld[])  const {
+  NGA_Put64(mHandle, lo, hi, buf, ld);
+}
+
 long 
 GA::GlobalArray::readInc(int subscript[], long inc)  const {
   return NGA_Read_inc(mHandle, subscript, inc);
@@ -362,9 +508,40 @@ GA::GlobalArray::release(int lo[], int hi[])  const {
   NGA_Release(mHandle, lo, hi);
 }
 
+void
+GA::GlobalArray::releaseBlock(int idx) const {    
+  NGA_Release_block(mHandle, idx);
+}
+
+void
+GA::GlobalArray::releaseBlockGrid(int index[]) const {    
+  NGA_Release_block_grid(mHandle, index);
+}
+
+
+void
+GA::GlobalArray::releaseBlockSegment(int proc) const {    
+  NGA_Release_block_segment(mHandle, proc);
+}
+
 void 
 GA::GlobalArray::releaseUpdate(int lo[], int hi[])  const {
   NGA_Release_update(mHandle, lo, hi);
+}
+
+void 
+GA::GlobalArray::releaseUpdateBlock(int idx)  const {
+  NGA_Release_update_block(mHandle, idx);
+}
+
+void 
+GA::GlobalArray::releaseUpdateBlockGrid(int index[])  const {
+  NGA_Release_update_block_grid(mHandle, index);
+}
+
+void 
+GA::GlobalArray::releaseUpdateBlockSegment(int idx)  const {
+  NGA_Release_update_block_segment(mHandle, idx);
 }
 
 void 
@@ -377,9 +554,77 @@ GA::GlobalArray::scalePatch (int lo[], int hi[], void *val)  const {
   NGA_Scale_patch(mHandle, lo, hi, val);
 }
 
+void
+GA::GlobalArray::scanAdd(const GA::GlobalArray *g_dest,
+                         const GlobalArray *g_mask,
+                         int lo, int hi, int excl) const {
+    GA_Scan_add(mHandle, g_dest->mHandle, g_mask->mHandle, lo, hi, excl);
+}
+
+void
+GA::GlobalArray::scanCopy(const GA::GlobalArray *g_dest,
+                          const GA::GlobalArray *g_mask,
+                          int lo, int hi) const {
+    GA_Scan_copy(mHandle, g_dest->mHandle, g_mask->mHandle, lo, hi);
+}
+
 void 
 GA::GlobalArray::scatter(void *v, int *subsarray[], int n)  const {
   NGA_Scatter(mHandle, v, subsarray, n);
+}
+
+void 
+GA::GlobalArray::selectElem(char *op, void* val, int index[])  const {
+  NGA_Select_elem(mHandle, op, val, index);
+}
+
+void
+GA::GlobalArray::setArrayName(char *name) const {
+    GA_Set_array_name(mHandle, name);
+}
+
+void
+GA::GlobalArray::setBlockCyclic(int dims[]) const {
+    GA_Set_block_cyclic(mHandle, dims);
+}
+
+void
+GA::GlobalArray::setBlockCyclicProcGrid(int dims[], int proc_grid[]) const{
+    GA_Set_block_cyclic_proc_grid(mHandle, dims, proc_grid);    
+}
+
+void
+GA::GlobalArray::setChunk(int chunk[]) const {
+    GA_Set_chunk(mHandle, chunk);    
+}
+
+void
+GA::GlobalArray::setData(int ndim, int dims[], int type) const {
+    GA_Set_data(mHandle, ndim, dims, type);
+}
+
+void
+GA::GlobalArray::setGhosts(int width[]) const {
+    GA_Set_ghosts(mHandle, width);
+}
+
+void
+GA::GlobalArray::setIrregDistr(int mapc[], int nblock[]) const {
+    GA_Set_irreg_distr(mHandle, mapc, nblock);
+}
+
+void
+GA::GlobalArray::setPGroup(GA::PGroup *pHandle) const {
+    GA_Set_pgroup(mHandle, pHandle->handle());
+}
+
+
+void 
+GA::GlobalArray::sgemm(char ta, char tb, int m, int n, int k, float alpha,  
+		       const GA::GlobalArray *g_a, const GA::GlobalArray *g_b, 
+		       float beta)  const {
+  GA_Sgemm(ta, tb, m, n, k, alpha, g_a->mHandle, g_b->mHandle, 
+	   beta, mHandle);
 }
 
 int 
@@ -392,17 +637,27 @@ GA::GlobalArray::spdInvert()  const {
   return GA_Spd_invert(mHandle);
 }
 
-void 
-GA::GlobalArray::selectElem(char *op, void* val, int index[])  const {
-  NGA_Select_elem(mHandle, op, val, index);
+void
+GA::GlobalArray::stridedAcc(int lo[], int hi[], int skip[], void*buf,
+                            int ld[]) const {
+    GA_Error((char *)"Method not defined in GA++",0);
 }
 
-void 
-GA::GlobalArray::sgemm(char ta, char tb, int m, int n, int k, float alpha,  
-		       const GA::GlobalArray *g_a, const GA::GlobalArray *g_b, 
-		       float beta)  const {
-  GA_Sgemm(ta, tb, m, n, k, alpha, g_a->mHandle, g_b->mHandle, 
-	   beta, mHandle);
+void
+GA::GlobalArray::stridedGet(int lo[], int hi[], int skip[], void*buf,
+                            int ld[]) const {
+    GA_Error((char *)"Method not defined in GA++",0);
+}
+
+void
+GA::GlobalArray::stridedPut(int lo[], int hi[], int skip[], void*buf,
+                            int ld[]) const {
+    NGA_Strided_put(mHandle, lo, hi, skip, buf, ld);
+}
+
+void
+GA::GlobalArray::summarize(int verbose) const {
+    GA_Summarize(verbose);
 }
 
 void 
@@ -410,10 +665,22 @@ GA::GlobalArray::symmetrize()  const {
   GA_Symmetrize(mHandle); 
 }
 
+int
+GA::GlobalArray::totalBlocks() const 
+{
+    return GA_Total_blocks(mHandle);
+}
+
 void 
 GA::GlobalArray::transpose(const GA::GlobalArray * g_a)  const {
   GA_Transpose(mHandle, g_a->mHandle);
 }
+
+void
+GA::GlobalArray::unpack(GlobalArray *g_dest, GlobalArray *g_mask,
+                        int lo, int hi, int *icount) const {
+    GA_Unpack(mHandle, g_dest->mHandle, g_mask->mHandle, lo, hi, icount);
+}    
 
 void 
 GA::GlobalArray::updateGhosts()  const {

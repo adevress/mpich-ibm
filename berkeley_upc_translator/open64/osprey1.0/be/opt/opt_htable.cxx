@@ -3,8 +3,8 @@
 // ====================================================================
 //
 // Module: opt_htable.cxx
-// $Revision: 1.15 $
-// $Date: 2006/03/16 07:05:44 $
+// $Revision: 1.17 $
+// $Date: 2007/08/22 06:32:45 $
 // $Author: wychen $
 // $Source: /var/local/cvs/compilers/open64/osprey1.0/be/opt/opt_htable.cxx,v $
 //
@@ -1285,9 +1285,10 @@ CODEMAP::Hash_op_and_canon(CODEREP *cr, BOOL canonicalize)
 
   INT val = cr->Op();
   //wei: for casts we must record type to distinguish casts between different types
-  //FIXME: what about private types? They don't really change an expression's value,
-  //but the resulting code may not type check.
-  if (cr->Opr() == OPR_TAS && Type_Is_Shared_Ptr(cr->Ty_index(), true)) {
+  //this is important if cr is involved in pointer arithmetic, so that we don't represent
+  //(int*)p and (char*)p with the same cr.
+  //if (cr->Opr() == OPR_TAS && Type_Is_Shared_Ptr(cr->Ty_index(), true)) {
+  if (Compile_Upc && cr->Opr() == OPR_TAS) {
     val += TY_id(cr->Ty_index());
   }
 
@@ -3447,7 +3448,16 @@ STMTREP::Enter_rhs(CODEMAP *htable, OPT_STAB *opt_stab, COPYPROP *copyprop, EXC 
     break;
 
   case OPR_COMMENT:
-    // don't do anything
+    if (Compile_Upc) {
+      //comments are used to represent pragmas for the backend compiler,
+      //so we have to pass them through
+      Set_black_box();
+      Set_black_box_wn(WN_COPY_Tree(Wn()));
+      //fake the stmt to be volatile so it won't be deleted by dce
+      Set_volatile_stmt();  
+    } else {
+      // don't do anything
+    }
     break;
   case OPR_PRAGMA:
     if (Compile_Upc) {
@@ -3455,6 +3465,7 @@ STMTREP::Enter_rhs(CODEMAP *htable, OPT_STAB *opt_stab, COPYPROP *copyprop, EXC 
     }
     break;
   
+
   case OPR_IO:
   case OPR_REGION:
     {

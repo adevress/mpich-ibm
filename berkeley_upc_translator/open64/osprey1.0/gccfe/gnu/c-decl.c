@@ -5282,7 +5282,7 @@ grokdeclarator (declarator, declspecs, decl_context, initialized)
 	if (sharedp && !extern_ref
 	    && ((specbits & (1 << (int) RID_STATIC)) == 0)
 	    && (current_binding_level != global_binding_level)
-	    && (TREE_CODE (type) != POINTER_TYPE))
+	    /* && (TREE_CODE (type) != POINTER_TYPE) */)
           {
 	    error ("UPC does not support shared auto variables.");
 	    /* handle it as if it were declared `static' */

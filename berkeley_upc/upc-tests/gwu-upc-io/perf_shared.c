@@ -26,6 +26,10 @@
 
 //#define SIZE (1048576*4)       /* read/write size per node in bytes */
 #define SIZE (800000*4)       /* read/write size per node in bytes */
+#if SIZE > UPC_MAX_BLOCK_SIZE
+#  undef SIZE
+#  define SIZE UPC_MAX_BLOCK_SIZE
+#endif
 #define BLOCK SIZE
 
 shared int len;

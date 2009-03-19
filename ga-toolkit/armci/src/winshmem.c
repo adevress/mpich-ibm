@@ -1,4 +1,4 @@
-/* $Id$ */
+/* $Id: winshmem.c,v 1.20 2005-09-29 21:30:10 d3h325 Exp $ */
 /* WIN32 & Posix SysV-like shared memory allocation and management
  * 
  *
@@ -79,6 +79,7 @@
 #include "kr_malloc.h"
 #include "shmem.h"
 #include "armcip.h"
+#include "armci.h"
 
 #define SHM_UNIT (1024)
 
@@ -120,7 +121,6 @@ static  context_t *ctx_winshmem_global;/*for processor groups,kr_malloc context
 					is stored in shared memory */
 static  int parent_pid=-1;  /* process id of process 0 "parent" */
 
-extern void armci_die(char*,int);
 extern int armci_me;
 
  

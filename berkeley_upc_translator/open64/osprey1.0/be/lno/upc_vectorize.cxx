@@ -302,6 +302,23 @@ void Print_ADG(FILE *fp, ARRAY_DIRECTED_GRAPH16 *adg)
 
 
 
+static void Generate_Void_Intrinsic(WN *bblock, INTRINSIC iop, BOOL first)
+{
+  WN *call, *block;
+  
+  block = WN_CreateBlock();
+  call = WN_Create(OPR_INTRINSIC_CALL, MTYPE_V, MTYPE_V, 0);
+  WN_intrinsic(call) = iop;
+ 
+  WN_INSERT_BlockLast(block, call); 
+  if(first)
+    WN_INSERT_BlockFirst(bblock, block);
+  else
+    WN_INSERT_BlockLast(bblock, block);
+  LWN_Set_Parent(block, bblock);
+}
+
+
 static void Generate_End_Call(WN *bblock, ST* ldesc) 
 {
   
@@ -390,24 +407,28 @@ static void Generate_Get_Coeff(WN *bblock, ST* res, ST* ldesc, ST* rdesc, ST* lm
 }
 
 
-static void Generate_Get_Laddr_Call(WN *bblock, ST* res, ST* ldesc, ST* rdesc, ST* lmad)
+static void Generate_Get_Laddr_Call(WN *bblock, ST* res, ST* ldesc, ST* rdesc, ST* lmad, INTRINSIC iop = INTRINSIC_LAST)
 {
   WN *block, *call;
   block = WN_CreateBlock();
-  call = WN_Create(OPR_INTRINSIC_CALL, Pointer_type, MTYPE_V, 3);
-  WN_intrinsic(call) = INTRN_VEC_GET_LADDR;
-  WN_kid0(call) = WN_CreateParm(Pointer_type, 
-				WN_Ldid(Pointer_type, 0, ldesc, ST_type(ldesc)), 
-				MTYPE_To_TY(Pointer_type), 
-				WN_PARM_BY_VALUE);
-  WN_kid1(call) = WN_CreateParm(Pointer_type, 
-				WN_Ldid(Pointer_type, 0, rdesc, ST_type(rdesc)), 
-				MTYPE_To_TY(Pointer_type), 
-				WN_PARM_BY_VALUE);
-  WN_kid2(call) = WN_CreateParm(Pointer_type, 
-				WN_Ldid(Pointer_type, 0, lmad, ST_type(lmad)), 
-				MTYPE_To_TY(Pointer_type), 
-				WN_PARM_BY_VALUE);
+  call = WN_Create(OPR_INTRINSIC_CALL, Pointer_type, MTYPE_V, (iop == INTRINSIC_LAST) ? 3 : 0);
+  if(iop == INTRINSIC_LAST) {
+    WN_intrinsic(call) = INTRN_VEC_GET_LADDR;
+    WN_kid0(call) = WN_CreateParm(Pointer_type, 
+				  WN_Ldid(Pointer_type, 0, ldesc, ST_type(ldesc)), 
+				  MTYPE_To_TY(Pointer_type), 
+				  WN_PARM_BY_VALUE);
+    WN_kid1(call) = WN_CreateParm(Pointer_type, 
+				  WN_Ldid(Pointer_type, 0, rdesc, ST_type(rdesc)), 
+				  MTYPE_To_TY(Pointer_type), 
+				  WN_PARM_BY_VALUE);
+    WN_kid2(call) = WN_CreateParm(Pointer_type, 
+				  WN_Ldid(Pointer_type, 0, lmad, ST_type(lmad)), 
+				  MTYPE_To_TY(Pointer_type), 
+				  WN_PARM_BY_VALUE);
+  } else 
+    WN_intrinsic(call) = iop;
+
   WN_INSERT_BlockLast(block, call);
   call = WN_Ldid(Pointer_type, -1, Return_Val_Preg, MTYPE_To_TY(Pointer_type));
   call =  WN_CreateComma (OPR_COMMA, Pointer_type, MTYPE_V,
@@ -418,18 +439,22 @@ static void Generate_Get_Laddr_Call(WN *bblock, ST* res, ST* ldesc, ST* rdesc, S
 
 }
 
-static ST* Generate_Analyze_Call(WN *bblock, ST *ldesc)
+static ST* Generate_Analyze_Call(WN *bblock, ST *ldesc, INTRINSIC iop = INTRINSIC_LAST)
 {
   WN *call, *block;
  
   ST *res = Gen_Temp_Symbol(MTYPE_To_TY(Integer_type), (char*)"Vres");
 
   block = WN_CreateBlock();
-  call = WN_Create(OPR_INTRINSIC_CALL, Integer_type, MTYPE_V, 1);
-  WN_intrinsic(call) = INTRN_VEC_ANAL;
-  WN_kid0(call) = WN_CreateParm(Pointer_type,
-				WN_Ldid(Pointer_type, 0, ldesc, ST_type(ldesc)), 
-				MTYPE_To_TY(Pointer_type), WN_PARM_BY_VALUE);
+  call = WN_Create(OPR_INTRINSIC_CALL, Integer_type, MTYPE_V, (iop == INTRINSIC_LAST) ? 1 : 0);
+  if(iop == INTRINSIC_LAST) {
+    WN_intrinsic(call) = INTRN_VEC_ANAL;
+    WN_kid0(call) = WN_CreateParm(Pointer_type,
+				  WN_Ldid(Pointer_type, 0, ldesc, ST_type(ldesc)), 
+				  MTYPE_To_TY(Pointer_type), WN_PARM_BY_VALUE);
+  } else {
+    WN_intrinsic(call) = iop;
+  }
   WN_INSERT_BlockLast(block, call);
   call = WN_Ldid(Integer_type, -1, Return_Val_Preg, MTYPE_To_TY(Integer_type));
   call =  WN_CreateComma (OPR_COMMA, Integer_type, MTYPE_V,
@@ -485,6 +510,41 @@ static void Generate_Add_SosD_Call(WN *bblock, ST* ldesc, ST* rdesc,
 				   
 
 
+static ST* Generate_New_Lmad_Call_With_Targ(WN *bblock, ST* ldesc, ST* rdesc, WN* base, int type)
+{
+  ST *lmad  = Gen_Temp_Symbol(MTYPE_To_TY(Pointer_type), (char*)"lmad");
+  WN *call, *block;
+
+ 
+
+  block = WN_CreateBlock();
+  call = WN_Create(OPR_INTRINSIC_CALL, Pointer_type, MTYPE_V, 4);
+  WN_intrinsic(call) = INTRN_VEC_NEW_LMAD_TARG;
+  WN_kid0(call) = WN_CreateParm(Pointer_type, 
+				WN_Ldid(Pointer_type, 0, ldesc, ST_type(ldesc)), 
+				MTYPE_To_TY(Pointer_type), 
+				WN_PARM_BY_VALUE);
+  WN_kid1(call) = WN_CreateParm(Pointer_type, 
+				WN_Ldid(Pointer_type, 0, rdesc, ST_type(rdesc)), 
+				MTYPE_To_TY(Pointer_type), 
+				WN_PARM_BY_VALUE);
+ 
+  WN_kid2(call) = WN_CreateParm(WN_rtype(base), base, 
+				WN_ty(base), WN_PARM_BY_VALUE);
+  WN_kid3(call) = WN_CreateParm(Integer_type, WN_Intconst(Integer_type, type), 
+				  MTYPE_To_TY(Integer_type),WN_PARM_BY_VALUE);
+  WN_INSERT_BlockLast(block, call);
+  call = WN_Ldid(Pointer_type, -1, Return_Val_Preg, MTYPE_To_TY(Pointer_type));
+  call =  WN_CreateComma (OPR_COMMA, Pointer_type, MTYPE_V,
+				block, call);
+  block = WN_Stid(Pointer_type, 0, lmad, MTYPE_To_TY(Pointer_type), call);
+  WN_INSERT_BlockLast(bblock, block); 
+  LWN_Set_Parent(block, bblock);
+  
+  return lmad;
+
+}
+
 static ST* Generate_New_Lmad_Call(WN *bblock, ST* ldesc, ST* rdesc, WN* base, int type)
 {
   ST *lmad  = Gen_Temp_Symbol(MTYPE_To_TY(Pointer_type), (char*)"lmad");
@@ -501,8 +561,36 @@ static ST* Generate_New_Lmad_Call(WN *bblock, ST* ldesc, ST* rdesc, WN* base, in
 				WN_Ldid(Pointer_type, 0, rdesc, ST_type(rdesc)), 
 				MTYPE_To_TY(Pointer_type), 
 				WN_PARM_BY_VALUE);
-  WN_kid2(call) = WN_CreateParm(WN_rtype(base), base, 
-				WN_ty(base), WN_PARM_BY_VALUE);
+  
+  if(TY_kind(WN_ty(base))  == KIND_POINTER &&  TY_is_pshared(TY_pointed(WN_ty(base)))) {
+    WN *tmp, *tmp1;
+    
+    tmp1  = WN_CreateBlock();
+    tmp = WN_Create(OPR_INTRINSIC_CALL, TY_mtype(shared_ptr_idx), MTYPE_V, 1);
+    WN_intrinsic(tmp) = INTRN_P_TO_S;
+    WN_kid0(tmp) = 
+    WN_CreateParm(TY_mtype(shared_ptr_idx), WN_COPY_Tree(base), WN_ty(base), WN_PARM_BY_VALUE);
+    
+    
+    WN_INSERT_BlockLast(tmp1, tmp);
+    WN *wn1 = WN_Ldid(TY_mtype(shared_ptr_idx), -1, Return_Val_Preg, shared_ptr_idx);
+   
+    ST *ret_st = Gen_Temp_Symbol(shared_ptr_idx, (char*) ".Mstopcvt.");
+    wn1 = WN_Stid (TY_mtype(shared_ptr_idx), 0, ret_st, shared_ptr_idx, wn1);
+    WN_INSERT_BlockLast(tmp1, wn1);
+    // LWN_Set_Parent(wn1, bblock);
+    WN_INSERT_BlockLast(bblock, tmp1);
+    // LWN_Set_Parent(tmp1,bblock);
+    
+    WN_kid2(call) = WN_CreateParm(TY_mtype(shared_ptr_idx), 
+				  WN_Ldid(TY_mtype(shared_ptr_idx), 0, ret_st, shared_ptr_idx),
+				  shared_ptr_idx, WN_PARM_BY_VALUE);
+
+  } else {
+
+    WN_kid2(call) = WN_CreateParm(WN_rtype(base), base, 
+				  WN_ty(base), WN_PARM_BY_VALUE);
+  }
   WN_kid3(call) = WN_CreateParm(Integer_type, WN_Intconst(Integer_type, type), 
 				  MTYPE_To_TY(Integer_type),WN_PARM_BY_VALUE);
   WN_INSERT_BlockLast(block, call);
@@ -516,6 +604,45 @@ static ST* Generate_New_Lmad_Call(WN *bblock, ST* ldesc, ST* rdesc, WN* base, in
   return lmad;
 
 }
+
+
+static ST* Generate_New_Redist_Ref_Call(WN *bblock, ST *ldesc, ST *peer_ref, ST *peer_lmad, 
+					int type, int alias, int esize) 
+{
+  ST *rdesc =  Gen_Temp_Symbol(MTYPE_To_TY(Pointer_type), (char*)"rr");
+  WN *call, *block;
+  
+  block = WN_CreateBlock();
+  call = WN_Create(OPR_INTRINSIC_CALL, Pointer_type, MTYPE_V, 5);
+  WN_intrinsic(call) = INTRN_VEC_NEW_RR;
+  WN_kid0(call) = WN_CreateParm(Pointer_type, 
+				WN_Ldid(Pointer_type, 0, ldesc, ST_type(ldesc)), 
+				MTYPE_To_TY(Pointer_type), 
+				WN_PARM_BY_VALUE);
+  WN_kid1(call) = WN_CreateParm(Pointer_type, 
+				WN_Ldid(Pointer_type, 0, peer_ref, ST_type(peer_ref)), 
+				MTYPE_To_TY(Pointer_type), 
+				WN_PARM_BY_VALUE);
+  WN_kid2(call) = WN_CreateParm(Pointer_type, 
+				WN_Ldid(Pointer_type, 0, peer_lmad, ST_type(peer_lmad)), 
+				MTYPE_To_TY(Pointer_type), 
+				WN_PARM_BY_VALUE);
+  WN_kid3(call) = WN_CreateParm(Pointer_type, WN_Intconst(Pointer_type,alias), 
+				MTYPE_To_TY(Pointer_type), WN_PARM_BY_VALUE);
+  WN_kid(call,4) = WN_CreateParm(Pointer_type, WN_Intconst(Pointer_type,esize), 
+				MTYPE_To_TY(Pointer_type), WN_PARM_BY_VALUE);
+  WN_INSERT_BlockLast(block, call);
+  LWN_Set_Parent(call, block);
+  call = WN_Ldid(Pointer_type, -1, Return_Val_Preg, MTYPE_To_TY(Pointer_type));
+  call =  WN_CreateComma (OPR_COMMA, Pointer_type, MTYPE_V,
+				block, call);
+  block = WN_Stid(Pointer_type, 0, rdesc, MTYPE_To_TY(Pointer_type), call);
+  WN_INSERT_BlockLast(bblock, block); 
+  LWN_Set_Parent(block, bblock);
+  return rdesc;
+}
+
+
 
 static ST* Generate_New_Base_Ref_Call(WN *bblock, ST *ldesc, int type, int alias, int esize) 
 {
@@ -544,6 +671,44 @@ static ST* Generate_New_Base_Ref_Call(WN *bblock, ST *ldesc, int type, int alias
   return rdesc;
 }
 
+
+static void Generate_Loop1R(WN *bblock, DO_LOOP_INFO *dli, WN *base_addr, int type, int esize, int Nref, int Nop, WN *redist)
+{
+  WN *llb, *lub, *step;
+  const WN *loop =  dli->ARA_Info->Loop();
+  WN *block, *call;
+  
+  
+  llb =   WN_COPY_Tree(Store_Expr(WN_start(loop)));
+  lub =  WN_COPY_Tree(UBexp(WN_end(loop)));
+  step = WN_COPY_Tree(dli->Step->Get_Base_WN());
+  
+  block = WN_CreateBlock();
+  call = WN_Create(OPR_INTRINSIC_CALL, MTYPE_V, MTYPE_V, 8);
+  WN_intrinsic(call) = INTRN_VEC_LOOP_1RS1;
+  WN_kid0(call) = WN_CreateParm(Pointer_type, llb, 
+				MTYPE_To_TY(Pointer_type), WN_PARM_BY_VALUE);
+  WN_kid1(call) = WN_CreateParm(Pointer_type, lub, 
+				MTYPE_To_TY(Pointer_type), WN_PARM_BY_VALUE);
+  WN_kid2(call) = WN_CreateParm(Pointer_type, step, 
+				MTYPE_To_TY(Pointer_type), WN_PARM_BY_VALUE);
+  WN_kid3(call) = WN_CreateParm(Pointer_type, WN_Intconst(Pointer_type,type), 
+				MTYPE_To_TY(Pointer_type), WN_PARM_BY_VALUE);
+  WN_kid(call, 4) = WN_CreateParm(WN_rtype(base_addr), base_addr, 
+				  WN_ty(base_addr), WN_PARM_BY_VALUE);
+  WN_kid(call, 5) = WN_CreateParm(Pointer_type, WN_Intconst(Pointer_type,esize), 
+				MTYPE_To_TY(Pointer_type), WN_PARM_BY_VALUE);
+  WN_kid(call, 6) = WN_CreateParm(Pointer_type, WN_Intconst(Pointer_type,Nref), 
+				MTYPE_To_TY(Pointer_type), WN_PARM_BY_VALUE);
+  WN_kid(call, 7) = WN_CreateParm(Pointer_type, WN_Intconst(Pointer_type,Nop), 
+				  MTYPE_To_TY(Pointer_type), WN_PARM_BY_VALUE);
+  // WN_kid(call, 8) = WN_CreateParm(WN_rtype(redist), redist, 
+				 //  WN_operator(redist) != OPR_INTCONST ? WN_ty(redist) : MTYPE_To_TY(Pointer_type), WN_PARM_BY_VALUE);
+  WN_INSERT_BlockLast(block, call);
+  LWN_Set_Parent(call, block);
+  WN_INSERT_BlockLast(bblock, block);
+  LWN_Set_Parent(block, bblock); 
+}
 
 static void Generate_Add_Pdim(WN *bblock, DO_LOOP_INFO *dli, ST *ldesc, int dim)
 {
@@ -576,7 +741,7 @@ static void Generate_Add_Pdim(WN *bblock, DO_LOOP_INFO *dli, ST *ldesc, int dim)
   
 }
 
-static ST* Generate_Get_Strips(WN *bblock, ST *ldesc) 
+static ST* Generate_Get_Strips(WN *bblock, ST *ldesc, INTRINSIC iop = INTRINSIC_LAST) 
 {
   
   WN *block, *call;
@@ -584,17 +749,21 @@ static ST* Generate_Get_Strips(WN *bblock, ST *ldesc)
   WN *llb, *lub, *step;
   ST *sdesc;
 
- 
-  block = WN_CreateBlock();
   sdesc = Gen_Temp_Symbol(MTYPE_To_TY(Pointer_type), (char*)"sd");
-  call = WN_Create(OPR_INTRINSIC_CALL, Pointer_type, MTYPE_V, 1);
-  WN_intrinsic(call) = INTRN_VEC_GETSTR;
-  WN_kid0(call) = WN_CreateParm(TY_mtype(ST_type(ldesc)), 
-				WN_Ldid(TY_mtype(ST_type(ldesc)), 0, ldesc, ST_type(ldesc)),
-				ST_type(ldesc), WN_PARM_BY_VALUE);
+  block = WN_CreateBlock();
+  call = WN_Create(OPR_INTRINSIC_CALL, Pointer_type, MTYPE_V, (iop == INTRINSIC_LAST)? 1 : 0);
+  if(iop == INTRINSIC_LAST) {
+    
+    WN_intrinsic(call) = INTRN_VEC_GETSTR;
+    WN_kid0(call) = WN_CreateParm(TY_mtype(ST_type(ldesc)), 
+				  WN_Ldid(TY_mtype(ST_type(ldesc)), 0, ldesc, ST_type(ldesc)),
+				  ST_type(ldesc), WN_PARM_BY_VALUE);
+  } else 
+    WN_intrinsic(call) = iop;
   WN_INSERT_BlockLast(block, call);
   LWN_Set_Parent(call, block);
-  call = WN_Ldid(Pointer_type, -1, Return_Val_Preg, ST_type(ldesc));
+
+  call = WN_Ldid(Pointer_type, -1, Return_Val_Preg, ST_type(sdesc));
   call =  WN_CreateComma (OPR_COMMA, Pointer_type, MTYPE_V,
 			  block, call);
   block = WN_Stid(Pointer_type, 0, sdesc, MTYPE_To_TY(Pointer_type), call);
@@ -609,7 +778,7 @@ static ST* Generate_Get_Strips(WN *bblock, ST *ldesc)
 
 // This code requires that the loop has been normalized i.e.
 // for(i=0; i < U; i++)
-static ST* Generate_Loop_Description(WN *bblock, DO_LOOP_INFO *dli) 
+static ST* Generate_Loop_Description(WN *bblock, DO_LOOP_INFO *dli, int isredist) 
 {
   
   WN *block, *call;
@@ -623,9 +792,11 @@ static ST* Generate_Loop_Description(WN *bblock, DO_LOOP_INFO *dli)
 
   block = WN_CreateBlock();
   ldesc = Gen_Temp_Symbol(MTYPE_To_TY(Pointer_type), (char*)"ln");
-  call = WN_Create(OPR_INTRINSIC_CALL, Pointer_type, MTYPE_V, 1);
+  call = WN_Create(OPR_INTRINSIC_CALL, Pointer_type, MTYPE_V, 2);
   WN_intrinsic(call) = INTRN_VEC_START_LN;
-  WN_kid0(call) = WN_CreateParm(Pointer_type, WN_Intconst(Pointer_type,0), 
+  WN_kid0(call) = WN_CreateParm(Pointer_type, WN_Intconst(Pointer_type,Get_Loop_Hash_Key()), 
+				MTYPE_To_TY(Pointer_type), WN_PARM_BY_VALUE);
+  WN_kid1(call) = WN_CreateParm(Pointer_type, WN_Intconst(Pointer_type,isredist), 
 				MTYPE_To_TY(Pointer_type), WN_PARM_BY_VALUE);
   WN_INSERT_BlockLast(block, call);
   LWN_Set_Parent(call, block);
@@ -654,17 +825,21 @@ static void Generate_Base_Addr(WN *bblock, ST *ast, WN *disp, ST *temp,
   mtype = TY_mtype(idx);
   
   ld =  WN_Ldid(mtype, 0, ast, idx);
-  call = WN_Add(Pointer_Mtype, ld, WN_COPY_Tree(disp));
-		//WN_Mpy(Integer_type, disp, WN_Intconst(Integer_type, esize)));
+  if(Type_Is_Shared_Ptr(idx))
+    call = WN_Add(Pointer_Mtype, ld, WN_COPY_Tree(disp));
+  else
+    call = WN_Add(Pointer_Mtype, ld, WN_Mpy(Integer_type, disp, WN_Intconst(Integer_type, esize))/*WN_COPY_Tree(disp)*/);
+
   block = WN_Create(OPR_TAS, mtype, MTYPE_V, 1);
   WN_kid0(block) = call;
   WN_set_ty(block, ST_type(temp));
   call = WN_Stid(mtype, 0, temp, idx, block);
   WN_INSERT_BlockLast(bblock, call);
+  
   LWN_Set_Parent(call, bblock);
 }
 
-static void Generate_Test_Vect(WN *prefix, WN *loop, ST *nrefs, int srefs, WN *old, WN *xtra)
+static void Generate_Test_Vect(WN *prefix, WN *loop, ST *nrefs, int srefs, WN *old, WN *xtra, WN *adim = 0)
 {
  
   WN *bthen, *belse, *next;
@@ -679,8 +854,13 @@ static void Generate_Test_Vect(WN *prefix, WN *loop, ST *nrefs, int srefs, WN *o
   WN_EXTRACT_FromBlock(bblock, loop);
   bthen = WN_CreateBlock();
   WN_INSERT_BlockLast(bthen, loop);
+  if(adim) 
+    WN_INSERT_BlockLast(bthen, adim);
   if(xtra)
     WN_INSERT_BlockLast(bthen, xtra);
+  
+  
+
   belse = WN_CreateBlock();
   WN_INSERT_BlockLast(belse, old);
   
@@ -694,6 +874,8 @@ static void Generate_Test_Vect(WN *prefix, WN *loop, ST *nrefs, int srefs, WN *o
   LWN_Set_Parent((WN*)loop, bthen);
   if(xtra)
     LWN_Set_Parent(xtra, bthen);
+  if(adim)
+    LWN_Set_Parent(adim, bthen);
 }
 
 
@@ -755,6 +937,81 @@ WN * REMOTE_REF_DESCR::Region_Span(REGION *reg, AXLE_NODE *axle,
 }
 
 
+BOOL Same_Ref(WN *l, WN *r)
+{
+  fprintf(stderr, "Same_Ref NOT IMPLEMENTED - Faking it! ....\n");
+  return TRUE;
+}
+
+
+/* This function walks through the reference lists and groups references
+   to fields of the same STRUCT */
+void REMOTE_REF::Collapse_Similar() 
+{
+  int i, j;
+  DYN_ARRAY<REMOTE_REF_DESCR*> c(VEC_mpool);
+  REMOTE_REF_DESCR *l, *r;
+  ARA_REF *Al, *Ar;
+  REGION *Rl, *Rr;
+  WN *Wl, *Wr;
+  int active[64];
+  int last_insert = -1;
+  if(level.Elements() > 64)
+    Fail_FmtAssertion("Not enough temp space Collapse_Similar\n");
+
+  if(level.Elements() == 1)
+    return;
+
+  for(i=0; i < level.Elements(); i++)
+    active[i] = 1;
+  for(i=level.Lastidx(); i >= 0; i--){
+    if(!active[i]) continue;
+    l = level[i];
+    for(j=i-1; j >= 0; j--) {
+      if(!active[j])
+	continue;
+      r = level[j];
+      if(l->use != 0 && r->use != 0) {
+	Is_True(l->def == 0 && r->def == 0, (("")));
+	Al = l->use;
+	Ar = r->use;
+      } else if(l->def != 0 && r->def !=0) {
+	Is_True(l->use == 0 && r->use == 0, (("")));
+	Al = l->def;
+	Ar = r->def;
+      } else Fail_FmtAssertion("");
+      
+      if(Al->Image().Len() == 1 && Ar->Image().Len() == 1) {
+	if(TY_kind(Get_Inner_Array_Type(ST_type(Al->Array().St()))) == KIND_STRUCT &&
+	   TY_kind(Get_Inner_Array_Type(ST_type(Ar->Array().St()))) == KIND_STRUCT) {
+	  Wl = Al->Image().Any_Wn();
+	  Wr = Ar->Image().Any_Wn();
+	  active[j] = 0;
+	  if(Same_Ref(Wl,Wr)) {
+	    if(last_insert != i) {
+	      last_insert = i;
+	      c.AddElement(l);
+	    }
+	    l->Add_Similar_Wn(Wr);
+	  }
+	}
+      }  else {
+	 if(last_insert != i) {
+	   c.AddElement(l);
+	   last_insert = i;
+	 }
+      }
+    }
+    if(last_insert != i) {
+      c.AddElement(l);
+      last_insert = i;
+    }
+  }
+  
+  level.Resetidx();
+  for(i = c.Elements()-1; i >= 0; i--)
+    level.AddElement(c[i]);
+}
 
 BOOL REMOTE_REF::Analyze()
 {
@@ -765,10 +1022,16 @@ BOOL REMOTE_REF::Analyze()
 
   // We do not allow nests where an array reference appears at
   // different levels so we need to analyze only the deepest references.
-  
-  result = level[level.Elements()-1]->Analyze(pr);
+  Collapse_Similar();
+  for(i = level.Elements()-1; i >= 0; i--) {
+   //  result = level[level.Elements()-1]->Analyze(pr);
+//     total_refs += (level[level.Elements()-1]->stride_use.Elements() + 
+// 		   level[level.Elements()-1]->stride_def.Elements());
+    result &= level[i]->Analyze(pr);
+    total_refs += (level[i]->stride_use.Elements() + 
+		   level[i]->stride_def.Elements());
+  }
    
-  //pr.Clear();
   return result;
 }
 
@@ -822,10 +1085,6 @@ BOOL Reg_Processed(REGION *reg, DYN_ARRAY<REGION*> &pr)
   int i;
   
   for(i=0; i < pr.Elements(); i++) {
-    fprintf(stderr, "======= PROCESSED ============\n");
-    pr[i]->Print(stderr);
-    reg->Print(stderr);
-    fprintf(stderr, "======= PROCESSED ============\n"); 
     if(reg == pr[i])
       return TRUE;
   }
@@ -940,9 +1199,12 @@ BOOL  REMOTE_REF_DESCR::Analyze(DYN_ARRAY<REGION*> &processed_regs)
 	      if(rstep != NULL) {
 		stride_use.AddElement(rstep);
 		span_use.AddElement(Region_Span(temp, &axle, ali->Do_Stack().Bottom_nth(i),rstep));	  
-	
-	      } else 
-		Fail_FmtAssertion("NULL step in Analyze\n");
+		
+	      } else { 
+		Print_Vec_Mesg(WN_Get_Linenum(ali->Loop()), "Missing index expression\n");
+		stride_use.AddElement(WN_Intconst(Integer_type,0));
+		span_use.AddElement(WN_Intconst(Integer_type,0));
+	      }
 	    }
 	    break;
 	  case ARA_TOP:
@@ -976,7 +1238,7 @@ BOOL  REMOTE_REF_DESCR::Analyze(DYN_ARRAY<REGION*> &processed_regs)
 	  return FALSE;
     }
     REGION_UN & img = def->Image();
-    // img.Print(stderr);
+    //img.Print(stderr);
     REGION_ITER iter(&img);
     for (REGION *cur = iter.First();  !iter.Is_Empty(); cur = iter.Next()) {
       if(Reg_Processed(cur, processed_regs))
@@ -986,7 +1248,7 @@ BOOL  REMOTE_REF_DESCR::Analyze(DYN_ARRAY<REGION*> &processed_regs)
       for(j = 0; j < cur->_wn_list.Elements(); j++) {
 	aref = cur->_wn_list.Bottom_nth(j);
 	temp = CXX_NEW(REGION(aref, ali), VEC_mpool);
-// 	temp->Print(stderr);
+	//temp->Print(stderr);
 	AXLE_NODE &axle = temp->Dim(0); 
 	for(i = ali->Depth() - depth; i <= ali->Depth(); i++) {
 	  switch(temp->_type) {
@@ -1006,8 +1268,12 @@ BOOL  REMOTE_REF_DESCR::Analyze(DYN_ARRAY<REGION*> &processed_regs)
 	      if(rstep != NULL) {
 		stride_def.AddElement(rstep);
 		span_def.AddElement(Region_Span(temp, &axle, ali->Do_Stack().Bottom_nth(i), rstep));	  
-	      } else 
+	      } else {
+		Print_Vec_Mesg(WN_Get_Linenum(ali->Loop()), "Missing index expression\n");
+		stride_def.AddElement(rstep);
+		span_def.AddElement(WN_Intconst(Integer_type,0));
 		Fail_FmtAssertion("NULL step in Analyze\n");
+	      }
 	    }
 	    break;
 	  case ARA_TOP:
@@ -1050,6 +1316,77 @@ BOOL  REMOTE_REF_DESCR::Analyze(DYN_ARRAY<REGION*> &processed_regs)
     }
   }
  
+
+
+  if(redist_targ) {
+    ARA_REF *tmp = 0;
+    if(use && def) {
+      Is_True(0, ("Loop marked for redistribution has R/W conflicts"));
+      return FALSE;
+    }
+    
+    tmp = redist_targ;
+
+    REGION_UN & img = tmp->Image();
+    REGION_ITER iter(&img);
+    for (REGION *cur = iter.First();  !iter.Is_Empty(); cur = iter.Next()) {
+      if(Reg_Processed(cur, processed_regs))
+	continue;
+      else
+	processed_regs.AddElement(cur);
+      for(j = 0; j < cur->_wn_list.Elements(); j++) {
+	aref = cur->_wn_list.Bottom_nth(j);
+	if(aref != redist_wn)
+	  continue;
+	temp = CXX_NEW(REGION(aref, ali), VEC_mpool);
+	AXLE_NODE &axle = temp->Dim(0); 
+	for(i = ali->Depth() - depth; i <= ali->Depth(); i++) {
+	  switch(temp->_type) {
+	  case  ARA_TOO_MESSY:
+	  case ARA_NORMAL:
+	    rstep = NULL;
+	    rdec = FALSE;
+	    ldec = FALSE;
+	    if(!Can_Vectorize_on_Axle(ali, temp, &axle, ldec, rdec, &rstep, &lstep, i, depth, ind_vars)) {
+	     
+	      if(trace_msg_vect)
+		Print_Vec_Mesg(WN_Get_Linenum(ali->Loop()), "Can't vectorize on one axle");
+	      return FALSE;
+	    } else {
+	      result = TRUE;
+	      all_uses.Push(temp);
+	      if(rstep != NULL) {
+		stride_redist.AddElement(rstep);
+		span_redist.AddElement(Region_Span(temp, &axle, ali->Do_Stack().Bottom_nth(i),rstep));	  
+	
+	      } else 
+		Fail_FmtAssertion("NULL step in Analyze\n");
+	    }
+	    break;
+	  case ARA_TOP:
+	  case ARA_BOTTOM:
+	    result = FALSE;
+	    if(trace_msg_vect) 
+	      Print_Vec_Mesg(WN_Get_Linenum(ali->Loop()),  "ARA_TOP/BOTTOM in Analyze");
+	     
+	    break;
+	  }
+	}
+	if(result) {
+	  WN *base, *tmp;
+	  base = Region_Base(temp, &axle, ind_vars);
+	  for(i=0; i < ali->Depth()-depth; i++) {
+	    tmp = Contrib_Index_Level(&axle, ali, i);
+	    if(tmp)
+	      base = WN_Add(Integer_type, base, tmp );
+	  }
+	  base_redist.AddElement(base);
+	}
+      } 
+    }
+
+  }
+
   return result;
 }
 
@@ -1062,6 +1399,8 @@ REMOTE_REF_DESCR::REMOTE_REF_DESCR(ARA_REF *_use, ARA_REF *_def, ARA_LOOP_INFO *
   use = _use;
   def = _def;
   ali = li;
+  redist_targ = 0;
+  redist_wn = 0;
   check_deps = check;
   deps = FALSE;
   depth = level;
@@ -1071,6 +1410,11 @@ REMOTE_REF_DESCR::REMOTE_REF_DESCR(ARA_REF *_use, ARA_REF *_def, ARA_LOOP_INFO *
   stride_def.Set_Mem_Pool(mpool);
   span_def.Set_Mem_Pool(mpool);
   base_def.Set_Mem_Pool(mpool);
+  stride_redist.Set_Mem_Pool(mpool);
+  span_redist.Set_Mem_Pool(mpool);
+  base_redist.Set_Mem_Pool(mpool);
+  similar_wn.Set_Mem_Pool(mpool);
+
   ind_vars = CXX_NEW(STACK<WN *> (VEC_mpool), VEC_mpool);
   
   top = li->Do_Stack().Elements();
@@ -1084,10 +1428,226 @@ REMOTE_REF_DESCR::REMOTE_REF_DESCR(ARA_REF *_use, ARA_REF *_def, ARA_LOOP_INFO *
 }
 
 
-void REMOTE_REF::Do_Code_Gen(ST *ldesc, WN *prefix, WN *laddr_init)
+void REMOTE_REF_DESCR::Do_Code_Gen(ST *ldesc, WN *prefix, WN *laddr_init, BOOL is_redist, int total_refs = 0)
 {
-  level[level.Elements()-1]->Do_Code_Gen(ldesc, prefix, laddr_init);
+  DO_LOOP_INFO *dli = (DO_LOOP_INFO*)ali->Info();
+  int i, esize, bsize,j, type,k;
+  ST *rdesc, *lmad;
+  ST *tbase, *local_ptr;
+  ST *tbase_redist;
+  int num_dims;
+  ST * a_st;
+  TY_IDX a_ty, a_ty_redist;
+  TY_IDX ety;
+  ST *nrefs;
+  ST *new_coeff;
+  int cur_pos;
+  BOOL use_simple_interface = FALSE;
+  if(use)
+    a_st = use->Array().St();
+  else if(def)
+    a_st = def->Array().St();
+  else 
+    Fail_FmtAssertion("Empty ARA_REF in VEC\n");
 
+
+  a_ty = ST_type(a_st);
+  STACK<ST*>  lstack(VEC_mpool);
+  
+  if(TY_kind(a_ty) == KIND_POINTER) { 
+    ety = TY_pointed(a_ty);
+    esize =  TY_adjusted_size(ety);
+  } else if(TY_kind(a_ty) == KIND_ARRAY) {
+    ety = Get_Inner_Array_Type(a_ty);
+    esize = TY_adjusted_size(ety);
+  }
+  bsize = Get_Type_Block_Size(ety);
+  num_dims = (depth+1 < ali->Depth()+1) ? depth+1 : ali->Depth()+1;
+  tbase = Gen_Temp_Symbol(a_ty, "rbase");   
+ 
+  use_simple_interface = ((num_dims == 1) &&  (stride_use.Elements() + stride_def.Elements() == 1) && (total_refs == 1));
+  if(use_simple_interface)
+    is_redist = 0;
+  if(!use_simple_interface) {
+    rdesc =  Generate_New_Base_Ref_Call(prefix, ldesc, 0, 0, esize);
+    //This test does not hold 
+    // Is_True(stride_use.Elements() >= num_dims ||
+// 	    (use == NULL && stride_use.Elements() == 0), 
+// 	    (("Mismatch between dims and strides")));
+  }
+  
+  if(stride_use.Elements() != 0)
+    num_dims = (num_dims > stride_use.Elements()) ? stride_use.Elements() : num_dims;
+  for(i=0; i < stride_use.Elements()/num_dims; i++) {
+    Generate_Base_Addr(prefix, a_st, base_use[i], tbase, esize, bsize, (bsize == 0));
+    
+    if(!use_simple_interface) {
+      lmad = Generate_New_Lmad_Call(prefix, ldesc, rdesc, 
+				    WN_Ldid(TY_mtype(a_ty), 0, tbase, ST_type(tbase)), 
+				    REF_READ);
+      for(j=0; j < num_dims; j++) {
+	Generate_Add_SosD_Call(prefix, ldesc, rdesc, lmad, WN_Intconst(Integer_type,j), 
+			       stride_use[i*num_dims+j], 
+			       WN_Mpy(Integer_type, WN_COPY_Tree(span_use[i*num_dims+j]),
+				      WN_COPY_Tree(stride_use[i*num_dims+j])));
+      }
+    }
+    if(!is_redist) {
+      local_ptr = Gen_Temp_Symbol(Make_Pointer_Type(Shared_To_Private_Type(ety)), "lbase");
+      lstack.Push(local_ptr); 
+      Generate_Get_Laddr_Call(laddr_init, local_ptr, ldesc, rdesc, lmad, 
+			      use_simple_interface ? INTRN_VEC_GET_LADDR_1RS1 : INTRINSIC_LAST); 
+    }  
+  }
+  
+  
+  if(use && !is_redist) {
+    REGION_UN & img = use->Image();
+    REGION_ITER iter(&img);
+    i = 0;
+    cur_pos = 0;
+    
+    for (REGION *cur = iter.First();  !iter.Is_Empty(); cur = iter.Next()) {
+      for(j=0; j < cur->_wn_list.Elements(); j++) {
+	new_coeff = Generate_New_Coeff(prefix, laddr_init, ldesc, rdesc, lmad, cur_pos, 
+				       num_dims < stride_use.Elements()  ? num_dims : stride_use.Elements(), 
+				       TRUE);
+	if(cur->_wn_list.Elements() > j && lstack.Elements() > i) {
+	  Replace_Shared_Access(cur->_wn_list.Bottom_nth(j), a_st, lstack.Bottom_nth(i), 
+				WN_st(WN_index(ali->Loop())), 
+				new_coeff );
+	  for(k = 0; k < similar_wn.Elements(); k++) {
+	    Replace_Shared_Access(similar_wn[k], a_st, lstack.Bottom_nth(i), 
+				  WN_st(WN_index(ali->Loop())), 
+				  new_coeff );
+	  }
+	}
+	i++;
+      }
+    }
+  }
+  
+  lstack.Clear();
+  Is_True(stride_def.Elements() >= num_dims ||
+	  (def == NULL && stride_def.Elements() == 0), (("Mismatch between dims and strides")));
+  
+  if(stride_def.Elements() != 0)
+    num_dims = (num_dims > stride_def.Elements()) ? stride_def.Elements() : num_dims;
+  
+  for(i=0; i < stride_def.Elements()/num_dims; i++) {
+      Generate_Base_Addr(prefix, a_st, base_def[i], tbase, esize, bsize, (bsize == 0));
+
+      if(!use_simple_interface) {
+	lmad = Generate_New_Lmad_Call(prefix, ldesc, rdesc, 
+				      WN_Ldid(TY_mtype(a_ty), 0, tbase, ST_type(tbase)), 
+				      REF_WRITE);
+	for(j=0; j < num_dims; j++) {
+	  Generate_Add_SosD_Call(prefix, ldesc, rdesc, lmad, WN_Intconst(Integer_type,j), 
+				 stride_def[i*num_dims+j], 
+				 WN_Mpy(Integer_type, WN_COPY_Tree(span_def[i*num_dims+j]),
+					WN_COPY_Tree(stride_def[i*num_dims+j]))); 
+	}
+      }
+      if(!is_redist) {
+	local_ptr = Gen_Temp_Symbol(Make_Pointer_Type(Shared_To_Private_Type(ety)), "lbase");
+	lstack.Push(local_ptr);
+	Generate_Get_Laddr_Call(laddr_init, local_ptr, ldesc, rdesc, lmad,
+				use_simple_interface ? INTRN_VEC_GET_LADDR_1RS1 : INTRINSIC_LAST);
+      } 
+    }
+ 
+  
+  if(def && !is_redist) {
+    REGION_UN & dimg = def->Image();
+    REGION_ITER diter(&dimg);
+    i = 0;
+    cur_pos = 0;
+    if(!use_simple_interface) {
+      for (REGION *cur = diter.First();  !diter.Is_Empty(); cur = diter.Next()) {
+	for(j=0; j < cur->_wn_list.Elements(); j++) {
+	  new_coeff = Generate_New_Coeff(prefix, laddr_init, ldesc, rdesc, lmad, cur_pos, num_dims, FALSE);
+	  Replace_Shared_Access(cur->_wn_list.Bottom_nth(j), a_st, lstack.Bottom_nth(i), 
+				WN_st(WN_index(ali->Loop())), 
+				new_coeff);
+	  for(k = 0; k < similar_wn.Elements(); k++) {
+	    Replace_Shared_Access(similar_wn[k], a_st, lstack.Bottom_nth(i), 
+				  WN_st(WN_index(ali->Loop())), 
+				  new_coeff );
+	  }
+	  i++;
+	}
+      }
+    }  else {
+      //Is_True(0, (("Not implemented\n"))); 
+    }
+  }
+
+ 
+  tbase_redist = 0;
+  if(use_simple_interface)
+    is_redist = 0;
+  // on Elan - redist not good; on Infiniband - redist good
+  
+  if(is_redist) {
+    int redist_type;
+    if(use == 0)
+      redist_type = REF_READ;
+    else if (def == 0) 
+      redist_type = REF_WRITE;
+   
+    
+    if(!(redist_targ &&(use  == 0 || def == 0))) {
+      Print_Vec_Mesg(WN_Get_Linenum((WN*)ali->Loop()), "Target not set in loop marked for redistribution or loop erroneously marked for redistribution");
+      Fail_FmtAssertion(0);
+    }
+    Is_True(redist_targ && (use == 0 || def == 0), ("Target not set in loop marked for redistribution or loop erroneously marked for redistribution"));
+    if(!use_simple_interface)
+      rdesc =  Generate_New_Redist_Ref_Call(prefix, ldesc, rdesc, lmad, 0, 0, esize);
+    a_st = redist_targ->Array().St();
+    a_ty_redist = ST_type(a_st);
+    tbase_redist = Gen_Temp_Symbol(a_ty_redist, "Rrbase"); 
+    num_dims = (depth+1 < ali->Depth()+1) ? depth+1 : ali->Depth()+1;
+    
+    Is_True(stride_redist.Elements() >= num_dims ||
+	    (redist_targ == NULL && stride_redist.Elements() == 0), 
+	    (("Mismatch between dims and strides")));
+    for(i=0; i < stride_redist.Elements()/num_dims; i++) {
+      Generate_Base_Addr(prefix, a_st, base_redist[i], tbase_redist, esize, bsize, (bsize == 0));
+      if(!use_simple_interface) {
+	lmad = Generate_New_Lmad_Call_With_Targ(prefix, ldesc, rdesc, 
+						WN_Ldid(TY_mtype(a_ty_redist), 0, 
+							tbase_redist, ST_type(tbase_redist)), 
+						redist_type);
+	for(j=0; j < num_dims; j++) {
+	  Generate_Add_SosD_Call(prefix, ldesc, rdesc, lmad, WN_Intconst(Integer_type,j), 
+				 stride_redist[i*num_dims+j], 
+				 WN_Mpy(Integer_type, WN_COPY_Tree(span_redist[i*num_dims+j]),
+					WN_COPY_Tree(stride_redist[i*num_dims+j])));
+	} 
+      }
+    }
+  }
+  
+   if(use_simple_interface) {
+    if(stride_use.Elements() == 1)
+      type = REF_READ;
+    else 
+      type = REF_WRITE;
+    
+    Generate_Loop1R(prefix, dli, 
+		    WN_Ldid(TY_mtype(a_ty), 0, tbase, ST_type(tbase)), type, esize, 1, 2, 
+		    tbase_redist ? WN_Ldid(TY_mtype(a_ty_redist), 0, tbase_redist, ST_type(tbase_redist)) :
+		    WN_Intconst(Pointer_type, 0));
+  } 
+}
+
+
+
+
+void REMOTE_REF::Do_Code_Gen(ST *ldesc, WN *prefix, WN *laddr_init, BOOL is_redist)
+{
+  level[level.Elements()-1]->Do_Code_Gen(ldesc, prefix, laddr_init, is_redist);
+  //Is_True(level.Elements()==1,(("Oops!")));
 }
 
 WN * REMOTE_REF_DESCR::Try_Static_Coeff(int cur_pos, int num_dim, BOOL is_use) 
@@ -1126,21 +1686,31 @@ WN * REMOTE_REF_DESCR::Try_Static_Coeff(int cur_pos, int num_dim, BOOL is_use)
     switch(is0) {
     case -1:  
     case 1:
-      result = WN_Add(indv_mtype, WN_COPY_Tree(span0), WN_Intconst(indv_mtype,1));
-      result =  WN_CreateExp2 (OPCODE_make_op (OPR_MIN,
-					       indv_mtype,
-					       MTYPE_V),
-			       result, WN_COPY_Tree(stride1));
-      term = result;
-      result = WN_Mpy(indv_mtype,index1,result);
-      result = WN_Add(indv_mtype, index0, result);
+      if(WN_operator(stride1) == OPR_INTCONST && WN_const_val(stride1) == 0) {
+	result = WN_COPY_Tree(index0);
+	
+      } else {
+	result = WN_Add(indv_mtype, WN_COPY_Tree(span0), WN_Intconst(indv_mtype,1));
+	result =  WN_CreateExp2 (OPCODE_make_op (OPR_MIN,
+						 indv_mtype,
+						 MTYPE_V),
+				 result, WN_COPY_Tree(stride1));
+	term = result;
+	result = WN_Mpy(indv_mtype,index1,result);
+	result = WN_Add(indv_mtype, index0, result);
+	
+      }
       if(num_dim == 2)
 	return result;
-      
       break;
-
+    case 0:
+      result = WN_Mpy(indv_mtype, index1, WN_COPY_Tree(stride1));
+      if(num_dim == 2) {
+	return result;
+      } 
+      break;
     default:
-    
+      
       if(WN_operator(stride1) == OPR_INTCONST && WN_const_val(stride1) >= is0 
 	 && (WN_const_val(stride1) % is0) == 0) {
 	result = WN_Add(indv_mtype, WN_COPY_Tree(span0), WN_Intconst(indv_mtype,1));
@@ -1155,7 +1725,7 @@ WN * REMOTE_REF_DESCR::Try_Static_Coeff(int cur_pos, int num_dim, BOOL is_use)
 			WN_Mpy(indv_mtype, index1, result));
 	if(num_dim == 2)
 	  return result;
-      }
+      } 
       break;
     }
   }
@@ -1180,10 +1750,11 @@ WN * REMOTE_REF_DESCR::Try_Static_Coeff(int cur_pos, int num_dim, BOOL is_use)
       stride2 = stride_def[cur_pos+num_dim-3-i];
       span2 =  span_def[cur_pos+num_dim-3-i];
     }
+   //  fdump_tree(stderr, WN_end(parent->Loop()));
     parent =  parent->Parent();
     indv = WN_st(WN_index(parent->Loop()));
     index2 = WN_Ldid(indv_mtype, 0, indv, ST_type(indv));
-    
+   //  fdump_tree(stderr, WN_end(parent->Loop()));
     if(WN_operator(stride2) != OPR_INTCONST) {
       WN_DELETE_Tree(result);
       return NULL;
@@ -1271,120 +1842,6 @@ ST* REMOTE_REF_DESCR::Generate_New_Coeff(WN *bblock, WN *cinit, ST *ldesc,
   }
   
   return result;
-}
-
-void REMOTE_REF_DESCR::Do_Code_Gen(ST *ldesc, WN *prefix, WN *laddr_init)
-{
-  DO_LOOP_INFO *dli = (DO_LOOP_INFO*)ali->Info();
-  int i, esize, bsize,j;
-  ST *rdesc, *lmad;
-  ST *tbase, *local_ptr;
-  int num_dims;
-  ST * a_st;
-  TY_IDX a_ty ;
-  TY_IDX ety;
-  ST *nrefs;
-  ST *new_coeff;
-  int cur_pos;
-
-  if(use)
-    a_st = use->Array().St();
-  else if(def)
-    a_st = def->Array().St();
-  else 
-    Fail_FmtAssertion("Empty ARA_REF in VEC\n");
-
- 
-  a_ty = ST_type(a_st);
-  
- 
-  STACK<ST*>  lstack(VEC_mpool);
-  
-  if(TY_kind(a_ty) == KIND_POINTER) { 
-    ety = TY_pointed(a_ty);
-    esize =  TY_adjusted_size(ety);
-  } else if(TY_kind(a_ty) == KIND_ARRAY) {
-    ety = Get_Inner_Array_Type(a_ty);
-    esize = TY_adjusted_size(ety);
-  }
-  bsize = Get_Type_Block_Size(ety);
-
-  
-  rdesc =  Generate_New_Base_Ref_Call(prefix, ldesc, 0, 0, esize);
-  tbase = Gen_Temp_Symbol(a_ty, "rbase");
-
-   
-  num_dims = (depth+1 < ali->Depth()+1) ? depth+1 : ali->Depth()+1;
-  Is_True(stride_use.Elements() >= num_dims ||
-	  (use == NULL && stride_use.Elements() == 0), 
-	  (("Mismatch between dims and strides")));
-  for(i=0; i < stride_use.Elements()/num_dims; i++) {
-    Generate_Base_Addr(prefix, a_st, base_use[i], tbase, esize, bsize, (bsize == 0));
-    lmad = Generate_New_Lmad_Call(prefix, ldesc, rdesc, 
-				  WN_Ldid(TY_mtype(a_ty), 0, tbase, ST_type(tbase)), 
-				  REF_READ);
-    for(j=0; j < num_dims; j++) {
-      Generate_Add_SosD_Call(prefix, ldesc, rdesc, lmad, WN_Intconst(Integer_type,j), 
-			     stride_use[i*num_dims+j], 
-			     WN_Mpy(Integer_type, WN_COPY_Tree(span_use[i*num_dims+j]),
-				    WN_COPY_Tree(stride_use[i*num_dims+j])));
-    } 
-    local_ptr = Gen_Temp_Symbol(Make_Pointer_Type(Shared_To_Private_Type(ety)), "lbase");
-    lstack.Push(local_ptr);
-    Generate_Get_Laddr_Call(laddr_init, local_ptr, ldesc, rdesc, lmad);
-  }
-  
-  if(use) {
-    REGION_UN & img = use->Image();
-    REGION_ITER iter(&img);
-    i = 0;
-    cur_pos = 0;
-    for (REGION *cur = iter.First();  !iter.Is_Empty(); cur = iter.Next()) {
-      for(j=0; j < cur->_wn_list.Elements(); j++) {
-	new_coeff = Generate_New_Coeff(prefix, laddr_init, ldesc, rdesc, lmad, cur_pos, num_dims, TRUE);
-	Replace_Shared_Access(cur->_wn_list.Bottom_nth(j), a_st, lstack.Bottom_nth(i), 
-			      WN_st(WN_index(ali->Loop())), 
-			      new_coeff );
-	i++;
-      }
-    }
-  }
-  
-  lstack.Clear();
-  Is_True(stride_def.Elements() >= num_dims ||
-	  (def == NULL && stride_def.Elements() == 0), (("Mismatch between dims and strides")));
-  for(i=0; i < stride_def.Elements()/num_dims; i++) {
-    Generate_Base_Addr(prefix, a_st, base_def[i], tbase, esize, bsize, (bsize == 0));
-    lmad = Generate_New_Lmad_Call(prefix, ldesc, rdesc, 
-				  WN_Ldid(TY_mtype(a_ty), 0, tbase, ST_type(tbase)), 
-				  REF_WRITE);
-    for(j=0; j < num_dims; j++) {
-      Generate_Add_SosD_Call(prefix, ldesc, rdesc, lmad, WN_Intconst(Integer_type,j), 
-			     stride_def[i*num_dims+j], 
-			     WN_Mpy(Integer_type, WN_COPY_Tree(span_def[i*num_dims+j]),
-				    WN_COPY_Tree(stride_def[i*num_dims+j]))); 
-    }
-    local_ptr = Gen_Temp_Symbol(Make_Pointer_Type(Shared_To_Private_Type(ety)), "lbase");
-    lstack.Push(local_ptr);
-    Generate_Get_Laddr_Call(laddr_init, local_ptr, ldesc, rdesc, lmad);
-  }
-  
-  if(def) {
-    REGION_UN & dimg = def->Image();
-    REGION_ITER diter(&dimg);
-    i = 0;
-    cur_pos = 0;
-    for (REGION *cur = diter.First();  !diter.Is_Empty(); cur = diter.Next()) {
-      for(j=0; j < cur->_wn_list.Elements(); j++) {
-	new_coeff = Generate_New_Coeff(prefix, laddr_init, ldesc, rdesc, lmad, cur_pos, num_dims, FALSE);
-	Replace_Shared_Access(cur->_wn_list.Bottom_nth(j), a_st, lstack.Bottom_nth(i), 
-			      WN_st(WN_index(ali->Loop())), 
-			      new_coeff);
-      i++;
-      }
-    }
-  }
-  
 }
 
 
@@ -2420,8 +2877,9 @@ loop_invar:
  loop_invar1:
   //by now we have to deal only with the induction variable
   *loop_step = ai->Info()->Step->Get_Base_WN();
-  if(!*reg_step)
-    *reg_step = WN_Intconst(WN_rtype(*loop_step), 1);
+  //Why default to 1? TO DO: 
+   if(!*reg_step)
+     *reg_step = WN_Intconst(WN_rtype(*loop_step), 0);
   
   result =  Analyze_Ind_Var_Update(0, loop_is_decreasing, 0, loop_step);
   reg_is_decreasing = loop_is_decreasing;
@@ -2430,7 +2888,80 @@ loop_invar:
 }
 
 
-BOOL Check_One_Loop_Canon(WN *loop) 
+BOOL Stmt_Is_Redist_Assign(WN *stmt) 
+{
+
+  //Note : in this function we need to check the types of the
+  // operands in order to make sure that a upc_memcpy is not erroneously
+  //classified as a redist. 
+  Is_True(WN_operator(stmt) == OPR_ISTORE,(""));
+  //also structs confuse the hell out of redistribution, don't mark them
+  return (WN_operator(WN_kid0(stmt)) == OPR_ILOAD && 
+	  TY_kind(TY_pointed(WN_load_addr_ty(WN_kid0(stmt)))) != KIND_STRUCT) && 
+    (Type_Is_Shared_Ptr(WN_ty(stmt)) !=  Type_Is_Shared_Ptr(WN_ty(WN_kid0(stmt))));
+}
+
+
+BOOL No_Shared_Refs(WN* stmt) 
+{
+  BOOL result = TRUE;
+  int num_kids;
+  switch(WN_operator(stmt)) {
+  case OPR_LDID:
+  case OPR_ILOAD: 
+  case OPR_MSTORE:
+  case OPR_STID:
+  case OPR_ISTORE:
+  case OPR_ARRAY:
+    if(Type_Is_Shared_Ptr(WN_ty(stmt)))
+       return FALSE;
+  default:
+    for(num_kids = 0; num_kids < WN_kid_count(stmt); num_kids++)
+       result &= No_Shared_Refs(WN_kid(stmt, num_kids));
+  }
+
+  return result;
+}
+
+BOOL Check_Loop_Is_Redist(WN *body)
+{
+  
+  BOOL is_redist = TRUE;
+  BOOL child_is_redist = TRUE;
+  
+  switch(WN_operator(body)) {
+  case OPR_BLOCK: 
+    {
+      WN  *treeStmt = WN_first(body);
+      while(treeStmt)
+	{
+	  is_redist &= Check_Loop_Is_Redist(treeStmt);
+	  if(!is_redist)
+	    return FALSE;
+	  treeStmt = WN_next(treeStmt);
+	}
+      break;
+    }
+  case OPR_DO_LOOP:
+    is_redist &= Check_Loop_Is_Redist(WN_do_body(body));
+    break;
+  case OPR_ISTORE:
+    is_redist &= (Stmt_Is_Redist_Assign(body) || No_Shared_Refs(body));
+    break;
+  case OPR_INTRINSIC_CALL:  
+  case OPR_CALL:  
+  case OPR_MSTORE:
+  case OPR_STID:
+    return No_Shared_Refs(body);
+  default:
+    return FALSE;
+    Fail_FmtAssertion("Operator is not statement.");
+  }
+  
+  return is_redist;
+}
+
+BOOL Check_One_Loop_Canon(WN *loop, BOOL &loop_is_redist) 
 {
   WN *start, *lb, *end, *step;
   
@@ -2439,6 +2970,8 @@ BOOL Check_One_Loop_Canon(WN *loop)
   end = WN_end(loop);
   step = WN_step(loop);
   
+  loop_is_redist = FALSE;
+
   if(WN_operator(start) != OPR_STID ||  WN_operator(lb) != OPR_INTCONST 
      || WN_const_val(lb) != 0) {
     if(trace_msg_vect)
@@ -2447,7 +2980,8 @@ BOOL Check_One_Loop_Canon(WN *loop)
     return FALSE;
   }
   
-  if(WN_operator(end) != OPR_LE &&  WN_operator(end) != OPR_GE) {
+  if(WN_operator(end) != OPR_LE &&  WN_operator(end) != OPR_GE &&
+     WN_operator(end) != OPR_LT && WN_operator(end) != OPR_GT) {
     if(trace_msg_vect)
       Print_Vec_Mesg(WN_Get_Linenum(loop), "Loop test not in canonical form");
       
@@ -2463,6 +2997,8 @@ BOOL Check_One_Loop_Canon(WN *loop)
       Print_Vec_Mesg(WN_Get_Linenum(loop), "Loop increment not in canonical form");
     return FALSE;
   }
+  
+  loop_is_redist = Check_Loop_Is_Redist(WN_do_body(loop));
   
   return TRUE;
 }
@@ -2483,7 +3019,7 @@ REMOTE_REF* VECT_INFO::Find_Ref(const SYMBOL& s)
   return result;
 }
 
-void Add_Refs(VECT_INFO *vinfo, ARA_LOOP_INFO *li, int level, BOOL check_deps)
+void Add_Refs(VECT_INFO *vinfo, ARA_LOOP_INFO *li, int level, BOOL check_deps, BOOL loop_is_redist = FALSE)
 {
   int i,j;
   BOOL do_vectorize = TRUE;
@@ -2491,10 +3027,13 @@ void Add_Refs(VECT_INFO *vinfo, ARA_LOOP_INFO *li, int level, BOOL check_deps)
   ARA_REF_ST & use = li->USE();
   ARA_REF_ST & may_def = li->MAY_DEF();
   ARA_REF_ST & def = li->DEF();
-  
- //  Get_Do_Loop_Info(li->Loop())->Print(stderr);
-//   li->Print(stderr);
-
+   WN *wn, *to;
+   
+  //  fprintf(stderr,"////////////////////////////////////////////////////////// \n");
+//    Get_Do_Loop_Info(li->Loop())->Print(stderr);
+//    li->Print(stderr);
+//    fprintf(stderr,"////////////////////////////////////////////////////////// \n");
+   
   for(i = 0; i < use.Elements(); i++) {
     ARA_REF *read = use.Bottom_nth(i);
     if(Is_Upc_Vect(ST_type(read->Array().St()))) {
@@ -2503,15 +3042,42 @@ void Add_Refs(VECT_INFO *vinfo, ARA_LOOP_INFO *li, int level, BOOL check_deps)
 	rref = CXX_NEW(REMOTE_REF(li, level, (SYMBOL&)read->Array(), VEC_mpool), VEC_mpool);
 	vinfo->Refs().AddElement(rref);
       }
-      rref->level.AddElement(CXX_NEW(REMOTE_REF_DESCR(read,NULL, li, check_deps, level,VEC_mpool), VEC_mpool));
+     
+      rref->level.AddElement(CXX_NEW(REMOTE_REF_DESCR(read,NULL, li, check_deps, level, 
+						      VEC_mpool), VEC_mpool));
       do_vectorize = TRUE;
-    } else 
+      
+    } else { 
+      //the reference is local, let the def code deal with it
       rref = NULL;
-    
-    for(j = 0; j < def.Elements(); j++) {
-      ARA_REF *write = def.Bottom_nth(j);
-      if(read->Array() == write->Array() && rref) {
-	rref->level[level]->def = write;
+    }
+
+    //mark shortcuts for memory to memory operations
+    //in this case do not use temporary buffers, use the targets directly.
+    if(loop_is_redist && rref) {
+      //for any shared ref that gets assigned into a scalar ref
+      //find that ref and mark the region for redistribution
+      if(read->Image().Len() == 1) {
+	wn = read->Image().Any_Wn();
+	to = LWN_Get_Parent(LWN_Get_Parent(wn));
+	Is_True(WN_operator(to) == OPR_ISTORE, (""));
+      } else {
+	Fail_FmtAssertion("Redistribution of multiple collapsed references not implemented\n");
+      }
+    }
+    if (rref) {
+      for(j = 0; j < def.Elements(); j++) {
+	ARA_REF *write = def.Bottom_nth(j);
+	if(read->Array() == write->Array() && rref) {
+	  rref->level[level]->def = write;
+	} else 
+	  if(loop_is_redist) {
+	    if(write->Image().Len() == 1 && LWN_Get_Parent(write->Image().Any_Wn()) == to) {
+	      rref->level[level]->redist_targ = write;
+	      rref->level[level]->redist_wn = WN_kid1(to);
+	      break;
+	    }
+	  }
       }
     } 
   }
@@ -2529,13 +3095,24 @@ void Add_Refs(VECT_INFO *vinfo, ARA_LOOP_INFO *li, int level, BOOL check_deps)
     } else 
       rref = NULL;
     
-   //  for(j = 0; j < use.Elements(); j++) {
-//       ARA_REF *read = use.Bottom_nth(j);
-//       if(read->Array() == write->Array() && rref) {
-// 	rref->level[level]->use = read;
-//       }
-//     }
-   
+    if(rref && loop_is_redist) {
+      if(write->Image().Len() == 1) {
+	wn = write->Image().Any_Wn();
+	to = WN_kid0(WN_kid0(LWN_Get_Parent(wn)));
+	Is_True(WN_operator(to) == OPR_ARRAY, (""));
+      } else {
+	Fail_FmtAssertion("Redistribution of multiple collapsed references not implemented\n");
+      }
+      for(j = 0; j < use.Elements(); j++) {
+	ARA_REF *read = use.Bottom_nth(j);
+	if(read->Image().Len() == 1 && 
+	   (read->Image().Any_Wn() == to || read->Image().Contains(to))) {
+	  rref->level[level]->redist_targ = read;
+	  rref->level[level]->redist_wn = to; 
+	}
+      }
+    }
+     
   } 
 }
 
@@ -2568,7 +3145,7 @@ static WN *Strip_Mine_Loop(WN *prefix, WN *loop, ST *sdesc, ST *ldesc, WN ** xtr
 			  );
   
   ST* outer_index = Gen_Temp_Symbol(MTYPE_To_TY(Integer_type), "oidx");
- 
+  ST *inner_index = Gen_Temp_Symbol(MTYPE_To_TY(Integer_type), "iidx");
   WN * outer_start = LWN_Copy_Tree(start);
   
   Replace_Symbol(outer_start, SYMBOL(WN_st(index), 0, TY_mtype(ST_type(WN_st(index)))),
@@ -2581,6 +3158,9 @@ static WN *Strip_Mine_Loop(WN *prefix, WN *loop, ST *sdesc, ST *ldesc, WN ** xtr
 		 WN_Ldid(Integer_type, 0, outer_index, ST_type(outer_index)),
 		 outer_step);
   WN *outer_end = LWN_Copy_Tree(end);
+ 
+
+
   Replace_Symbol(outer_end, SYMBOL(WN_st(index), 0, TY_mtype(ST_type(WN_st(index)))),
 		 SYMBOL(outer_index, 0, TY_mtype(ST_type(outer_index))), 
 		 WN_Ldid(Integer_type, 0, outer_index, ST_type(outer_index)),
@@ -2588,8 +3168,8 @@ static WN *Strip_Mine_Loop(WN *prefix, WN *loop, ST *sdesc, ST *ldesc, WN ** xtr
   WN_kid1(outer_end) = WN_Sub(Integer_type, WN_Div(Integer_type, LWN_Copy_Tree(UBexp(outer_end)), 
 			      WN_Ldid(Integer_type, 0, sdesc, ST_type(sdesc))), WN_Intconst(Integer_type,1));
   
-
-  ST *inner_index = Gen_Temp_Symbol(MTYPE_To_TY(Integer_type), "iidx");
+  
+  
   Replace_Symbol(step, SYMBOL(WN_st(index), 0, TY_mtype(ST_type(WN_st(index)))),
 		 SYMBOL(inner_index, 0, TY_mtype(ST_type(inner_index))), 
 		 WN_Ldid(Integer_type, 0, inner_index, ST_type(inner_index)),
@@ -2598,14 +3178,17 @@ static WN *Strip_Mine_Loop(WN *prefix, WN *loop, ST *sdesc, ST *ldesc, WN ** xtr
 		  SYMBOL(inner_index, 0, TY_mtype(ST_type(inner_index))), 
 		  WN_Ldid(Integer_type, 0, inner_index, ST_type(inner_index)),
 		 start);
-  Replace_Symbol(end, SYMBOL(WN_st(index), 0, TY_mtype(ST_type(WN_st(index)))),
+ 
+   Replace_Symbol(end, SYMBOL(WN_st(index), 0, TY_mtype(ST_type(WN_st(index)))),
 		 SYMBOL(inner_index, 0, TY_mtype(ST_type(inner_index))), 
 		 WN_Ldid(Integer_type, 0, inner_index, ST_type(inner_index)),
 		 end);
   WN_kid1(end) = WN_Sub(Integer_type, 
 			WN_Ldid(Integer_type, 0, sdesc, ST_type(sdesc)),
 			WN_Intconst(Integer_type,1)); // should it be -1?
-  
+ 
+
+  //new
 
   wn1 = WN_Stid(Integer_type, 0, WN_st(index), ST_type(WN_st(index)),
 		WN_Add(Integer_type, WN_Ldid(Integer_type, 0, inner_index, ST_type(inner_index)),
@@ -2614,8 +3197,9 @@ static WN *Strip_Mine_Loop(WN *prefix, WN *loop, ST *sdesc, ST *ldesc, WN ** xtr
 			      WN_Ldid(Integer_type, 0, sdesc, ST_type(sdesc)))
 		       )
 		);
-
   WN_st_idx(index) = ST_st_idx(inner_index);
+ 
+  
   WN_INSERT_BlockFirst(body, wn1);
   
   
@@ -2651,18 +3235,21 @@ void Walk_Inner_Loop_Refs(VECT_INFO *vinfo, ARA_LOOP_INFO  *li, int level,
 			  STACK<DO_LOOP_INFO*> &dli_stack)
 {
   int i;
-
+  BOOL loop_is_redist = FALSE;
+  
   if(li->Children().Elements() > 1) {
     complicated_nest = TRUE;
     return;
   }
   
-  if(!Check_One_Loop_Canon((WN*)li->Loop())) {
+  if(!Check_One_Loop_Canon((WN*)li->Loop(), loop_is_redist)) {
     complicated_nest = TRUE;
     return;
   }
 
-  Add_Refs(vinfo, li, level, check_deps);
+  Is_True(vinfo->loop_is_redist == loop_is_redist, (""));
+
+  Add_Refs(vinfo, li, level, check_deps, loop_is_redist);
   dli_stack.Push((DO_LOOP_INFO*)li->Info());
   for(i=0; i < li->Children().Elements(); i++) {
     Walk_Inner_Loop_Refs(vinfo, li->Children().Bottom_nth(i), level+1, 
@@ -2679,10 +3266,10 @@ BOOL Check_Loops_Canon(ARA_LOOP_INFO *ali, int DEPTH)
 {
   int i;
   WN *start, *lb, *loop, *end, *step;
-
+  BOOL loop_is_redist;
   if(DEPTH > ali->Depth()) {
     // top loop is good, go down the stack
-    return Check_One_Loop_Canon((WN*)ali->Loop());
+    return Check_One_Loop_Canon((WN*)ali->Loop(), loop_is_redist);
     
   }  else {
     Is_True(0,(""));
@@ -2700,7 +3287,7 @@ void Vectorize_Loop(DO_LOOP_INFO *dli, BOOL check_deps, int DEPTH, BOOL *changed
   BOOL no_deps = FALSE;
   BOOL deps_known = FALSE;
   BOOL scalar_to_vect = FALSE;
-  
+  BOOL loop_is_redist = FALSE;
   BOOL do_vectorize = TRUE;
   VECT_INFO *vinfo = CXX_NEW(VECT_INFO(VEC_mpool),VEC_mpool);
   ST *sdesc;
@@ -2714,24 +3301,29 @@ void Vectorize_Loop(DO_LOOP_INFO *dli, BOOL check_deps, int DEPTH, BOOL *changed
   WN *new_loop;
   ARA_LOOP_INFO *parent;
 
-  // li->Print_Analysis_Info();
+  SRCPOS srcpos = WN_Get_Linenum(li->Loop());
+  int total_refs = 0;
+  BOOL use_simple_interface = FALSE;
+  
+  //fprintf(stderr,"+++++++++++++++++++++++++++++++++++++++++++++++++++++++++/ \n");
+  //li->Print_Analysis_Info();
+  //fprintf(stderr,"+++++++++++++++++++++++++++++++++++++++++++++++++++++++++/ \n");
 
-  if(!Check_One_Loop_Canon((WN*)li->Loop())) {
+  if(!Check_One_Loop_Canon((WN*)li->Loop(), vinfo->loop_is_redist)) {
     return;
   }
  
-  Add_Refs(vinfo, li, // DEPTH-1
-	   level, check_deps);
+  Add_Refs(vinfo, li, level, check_deps, vinfo->loop_is_redist);
   
   if(vinfo->_refs.Elements() == 0) {
     if(trace_msg_vect)
-      Print_Vec_Mesg(WN_Get_Linenum(li->Loop()), "Nest not vectorized ");
+      Print_Vec_Mesg(WN_Get_Linenum(li->Loop()), "Nest not vectorized: no ARRAY nodes detected ");
     return;
   }
 
   dli_stack.Push(dli);
 
-  if(/*li->Children().Elements() == 0 ||*/ DEPTH == 1) {
+  if(DEPTH == 1) {
     //single loop
     
     if(vinfo->_refs.Elements() == 0)
@@ -2741,59 +3333,87 @@ void Vectorize_Loop(DO_LOOP_INFO *dli, BOOL check_deps, int DEPTH, BOOL *changed
       rref =vinfo->_refs[i];
       if(!rref->Analyze())
 	return;
+      total_refs += rref->total_refs;
     } 
     
+    
+    use_simple_interface = (total_refs == 1);
     WN *prefix, *laddr;
     WN *original_loop;
     original_loop = WN_COPY_Tree((WN*)li->Loop());
     vinfo->refs_vect = 0;
     prefix = WN_CreateBlock();
     laddr = WN_CreateBlock();
-    vinfo->ldesc = Generate_Loop_Description(prefix,(DO_LOOP_INFO*)li->Info());
-    Generate_Add_Pdim(prefix, (DO_LOOP_INFO*)li->Info(), vinfo->ldesc, 0);
+ 
+   
+    if(!use_simple_interface) {
+      vinfo->ldesc = Generate_Loop_Description(prefix,(DO_LOOP_INFO*)li->Info(), vinfo->loop_is_redist);
+      Generate_Add_Pdim(prefix, (DO_LOOP_INFO*)li->Info(), vinfo->ldesc, 0);
+    }
     for(i = 0; i < vinfo->Refs().Elements(); i++) {
-      vinfo->Refs()[i]->level[0]->Do_Code_Gen(vinfo->ldesc, prefix, laddr);
-      vinfo->refs_vect += vinfo->Refs()[i]->level[0]->stride_use.Elements() + 
-	vinfo->Refs()[i]->level[0]->stride_def.Elements();
+      //vinfo->Refs()[i]->Collapse_Similar();
+      for(j=0; j < vinfo->Refs()[i]->level.Elements(); j++) {
+	vinfo->Refs()[i]->level[j]->Do_Code_Gen(vinfo->ldesc, prefix, laddr, vinfo->loop_is_redist, total_refs);
+	vinfo->refs_vect += vinfo->Refs()[i]->level[j]->stride_use.Elements() + 
+	  vinfo->Refs()[i]->level[j]->stride_def.Elements();
+	//was level[0]
+      }
+    }
+    ST *nrefs;
+    
+
+    if(use_simple_interface) { 
+      nrefs = Generate_Analyze_Call(prefix, vinfo->ldesc, INTRN_VEC_ANAL_1RS1);
+      sdesc = Generate_Get_Strips(laddr, vinfo->ldesc, INTRN_VEC_GETSTR_1RS1);
+    } else { 
+      nrefs = Generate_Analyze_Call(prefix, vinfo->ldesc);
+      sdesc = Generate_Get_Strips(laddr, vinfo->ldesc);
     }
 
-        
-    ST *nrefs = Generate_Analyze_Call(prefix, vinfo->ldesc);
-    sdesc = Generate_Get_Strips(laddr, vinfo->ldesc);
     WN *tblock;
+    WN *temp = WN_CreateBlock();
     new_loop = Strip_Mine_Loop(tblock, (WN*)li->Loop(), sdesc, vinfo->ldesc, &tblock);
-    Generate_AdvDim_Call(WN_do_body(new_loop), vinfo->ldesc, 0, TRUE);    
-    Generate_Test_Vect(prefix, new_loop, nrefs, vinfo->refs_vect, original_loop, tblock);
+
+
+    if(use_simple_interface) {
+      Generate_Void_Intrinsic(WN_do_body(new_loop), INTRN_VEC_ADVD_1RS1, TRUE);  
+      Generate_Void_Intrinsic(temp, INTRN_VEC_ADVD_1RS1, FALSE);
+    } else {
+      Generate_AdvDim_Call(WN_do_body(new_loop), vinfo->ldesc, 0, TRUE);  
+      Generate_AdvDim_Call(temp, vinfo->ldesc, 0, FALSE);
+    }
     
 
+    Generate_Test_Vect(prefix, new_loop, nrefs, vinfo->refs_vect, original_loop, tblock, temp);
     WN_INSERT_BlockBefore(LWN_Get_Parent(new_loop), new_loop, laddr);
     LWN_Set_Parent(laddr, new_loop);
+
     fin = WN_CreateBlock();
-    Generate_FinDim_Call(fin, vinfo->ldesc, 0);
-    Generate_End_Call(fin, vinfo->ldesc);
+    if(use_simple_interface) {
+      Generate_Void_Intrinsic(fin, INTRN_VEC_FIND_1RS1, TRUE);
+    }  else {
+      Generate_FinDim_Call(fin, vinfo->ldesc, 0);
+      Generate_End_Call(fin, vinfo->ldesc);
+    }
+   
     WN_INSERT_BlockLast(LWN_Get_Parent(new_loop), fin);
-    
+  
   } else {
     
-    // level = DEPTH-2;;
-    //parent = li->Parent();
     //multiple nest
     if(li->Children().Elements() > 1) {
       if(trace_msg_vect)
 	Print_Vec_Mesg(WN_Get_Linenum(li->Loop()), "Nest is not SNL (multiple inner loops on the same level)");
-	
       return;
     }
 
     level = 1;
     for(i = 0; i < li->Children().Elements(); i++)
-    // while(parent)
       {
       Walk_Inner_Loop_Refs(vinfo, li->Children().Bottom_nth(i), level, complicated_nest, check_deps, dli_stack);
       if(complicated_nest) {
 	if(trace_msg_vect)
 	  Print_Vec_Mesg(WN_Get_Linenum(li->Loop()), "Can't handle nest" );
-	 
 	return;
       }
       //At this point if one inner loop is not in canonical form
@@ -2808,41 +3428,58 @@ void Vectorize_Loop(DO_LOOP_INFO *dli, BOOL check_deps, int DEPTH, BOOL *changed
 	return;
     }
     
-    //*changed = TRUE;
     WN *prefix, *laddr;
     WN *original_loop;
+    ST *nrefs;
     original_loop = WN_COPY_Tree((WN*)li->Loop());
-    vinfo->refs_vect = 0;
     prefix = WN_CreateBlock();
     laddr = WN_CreateBlock();
-    vinfo->ldesc = Generate_Loop_Description(prefix,(DO_LOOP_INFO*)li->Info());
+    vinfo->refs_vect = 0;
+    vinfo->ldesc = Generate_Loop_Description(prefix,(DO_LOOP_INFO*)li->Info(), vinfo->loop_is_redist);
     for(i = 0; i < dli_stack.Elements(); i++)
-      Generate_Add_Pdim(prefix, dli_stack.Bottom_nth(i), vinfo->ldesc, i);
+      Generate_Add_Pdim(prefix, dli_stack.Bottom_nth(i), vinfo->ldesc, i);   
+   
     for(i = 0; i < vinfo->Refs().Elements(); i++) {
-      vinfo->Refs()[i]->Do_Code_Gen(vinfo->ldesc, prefix, laddr);
+      vinfo->Refs()[i]->Do_Code_Gen(vinfo->ldesc, prefix, laddr, vinfo->loop_is_redist);
       int num_dims = vinfo->Refs()[i]->level.Elements();
       vinfo->refs_vect += 
 	vinfo->Refs()[i]->level[num_dims-1]->stride_use.Elements()/num_dims + 
 	vinfo->Refs()[i]->level[num_dims-1]->stride_def.Elements()/num_dims;
     }
-    Generate_AdvDim_Call(laddr, vinfo->ldesc, 0);
     
-    ST *nrefs = Generate_Analyze_Call(prefix, vinfo->ldesc);
-   
+    vinfo->refs_vect = 1;
+    Generate_AdvDim_Call(laddr, vinfo->ldesc, 0); 
+    nrefs = Generate_Analyze_Call(prefix, vinfo->ldesc);
     Generate_Test_Vect(prefix, (WN*)li->Loop(), nrefs, vinfo->refs_vect, original_loop, NULL);
-   
-    
     WN_INSERT_BlockBefore(LWN_Get_Parent((WN*)li->Loop()), (WN*)li->Loop(), laddr);
+    /* this is just a hack */
+    for(i = 0; i < li->Children().Elements(); i++) {
+      ARA_LOOP_INFO  *tmp = li->Children().Bottom_nth(i);
+      WN * wn = (WN*)tmp->Loop();
+      WN *parent = LWN_Get_Parent(wn);
+      WN *block = WN_CreateBlock();
+      Generate_AdvDim_Call(block, vinfo->ldesc, tmp->Depth());
+      WN_INSERT_BlockBefore(parent, wn, block);
+      
+     //  block = WN_CreateBlock();
+//       Generate_FinDim_Call(block, vinfo->ldesc, tmp->Depth());
+//       WN_INSERT_BlockAfter(parent, wn, block);
+
+    }
+    
     LWN_Set_Parent(laddr, (WN*)li->Loop());
     fin = WN_CreateBlock();
     Generate_FinDim_Call(fin, vinfo->ldesc, 0);
     Generate_End_Call(fin, vinfo->ldesc);
-    WN_INSERT_BlockLast(LWN_Get_Parent((WN*)li->Loop()), fin);
-    
+    prefix = LWN_Get_Parent((WN*)li->Loop());
+    if(vinfo->loop_is_redist) {
+      WN_DELETE_FromBlock(prefix, (WN*)li->Loop());
+    }
+    WN_INSERT_BlockLast(prefix, fin);
   } //multiple nest
   
   if(trace_msg_vect) {
-    Print_Vec_Mesg(WN_Get_Linenum(li->Loop()), "Vectorized nest" );
+    Print_Vec_Mesg(srcpos, "Vectorized nest" );
   }
 }
 
