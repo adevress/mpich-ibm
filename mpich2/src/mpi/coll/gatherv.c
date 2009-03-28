@@ -257,7 +257,7 @@ int MPI_Gatherv(void *sendbuf, int sendcnt, MPI_Datatype sendtype,
                         MPID_Datatype_get_ptr(recvtype, recvtype_ptr);
                         MPID_Datatype_valid_ptr( recvtype_ptr, mpi_errno );
                         MPID_Datatype_committed_ptr( recvtype_ptr, mpi_errno );
-                     }
+                    }
 
                     for (i=0; i<comm_size; i++) {
                         if (recvcnts[i] > 0) {

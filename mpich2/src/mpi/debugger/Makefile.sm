@@ -21,11 +21,10 @@ endif
 
 lib${MPILIBNAME}_a_SOURCES = dbginit.c
 # There is no static debugger interface library
-## note: simplemake needs to see a literal "lib" here...
-lib@debugger_lib@_so_SOURCES = dll_mpich2.c
+libtvmpich2_so_SOURCES = dll_mpich2.c
 # Force a custom target
-./lib@debugger_lib@.@SHLIB_EXT@: ./lib@debugger_lib@.la
-	(cd . && $(CREATESHLIB) --mode=link -cc="gcc -fpic $(MACH_64)" -clink="gcc -shared $(MACH_64)" -o lib@debugger_lib@.la  -rpath $(libdir) )
+./libtvmpich2.@SHLIB_EXT@: ./libtvmpich2.la
+	(cd . && $(CREATESHLIB) --mode=link -cc="gcc -fpic $(MACH_64)" -clink="gcc -shared $(MACH_64)" -o libtvmpich2.la  -rpath $(libdir) )
 
 INCLUDES = -I../../include -I${top_srcdir}/src/include
 profilelib_${MPILIBNAME} = ${PMPILIBNAME}
@@ -52,5 +51,5 @@ doc_HTML_SOURCES = ${mpi_sources}
 doc_MAN_SOURCES = ${mpi_sources}
 doc_LATEX_SOURCES = ${mpi_sources}
 
-optinstall_SHLIB = lib@debugger_lib@.@SHLIB_EXT@
+optinstall_SHLIB = libtvmpich2.@SHLIB_EXT@
 

@@ -121,7 +121,7 @@ int MPIR_CommGetAttr( MPI_Comm comm, int comm_keyval, void *attribute_val,
 	/* 
 	 * The C versions of the attributes return the address of a 
 	 * *COPY* of the value (to prevent the user from changing it)
-	 * and the Fortran versions provide the actual value (as an Pint)
+	 * and the Fortran versions provide the actual value (as a Pint)
 	 */
 	attr_copy = MPIR_Process.attrs;
 	switch (attr_idx) {

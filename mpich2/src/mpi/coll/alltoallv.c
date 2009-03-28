@@ -69,14 +69,11 @@ int MPIR_Alltoallv (
     rank = comm_ptr->rank;
     
     /* Get extent of send and recv types */
-
     MPID_Datatype_get_extent_macro(sendtype, send_extent);
     MPID_Datatype_get_extent_macro(recvtype, recv_extent);
-
     
     /* check if multiple threads are calling this collective function */
     MPIDU_ERR_CHECK_MULTIPLE_THREADS_ENTER( comm_ptr );
-
 
     starray = (MPI_Status *) MPIU_Malloc(2*comm_size*sizeof(MPI_Status));
     /* --BEGIN ERROR HANDLING-- */

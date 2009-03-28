@@ -1501,9 +1501,7 @@ sub addraint_in_decl {
 }
 sub addraint_in_arg {
     my $count = $_[0];
-    print $OUTFD "\n#warning ssize_t is not the right answer here\n";
-    # FIXME: This has far too many redundant casts
-    print $OUTFD "(void *)(ssize_t)((MPI_Aint)*(MPI_Aint *)v$count)";
+    print $OUTFD "(void *)(ssize_t)*(MPI_Aint *)v$count";
 }
 
 sub attraint_ctof {
@@ -1515,7 +1513,6 @@ sub attraint_ctof {
         *(MPI_Aint*)$cvar = 0;
     }
     else {
-#warning ssize_t is not the right answer here
         *(MPI_Aint*)$cvar = (MPI_Aint)(ssize_t)attr$cvar;
     }\n";
 }

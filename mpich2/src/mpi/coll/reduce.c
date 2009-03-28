@@ -850,7 +850,6 @@ int MPIR_Reduce_inter (
     MPIU_THREADPRIV_GET;
     MPIR_Nest_incr();
     
-
     comm = comm_ptr->handle;
 
     if (root == MPI_ROOT) {

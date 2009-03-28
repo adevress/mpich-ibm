@@ -417,7 +417,7 @@ static int MPID_Segment_contig_flatten(DLOOP_Offset *blocks_p,
     MPIDI_FUNC_ENTER(MPID_STATE_MPID_SEGMENT_CONTIG_FLATTEN);
 
     el_size = MPID_Datatype_get_basic_size(el_type);
-    size = *blocks_p * (DLOOP_Offset)el_size;
+    size = *blocks_p * (DLOOP_Offset) el_size;
     index = paramp->u.flatten.index;
 
 #ifdef MPID_SP_VERBOSE
@@ -431,7 +431,7 @@ static int MPID_Segment_contig_flatten(DLOOP_Offset *blocks_p,
 
     if (index > 0 && ((DLOOP_Offset) MPI_VOID_PTR_CAST_TO_MPI_AINT bufp + rel_off) ==
 	((paramp->u.flatten.offp[index - 1]) +
-	 (DLOOP_Offset)paramp->u.flatten.sizep[index - 1]))
+	 (DLOOP_Offset) paramp->u.flatten.sizep[index - 1]))
     {
 	/* add this size to the last vector rather than using up another one */
 	paramp->u.flatten.sizep[index - 1] += size;

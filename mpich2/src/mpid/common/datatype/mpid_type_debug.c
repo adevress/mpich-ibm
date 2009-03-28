@@ -494,12 +494,6 @@ static char *MPIDI_Datatype_depth_spacing(int depth)
 	default: return d5;
     }
 }
-    
-#define __mpidi_datatype_free_and_return { \
- if (cp->nr_ints  > 0) MPIU_Free(ints );   \
- if (cp->nr_aints > 0) MPIU_Free(aints);   \
- if (cp->nr_types > 0) MPIU_Free(types);   \
- return;                                 }
 
 #define __mpidi_datatype_free_and_return { \
  if (cp->nr_ints  > 0) MPIU_Free(ints);   \

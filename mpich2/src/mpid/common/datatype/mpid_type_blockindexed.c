@@ -135,7 +135,7 @@ int MPID_Type_blockindexed(int count,
     /* priming for loop */
     eff_disp = (dispinbytes) ? ((MPI_Aint *) displacement_array)[0] :
 	(((MPI_Aint) ((int *) displacement_array)[0]) * old_extent);
-    MPID_DATATYPE_BLOCK_LB_UB((MPI_Aint)blocklength,
+    MPID_DATATYPE_BLOCK_LB_UB((MPI_Aint) blocklength,
 			      eff_disp,
 			      old_lb,
 			      old_ub,
@@ -150,7 +150,7 @@ int MPID_Type_blockindexed(int count,
 
 	eff_disp = (dispinbytes) ? ((MPI_Aint *) displacement_array)[i] :
 	    (((MPI_Aint) ((int *) displacement_array)[i]) * old_extent);
-	MPID_DATATYPE_BLOCK_LB_UB((MPI_Aint)blocklength,
+	MPID_DATATYPE_BLOCK_LB_UB((MPI_Aint) blocklength,
 				  eff_disp,
 				  old_lb,
 				  old_ub,

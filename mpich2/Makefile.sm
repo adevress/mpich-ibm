@@ -72,7 +72,7 @@ all-preamble:
 # Move the "pkglist.new" file to "pkglist" on successful completion
 all-postamble:
 	@if [ "@BUILD_TVDLL@" = "yes" ] ; then \
-	( cd src/mpi/debugger && $(MAKE) ./lib@debugger_lib@.@SHLIB_EXT@ ) ; fi
+	( cd src/mpi/debugger && $(MAKE) ./libtvmpich2.@SHLIB_EXT@ ) ; fi
 	@if [ -s lib/pkglist.new ] ; then mv -f lib/pkglist.new lib/pkglist ; fi
 	@echo "Make completed"
 
@@ -188,8 +188,8 @@ install-preamble:
 install_local_DIR = libdir
 install-local:
 	-if [ "@BUILD_TVDLL@" = "yes" ] ; then \
-	    $(INSTALL_PROGRAM) src/mpi/debugger/lib@debugger_lib@.@SHLIB_EXT@ \
-			${DESTDIR}@debugger_path@ ; fi
+	    $(INSTALL_DATA) src/mpi/debugger/libtvmpich2.@SHLIB_EXT@ \
+			${DESTDIR}${libdir}/libtvmpich2.@SHLIB_EXT@ ; fi
 	-if [ -n "@other_pm_names@" ] ; then \
 	    for pm in @other_pm_names@ /dev/null ; do \
 		if [ -d src/pm/$$pm ] ; then \
