@@ -24,7 +24,6 @@ CPLUSPLUS_BEGIN
 /* Load just the utility definitions that we need */
 #include "mpichconf.h"
 #include "mpibase.h"
-#include "mpirdefs.h"
 #include "mpiutil.h"
 #include "mpitypedefs.h"
 

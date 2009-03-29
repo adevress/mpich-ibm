@@ -1,5 +1,5 @@
 /* -*- Mode: C; c-basic-offset:4 ; -*- */
-/*
+/*  
  *  (C) 2005 by Argonne National Laboratory.
  *      See COPYRIGHT in top-level directory.
  */
@@ -20,10 +20,10 @@
    not the debugger interface */
 
 /* mpi_interface.h defines the interface to the debugger.  This interface
-   is the same for any MPI implementation, for a given debugger
+   is the same for any MPI implementation, for a given debugger 
    (a more precise name might be mpi_tv_interface.h) */
 #include "mpi_interface.h"
-/* mpich2_dll_defs.h defines the structures for a particular MPI
+/* mpich2_dll_defs.h defines the structures for a particular MPI 
    implementation (MPICH2 in this case) */
 #include "mpich2_dll_defs.h"
 
@@ -38,12 +38,12 @@ static int host_is_big_endian = -1;
 /* ------------------------------------------------------------------------ */
 /* Error values. */
 enum {
-    err_silent_failure = mqs_first_user_code,
+    err_silent_failure = mqs_first_user_code, 
 
     err_no_current_communicator,
     err_bad_request,
-    err_no_store,
-    err_all_communicators,
+    err_no_store, 
+    err_all_communicators, 
     err_group_corrupt,
 
   err_failed_qhdr,
@@ -61,7 +61,7 @@ typedef struct communicator_t
   struct communicator_t * next;
   group_t *               group;		/* Translations */
   int                     context_id;		/* To catch changes */
-  int                     recvcontext_id;       /* May also be needed for
+  int                     recvcontext_id;       /* May also be needed for 
 						   matchine */
   int                     present;
   mqs_communicator        comm_info;		/* Info needed at the higher level */
@@ -84,17 +84,17 @@ static communicator_t * find_communicator (mpich_process_info *p_info,
 				   mqs_taddr_t comm_base, int recv_ctx);
 
 /* ------------------------------------------------------------------------ */
-/*
- * Many of the services used by this file are performed by calling
+/* 
+ * Many of the services used by this file are performed by calling 
  * functions executed by the debugger.  In other words, these are routines
- * that the debugger must export to this package.  To make it easy to
+ * that the debugger must export to this package.  To make it easy to 
  * identify these functions as well as to make their use simple,
- * we use macros that start with dbgr_xxx (for debugger).  These
+ * we use macros that start with dbgr_xxx (for debugger).  These 
  * function pointers are set early in the initialization phase.
  *
  * Note: to avoid any changes to the mpi_interface.h file, the fields in
- * the structures that contain the function pointers have not been
- * renamed dbgr_xxx and continue to use their original mqs_ prefix.
+ * the structures that contain the function pointers have not been 
+ * renamed dbgr_xxx and continue to use their original mqs_ prefix.  
  * Using the dbgr_ prefix for the debugger-provided callbacks was done to
  * make it more obvious whether the debugger or the MPI interface DLL is
  * responsible for providing the function.
@@ -122,56 +122,56 @@ static communicator_t * find_communicator (mpich_process_info *p_info,
 #define dbgr_target_to_host   (p_info->process_callbacks->mqs_target_to_host_fp)
 
 /* Routines to access data within the process */
-static mqs_taddr_t fetch_pointer (mqs_process * proc, mqs_taddr_t addr,
+static mqs_taddr_t fetch_pointer (mqs_process * proc, mqs_taddr_t addr, 
 				  mpich_process_info *p_info);
-static mqs_tword_t fetch_int (mqs_process * proc, mqs_taddr_t addr,
+static mqs_tword_t fetch_int (mqs_process * proc, mqs_taddr_t addr, 
 			      mpich_process_info *p_info);
-static mqs_tword_t fetch_int16 (mqs_process * proc, mqs_taddr_t addr,
+static mqs_tword_t fetch_int16 (mqs_process * proc, mqs_taddr_t addr, 
 				mpich_process_info *p_info);
 
 /* ------------------------------------------------------------------------ */
-/* Startup calls
+/* Startup calls 
    These three routines are the first ones invoked by the debugger; they
    are used to ensure that the debug interface library is a known version.
 */
 int mqs_version_compatibility ( void )
 {
   return MQS_INTERFACE_COMPATIBILITY;
-}
+} 
 
 char *mqs_version_string ( void )
 {
   return "ETNUS MPICH message queue support for MPICH2 1.0 compiled on " __DATE__;
-}
+} 
 
 /* Allow the debugger to discover the size of an address type */
 int mqs_dll_taddr_width (void)
 {
   return sizeof (mqs_taddr_t);
-}
+} 
 
 /* ------------------------------------------------------------------------ */
-/* Initialization
-
-   The function mqs_setup_basic_callbacks is used by the debugger to
-   inform the routines in this file of the addresses of functions that
+/* Initialization 
+   
+   The function mqs_setup_basic_callbacks is used by the debugger to 
+   inform the routines in this file of the addresses of functions that 
    it may call in the debugger.
 
    The function mqs_setup_image creates the image structure (local to this
    file) and tell the debugger about it
 
-   The function mqs_image_has_queues initializes the image structure.
+   The function mqs_image_has_queues initializes the image structure.  
    Much of the information that is saved in the image structure is information
    about the relative offset to data within an MPICH2 data structure.
    These offsets allow the debugger to retrieve information about the
-   MPICH2 structures.  The debugger routine dbgr_find_type is used to
-   find information on an named type, and dbgr_field_offset is used
+   MPICH2 structures.  The debugger routine dbgr_find_type is used to 
+   find information on an named type, and dbgr_field_offset is used 
    to get the offset of a named field within a type.
 
-   The function mqs_setup_process(process, callbacks) creates a private
-   process information structure and stores a pointer to it in process
-   (using dbgr_put_process_info).  The use of a routine to store this
-   value rather than passing an address to the process structure is
+   The function mqs_setup_process(process, callbacks) creates a private 
+   process information structure and stores a pointer to it in process 
+   (using dbgr_put_process_info).  The use of a routine to store this 
+   value rather than passing an address to the process structure is 
    done to give the debugger control over any operation that might store
    into the debuggers memory (instead, we'll use put_xxx_info).
 
@@ -183,30 +183,30 @@ void mqs_setup_basic_callbacks (const mqs_basic_callbacks * cb)
 
   host_is_big_endian    = (*(char *)&t) != 1;
   mqs_basic_entrypoints = cb;
-}
+} 
 
-/*
-   Allocate and setup the basic image data structure.  Also
+/* 
+   Allocate and setup the basic image data structure.  Also 
    save the callbacks provided by the debugger; these will be used
    to access information about the image.  This memory may be recovered
    with mqs_destroy_image_info.
  */
 int mqs_setup_image (mqs_image *image, const mqs_image_callbacks *icb)
 {
-    mpich_image_info *i_info =
+    mpich_image_info *i_info = 
       (mpich_image_info *)dbgr_malloc (sizeof (mpich_image_info));
-
+    
     if (!i_info)
 	return err_no_store;
 
     memset ((void *)i_info, 0, sizeof (mpich_image_info));
     i_info->image_callbacks = icb;		/* Before we do *ANYTHING* */
-
+   
     /* Tell the debugger to associate i_info with image */
     dbgr_put_image_info (image, (mqs_image_info *)i_info);
-
+    
     return mqs_ok;
-}
+} 
 
 /*
  * Setup information needed to access the queues.  If successful, return
@@ -214,20 +214,20 @@ int mqs_setup_image (mqs_image *image, const mqs_image_callbacks *icb)
  * with an explanatory message if there is a problem; otherwise, set it
  * to NULL.
  *
- * This routine is where much of the information specific to an MPI
+ * This routine is where much of the information specific to an MPI 
  * implementation is used.  In particular, the names of the structures
- * internal to an implementation and their fields are used here.
+ * internal to an implementation and their fields are used here.  
  *
  * FIXME: some of this information is specific to particular devices.
  * For example, the message queues are defined by the device.  How do
  * we export this information?  Should the queue code itself be responsible
- * for this (either by calling a routine in the image, using
+ * for this (either by calling a routine in the image, using 
  * dbgr_find_function (?) or by having the queue implementation provide a
  * separate file that can be included here to get the necessary information.
  */
 int mqs_image_has_queues (mqs_image *image, char **message)
 {
-    mpich_image_info * i_info =
+    mpich_image_info * i_info = 
 	(mpich_image_info *)dbgr_get_image_info (image);
     int have_co = 0, have_cl = 0, have_req = 0;
 
@@ -238,12 +238,12 @@ int mqs_image_has_queues (mqs_image *image, char **message)
 	"No message queue display is possible.\n"
 	"This is probably an MPICH version or configuration problem.";
 
-    /* Force in the file containing our breakpoint function, to ensure that
+    /* Force in the file containing our breakpoint function, to ensure that 
      * types have been read from there before we try to look them up.
      */
     dbgr_find_function (image, "MPIR_Breakpoint", mqs_lang_c, NULL);
 
-    /* Find the various global variables and structure definitions
+    /* Find the various global variables and structure definitions 
        that describe the communicator and message queue structures for
        the MPICH2 implementation */
 
@@ -253,11 +253,11 @@ int mqs_image_has_queues (mqs_image *image, char **message)
        The communicators themselves are of type MPID_Comm.
     */
     {
-	mqs_type *cl_type = dbgr_find_type( image, "MPIR_Comm_list",
+	mqs_type *cl_type = dbgr_find_type( image, "MPIR_Comm_list", 
 					    mqs_lang_c );
 	if (cl_type) {
 	    have_cl = 1;
-	    i_info->sequence_number_offs =
+	    i_info->sequence_number_offs = 
 		dbgr_field_offset( cl_type, "sequence_number" );
 	    i_info->comm_head_offs = dbgr_field_offset( cl_type, "head" );
 	}
@@ -278,7 +278,7 @@ int mqs_image_has_queues (mqs_image *image, char **message)
     /* Now the receive queues.  The receive queues contain MPID_Request
        objects, and the various fields are within types in that object.
        To simplify the eventual access, we compute all offsets relative to the
-       request.  This means diving into the types that make of the
+       request.  This means diving into the types that make of the 
        request definition */
     {
 	mqs_type *req_type = dbgr_find_type( image, "MPID_Request", mqs_lang_c );
@@ -297,39 +297,39 @@ int mqs_image_has_queues (mqs_image *image, char **message)
     /* FIXME: This function is not yet implemented */
     return err_silent_failure;
 }
-/* mqs_setup_process initializes the process structure.
+/* mqs_setup_process initializes the process structure.  
  * The memory allocated by this routine (and routines that modify this
- * structure) is freed with mqs_destroy_process_info
+ * structure) is freed with mqs_destroy_process_info 
  */
 int mqs_setup_process (mqs_process *process, const mqs_process_callbacks *pcb)
 {
-    /* Extract the addresses of the global variables we need and save
+    /* Extract the addresses of the global variables we need and save 
        them away */
-    mpich_process_info *p_info =
+    mpich_process_info *p_info = 
 	(mpich_process_info *)dbgr_malloc (sizeof (mpich_process_info));
 
     if (p_info) {
 	mqs_image        *image;
 	mpich_image_info *i_info;
-
+	
 	p_info->process_callbacks = pcb;
-
+	
 	/* Now we can get the rest of the info ! */
 	image  = dbgr_get_image (process);
 	i_info = (mpich_image_info *)dbgr_get_image_info (image);
-
+	
 	/* Library starts at zero, so this ensures we go look to start with */
 	p_info->communicator_sequence = -1;
 	/* We have no communicators yet */
 	p_info->communicator_list     = NULL;
 	/* Ask the debugger to initialize the structure that contains
-	   the sizes of basic items (short, int, long, long long, and
+	   the sizes of basic items (short, int, long, long long, and 
 	   void *) */
 	dbgr_get_type_sizes (process, &p_info->sizes);
-
+	
 	/* Tell the debugger to associate p_info with process */
 	dbgr_put_process_info (process, (mqs_process_info *)p_info);
-
+	
 	return mqs_ok;
     }
     else
@@ -337,10 +337,10 @@ int mqs_setup_process (mqs_process *process, const mqs_process_callbacks *pcb)
 }
 int mqs_process_has_queues (mqs_process *proc, char **msg)
 {
-    mpich_process_info *p_info =
+    mpich_process_info *p_info = 
 	(mpich_process_info *)dbgr_get_process_info (proc);
     mqs_image * image          = dbgr_get_image (proc);
-    mpich_image_info *i_info   =
+    mpich_image_info *i_info   = 
 	(mpich_image_info *)dbgr_get_image_info (image);
     mqs_taddr_t head_ptr;
 
@@ -361,7 +361,7 @@ int mqs_process_has_queues (mqs_process *proc, char **msg)
     p_info->unexpected_base = fetch_pointer( proc, head_ptr, p_info );
 
     /* Send queues are optional */
-    if (dbgr_find_symbol( image, "MPIR_Sendq_head", &p_info->sendq_base) ==
+    if (dbgr_find_symbol( image, "MPIR_Sendq_head", &p_info->sendq_base) == 
 	mqs_ok) {
 	p_info->has_sendq = 1;
     }
@@ -372,24 +372,24 @@ int mqs_process_has_queues (mqs_process *proc, char **msg)
     return mqs_ok;
 }
 
-/* This routine is called by the debugger to map an error code into a
+/* This routine is called by the debugger to map an error code into a 
    printable string */
 char * mqs_dll_error_string (int errcode)
 {
     switch (errcode) {
     case err_silent_failure:
 	return "";
-    case err_no_current_communicator:
+    case err_no_current_communicator: 
 	return "No current communicator in the communicator iterator";
-    case err_bad_request:
+    case err_bad_request:    
 	return "Attempting to setup to iterate over an unknown queue of operations";
-    case err_no_store:
+    case err_no_store: 
 	return "Unable to allocate store";
     case err_group_corrupt:
 	return "Could not read a communicator's group from the process (probably a store corruption)";
-    case err_unexpected:
+    case err_unexpected: 
       return "Failed to find symbol MPID_Recvq_unexpected_head_ptr";
-    case err_posted:
+    case err_posted: 
       return "Failed to find symbol MPID_Recvq_posted_head_ptr";
     }
     return "Unknown error code";
@@ -400,14 +400,14 @@ char * mqs_dll_error_string (int errcode)
  */
 
 /* Communicator list.
- *
+ * 
  * To avoid problems that might be caused by having the list of communicators
- * change in the process that is being debugged, the communicator access
- * routines make an internal copy of the communicator list.
- *
+ * change in the process that is being debugged, the communicator access 
+ * routines make an internal copy of the communicator list.  
+ * 
  */
 /* update_communicator_list makes a copy of the list of currently active
- * communicators and stores it in the mqs_process structure.
+ * communicators and stores it in the mqs_process structure.   
  */
 int mqs_update_communicator_list (mqs_process *proc)
 {
@@ -422,19 +422,19 @@ int mqs_update_communicator_list (mqs_process *proc)
  */
 int mqs_setup_communicator_iterator (mqs_process *proc)
 {
-    mpich_process_info *p_info =
+    mpich_process_info *p_info = 
 	(mpich_process_info *)dbgr_get_process_info (proc);
 
     /* Start at the front of the list again */
     p_info->current_communicator = p_info->communicator_list;
     /* Reset the operation iterator too */
     p_info->next_msg = 0;
-
+    
     return p_info->current_communicator == NULL ? mqs_end_of_list : mqs_ok;
 }
 int mqs_get_communicator (mqs_process *proc, mqs_communicator *comm)
 {
-    mpich_process_info *p_info =
+    mpich_process_info *p_info = 
 	(mpich_process_info *)dbgr_get_process_info (proc);
 
     if (p_info->current_communicator) {
@@ -446,11 +446,11 @@ int mqs_get_communicator (mqs_process *proc, mqs_communicator *comm)
 }
 int mqs_next_communicator (mqs_process *proc)
 {
-    mpich_process_info *p_info =
+    mpich_process_info *p_info = 
 	(mpich_process_info *)dbgr_get_process_info (proc);
-
+    
     p_info->current_communicator = p_info->current_communicator->next;
-
+  
     return (p_info->current_communicator != NULL) ? mqs_ok : mqs_end_of_list;
 }
 /* ------------------------------------------------------------------------ */
@@ -464,7 +464,7 @@ static int fetch_receive (mqs_process *proc, mpich_process_info *p_info,
 
 int mqs_setup_operation_iterator (mqs_process *proc, int op)
 {
-    mpich_process_info *p_info =
+    mpich_process_info *p_info = 
 	(mpich_process_info *)dbgr_get_process_info (proc);
 
   p_info->what = (mqs_op_class)op;
@@ -478,29 +478,29 @@ int mqs_setup_operation_iterator (mqs_process *proc, int op)
 	  return mqs_ok;
       }
 
-      /* The address on the receive queues is the address of a pointer to
+      /* The address on the receive queues is the address of a pointer to 
          the head of the list.  */
   case mqs_pending_receives:
       p_info->next_msg = p_info->posted_base;
       return mqs_ok;
-
+      
   case mqs_unexpected_messages:
       p_info->next_msg = p_info->unexpected_base;
       return mqs_ok;
-
+      
   default:
       return err_bad_request;
   }
 }
 
-/* Fetch the next operation on the current communicator, from the
-   selected queue. Since MPICH2 does not (normally) use separate queues
+/* Fetch the next operation on the current communicator, from the 
+   selected queue. Since MPICH2 does not (normally) use separate queues 
    for each communicator, we must compare the queue items with the
    current communicator.
 */
 int mqs_next_operation (mqs_process *proc, mqs_pending_operation *op)
 {
-    mpich_process_info *p_info =
+    mpich_process_info *p_info = 
 	(mpich_process_info *)dbgr_get_process_info (proc);
 
     switch (p_info->what) {
@@ -512,10 +512,10 @@ int mqs_next_operation (mqs_process *proc, mqs_pending_operation *op)
 	return fetch_send (proc,p_info,op);
     default: return err_bad_request;
     }
-}
+} 
 /* ------------------------------------------------------------------------ */
 /* Clean up routines
- * These routines free any memory allocated when the process or image
+ * These routines free any memory allocated when the process or image 
  * structures were allocated.
  */
 void mqs_destroy_process_info (mqs_process_info *mp_info)
@@ -526,18 +526,18 @@ void mqs_destroy_process_info (mqs_process_info *mp_info)
     mqs_free_communicator_list( p_info->communicator_list );
 
     dbgr_free (p_info);
-}
+} 
 
 void mqs_destroy_image_info (mqs_image_info *info)
 {
     dbgr_free (info);
-}
+} 
 
 /* ------------------------------------------------------------------------ */
 
 /* ------------------------------------------------------------------------ */
-/* Internal Routine
- *
+/* Internal Routine 
+ * 
  * These routine know about the internal structure of the MPI implementation.
  */
 
@@ -549,7 +549,7 @@ static int fetch_common(mqs_process *proc, mpich_process_info *p_info,
     mqs_taddr_t base = fetch_pointer(proc, p_info->next_msg, p_info);
 
 #ifdef DEBUG_LIST_ITER
-    printf( "fetch receive base = %x, comm= %x, context = %d\n",
+    printf( "fetch receive base = %x, comm= %x, context = %d\n", 
 	    base, comm, wanted_context );
 #endif
     while (base != 0) {
@@ -571,7 +571,7 @@ static int fetch_common(mqs_process *proc, mpich_process_info *p_info,
 						if valid (in mpi-2, may
 						not be available) */
 	    res->desired_length = -1;
-
+	    
 	    res->tag_wild = (tag < 0);
 	    /* We don't know the rest of these */
 	    res->buffer   = 0;
@@ -581,7 +581,7 @@ static int fetch_common(mqs_process *proc, mpich_process_info *p_info,
 	    res->actual_tag = tag;
 	    res->actual_length = -1;
 
-	    res->status = (is_complete != 0) ? mqs_st_pending : mqs_st_complete;
+	    res->status = (is_complete != 0) ? mqs_st_pending : mqs_st_complete; 
 
 	    /* Don't forget to step the queue ! */
 	    p_info->next_msg = base + i_info->req_next_offs;
@@ -615,7 +615,7 @@ static int fetch_receive (mqs_process *proc, mpich_process_info *p_info,
     return fetch_common(proc, p_info, res, look_for_user_buffer, image, i_info, comm, wanted_context);
 }
 
-/* Get the next entry in the send queue, if there is one.  The assumption is
+/* Get the next entry in the send queue, if there is one.  The assumption is 
    that the MPI implementation is quiescent while these queue probes are
    taking place, so we can simply keep track of the location of the "next"
    entry. (in the next_msg field) */
@@ -629,10 +629,10 @@ static int fetch_send (mqs_process *proc, mpich_process_info *p_info,
     communicator_t   *comm   = p_info->current_communicator;
     int wanted_context       = comm->context_id;
     /* Say what operation it is. We can only see non blocking send operations
-     * in MPICH. Other MPI systems may be able to show more here.
+     * in MPICH. Other MPI systems may be able to show more here. 
      */
     /* FIXME: handle size properly (declared as 64 in mpi_interface.h) */
-    strncpy((char *)res->extra_text[0],"Non-blocking send",20);
+    strncpy ((char *)res->extra_text[0],"Non-blocking send",20);
     res->extra_text[1][0] = 0;
     /// \todo determine if look_for_user_buffer should be '1' here
     return fetch_common(proc, p_info, res, 0, image, i_info, comm, wanted_context);
@@ -642,19 +642,19 @@ static int fetch_send (mqs_process *proc, mpich_process_info *p_info,
 /* Communicator */
 static int communicators_changed (mqs_process *proc)
 {
-    mpich_process_info *p_info =
+    mpich_process_info *p_info = 
 	(mpich_process_info *)dbgr_get_process_info (proc);
     mqs_image * image          = dbgr_get_image (proc);
-    mpich_image_info *i_info   =
+    mpich_image_info *i_info   = 
 	(mpich_image_info *)dbgr_get_image_info (image);
-    mqs_tword_t new_seq = fetch_int (proc,
+    mqs_tword_t new_seq = fetch_int (proc, 
 				     p_info->commlist_base+i_info->sequence_number_offs,
 				     p_info);
     int  res = (new_seq != p_info->communicator_sequence);
-
+    
     /* Save the sequence number for next time */
     p_info->communicator_sequence = new_seq;
-
+    
     return res;
 }
 
@@ -678,7 +678,7 @@ static communicator_t * find_communicator ( mpich_process_info *p_info,
 
   return NULL;
 } /* find_communicator */
-/* This is the comparison function used in the qsort call in
+/* This is the comparison function used in the qsort call in 
    rebuild_communicator_list */
 static int compare_comms (const void *a, const void *b)
 {
@@ -689,18 +689,18 @@ static int compare_comms (const void *a, const void *b)
 } /* compare_comms */
 static int rebuild_communicator_list (mqs_process *proc)
 {
-    mpich_process_info *p_info =
+    mpich_process_info *p_info = 
 	(mpich_process_info *)dbgr_get_process_info (proc);
     mqs_image * image          = dbgr_get_image (proc);
-    mpich_image_info *i_info   =
+    mpich_image_info *i_info   = 
 	(mpich_image_info *)dbgr_get_image_info (image);
-    mqs_taddr_t comm_base = fetch_pointer (proc,
+    mqs_taddr_t comm_base = fetch_pointer (proc, 
 					   p_info->commlist_base+i_info->comm_head_offs,
 					   p_info);
 
     communicator_t **commp;
     int commcount = 0;
-
+    
     /* Iterate over the list in the process comparing with the list
      * we already have saved. This is n**2, because we search for each
      * communicator on the existing list. I don't think it matters, though
@@ -736,7 +736,7 @@ static int rebuild_communicator_list (mqs_process *proc)
 
 
 	    nc = (communicator_t *)dbgr_malloc (sizeof (communicator_t));
-
+	    
 	    /* Save the results */
 	    nc->next = p_info->communicator_list;
 	    p_info->communicator_list = nc;
@@ -744,7 +744,7 @@ static int rebuild_communicator_list (mqs_process *proc)
 	    nc->group                 = g;
 	    nc->context_id            = send_ctx;
 	    nc->recvcontext_id        = recv_ctx;
-
+	    
 	    strncpy (nc->comm_info.name, name, sizeof( nc->comm_info.name ) );
 	    nc->comm_info.unique_id = comm_base;
 	    nc->comm_info.size      = np;
@@ -777,7 +777,7 @@ static int rebuild_communicator_list (mqs_process *proc)
 	    dbgr_free (comm);
 	}
     }
-
+    
     if (commcount) {
 	/* Sort the list so that it is displayed in some semi-sane order. */
 	communicator_t ** comm_array = (communicator_t **) dbgr_malloc (
@@ -786,7 +786,7 @@ static int rebuild_communicator_list (mqs_process *proc)
 	int i;
 	for (i=0; i<commcount; i++, comm=comm->next)
 	    comm_array [i] = comm;
-
+	
 	/* Do the sort */
 	qsort (comm_array, commcount, sizeof (communicator_t *), compare_comms);
 
@@ -809,18 +809,18 @@ static void mqs_free_communicator_list( struct communicator_t *comm )
 {
     while (comm) {
 	communicator_t *next = comm->next;
-
+	
 	/* Release the group data structures */
 	/* group_decref (comm->group);		 */
 	dbgr_free (comm);
-
+      
 	comm = next;
     }
 }
 
 /* ------------------------------------------------------------------------ */
 /* Internal routine to fetch data from the process */
-static mqs_taddr_t fetch_pointer (mqs_process * proc, mqs_taddr_t addr,
+static mqs_taddr_t fetch_pointer (mqs_process * proc, mqs_taddr_t addr, 
 				  mpich_process_info *p_info)
 {
     int asize = p_info->sizes.pointer_size;
@@ -828,13 +828,13 @@ static mqs_taddr_t fetch_pointer (mqs_process * proc, mqs_taddr_t addr,
     mqs_taddr_t res = 0;
 
     if (mqs_ok == dbgr_fetch_data (proc, addr, asize, data))
-	dbgr_target_to_host (proc, data,
-			     ((char *)&res) + (host_is_big_endian ? sizeof(mqs_taddr_t)-asize : 0),
+	dbgr_target_to_host (proc, data, 
+			     ((char *)&res) + (host_is_big_endian ? sizeof(mqs_taddr_t)-asize : 0), 
 			     asize);
-
+    
     return res;
-}
-static mqs_tword_t fetch_int (mqs_process * proc, mqs_taddr_t addr,
+} 
+static mqs_tword_t fetch_int (mqs_process * proc, mqs_taddr_t addr, 
 			      mpich_process_info *p_info)
 {
     int isize = p_info->sizes.int_size;
@@ -842,25 +842,25 @@ static mqs_tword_t fetch_int (mqs_process * proc, mqs_taddr_t addr,
     mqs_tword_t res = 0;
 
     if (mqs_ok == dbgr_fetch_data (proc, addr, isize, buffer))
-	dbgr_target_to_host (proc, buffer,
-			     ((char *)&res) + (host_is_big_endian ? sizeof(mqs_tword_t)-isize : 0),
+	dbgr_target_to_host (proc, buffer, 
+			     ((char *)&res) + (host_is_big_endian ? sizeof(mqs_tword_t)-isize : 0), 
 			     isize);
-
+    
     return res;
-}
-static mqs_tword_t fetch_int16 (mqs_process * proc, mqs_taddr_t addr,
+} 
+static mqs_tword_t fetch_int16 (mqs_process * proc, mqs_taddr_t addr, 
 				mpich_process_info *p_info)
 {
     char buffer[8];			/* ASSUME an integer fits in 8 bytes */
     int16_t res = 0;
 
     if (mqs_ok == dbgr_fetch_data (proc, addr, 2, buffer))
-	dbgr_target_to_host (proc, buffer,
-			     ((char *)&res) + (host_is_big_endian ? sizeof(mqs_tword_t)-2 : 0),
+	dbgr_target_to_host (proc, buffer, 
+			     ((char *)&res) + (host_is_big_endian ? sizeof(mqs_tword_t)-2 : 0), 
 			     2);
-
+    
     return res;
-}
+} 
 
 /* ------------------------------------------------------------------------- */
 /* With each communicator we need to translate ranks to/from their
