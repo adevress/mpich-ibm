@@ -191,8 +191,7 @@ static int MPIOI_Type_block(int *array_of_gsizes, int dim, int ndims, int nprocs
 	    NMPI_Type_contiguous(mysize, type_old, type_new);
 	else {
 	    for (i=0; i<dim; i++) stride *= (MPI_Aint)(array_of_gsizes[i]);
-
-    stride = ((MPI_Aint) nprocs) * ((MPI_Aint) blksize) * orig_extent;
+	    NMPI_Type_hvector(mysize, 1, stride, type_old, type_new);
 	}
     }
     else {
@@ -200,8 +199,7 @@ static int MPIOI_Type_block(int *array_of_gsizes, int dim, int ndims, int nprocs
 	    NMPI_Type_contiguous(mysize, type_old, type_new);
 	else {
 	    for (i=ndims-1; i>dim; i--) stride *= (MPI_Aint)(array_of_gsizes[i]);
-
-    stride = ((MPI_Aint) nprocs) * ((MPI_Aint) blksize) * orig_extent;
+	    NMPI_Type_hvector(mysize, 1, stride, type_old, type_new);
 	}
     }
 
