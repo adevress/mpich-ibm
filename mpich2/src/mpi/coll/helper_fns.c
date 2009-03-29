@@ -231,7 +231,7 @@ int MPIR_Localcopy(void *sendbuf, int sendcount, MPI_Datatype sendtype,
     else if (sendtype_iscontig)
     {
         MPID_Segment seg;
-	MPIDI_msg_sz_t last;
+	MPI_Aint last;
 
 	MPID_Segment_init(recvbuf, recvcount, recvtype, &seg, 0);
 	last = copy_sz;
@@ -241,7 +241,7 @@ int MPIR_Localcopy(void *sendbuf, int sendcount, MPI_Datatype sendtype,
     else if (recvtype_iscontig)
     {
         MPID_Segment seg;
-	MPIDI_msg_sz_t last;
+	MPI_Aint last;
 
 	MPID_Segment_init(sendbuf, sendcount, sendtype, &seg, 0);
 	last = copy_sz;
