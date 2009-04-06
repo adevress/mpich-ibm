@@ -3341,6 +3341,7 @@ int MPID_VCR_Dup(MPID_VCR orig_vcr, MPID_VCR * new_vcr);
    to which it is connected.  These are local process ids because different
    processes may use different ids to identify the same target process
   @*/
+/* We macro-ized this at the device. */
 int MPID_VCR_Get_lpid(MPID_VCR vcr, int * lpid_ptr);
 
 /* ------------------------------------------------------------------------- */

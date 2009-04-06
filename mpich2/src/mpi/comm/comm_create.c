@@ -161,29 +161,50 @@ int MPI_Comm_create(MPI_Comm comm, MPI_Group group, MPI_Comm *newcomm)
 	    vcr      = comm_ptr->vcr;
 	    vcr_size = comm_ptr->remote_size;
 	}
-	
-	for (i=0; i<n; i++) {
-	    /* Mapping[i] is the rank in the communicator of the process that
-	       is the ith element of the group */
-	    /* We use the appropriate vcr, depending on whether this is
-	       an intercomm (use the local vcr) or an intracomm (remote vcr) 
-	       Note that this is really the local mapping for intercomm
-	       and remote mapping for the intracomm */
-	    /* FIXME : BUBBLE SORT */
-	    /* FIXME : NEEDS COMM_WORLD SPECIALIZATION */
-	    mapping[i] = -1;
-	    for (j=0; j<vcr_size; j++) {
-		int comm_lpid;
-		MPID_VCR_Get_lpid( vcr[j], &comm_lpid );
-		if (comm_lpid == group_ptr->lrank_to_lpid[i].lpid) {
-		    mapping[i] = j;
-		    break;
-		}
-	    }
-	    MPIU_ERR_CHKANDJUMP1(mapping[i] == -1,mpi_errno,
-				 MPI_ERR_GROUP,
-				 "**groupnotincomm", "**groupnotincomm %d", i );
-	}
+#ifdef MPIDI_CH3_HAS_NO_DYNAMIC_PROCESS
+   if(comm_ptr->comm_kind != MPID_INTERCOMM)
+   {
+      MPID_Comm *world_ptr;
+      MPID_Comm_get_ptr(MPI_COMM_WORLD, world_ptr);
+      j = 0;
+      for(i=0;i<world_ptr->remote_size;i++)
+      {
+         int comm_lpid;
+         MPID_VCR_Get_lpid(world_ptr->vcr[i], &comm_lpid);
+         if(comm_lpid == group_ptr->lrank_to_lpid[j].lpid)
+         {
+            mapping[j] = comm_lpid;
+            j++;
+         }
+      }
+   }
+   else
+#endif
+   {
+
+      for (i=0; i<n; i++) {
+          /* Mapping[i] is the rank in the communicator of the process that
+             is the ith element of the group */
+          /* We use the appropriate vcr, depending on whether this is
+             an intercomm (use the local vcr) or an intracomm (remote vcr) 
+             Note that this is really the local mapping for intercomm
+             and remote mapping for the intracomm */
+          /* FIXME : BUBBLE SORT */
+          /* FIXME : NEEDS COMM_WORLD SPECIALIZATION */
+          mapping[i] = -1;
+          for (j=0; j<vcr_size; j++) {
+         int comm_lpid;
+         MPID_VCR_Get_lpid( vcr[j], &comm_lpid );
+         if (comm_lpid == group_ptr->lrank_to_lpid[i].lpid) {
+             mapping[i] = j;
+             break;
+         }
+          }
+          MPIU_ERR_CHKANDJUMP1(mapping[i] == -1,mpi_errno,
+                MPI_ERR_GROUP,
+                "**groupnotincomm", "**groupnotincomm %d", i );
+      }
+   }
 	if (comm_ptr->comm_kind == MPID_INTRACOMM) {
 	    /* If this is an intra comm, we've really determined the
 	       remote mapping */
