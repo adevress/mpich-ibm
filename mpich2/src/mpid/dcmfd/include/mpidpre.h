@@ -78,9 +78,23 @@ typedef MPIDI_VCR           MPID_VCR;
   gpid[0] = 0;                                  \
   gpid[1] = comm_ptr->vcr[rank];                \
 }
+/*
+#define MPID_VCR_Get_lpid(_vcr, _lpid_ptr) \
+({ \
+   MPIDI_STATE_DECL(MPID_STATE_MPID_VCR_GET_LPID); \
+   MPIDI_FUNC_ENTER(MPID_STATE_MPID_VCR_GET_LPID); \
+   *(_lpid_ptr) = _vcr; \
+   MPIDI_FUNC_EXIT(MPID_STATE_MPID_VCR_GET_LPID); \
+   MPI_SUCCESS; \
+})
+*/
 
 /** \brief Our progress engine does not require state */
 #define MPID_PROGRESS_STATE_DECL
+
+/** \brief Our device does not support dynamic processes
+ * This is used to speed up comm_create time */
+#define MPIDI_CH3_HAS_NO_DYNAMIC_PROCESS
 
 /**
  * ******************************************************************
