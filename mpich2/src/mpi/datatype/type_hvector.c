@@ -121,7 +121,7 @@ int MPI_Type_hvector(int count,
 	mpi_errno = MPIR_Err_create_code(
 	    mpi_errno, MPIR_ERR_RECOVERABLE, FCNAME, __LINE__, MPI_ERR_OTHER, "**mpi_type_hvector",
 	    "**mpi_type_hvector %d %d %L %D %p", count, blocklen, 
-	    MPIR_MPI_AINT_CAST_TO_LONG_LONG stride, 
+	    MPI_MPI_AINT_CAST_TO_LONG_LONG stride, 
 	    old_type, newtype_p);
     }
 #   endif

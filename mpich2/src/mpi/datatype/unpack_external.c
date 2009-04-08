@@ -144,7 +144,7 @@ int MPI_Unpack_external(char *datarep,
 	mpi_errno = MPIR_Err_create_code(
 	    mpi_errno, MPIR_ERR_RECOVERABLE, FCNAME, __LINE__, MPI_ERR_OTHER, "**mpi_unpack_external",
 	    "**mpi_unpack_external %s %p %L %p %p %d %D", datarep, inbuf, 
-	    MPIR_MPI_AINT_CAST_TO_LONG_LONG insize, 
+	    MPI_MPI_AINT_CAST_TO_LONG_LONG insize, 
 	    position, outbuf, outcount, datatype);
     }
 #   endif

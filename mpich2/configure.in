@@ -5486,24 +5486,6 @@ MPIR_PUINT="unsigned $MPI_AINT"
 AC_SUBST(MPIR_PINT)
 AC_SUBST(MPIR_PUINT)
 
-# Set:
-#   - MPI_AINT cast to a void*
-MPI_AINT_CAST_TO_VOID_PTR="(void*)(MPIR_Pint)"
-#   - void* cast to an MPI_AINT
-MPI_VOID_PTR_CAST_TO_MPI_AINT="(MPI_Aint)(MPIR_Puint)"
-#   - void* containing a signed displacement cast to an MPI_AINT
-MPIR_PTR_DISP_CAST_TO_MPI_AINT="(MPI_Aint)(MPIR_Pint)"
-#   - MPI_AINT cast to a long long for printing
-MPIR_MPI_AINT_CAST_TO_LONG_LONG="(long long)"
-export MPI_AINT_CAST_TO_VOID_PTR
-export MPI_VOID_PTR_CAST_TO_MPI_AINT
-export MPIR_PTR_DISP_CAST_TO_MPI_AINT
-export MPIR_MPI_AINT_CAST_TO_LONG_LONG
-AC_SUBST(MPI_AINT_CAST_TO_VOID_PTR)
-AC_SUBST(MPI_VOID_PTR_CAST_TO_MPI_AINT)
-AC_SUBST(MPIR_PTR_DISP_CAST_TO_MPI_AINT)
-AC_SUBST(MPIR_MPI_AINT_CAST_TO_LONG_LONG)
-
 if test "$with_aint_size" == "0" ; then
     # use default size
     AC_MSG_RESULT([Default MPI_Aint $with_aint_size $MPI_SIZEOF_AINT])
@@ -5524,19 +5506,16 @@ if test "$with_aint_size" == "8" ; then
 
     export MPI_SIZEOF_AINT
     export MPI_AINT_FMT_DEC_SPEC MPI_AINT_FMT_HEX_SPEC
-    AC_SUBST(MPI_AINT)
-    AC_SUBST(MPI_AINT_FMT_DEC_SPEC)
-    AC_SUBST(MPI_AINT_FMT_HEX_SPEC)
 else
     # use calculated MPI_Aint values
     AC_MSG_RESULT([Use configured MPI_Aint $with_aint_size])
 
     export MPI_SIZEOF_AINT
     export MPI_AINT_FMT_DEC_SPEC MPI_AINT_FMT_HEX_SPEC
-    AC_SUBST(MPI_AINT)
-    AC_SUBST(MPI_AINT_FMT_DEC_SPEC)
-    AC_SUBST(MPI_AINT_FMT_HEX_SPEC)
 fi
+AC_SUBST(MPI_AINT)
+AC_SUBST(MPI_AINT_FMT_DEC_SPEC)
+AC_SUBST(MPI_AINT_FMT_HEX_SPEC)
 
 # If sizeof(mpi_aint) = sizeof(int), set this value
 if test "$ac_cv_sizeof_int" = "$aint_size" ; then
@@ -5565,7 +5544,7 @@ AC_DEFINE_UNQUOTED(MPIR_Upint,unsigned $MPIR_PINT,[MPIR_PUINT is an unsigned poi
 # FIXME: this should really be in a util configure file, but we don't
 # have one at the moment
 #
-MPIU_SIZE_T="unsigned $MPI_AINT"
+MPIU_SIZE_T="size_t"
 AC_DEFINE_UNQUOTED(MPIU_SIZE_T,$MPIU_SIZE_T,[Set to a type that can express the size of the entire address space]) 
 
 #
@@ -6484,7 +6463,6 @@ AC_OUTPUT(Makefile src/Makefile src/include/Makefile \
 	  src/util/procmap/Makefile \
 	  src/util/other/Makefile \
           src/include/mpi.h \
-          src/include/mpirdefs.h \
 	  test/Makefile test/util/Makefile \
 	  test/basic/Makefile \
 	  test/commands/Makefile \

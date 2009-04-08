@@ -111,6 +111,7 @@ typedef MPIU_SIZE_T MPIU_Size_t;
 #define MPI_AINT_CAST_TO_VOID_PTR (void *)(MPIR_Pint)
 #define MPI_VOID_PTR_CAST_TO_MPI_AINT (MPI_Aint)(MPIR_Upint)
 #define MPI_PTR_DISP_CAST_TO_MPI_AINT (MPI_Aint)(MPIR_Pint)
+#define MPI_MPI_AINT_CAST_TO_LONG_LONG (long long)
 
 /* ------------------------------------------------------------------------- */
 /* end of mpitypedefs.h */

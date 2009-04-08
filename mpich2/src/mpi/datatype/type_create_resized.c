@@ -121,8 +121,8 @@ int MPI_Type_create_resized(MPI_Datatype oldtype,
 	mpi_errno = MPIR_Err_create_code(
 	    mpi_errno, MPIR_ERR_RECOVERABLE, FCNAME, __LINE__, MPI_ERR_OTHER, "**mpi_type_create_resized",
 	    "**mpi_type_create_resized %D %L %L %p", oldtype, 
-	    MPIR_MPI_AINT_CAST_TO_LONG_LONG lb, 
-	    MPIR_MPI_AINT_CAST_TO_LONG_LONG extent, 
+	    MPI_MPI_AINT_CAST_TO_LONG_LONG lb, 
+	    MPI_MPI_AINT_CAST_TO_LONG_LONG extent, 
 	    newtype);
     }
 #   endif
