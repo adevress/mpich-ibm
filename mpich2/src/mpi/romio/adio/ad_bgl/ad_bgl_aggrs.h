@@ -31,14 +31,6 @@
   #define PVFS2_SUPER_MAGIC (0x20030528)
 #endif
 
-#if !defined(GPFS_SUPER_MAGIC)
-  #define GPFS_SUPER_MAGIC (0x47504653)
-#endif
-
-#if !defined(PVFS2_SUPER_MAGIC)
-  #define PVFS2_SUPER_MAGIC (0x20030528)
-#endif
-
     /* File system (BGL) specific information - 
          hung off of ADIOI_FileD file descriptor (fd->fs_ptr) at open */
     typedef struct ADIOI_BGL_fs_s {
