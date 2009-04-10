@@ -8,6 +8,7 @@
 
 /* -*- Mode: C; c-basic-offset:4 ; -*- */
 /* 
+ *
  *   Copyright (C) 1997 University of Chicago. 
  *   See COPYRIGHT notice in top-level directory.
  */
@@ -25,7 +26,9 @@
 #ifdef USE_DBG_LOGGING
   #define RDCOLL_DEBUG 1
 #endif
-
+#ifdef AGGREGATION_PROFILE
+#include "mpe.h"
+#endif
 
 /* prototypes of functions used for collective reads only. */
 static void ADIOI_Read_and_exch(ADIO_File fd, void *buf, MPI_Datatype
@@ -104,7 +107,7 @@ void ADIOI_BGL_ReadStridedColl(ADIO_File fd, void *buf, int count,
        whose request lies in this process's file domain. */
 
     int i, filetype_is_contig, nprocs, nprocs_for_coll, myrank;
-    int contig_access_count, interleave_count = 0, buftype_is_contig;
+    int contig_access_count=0, interleave_count = 0, buftype_is_contig;
     int *count_my_req_per_proc, count_my_req_procs, count_others_req_procs;
     ADIO_Offset start_offset, end_offset, orig_fp, fd_size, min_st_offset, off;
     ADIO_Offset *offset_list = NULL, *st_offsets = NULL, *fd_start = NULL,
@@ -113,17 +116,6 @@ void ADIOI_BGL_ReadStridedColl(ADIO_File fd, void *buf, int count,
     int  ii;
     ADIO_Offset *len_list = NULL;
     int *buf_idx = NULL;
-/*
-    double io_time = 0., all_time, max_all_time; 
-    double tstep1, max_tstep1;
-    double tstep1_1, max_tstep1_1;
-    double tstep1_2, max_tstep1_2;
-    double tstep1_3, max_tstep1_3;
-    double tstep2, max_tstep2;
-    double tstep3, max_tstep3;
-    double tstep4, max_tstep4;
-    double sum_sz;
-*/
 #if BGL_PROFILE 
     BGLMPIO_T_CIO_RESET( 0, r )
 #endif
@@ -131,6 +123,12 @@ void ADIOI_BGL_ReadStridedColl(ADIO_File fd, void *buf, int count,
 #ifdef HAVE_STATUS_SET_BYTES
     int bufsize, size;
 #endif
+
+    if (fd->hints->cb_pfr != ADIOI_HINT_DISABLE) {
+        ADIOI_IOStridedColl (fd, buf, count, ADIOI_READ, datatype, 
+			file_ptr_type, offset, status, error_code);
+        return;
+    }
 
 #ifdef PROFILE
         MPE_Log_event(13, 0, "start computation");
@@ -165,14 +163,14 @@ void ADIOI_BGL_ReadStridedColl(ADIO_File fd, void *buf, int count,
 
 #ifdef RDCOLL_DEBUG
     for (i=0; i<contig_access_count; i++) {
-	      DBG_FPRINTF(stderr, "rank %d  off %lld  len %lld\n", myrank, offset_list[i], 
-	      len_list[i]);
+	      DBG_FPRINTF(stderr, "rank %d  off %lld  len %lld\n", 
+			      myrank, offset_list[i], len_list[i]);
     }
 #endif
 
 	/* each process communicates its start and end offsets to other 
-	   processes. The result is an array each of start and end offsets stored
-	   in order of process rank. */ 
+	   processes. The result is an array each of start and end offsets
+	   stored in order of process rank. */ 
     
 	st_offsets   = (ADIO_Offset *) ADIOI_Malloc(nprocs*sizeof(ADIO_Offset));
 	end_offsets  = (ADIO_Offset *) ADIOI_Malloc(nprocs*sizeof(ADIO_Offset));
@@ -208,7 +206,9 @@ void ADIOI_BGL_ReadStridedColl(ADIO_File fd, void *buf, int count,
 
 	/* are the accesses of different processes interleaved? */
 	for (i=1; i<nprocs; i++)
-	    if (st_offsets[i] < end_offsets[i-1]) interleave_count++;
+	    if ((st_offsets[i] < end_offsets[i-1]) && 
+                (st_offsets[i] <= end_offsets[i]))
+                interleave_count++;
 	/* This is a rudimentary check for interleaving, but should suffice
 	   for the moment. */
     }
@@ -760,6 +760,10 @@ static void ADIOI_R_Exchange_data(ADIO_File fd, void *buf, ADIOI_Flatlist_node
 /* post recvs. if buftype_is_contig, data can be directly recd. into
    user buf at location given by buf_idx. else use recv_buf. */
 
+#ifdef AGGREGATION_PROFILE
+    MPE_Log_event (5032, 0, NULL);
+#endif
+
     if (buftype_is_contig) {
 	j = 0;
 	for (i=0; i < nprocs; i++) 
@@ -849,21 +853,10 @@ static void ADIOI_R_Exchange_data(ADIO_File fd, void *buf, ADIOI_Flatlist_node
 	    if (recv_size[i]) ADIOI_Free(recv_buf[i]);
 	ADIOI_Free(recv_buf);
     }
+#ifdef AGGREGATION_PROFILE
+    MPE_Log_event (5033, 0, NULL);
+#endif
 }
-
-static void ADIOI_Fill_user_buffer(ADIO_File fd, void *buf, ADIOI_Flatlist_node
-				   *flat_buf, char **recv_buf, ADIO_Offset 
-				   *offset_list, ADIO_Offset *len_list, 
-				   unsigned *recv_size, 
-				   MPI_Request *requests, MPI_Status *statuses,
-				   int *recd_from_proc, int nprocs,
-				   int contig_access_count, 
-				   ADIO_Offset min_st_offset, 
-				   ADIO_Offset fd_size, ADIO_Offset *fd_start, 
-				   ADIO_Offset *fd_end,
-				   MPI_Aint buftype_extent)
-{
-/* this function is only called if buftype is not contig */
 
 #define ADIOI_BUF_INCR \
 { \
@@ -913,7 +906,20 @@ static void ADIOI_Fill_user_buffer(ADIO_File fd, void *buf, ADIOI_Flatlist_node
     ADIOI_BUF_INCR \
 }
 
+static void ADIOI_Fill_user_buffer(ADIO_File fd, void *buf, ADIOI_Flatlist_node
+				   *flat_buf, char **recv_buf, ADIO_Offset 
+				   *offset_list, ADIO_Offset *len_list, 
+				   unsigned *recv_size, 
+				   MPI_Request *requests, MPI_Status *statuses,
+				   int *recd_from_proc, int nprocs,
+				   int contig_access_count, 
+				   ADIO_Offset min_st_offset, 
+				   ADIO_Offset fd_size, ADIO_Offset *fd_start, 
+				   ADIO_Offset *fd_end,
+				   MPI_Aint buftype_extent)
+{
 
+/* this function is only called if buftype is not contig */
 
     int i, p, flat_buf_idx;
     ADIO_Offset flat_buf_sz, size_in_buf, buf_incr, size;
@@ -921,6 +927,9 @@ static void ADIOI_Fill_user_buffer(ADIO_File fd, void *buf, ADIOI_Flatlist_node
     ADIO_Offset off, len, rem_len, user_buf_idx;
     /* Not sure unsigned is necessary, but it makes the math safer */
     unsigned *curr_from_proc, *done_from_proc, *recv_buf_idx;
+
+    ADIOI_UNREFERENCED_ARG(requests);
+    ADIOI_UNREFERENCED_ARG(statuses);
 
 /*  curr_from_proc[p] = amount of data recd from proc. p that has already
                         been accounted for so far
