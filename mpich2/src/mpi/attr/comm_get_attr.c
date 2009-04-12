@@ -264,7 +264,7 @@ int MPIR_CommGetAttr( MPI_Comm comm, int comm_keyval, void *attribute_val,
 	    if (outAttrType == MPIR_ATTR_AINT)
 		*(MPI_Aint*)attr_val_p = *(MPI_Aint*)*(void **)attr_val_p;
 	    else if (outAttrType == MPIR_ATTR_INT)
-		*(MPI_Aint*)attr_val_p = *(int *)*(void **)attr_val_p;
+		*(MPIR_Pint*)attr_val_p = *(int *)*(void **)attr_val_p;
 	}
     }
     else {
