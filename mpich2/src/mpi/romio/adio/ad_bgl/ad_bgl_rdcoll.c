@@ -124,11 +124,11 @@ void ADIOI_BGL_ReadStridedColl(ADIO_File fd, void *buf, int count,
     int bufsize, size;
 #endif
 
-    if (fd->hints->cb_pfr != ADIOI_HINT_DISABLE) {
+/*  if (fd->hints->cb_pfr != ADIOI_HINT_DISABLE) {
         ADIOI_IOStridedColl (fd, buf, count, ADIOI_READ, datatype, 
 			file_ptr_type, offset, status, error_code);
         return;
-    }
+    } */
 
 #ifdef PROFILE
         MPE_Log_event(13, 0, "start computation");

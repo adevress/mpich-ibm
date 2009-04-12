@@ -130,11 +130,11 @@ void ADIOI_BGL_WriteStridedColl(ADIO_File fd, void *buf, int count,
 	MPE_Log_event(13, 0, "start computation");
 #endif
 
-    if (fd->hints->cb_pfr != ADIOI_HINT_DISABLE) { 
+/*    if (fd->hints->cb_pfr != ADIOI_HINT_DISABLE) { 
 	ADIOI_IOStridedColl (fd, buf, count, ADIOI_WRITE, datatype, 
 			file_ptr_type, offset, status, error_code);
 	return;
-    }
+    }*/
     MPI_Comm_size(fd->comm, &nprocs);
     MPI_Comm_rank(fd->comm, &myrank);
 
