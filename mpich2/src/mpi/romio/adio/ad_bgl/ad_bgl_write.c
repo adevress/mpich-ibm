@@ -17,6 +17,10 @@
 
 #include "ad_bgl_tuning.h"
 
+#ifdef AGGREGATION_PROFILE
+#include "mpe.h"
+#endif
+
 void ADIOI_BGL_WriteContig(ADIO_File fd, void *buf, int count, 
                      MPI_Datatype datatype, int file_ptr_type,
 		     ADIO_Offset offset, ADIO_Status *status, int *error_code)
@@ -24,7 +28,9 @@ void ADIOI_BGL_WriteContig(ADIO_File fd, void *buf, int count,
     int err=-1, datatype_size;
     ADIO_Offset len;
     static char myname[] = "ADIOI_BGL_WRITECONTIG";
-
+#ifdef AGGREGATION_PROFILE
+    MPE_Log_event (5036, 0, NULL);
+#endif
 #if BGL_PROFILE
 		/* timing */
 		double io_time, io_time2;
@@ -112,6 +118,9 @@ void ADIOI_BGL_WriteContig(ADIO_File fd, void *buf, int count,
 #endif
 
     *error_code = MPI_SUCCESS;
+#ifdef AGGREGATION_PROFILE
+    MPE_Log_event (5037, 0, NULL);
+#endif
 }
 
 
@@ -217,7 +226,6 @@ void ADIOI_BGL_WriteStrided(ADIO_File fd, void *buf, int count,
     ADIO_Offset userbuf_off;
     ADIO_Offset off, req_off, disp, end_offset=0, writebuf_off, start_off;
     char *writebuf, *value;
-    int flag;
     unsigned bufsize, writebuf_len, max_bufsize, write_sz;
     int err_flag=0, info_flag;
     ADIO_Offset new_bwr_size, new_fwr_size, st_fwr_size, fwr_size=0, bwr_size, req_len;

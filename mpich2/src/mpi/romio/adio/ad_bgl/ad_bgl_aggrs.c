@@ -477,6 +477,18 @@ void ADIOI_BGL_GPFS_Calc_file_domains(ADIO_Offset *st_offsets,
     ADIO_Offset fd_gpfs_range = gpfs_ub - gpfs_lb + 1;
 
     int         naggs    = nprocs_for_coll;
+
+    /* Tweak the file domains so that no fd is smaller than a threshold.  We
+     * have to strike a balance between efficency and parallelism: somewhere
+     * between 10k processes sending 32-byte requests and one process sending a
+     * 320k request is a (system-dependent) sweet spot 
+     
+    This is from the common code - the new min_fd_size parm that we didn't implement. 
+    (And common code uses a different declaration of fd_size so beware) 
+     
+    if (fd_size < min_fd_size)
+        fd_size = min_fd_size;
+    */
     fd_size              = (ADIO_Offset *) ADIOI_Malloc(nprocs_for_coll * sizeof(ADIO_Offset));
     *fd_start_ptr        = (ADIO_Offset *) ADIOI_Malloc(nprocs_for_coll * sizeof(ADIO_Offset));
     *fd_end_ptr          = (ADIO_Offset *) ADIOI_Malloc(nprocs_for_coll * sizeof(ADIO_Offset));
