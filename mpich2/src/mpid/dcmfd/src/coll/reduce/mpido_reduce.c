@@ -144,7 +144,8 @@ int MPIDO_Reduce(void * sendbuf,
         func = MPIDO_Reduce_rectring;
         comm->dcmf.last_algorithm = MPIDO_USE_RECTRING_REDUCE;
       }
-      if (!func && MPIDO_INFO_ISSET(properties, MPIDO_USE_ALLREDUCE_REDUCE))
+      if (!func && MPIDO_INFO_ISSET(properties, MPIDO_USE_ALLREDUCE_REDUCE)
+          && data_size > 65536)
       {
         comm->dcmf.last_algorithm = MPIDO_USE_ALLREDUCE_REDUCE;
         use_allreduce = 1;
