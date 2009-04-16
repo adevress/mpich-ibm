@@ -257,7 +257,8 @@ int MPID_Win_free(MPID_Win **win_ptr)
         MPIU_THREADPRIV_GET;
         MPIR_Nest_incr();
 
-        MPID_assert(win->_dev.epoch_type == MPID_EPOTYPE_NONE);
+        MPID_assert(win->_dev.epoch_type == MPID_EPOTYPE_NONE ||
+        		win->_dev.epoch_type == MPID_EPOTYPE_REFENCE);
 
         mpi_errno = NMPI_Barrier(win->_dev.comm_ptr->handle);
         if (mpi_errno) { MPIU_ERR_POP(mpi_errno); }

@@ -1759,6 +1759,27 @@ DCMF_Request_t *recv_cb(void *cd, const DCQuad *_mi, unsigned ct,
  * End of remote callbacks.
  */
 
+/**
+ * \brief Reset all counters and indicators related to active RMA epochs
+ *
+ * Assumes all synchronization and wait-for-completion have been done.
+ * Sets epoch type to "NONE".
+ *
+ * \param[in] win	Window whose epoch is finished
+ */
+void epoch_clear(MPID_Win *win) {
+	int x;
+	int size = MPIDU_comm_size(win);
+	win->_dev.epoch_type = MPID_EPOTYPE_NONE;
+	win->_dev.epoch_rma_ok = 0;
+	win->_dev.my_rma_recvs = 0;
+	win->_dev.my_sync_done = 0;
+	win->_dev.my_sync_begin = 0;
+	for (x = 0; x < size; ++x) {
+		win->_dev.coll_info[x].rma_sends = 0;
+	}
+}
+
 #ifdef NOT_USED
 /**
  * \brief Send local datatype to target node

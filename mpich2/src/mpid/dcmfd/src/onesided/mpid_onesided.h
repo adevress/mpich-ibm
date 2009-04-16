@@ -1316,6 +1316,16 @@ void mpidu_free_lock(MPID_Win *win);
 void lock_cb(const MPIDU_Onesided_ctl_t *info, int lpid);
 
 /**
+ * \brief Reset all counters and indicators related to active RMA epochs
+ *
+ * Assumes all synchronization and wait-for-completion have been done.
+ * Sets epoch type to "NONE". 
+ *
+ * \param[in] win       Window whose epoch is finished
+ */
+void epoch_clear(MPID_Win *win);
+
+/**
  * \brief Epoch End callback.
  *
  * Called whenever epoch_type is set to MPID_EPOTYPE_NONE, i.e. an

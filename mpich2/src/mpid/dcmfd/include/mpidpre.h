@@ -362,6 +362,7 @@ struct MPID_Dev_win_decl {
 #define MPID_EPOTYPE_POST       3       /**< MPI_Win_post exposure epoch */
 #define MPID_EPOTYPE_POSTSTART  4       /**< MPI_Win_post+MPI_Win_start access/exposure epoch */
 #define MPID_EPOTYPE_FENCE      5       /**< MPI_Win_fence access/exposure epoch */
+#define MPID_EPOTYPE_REFENCE    6       /**< MPI_Win_fence possible access/exposure epoch */
 /**@}*/
 
 /**

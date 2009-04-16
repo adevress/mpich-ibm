@@ -279,6 +279,9 @@ int MPID_Accumulate(void *origin_addr, int origin_count,
         MPIU_THREADPRIV_GET;
         MPIR_Nest_incr();
 
+        if (win_ptr->_dev.epoch_type == MPID_EPOTYPE_REFENCE) {
+		win_ptr->_dev.epoch_type = MPID_EPOTYPE_FENCE;
+	}
         if (win_ptr->_dev.epoch_type == MPID_EPOTYPE_NONE ||
                         win_ptr->_dev.epoch_type == MPID_EPOTYPE_POST ||
                         !MPIDU_VALID_RMA_TARGET(win_ptr, target_rank)) {
