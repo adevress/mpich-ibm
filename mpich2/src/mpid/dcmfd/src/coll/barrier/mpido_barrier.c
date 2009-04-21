@@ -23,29 +23,23 @@ int MPIDO_Barrier(MPID_Comm * comm)
   int rc;
   MPIDO_Embedded_Info_Set * properties = &(comm->dcmf.properties);
   
-  if(MPIDO_INFO_ISSET(properties, MPIDO_USE_MPICH_BARRIER))
+  if (!MPIDO_INFO_ISSET(properties, MPIDO_USE_MPICH_BARRIER))
   {
-    comm->dcmf.last_algorithm = MPIDO_USE_MPICH_BARRIER;
-    return MPIR_Barrier(comm);
-  }
-  if (MPIDO_INFO_ISSET(properties, MPIDO_USE_GI_BARRIER))
-  {
-    comm->dcmf.last_algorithm = MPIDO_USE_GI_BARRIER;
-    rc = MPIDO_Barrier_gi(comm);
-  }
-  //else if (MPIDO_INFO_ISSET(properties, MPIDO_USE_RECT_BARRIER))
-  //  rc = MPIDO_Barrier_rect(comm);
-  else
-  {
-    //    comm->dcmf.last_algorithm = MPIDO_USE_DCMF_BARRIER;
     rc = MPIDO_Barrier_dcmf(comm);
+    if (rc == DCMF_SUCCESS)
+    {
+      if (MPIDO_INFO_ISSET(properties, MPIDO_USE_GI_BARRIER))
+        comm->dcmf.last_algorithm = MPIDO_USE_GI_BARRIER;
+      else if (MPIDO_INFO_ISSET(properties, MPIDO_USE_RECT_BARRIER))
+        comm->dcmf.last_algorithm = MPIDO_USE_RECT_BARRIER;
+      else if (MPIDO_INFO_ISSET(properties, MPIDO_USE_BINOM_BARRIER))
+        comm->dcmf.last_algorithm = MPIDO_USE_BINOM_BARRIER;
+      return rc;
+    }
   }
-  if (rc != DCMF_SUCCESS)
-  {
-    comm->dcmf.last_algorithm = MPIDO_USE_MPICH_BARRIER;
-    rc = MPIR_Barrier(comm);
-  }
-  return rc;
+
+  comm->dcmf.last_algorithm = MPIDO_USE_MPICH_BARRIER;
+  return (rc = MPIR_Barrier(comm));
 }
 
 #else /* !USE_CCMI_COLL */
