@@ -129,7 +129,7 @@ void MPIDI_Coll_register(void)
   DCMF_Reduce_Configuration_t    reduce_config;
   //  DCMF_GlobalBarrier_Configuration_t gbarrier_config;
   DCMF_GlobalBcast_Configuration_t gbcast_config;
-  DCMF_GlobalAllreduce_Configuration_t gallreduce_config;
+  //  DCMF_GlobalAllreduce_Configuration_t gallreduce_config;
 
   DCMF_Result rc;
 
@@ -196,6 +196,7 @@ void MPIDI_Coll_register(void)
     }   
   }
 
+#if 0
   /* ---------------------------------- */
   /* Register global allreduce          */
   /* ---------------------------------- */
@@ -220,8 +221,8 @@ void MPIDI_Coll_register(void)
       MPIDO_INFO_UNSET(properties, MPIDO_USE_TREE_REDUCE);
     }
   }
-      
-
+#endif
+  
   /* register first barrier protocols now */
   barrier_config.cb_geometry = getGeometryRequest;
 
@@ -417,24 +418,22 @@ void MPIDI_Coll_register(void)
   /* --------------------------------------------- */
   /* Register allreduce protocols needed/requested */
   /* --------------------------------------------- */
-  if(MPIDO_INFO_ISSET(properties, MPIDO_USE_TREE_ALLREDUCE) ||
-     MPIDO_INFO_ISSET(properties, MPIDO_USE_CCMI_TREE_ALLREDUCE))
-   {
-      if(ALLREDUCE_REGISTER(DCMF_TREE_ALLREDUCE_PROTOCOL,
-               &MPIDI_CollectiveProtocols.tree_allreduce,
-               &allreduce_config) != DCMF_SUCCESS)
-      {
+  if(MPIDO_INFO_ISSET(properties, MPIDO_USE_TREE_ALLREDUCE))
 
+   {
+     if(ALLREDUCE_REGISTER(DCMF_TREE_ALLREDUCE_PROTOCOL,
+                           &MPIDI_CollectiveProtocols.tree_allreduce,
+                           &allreduce_config) != DCMF_SUCCESS)
+      {
         MPIDO_INFO_UNSET(properties, MPIDO_USE_TREE_ALLREDUCE);
-         MPIDO_INFO_UNSET(properties, MPIDO_USE_CCMI_TREE_ALLREDUCE);
       }
    }
    if(MPIDO_INFO_ISSET(properties, MPIDO_USE_SHORT_ASYNC_RECT_ALLREDUCE))
    {
-      if(ALLREDUCE_REGISTER(DCMF_TORUS_ASYNC_SHORT_RECTANGLE_ALLREDUCE_PROTOCOL,
-                            &MPIDI_CollectiveProtocols.short_async_rect_allreduce,
-                            &allreduce_config) != DCMF_SUCCESS)
-            MPIDO_INFO_UNSET(properties, MPIDO_USE_SHORT_ASYNC_RECT_ALLREDUCE);
+     if(ALLREDUCE_REGISTER(DCMF_TORUS_ASYNC_SHORT_RECTANGLE_ALLREDUCE_PROTOCOL,
+                           &MPIDI_CollectiveProtocols.short_async_rect_allreduce,
+                           &allreduce_config) != DCMF_SUCCESS)
+       MPIDO_INFO_UNSET(properties, MPIDO_USE_SHORT_ASYNC_RECT_ALLREDUCE);
    }
 
    if(MPIDO_INFO_ISSET(properties, MPIDO_USE_SHORT_ASYNC_BINOM_ALLREDUCE))
@@ -457,14 +456,18 @@ void MPIDI_Coll_register(void)
   {
     if((ALLREDUCE_REGISTER(DCMF_TREE_PIPELINED_ALLREDUCE_PROTOCOL,
                            &MPIDI_CollectiveProtocols.pipelinedtree_allreduce,
-                           &allreduce_config) != DCMF_SUCCESS) ||
-       (ALLREDUCE_REGISTER(DCMF_TREE_DPUT_PIPELINED_ALLREDUCE_PROTOCOL,
-                           &MPIDI_CollectiveProtocols.pipelinedtree_dput_allreduce,
-                           &allreduce_config) != DCMF_SUCCESS) )
+                           &allreduce_config) != DCMF_SUCCESS))
       MPIDO_INFO_UNSET(properties, MPIDO_USE_PIPELINED_TREE_ALLREDUCE);
   }
 
-
+  if(MPIDO_INFO_ISSET(properties, MPIDO_USE_TREE_DPUT_ALLREDUCE))
+  {
+    if(ALLREDUCE_REGISTER(DCMF_TREE_DPUT_PIPELINED_ALLREDUCE_PROTOCOL,
+                          &MPIDI_CollectiveProtocols.pipelinedtree_dput_allreduce,
+                          &allreduce_config) != DCMF_SUCCESS)
+      MPIDO_INFO_UNSET(properties, MPIDO_USE_TREE_DPUT_ALLREDUCE);
+  }
+  
   if(ALLREDUCE_REGISTER(DCMF_TORUS_RECTANGLE_ALLREDUCE_PROTOCOL,
                         &MPIDI_CollectiveProtocols.rectangle_allreduce,
                         &allreduce_config) != DCMF_SUCCESS)
@@ -884,7 +887,7 @@ void MPIDI_Comm_setup_properties(MPID_Comm * comm, int initial_setup)
    {
      MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_TREE_BCAST);
      MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_TREE_ALLREDUCE);
-     MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_CCMI_TREE_ALLREDUCE);
+     MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_TREE_DPUT_ALLREDUCE);
      MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_PIPELINED_TREE_ALLREDUCE);
      MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_TREE_REDUCE);
      MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_CCMI_TREE_REDUCE);

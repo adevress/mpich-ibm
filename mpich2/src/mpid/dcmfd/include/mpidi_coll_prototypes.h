@@ -31,6 +31,8 @@ int MPIDO_Allreduce_pipelined_tree(void *, void *, int, DCMF_Dt, DCMF_Op,
 				   MPI_Datatype, MPID_Comm *);
 int MPIDO_Allreduce_tree(void *, void *, int, DCMF_Dt, DCMF_Op,
 			 MPI_Datatype, MPID_Comm *);
+int MPIDO_Allreduce_tree_dput(void *, void *, int, DCMF_Dt, DCMF_Op,
+                              MPI_Datatype, MPID_Comm *);
 int MPIDO_Allreduce_binom(void *, void *, int, DCMF_Dt, DCMF_Op,
 			  MPI_Datatype, MPID_Comm *);
 int MPIDO_Allreduce_rect(void *, void *, int, DCMF_Dt, DCMF_Op,

@@ -72,15 +72,17 @@ MPIDO_Allreduce(void * sendbuf,
            op_type_support == MPIDO_TREE_MIN_SUPPORT) &&
           MPIDO_INFO_ISSET(properties, MPIDO_TREE_COMM))
       {
-        if (MPIDO_INFO_ISSET(properties, MPIDO_USE_TREE_ALLREDUCE))
-        {
-          func = MPIDO_Allreduce_global_tree;
-          comm->dcmf.last_algorithm = MPIDO_USE_TREE_ALLREDUCE;
-        }
-        else if (MPIDO_INFO_ISSET(properties, MPIDO_USE_CCMI_TREE_ALLREDUCE))
+        if ((mpid_hw.tSize == 1 || !buffer_aligned) &&
+            MPIDO_INFO_ISSET(properties, MPIDO_USE_TREE_ALLREDUCE))
         {
           func = MPIDO_Allreduce_tree;
-          comm->dcmf.last_algorithm = MPIDO_USE_CCMI_TREE_ALLREDUCE;
+          comm->dcmf.last_algorithm = MPIDO_USE_TREE_ALLREDUCE;
+        }
+        else if (MPIDO_INFO_ISSET(properties, MPIDO_USE_TREE_DPUT_ALLREDUCE)
+                 && buffer_aligned)
+        {
+          func = MPIDO_Allreduce_tree_dput;
+          comm->dcmf.last_algorithm = MPIDO_USE_TREE_DPUT_ALLREDUCE;
         }
         else if (MPIDO_INFO_ISSET(properties,
                                  MPIDO_USE_PIPELINED_TREE_ALLREDUCE))
@@ -154,13 +156,15 @@ MPIDO_Allreduce(void * sendbuf,
       {
         if (MPIDO_INFO_ISSET(properties, MPIDO_USE_TREE_ALLREDUCE))
         {
-          func = MPIDO_Allreduce_global_tree;
+          func = MPIDO_Allreduce_tree;
           comm->dcmf.last_algorithm = MPIDO_USE_TREE_ALLREDUCE;
         }
-        if (!func && MPIDO_INFO_ISSET(properties, MPIDO_USE_CCMI_TREE_ALLREDUCE))
+        if (!func &&
+            MPIDO_INFO_ISSET(properties, MPIDO_USE_TREE_DPUT_ALLREDUCE) &&
+            buffer_aligned)
         {
-          func = MPIDO_Allreduce_tree;
-          comm->dcmf.last_algorithm = MPIDO_USE_CCMI_TREE_ALLREDUCE;
+          func = MPIDO_Allreduce_tree_dput;//MPIDO_Allreduce_tree;
+          comm->dcmf.last_algorithm = MPIDO_USE_TREE_DPUT_ALLREDUCE;
         }
         if (!func &&
             MPIDO_INFO_ISSET(properties, MPIDO_USE_PIPELINED_TREE_ALLREDUCE))

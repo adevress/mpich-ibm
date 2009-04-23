@@ -108,7 +108,7 @@
 /* Allreduce protocols */
 /*---------------------------------------------------------------------------*/
 #define MPIDO_USE_TREE_ALLREDUCE                                           50
-#define MPIDO_USE_CCMI_TREE_ALLREDUCE                                      51
+#define MPIDO_USE_TREE_DPUT_ALLREDUCE                                      51
 #define MPIDO_USE_PIPELINED_TREE_ALLREDUCE                                 52
 #define MPIDO_USE_RECT_ALLREDUCE                                           53
 #define MPIDO_USE_RECTRING_ALLREDUCE                                       54
@@ -120,7 +120,7 @@
 #define MPIDO_USE_SHORT_ASYNC_BINOM_ALLREDUCE                              60
 #define MPIDO_USE_RRING_DPUT_SINGLETH_ALLREDUCE                            61
 #define MPIDO_USE_MPICH_ALLREDUCE                                          62
-#define MPIDO_ALLREDUCE_RESERVED1                                          63
+#define MPIDO_ALLREDUCE_RESERVED                                           63
 /* Controls whether or not we reuse storage in allreduce */
 #define MPIDO_USE_STORAGE_ALLREDUCE                                        64
 
