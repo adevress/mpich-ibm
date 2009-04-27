@@ -29,7 +29,7 @@ typedef int BOOL;
 #ifdef HAVE_WINDOWS_H
 #define POINTER_TO_INT(a)   ( ( int )( 0xffffffff & (__int64) ( a ) ) )
 #else
-#define POINTER_TO_INT(a)   ( ( int )( long )( a ) )
+#define POINTER_TO_INT(a)   ( ( int )( size_t )( a ) )
 #endif
 
 #define CREATE_DIFFERENCE_CURVES
