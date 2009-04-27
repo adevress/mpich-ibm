@@ -54,13 +54,17 @@ int MPID_Init(int * argc,
               int * has_args,
               int * has_env)
 {
-   int rank, size, i, rc;
-   MPID_Comm * comm;
-   DCMF_Result dcmf_rc;
+  int rank, size, i, rc;
+  MPID_Comm * comm;
+  DCMF_Result dcmf_rc;
 
-   MPID_Executable_name = "FORTRAN";
-   if (argc && *argv != NULL && *argv[0] != NULL)
-      MPID_Executable_name = *argv[0];
+#if MPIU_THREAD_GRANULARITY != MPIU_THREAD_GRANULARITY_GLOBAL
+  MPIU_THREAD_CS_ENTER(DCMF,);
+#endif
+
+  MPID_Executable_name = "FORTRAN";
+  if (argc && *argv != NULL && *argv[0] != NULL)
+    MPID_Executable_name = *argv[0];
 
   /* ------------------------- */
   /* initialize the statistics */
@@ -234,6 +238,9 @@ int MPID_Init(int * argc,
   *has_args = TRUE;
   *has_env  = TRUE;
 
+#if MPIU_THREAD_GRANULARITY != MPIU_THREAD_GRANULARITY_GLOBAL
+  MPIU_THREAD_CS_EXIT(DCMF,);
+#endif
 
   return MPI_SUCCESS;
 }
