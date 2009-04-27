@@ -58,8 +58,6 @@ int MPID_Init(int * argc,
    MPID_Comm * comm;
    DCMF_Result dcmf_rc;
 
-   DCMF_CriticalSection_enter(0);
-
    MPID_Executable_name = "FORTRAN";
    if (argc && *argv != NULL && *argv[0] != NULL)
       MPID_Executable_name = *argv[0];
@@ -236,7 +234,6 @@ int MPID_Init(int * argc,
   *has_args = TRUE;
   *has_env  = TRUE;
 
-  DCMF_CriticalSection_exit(0);
 
   return MPI_SUCCESS;
 }
