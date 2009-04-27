@@ -152,6 +152,8 @@ typedef struct
   
   /* Optimized reduce protocols and usage flags */
   DCMF_CollectiveProtocol_t tree_reduce;
+  DCMF_CollectiveProtocol_t tree_dput_reduce;
+  DCMF_CollectiveProtocol_t tree_pipelined_reduce;
   DCMF_CollectiveProtocol_t rectangle_reduce;
   DCMF_CollectiveProtocol_t rectanglering_reduce;
   DCMF_CollectiveProtocol_t binomial_reduce;

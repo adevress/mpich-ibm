@@ -72,24 +72,27 @@ MPIDO_Allreduce(void * sendbuf,
            op_type_support == MPIDO_TREE_MIN_SUPPORT) &&
           MPIDO_INFO_ISSET(properties, MPIDO_TREE_COMM))
       {
-        if ((mpid_hw.tSize == 1 || !buffer_aligned) &&
-            MPIDO_INFO_ISSET(properties, MPIDO_USE_TREE_ALLREDUCE))
+        if (mpid_hw.tSize > 1 &&
+            MPIDO_INFO_ISSET(properties, MPIDO_USE_TREE_DPUT_ALLREDUCE))
+        {
+          if (buffer_aligned)
+          {
+            func = MPIDO_Allreduce_tree_dput;
+            comm->dcmf.last_algorithm = MPIDO_USE_TREE_DPUT_ALLREDUCE;
+          }
+          else if (MPIDO_INFO_ISSET(properties,
+                                    MPIDO_USE_PIPELINED_TREE_ALLREDUCE))
+          {
+            func = MPIDO_Allreduce_pipelined_tree;
+            comm->dcmf.last_algorithm = MPIDO_USE_PIPELINED_TREE_ALLREDUCE;
+          }
+        }
+        if (!func && MPIDO_INFO_ISSET(properties, MPIDO_USE_TREE_ALLREDUCE))
         {
           func = MPIDO_Allreduce_tree;
           comm->dcmf.last_algorithm = MPIDO_USE_TREE_ALLREDUCE;
         }
-        else if (MPIDO_INFO_ISSET(properties, MPIDO_USE_TREE_DPUT_ALLREDUCE)
-                 && buffer_aligned)
-        {
-          func = MPIDO_Allreduce_tree_dput;
-          comm->dcmf.last_algorithm = MPIDO_USE_TREE_DPUT_ALLREDUCE;
-        }
-        else if (MPIDO_INFO_ISSET(properties,
-                                 MPIDO_USE_PIPELINED_TREE_ALLREDUCE))
-        {
-          func = MPIDO_Allreduce_pipelined_tree;
-          comm->dcmf.last_algorithm = MPIDO_USE_PIPELINED_TREE_ALLREDUCE;
-        }
+
         if (dput_available && data_size >= 32768 &&
             op_type_support != MPIDO_TREE_SUPPORT)
           func = NULL;
@@ -159,11 +162,11 @@ MPIDO_Allreduce(void * sendbuf,
           func = MPIDO_Allreduce_tree;
           comm->dcmf.last_algorithm = MPIDO_USE_TREE_ALLREDUCE;
         }
-        if (!func &&
+        if (!func && mpid_hw.tSize > 1 &&
             MPIDO_INFO_ISSET(properties, MPIDO_USE_TREE_DPUT_ALLREDUCE) &&
             buffer_aligned)
         {
-          func = MPIDO_Allreduce_tree_dput;//MPIDO_Allreduce_tree;
+          func = MPIDO_Allreduce_tree_dput;
           comm->dcmf.last_algorithm = MPIDO_USE_TREE_DPUT_ALLREDUCE;
         }
         if (!func &&

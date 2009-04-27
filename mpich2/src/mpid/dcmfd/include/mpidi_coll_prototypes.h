@@ -253,6 +253,10 @@ int MPIDO_Reduce_binom(void *, void *, int, DCMF_Dt, DCMF_Op, MPI_Datatype,
 
 int MPIDO_Reduce_tree(void *, void *, int, DCMF_Dt, DCMF_Op, MPI_Datatype,
 		      int, MPID_Comm *);
+int MPIDO_Reduce_pipelined_tree(void *, void *, int, DCMF_Dt, DCMF_Op,
+                                MPI_Datatype, int, MPID_Comm *);
+int MPIDO_Reduce_tree_dput(void *, void *, int, DCMF_Dt, DCMF_Op, MPI_Datatype,
+                           int, MPID_Comm *);
 
 int MPIDO_Reduce_global_tree(void *, void *, int, DCMF_Dt, DCMF_Op, 
 			     MPI_Datatype, int, MPID_Comm *);

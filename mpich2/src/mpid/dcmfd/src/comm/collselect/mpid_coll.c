@@ -514,18 +514,30 @@ void MPIDI_Coll_register(void)
   /* --------------------------------------------- */
   /* Register reduce protocols needed/requested    */
   /* --------------------------------------------- */
-  if(MPIDO_INFO_ISSET(properties, MPIDO_USE_TREE_REDUCE) ||
-     MPIDO_INFO_ISSET(properties, MPIDO_USE_CCMI_TREE_REDUCE))
+#if 0
+  if(MPIDO_INFO_ISSET(properties, MPIDO_USE_TREE_REDUCE))
   {
     if(REDUCE_REGISTER(DCMF_TREE_REDUCE_PROTOCOL,
                        &MPIDI_CollectiveProtocols.tree_reduce,
                        &reduce_config) != DCMF_SUCCESS)
     {
       MPIDO_INFO_UNSET(properties, MPIDO_USE_TREE_REDUCE);
-      MPIDO_INFO_UNSET(properties, MPIDO_USE_CCMI_TREE_REDUCE);
     }
   }
+#endif
+  
+  if(REDUCE_REGISTER(DCMF_TREE_PIPELINED_REDUCE_PROTOCOL,
+                     &MPIDI_CollectiveProtocols.tree_pipelined_reduce,
+                     &reduce_config) != DCMF_SUCCESS)
+    MPIDO_INFO_UNSET(properties, MPIDO_USE_PIPELINED_TREE_REDUCE);
    
+  if(REDUCE_REGISTER(DCMF_TREE_DPUT_PIPELINED_REDUCE_PROTOCOL,
+                     &MPIDI_CollectiveProtocols.tree_dput_reduce,
+                     &reduce_config) != DCMF_SUCCESS)
+  {
+    MPIDO_INFO_UNSET(properties, MPIDO_USE_TREE_DPUT_REDUCE);
+  }
+
   if(REDUCE_REGISTER(DCMF_TORUS_BINOMIAL_REDUCE_PROTOCOL,
                      &MPIDI_CollectiveProtocols.binomial_reduce,
                      &reduce_config) != DCMF_SUCCESS)
@@ -889,8 +901,9 @@ void MPIDI_Comm_setup_properties(MPID_Comm * comm, int initial_setup)
      MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_TREE_ALLREDUCE);
      MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_TREE_DPUT_ALLREDUCE);
      MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_PIPELINED_TREE_ALLREDUCE);
-     MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_TREE_REDUCE);
-     MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_CCMI_TREE_REDUCE);
+     //     MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_TREE_REDUCE);
+     MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_PIPELINED_TREE_REDUCE);
+     MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_TREE_DPUT_REDUCE);
      MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_REDUCE_GATHER);
      /*      MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_BCAST_SCATTER); */
      MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_REDUCESCATTER);
