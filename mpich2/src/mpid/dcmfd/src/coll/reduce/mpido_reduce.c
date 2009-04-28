@@ -30,6 +30,7 @@ int MPIDO_Reduce(void * sendbuf,
   MPI_Aint data_true_lb = 0;
   char *sbuf = sendbuf, *rbuf = recvbuf, *tmpbuf = recvbuf;
 
+  
   DCMF_Dt dcmf_data = DCMF_UNDEFINED_DT;
   DCMF_Op dcmf_op = DCMF_UNDEFINED_OP;
 
@@ -61,6 +62,8 @@ int MPIDO_Reduce(void * sendbuf,
   if (sendbuf == MPI_IN_PLACE)
     sbuf = rbuf;
   
+  if (comm->rank != root) rbuf = NULL;
+  /*
   if (MPIDO_INFO_ISSET(properties, MPIDO_USE_TREE_DPUT_REDUCE) &&
       mpid_hw.tSize > 1)
   {
@@ -71,6 +74,7 @@ int MPIDO_Reduce(void * sendbuf,
     
     MPIDO_Allreduce(MPI_IN_PLACE, &buffer_aligned, 1, MPI_INT, MPI_MIN, comm);
   }
+  */
   if (!STAR_info.enabled || STAR_info.internal_control_flow ||
       (((op_type_support == MPIDO_TREE_SUPPORT ||
          op_type_support == MPIDO_TREE_MIN_SUPPORT) &&
@@ -87,6 +91,7 @@ int MPIDO_Reduce(void * sendbuf,
       if (op_type_support == MPIDO_TREE_SUPPORT ||
           op_type_support == MPIDO_TREE_MIN_SUPPORT)
 	{
+          /*
           if (mpid_hw.tSize > 1 &&
               MPIDO_INFO_ISSET(properties, MPIDO_USE_TREE_DPUT_REDUCE))
           {
@@ -96,7 +101,7 @@ int MPIDO_Reduce(void * sendbuf,
               comm->dcmf.last_algorithm = MPIDO_USE_TREE_DPUT_REDUCE;
             }
           }
-          
+          */
           if (!func &&
               MPIDO_INFO_ISSET(properties, MPIDO_USE_PIPELINED_TREE_REDUCE))
           {
