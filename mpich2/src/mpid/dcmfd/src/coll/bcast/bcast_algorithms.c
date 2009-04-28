@@ -23,9 +23,9 @@ bcast_cb_done(void *clientdata, DCMF_Error_t *err)
 
 
 int MPIDO_Bcast_CCMI_tree(void *buffer,
-                           int bytes,
-                           int root,
-                           MPID_Comm *comm)
+                          int bytes,
+                          int root,
+                          MPID_Comm *comm)
 {
   if (!bytes) return MPI_SUCCESS;
   
@@ -37,23 +37,23 @@ int MPIDO_Bcast_CCMI_tree(void *buffer,
 
   hw_root = comm->vcr[root];
 
-    rc = DCMF_Broadcast(&MPIDI_CollectiveProtocols.tree_bcast,
-			&request,
-			callback,
-			DCMF_MATCH_CONSISTENCY,
-			geometry,
-			hw_root,
-			buffer,
-			bytes);
+  rc = DCMF_Broadcast(&MPIDI_CollectiveProtocols.tree_bcast,
+                      &request,
+                      callback,
+                      DCMF_MATCH_CONSISTENCY,
+                      geometry,
+                      hw_root,
+                      buffer,
+                      bytes);
   MPID_PROGRESS_WAIT_WHILE(active);
   return rc;
 }
 
 
 int MPIDO_Bcast_CCMI_tree_dput(void *buffer,
-                           int bytes,
-                           int root,
-                           MPID_Comm *comm)
+                               int bytes,
+                               int root,
+                               MPID_Comm *comm)
 {
   if (!bytes) return MPI_SUCCESS;
   
@@ -65,23 +65,23 @@ int MPIDO_Bcast_CCMI_tree_dput(void *buffer,
 
   hw_root = comm->vcr[root];
 
-    rc = DCMF_Broadcast(&MPIDI_CollectiveProtocols.tree_dput_bcast,
-			&request,
-			callback,
-			DCMF_MATCH_CONSISTENCY,
-			geometry,
-			hw_root,
-			buffer,
-			bytes);
+  rc = DCMF_Broadcast(&MPIDI_CollectiveProtocols.tree_dput_bcast,
+                      &request,
+                      callback,
+                      DCMF_MATCH_CONSISTENCY,
+                      geometry,
+                      hw_root,
+                      buffer,
+                      bytes);
   MPID_PROGRESS_WAIT_WHILE(active);
   return rc;
 }
 
 
 int MPIDO_Bcast_tree(void * buffer,
-		     int bytes,
-		     int root,
-		     MPID_Comm * comm)
+                     int bytes,
+                     int root,
+                     MPID_Comm * comm)
 {
   if (!bytes) return MPI_SUCCESS;
   
@@ -92,13 +92,13 @@ int MPIDO_Bcast_tree(void * buffer,
 
   hw_root = comm->vcr[root];
 
-    rc = DCMF_GlobalBcast(&MPIDI_Protocols.globalbcast,
-			  (DCMF_Request_t *)&request,
-			  callback,
-			  DCMF_MATCH_CONSISTENCY,
-			  hw_root,
-			  buffer,
-			  bytes);
+  rc = DCMF_GlobalBcast(&MPIDI_Protocols.globalbcast,
+                        (DCMF_Request_t *)&request,
+                        callback,
+                        DCMF_MATCH_CONSISTENCY,
+                        hw_root,
+                        buffer,
+                        bytes);
   MPID_PROGRESS_WAIT_WHILE(active);
   return rc;
 }

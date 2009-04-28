@@ -65,7 +65,7 @@ STAR_Algorithm * STAR_allgatherv_repository;
 STAR_Algorithm * STAR_alltoall_repository;
 STAR_Algorithm * STAR_gather_repository;
 STAR_Algorithm * STAR_scatter_repository;
-STAR_Algorithm * STAR_barrier_repository;
+//STAR_Algorithm * STAR_barrier_repository;
   
 STAR_Info STAR_info =
   {
@@ -555,6 +555,7 @@ void STAR_InitRepositories()
 			    MPIDO_USE_BCAST_SCATTER,
                             MPIDO_END_ARGS);
 
+#if 0
   /* algorithms for barrier */
   curr = 0;
   num = 2;
@@ -574,6 +575,7 @@ void STAR_InitRepositories()
 			    0, 0,
 			    "barrier_dcmf",
 			    MPIDO_TORUS_COMM, MPIDO_END_ARGS);
+#endif
 #else /* !USE_CCMI_COLL */
   STAR_bcast_repository = NULL;
   STAR_allreduce_repository = NULL;

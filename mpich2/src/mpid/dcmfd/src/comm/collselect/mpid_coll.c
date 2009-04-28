@@ -127,7 +127,7 @@ void MPIDI_Coll_register(void)
   DCMF_Allreduce_Configuration_t allreduce_config;
   DCMF_Alltoallv_Configuration_t alltoallv_config;
   DCMF_Reduce_Configuration_t    reduce_config;
-  DCMF_GlobalBarrier_Configuration_t gbarrier_config;
+  //  DCMF_GlobalBarrier_Configuration_t gbarrier_config;
   DCMF_GlobalBcast_Configuration_t gbcast_config;
   DCMF_GlobalAllreduce_Configuration_t gallreduce_config;
 
@@ -138,7 +138,8 @@ void MPIDI_Coll_register(void)
   DCMF_Messager_configure(NULL, &messager_config);
 
   /* Register the global functions first */
-   
+
+#if 0
   /* ---------------------------------- */
   /* Register global barrier          */
   /* ---------------------------------- */
@@ -153,7 +154,7 @@ void MPIDI_Coll_register(void)
       MPIDO_INFO_UNSET(properties, MPIDO_USE_GI_BARRIER);
     }
   }
-
+#endif 
 
   /* ---------------------------------- */
   /* Register global broadcast          */
@@ -252,12 +253,14 @@ void MPIDI_Coll_register(void)
     barrier_proto = DCMF_TORUS_RECTANGLE_BARRIER_PROTOCOL; 
 
 
-   if (MPIDO_INFO_ISSET(properties, MPIDO_USE_CCMI_GI_BARRIER))
+   if (MPIDO_INFO_ISSET(properties, MPIDO_USE_GI_BARRIER))
+     //   if (MPIDO_INFO_ISSET(properties, MPIDO_USE_CCMI_GI_BARRIER))
    {
       if (BARRIER_REGISTER(DCMF_GI_BARRIER_PROTOCOL,
          &MPIDI_CollectiveProtocols.gi_barrier,
          &barrier_config) != DCMF_SUCCESS)
-      MPIDO_INFO_UNSET(properties, MPIDO_USE_CCMI_GI_BARRIER);
+      MPIDO_INFO_UNSET(properties, MPIDO_USE_GI_BARRIER);
+      //MPIDO_INFO_UNSET(properties, MPIDO_USE_CCMI_GI_BARRIER);
    }
   if (!MPIDO_INFO_ISSET(properties, MPIDO_USE_RECT_BARRIER) &&
       MPIDO_INFO_ISSET(properties, MPIDO_USE_BINOM_BARRIER))

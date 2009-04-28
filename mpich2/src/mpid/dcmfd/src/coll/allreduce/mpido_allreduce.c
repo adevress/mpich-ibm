@@ -88,7 +88,7 @@ MPIDO_Allreduce(void * sendbuf,
           func = MPIDO_Allreduce_pipelined_tree;
           comm->dcmf.last_algorithm = MPIDO_USE_PIPELINED_TREE_ALLREDUCE;
         }
-        if (dput_available && data_size >= 524288 &&
+        if (dput_available && data_size >= 32768 &&
             op_type_support != MPIDO_TREE_SUPPORT)
           func = NULL;
       }
