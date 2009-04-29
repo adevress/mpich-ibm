@@ -698,7 +698,8 @@ void MPIDI_Coll_Comm_create (MPID_Comm *comm)
 
   MPIR_Barrier(comm);
 
-  MPIX_rank2torus(comm -> rank,
+
+  MPIX_rank2torus(comm_world -> rank,
                   &coords[0], 
                   &coords[1],
                   &coords[2], 
