@@ -23,14 +23,13 @@ int MPIDO_Reduce(void * sendbuf,
 {
   reduce_fptr func = NULL;
   MPIDO_Embedded_Info_Set * properties = &(comm->dcmf.properties);
-  int success = 1, rc = 0, op_type_support, buffer_aligned;
+  int success = 1, rc = 0, op_type_support;
   int use_allreduce = 0, data_contig, data_size = 0;
   int userenvset = MPIDO_INFO_ISSET(properties, MPIDO_REDUCE_ENVVAR);
   MPID_Datatype * data_ptr;
   MPI_Aint data_true_lb = 0;
   char *sbuf = sendbuf, *rbuf = recvbuf, *tmpbuf = recvbuf;
 
-  
   DCMF_Dt dcmf_data = DCMF_UNDEFINED_DT;
   DCMF_Op dcmf_op = DCMF_UNDEFINED_OP;
 
@@ -61,20 +60,7 @@ int MPIDO_Reduce(void * sendbuf,
   MPIDI_VerifyBuffer(sendbuf, sbuf, data_true_lb);
   if (sendbuf == MPI_IN_PLACE)
     sbuf = rbuf;
-  
-  if (comm->rank != root) rbuf = NULL;
-  /*
-  if (MPIDO_INFO_ISSET(properties, MPIDO_USE_TREE_DPUT_REDUCE) &&
-      mpid_hw.tSize > 1)
-  {
-    buffer_aligned = !((unsigned)sbuf & 0x0F);
-    
-    if (comm->rank == root) 
-      buffer_aligned = buffer_aligned && !((unsigned)rbuf & 0x0F);
-    
-    MPIDO_Allreduce(MPI_IN_PLACE, &buffer_aligned, 1, MPI_INT, MPI_MIN, comm);
-  }
-  */
+
   if (!STAR_info.enabled || STAR_info.internal_control_flow ||
       (((op_type_support == MPIDO_TREE_SUPPORT ||
          op_type_support == MPIDO_TREE_MIN_SUPPORT) &&
@@ -83,31 +69,23 @@ int MPIDO_Reduce(void * sendbuf,
   {
     if(!userenvset)
     {
-
       /*
         we need to see when reduce via allreduce is good, susect around 32K
         and then basically turn it on. It is off by default.
       */
       if (op_type_support == MPIDO_TREE_SUPPORT ||
-          op_type_support == MPIDO_TREE_MIN_SUPPORT)
+           op_type_support == MPIDO_TREE_MIN_SUPPORT)
 	{
-          /*
-          if (mpid_hw.tSize > 1 &&
-              MPIDO_INFO_ISSET(properties, MPIDO_USE_TREE_DPUT_REDUCE))
-          {
-            if (buffer_aligned)
-            {
-              func = MPIDO_Reduce_tree_dput;
-              comm->dcmf.last_algorithm = MPIDO_USE_TREE_DPUT_REDUCE;
-            }
-          }
-          */
-          if (!func &&
-              MPIDO_INFO_ISSET(properties, MPIDO_USE_PIPELINED_TREE_REDUCE))
-          {
-            func = MPIDO_Reduce_pipelined_tree;
-            comm->dcmf.last_algorithm = MPIDO_USE_PIPELINED_TREE_REDUCE;
-          }
+	  if (MPIDO_INFO_ISSET(properties, MPIDO_USE_TREE_REDUCE))
+	    {
+	      func = MPIDO_Reduce_global_tree;
+	      comm->dcmf.last_algorithm = MPIDO_USE_TREE_REDUCE;
+	    }
+	  else if(MPIDO_INFO_ISSET(properties, MPIDO_USE_CCMI_TREE_REDUCE))
+	    {
+	      func = MPIDO_Reduce_tree;
+	      comm->dcmf.last_algorithm = MPIDO_USE_CCMI_TREE_REDUCE;
+	    }
 	}
        
       if (!func && op_type_support != MPIDO_NOT_SUPPORTED)
@@ -143,26 +121,22 @@ int MPIDO_Reduce(void * sendbuf,
         func = MPIDO_Reduce_binom;
         comm->dcmf.last_algorithm = MPIDO_USE_BINOM_REDUCE;
       }
-
-      if (!func &&
-          (op_type_support == MPIDO_TREE_SUPPORT ||
-          op_type_support == MPIDO_TREE_MIN_SUPPORT))
+      if(!func &&
+         MPIDO_INFO_ISSET(properties, MPIDO_USE_TREE_REDUCE) &&
+         (op_type_support == MPIDO_TREE_SUPPORT ||
+         op_type_support == MPIDO_TREE_MIN_SUPPORT))
       {
-        if (mpid_hw.tSize > 1 &&
-            MPIDO_INFO_ISSET(properties, MPIDO_USE_TREE_DPUT_REDUCE) &&
-            buffer_aligned)
-        {
-          func = MPIDO_Reduce_tree_dput;
-          comm->dcmf.last_algorithm = MPIDO_USE_TREE_DPUT_REDUCE;
-        }
-        if (!func &&
-            MPIDO_INFO_ISSET(properties, MPIDO_USE_PIPELINED_TREE_REDUCE))
-        {
-          func = MPIDO_Reduce_pipelined_tree;
-          comm->dcmf.last_algorithm = MPIDO_USE_PIPELINED_TREE_REDUCE;
-        }
+        func = MPIDO_Reduce_global_tree;
+        comm->dcmf.last_algorithm = MPIDO_USE_TREE_REDUCE;
       }
-
+      if(!func &&
+         MPIDO_INFO_ISSET(properties, MPIDO_USE_CCMI_TREE_REDUCE) &&
+         (op_type_support == MPIDO_TREE_SUPPORT ||
+         op_type_support == MPIDO_TREE_MIN_SUPPORT))
+      {
+        func = MPIDO_Reduce_tree;
+        comm->dcmf.last_algorithm = MPIDO_USE_CCMI_TREE_REDUCE;
+      }
       if(!func &&
          MPIDO_INFO_ISSET(properties, MPIDO_USE_RECTRING_REDUCE))
       {
@@ -176,11 +150,11 @@ int MPIDO_Reduce(void * sendbuf,
         use_allreduce = 1;
       }
     }
-    
+     
     if (func)
       rc = (func)(sbuf, rbuf, count, dcmf_data,
                   dcmf_op, datatype, root, comm);      
-   
+
     else if (use_allreduce)
     {
       if (comm->rank != root)
@@ -192,7 +166,7 @@ int MPIDO_Reduce(void * sendbuf,
                                       __LINE__, MPI_ERR_OTHER, "**nomem", 0);
         
       }
-    
+
       rc = MPIDO_Allreduce(sbuf, tmpbuf, count, datatype, op, comm);
 
       if (comm->rank != root)

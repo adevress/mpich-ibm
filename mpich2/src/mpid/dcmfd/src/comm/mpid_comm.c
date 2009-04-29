@@ -545,12 +545,12 @@ MPIDI_Env_setup()
                   MPIDO_USE_PIPELINED_TREE_ALLREDUCE,
                   MPIDO_USE_TREE_DPUT_ALLREDUCE,                 
                   MPIDO_USE_STORAGE_REDUCE,
-                  MPIDO_USE_PIPELINED_TREE_REDUCE,
+                  //MPIDO_USE_PIPELINED_TREE_REDUCE,
+                  MPIDO_USE_TREE_REDUCE,
                   //MPIDO_USE_TREE_DPUT_REDUCE,
                   MPIDO_USE_RECT_REDUCE,
                   MPIDO_USE_RECTRING_REDUCE,
                   MPIDO_USE_BINOM_REDUCE,
-                  //MPIDO_USE_TREE_REDUCE, 
                   MPIDO_USE_ALLREDUCE_ALLGATHER,
                   MPIDO_USE_BCAST_ALLGATHER,
                   MPIDO_USE_ABCAST_ALLGATHER,
@@ -989,9 +989,9 @@ MPIDI_Env_setup()
   {
     MPIDO_INFO_SET(properties, MPIDO_REDUCE_ENVVAR);
     MPIDO_INFO_UNSET(properties, MPIDO_USE_ALLREDUCE_REDUCE);
-    //    MPIDO_INFO_UNSET(properties, MPIDO_USE_TREE_REDUCE);
-    MPIDO_INFO_UNSET(properties, MPIDO_USE_TREE_DPUT_REDUCE);
-    MPIDO_INFO_UNSET(properties, MPIDO_USE_PIPELINED_TREE_REDUCE);
+    MPIDO_INFO_UNSET(properties, MPIDO_USE_TREE_REDUCE);
+    //MPIDO_INFO_UNSET(properties, MPIDO_USE_TREE_DPUT_REDUCE);
+    //MPIDO_INFO_UNSET(properties, MPIDO_USE_PIPELINED_TREE_REDUCE);
     MPIDO_INFO_UNSET(properties, MPIDO_USE_BINOM_REDUCE);
     MPIDO_INFO_UNSET(properties, MPIDO_USE_RECTRING_REDUCE);
     MPIDO_INFO_UNSET(properties, MPIDO_USE_RECT_REDUCE);
@@ -1017,18 +1017,20 @@ MPIDI_Env_setup()
     {
       MPIDO_INFO_SET(properties, MPIDO_USE_BINOM_REDUCE);
     }
+    else if(strncasecmp(envopts, "T", 1) == 0) /* Tree */
+    {
+      MPIDO_INFO_SET(properties, MPIDO_USE_TREE_REDUCE);
+    }
+#if 0
     else if(strncasecmp(envopts, "TD", 2) == 0) /* Tree dput*/
     {
       MPIDO_INFO_SET(properties, MPIDO_USE_TREE_DPUT_REDUCE);
     }
-    else if(strncasecmp(envopts, "T", 1) == 0) /* Tree */
+    else if(strncasecmp(envopts, "P", 1) == 0) /* Pipelined Tree */
     {
       MPIDO_INFO_SET(properties, MPIDO_USE_PIPELINED_TREE_REDUCE);
     }
-    //    else if(strncasecmp(envopts, "P", 1) == 0) /* Pipelined Tree */
-    // {
-    //MPIDO_INFO_SET(properties, MPIDO_USE_PIPELINED_TREE_REDUCE);
-    //}
+#endif
     else
     {
       fprintf(stderr,"Invalid DCMF_REDUCE option. Defaulting to MPICH\n");

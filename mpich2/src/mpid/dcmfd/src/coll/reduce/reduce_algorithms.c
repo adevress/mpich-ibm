@@ -50,7 +50,7 @@ MPIDO_Reduce_global_tree(void * sendbuf,
   return rc;
 }
 
-#if 0
+
 int
 MPIDO_Reduce_tree(void * sendbuf,
 		  void * recvbuf,
@@ -81,7 +81,7 @@ MPIDO_Reduce_tree(void * sendbuf,
 
   return rc;
 }
-#endif
+
 
 int
 MPIDO_Reduce_binom(void * sendbuf,
