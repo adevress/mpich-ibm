@@ -166,7 +166,6 @@ int MPI_Comm_create(MPI_Comm comm, MPI_Group group, MPI_Comm *newcomm)
 	}
 
 
-
    /* Optimize for groups contained within MPI_COMM_WORLD. */
    if (comm_ptr->comm_kind == MPID_INTRACOMM)
    {
@@ -203,7 +202,6 @@ int MPI_Comm_create(MPI_Comm comm, MPI_Group group, MPI_Comm *newcomm)
          MPID_BEGIN_ERROR_CHECKS;
          {
             int idx;
-            #warning need MPIR_GroupCheckVCRSubset function
    //            mpi_errno = MPIR_GroupCheckVCRSubset( group_ptr,
    //                  vcr_size, vcr, &idx );
             if (mpi_errno) goto fn_fail;
@@ -242,8 +240,10 @@ int MPI_Comm_create(MPI_Comm comm, MPI_Group group, MPI_Comm *newcomm)
 	    /* If this is an intra comm, we've really determined the
 	       remote mapping */
 	    remote_mapping = mapping;
+       remote_mapping_vcr = mapping_vcr;
 	    remote_size    = n;
 	    mapping        = 0;
+       mapping_vcr    = 0;
 	}
 
 	/* Get the new communicator structure and context id */
@@ -338,7 +338,7 @@ int MPI_Comm_create(MPI_Comm comm, MPI_Group group, MPI_Comm *newcomm)
 	    for (i=0; i<n; i++) {
 		/* For rank i in the new communicator, find the corresponding
 		   rank in the input communicator */
-		MPID_VCR_Dup( comm_ptr->local_vcr[mapping[i]], 
+		MPID_VCR_Dup( mapping_vcr[mapping[i]], 
 			      &newcomm_ptr->local_vcr[i] );
 		
 	    }
@@ -352,8 +352,11 @@ int MPI_Comm_create(MPI_Comm comm, MPI_Group group, MPI_Comm *newcomm)
 	for (i=0; i<n; i++) {
 	    /* For rank i in the new communicator, find the corresponding
 	       rank in the input communicator */
-	    MPID_VCR_Dup( comm_ptr->vcr[remote_mapping[i]], 
-			  &newcomm_ptr->vcr[i] );
+       MPIU_DBG_MSG_FMT(COMM,VERBOSE,(MPIU_DBG_FDEST,
+          "dupping %d into %d using %p\n",
+          remote_mapping[i], i, remote_mapping_vcr ));
+       MPID_VCR_Dup( remote_mapping_vcr[remote_mapping[i]],
+          &newcomm_ptr->vcr[i] );
 	}
 
 
@@ -369,15 +372,15 @@ int MPI_Comm_create(MPI_Comm comm, MPI_Group group, MPI_Comm *newcomm)
 
 	/* Dummy to complete collective ops in the intercomm case */
 	if (comm_ptr->comm_kind == MPID_INTERCOMM) {
-	    int rinfo[2], remote_size, *remote_mapping = 0;
+	    int rinfo[2], ic_remote_size, *ic_remote_mapping = 0;
             MPIR_Nest_incr();
 	    NMPI_Bcast( rinfo, 2, MPI_INT, 0, 
 			comm_ptr->local_comm->handle );
-	    remote_size                 = rinfo[1];
-	    MPIU_CHKLMEM_MALLOC(remote_mapping,int*,
-				remote_size*sizeof(int),
+	    ic_remote_size                 = rinfo[1];
+	    MPIU_CHKLMEM_MALLOC(ic_remote_mapping,int*,
+				ic_remote_size*sizeof(int),
 				mpi_errno,"remote_mapping");
-	    NMPI_Bcast( remote_mapping, remote_size, MPI_INT, 0, 
+	    NMPI_Bcast( ic_remote_mapping, ic_remote_size, MPI_INT, 0, 
 			comm_ptr->local_comm->handle );
             MPIR_Nest_decr();
 	}
