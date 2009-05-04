@@ -63,16 +63,26 @@ MPIDO_Bcast(void *buffer,
       MPID_Segment_pack(&segment, 0, &last, noncontig_buff);
     }
   }
+
   if (!STAR_info.enabled || STAR_info.internal_control_flow ||
       data_size < STAR_info.bcast_threshold)
   {
     if (data_size <= 1024 || userenvset)
     {
+      if (mpid_hw.tSize > 1 &&
+          MPIDO_INFO_ISSET(properties, MPIDO_USE_TREE_SHMEM_BCAST))
+      {
+        func = MPIDO_Bcast_tree_shmem;
+        comm->dcmf.last_algorithm = MPIDO_USE_TREE_SHMEM_BCAST;
+      }
+
       if (MPIDO_INFO_ISSET(properties, MPIDO_USE_TREE_BCAST))
       {
         func = MPIDO_Bcast_tree;
         comm->dcmf.last_algorithm = MPIDO_USE_TREE_BCAST;
       }
+
+      
       
       if ((!func || userenvset) &&
           MPIDO_INFO_ISSET(properties, MPIDO_USE_RECT_SINGLETH_BCAST) &&
@@ -115,6 +125,13 @@ MPIDO_Bcast(void *buffer,
 
     if(!func && (data_size <= 8192 || userenvset))
     {
+      if (mpid_hw.tSize > 1 &&
+          MPIDO_INFO_ISSET(properties, MPIDO_USE_TREE_SHMEM_BCAST))
+      {
+        func = MPIDO_Bcast_tree_shmem;
+        comm->dcmf.last_algorithm = MPIDO_USE_TREE_SHMEM_BCAST;
+      }
+
       if (MPIDO_INFO_ISSET(properties, MPIDO_USE_TREE_BCAST))
       {
         func = MPIDO_Bcast_tree;
@@ -159,7 +176,7 @@ MPIDO_Bcast(void *buffer,
     }
 
     if(!func && (data_size <= 65536 || userenvset))
-    {
+    {      
       if (MPIDO_INFO_ISSET(properties, MPIDO_USE_TREE_BCAST))
       {
         func = MPIDO_Bcast_tree;
@@ -225,6 +242,13 @@ MPIDO_Bcast(void *buffer,
         func = MPIDO_Bcast_rect_dput;
         comm->dcmf.last_algorithm = MPIDO_USE_RECT_DPUT_BCAST;
       }
+      if (mpid_hw.tSize > 1 &&
+          MPIDO_INFO_ISSET(properties, MPIDO_USE_TREE_SHMEM_BCAST))
+      {
+        func = MPIDO_Bcast_tree_shmem;
+        comm->dcmf.last_algorithm = MPIDO_USE_TREE_SHMEM_BCAST;
+      }
+
       if ((!func || userenvset) &&
           MPIDO_INFO_ISSET(properties, MPIDO_USE_TREE_BCAST))
       {

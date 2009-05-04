@@ -172,7 +172,7 @@
 #define MPIDO_USE_SCATTER_GATHER_BCAST                                     88
 #define MPIDO_USE_TREE_BCAST                                               89
 #define MPIDO_USE_MPICH_BCAST                                              90
-#define MPIDO_BCAST_RESERVED1                                              91
+#define MPIDO_USE_TREE_SHMEM_BCAST                                         91
 #define MPIDO_BCAST_RESERVED2                                              92
 
 /* Exscan in case someone implements something */

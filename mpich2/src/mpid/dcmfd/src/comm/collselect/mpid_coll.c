@@ -358,7 +358,14 @@ void MPIDI_Coll_register(void)
    /* Sort out the single thread memory optimizations first. If we
     * are single threaed, we want to register the single thread versions
     * to save memory */
-
+  
+  if(MPIDO_INFO_ISSET(properties, MPIDO_USE_TREE_SHMEM_BCAST))
+  {
+    if(BROADCAST_REGISTER(DCMF_TREE_SHMEM_BROADCAST_PROTOCOL,
+                          &MPIDI_CollectiveProtocols.tree_shmem_bcast,
+                          &broadcast_config) != DCMF_SUCCESS)
+      MPIDO_INFO_UNSET(properties, MPIDO_USE_TREE_SHMEM_BCAST);
+   }
    if(MPIDO_INFO_ISSET(properties, MPIDO_USE_RECT_DPUT_BCAST) &&
   messager_config.thread_level != DCMF_THREAD_MULTIPLE)
    {
@@ -926,6 +933,8 @@ void MPIDI_Comm_setup_properties(MPID_Comm * comm, int initial_setup)
        MPIDO_INFO_ISSET(comm_prop, MPIDO_USE_NOTREE_OPT_COLLECTIVES))
    {
      MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_TREE_BCAST);
+     MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_TREE_SHMEM_BCAST);
+     MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_CCMI_TREE_BCAST);
      MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_TREE_ALLREDUCE);
      MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_TREE_DPUT_ALLREDUCE);
      MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_PIPELINED_TREE_ALLREDUCE);

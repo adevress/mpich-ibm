@@ -530,6 +530,7 @@ MPIDI_Env_setup()
                   MPIDO_USE_ABINOM_BCAST,
                   MPIDO_USE_SCATTER_GATHER_BCAST,
                   MPIDO_USE_TREE_BCAST, 
+                  MPIDO_USE_TREE_SHMEM_BCAST, 
                   MPIDO_USE_CCMI_TREE_BCAST, 
                   MPIDO_USE_CCMI_TREE_DPUT_BCAST, 
                   MPIDO_USE_STORAGE_ALLREDUCE,
@@ -638,6 +639,7 @@ MPIDI_Env_setup()
   if(envopts != NULL)
   {
     MPIDO_INFO_UNSET(properties, MPIDO_USE_TREE_BCAST);
+    MPIDO_INFO_UNSET(properties, MPIDO_USE_TREE_SHMEM_BCAST);
     MPIDO_INFO_UNSET(properties, MPIDO_USE_CCMI_TREE_BCAST);
     MPIDO_INFO_UNSET(properties, MPIDO_USE_CCMI_TREE_DPUT_BCAST);
     MPIDO_INFO_UNSET(properties, MPIDO_USE_RECT_BCAST);
@@ -669,6 +671,10 @@ MPIDI_Env_setup()
     else if(strncasecmp(envopts, "B", 1) == 0) /* Binomial */
     {
       MPIDO_INFO_SET(properties, MPIDO_USE_BINOM_BCAST);
+    }
+    else if(strncasecmp(envopts, "TS", 2) == 0) /* Global Tree */
+    {
+      MPIDO_INFO_SET(properties, MPIDO_USE_TREE_SHMEM_BCAST);
     }
     else if(strncasecmp(envopts, "T", 1) == 0) /* Global Tree */
     {
