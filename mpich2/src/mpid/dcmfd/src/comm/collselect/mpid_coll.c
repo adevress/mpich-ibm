@@ -196,6 +196,7 @@ void MPIDI_Coll_register(void)
     }   
   }
 
+#if 0
   /* ---------------------------------- */
   /* Register global allreduce          */
   /* ---------------------------------- */
@@ -220,8 +221,20 @@ void MPIDI_Coll_register(void)
       MPIDO_INFO_UNSET(properties, MPIDO_USE_TREE_REDUCE);
     }
   }
-      
+#endif
 
+  /* ---------------------------------- */
+  /* Register global reduce          */
+  /* ---------------------------------- */
+  if(MPIDO_INFO_ISSET(properties, MPIDO_USE_TREE_REDUCE))
+  {
+    gallreduce_config.protocol = DCMF_TREE_GLOBALALLREDUCE_PROTOCOL;
+    rc = DCMF_GlobalAllreduce_register(&MPIDI_Protocols.globalallreduce,
+                                       &gallreduce_config);
+    if(rc != DCMF_SUCCESS)
+      MPIDO_INFO_UNSET(properties, MPIDO_USE_TREE_REDUCE);
+  }
+  
   /* register first barrier protocols now */
   barrier_config.cb_geometry = getGeometryRequest;
 
@@ -417,24 +430,22 @@ void MPIDI_Coll_register(void)
   /* --------------------------------------------- */
   /* Register allreduce protocols needed/requested */
   /* --------------------------------------------- */
-  if(MPIDO_INFO_ISSET(properties, MPIDO_USE_TREE_ALLREDUCE) ||
-     MPIDO_INFO_ISSET(properties, MPIDO_USE_CCMI_TREE_ALLREDUCE))
-   {
-      if(ALLREDUCE_REGISTER(DCMF_TREE_ALLREDUCE_PROTOCOL,
-               &MPIDI_CollectiveProtocols.tree_allreduce,
-               &allreduce_config) != DCMF_SUCCESS)
-      {
+  if(MPIDO_INFO_ISSET(properties, MPIDO_USE_TREE_ALLREDUCE))
 
+   {
+     if(ALLREDUCE_REGISTER(DCMF_TREE_ALLREDUCE_PROTOCOL,
+                           &MPIDI_CollectiveProtocols.tree_allreduce,
+                           &allreduce_config) != DCMF_SUCCESS)
+      {
         MPIDO_INFO_UNSET(properties, MPIDO_USE_TREE_ALLREDUCE);
-         MPIDO_INFO_UNSET(properties, MPIDO_USE_CCMI_TREE_ALLREDUCE);
       }
    }
    if(MPIDO_INFO_ISSET(properties, MPIDO_USE_SHORT_ASYNC_RECT_ALLREDUCE))
    {
-      if(ALLREDUCE_REGISTER(DCMF_TORUS_ASYNC_SHORT_RECTANGLE_ALLREDUCE_PROTOCOL,
-                            &MPIDI_CollectiveProtocols.short_async_rect_allreduce,
-                            &allreduce_config) != DCMF_SUCCESS)
-            MPIDO_INFO_UNSET(properties, MPIDO_USE_SHORT_ASYNC_RECT_ALLREDUCE);
+     if(ALLREDUCE_REGISTER(DCMF_TORUS_ASYNC_SHORT_RECTANGLE_ALLREDUCE_PROTOCOL,
+                           &MPIDI_CollectiveProtocols.short_async_rect_allreduce,
+                           &allreduce_config) != DCMF_SUCCESS)
+       MPIDO_INFO_UNSET(properties, MPIDO_USE_SHORT_ASYNC_RECT_ALLREDUCE);
    }
 
    if(MPIDO_INFO_ISSET(properties, MPIDO_USE_SHORT_ASYNC_BINOM_ALLREDUCE))
@@ -457,14 +468,18 @@ void MPIDI_Coll_register(void)
   {
     if((ALLREDUCE_REGISTER(DCMF_TREE_PIPELINED_ALLREDUCE_PROTOCOL,
                            &MPIDI_CollectiveProtocols.pipelinedtree_allreduce,
-                           &allreduce_config) != DCMF_SUCCESS) ||
-       (ALLREDUCE_REGISTER(DCMF_TREE_DPUT_PIPELINED_ALLREDUCE_PROTOCOL,
-                           &MPIDI_CollectiveProtocols.pipelinedtree_dput_allreduce,
-                           &allreduce_config) != DCMF_SUCCESS) )
+                           &allreduce_config) != DCMF_SUCCESS))
       MPIDO_INFO_UNSET(properties, MPIDO_USE_PIPELINED_TREE_ALLREDUCE);
   }
 
-
+  if(MPIDO_INFO_ISSET(properties, MPIDO_USE_TREE_DPUT_ALLREDUCE))
+  {
+    if(ALLREDUCE_REGISTER(DCMF_TREE_DPUT_PIPELINED_ALLREDUCE_PROTOCOL,
+                          &MPIDI_CollectiveProtocols.pipelinedtree_dput_allreduce,
+                          &allreduce_config) != DCMF_SUCCESS)
+      MPIDO_INFO_UNSET(properties, MPIDO_USE_TREE_DPUT_ALLREDUCE);
+  }
+  
   if(ALLREDUCE_REGISTER(DCMF_TORUS_RECTANGLE_ALLREDUCE_PROTOCOL,
                         &MPIDI_CollectiveProtocols.rectangle_allreduce,
                         &allreduce_config) != DCMF_SUCCESS)
@@ -511,18 +526,32 @@ void MPIDI_Coll_register(void)
   /* --------------------------------------------- */
   /* Register reduce protocols needed/requested    */
   /* --------------------------------------------- */
-  if(MPIDO_INFO_ISSET(properties, MPIDO_USE_TREE_REDUCE) ||
-     MPIDO_INFO_ISSET(properties, MPIDO_USE_CCMI_TREE_REDUCE))
+
+  if(MPIDO_INFO_ISSET(properties, MPIDO_USE_CCMI_TREE_REDUCE))
   {
     if(REDUCE_REGISTER(DCMF_TREE_REDUCE_PROTOCOL,
                        &MPIDI_CollectiveProtocols.tree_reduce,
                        &reduce_config) != DCMF_SUCCESS)
     {
-      MPIDO_INFO_UNSET(properties, MPIDO_USE_TREE_REDUCE);
       MPIDO_INFO_UNSET(properties, MPIDO_USE_CCMI_TREE_REDUCE);
     }
   }
+
+
+#if 0
+  if(REDUCE_REGISTER(DCMF_TREE_PIPELINED_REDUCE_PROTOCOL,
+                     &MPIDI_CollectiveProtocols.tree_pipelined_reduce,
+                     &reduce_config) != DCMF_SUCCESS)
+    MPIDO_INFO_UNSET(properties, MPIDO_USE_PIPELINED_TREE_REDUCE);
    
+  if(REDUCE_REGISTER(DCMF_TREE_DPUT_PIPELINED_REDUCE_PROTOCOL,
+                     &MPIDI_CollectiveProtocols.tree_dput_reduce,
+                     &reduce_config) != DCMF_SUCCESS)
+  {
+    MPIDO_INFO_UNSET(properties, MPIDO_USE_TREE_DPUT_REDUCE);
+  }
+#endif
+  
   if(REDUCE_REGISTER(DCMF_TORUS_BINOMIAL_REDUCE_PROTOCOL,
                      &MPIDI_CollectiveProtocols.binomial_reduce,
                      &reduce_config) != DCMF_SUCCESS)
@@ -549,7 +578,8 @@ void MPIDI_Coll_register(void)
 void MPIDI_Coll_Comm_create (MPID_Comm *comm)
 {
   int global, x_size, y_size, z_size, t_size;
-  unsigned my_coords[4], min_coords[4], max_coords[4];
+  unsigned coords[8], min_max_coords[8];
+  //  unsigned my_coords[4], min_coords[4], max_coords[4];
   MPIDO_Embedded_Info_Set * comm_prop, * coll_prop;
   MPID_Comm *comm_world;
   DCMF_Configure_t dcmf_config;
@@ -668,34 +698,47 @@ void MPIDI_Coll_Comm_create (MPID_Comm *comm)
 
   MPIR_Barrier(comm);
 
-  MPIX_Comm_rank2torus(comm -> handle,
-		       comm -> rank,
-		       &my_coords[0], 
-		       &my_coords[1],
-		       &my_coords[2], 
-		       &my_coords[3]);
 
+  MPIX_rank2torus(comm_world -> rank,
+                  &coords[0], 
+                  &coords[1],
+                  &coords[2], 
+                  &coords[3]);
+
+    
+  coords[4] = ~(coords[0]);
+  coords[5] = ~(coords[1]);
+  coords[6] = ~(coords[2]);
+  coords[7] = ~(coords[3]);
+
+  MPIR_Allreduce(coords, min_max_coords, 8, MPI_UNSIGNED, MPI_MAX, comm);
+      
   /* find if the communicator is a rectangle */
-  MPIR_Allreduce(my_coords, min_coords,4, MPI_UNSIGNED, MPI_MIN, comm);
-  MPIR_Allreduce(my_coords, max_coords,4, MPI_UNSIGNED, MPI_MAX, comm);
+  //MPIR_Allreduce(my_coords, min_coords,4, MPI_UNSIGNED, MPI_MIN, comm);
+  //MPIR_Allreduce(my_coords, max_coords,4, MPI_UNSIGNED, MPI_MAX, comm);
   
-  t_size = (unsigned) (max_coords[3] - min_coords[3] + 1);
-  z_size = (unsigned) (max_coords[2] - min_coords[2] + 1);
-  y_size = (unsigned) (max_coords[1] - min_coords[1] + 1);
-  x_size = (unsigned) (max_coords[0] - min_coords[0] + 1);
+  t_size = (unsigned) (min_max_coords[3] - ~min_max_coords[7] + 1);
+  z_size = (unsigned) (min_max_coords[2] - ~min_max_coords[6] + 1);
+  y_size = (unsigned) (min_max_coords[1] - ~min_max_coords[5] + 1);
+  x_size = (unsigned) (min_max_coords[0] - ~min_max_coords[4] + 1);
+
+  // t_size = (unsigned) (max_coords[3] - min_coords[3] + 1);
+  // z_size = (unsigned) (max_coords[2] - min_coords[2] + 1);
+  // y_size = (unsigned) (max_coords[1] - min_coords[1] + 1);
+  // x_size = (unsigned) (max_coords[0] - min_coords[0] + 1);
 
   if (x_size * y_size * z_size * t_size == comm -> local_size)
-    {
-      MPIDO_INFO_SET(comm_prop, MPIDO_RECT_COMM);
-      comm->dcmf.comm_shape = 0; /* COMM WORLD */
-      if (!global)
-        comm->dcmf.comm_shape = 1; /* RECT subcomm */
-    }
+  {
+    MPIDO_INFO_SET(comm_prop, MPIDO_RECT_COMM);
+    comm->dcmf.comm_shape = 0; /* COMM WORLD */
+    if (!global)
+      comm->dcmf.comm_shape = 1; /* RECT subcomm */
+  }
   else if (!global) /* if not rect and not global, it means comm is irreg */
-    {
-      MPIDO_INFO_SET(comm_prop, MPIDO_IRREG_COMM);
-      comm->dcmf.comm_shape = 2; /* IRREG */
-    }
+  {
+    MPIDO_INFO_SET(comm_prop, MPIDO_IRREG_COMM);
+    comm->dcmf.comm_shape = 2; /* IRREG */
+  }
 
   /* end of setting geometric properties of the communicator */
 
@@ -884,10 +927,12 @@ void MPIDI_Comm_setup_properties(MPID_Comm * comm, int initial_setup)
    {
      MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_TREE_BCAST);
      MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_TREE_ALLREDUCE);
-     MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_CCMI_TREE_ALLREDUCE);
+     MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_TREE_DPUT_ALLREDUCE);
      MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_PIPELINED_TREE_ALLREDUCE);
      MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_TREE_REDUCE);
      MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_CCMI_TREE_REDUCE);
+     //MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_PIPELINED_TREE_REDUCE);
+     //MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_TREE_DPUT_REDUCE);
      MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_REDUCE_GATHER);
      /*      MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_BCAST_SCATTER); */
      MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_REDUCESCATTER);

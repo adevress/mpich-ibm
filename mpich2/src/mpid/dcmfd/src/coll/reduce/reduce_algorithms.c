@@ -50,6 +50,7 @@ MPIDO_Reduce_global_tree(void * sendbuf,
   return rc;
 }
 
+
 int
 MPIDO_Reduce_tree(void * sendbuf,
 		  void * recvbuf,
@@ -165,6 +166,72 @@ MPIDO_Reduce_rectring(void * sendbuf,
   DCMF_Geometry_t * geometry = &(comm->dcmf.geometry);
 
   rc = DCMF_Reduce(&MPIDI_CollectiveProtocols.rectanglering_reduce,
+                   &request,
+                   callback,
+                   DCMF_MATCH_CONSISTENCY,
+                   geometry,
+                   hw_root,
+                   sendbuf,
+                   recvbuf,
+                   count,
+                   dcmf_dt,
+                   dcmf_op);
+
+  MPID_PROGRESS_WAIT_WHILE(active);
+  return rc;
+}
+
+int
+MPIDO_Reduce_tree_dput(void * sendbuf,
+                       void * recvbuf,
+                       int count,
+                       DCMF_Dt dcmf_dt,
+                       DCMF_Op dcmf_op,
+                       MPI_Datatype data_type,
+                       int root,
+                       MPID_Comm * comm)
+{
+  int rc, hw_root = comm->vcr[root];
+  DCMF_CollectiveRequest_t request;
+  volatile unsigned active = 1;
+  DCMF_Callback_t callback = { reduce_cb_done, (void *) &active };
+  DCMF_Geometry_t * geometry = &(comm->dcmf.geometry);
+
+  rc = DCMF_Reduce(&MPIDI_CollectiveProtocols.tree_dput_reduce,
+                   &request,
+                   callback,
+                   DCMF_MATCH_CONSISTENCY,
+                   geometry,
+                   hw_root,
+                   sendbuf,
+                   recvbuf,
+                   count,
+                   dcmf_dt,
+                   dcmf_op);
+
+  MPID_PROGRESS_WAIT_WHILE(active);
+  return rc;
+}
+
+
+
+int
+MPIDO_Reduce_pipelined_tree(void * sendbuf,
+                            void * recvbuf,
+                            int count,
+                            DCMF_Dt dcmf_dt,
+                            DCMF_Op dcmf_op,
+                            MPI_Datatype data_type,
+                            int root,
+                            MPID_Comm * comm)
+{
+  int rc, hw_root = comm->vcr[root];
+  DCMF_CollectiveRequest_t request;
+  volatile unsigned active = 1;
+  DCMF_Callback_t callback = { reduce_cb_done, (void *) &active };
+  DCMF_Geometry_t * geometry = &(comm->dcmf.geometry);
+
+  rc = DCMF_Reduce(&MPIDI_CollectiveProtocols.tree_pipelined_reduce,
                    &request,
                    callback,
                    DCMF_MATCH_CONSISTENCY,

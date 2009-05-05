@@ -149,9 +149,12 @@ int MPI_Comm_create(MPI_Comm comm, MPI_Group group, MPI_Comm *newcomm)
        case is too messy, we'll add this in.
     */
     if (group_ptr->rank != MPI_UNDEFINED) {
-	MPID_VCR *vcr;
+	MPID_VCR *vcr, *mapping_vcr = 0, *remote_mapping_vcr = 0;
 	int      vcr_size;
+   int subsetOfWorld = 0;
 
+   mapping_vcr = comm_ptr->local_vcr;
+   remote_mapping_vcr = comm_ptr->vcr;
 	n = group_ptr->size;
 	MPIU_CHKLMEM_MALLOC(mapping,int*,n*sizeof(int),mpi_errno,"mapping");
 	if (comm_ptr->comm_kind == MPID_INTERCOMM) {
@@ -162,25 +165,53 @@ int MPI_Comm_create(MPI_Comm comm, MPI_Group group, MPI_Comm *newcomm)
 	    vcr      = comm_ptr->vcr;
 	    vcr_size = comm_ptr->remote_size;
 	}
-#ifdef MPIDI_CH3_HAS_NO_DYNAMIC_PROCESS
-   if(comm_ptr->comm_kind != MPID_INTERCOMM)
+
+
+   /* Optimize for groups contained within MPI_COMM_WORLD. */
+   if (comm_ptr->comm_kind == MPID_INTRACOMM)
    {
-      MPID_Comm *world_ptr;
-      MPID_Comm_get_ptr(MPI_COMM_WORLD, world_ptr);
-      j = 0;
-      for(i=0;i<world_ptr->remote_size;i++)
+      int wsize;
+      subsetOfWorld = 1;
+      wsize         = MPIR_Process.comm_world->local_size;
+      MPIR_Group_setup_lpid_list( group_ptr );
+      for (i=0; i<n; i++)
       {
-         int comm_lpid;
-         MPID_VCR_Get_lpid(world_ptr->vcr[i], &comm_lpid);
-         if(comm_lpid == group_ptr->lrank_to_lpid[j].lpid)
+         int g_lpid = group_ptr->lrank_to_lpid[i].lpid;
+         /* This Mapping is relative to comm world */
+         MPIU_DBG_MSG_FMT(COMM,VERBOSE,(MPIU_DBG_FDEST,
+            "comm-create - mapping into world[%d] = %d\n",
+            i, g_lpid ));
+         if (g_lpid < wsize)
          {
-            mapping[j] = comm_lpid;
-            j++;
+            mapping[i] = g_lpid;
+         }
+         else
+         {
+            subsetOfWorld = 0;
+            break;
          }
       }
    }
-   else
-#endif
+   MPIU_DBG_MSG_D(COMM,VERBOSE, "Are we using the world subset %d\n",
+   subsetOfWorld );
+   if (subsetOfWorld)
+   {
+      /* Override the vcr to be used with the mapping array. */
+      mapping_vcr = MPIR_Process.comm_world->vcr;
+      #ifdef HAVE_ERROR_CHECKING
+      {
+         MPID_BEGIN_ERROR_CHECKS;
+         {
+            int idx;
+   //            mpi_errno = MPIR_GroupCheckVCRSubset( group_ptr,
+   //                  vcr_size, vcr, &idx );
+            if (mpi_errno) goto fn_fail;
+         }
+         MPID_END_ERROR_CHECKS;
+      }
+   #endif
+   }
+   else 
    {
 
       for (i=0; i<n; i++) {
@@ -210,8 +241,10 @@ int MPI_Comm_create(MPI_Comm comm, MPI_Group group, MPI_Comm *newcomm)
 	    /* If this is an intra comm, we've really determined the
 	       remote mapping */
 	    remote_mapping = mapping;
+       remote_mapping_vcr = mapping_vcr;
 	    remote_size    = n;
 	    mapping        = 0;
+       mapping_vcr    = 0;
 	}
 
 	/* Get the new communicator structure and context id */
@@ -306,7 +339,7 @@ int MPI_Comm_create(MPI_Comm comm, MPI_Group group, MPI_Comm *newcomm)
 	    for (i=0; i<n; i++) {
 		/* For rank i in the new communicator, find the corresponding
 		   rank in the input communicator */
-		MPID_VCR_Dup( comm_ptr->local_vcr[mapping[i]], 
+		MPID_VCR_Dup( mapping_vcr[mapping[i]], 
 			      &newcomm_ptr->local_vcr[i] );
 		
 	    }
@@ -320,8 +353,11 @@ int MPI_Comm_create(MPI_Comm comm, MPI_Group group, MPI_Comm *newcomm)
 	for (i=0; i<n; i++) {
 	    /* For rank i in the new communicator, find the corresponding
 	       rank in the input communicator */
-	    MPID_VCR_Dup( comm_ptr->vcr[remote_mapping[i]], 
-			  &newcomm_ptr->vcr[i] );
+       MPIU_DBG_MSG_FMT(COMM,VERBOSE,(MPIU_DBG_FDEST,
+          "dupping %d into %d using %p\n",
+          remote_mapping[i], i, remote_mapping_vcr ));
+       MPID_VCR_Dup( remote_mapping_vcr[remote_mapping[i]],
+          &newcomm_ptr->vcr[i] );
 	}
 
 

@@ -68,8 +68,8 @@ int MPIDO_Allgatherv_bcast_binom_async(void *sendbuf,
                    recvtype);
   }
    
-  requests = (DCMF_CollectiveRequest_t *)malloc(numrequests *
-                                                sizeof(DCMF_CollectiveRequest_t));
+  requests = (DCMF_CollectiveRequest_t *)MPIU_Malloc(numrequests *
+                                         sizeof(DCMF_CollectiveRequest_t));
    
   max_size = ((int)comm_ptr->local_size/numrequests)*numrequests;
   left_over = comm_ptr->local_size - max_size;
@@ -116,7 +116,7 @@ int MPIDO_Allgatherv_bcast_binom_async(void *sendbuf,
     MPID_PROGRESS_WAIT_WHILE(active);
   }
 
-  free(requests);
+  MPIU_Free(requests);
 
   return MPI_SUCCESS;
   
@@ -173,8 +173,8 @@ int MPIDO_Allgatherv_bcast_rect_async(void *sendbuf,
                    recvtype);
   }
    
-  requests = (DCMF_CollectiveRequest_t *)malloc(numrequests *
-                                                sizeof(DCMF_CollectiveRequest_t));
+  requests = (DCMF_CollectiveRequest_t *)MPIU_Malloc(numrequests *
+                                         sizeof(DCMF_CollectiveRequest_t));
    
   max_size = ((int)comm_ptr->local_size/numrequests)*numrequests;
   left_over = comm_ptr->local_size - max_size;
@@ -221,7 +221,7 @@ int MPIDO_Allgatherv_bcast_rect_async(void *sendbuf,
     MPID_PROGRESS_WAIT_WHILE(active);
   }
 
-  free(requests);
+  MPIU_Free(requests);
 
   return MPI_SUCCESS;
   

@@ -69,7 +69,6 @@ int MPIDO_Reduce(void * sendbuf,
   {
     if(!userenvset)
     {
-
       /*
         we need to see when reduce via allreduce is good, susect around 32K
         and then basically turn it on. It is off by default.

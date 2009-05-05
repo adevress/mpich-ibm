@@ -543,12 +543,14 @@ MPIDI_Env_setup()
                   MPIDO_USE_RRING_DPUT_SINGLETH_ALLREDUCE,
                   MPIDO_USE_TREE_ALLREDUCE,
                   MPIDO_USE_PIPELINED_TREE_ALLREDUCE,
-                  MPIDO_USE_CCMI_TREE_ALLREDUCE,                 
+                  MPIDO_USE_TREE_DPUT_ALLREDUCE,                 
                   MPIDO_USE_STORAGE_REDUCE,
+                  //MPIDO_USE_PIPELINED_TREE_REDUCE,
+                  MPIDO_USE_TREE_REDUCE,
+                  //MPIDO_USE_TREE_DPUT_REDUCE,
                   MPIDO_USE_RECT_REDUCE,
                   MPIDO_USE_RECTRING_REDUCE,
                   MPIDO_USE_BINOM_REDUCE,
-                  MPIDO_USE_TREE_REDUCE, 
                   MPIDO_USE_ALLREDUCE_ALLGATHER,
                   MPIDO_USE_BCAST_ALLGATHER,
                   MPIDO_USE_ABCAST_ALLGATHER,
@@ -911,7 +913,7 @@ MPIDI_Env_setup()
     MPIDO_INFO_UNSET(properties, MPIDO_USE_RECT_ALLREDUCE);
     MPIDO_INFO_UNSET(properties, MPIDO_USE_SHORT_ASYNC_RECT_ALLREDUCE);
     MPIDO_INFO_UNSET(properties, MPIDO_USE_SHORT_ASYNC_BINOM_ALLREDUCE);
-    MPIDO_INFO_UNSET(properties, MPIDO_USE_CCMI_TREE_ALLREDUCE);
+    MPIDO_INFO_UNSET(properties, MPIDO_USE_TREE_DPUT_ALLREDUCE);
     MPIDO_INFO_UNSET(properties, MPIDO_USE_PIPELINED_TREE_ALLREDUCE);
     MPIDO_INFO_UNSET(properties, MPIDO_USE_RRING_DPUT_SINGLETH_ALLREDUCE);
     MPIDO_INFO_SET(properties, MPIDO_ALLREDUCE_ENVVAR);
@@ -930,8 +932,8 @@ MPIDI_Env_setup()
       MPIDO_INFO_SET(properties, MPIDO_USE_RECTRING_ALLREDUCE);
     else if(strncasecmp(envopts, "R", 1) == 0)
       MPIDO_INFO_SET(properties, MPIDO_USE_RECT_ALLREDUCE);
-    else if(strncasecmp(envopts, "C", 1) == 0)
-      MPIDO_INFO_SET(properties, MPIDO_USE_CCMI_TREE_ALLREDUCE);
+    else if(strncasecmp(envopts, "TD", 2) == 0)
+      MPIDO_INFO_SET(properties, MPIDO_USE_TREE_DPUT_ALLREDUCE);
     else if(strncasecmp(envopts, "B", 1) == 0)
       MPIDO_INFO_SET(properties, MPIDO_USE_BINOM_ALLREDUCE);
     else if(strncasecmp(envopts, "M", 1) == 0) /* MPICH */
@@ -988,10 +990,11 @@ MPIDI_Env_setup()
     MPIDO_INFO_SET(properties, MPIDO_REDUCE_ENVVAR);
     MPIDO_INFO_UNSET(properties, MPIDO_USE_ALLREDUCE_REDUCE);
     MPIDO_INFO_UNSET(properties, MPIDO_USE_TREE_REDUCE);
+    //MPIDO_INFO_UNSET(properties, MPIDO_USE_TREE_DPUT_REDUCE);
+    //MPIDO_INFO_UNSET(properties, MPIDO_USE_PIPELINED_TREE_REDUCE);
     MPIDO_INFO_UNSET(properties, MPIDO_USE_BINOM_REDUCE);
     MPIDO_INFO_UNSET(properties, MPIDO_USE_RECTRING_REDUCE);
     MPIDO_INFO_UNSET(properties, MPIDO_USE_RECT_REDUCE);
-    MPIDO_INFO_UNSET(properties, MPIDO_USE_CCMI_TREE_REDUCE);
 
     if(strncasecmp(envopts, "M", 1) == 0) /* MPICH */
     {
@@ -1018,10 +1021,16 @@ MPIDI_Env_setup()
     {
       MPIDO_INFO_SET(properties, MPIDO_USE_TREE_REDUCE);
     }
-    else if(strncasecmp(envopts, "C", 1) == 0) /* CCMI Tree */
+#if 0
+    else if(strncasecmp(envopts, "TD", 2) == 0) /* Tree dput*/
     {
-      MPIDO_INFO_SET(properties, MPIDO_USE_CCMI_TREE_REDUCE);
+      MPIDO_INFO_SET(properties, MPIDO_USE_TREE_DPUT_REDUCE);
     }
+    else if(strncasecmp(envopts, "P", 1) == 0) /* Pipelined Tree */
+    {
+      MPIDO_INFO_SET(properties, MPIDO_USE_PIPELINED_TREE_REDUCE);
+    }
+#endif
     else
     {
       fprintf(stderr,"Invalid DCMF_REDUCE option. Defaulting to MPICH\n");

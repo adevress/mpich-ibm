@@ -33,8 +33,10 @@ int main( int argc, char *argv[] )
 	    for (root = 0; root < size; root ++) {
 		for (i=0; i<count; i++) sendbuf[i] = i;
 		for (i=0; i<count; i++) recvbuf[i] = -1;
+
 		MPI_Reduce( sendbuf, recvbuf, count, MPI_INT, MPI_SUM, 
 			    root, comm );
+
 		if (rank == root) {
 		    for (i=0; i<count; i++) {
 			if (recvbuf[i] != i * size) {
