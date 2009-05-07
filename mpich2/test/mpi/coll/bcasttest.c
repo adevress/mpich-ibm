@@ -66,7 +66,7 @@ int main( int argc, char **argv)
 		printf("rank=%d, n=%d, reps=%d\n", rank, n, reps);
 	    }
 #           endif
-	    
+
 	    MPI_Bcast(buf, sizes[n], MPI_INT, ROOT, MPI_COMM_WORLD);
 
 	    if (bVerify)

@@ -35,8 +35,10 @@ int main( int argc, char **argv )
             for (i=0; i<count; i++) {
                 invec[i] = rank*count+i;
             }
+
             MPI_Allgather( invec, count, MPI_DOUBLE, 
                            vecout, count, MPI_DOUBLE, comm );
+
             for (i=0; i<count*size; i++) {
                 if (vecout[i] != i) {
                     errs++;
