@@ -15,7 +15,7 @@
  *
  * - DCMF_STATISTICS - Turns on statistics printing for the message layer
  *   such as the maximum receive queue depth.  Possible values:
- *   - 0 - No statistics are printed.
+ *   - 0 - No statistics are printedcmf_bcas.
  *   - 1 - Statistics are printed.
  *   - Default is 0.
  *
@@ -672,7 +672,11 @@ MPIDI_Env_setup()
     {
       MPIDO_INFO_SET(properties, MPIDO_USE_BINOM_BCAST);
     }
-    else if(strncasecmp(envopts, "TS", 2) == 0) /* Global Tree */
+    else if(strncasecmp(envopts, "TD", 2) == 0) /* Global Tree dput */
+    {
+      MPIDO_INFO_SET(properties, MPIDO_USE_CCMI_TREE_DPUT_BCAST);
+    }
+    else if(strncasecmp(envopts, "TS", 2) == 0) /* Global Tree shmem*/
     {
       MPIDO_INFO_SET(properties, MPIDO_USE_TREE_SHMEM_BCAST);
     }
