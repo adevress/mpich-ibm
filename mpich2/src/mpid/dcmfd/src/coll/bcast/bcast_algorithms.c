@@ -49,6 +49,33 @@ int MPIDO_Bcast_CCMI_tree(void *buffer,
   return rc;
 }
 
+int MPIDO_Bcast_tree_shmem(void *buffer,
+                           int bytes,
+                           int root,
+                           MPID_Comm *comm)
+{
+  if (!bytes) return MPI_SUCCESS;
+  
+  int rc, hw_root;
+  DCMF_CollectiveRequest_t request;
+  volatile unsigned active = 1;
+  DCMF_Callback_t callback = { bcast_cb_done, (void *) &active };
+  DCMF_Geometry_t * geometry = &(comm->dcmf.geometry);
+
+  hw_root = comm->vcr[root];
+
+  rc = DCMF_Broadcast(&MPIDI_CollectiveProtocols.tree_shmem_bcast,
+                      &request,
+                      callback,
+                      DCMF_MATCH_CONSISTENCY,
+                      geometry,
+                      hw_root,
+                      buffer,
+                      bytes);
+  MPID_PROGRESS_WAIT_WHILE(active);
+  return rc;
+}
+
 
 int MPIDO_Bcast_CCMI_tree_dput(void *buffer,
                                int bytes,
