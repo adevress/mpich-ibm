@@ -6,40 +6,63 @@
 
 #include "hydra_utils.h"
 
-HYD_Status HYDU_Append_env(HYD_Env_t * env_list, char **client_arg)
+static int exists(char *filename)
 {
-    int i, j;
-    HYD_Env_t *env;
-    char *envstr, *tmp[HYDU_NUM_JOIN_STR];
+    struct stat file_stat;
+
+    if ((stat(filename, &file_stat) < 0) || !(S_ISREG(file_stat.st_mode))) {
+        return 0;       /* no such file, or not a regular file */
+    }
+
+    return 1;
+}
+
+HYD_Status HYDU_find_in_path(char *execname, char **path)
+{
+    char *user_path = NULL, *tmp[HYD_NUM_TMP_STRINGS], *path_loc = NULL, *test_loc;
     HYD_Status status = HYD_SUCCESS;
 
     HYDU_FUNC_ENTER();
 
-    for (i = 0; client_arg[i]; i++);
-    env = env_list;
-    while (env) {
-        j = 0;
+    /* The executable is somewhere in the user's path. We need to find
+     * it. */
+    if (getenv("PATH")) {       /* If the PATH environment exists */
+        user_path = HYDU_strdup(getenv("PATH"));
+        test_loc = strtok(user_path, ";:");
+        do {
+            tmp[0] = test_loc;
+            tmp[1] = "/";
+            tmp[2] = execname;
+            tmp[3] = NULL;
 
-        tmp[j++] = MPIU_Strdup("'");
-        tmp[j++] = MPIU_Strdup(env->env_name);
-        tmp[j++] = MPIU_Strdup("=");
-        tmp[j++] = env->env_value ? MPIU_Strdup(env->env_value) : MPIU_Strdup("");
-        tmp[j++] = MPIU_Strdup("'");
-        tmp[j++] = NULL;
+            status = HYDU_str_alloc_and_join(tmp, &path_loc);
+            HYDU_ERR_POP(status, "unable to join strings\n");
 
-        status = HYDU_String_alloc_and_join(tmp, &envstr);
-        HYDU_ERR_POP(status, "unable to join strings\n");
+            if (exists(path_loc)) {
+                tmp[0] = test_loc;
+                tmp[1] = "/";
+                tmp[2] = NULL;
 
-        client_arg[i++] = MPIU_Strdup(envstr);
-        HYDU_FREE(envstr);
-        for (j = 0; tmp[j]; j++)
-            HYDU_FREE(tmp[j]);
+                status = HYDU_str_alloc_and_join(tmp, path);
+                HYDU_ERR_POP(status, "unable to join strings\n");
 
-        env = env->next;
+                goto fn_exit;   /* We are done */
+            }
+
+            HYDU_FREE(path_loc);
+            path_loc = NULL;
+        } while ((test_loc = strtok(NULL, ";:")));
     }
-    client_arg[i++] = NULL;
+
+    /* There is either no PATH environment or we could not find the
+     * file in the PATH. Just return an empty path */
+    *path = HYDU_strdup("");
 
   fn_exit:
+    if (user_path)
+        HYDU_FREE(user_path);
+    if (path_loc)
+        HYDU_FREE(path_loc);
     HYDU_FUNC_EXIT();
     return status;
 
@@ -47,104 +70,42 @@ HYD_Status HYDU_Append_env(HYD_Env_t * env_list, char **client_arg)
     goto fn_exit;
 }
 
-
-HYD_Status HYDU_Append_exec(char **exec, char **client_arg)
+HYD_Status HYDU_get_base_path(char *execname, char *wdir, char **path)
 {
-    int i, j;
+    char *loc, *post;
+    char *tmp[HYD_NUM_TMP_STRINGS];
     HYD_Status status = HYD_SUCCESS;
 
     HYDU_FUNC_ENTER();
 
-    for (i = 0; client_arg[i]; i++);
-    for (j = 0; exec[j]; j++)
-        client_arg[i++] = MPIU_Strdup(exec[j]);
-    client_arg[i++] = NULL;
-
-    HYDU_FUNC_EXIT();
-    return status;
-}
-
-
-HYD_Status HYDU_Append_wdir(char **client_arg, char *wdir)
-{
-    int arg;
-    HYD_Status status = HYD_SUCCESS;
-
-    HYDU_FUNC_ENTER();
-
-    for (arg = 0; client_arg[arg]; arg++);
-    client_arg[arg++] = MPIU_Strdup("cd");
-    client_arg[arg++] = MPIU_Strdup(wdir);
-    client_arg[arg++] = MPIU_Strdup(";");
-    client_arg[arg++] = NULL;
-
-    HYDU_FUNC_EXIT();
-    return status;
-}
-
-
-HYD_Status HYDU_Dump_args(char **args)
-{
-    int arg;
-    HYD_Status status = HYD_SUCCESS;
-
-    HYDU_FUNC_ENTER();
-
-    for (arg = 0; args[arg]; arg++)
-        printf("%s ", args[arg]);
-    printf("\n");
-
-    HYDU_FUNC_EXIT();
-    return status;
-}
-
-
-void HYDU_Free_args(char **args)
-{
-    int arg;
-
-    HYDU_FUNC_ENTER();
-
-    for (arg = 0; args[arg]; arg++)
-        HYDU_FREE(args[arg]);
-
-    HYDU_FUNC_EXIT();
-}
-
-
-HYD_Status HYDU_Get_base_path(char *execname, char **path)
-{
-    char *loc;
-    HYD_Status status = HYD_SUCCESS;
-
-    HYDU_FUNC_ENTER();
-
-    *path = MPIU_Strdup(execname);
-    loc = strrchr(*path, '/');
-    if (loc) {
-        loc++;
-        *loc = 0;
+    /* Find the last '/' in the executable name */
+    post = HYDU_strdup(execname);
+    loc = strrchr(post, '/');
+    if (!loc) { /* If there is no path */
+        *path = NULL;
+        status = HYDU_find_in_path(execname, path);
+        HYDU_ERR_POP(status, "error while searching for executable in the user path\n");
     }
-    else {
-        HYDU_FREE(*path);
-        *path = MPIU_Strdup("");
+    else {      /* There is a path */
+        *(++loc) = 0;
+
+        /* Check if its absolute or relative */
+        if (post[0] != '/') {   /* relative */
+            tmp[0] = wdir;
+            tmp[1] = "/";
+            tmp[2] = post;
+            tmp[3] = NULL;
+            status = HYDU_str_alloc_and_join(tmp, path);
+            HYDU_ERR_POP(status, "unable to join strings\n");
+        }
+        else {  /* absolute */
+            *path = HYDU_strdup(post);
+        }
     }
-
-    HYDU_FUNC_EXIT();
-    return status;
-}
-
-
-HYD_Status HYDU_Chdir(const char *dir)
-{
-    HYD_Status status = HYD_SUCCESS;
-
-    HYDU_FUNC_ENTER();
-
-    if (chdir(dir) < 0)
-        HYDU_ERR_SETANDJUMP(status, HYD_INTERNAL_ERROR, "chdir failed\n");
 
   fn_exit:
+    if (post)
+        HYDU_FREE(post);
     HYDU_FUNC_EXIT();
     return status;
 

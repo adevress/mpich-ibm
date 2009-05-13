@@ -8,6 +8,11 @@
 
 #include "tcp_impl.h"
 #include "socksm.h"
+#ifdef USE_PMI2_API
+#include "pmi2.h"
+#else
+#include "pmi.h"
+#endif
 
 /* FIXME trace/log all the state transitions */
 
@@ -25,10 +30,10 @@ static int g_tbl_capacity = CONN_PLFD_TBL_INIT_SIZE;
 static int g_tbl_grow_size = CONN_PLFD_TBL_GROW_SIZE;
 
 static sockconn_t *g_sc_tbl = NULL;
-pollfd_t *MPID_nem_tcp_plfd_tbl = NULL;
+struct pollfd *MPID_nem_tcp_plfd_tbl = NULL;
 
 sockconn_t MPID_nem_tcp_g_lstn_sc = {0};
-pollfd_t MPID_nem_tcp_g_lstn_plfd = {0};
+struct pollfd MPID_nem_tcp_g_lstn_plfd = {0};
 
 /* We define this in order to trick the compiler into including
    information about the MPID_nem_tcp_vc_area type.  This is
@@ -38,11 +43,18 @@ pollfd_t MPID_nem_tcp_g_lstn_plfd = {0};
    unused */
 static MPID_nem_tcp_vc_area *dummy_vc_area ATTRIBUTE((unused, used)) = NULL;
 
+#define MAX_SKIP_POLLS_INACTIVE 512 /* something bigger */
+#define MAX_SKIP_POLLS_ACTIVE   128 /* something smaller */
+static int MPID_nem_tcp_skip_polls = MAX_SKIP_POLLS_INACTIVE;
+
 /* Debug function to dump the sockconn table.  This is intended to be
    called from a debugger.  The 'unused' attribute keeps the compiler
    from complaining.  The 'used' attribute makes sure the function is
    added in the lib, despite the fact that it's unused. */
 static void dbg_print_sc_tbl(FILE *stream, int print_free_entries) ATTRIBUTE((unused, used));
+
+#define MPID_NEM_TCP_RECV_MAX_PKT_LEN 1024
+static char *recv_buf;
 
 static struct {
     handler_func_t sc_state_handler;
@@ -126,19 +138,19 @@ static int alloc_sc_plfd_tbls (void)
 
     MPIU_CHKPMEM_MALLOC (g_sc_tbl, sockconn_t *, g_tbl_capacity * sizeof(sockconn_t), 
                          mpi_errno, "connection table");
-    MPIU_CHKPMEM_MALLOC (MPID_nem_tcp_plfd_tbl, pollfd_t *, g_tbl_capacity * sizeof(pollfd_t), 
+    MPIU_CHKPMEM_MALLOC (MPID_nem_tcp_plfd_tbl, struct pollfd *, g_tbl_capacity * sizeof(struct pollfd), 
                          mpi_errno, "pollfd table");
 #if defined(MPICH_DEBUG_MEMINIT)
     /* We initialize the arrays in order to eliminate spurious valgrind errors
        that occur when poll(2) returns 0.  See valgrind bugzilla#158425 and
        remove this code if the fix ever gets into a release of valgrind.
        [goodell@ 2007-02-25] */
-    memset(MPID_nem_tcp_plfd_tbl, 0, g_tbl_capacity * sizeof(pollfd_t));
+    memset(MPID_nem_tcp_plfd_tbl, 0, g_tbl_capacity * sizeof(struct pollfd));
 #endif
 
     for (i = 0; i < g_tbl_capacity; i++) {
         INIT_SC_ENTRY(((sockconn_t *)&g_sc_tbl[i]), i);
-        INIT_POLLFD_ENTRY(((pollfd_t *)&MPID_nem_tcp_plfd_tbl[i]));
+        INIT_POLLFD_ENTRY(((struct pollfd *)&MPID_nem_tcp_plfd_tbl[i]));
     }
     MPIU_CHKPMEM_COMMIT();
 
@@ -187,7 +199,7 @@ static int expand_sc_plfd_tbls (void)
 {
     int mpi_errno = MPI_SUCCESS; 
     sockconn_t *new_sc_tbl = NULL;
-    pollfd_t *new_plfd_tbl = NULL;
+    struct pollfd *new_plfd_tbl = NULL;
     int new_capacity = g_tbl_capacity + g_tbl_grow_size, i;
     MPIU_CHKPMEM_DECL (2);
 
@@ -195,11 +207,11 @@ static int expand_sc_plfd_tbls (void)
     MPIU_DBG_MSG_FMT(NEM_SOCK_DET, VERBOSE, (MPIU_DBG_FDEST, "expand_sc_plfd_tbls b4 g_sc_tbl[0].fd=%d", g_sc_tbl[0].fd));
     MPIU_CHKPMEM_MALLOC (new_sc_tbl, sockconn_t *, new_capacity * sizeof(sockconn_t), 
                          mpi_errno, "expanded connection table");
-    MPIU_CHKPMEM_MALLOC (new_plfd_tbl, pollfd_t *, new_capacity * sizeof(pollfd_t), 
+    MPIU_CHKPMEM_MALLOC (new_plfd_tbl, struct pollfd *, new_capacity * sizeof(struct pollfd), 
                          mpi_errno, "expanded pollfd table");
 
     MPID_NEM_MEMCPY (new_sc_tbl, g_sc_tbl, g_tbl_capacity * sizeof(sockconn_t));
-    MPID_NEM_MEMCPY (new_plfd_tbl, MPID_nem_tcp_plfd_tbl, g_tbl_capacity * sizeof(pollfd_t));
+    MPID_NEM_MEMCPY (new_plfd_tbl, MPID_nem_tcp_plfd_tbl, g_tbl_capacity * sizeof(struct pollfd));
 
     /* VCs have pointers to entries in the sc table.  These
        are updated here after the expand. */
@@ -222,7 +234,7 @@ static int expand_sc_plfd_tbls (void)
     MPID_nem_tcp_plfd_tbl = new_plfd_tbl;
     for (i = g_tbl_capacity; i < new_capacity; i++) {
         INIT_SC_ENTRY(((sockconn_t *)&g_sc_tbl[i]), i);
-        INIT_POLLFD_ENTRY(((pollfd_t *)&MPID_nem_tcp_plfd_tbl[i]));
+        INIT_POLLFD_ENTRY(((struct pollfd *)&MPID_nem_tcp_plfd_tbl[i]));
     }
     g_tbl_capacity = new_capacity;
 
@@ -734,7 +746,7 @@ static int recv_cmd_pkt(int fd, MPIDI_nem_tcp_pkt_type_t *pkt_type)
 int MPID_nem_tcp_connect(struct MPIDI_VC *const vc) 
 {
     sockconn_t *sc = NULL;
-    pollfd_t *plfd = NULL;
+    struct pollfd *plfd = NULL;
     int index = -1;
     int mpi_errno = MPI_SUCCESS;
     freenode_t *node;
@@ -744,6 +756,11 @@ int MPID_nem_tcp_connect(struct MPIDI_VC *const vc)
     MPIDI_FUNC_ENTER(MPID_STATE_MPID_NEM_TCP_CONNECT);
 
     MPIU_Assert(vc != NULL);
+
+    /* We have an active connection, start polling more often */
+    MPID_nem_tcp_skip_polls = MAX_SKIP_POLLS_ACTIVE;    
+        
+    MPIDI_CHANGE_VC_STATE(vc, ACTIVE);
 
     if (((MPIDI_CH3I_VC *)vc->channel_private)->state == MPID_NEM_TCP_VC_STATE_DISCONNECTED) {
         struct sockaddr_in *sock_addr;
@@ -767,9 +784,13 @@ int MPID_nem_tcp_connect(struct MPIDI_VC *const vc)
             char *bc;
             int pmi_errno;
             int val_max_sz;
-            
+
+#ifdef USE_PMI2_API
+            val_max_sz = PMI_MAX_VALLEN;
+#else
             pmi_errno = PMI_KVS_Get_value_length_max(&val_max_sz);
             MPIU_ERR_CHKANDJUMP1(pmi_errno, mpi_errno, MPI_ERR_OTHER, "**fail", "**fail %d", pmi_errno);
+#endif
             MPIU_CHKLMEM_MALLOC(bc, char *, val_max_sz, mpi_errno, "bc");
             
             sc->is_tmpvc = FALSE;
@@ -877,7 +898,7 @@ static int cleanup_sc(sockconn_t *sc)
 {
     int mpi_errno = MPI_SUCCESS;
     int rc;
-    pollfd_t *plfd = NULL;
+    struct pollfd *plfd = NULL;
     freenode_t *node;
     MPIU_CHKPMEM_DECL(1);
     MPIDI_STATE_DECL(MPID_STATE_CLEANUP_SC);
@@ -979,7 +1000,7 @@ int MPID_nem_tcp_cleanup (struct MPIDI_VC *const vc)
 #define FUNCNAME state_tc_c_cnting_handler
 #undef FCNAME
 #define FCNAME MPIDI_QUOTE(FUNCNAME)
-static int state_tc_c_cnting_handler(pollfd_t *const plfd, sockconn_t *const sc)
+static int state_tc_c_cnting_handler(struct pollfd *const plfd, sockconn_t *const sc)
 {
     int mpi_errno = MPI_SUCCESS;
     MPID_NEM_TCP_SOCK_STATUS_t stat;
@@ -1019,7 +1040,7 @@ static int state_tc_c_cnting_handler(pollfd_t *const plfd, sockconn_t *const sc)
 #define FUNCNAME state_tc_c_cntd_handler
 #undef FCNAME
 #define FCNAME MPIDI_QUOTE(FUNCNAME)
-static int state_tc_c_cntd_handler(pollfd_t *const plfd, sockconn_t *const sc)
+static int state_tc_c_cntd_handler(struct pollfd *const plfd, sockconn_t *const sc)
 {
     int mpi_errno = MPI_SUCCESS;
     MPIDI_STATE_DECL(MPID_STATE_STATE_TC_C_CNTD_HANDLER);
@@ -1074,7 +1095,7 @@ static int state_tc_c_cntd_handler(pollfd_t *const plfd, sockconn_t *const sc)
 #define FUNCNAME state_c_ranksent_handler
 #undef FCNAME
 #define FCNAME MPIDI_QUOTE(FUNCNAME)
-static int state_c_ranksent_handler(pollfd_t *const plfd, sockconn_t *const sc)
+static int state_c_ranksent_handler(struct pollfd *const plfd, sockconn_t *const sc)
 {
     int mpi_errno = MPI_SUCCESS;
     MPIDI_nem_tcp_pkt_type_t pkt_type;
@@ -1099,6 +1120,7 @@ static int state_c_ranksent_handler(pollfd_t *const plfd, sockconn_t *const sc)
             if (pkt_type == MPIDI_NEM_TCP_PKT_ID_ACK) {
                 CHANGE_STATE(sc, CONN_STATE_TS_COMMRDY);
                 ASSIGN_SC_TO_VC(sc->vc, sc);
+
                 MPID_nem_tcp_conn_est (sc->vc);
                 MPIU_DBG_MSG_FMT(NEM_SOCK_DET, VERBOSE, (MPIU_DBG_FDEST, "c_ranksent_handler(): connection established (sc=%p, sc->vc=%p, fd=%d)", sc, sc->vc, sc->fd));
             }
@@ -1116,7 +1138,7 @@ static int state_c_ranksent_handler(pollfd_t *const plfd, sockconn_t *const sc)
 #define FUNCNAME state_c_tmpvcsent_handler
 #undef FCNAME
 #define FCNAME MPIDI_QUOTE(FUNCNAME)
-static int state_c_tmpvcsent_handler(pollfd_t *const plfd, sockconn_t *const sc)
+static int state_c_tmpvcsent_handler(struct pollfd *const plfd, sockconn_t *const sc)
 {
     int mpi_errno = MPI_SUCCESS;
     MPIDI_nem_tcp_pkt_type_t pkt_type;
@@ -1157,7 +1179,7 @@ static int state_c_tmpvcsent_handler(pollfd_t *const plfd, sockconn_t *const sc)
 #define FUNCNAME state_l_cntd_handler
 #undef FCNAME
 #define FCNAME MPIDI_QUOTE(FUNCNAME)
-static int state_l_cntd_handler(pollfd_t *const plfd, sockconn_t *const sc)
+static int state_l_cntd_handler(struct pollfd *const plfd, sockconn_t *const sc)
 {
     int mpi_errno = MPI_SUCCESS;
     MPID_NEM_TCP_SOCK_STATUS_t stat;
@@ -1173,6 +1195,9 @@ static int state_l_cntd_handler(pollfd_t *const plfd, sockconn_t *const sc)
         CHANGE_STATE(sc, CONN_STATE_TS_D_QUIESCENT);
         goto fn_exit;
     }
+
+    /* We have an active connection, start polling more often */
+    MPID_nem_tcp_skip_polls = MAX_SKIP_POLLS_ACTIVE;
 
     if (IS_READABLE(plfd)) {
         mpi_errno = recv_id_or_tmpvc_info(sc, &got_sc_eof);
@@ -1250,7 +1275,7 @@ static int do_i_win(sockconn_t *rmt_sc)
 #define FUNCNAME state_l_rankrcvd_handler
 #undef FCNAME
 #define FCNAME MPIDI_QUOTE(FUNCNAME)
-static int state_l_rankrcvd_handler(pollfd_t *const plfd, sockconn_t *const sc)
+static int state_l_rankrcvd_handler(struct pollfd *const plfd, sockconn_t *const sc)
 {
     int mpi_errno = MPI_SUCCESS;
     MPID_NEM_TCP_SOCK_STATUS_t stat;
@@ -1307,7 +1332,7 @@ static int state_l_rankrcvd_handler(pollfd_t *const plfd, sockconn_t *const sc)
 #define FUNCNAME state_l_tmpvcrcvd_handler
 #undef FCNAME
 #define FCNAME MPIDI_QUOTE(FUNCNAME)
-static int state_l_tmpvcrcvd_handler(pollfd_t *const plfd, sockconn_t *const sc)
+static int state_l_tmpvcrcvd_handler(struct pollfd *const plfd, sockconn_t *const sc)
 {
     int mpi_errno = MPI_SUCCESS;
     MPID_NEM_TCP_SOCK_STATUS_t stat;
@@ -1358,7 +1383,7 @@ static int MPID_nem_tcp_recv_handler (struct pollfd *pfd, sockconn_t *sc)
     if (((MPIDI_CH3I_VC *)sc->vc->channel_private)->recv_active == NULL)
     {
         /* receive a new message */
-        CHECK_EINTR(bytes_recvd, recv(sc->fd, MPID_nem_tcp_recv_buf, MPID_NEM_TCP_RECV_MAX_PKT_LEN, 0));
+        CHECK_EINTR(bytes_recvd, recv(sc->fd, recv_buf, MPID_NEM_TCP_RECV_MAX_PKT_LEN, 0));
         if (bytes_recvd <= 0)
         {
             if (bytes_recvd == -1 && errno == EAGAIN) /* handle this fast */
@@ -1396,7 +1421,7 @@ static int MPID_nem_tcp_recv_handler (struct pollfd *pfd, sockconn_t *sc)
     
         MPIU_DBG_MSG_FMT(CH3_CHANNEL, VERBOSE, (MPIU_DBG_FDEST, "New recv " MPIDI_MSG_SZ_FMT " (fd=%d, vc=%p, sc=%p)", bytes_recvd, sc->fd, sc->vc, sc));
 
-        mpi_errno = MPID_nem_handle_pkt(sc->vc, MPID_nem_tcp_recv_buf, bytes_recvd);
+        mpi_errno = MPID_nem_handle_pkt(sc->vc, recv_buf, bytes_recvd);
         if (mpi_errno) MPIU_ERR_POP(mpi_errno);
     }
     else
@@ -1479,7 +1504,7 @@ static int MPID_nem_tcp_recv_handler (struct pollfd *pfd, sockconn_t *sc)
 #define FUNCNAME state_commrdy_handler
 #undef FCNAME
 #define FCNAME MPIDI_QUOTE(FUNCNAME)
-static int state_commrdy_handler(pollfd_t *const plfd, sockconn_t *const sc)
+static int state_commrdy_handler(struct pollfd *const plfd, sockconn_t *const sc)
 {
     int mpi_errno = MPI_SUCCESS;
     MPIDI_STATE_DECL(MPID_STATE_STATE_COMMRDY_HANDLER);
@@ -1508,7 +1533,7 @@ static int state_commrdy_handler(pollfd_t *const plfd, sockconn_t *const sc)
 #define FUNCNAME state_d_quiescent_handler
 #undef FCNAME
 #define FCNAME MPIDI_QUOTE(FUNCNAME)
-static int state_d_quiescent_handler(pollfd_t *const plfd, sockconn_t *const sc)
+static int state_d_quiescent_handler(struct pollfd *const plfd, sockconn_t *const sc)
 {
     int mpi_errno = MPI_SUCCESS;
     MPIDI_STATE_DECL(MPID_STATE_STATE_D_QUIESCENT_HANDLER);
@@ -1532,6 +1557,8 @@ static int state_d_quiescent_handler(pollfd_t *const plfd, sockconn_t *const sc)
 #define FCNAME MPIDI_QUOTE(FUNCNAME)
 int MPID_nem_tcp_sm_init()
 {
+    int mpi_errno = MPI_SUCCESS;
+    MPIU_CHKPMEM_DECL(1);
     /* Set the appropriate handlers */
     sc_state_info[CONN_STATE_TS_CLOSED].sc_state_handler = NULL;
     sc_state_info[CONN_STATE_TC_C_CNTING].sc_state_handler = state_tc_c_cnting_handler;
@@ -1558,7 +1585,15 @@ int MPID_nem_tcp_sm_init()
 
     /* Allocate the PLFD table */
     alloc_sc_plfd_tbls();
-    return 0;
+    
+    MPIU_CHKPMEM_MALLOC(recv_buf, char*, MPID_NEM_TCP_RECV_MAX_PKT_LEN, mpi_errno, "TCP temporary buffer");
+    MPIU_CHKPMEM_COMMIT();
+
+ fn_exit:
+    return mpi_errno;
+ fn_fail:
+    MPIU_CHKPMEM_REAP();
+    goto fn_exit;
 }
 
 #undef FUNCNAME
@@ -1577,6 +1612,8 @@ int MPID_nem_tcp_sm_finalize()
 
     free_sc_plfd_tbls();
 
+    MPIU_Free(recv_buf);
+
     return MPI_SUCCESS;
 }
 
@@ -1591,13 +1628,24 @@ Evaluate the need for it by testing and then do it, if needed.
 #define FUNCNAME MPID_nem_tcp_connpoll
 #undef FCNAME
 #define FCNAME MPIDI_QUOTE(FUNCNAME)
-int MPID_nem_tcp_connpoll()
+int MPID_nem_tcp_connpoll(int in_blocking_poll)
 {
     int mpi_errno = MPI_SUCCESS, n, i;
+    static int num_skipped_polls = 0;
 
     /* num_polled is needed b/c the call to it_sc->handler() can change the
        size of the table, which leads to iterating over invalid revents. */
     int num_polled = g_tbl_size;
+
+    /* To improve shared memory performance, we don't call the poll()
+     * system call every time. The MPID_nem_tcp_skip_polls value is
+     * changed depending on whether we have any active connections.
+     * We only skip polls when we're in a blocking progress loop in
+     * order to avoid poor performance if the user does a "MPI_Test();
+     * compute();" loop waiting for a req to complete. */
+    if (in_blocking_poll && num_skipped_polls++ < MPID_nem_tcp_skip_polls)
+        goto fn_exit;
+    num_skipped_polls = 0;
 
     CHECK_EINTR(n, poll(MPID_nem_tcp_plfd_tbl, num_polled, 0));
     MPIU_ERR_CHKANDJUMP1 (n == -1, mpi_errno, MPI_ERR_OTHER, 
@@ -1605,7 +1653,7 @@ int MPID_nem_tcp_connpoll()
     /* MPIU_DBG_MSG_FMT(NEM_SOCK_DET, VERBOSE, (MPIU_DBG_FDEST, "some sc fd poll event")); */
     for(i = 0; i < num_polled; i++)
     {
-        pollfd_t *it_plfd = &MPID_nem_tcp_plfd_tbl[i];
+        struct pollfd *it_plfd = &MPID_nem_tcp_plfd_tbl[i];
         sockconn_t *it_sc = &g_sc_tbl[i];
 
         if (it_plfd->fd != CONN_INVALID_FD && it_plfd->revents != 0)
@@ -1657,14 +1705,14 @@ int MPID_nem_tcp_connpoll()
 #define FUNCNAME state_listening_handler
 #undef FCNAME
 #define FCNAME MPIDI_QUOTE(FUNCNAME)
-int MPID_nem_tcp_state_listening_handler(pollfd_t *const unused_1, sockconn_t *const unused_2)
+int MPID_nem_tcp_state_listening_handler(struct pollfd *const unused_1, sockconn_t *const unused_2)
         /*  listener fd poll struct and sockconn structure */
 {
     int mpi_errno = MPI_SUCCESS;
     int connfd;
     socklen_t len;
     SA_IN rmt_addr;
-    pollfd_t *l_plfd;
+    struct pollfd *l_plfd;
     sockconn_t *l_sc;
     MPIDI_STATE_DECL(MPID_STATE_MPID_NEM_TCP_STATE_LISTENING_HANDLER);
 
@@ -1686,7 +1734,7 @@ int MPID_nem_tcp_state_listening_handler(pollfd_t *const unused_1, sockconn_t *c
         }
         else {
             int index = -1;
-            pollfd_t *plfd;
+            struct pollfd *plfd;
             sockconn_t *sc;
 
             MPID_nem_tcp_set_sockopts(connfd); /* (N2) */

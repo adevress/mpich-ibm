@@ -1,4 +1,4 @@
-
+              
 /* -*- Mode: C; c-basic-offset:4 ; -*- */
 /*
  *  (C) 2006 by Argonne National Laboratory.
@@ -48,7 +48,6 @@ static mpid_nem_mx_hash_t *mpid_nem_mx_connreqs ATTRIBUTE((unused, used))= NULL;
     HASH_FIND(hh2, mpid_nem_mx_connreqs, &(_mpi_req_ptr), sizeof(MPID_Request*), s); \
     if(s){ (_ret) = 1; } else {(_ret) = 0;}                                   \
 }while(0)
-
 
 static int MPID_nem_mx_handle_sreq(MPID_Request *sreq);
 static int MPID_nem_mx_handle_rreq(MPID_Request *rreq, mx_status_t status);
@@ -104,7 +103,7 @@ mx_unexp_handler_action_t MPID_nem_mx_get_adi_msg(void *context, mx_endpoint_add
       
       MPIDI_PG_Find (pg_id, &pg);
       NEM_MX_MATCH_GET_PGRANK(match_info,pg_rank);
-      MPIDI_PG_Get_vc(pg, pg_rank, &vc);	    
+      MPIDI_PG_Get_vc_set_active(pg, pg_rank, &vc);	    
       
       fprintf(stdout,"[%i]=== NULL VC : Receiver Unex Got infos (%lx) from  Sender (in data) ..%li %i %s %p\n", 
 	      MPID_nem_mem_region.rank,match_info,remote_nic_id,remote_endpoint_id,pg_id,vc);
@@ -178,7 +177,7 @@ if(type == NEM_MX_DIRECT_TYPE)
 	
 	MPIDI_PG_Find (pg_id, &pg);
 	NEM_MX_MATCH_GET_PGRANK(match_info,pg_rank);
-	MPIDI_PG_Get_vc(pg, pg_rank, &vc);
+	MPIDI_PG_Get_vc_set_active(pg, pg_rank, &vc);
 	
 	if(VC_FIELD(vc, local_connected) == 0)
 	{			
@@ -305,25 +304,18 @@ int MPID_nem_mx_directRecv(MPIDI_VC_t *vc, MPID_Request *rreq)
 }
 
 
-
 #ifndef USE_CTXT_AS_MARK	
 #undef FUNCNAME
 #define FUNCNAME MPID_nem_mx_poll
 #undef FCNAME
 #define FCNAME MPIDI_QUOTE(FUNCNAME)
 int
-MPID_nem_mx_poll(MPID_nem_poll_dir_t in_or_out)
+MPID_nem_mx_poll(int in_blocking_poll)
 {
    int           mpi_errno = MPI_SUCCESS;
    mx_status_t   status;
    mx_return_t   ret;
    uint32_t      result;
-
-   /*
-   if ( ((my__count++)%100000000) == 0)
-     fprintf(stdout,"[%i] ==== Polling %i\n",MPID_nem_mem_region.rank,my__count);
-    */
-   /*mx_progress(MPID_nem_mx_local_endpoint); */
 
    /* first check ADI msgs */
    ret = mx_test_any(MPID_nem_mx_local_endpoint,NEM_MX_MATCH_INTRA,NEM_MX_MASK,&status,&result);
@@ -333,7 +325,6 @@ MPID_nem_mx_poll(MPID_nem_poll_dir_t in_or_out)
      MPID_Request *req = (MPID_Request *)(status.context);
      if ((req->kind == MPID_REQUEST_SEND) || (req->kind == MPID_PREQUEST_SEND))
      {	   
-
        MPID_nem_mx_handle_sreq(req);
      }
      else if (req->kind == MPID_REQUEST_RECV)	       
@@ -407,20 +398,13 @@ MPID_nem_mx_poll(MPID_nem_poll_dir_t in_or_out)
 #undef FCNAME
 #define FCNAME MPIDI_QUOTE(FUNCNAME)
 int
-MPID_nem_mx_poll(MPID_nem_poll_dir_t in_or_out)
+MPID_nem_mx_poll(int in_blocking_progress)
 {
    int           mpi_errno = MPI_SUCCESS;
    mx_status_t   status;
    mx_return_t   ret;
    uint32_t      result;
 
-   /*
-   mx_progress(MPID_nem_mx_local_endpoint);
-   
-   if ( ((my__count++)%100000000) == 0)
-     fprintf(stdout,"[%i] ==== Polling %i\n",MPID_nem_mem_region.rank,my__count);
-    */
-   
    ret = mx_test_any(MPID_nem_mx_local_endpoint,NEM_MX_MATCH_EMPTY_MASK,NEM_MX_MATCH_EMPTY_MASK,&status,&result);
    MPIU_Assert(ret == MX_SUCCESS);
    if ((ret == MX_SUCCESS) && (result > 0))
@@ -433,7 +417,6 @@ MPID_nem_mx_poll(MPID_nem_poll_dir_t in_or_out)
      { 
        if ((req->kind == MPID_REQUEST_SEND) || (req->kind == MPID_PREQUEST_SEND))
        {	   
-
 	 MPID_nem_mx_handle_sreq(req);
        }
        else if (req->kind == MPID_REQUEST_RECV)	       
@@ -598,7 +581,7 @@ MPID_nem_mx_handle_rreq(MPID_Request *req, mx_status_t status)
     mx_status_t  status;
     uint32_t     result;
     
-    MPIDI_Comm_get_vc(req->comm, req->status.MPI_SOURCE, &vc);   
+    MPIDI_Comm_get_vc_set_active(req->comm, req->status.MPI_SOURCE, &vc);   
     mpi_errno = vc->pg->getConnInfo(vc->pg_rank, business_card, MPID_NEM_MAX_NETMOD_STRING_LEN, vc->pg);
     if (mpi_errno) MPIU_ERR_POP(mpi_errno);
     mpi_errno = MPID_nem_mx_get_from_bc (business_card, &VC_FIELD(vc, remote_endpoint_id), &VC_FIELD(vc, remote_nic_id));

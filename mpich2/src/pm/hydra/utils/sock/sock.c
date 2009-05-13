@@ -6,11 +6,9 @@
 
 #include "hydra_utils.h"
 
-#ifdef HAVE_SYS_SOCKET_H
-#include <sys/socket.h>
-#endif
+static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
-HYD_Status HYDU_Sock_listen(int *listen_fd, char *port_range, uint16_t * port)
+HYD_Status HYDU_sock_listen(int *listen_fd, char *port_range, uint16_t * port)
 {
     struct sockaddr_in sa;
     int one = 1;
@@ -50,7 +48,7 @@ HYD_Status HYDU_Sock_listen(int *listen_fd, char *port_range, uint16_t * port)
     *listen_fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (*listen_fd < 0)
         HYDU_ERR_SETANDJUMP1(status, HYD_SOCK_ERROR, "cannot open socket (%s)\n",
-                             HYDU_String_error(errno));
+                             HYDU_strerror(errno));
 
     if (setsockopt(*listen_fd, IPPROTO_TCP, TCP_NODELAY, &one, sizeof(int)) < 0)
         HYDU_ERR_SETANDJUMP(status, HYD_SOCK_ERROR, "cannot set TCP_NODELAY\n");
@@ -75,7 +73,7 @@ HYD_Status HYDU_Sock_listen(int *listen_fd, char *port_range, uint16_t * port)
              * port. Otherwise, it's an error. */
             if (errno != EADDRINUSE)
                 HYDU_ERR_SETANDJUMP1(status, HYD_SOCK_ERROR, "bind error (%s)\n",
-                                     HYDU_String_error(errno));
+                                     HYDU_strerror(errno));
         }
         else    /* We got a port */
             break;
@@ -87,7 +85,7 @@ HYD_Status HYDU_Sock_listen(int *listen_fd, char *port_range, uint16_t * port)
 
     if (listen(*listen_fd, -1) < 0)
         HYDU_ERR_SETANDJUMP1(status, HYD_SOCK_ERROR, "listen error (%s)\n",
-                             HYDU_String_error(errno));
+                             HYDU_strerror(errno));
 
     /* We asked for any port, so we need to find out which port we
      * actually got. */
@@ -96,7 +94,7 @@ HYD_Status HYDU_Sock_listen(int *listen_fd, char *port_range, uint16_t * port)
 
         if (getsockname(*listen_fd, (struct sockaddr *) &sa, &sinlen) < 0)
             HYDU_ERR_SETANDJUMP1(status, HYD_SOCK_ERROR, "getsockname error (%s)\n",
-                                 HYDU_String_error(errno));
+                                 HYDU_strerror(errno));
         *port = ntohs(sa.sin_port);
     }
 
@@ -109,36 +107,38 @@ HYD_Status HYDU_Sock_listen(int *listen_fd, char *port_range, uint16_t * port)
 }
 
 
-HYD_Status HYDU_Sock_connect(const char *host, uint16_t port, int *fd)
+HYD_Status HYDU_sock_connect(const char *host, uint16_t port, int *fd)
 {
-    struct sockaddr_in sa;
     struct hostent *ht;
+    struct sockaddr_in sa;
     HYD_Status status = HYD_SUCCESS;
 
     HYDU_FUNC_ENTER();
 
-    memset((char *) &sa, 0, sizeof(sa));
+    memset((char *) &sa, 0, sizeof(struct sockaddr_in));
     sa.sin_family = AF_INET;
     sa.sin_port = htons(port);
 
     /* Get the remote host's IP address */
+    pthread_mutex_lock(&mutex);
     ht = gethostbyname(host);
+    pthread_mutex_unlock(&mutex);
     if (ht == NULL)
         HYDU_ERR_SETANDJUMP1(status, HYD_INVALID_PARAM,
-                             "unable to get host address (%s)\n", HYDU_String_error(errno));
+                             "unable to get host address (%s)\n", HYDU_strerror(errno));
     memcpy(&sa.sin_addr, ht->h_addr_list[0], ht->h_length);
 
     /* Create a socket and set the required options */
     *fd = socket(AF_INET, SOCK_STREAM, 0);
     if (*fd < 0)
         HYDU_ERR_SETANDJUMP1(status, HYD_SOCK_ERROR, "cannot open socket (%s)\n",
-                             HYDU_String_error(errno));
+                             HYDU_strerror(errno));
 
     /* Not being able to connect is not an error in all cases. So we
      * return an error, but only print a warning message. The upper
      * layer can decide what to do with the return status. */
     if (connect(*fd, (struct sockaddr *) &sa, sizeof(sa)) < 0) {
-        HYDU_Warn_printf("connect error (%s)\n", HYDU_String_error(errno));
+        HYDU_Error_printf("connect error (%s)\n", HYDU_strerror(errno));
         status = HYD_SOCK_ERROR;
         goto fn_fail;
     }
@@ -152,7 +152,7 @@ HYD_Status HYDU_Sock_connect(const char *host, uint16_t port, int *fd)
 }
 
 
-HYD_Status HYDU_Sock_accept(int listen_fd, int *fd)
+HYD_Status HYDU_sock_accept(int listen_fd, int *fd)
 {
     HYD_Status status = HYD_SUCCESS;
 
@@ -161,7 +161,7 @@ HYD_Status HYDU_Sock_accept(int listen_fd, int *fd)
     *fd = accept(listen_fd, 0, 0);
     if (*fd < 0)
         HYDU_ERR_SETANDJUMP1(status, HYD_SOCK_ERROR, "accept error (%s)\n",
-                             HYDU_String_error(errno));
+                             HYDU_strerror(errno));
 
   fn_exit:
     HYDU_FUNC_EXIT();
@@ -172,12 +172,10 @@ HYD_Status HYDU_Sock_accept(int listen_fd, int *fd)
 }
 
 
-/*
- * HYD_Sock_readline: Return the next newline-terminated string of
+/* HYD_Sock_readline: Return the next newline-terminated string of
  * maximum length maxlen.  This is a buffered version, and reads from
- * fd as necessary.
- */
-HYD_Status HYDU_Sock_readline(int fd, char *buf, int maxlen, int *linelen)
+ * fd as necessary. */
+HYD_Status HYDU_sock_readline(int fd, char *buf, int maxlen, int *linelen)
 {
     int n;
     HYD_Status status = HYD_SUCCESS;
@@ -194,7 +192,7 @@ HYD_Status HYDU_Sock_readline(int fd, char *buf, int maxlen, int *linelen)
             if (errno == EINTR)
                 continue;
             HYDU_ERR_SETANDJUMP1(status, HYD_SOCK_ERROR, "read error (%s)\n",
-                                 HYDU_String_error(errno));
+                                 HYDU_strerror(errno));
         }
 
         *linelen += n;
@@ -223,33 +221,7 @@ HYD_Status HYDU_Sock_readline(int fd, char *buf, int maxlen, int *linelen)
 }
 
 
-/*
- * HYD_Sock_read: perform a blocking read on a non-blocking socket.
- */
-HYD_Status HYDU_Sock_read(int fd, void *buf, int maxlen, int *count)
-{
-    HYD_Status status = HYD_SUCCESS;
-
-    HYDU_FUNC_ENTER();
-
-    do {
-        *count = read(fd, buf, maxlen);
-    } while (*count < 0 && errno == EINTR);
-
-    if (*count < 0)
-        HYDU_ERR_SETANDJUMP1(status, HYD_SOCK_ERROR, "read errno (%s)\n",
-                             HYDU_String_error(errno));
-
-  fn_exit:
-    HYDU_FUNC_EXIT();
-    return status;
-
-  fn_fail:
-    goto fn_exit;
-}
-
-
-HYD_Status HYDU_Sock_writeline(int fd, char *buf, int maxsize)
+HYD_Status HYDU_sock_writeline(int fd, char *buf, int maxsize)
 {
     int n;
     HYD_Status status = HYD_SUCCESS;
@@ -265,7 +237,7 @@ HYD_Status HYDU_Sock_writeline(int fd, char *buf, int maxsize)
 
     if (n < maxsize)
         HYDU_ERR_SETANDJUMP1(status, HYD_SOCK_ERROR, "write error (%s)\n",
-                             HYDU_String_error(errno));
+                             HYDU_strerror(errno));
 
   fn_exit:
     HYDU_FUNC_EXIT();
@@ -276,7 +248,44 @@ HYD_Status HYDU_Sock_writeline(int fd, char *buf, int maxsize)
 }
 
 
-HYD_Status HYDU_Sock_write(int fd, void *buf, int maxsize)
+HYD_Status HYDU_sock_read(int fd, void *buf, int maxlen, int *count,
+                          enum HYDU_sock_comm_flag flag)
+{
+    int tmp;
+    HYD_Status status = HYD_SUCCESS;
+
+    HYDU_FUNC_ENTER();
+
+    *count = 0;
+    while (1) {
+        do {
+            tmp = read(fd, buf, maxlen);
+        } while (tmp < 0 && errno == EINTR);
+
+        if (tmp < 0) {
+            *count = tmp;
+            break;
+        }
+        *count += tmp;
+
+        if (flag != HYDU_SOCK_COMM_MSGWAIT || *count == maxlen || tmp == 0)
+            break;
+    };
+
+    if (*count < 0)
+        HYDU_ERR_SETANDJUMP1(status, HYD_SOCK_ERROR, "read errno (%s)\n",
+                             HYDU_strerror(errno));
+
+  fn_exit:
+    HYDU_FUNC_EXIT();
+    return status;
+
+  fn_fail:
+    goto fn_exit;
+}
+
+
+HYD_Status HYDU_sock_write(int fd, void *buf, int maxsize)
 {
     int n;
     HYD_Status status = HYD_SUCCESS;
@@ -289,7 +298,7 @@ HYD_Status HYDU_Sock_write(int fd, void *buf, int maxsize)
 
     if (n < maxsize)
         HYDU_ERR_SETANDJUMP1(status, HYD_SOCK_ERROR, "write error (%s)\n",
-                             HYDU_String_error(errno));
+                             HYDU_strerror(errno));
 
   fn_exit:
     HYDU_FUNC_EXIT();
@@ -300,7 +309,33 @@ HYD_Status HYDU_Sock_write(int fd, void *buf, int maxsize)
 }
 
 
-HYD_Status HYDU_Sock_set_nonblock(int fd)
+HYD_Status HYDU_sock_trywrite(int fd, void *buf, int maxsize)
+{
+    int n;
+    HYD_Status status = HYD_SUCCESS;
+
+    HYDU_FUNC_ENTER();
+
+    do {
+        n = write(fd, buf, maxsize);
+    } while (n < 0 && errno == EINTR);
+
+    if (n < maxsize) {
+        HYDU_Warn_printf("write error (%s)\n", HYDU_strerror(errno));
+        status = HYD_SOCK_ERROR;
+        goto fn_fail;
+    }
+
+  fn_exit:
+    HYDU_FUNC_EXIT();
+    return status;
+
+  fn_fail:
+    goto fn_exit;
+}
+
+
+HYD_Status HYDU_sock_set_nonblock(int fd)
 {
     int flags;
     HYD_Status status = HYD_SUCCESS;
@@ -322,7 +357,7 @@ HYD_Status HYDU_Sock_set_nonblock(int fd)
 }
 
 
-HYD_Status HYDU_Sock_set_cloexec(int fd)
+HYD_Status HYDU_sock_set_cloexec(int fd)
 {
     int flags;
     HYD_Status status = HYD_SUCCESS;
@@ -341,7 +376,7 @@ HYD_Status HYDU_Sock_set_cloexec(int fd)
 }
 
 
-HYD_Status HYDU_Sock_stdout_cb(int fd, HYD_Event_t events, int stdout_fd, int *closed)
+HYD_Status HYDU_sock_stdout_cb(int fd, HYD_Event_t events, int stdout_fd, int *closed)
 {
     int count, written, ret;
     char buf[HYD_TMPBUF_SIZE];
@@ -357,7 +392,7 @@ HYD_Status HYDU_Sock_stdout_cb(int fd, HYD_Event_t events, int stdout_fd, int *c
     count = read(fd, buf, HYD_TMPBUF_SIZE);
     if (count < 0) {
         HYDU_ERR_SETANDJUMP2(status, HYD_SOCK_ERROR, "read error on %d (%s)\n",
-                             fd, HYDU_String_error(errno));
+                             fd, HYDU_strerror(errno));
     }
     else if (count == 0) {
         /* The connection has closed */
@@ -370,7 +405,7 @@ HYD_Status HYDU_Sock_stdout_cb(int fd, HYD_Event_t events, int stdout_fd, int *c
         ret = write(stdout_fd, buf + written, count - written);
         if (ret < 0 && errno != EAGAIN)
             HYDU_ERR_SETANDJUMP2(status, HYD_SOCK_ERROR, "write error on %d (%s)\n",
-                                 stdout_fd, HYDU_String_error(errno));
+                                 stdout_fd, HYDU_strerror(errno));
         if (ret > 0)
             written += ret;
     }
@@ -384,8 +419,8 @@ HYD_Status HYDU_Sock_stdout_cb(int fd, HYD_Event_t events, int stdout_fd, int *c
 }
 
 
-HYD_Status HYDU_Sock_stdin_cb(int fd, HYD_Event_t events, char *buf, int *buf_count,
-                              int *buf_offset, int *closed)
+HYD_Status HYDU_sock_stdin_cb(int fd, HYD_Event_t events, int stdin_fd, char *buf,
+                              int *buf_count, int *buf_offset, int *closed)
 {
     int count;
     HYD_Status status = HYD_SUCCESS;
@@ -403,23 +438,23 @@ HYD_Status HYDU_Sock_stdin_cb(int fd, HYD_Event_t events, char *buf, int *buf_co
             count = write(fd, buf + *buf_offset, *buf_count);
             if (count < 0)
                 HYDU_ERR_SETANDJUMP2(status, HYD_SOCK_ERROR, "write error on %d (%s)\n",
-                                     fd, HYDU_String_error(errno))
-            *buf_offset += count;
+                                     fd, HYDU_strerror(errno))
+                    * buf_offset += count;
             *buf_count -= count;
             break;
         }
 
         /* If we are still here, we need to refill our temporary buffer */
-        count = read(0, buf, HYD_TMPBUF_SIZE);
+        count = read(stdin_fd, buf, HYD_TMPBUF_SIZE);
         if (count < 0) {
-            if (errno == EINTR || errno == EAGAIN) {
+            if (errno == EINTR || errno == EAGAIN || errno == ENOTCONN) {
                 /* This call was interrupted or there was no data to read; just break out. */
                 *closed = 1;
                 break;
             }
 
             HYDU_ERR_SETANDJUMP1(status, HYD_SOCK_ERROR, "read error on 0 (%s)\n",
-                                 HYDU_String_error(errno));
+                                 HYDU_strerror(errno));
         }
         else if (count == 0) {
             /* The connection has closed */

@@ -16,9 +16,11 @@ MPID_nem_newmad_finalize()
 {
     int mpi_errno = MPI_SUCCESS;
 
+    common_exit(NULL);
+
    fn_exit:
      return mpi_errno;
-   fn_fail:
+   fn_fail:  ATTRIBUTE((unused))
      goto fn_exit;
 }
 
@@ -32,7 +34,7 @@ MPID_nem_newmad_ckpt_shutdown ()
    int mpi_errno = MPI_SUCCESS;
    fn_exit:
       return mpi_errno;
-   fn_fail:
+   fn_fail:  ATTRIBUTE((unused))
       goto fn_exit;
 }
 

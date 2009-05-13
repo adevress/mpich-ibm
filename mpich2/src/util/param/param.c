@@ -4,7 +4,10 @@
  *      See COPYRIGHT in top-level directory.
  */
 
-#include "mpiimpl.h"
+#include "mpichconf.h"
+#include "mpimem.h"
+#include "mpibase.h"
+#include "mpiparam.h"
 #include "param.h"
 #ifdef HAVE_REGISTERED_PARAMS
 #include "defparams.h"

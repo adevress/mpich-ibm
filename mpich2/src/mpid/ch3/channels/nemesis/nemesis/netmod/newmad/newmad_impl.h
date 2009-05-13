@@ -6,7 +6,6 @@
 
 #ifndef NEWMAD_MODULE_IMPL_H
 #define NEWMAD_MODULE_IMPL_H
-//#include <linux/types.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <stdint.h>
@@ -22,7 +21,7 @@ int MPID_nem_newmad_init (MPID_nem_queue_ptr_t proc_recv_queue, MPID_nem_queue_p
 		      MPIDI_PG_t *pg_p, int pg_rank, char **bc_val_p, int *val_max_sz_p);
 int MPID_nem_newmad_finalize (void);
 int MPID_nem_newmad_ckpt_shutdown (void);
-int MPID_nem_newmad_poll(MPID_nem_poll_dir_t in_or_out);
+int MPID_nem_newmad_poll(int in_blocking_progress);
 int MPID_nem_newmad_send (MPIDI_VC_t *vc, MPID_nem_cell_ptr_t cell, int datalen);
 int MPID_nem_newmad_get_business_card (int my_rank, char **bc_val_p, int *val_max_sz_p);
 int MPID_nem_newmad_connect_to_root (const char *business_card, MPIDI_VC_t *new_vc);
@@ -45,15 +44,19 @@ int  MPID_nem_newmad_directSsend(MPIDI_VC_t *vc, const void * buf, int count, MP
 int MPID_nem_newmad_directRecv(MPIDI_VC_t *vc, MPID_Request *rreq);
 int MPID_nem_newmad_cancel_send(MPIDI_VC_t *vc, MPID_Request *sreq);
 int MPID_nem_newmad_cancel_recv(MPIDI_VC_t *vc, MPID_Request *rreq);
-
+int MPID_nem_newmad_probe(MPIDI_VC_t *vc,  int source, int tag, MPID_Comm *comm, 
+			  int context_offset, MPI_Status *status);
+int MPID_nem_newmad_iprobe(MPIDI_VC_t *vc,  int source, int tag, MPID_Comm *comm, 
+			   int context_offset, int *flag, MPI_Status *status);
 /* Any source management */
-int MPID_nem_newmad_anysource_posted(MPID_Request *rreq);
+void MPID_nem_newmad_anysource_posted(MPID_Request *rreq);
 int MPID_nem_newmad_anysource_matched(MPID_Request *rreq);
 
 /* Callbacks for events */
-void MPID_nem_newmad_get_adi_msg(nm_sr_event_t event, nm_sr_event_info_t*info);
-void MPID_nem_newmad_handle_sreq(nm_sr_event_t event, nm_sr_event_info_t*info);
-void MPID_nem_newmad_handle_rreq(nm_sr_event_t event, nm_sr_event_info_t*info);
+void MPID_nem_newmad_get_adi_msg(nm_sr_event_t event, const nm_sr_event_info_t*info);
+void MPID_nem_newmad_get_rreq(nm_sr_event_t event, const nm_sr_event_info_t*info);
+void MPID_nem_newmad_handle_sreq(nm_sr_event_t event, const nm_sr_event_info_t*info);
+
 
 /* Dtype management */
 int MPID_nem_newmad_process_sdtype(MPID_Request **sreq_p,  MPI_Datatype datatype,  MPID_Datatype * dt_ptr, const void *buf, 
@@ -64,16 +67,15 @@ int MPID_nem_newmad_process_rdtype(MPID_Request **rreq_p, MPID_Datatype * dt_ptr
 /* Connection management*/
 int MPID_nem_newmad_send_conn_info (MPIDI_VC_t *vc);
 
-#define MPID_NEM_NMAD_MAX_STRING_SIZE   ((MPID_NEM_MAX_NETMOD_STRING_LEN)/2)
-#define MPID_NEM_NMAD_MAX_NETS          4
-
-typedef nm_gate_id_t mpid_nem_newmad_p_gate_t;
+#define MPID_NEM_NMAD_MAX_NETS 4
+#define MPID_NEM_NMAD_MAX_SIZE MPID_NEM_MAX_NETMOD_STRING_LEN
+typedef nm_gate_t mpid_nem_newmad_p_gate_t;
 
 typedef struct MPID_nem_newmad_vc_area_internal
 {
-    char hostname[MPID_NEM_NMAD_MAX_STRING_SIZE];
-    char url[MPID_NEM_NMAD_MAX_NETS][MPID_NEM_NMAD_MAX_STRING_SIZE];
-    uint8_t drv_id[MPID_NEM_NMAD_MAX_NETS];
+    char                     hostname[MPID_NEM_NMAD_MAX_SIZE];
+    char                     url[MPID_NEM_NMAD_MAX_NETS][MPID_NEM_NMAD_MAX_SIZE];
+    uint8_t                  drv_id[MPID_NEM_NMAD_MAX_NETS];
     mpid_nem_newmad_p_gate_t p_gate;
 } MPID_nem_newmad_vc_area_internal_t;
 
@@ -91,6 +93,7 @@ typedef struct
 typedef struct 
 {
     nm_sr_request_t newmad_req;
+    void           *iov;
 } MPID_nem_newmad_req_area;
 /* accessor macro to private fields in REQ */
 #define REQ_FIELD(reqp, field) (((MPID_nem_newmad_req_area *)((reqp)->ch.netmod_area.padding))->field)
@@ -164,9 +167,11 @@ typedef int16_t Nmad_Nem_tag_t;
 #define NEM_NMAD_DIRECT_MATCH(_match,_tag,_rank,_context) NEM_NMAD_SET_MATCH(_match,_tag,_rank,_context)
 #define NEM_NMAD_ADI_MATCH(_match)                        NEM_NMAD_SET_MATCH(_match,0,0,NEM_NMAD_INTRA_CTXT)
 
-extern nm_core_t                 mpid_nem_newmad_pcore;
-extern mpid_nem_newmad_p_gate_t *mpid_nem_newmad_gate_to_rank;
-extern int                       mpid_nem_newmad_pending_send_req;
+extern nm_core_t  mpid_nem_newmad_pcore;
+extern int        mpid_nem_newmad_pending_send_req;
+
+#define NMAD_IOV_MAX_DEPTH 15 /* NM_SO_PREALLOC_IOV_LEN */
+//#define DEBUG
 
 #endif //NEWMAD_MODULE_IMPL_H
 

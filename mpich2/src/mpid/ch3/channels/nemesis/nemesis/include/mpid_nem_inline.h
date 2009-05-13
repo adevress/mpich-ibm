@@ -22,7 +22,7 @@ static inline void MPID_nem_mpich2_dequeue_fastbox (int local_rank);
 static inline void MPID_nem_mpich2_enqueue_fastbox (int local_rank);
 static inline int MPID_nem_mpich2_sendv_header (MPID_IOV **iov, int *n_iov, MPIDI_VC_t *vc, int *again);
 static inline int MPID_nem_recv_seqno_matches (MPID_nem_queue_ptr_t qhead);
-static inline int MPID_nem_mpich2_test_recv (MPID_nem_cell_ptr_t *cell, int *in_fbox);
+static inline int MPID_nem_mpich2_test_recv (MPID_nem_cell_ptr_t *cell, int *in_fbox, int in_blocking_progress);
 static inline int MPID_nem_mpich2_blocking_recv (MPID_nem_cell_ptr_t *cell, int *in_fbox);
 static inline int MPID_nem_mpich2_test_recv_wait (MPID_nem_cell_ptr_t *cell, int *in_fbox, int timeout);
 static inline int MPID_nem_mpich2_release_cell (MPID_nem_cell_ptr_t cell, MPIDI_VC_t *vc);
@@ -81,7 +81,7 @@ MPID_nem_mpich2_send_header (void* buf, int size, MPIDI_VC_t *vc, int *again)
 	    pbox->cell.pkt.mpich2.type = MPID_NEM_PKT_MPICH2;
 #endif /* ENABLED_CHECKPOINTING */
             MPIU_DBG_STMT (CH3_CHANNEL, VERBOSE, pbox->cell.pkt.mpich2.type = MPID_NEM_PKT_MPICH2_HEAD);
-            
+
 	    payload_32[0] = buf_32[0];
 	    payload_32[1] = buf_32[1];
 	    payload_32[2] = buf_32[2];
@@ -95,8 +95,8 @@ MPID_nem_mpich2_send_header (void* buf, int size, MPIDI_VC_t *vc, int *again)
 		payload_32[8] = buf_32[8];
 		payload_32[9] = buf_32[9];
 	    }
-	    
-	    MPIDU_Shm_write_barrier();
+
+	    OPA_write_barrier();
 	    pbox->flag.value = 1;
 
 	    MPIU_DBG_MSG (CH3_CHANNEL, VERBOSE, "--> Sent fbox ");
@@ -107,11 +107,11 @@ MPID_nem_mpich2_send_header (void* buf, int size, MPIDI_VC_t *vc, int *again)
     }
  usequeue_l:
 #endif /*USE_FASTBOX */
-    
+
 #ifdef PREFETCH_CELL
     DO_PAPI (PAPI_reset (PAPI_EventSet));
     el = MPID_nem_prefetched_cell;
-    
+
     if (!el)
     {
 	if (MPID_nem_queue_empty (MPID_nem_mem_region.my_freeQ))
@@ -381,7 +381,7 @@ MPID_nem_mpich2_sendv_header (MPID_IOV **iov, int *n_iov, MPIDI_VC_t *vc, int *a
 	    pbox->cell.pkt.mpich2.type = MPID_NEM_PKT_MPICH2;
 #endif
             MPIU_DBG_STMT (CH3_CHANNEL, VERBOSE, pbox->cell.pkt.mpich2.type = MPID_NEM_PKT_MPICH2_HEAD);
-            
+
 	    payload_32[0] = buf_32[0];
 	    payload_32[1] = buf_32[1];
 	    payload_32[2] = buf_32[2];
@@ -396,7 +396,7 @@ MPID_nem_mpich2_sendv_header (MPID_IOV **iov, int *n_iov, MPIDI_VC_t *vc, int *a
 		payload_32[9] = buf_32[9];
 	    }
 	    MPID_NEM_MEMCPY ((char *)pbox->cell.pkt.mpich2.payload +sizeof(MPIDI_CH3_Pkt_t), (*iov)[1].MPID_IOV_BUF, (*iov)[1].MPID_IOV_LEN);
-	    MPIDU_Shm_write_barrier();
+	    OPA_write_barrier();
 	    pbox->flag.value = 1;
 	    *n_iov = 0;
 
@@ -407,12 +407,12 @@ MPID_nem_mpich2_sendv_header (MPID_IOV **iov, int *n_iov, MPIDI_VC_t *vc, int *a
 	}
     }
  usequeue_l:
-    
+
 #endif /*USE_FASTBOX */
 	
 #ifdef PREFETCH_CELL
     el = MPID_nem_prefetched_cell;
-    
+
     if (!el)
     {
 	if (MPID_nem_queue_empty (MPID_nem_mem_region.my_freeQ))
@@ -581,8 +581,8 @@ MPID_nem_mpich2_send_seg_header (MPID_Segment *segment, MPIDI_msg_sz_t *segment_
             last = segment_size;
             MPID_Segment_pack(segment, *segment_first, &last, (char *)pbox->cell.pkt.mpich2.payload + sizeof(MPIDI_CH3_Pkt_t));
             MPIU_Assert(last == segment_size);
-            
-	    MPIDU_Shm_write_barrier();
+
+	    OPA_write_barrier();
 	    pbox->flag.value = 1;
 
             *segment_first = last;
@@ -594,12 +594,12 @@ MPID_nem_mpich2_send_seg_header (MPID_Segment *segment, MPIDI_msg_sz_t *segment_
 	}
     }
  usequeue_l:
-    
+
 #endif /*USE_FASTBOX */
 	
 #ifdef PREFETCH_CELL
     el = MPID_nem_prefetched_cell;
-    
+
     if (!el)
     {
 	if (MPID_nem_queue_empty (MPID_nem_mem_region.my_freeQ))
@@ -876,7 +876,7 @@ MPID_nem_recv_seqno_matches (MPID_nem_queue_ptr_t qhead)
 #undef FCNAME
 #define FCNAME MPIDI_QUOTE(FUNCNAME)
 static inline int
-MPID_nem_mpich2_test_recv (MPID_nem_cell_ptr_t *cell, int *in_fbox)
+MPID_nem_mpich2_test_recv(MPID_nem_cell_ptr_t *cell, int *in_fbox, int in_blocking_progress)
 {
     int mpi_errno = MPI_SUCCESS;
     
@@ -899,13 +899,9 @@ MPID_nem_mpich2_test_recv (MPID_nem_cell_ptr_t *cell, int *in_fbox)
     if (poll_fboxes(cell)) goto fbox_l;
 #endif/* USE_FASTBOX     */
 
-    /* FIXME the ext_procs bit is an optimization for the all-local-procs case.
-       This has been commented out for now because it breaks dynamic processes.
-       Some other solution should be implemented eventually, possibly using a
-       flag that is set whenever a port is opened. [goodell@ 2008-06-18] */
-    if ((MPID_nem_num_netmods) /*&& (MPID_nem_mem_region.ext_procs > 0)*/)
+    if (MPID_nem_num_netmods)
     {
-	mpi_errno = MPID_nem_network_poll (MPID_NEM_POLL_IN);
+	mpi_errno = MPID_nem_network_poll(in_blocking_progress);
         if (mpi_errno) MPIU_ERR_POP (mpi_errno);
     }
 
@@ -970,13 +966,9 @@ MPID_nem_mpich2_test_recv_wait (MPID_nem_cell_ptr_t *cell, int *in_fbox, int tim
     if (poll_fboxes(cell)) goto fbox_l;
 #endif/* USE_FASTBOX     */
 
-    /* FIXME the ext_procs bit is an optimization for the all-local-procs case.
-       This has been commented out for now because it breaks dynamic processes.
-       Some other solution should be implemented eventually, possibly using a
-       flag that is set whenever a port is opened. [goodell@ 2008-06-18] */
-    if ((MPID_nem_num_netmods) /*&& (MPID_nem_mem_region.ext_procs > 0)*/)
+    if (MPID_nem_num_netmods)
     {
-	mpi_errno = MPID_nem_network_poll (MPID_NEM_POLL_IN);
+	mpi_errno = MPID_nem_network_poll(TRUE /* blocking */);
         if (mpi_errno) MPIU_ERR_POP (mpi_errno);
     }
 
@@ -1061,13 +1053,9 @@ MPID_nem_mpich2_blocking_recv(MPID_nem_cell_ptr_t *cell, int *in_fbox)
     if (poll_fboxes(cell)) goto fbox_l;
 #endif /*USE_FASTBOX */
 
-    /* FIXME the ext_procs bit is an optimization for the all-local-procs case.
-       This has been commented out for now because it breaks dynamic processes.
-       Some other solution should be implemented eventually, possibly using a
-       flag that is set whenever a port is opened. [goodell@ 2008-06-18] */
-    if ((MPID_nem_num_netmods) /*&& (MPID_nem_mem_region.ext_procs > 0)*/)
+    if (MPID_nem_num_netmods)
     {
-	mpi_errno = MPID_nem_network_poll (MPID_NEM_POLL_IN);
+	mpi_errno = MPID_nem_network_poll(TRUE /* blocking */);
         if (mpi_errno) MPIU_ERR_POP (mpi_errno);
     }
 
@@ -1080,16 +1068,12 @@ MPID_nem_mpich2_blocking_recv(MPID_nem_cell_ptr_t *cell, int *in_fbox)
         if (poll_fboxes(cell)) goto fbox_l;
 #endif /*USE_FASTBOX */
 
-        /* FIXME the ext_procs bit is an optimization for the all-local-procs case.
-           This has been commented out for now because it breaks dynamic processes.
-           Some other solution should be implemented eventually, possibly using a
-           flag that is set whenever a port is opened. [goodell@ 2008-06-18] */
-	if ((MPID_nem_num_netmods) /*&& (MPID_nem_mem_region.ext_procs > 0)*/)
+	if (MPID_nem_num_netmods)
 	{            
-	    mpi_errno = MPID_nem_network_poll (MPID_NEM_POLL_IN);
+	    mpi_errno = MPID_nem_network_poll(TRUE /* blocking */);
             if (mpi_errno) MPIU_ERR_POP (mpi_errno);
 
-            if (completions != MPIDI_CH3I_progress_completion_count || MPID_nem_lmt_shm_pending || MPIDI_CH3I_active_send[CH3_NORMAL_QUEUE]
+            if (completions != MPIDI_CH3I_progress_completion_count || MPID_nem_local_lmt_pending || MPIDI_CH3I_active_send[CH3_NORMAL_QUEUE]
                 || MPIDI_CH3I_SendQ_head(CH3_NORMAL_QUEUE))
             {
                 *cell = NULL;

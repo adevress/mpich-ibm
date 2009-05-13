@@ -66,10 +66,8 @@ struct ADIOI_Hints_struct {
 	    } pvfs2;
             struct {
                     int start_iodevice;
-                    int CO;
-                    int bigsize;
-                    int contig_data;
-                    int samesize;
+                    int co_ratio;
+                    int coll_threshold;
                     int ds_in_coll;
             } lustre;
     } fs_hints;
@@ -524,7 +522,7 @@ void ADIOI_Exch_file_views(int myrank, int nprocs, int file_ptr_type,
 			   view_state *my_mem_view_state_arr,
 			   view_state *agg_file_view_state_arr,
 			   view_state *client_file_view_state_arr);
-int init_view_state(int file_ptr_type,
+int ADIOI_init_view_state(int file_ptr_type,
 		    int nprocs, 
 		    view_state *view_state_arr,
 		    int op_type);
@@ -794,6 +792,10 @@ int  ADIOI_MPE_unlock_a;
 int  ADIOI_MPE_unlock_b;
 int  ADIOI_MPE_postwrite_a;
 int  ADIOI_MPE_postwrite_b;
+int  ADIOI_MPE_openinternal_a;
+int  ADIOI_MPE_openinternal_b;
+int  ADIOI_MPE_stat_a;
+int  ADIOI_MPE_stat_b;
 #endif
 
 #ifdef ROMIO_INSIDE_MPICH2
@@ -835,6 +837,7 @@ if (MPIU_DBG_SELECTED(ROMIO,TYPICAL)) fprintf
 #define DBGV_FPRINTF if (MPIU_DBG_SELECTED(ROMIO,VERBOSE)) fprintf(stderr,"%s:%d:",__FILE__,__LINE__); \
  if (MPIU_DBG_SELECTED(ROMIO,VERBOSE)) fprintf
 #else /* compile it out */
+#define DBGT_FPRINTF if (0) fprintf
 #define DBG_FPRINTF if (0) fprintf
 #define DBGV_FPRINTF if (0) fprintf
 #endif

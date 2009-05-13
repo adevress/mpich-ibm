@@ -1,0 +1,13 @@
+/configure
+/Makefile.in
+/config.log
+/depcomp
+/config.status
+/autom4te.cache
+/missing
+/Makefile
+/aclocal.m4
+/install-sh
+/TAGS
+/.*.swp
+/_configs.sed

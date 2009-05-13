@@ -132,12 +132,16 @@ typedef MPIU_SHMW_LGhnd_t * MPIU_SHMW_Hnd_t;
 /* Returns 0 on success, -1 on error */
 static inline int MPIU_SHMW_Lhnd_close(MPIU_SHMW_Hnd_t hnd)
 {
-    if(close(MPIU_SHMW_Lhnd_get(hnd)) == 0){
-        MPIU_SHMW_Lhnd_set(hnd, MPIU_SHMW_LHND_INIT_VAL);
-    }
-    else{
-        /* close() failed */
-        return -1;
+    MPIU_SHMW_Lhnd_t lhnd = MPIU_SHMW_LHND_INVALID;
+    lhnd = MPIU_SHMW_Lhnd_get(hnd);
+    if(lhnd != MPIU_SHMW_LHND_INVALID) {
+        if(close(lhnd) == 0){
+            MPIU_SHMW_Lhnd_set(hnd, MPIU_SHMW_LHND_INIT_VAL);
+        }
+        else{
+            /* close() failed */
+            return -1;
+        }
     }
     return 0;
 }
@@ -230,10 +234,14 @@ static inline int MPIU_SHMW_Ghnd_alloc(MPIU_SHMW_Hnd_t hnd)
         MPIU_SHMW_Lhnd_is_valid(hnd) &&                             \
         MPIU_SHMW_Ghnd_is_valid(hnd))                               \
 )
+
+/* With MMAP_SHM, NT_SHM & SYSV_SHM local handle is always init'ed */
 #define MPIU_SHMW_Hnd_is_init(hnd) (                                \
-    ((hnd) && MPIU_SHMW_Lhnd_is_init(hnd) &&                        \
+    ((hnd) && /* MPIU_SHMW_Lhnd_is_init(hnd) && */                  \
         MPIU_SHMW_Ghnd_is_init(hnd))                                \
 )
+
+
 /* Allocate mem for handle. Lazy allocation for global handle */
 /* Returns 0 on success, -1 on error */
 static inline int MPIU_SHMW_Hnd_alloc(MPIU_SHMW_Hnd_t *hnd_ptr)
