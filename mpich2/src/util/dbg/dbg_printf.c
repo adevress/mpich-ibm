@@ -451,10 +451,6 @@ int MPIU_DBG_Outevent( const char *file, int line, int class, int kind,
     }
 
     MPID_Wtime( &t );
-#if 1 /* defined(__BGP__) */
-    if(timeOrigin == 0.0) /* first time, initialize origin  */
-      MPID_Wtime_todouble( &t, &timeOrigin );
-#endif
     MPID_Wtime_todouble( &t, &curtime );
     curtime = curtime - timeOrigin;
 
@@ -538,7 +534,6 @@ static const MPIU_DBG_ClassName MPIU_Classnames[] = {
     { MPIU_DBG_NEM_SOCK_DET,  "NEM_SOCK_DET",  "nem_sock_det"},
     { MPIU_DBG_VC,            "VC",            "vc"},
     { MPIU_DBG_REFCOUNT,      "REFCOUNT",      "refcount"},
-    { MPIU_DBG_ROMIO,         "ROMIO",         "romio"},    
     { MPIU_DBG_ALL,           "ALL",           "all" }, 
     { 0,                      0,               0 }
 };
@@ -690,9 +685,7 @@ static int MPIU_DBG_ProcessEnv( void )
  */
 int MPIU_DBG_PreInit( int *argc_p, char ***argv_p, int wtimeNotReady )
 {
-#if 0 /* !defined(__BGP__) /* timer not initialized yet on BGP */
     MPID_Time_t t;
-#endif
 
     /* if the DBG_MSG system was already initialized, say by the device, then
        return immediately */
