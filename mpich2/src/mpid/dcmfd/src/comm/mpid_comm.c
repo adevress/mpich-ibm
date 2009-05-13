@@ -544,7 +544,7 @@ MPIDI_Env_setup()
                   MPIDO_USE_RRING_DPUT_SINGLETH_ALLREDUCE,
                   MPIDO_USE_TREE_ALLREDUCE,
                   MPIDO_USE_PIPELINED_TREE_ALLREDUCE,
-                  //MPIDO_USE_TREE_DPUT_ALLREDUCE,                 
+                  MPIDO_USE_TREE_DPUT_ALLREDUCE,                 
                   MPIDO_USE_STORAGE_REDUCE,
                   //MPIDO_USE_PIPELINED_TREE_REDUCE,
                   MPIDO_USE_TREE_REDUCE,
