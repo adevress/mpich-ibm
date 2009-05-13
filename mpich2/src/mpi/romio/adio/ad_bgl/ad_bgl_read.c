@@ -27,6 +27,9 @@ void ADIOI_BGL_ReadContig(ADIO_File fd, void *buf, int count,
     int err=-1, datatype_size;
     ADIO_Offset len;
     static char myname[] = "ADIOI_BGL_READCONTIG";
+#ifdef AGGREGATION_PROFILE
+    MPE_Log_event (5034, 0, NULL);
+#endif
 #if BGL_PROFILE
 		/* timing */
 		double io_time, io_time2;

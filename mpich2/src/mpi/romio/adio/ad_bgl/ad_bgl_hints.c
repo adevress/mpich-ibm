@@ -517,24 +517,7 @@ void ADIOI_BGL_SetInfo(ADIO_File fd, MPI_Info users_info, int *error_code)
 	MPI_Info_set(info, "romio_ds_write", "disable");
 	fd->hints->ds_write = ADIOI_HINT_DISABLE;
     }
-#if 0
-    /* N/A to bgl.  data seiving == 1*/
-    if (ADIO_Feature(fd, ADIO_DATA_SIEVING_WRITES) == 0) {
-    /* disable data sieving for fs that do not
-       support file locking */
-       	MPI_Info_get(info, "ind_wr_buffer_size", MPI_MAX_INFO_VAL,
-		     value, &flag);
-	if (flag) {
-	    /* get rid of this value if it is set */
-	    MPI_Info_delete(info, "ind_wr_buffer_size");
-	}
-	/* note: leave ind_wr_buffer_size alone; used for other cases
-	 * as well. -- Rob Ross, 04/22/2003
-	 */
-	MPI_Info_set(info, "romio_ds_write", "disable");
-	fd->hints->ds_write = ADIOI_HINT_DISABLE;
-    }
-#endif
+
     ADIOI_Free(value);
 
     *error_code = MPI_SUCCESS;

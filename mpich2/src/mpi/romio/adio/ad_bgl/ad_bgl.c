@@ -11,7 +11,7 @@
  *   Copyright (C) 2001 University of Chicago. 
  *   See COPYRIGHT notice in top-level directory.
  */
-
+#define BGL_OPTIM_STEP1_1 1
 #include "ad_bgl.h"
 
 /* adioi.h has the ADIOI_Fns_struct define */
