@@ -139,24 +139,10 @@
 */
 #include "mpidbg.h"
 
-typedef enum MPIU_dbg_state_t
-{
-    MPIU_DBG_STATE_NONE = 0,
-    MPIU_DBG_STATE_UNINIT = 1,
-    MPIU_DBG_STATE_STDOUT = 2,
-    MPIU_DBG_STATE_MEMLOG = 4,
-    MPIU_DBG_STATE_FILE = 8
-}
-MPIU_dbg_state_t;
-int MPIU_dbg_init(int rank);
-int MPIU_dbg_printf(const char *str, ...) ATTRIBUTE((format(printf,1,2)));
-int MPIU_dbglog_printf(const char *str, ...) ATTRIBUTE((format(printf,1,2)));
-int MPIU_dbglog_vprintf(const char *str, va_list ap);
-
 #if defined(MPICH_DBG_OUTPUT)
 #define MPIU_DBG_PRINTF(e)			\
 {						\
-    if (MPIUI_dbg_state != MPIU_DBG_STATE_NONE)	\
+    if (MPIU_dbg_state != MPIU_DBG_STATE_NONE)	\
     {						\
 	MPIU_dbg_printf e;			\
     }						\
@@ -181,18 +167,8 @@ void MPIU_DBG_PrintVCState(MPIDI_VC_t *vc);
 #define MPIU_DBG_PrintVCState2(vc, new_state)
 #define MPIU_DBG_PrintVCState(vc)
 #endif
-extern MPIU_dbg_state_t MPIUI_dbg_state;
-extern FILE * MPIUI_dbg_fp;
-#define MPIU_dbglog_flush()				\
-{							\
-    if (MPIUI_dbg_state & MPIU_DBG_STATE_STDOUT)	\
-    {							\
-	fflush(stdout);					\
-    }							\
-}
-void MPIU_dump_dbg_memlog_to_stdout(void);
-void MPIU_dump_dbg_memlog_to_file(const char *filename);
-void MPIU_dump_dbg_memlog(FILE * fp);
+
+
 /* The follow is temporarily provided for backward compatibility.  Any code
    using dbg_printf should be updated to use MPIU_DBG_PRINTF. */
 #define dbg_printf MPIU_dbg_printf
@@ -657,37 +633,7 @@ int MPIU_Handle_free( void *((*)[]), int );
 /* end of code that should the following be moved into mpihandlemem.h ?*/
 /* ------------------------------------------------------------------------- */
 
-/* ------------------------------------------------------------------------- */
-/* mpiparam.h*/
-/* ------------------------------------------------------------------------- */
-
-/* Parameter handling.  These functions have not been implemented yet.
-   See src/util/param.[ch] */
-typedef enum MPIU_Param_result_t { 
-    MPIU_PARAM_FOUND = 0, 
-    MPIU_PARAM_OK = 1, 
-    MPIU_PARAM_ERROR = 2 
-} MPIU_Param_result_t;
-int MPIU_Param_init( int *, char *[], const char [] );
-int MPIU_Param_bcast( void );
-int MPIU_Param_register( const char [], const char [], const char [] );
-int MPIU_Param_get_int( const char [], int, int * );
-int MPIU_Param_get_string( const char [], const char *, char ** );
-int MPIU_Param_get_range( const char name[], int *lowPtr, int *highPtr );
-void MPIU_Param_finalize( void );
-
-/* Prototypes for the functions to provide uniform access to the environment */
-int MPIU_GetEnvInt( const char *envName, int *val );
-int MPIU_GetEnvRange( const char *envName, int *lowPtr, int *highPtr );
-int MPIU_GetEnvBool( const char *envName, int *val );
-int MPIU_GetEnvStr( const char *envName, const char **val );
-int MPIU_PutEnv( char *name_val );
-
-
-/* See mpishared.h as well */
-/* ------------------------------------------------------------------------- */
-/* end of mpiparam.h*/
-/* ------------------------------------------------------------------------- */
+#include "mpiparam.h"
 
 /* ------------------------------------------------------------------------- */
 /* Info */
@@ -1196,6 +1142,9 @@ extern MPID_Group MPID_Group_direct[];
      { MPIU_Object_release_ref( _group, _inuse ); \
        MPIU_DBG_MSG_FMT(REFCOUNT,TYPICAL,(MPIU_DBG_FDEST,\
          "Decr group %p ref count to %d",_group,_group->ref_count));}
+
+void MPIR_Group_setup_lpid_list( MPID_Group * );
+int MPIR_GroupCheckVCRSubset( MPID_Group *group_ptr, int vsize, MPID_VCR *vcr, int *idx );
 
 /* ------------------------------------------------------------------------- */
 
@@ -2674,7 +2623,7 @@ int MPID_Finalize(void);
 /* FIXME: the 4th argument isn't part of the original design and isn't documented */
 
 # if 0
-int MPID_Abort( MPID_Comm *comm, int mpi_errno, int exit_code, const char *error_msg ) ATTRIBUTE((noreturn));
+int MPID_Abort( MPID_Comm *comm, int mpi_errno, int exit_code, const char *error_msg );
 #endif
 /* FIXME: Should we turn off this flag and only declare MPID_Abort in mpiutil.h? */
 /* We want to also declare MPID_Abort in mpiutil.h if mpiimpl.h is not used */
@@ -3537,6 +3486,9 @@ int MPID_VCR_Get_lpid(MPID_VCR vcr, int * lpid_ptr);
 #define MPIR_BCAST_MIN_PROCS          8
 #define MPIR_ALLTOALL_SHORT_MSG       256
 #define MPIR_ALLTOALL_MEDIUM_MSG      32768
+#define MPIR_ALLTOALL_THROTTLE        4  /* max no. of irecvs/isends posted at a 
+time in some alltoall algorithms. Setting it to 0 causes all irecvs/isends to be 
+posted at once. */
 #define MPIR_REDSCAT_COMMUTATIVE_LONG_MSG 524288
 #define MPIR_REDSCAT_NONCOMMUTATIVE_SHORT_MSG 512
 #define MPIR_ALLGATHER_SHORT_MSG      81920

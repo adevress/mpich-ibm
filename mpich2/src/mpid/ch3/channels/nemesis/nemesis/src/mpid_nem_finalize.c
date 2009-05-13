@@ -6,6 +6,9 @@
 
 #include "mpid_nem_impl.h"
 #include "mpid_nem_nets.h"
+#ifndef USE_PMI2_API
+#include "pmi.h"
+#endif
 
 #undef FUNCNAME
 #define FUNCNAME MPID_nem_finalize
@@ -31,7 +34,6 @@ int MPID_nem_finalize()
     MPIU_Free(MPID_nem_mem_region.RecvQ);
     MPIU_Free(MPID_nem_mem_region.local_ranks);
     MPIU_Free(MPID_nem_mem_region.ext_ranks);
-    MPIU_Free(MPID_nem_mem_region.pid);
     MPIU_Free(MPID_nem_mem_region.seg);
     MPIU_Free(MPID_nem_mem_region.mailboxes.out);
     MPIU_Free(MPID_nem_mem_region.mailboxes.in);
@@ -53,9 +55,16 @@ int MPID_nem_finalize()
     my_papi_close();
 #endif /*PAPI_MONITOR */
 
-    pmi_errno = PMI_Barrier();
-    MPIU_ERR_CHKANDJUMP1 (pmi_errno != PMI_SUCCESS, mpi_errno, MPI_ERR_OTHER, "**pmi_barrier", "**pmi_barrier %d", pmi_errno);
-
+#ifdef USE_PMI2_API
+    /* FIXME: I removed this PMI_Barrier in PMI2.  The barrier seems
+       not to be necessary, but I'm keeping this here until I'm
+       convinced that this isn't here to handle some timing-related
+       bug. DARIUS */
+#else
+    pmi_errno = PMI_Barrier(); 
+    MPIU_ERR_CHKANDJUMP1 (pmi_errno != PMI_SUCCESS, mpi_errno, MPI_ERR_OTHER, "**pmi_barrier", "**pmi_barrier %d", pmi_errno); 
+#endif
+    
  fn_exit:
     MPIDI_FUNC_EXIT(MPID_STATE_MPID_NEM_FINALIZE);
     return mpi_errno;
@@ -99,6 +108,8 @@ int MPID_nem_vc_terminate(MPIDI_VC_t *vc)
     MPIDI_FUNC_ENTER(MPID_STATE_MPID_NEM_VC_TERMINATE);
 
     mpi_errno = MPIU_SHMW_Hnd_finalize(&(((MPIDI_CH3I_VC *)vc->channel_private)->lmt_copy_buf_handle));
+    if(mpi_errno != MPI_SUCCESS) { MPIU_ERR_POP(mpi_errno); }
+    mpi_errno = MPIU_SHMW_Hnd_finalize(&(((MPIDI_CH3I_VC *)vc->channel_private)->lmt_recv_copy_buf_handle));
     if(mpi_errno != MPI_SUCCESS) { MPIU_ERR_POP(mpi_errno); }
 
 fn_exit:

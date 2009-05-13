@@ -11,7 +11,6 @@
 #if defined (MPID_NEM_INLINE) && MPID_NEM_INLINE
 #include "mpid_nem_inline.h"
 #endif
-#include "pmi.h"
 
 
 #define PKTARRAY_SIZE (MPIDI_NEM_PKT_END+1)
@@ -47,6 +46,9 @@ struct MPID_Request *MPIDI_CH3I_sendq_head[CH3_NUM_QUEUES] = {0};
 struct MPID_Request *MPIDI_CH3I_sendq_tail[CH3_NUM_QUEUES] = {0};
 struct MPID_Request *MPIDI_CH3I_active_send[CH3_NUM_QUEUES] = {0};
 
+int (*MPID_nem_local_lmt_progress)(void) = NULL;
+int MPID_nem_local_lmt_pending = FALSE;
+
 /* qn_ent and friends are used to keep a list of notification
    callbacks for posted and matched anysources */
 typedef struct qn_ent
@@ -57,7 +59,6 @@ typedef struct qn_ent
 } qn_ent_t;
 
 static qn_ent_t *qn_head = NULL;
-
 
 #undef FUNCNAME
 #define FUNCNAME MPIDI_CH3I_Progress
@@ -128,7 +129,7 @@ int MPIDI_CH3I_Progress (MPID_Progress_state *progress_state, int is_blocking)
 
             /* make progress receiving */
             /* check queue */
-            if (!MPID_nem_lmt_shm_pending && !MPIDI_CH3I_active_send[CH3_NORMAL_QUEUE]
+            if (!MPID_nem_local_lmt_pending && !MPIDI_CH3I_active_send[CH3_NORMAL_QUEUE]
                 && !MPIDI_CH3I_SendQ_head(CH3_NORMAL_QUEUE) && is_blocking
 #ifdef MPICH_IS_THREADED
 #ifdef HAVE_RUNTIME_THREADCHECK
@@ -143,7 +144,7 @@ int MPIDI_CH3I_Progress (MPID_Progress_state *progress_state, int is_blocking)
             }
             else
             {
-                mpi_errno = MPID_nem_mpich2_test_recv(&cell, &in_fbox);
+                mpi_errno = MPID_nem_mpich2_test_recv(&cell, &in_fbox, is_blocking);
             }
             if (mpi_errno) MPIU_ERR_POP (mpi_errno);
 
@@ -165,7 +166,7 @@ int MPIDI_CH3I_Progress (MPID_Progress_state *progress_state, int is_blocking)
                     MPIU_DBG_MSG(CH3_CHANNEL, VERBOSE, "Recv pkt from fbox");
                     MPIU_Assert(payload_len >= sizeof (MPIDI_CH3_Pkt_t));
 
-                    MPIDI_PG_Get_vc(MPIDI_Process.my_pg, MPID_NEM_FBOX_SOURCE(cell), &vc);
+                    MPIDI_PG_Get_vc_set_active(MPIDI_Process.my_pg, MPID_NEM_FBOX_SOURCE(cell), &vc);
                     MPIU_Assert(((MPIDI_CH3I_VC *)vc->channel_private)->recv_active == NULL &&
                                 ((MPIDI_CH3I_VC *)vc->channel_private)->pending_pkt_len == 0);
                     vc_ch = (MPIDI_CH3I_VC *)vc->channel_private;
@@ -200,7 +201,7 @@ int MPIDI_CH3I_Progress (MPID_Progress_state *progress_state, int is_blocking)
 
                 MPIU_DBG_MSG(CH3_CHANNEL, VERBOSE, "Recv pkt from queue");
 
-                MPIDI_PG_Get_vc(MPIDI_Process.my_pg, MPID_NEM_CELL_SOURCE(cell), &vc);
+                MPIDI_PG_Get_vc_set_active(MPIDI_Process.my_pg, MPID_NEM_CELL_SOURCE(cell), &vc);
 
                 mpi_errno = MPID_nem_handle_pkt(vc, cell_buf, payload_len);
                 if (mpi_errno) MPIU_ERR_POP(mpi_errno);
@@ -225,7 +226,7 @@ int MPIDI_CH3I_Progress (MPID_Progress_state *progress_state, int is_blocking)
 #ifdef MPICH_IS_THREADED
                 MPIU_THREAD_CHECK_BEGIN;
                 {
-                    if (MPIDI_CH3I_progress_blocked == TRUE && is_blocking && !MPID_nem_lmt_shm_pending)
+                    if (MPIDI_CH3I_progress_blocked == TRUE && is_blocking && !MPID_nem_local_lmt_pending)
                     {
                         /* There's nothing to send and there's another thread already blocking in the progress engine.*/
                         MPIDI_CH3I_Progress_delay(MPIDI_CH3I_progress_completion_count);
@@ -359,9 +360,9 @@ int MPIDI_CH3I_Progress (MPID_Progress_state *progress_state, int is_blocking)
         while (0); /* do the loop exactly once.  Used so we can jump out of send progress using break. */
 
         /* make progress on LMTs */
-        if (MPID_nem_lmt_shm_pending)
+        if (MPID_nem_local_lmt_pending)
         {
-            mpi_errno = MPID_nem_lmt_shm_progress();
+            mpi_errno = MPID_nem_local_lmt_progress();
             if (mpi_errno) MPIU_ERR_POP(mpi_errno);
         }
     }
@@ -818,7 +819,7 @@ void MPIDI_CH3I_Posted_recv_enqueued(MPID_Request *rreq)
         int local_rank = -1;
 	MPIDI_VC_t *vc;
 
-	MPIDI_Comm_get_vc((rreq)->comm, (rreq)->dev.match.parts.rank, &vc);
+	MPIDI_Comm_get_vc_set_active((rreq)->comm, (rreq)->dev.match.parts.rank, &vc);
 #ifdef ENABLE_COMM_OVERRIDES
         /* call vc-specific handler */
 	if (vc->comm_ops && vc->comm_ops->recv_posted)
@@ -872,7 +873,7 @@ int MPIDI_CH3I_Posted_recv_dequeued(MPID_Request *rreq)
             goto fn_exit;
         
         /* don't use MPID_NEM_IS_LOCAL, it doesn't handle dynamic processes */
-        MPIDI_Comm_get_vc(rreq->comm, rreq->dev.match.parts.rank, &vc);
+        MPIDI_Comm_get_vc_set_active(rreq->comm, rreq->dev.match.parts.rank, &vc);
         MPIU_Assert(vc != NULL);
         if (!((MPIDI_CH3I_VC *)vc->channel_private)->is_local)
             goto fn_exit;

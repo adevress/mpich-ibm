@@ -14,11 +14,7 @@
    Later on, add some tracing and error checking, similar to 
    MPID_trmalloc. */
 
-/* can't include adio.h here, because of the macro, so 
- * include romioconf.h to make sure config-time defines get included */
-
 #include "adio.h"
-#include "romioconf.h"
 #include "mpi.h"
 #include <stdlib.h>
 #include <stdio.h>
@@ -48,7 +44,11 @@ void *ADIOI_Malloc_fn(size_t size, int lineno, char *fname)
 #ifdef ROMIO_XFS
     new = (void *) memalign(XFS_MEMALIGN, size);
 #else
+#ifdef HAVE_MPIU_FUNCS
+    new = (void *) MPIU_Malloc(size);
+#else
     new = (void *) malloc(size);
+#endif
 #endif
     if (!new) {
 	FPRINTF(stderr, "Out of memory in file %s, line %d\n", fname, lineno);
@@ -63,7 +63,11 @@ void *ADIOI_Calloc_fn(size_t nelem, size_t elsize, int lineno, char *fname)
 {
     void *new;
 
+#ifdef HAVE_MPIU_FUNCS
+    new = (void *) MPIU_Calloc(nelem, elsize);
+#else
     new = (void *) calloc(nelem, elsize);
+#endif
     if (!new) {
 	FPRINTF(stderr, "Out of memory in file %s, line %d\n", fname, lineno);
 	MPI_Abort(MPI_COMM_WORLD, 1);
@@ -77,7 +81,11 @@ void *ADIOI_Realloc_fn(void *ptr, size_t size, int lineno, char *fname)
 {
     void *new;
 
+#ifdef HAVE_MPIU_FUNCS
+    new = (void *) MPIU_Realloc(ptr, size);
+#else
     new = (void *) realloc(ptr, size);
+#endif
     if (!new) {
 	FPRINTF(stderr, "realloc failed in file %s, line %d\n", fname, lineno);
 	MPI_Abort(MPI_COMM_WORLD, 1);
@@ -95,7 +103,11 @@ void ADIOI_Free_fn(void *ptr, int lineno, char *fname)
 	MPI_Abort(MPI_COMM_WORLD, 1);
     }
 
+#ifdef HAVE_MPIU_FUNCS
+    MPIU_Free(ptr);
+#else
     free(ptr);
+#endif
 }
 
 

@@ -24,7 +24,7 @@ typedef struct MPID_nem_tcp_send_q_element
     /*     char buf[MPID_NEM_MAX_PACKET_LEN];*/ /* data to be sent */
 } MPID_nem_tcp_send_q_element_t;
 
-struct {MPID_nem_tcp_send_q_element_t *top;} free_buffers = {0};
+static struct {MPID_nem_tcp_send_q_element_t *top;} free_buffers = {0};
 
 #define ALLOC_Q_ELEMENT(e) do {                                                                                                         \
         if (S_EMPTY (free_buffers))                                                                                                     \
@@ -211,6 +211,8 @@ int MPID_nem_tcp_conn_est (MPIDI_VC_t *vc)
     MPIDI_STATE_DECL(MPID_STATE_MPID_NEM_TCP_CONN_EST);
 
     MPIDI_FUNC_ENTER(MPID_STATE_MPID_NEM_TCP_CONN_EST);
+
+    MPIDI_CHANGE_VC_STATE(vc, ACTIVE);
 
     if (!SENDQ_EMPTY (VC_FIELD(vc, send_queue)))
     {

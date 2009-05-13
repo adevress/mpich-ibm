@@ -1,0 +1,4 @@
+/configure
+/Makefile.in
+/autom4te.cache
+/smpdu_sock_conf.h.in

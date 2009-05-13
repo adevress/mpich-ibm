@@ -324,6 +324,10 @@ implementation.   option is a list of comma separated names including
     none     - None of above options, i.e. --disable-fast.
 ],,enable_fast=defopt)
 
+AC_ARG_ENABLE(check-compiler-flags,
+[--enable-check-compiler-flags -- enable the checks for all compiler options,
+xxxFLAGS, MPICH2_xxxFLAGS.  Default is on.],,enable_check_compiler_flags=yes)
+
 dnl
 dnl We enable f77 and f90 if we can find compilers for them.
 dnl In addition, we check whether f77 and f90 can work together.
@@ -851,7 +855,8 @@ if test "$logging_name" != "none" ; then
 	fi
     else
         logdir=$srcdir/src/util/logging
-        logging_subsystems="$logging_subsystems src/util/logging/$logging_name"
+        logreldir=src/util/logging/$logging_name
+        logging_subsystems="$logging_subsystems $logreldir"
         logging_subdirs=$logging_name
         for dir in $logging_subdirs ; do
             if test ! -d $logdir/$dir ; then
@@ -864,6 +869,7 @@ if test "$logging_name" != "none" ; then
 	        AC_MSG_ERROR([$logdir/$dir has no configure (required).  Configure aborted])
 	        logging_name=none
             fi
+            other_install_dirs="${other_install_dirs} $logreldir"
         done
     fi
 fi
@@ -927,7 +933,20 @@ fi
 # ----------------------------------------------------------------------------
 # atomic operations
 # ----------------------------------------------------------------------------
+# FIXME TODO eventually delete the src/mpid/common/locks directory
 subsystems="$subsystems src/mpid/common/locks"
+
+opadir="${use_top_srcdir}/openpa"
+if test -e "$opadir" ; then
+    EXTERNAL_SRC_DIRS="$EXTERNAL_SRC_DIRS openpa"
+    # this must go in CPPFLAGS intead of MPICH2_INCLUDE_FLAGS because we need it
+    # to be available to lower-level configure scripts
+    CPPFLAGS="$CPPFLAGS -I${use_top_srcdir}/openpa/src -I${master_top_builddir}/openpa/src"
+    # openpa needs to go at the front of the devsubsystems because it needs to
+    # be configured before the device itself (e.g. nemesis).
+    devsubsystems="openpa $devsubsystems"
+    other_install_dirs="$other_install_dirs openpa"
+fi
 
 # ----------------------------------------------------------------------------
 # Threads
@@ -1328,7 +1347,7 @@ if test "$with_pmi" = "uni" -a "$with_pm" = "default" ; then
     with_pm="no"
 fi
 if test "$with_pm" = "default" -o "$with_pm" = "yes" ; then
-    with_pm=mpd
+    with_pm=mpd,hydra,gforker
 fi
 
 # We allow multiple pm names, separated by : or ,
@@ -1604,10 +1623,15 @@ AC_DEFINE(HAVE__FUNCTION__,,[define if the compiler defines __FUNCTION__])
 # Check if $MPI_DEFAULT_COPTS is valid with $CC
 if test "$enable_default_optimize" = "yes" \
      -a -n "$MPI_DEFAULT_COPTS" ; then
-    PAC_C_CHECK_COMPILER_OPTION( [$MPI_DEFAULT_COPTS], [
+    if test "$enable_check_compiler_flags" = "yes" ; then
+        PAC_C_CHECK_COMPILER_OPTION( [$MPI_DEFAULT_COPTS], [
         CFLAGS="$CFLAGS $MPI_DEFAULT_COPTS"
         MPICH2_EXTRA_CFLAGS="$MPICH2_EXTRA_CFLAGS $MPI_DEFAULT_COPTS"
-                               ] )
+                                   ] )
+    else
+        CFLAGS="$CFLAGS $MPI_DEFAULT_COPTS"
+        MPICH2_EXTRA_CFLAGS="$MPICH2_EXTRA_CFLAGS $MPI_DEFAULT_COPTS"
+    fi
 fi
 # Up till here, MPICH2_EXTRA_CFLAGS contains only flags added by MPICH2.
 # Check with "grep -n MPICH2_EXTRA_CFLAGS configure.in"
@@ -1615,10 +1639,15 @@ fi
 PAC_MAKE_UNIQ_STRING([MPICH2_EXTRA_CFLAGS])
 # Check if $MPICH2LIB_CFLAGS is valid with $CC
 if test -n "$MPICH2LIB_CFLAGS" ; then
-    PAC_C_CHECK_COMPILER_OPTION( [$MPICH2LIB_CFLAGS], [
+    if test "$enable_check_compiler_flags" = "yes" ; then
+        PAC_C_CHECK_COMPILER_OPTION( [$MPICH2LIB_CFLAGS], [
         CFLAGS="$CFLAGS $MPICH2LIB_CFLAGS"
         MPICH2_EXTRA_CFLAGS="$MPICH2_EXTRA_CFLAGS $MPICH2LIB_CFLAGS"
-                               ] )
+                                   ] )
+    else
+        CFLAGS="$CFLAGS $MPICH2LIB_CFLAGS"
+        MPICH2_EXTRA_CFLAGS="$MPICH2_EXTRA_CFLAGS $MPICH2LIB_CFLAGS"
+    fi
 fi
 
 # Check for support for weak symbols.  If not found, set NO_WEAK_SYM
@@ -1705,10 +1734,15 @@ if test "$enable_f77" = yes ; then
     # Check if $MPI_DEFAULT_FOPTS is valid with $F77
     if test "$enable_default_optimize" = "yes" \
          -a -n "$MPI_DEFAULT_FOPTS" ; then
-        PAC_F77_CHECK_COMPILER_OPTION( [$MPI_DEFAULT_FOPTS], [
+        if test "$enable_check_compiler_flags" = "yes" ; then
+            PAC_F77_CHECK_COMPILER_OPTION( [$MPI_DEFAULT_FOPTS], [
             FFLAGS="$FFLAGS $MPI_DEFAULT_FOPTS"
             MPICH2_EXTRA_FFLAGS="$MPICH2_EXTRA_FFLAGS $MPI_DEFAULT_FOPTS"
-                                     ] )
+                                         ] )
+        else
+            FFLAGS="$FFLAGS $MPI_DEFAULT_FOPTS"
+            MPICH2_EXTRA_FFLAGS="$MPICH2_EXTRA_FFLAGS $MPI_DEFAULT_FOPTS"
+        fi
     fi
     # Up till here, MPICH2_EXTRA_FFLAGS contains only flags added by MPICH2.
     # Check with "grep -n MPICH2_EXTRA_FFLAGS configure.in"
@@ -1716,10 +1750,15 @@ if test "$enable_f77" = yes ; then
     PAC_MAKE_UNIQ_STRING([MPICH2_EXTRA_FFLAGS])
     # Check if $MPICH2LIB_FFLAGS is valid with $F77
     if test -n "$MPICH2LIB_FFLAGS" ; then
-        PAC_F77_CHECK_COMPILER_OPTION( [$MPICH2LIB_FFLAGS], [
+        if test "$enable_check_compiler_flags" = "yes" ; then
+            PAC_F77_CHECK_COMPILER_OPTION( [$MPICH2LIB_FFLAGS], [
             FFLAGS="$FFLAGS $MPICH2LIB_FFLAGS"
             MPICH2_EXTRA_FFLAGS="$MPICH2_EXTRA_FFLAGS $MPICH2LIB_FFLAGS"
-                                     ] )
+                                         ] )
+        else
+            FFLAGS="$FFLAGS $MPICH2LIB_FFLAGS"
+            MPICH2_EXTRA_FFLAGS="$MPICH2_EXTRA_FFLAGS $MPICH2LIB_FFLAGS"
+        fi
     fi
 fi
 
@@ -2026,7 +2065,9 @@ fi
 
 if test ! -d bin  ; then mkdir bin ; fi 
 sed -e 's%includedir=.*%includedir='$includebuild_dir% \
-   -e 's%libdir=.*%libdir='$libbuild_dir% src/env/mpif77 > bin/mpif77 ;
+    -e 's%libdir=.*%libdir='$libbuild_dir% \
+    -e 's%^opalibdir=.*%opalibdir='$opalibbuild_dir% \
+    src/env/mpif77 > bin/mpif77 ;
 chmod a+x bin/mpif77
 else
     rm -f src/env/mpif77 src/env/mpif77.conf
@@ -2125,10 +2166,15 @@ if test "$enable_f90" = "yes" ; then
     # Check if $MPI_DEFAULT_F90OPTS is valid with $F90
     if test "$enable_default_optimize" = "yes" \
          -a -n "$MPI_DEFAULT_F90OPTS" ; then
-        PAC_F90_CHECK_COMPILER_OPTION( [$MPI_DEFAULT_F90OPTS], [
+        if test "$enable_check_compiler_flags" = "yes" ; then
+            PAC_F90_CHECK_COMPILER_OPTION( [$MPI_DEFAULT_F90OPTS], [
             F90FLAGS="$F90FLAGS $MPI_DEFAULT_F90OPTS"
             MPICH2_EXTRA_F90FLAGS="$MPICH2_EXTRA_F90FLAGS $MPI_DEFAULT_F90OPTS"
                                      ] )
+        else
+            F90FLAGS="$F90FLAGS $MPI_DEFAULT_F90OPTS"
+            MPICH2_EXTRA_F90FLAGS="$MPICH2_EXTRA_F90FLAGS $MPI_DEFAULT_F90OPTS"
+        fi
     fi
     # Up till here, MPICH2_EXTRA_F90FLAGS contains only flags added by MPICH2.
     # Check with "grep -n MPICH2_EXTRA_F90FLAGS configure.in"
@@ -2136,10 +2182,15 @@ if test "$enable_f90" = "yes" ; then
     PAC_MAKE_UNIQ_STRING([MPICH2_EXTRA_F90FLAGS])
     # Check if $MPICH2LIB_F90FLAGS works with $F90
     if test -n "$MPICH2LIB_F90FLAGS" ; then
-        PAC_F90_CHECK_COMPILER_OPTION( [$MPICH2LIB_F90FLAGS], [
+        if test "$enable_check_compiler_flags" = "yes" ; then
+            PAC_F90_CHECK_COMPILER_OPTION( [$MPICH2LIB_F90FLAGS], [
             F90FLAGS="$F90FLAGS $MPICH2LIB_F90FLAGS"
             MPICH2_EXTRA_F90FLAGS="$MPICH2_EXTRA_F90FLAGS $MPICH2LIB_F90FLAGS"
                                      ] )
+        else
+            F90FLAGS="$F90FLAGS $MPICH2LIB_F90FLAGS"
+            MPICH2_EXTRA_F90FLAGS="$MPICH2_EXTRA_F90FLAGS $MPICH2LIB_F90FLAGS"
+        fi
     fi
 
     #
@@ -2300,7 +2351,9 @@ chmod a+x src/env/mpif90
 if test ! -d bin  ; then mkdir bin ; fi 
 sed -e 's%includedir=.*%includedir='$includebuild_dir% \
     -e 's%modincdir=.*%modincdir='$modincbuild_dir% \
-    -e 's%libdir=.*%libdir='$libbuild_dir% src/env/mpif90 > bin/mpif90 ;
+    -e 's%libdir=.*%libdir='$libbuild_dir% \
+    -e 's%^opalibdir=.*%opalibdir='$opalibbuild_dir% \
+    src/env/mpif90 > bin/mpif90 ;
 chmod a+x bin/mpif90 
 else
     rm -f src/env/mpif90 src/env/mpif90.conf bin/mpif90
@@ -2533,10 +2586,15 @@ if test "$enable_cxx" = yes; then
     # Check if $MPI_DEFAULT_CXXOPTS is valid with $CXX
     if test "$enable_default_optimize" = "yes" \
          -a -n "$MPI_DEFAULT_CXXOPTS" ; then
-        PAC_CXX_CHECK_COMPILER_OPTION( [$MPI_DEFAULT_CXXOPTS], [
+        if test "$enable_check_compiler_flags" = "yes" ; then
+            PAC_CXX_CHECK_COMPILER_OPTION( [$MPI_DEFAULT_CXXOPTS], [
             CXXFLAGS="$CXXFLAGS $MPI_DEFAULT_CXXOPTS"
             MPICH2_EXTRA_CXXFLAGS="$MPICH2_EXTRA_CXXFLAGS $MPI_DEFAULT_CXXOPTS"
                                      ] )
+        else
+            CXXFLAGS="$CXXFLAGS $MPI_DEFAULT_CXXOPTS"
+            MPICH2_EXTRA_CXXFLAGS="$MPICH2_EXTRA_CXXFLAGS $MPI_DEFAULT_CXXOPTS"
+        fi
     fi
     # Up till here, MPICH2_EXTRA_CXXFLAGS contains only flags added by MPICH2.
     # Check with "grep -n MPICH2_EXTRA_CXXFLAGS configure.in"
@@ -2544,10 +2602,15 @@ if test "$enable_cxx" = yes; then
     PAC_MAKE_UNIQ_STRING([MPICH2_EXTRA_CXXFLAGS])
     # Check if $MPICH2LIB_CXXFLAGS is valid with $CXX
     if test -n "$MPICH2LIB_CXXFLAGS" ; then
-        PAC_CXX_CHECK_COMPILER_OPTION( [$MPICH2LIB_CXXFLAGS], [
+        if test "$enable_check_compiler_flags" = "yes" ; then
+            PAC_CXX_CHECK_COMPILER_OPTION( [$MPICH2LIB_CXXFLAGS], [
             CXXFLAGS="$CXXFLAGS $MPICH2LIB_CXXFLAGS"
             MPICH2_EXTRA_CXXFLAGS="$MPICH2_EXTRA_CXXFLAGS $MPICH2LIB_CXXFLAGS"
                                      ] )
+        else
+            CXXFLAGS="$CXXFLAGS $MPICH2LIB_CXXFLAGS"
+            MPICH2_EXTRA_CXXFLAGS="$MPICH2_EXTRA_CXXFLAGS $MPICH2LIB_CXXFLAGS"
+        fi
     fi
 fi
 
@@ -2563,7 +2626,9 @@ chmod a+x src/env/mpicxx
 cp src/binding/cxx/mpicxx.h src/include 
 if test ! -d bin  ; then mkdir bin ; fi 
 sed -e 's%includedir=.*%includedir='$includebuild_dir% \
-    -e 's%libdir=.*%libdir='$libbuild_dir% src/env/mpicxx > bin/mpicxx ;
+    -e 's%libdir=.*%libdir='$libbuild_dir% \
+    -e 's%^opalibdir=.*%opalibdir='$opalibbuild_dir% \
+    src/env/mpicxx > bin/mpicxx ;
 chmod a+x bin/mpicxx
 else
     rm -f src/env/mpicxx src/env/mpicxx.conf
@@ -2885,10 +2950,11 @@ on all link lines (consider adding it to LDFLAGS)])
     # gets turned into the value of prefix
     ##ENVVAR: MPICH_DEBUGLIBNAME - Set this environment variable to 
     ## override the default name of the debugger support library.
-    ## The default name is libtvmpich2.so .
+    ## The default name is libtvmpich2.$SHLIB_EXT (e.g., libtvmpich2.so for
+    ## most Unix versions, libtvmpich2.dylib for Mac OSX).
     ##ENVVAR END:
     if test -z "$MPICH_DEBUGLIBNAME" ; then
-        DEBUGLIBNAME=libtvmpich2.so
+        DEBUGLIBNAME=libtvmpich2.$SHLIB_EXT
     else
         DEBUGLIBNAME=$MPICH_DEBUGLIBNAME
     fi
@@ -5891,10 +5957,12 @@ PAC_CREATE_BASE_CACHE
 # particularly important for the bindings, which may need to know the
 # libraries in order to create the compilation scripts)
 
+user_specified_atomic_primitives=no
 if test "$DEBUG_SUBDIR_CACHE" = yes ; then 
     set -x
 fi
 for subsys in $devsubsystems $subsystems ; do 
+    AC_MSG_NOTICE([configuring subsystem in $subsys])
     if test -x $subsys/mpich2setup ; then 
         $subsys/mpich2setup 
     elif test -x $use_top_srcdir/$subsys/mpich2setup ; then
@@ -5908,13 +5976,19 @@ for subsys in $devsubsystems $subsystems ; do
 	    if test -n "$ac_narg" ; then ac_arg=$ac_narg ; fi	    
 	    case $ac_arg in 
 	        -cache-file=* | --cache-file=* | --cache-fil=* | --cache-fi=* \
-    | --cache-f=* | --cache-=* | --cache=* | --cach=* | --cac=* | --ca=* \
-    | --c=*) ;;
-	  --config-cache | -C)
-	  ;;
-    -srcdir=* | --srcdir=* | --srcdi=* | --srcd=* | --src=* | --sr=*) ;;
-    -prefix=* | --prefix=* | --prefi=* | --pref=* | --pre=* | --pr=* | --p=*)
-      ;;
+                | --cache-f=* | --cache-=* | --cache=* | --cach=* | --cac=* | --ca=* \
+                | --c=*) ;;
+        --config-cache | -C)
+        ;;
+        -srcdir=* | --srcdir=* | --srcdi=* | --srcd=* | --src=* | --sr=*) ;;
+        -prefix=* | --prefix=* | --prefi=* | --pref=* | --pre=* | --pr=* | --p=*)
+          ;;
+        --with-atomic-primitives* | --without-atomic-primitives*)
+            # if the user specified a particular atomic-primitives argument to
+            # use then we should use that instead of 'auto_allow_emulation'
+            user_specified_atomic_primitives=yes
+            ac_sub_configure_args="$ac_sub_configure_args $ac_arg"
+        ;;
 	-*)
         ac_sub_configure_args="$ac_sub_configure_args $ac_arg" 
 	;;
@@ -5926,10 +6000,16 @@ dnl updated values.  Here's an attempt at a fix
 	ac_sub_configure_args="$ac_sub_configure_args 'CPPFLAGS=$CPPFLAGS'"
         ;;
 
+        dnl FIXME isn't this a duplication of the *) case a few lines above? [goodell@]
     	*) 
 	    ac_sub_configure_args="$ac_sub_configure_args $ac_arg" ;;
 	    esac
         done
+
+        # pass an atomic primitives argument if the user didn't specify one
+        if test "$user_specified_atomic_primitives" = "no" ; then
+            ac_sub_configure_args="$ac_sub_configure_args --with-atomic-primitives=auto_allow_emulation"
+        fi
 
 	# add in the correct prefix argument
         ac_sub_configure_args="--prefix=$prefix $ac_sub_configure_args"
@@ -6255,20 +6335,28 @@ fi
 if test -z "$libbuild_dir" ; then
     libbuild_dir=`pwd`/lib
 fi
+if test -z "$opalibbuild_dir" ; then
+    opalibbuild_dir=`pwd`/openpa/src
+fi
 if test -z "$modincbuild_dir" ; then
    # The include files may be in a different directory from the mpif.h file
    modincbuild_dir=$top_build_dir/src/binding/f90
 fi
 
+dnl create a copy of mpicc in the build directory that will work for compiling
+dnl MPI programs without requiring installation
 AC_OUTPUT_COMMANDS([
 if test "$bashWorks" = yes ; then cp -f src/env/mpicc.bash src/env/mpicc ; fi
 chmod a+x src/env/mpicc ;
 if test ! -d bin  ; then mkdir bin ; fi 
 sed -e 's%includedir=.*%includedir='$includebuild_dir% \
-       -e 's%libdir=.*%libdir='$libbuild_dir% src/env/mpicc > bin/mpicc ;
+    -e 's%libdir=.*%libdir='$libbuild_dir% \
+    -e 's%^opalibdir=.*%opalibdir='$opalibbuild_dir% \
+    src/env/mpicc > bin/mpicc ;
 chmod a+x bin/mpicc ],
 includebuild_dir=$includebuild_dir
 libbuild_dir=$libbuild_dir
+opalibbuild_dir=$opalibbuild_dir
 bashWorks=$bashWorks)
 
 # move the parkill command into the bin directory of the build tree
@@ -6372,6 +6460,10 @@ AC_DEFINE(HAVE_MPICHCONF,1,[Define so that we can test whether the mpichconf.h f
 # CPPFLAGS
 CPPFLAGS="$CPPFLAGS $MPICH2_INCLUDE_FLAGS"
 
+if test "$USE_PMI2_API" = "yes" ; then
+   AC_DEFINE(USE_PMI2_API, 1, [Define if PMI2 API must be used])
+fi
+
 dnl Place holder macro for finalize
 PAC_MPICH2_FINALIZE()
 
@@ -6432,6 +6524,7 @@ AC_OUTPUT(Makefile src/Makefile src/include/Makefile \
           src/mpid/common/datatype/dataloop/Makefile \
           src/pm/Makefile \
           src/pmi/Makefile \
+          src/pmi/${pmi_name}/Makefile \
 	  src/nameserv/Makefile \
 	  src/nameserv/file/Makefile \
 	  src/nameserv/mpd/Makefile \

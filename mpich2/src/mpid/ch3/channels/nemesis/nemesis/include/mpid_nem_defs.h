@@ -11,7 +11,6 @@
 #include "mpitypedefs.h"
 #include "mpid_nem_datatypes.h"
 #include "mpi.h"
-#include "pmi.h"
 #include "mpiu_os_wrappers.h"
 
 #define MPID_NEM_MAX_FNAME_LEN 256
@@ -32,8 +31,6 @@ extern char MPID_nem_hostname[MAX_HOSTNAME_LEN];
 #define MPID_NEM_IN           1
 #define MPID_NEM_OUT          0 
 
-typedef enum {MPID_NEM_POLL_IN, MPID_NEM_POLL_OUT} MPID_nem_poll_dir_t;
-
 #define MPID_NEM_POLL_IN      0
 #define MPID_NEM_POLL_OUT     1
 
@@ -42,22 +39,22 @@ typedef MPI_Aint MPID_nem_addr_t;
 extern  char *MPID_nem_asymm_base_addr;
 
 #define MPID_NEM_REL_NULL (0x0)
-#define MPID_NEM_IS_REL_NULL(rel_ptr) (MPIDU_Atomic_load_ptr(&(rel_ptr).p) == MPID_NEM_REL_NULL)
-#define MPID_NEM_SET_REL_NULL(rel_ptr) (MPIDU_Atomic_store_ptr(&((rel_ptr).p), MPID_NEM_REL_NULL))
+#define MPID_NEM_IS_REL_NULL(rel_ptr) (OPA_load_ptr(&(rel_ptr).p) == MPID_NEM_REL_NULL)
+#define MPID_NEM_SET_REL_NULL(rel_ptr) (OPA_store_ptr(&((rel_ptr).p), MPID_NEM_REL_NULL))
 #define MPID_NEM_REL_ARE_EQUAL(rel_ptr1, rel_ptr2) \
-    (MPIDU_Atomic_load_ptr(&(rel_ptr1).p) == MPIDU_Atomic_load_ptr(&(rel_ptr2).p))
+    (OPA_load_ptr(&(rel_ptr1).p) == OPA_load_ptr(&(rel_ptr2).p))
 
 #ifndef MPID_NEM_SYMMETRIC_QUEUES
 
 static inline MPID_nem_cell_ptr_t MPID_NEM_REL_TO_ABS (MPID_nem_cell_rel_ptr_t r)
 {
-    return (MPID_nem_cell_ptr_t)((char*)MPIDU_Atomic_load_ptr(&r.p) + (MPID_nem_addr_t)MPID_nem_asymm_base_addr);
+    return (MPID_nem_cell_ptr_t)((char*)OPA_load_ptr(&r.p) + (MPID_nem_addr_t)MPID_nem_asymm_base_addr);
 }
 
 static inline MPID_nem_cell_rel_ptr_t MPID_NEM_ABS_TO_REL (MPID_nem_cell_ptr_t a)
 {
     MPID_nem_cell_rel_ptr_t ret;
-    MPIDU_Atomic_store_ptr(&ret.p, (char *)a - (MPID_nem_addr_t)MPID_nem_asymm_base_addr);
+    OPA_store_ptr(&ret.p, (char *)a - (MPID_nem_addr_t)MPID_nem_asymm_base_addr);
     return ret;
 }
 
@@ -68,8 +65,8 @@ static inline MPID_nem_cell_rel_ptr_t MPID_NEM_ABS_TO_REL (MPID_nem_cell_ptr_t a
 
 typedef struct MPID_nem_barrier
 {
-    MPIDU_Atomic_t val;
-    MPIDU_Atomic_t wait;
+    OPA_int_t val;
+    OPA_int_t wait;
 } 
 MPID_nem_barrier_t;
 
@@ -103,14 +100,14 @@ typedef struct MPID_nem_seg_info
 #define MPID_NEM_NUM_BARRIER_VARS 16
 typedef struct MPID_nem_barrier_vars
 {
-    MPIDU_Atomic_t context_id;
-    MPIDU_Atomic_t usage_cnt;
-    MPIDU_Atomic_t cnt;
+    OPA_int_t context_id;
+    OPA_int_t usage_cnt;
+    OPA_int_t cnt;
 #if MPID_NEM_CACHE_LINE_LEN != SIZEOF_INT
     char padding0[MPID_NEM_CACHE_LINE_LEN - sizeof(int)];
 #endif
-    MPIDU_Atomic_t sig0;
-    MPIDU_Atomic_t sig;
+    OPA_int_t sig0;
+    OPA_int_t sig;
     char padding1[MPID_NEM_CACHE_LINE_LEN - 2* sizeof(int)];
 }
 MPID_nem_barrier_vars_t;
@@ -121,7 +118,6 @@ typedef struct MPID_nem_mem_region
     MPID_nem_seg_info_t        *seg;
     int                         num_seg;
     int                         map_lock;
-    pid_t                      *pid;
     int                         num_local;
     int                         num_procs;
     int                        *local_procs; /* local_procs[lrank] gives the global rank of proc with local rank lrank */

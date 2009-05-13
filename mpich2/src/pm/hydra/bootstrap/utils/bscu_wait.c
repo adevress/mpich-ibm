@@ -8,7 +8,7 @@
 #include "hydra_utils.h"
 #include "bscu.h"
 
-HYD_Handle handle;
+extern HYD_Handle handle;
 
 /*
  * HYD_BSCU_wait_for_completion: We first wait for communication
@@ -19,39 +19,35 @@ HYD_Handle handle;
 HYD_Status HYD_BSCU_wait_for_completion(void)
 {
     int pid, ret_status, not_completed;
-    struct HYD_Proc_params *proc_params;
-    struct HYD_Partition_list *partition;
+    struct HYD_Partition *partition;
+    struct HYD_Partition_exec *exec;
     HYD_Status status = HYD_SUCCESS;
 
     HYDU_FUNC_ENTER();
 
     not_completed = 0;
-    for (proc_params = handle.proc_params; proc_params; proc_params = proc_params->next)
-        for (partition = proc_params->partition; partition; partition = partition->next)
-            if (partition->exit_status == -1)
-                not_completed++;
+    FORALL_ACTIVE_PARTITIONS(partition, handle.partition_list) {
+        if (partition->exit_status == NULL) {
+            for (exec = partition->exec_list; exec; exec = exec->next)
+                not_completed += exec->proc_count;
+        }
+    }
 
     /* We get here only after the I/O sockets have been closed. If the
      * application did not manually close its stdout and stderr
      * sockets, this means that the processes have terminated. In that
      * case the below loop will return almost immediately. If not, we
      * poll for some time, burning CPU. */
-    do {
+    while (not_completed > 0) {
         pid = waitpid(-1, &ret_status, WNOHANG);
         if (pid > 0) {
             /* Find the pid and mark it as complete. */
-            for (proc_params = handle.proc_params; proc_params;
-                 proc_params = proc_params->next) {
-                for (partition = proc_params->partition; partition;
-                     partition = partition->next) {
-                    if (partition->pid == pid) {
-                        partition->exit_status = WEXITSTATUS(ret_status);
-                        not_completed--;
-                    }
-                }
+            FORALL_ACTIVE_PARTITIONS(partition, handle.partition_list) {
+                if (partition->base->pid == pid)
+                    not_completed--;
             }
         }
-        if (HYDU_Time_left(handle.start, handle.timeout) == 0)
+        if (HYDU_time_left(handle.start, handle.timeout) == 0)
             break;
 
         /* FIXME: If we did not break out yet, add a small usleep to
@@ -60,7 +56,7 @@ HYD_Status HYD_BSCU_wait_for_completion(void)
          * application might exit much quicker. Note that the
          * sched_yield() call is broken on newer linux kernel versions
          * and should not be used. */
-    } while (not_completed > 0);
+    }
 
     if (not_completed)
         status = HYD_INTERNAL_ERROR;

@@ -9,19 +9,26 @@
 
 struct MPIDI_PG;
 
+/* if local_lmt_pending is true, local_lmt_progress will be called in the
+   progress loop */
+extern int MPID_nem_local_lmt_pending;
+extern int (*MPID_nem_local_lmt_progress)(void);
+
 /* FIXME: Do not export these definitions all the way into mpiimpl.h (which
    will happen if this is included in mpidpost.h or mpidpre.h) */
 int MPID_nem_init(int rank, struct MPIDI_PG *pg_p, int has_parent);
-int _MPID_nem_init(int rank, struct MPIDI_PG *pg_p, int ckpt_restart, int has_parent);
+int MPID_nem_init_ckpt(int rank, struct MPIDI_PG *pg_p, int ckpt_restart, int has_parent);
 int MPID_nem_finalize(void);
 int MPID_nem_ckpt_shutdown(void);
-int MPID_nem_barrier_init(int num_processes, MPID_nem_barrier_t *barrier_region);
+int MPID_nem_barrier_init(MPID_nem_barrier_t *barrier_region, int init_values);
 int MPID_nem_barrier(int num_processes, int rank);
 int MPID_nem_vc_init(struct MPIDI_VC *vc);
 int MPID_nem_vc_destroy(struct MPIDI_VC *vc);
 int MPID_nem_get_business_card(int myRank, char *value, int length);
 int MPID_nem_connect_to_root(const char *port_name, struct MPIDI_VC *new_vc);
 int MPID_nem_lmt_shm_progress(void);
+int MPID_nem_lmt_dma_progress(void);
+int MPID_nem_lmt_vmsplice_progress(void);
 int MPID_nem_vc_terminate(struct MPIDI_VC *vc);
 
 #ifdef ENABLED_CHECKPOINTING
@@ -96,7 +103,7 @@ int MPID_nem_mpich2_sendv_header(MPID_IOV **iov, int *n_iov, struct MPIDI_VC *vc
 void MPID_nem_mpich2_send_seg(MPID_Segment segment, MPIDI_msg_sz_t *segment_first, MPIDI_msg_sz_t segment_sz, struct MPIDI_VC *vc, int *again);
 void MPID_nem_mpich2_send_seg_header(MPID_Segment segment, MPIDI_msg_sz_t *segment_first, MPIDI_msg_sz_t segment_size,
                                      void *header, MPIDI_msg_sz_t header_sz, struct MPIDI_VC *vc, int *again);
-int MPID_nem_mpich2_test_recv(MPID_nem_cell_ptr_t *cell, int *in_fbox);
+int MPID_nem_mpich2_test_recv(MPID_nem_cell_ptr_t *cell, int *in_fbox, int in_blocking_progress);
 int MPID_nem_mpich2_test_recv_wait(MPID_nem_cell_ptr_t *cell, int *in_fbox, int timeout);
 int MPID_nem_recv_seqno_matches(MPID_nem_queue_ptr_t qhead) ;
 int MPID_nem_mpich2_blocking_recv(MPID_nem_cell_ptr_t *cell, int *in_fbox);

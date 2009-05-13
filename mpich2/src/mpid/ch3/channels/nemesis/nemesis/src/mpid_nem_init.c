@@ -13,6 +13,7 @@
 #define MPID_NEM_LOCAL_LMT_NONE 0
 #define MPID_NEM_LOCAL_LMT_SHM_COPY 1
 #define MPID_NEM_LOCAL_LMT_DMA 2
+#define MPID_NEM_LOCAL_LMT_VMSPLICE 3
 
 #ifdef MEM_REGION_IN_HEAP
 MPID_nem_mem_region_t *MPID_nem_mem_region_ptr = 0;
@@ -37,24 +38,26 @@ static int get_local_procs(MPIDI_PG_t *pg, int our_pg_rank, int *num_local_p,
 
 char *MPID_nem_asymm_base_addr = 0;
 
-int
-MPID_nem_init (int rank, MPIDI_PG_t *pg_p, int has_parent)
-{
-    return  _MPID_nem_init (rank, pg_p, 0, has_parent);
-}
-
 #undef FUNCNAME
 #define FUNCNAME MPID_nem_init
 #undef FCNAME
 #define FCNAME MPIDI_QUOTE(FUNCNAME)
 int
-_MPID_nem_init (int pg_rank, MPIDI_PG_t *pg_p, int ckpt_restart, 
-		int has_parent ATTRIBUTE((unused)) )
+MPID_nem_init (int rank, MPIDI_PG_t *pg_p, int has_parent)
+{
+    return  MPID_nem_init_ckpt (rank, pg_p, 0, has_parent);
+}
+
+#undef FUNCNAME
+#define FUNCNAME MPID_nem_init_ckpt
+#undef FCNAME
+#define FCNAME MPIDI_QUOTE(FUNCNAME)
+int
+MPID_nem_init_ckpt(int pg_rank, MPIDI_PG_t *pg_p, int ckpt_restart,
+                   int has_parent ATTRIBUTE((unused)))
 {
     int    mpi_errno       = MPI_SUCCESS;
-    int    pmi_errno;
     int    num_procs       = pg_p->size;
-    pid_t  my_pid;
     int    ret;
     int    num_local       = -1;
     int   *local_procs     = NULL;
@@ -70,12 +73,7 @@ _MPID_nem_init (int pg_rank, MPIDI_PG_t *pg_p, int ckpt_restart,
     MPID_nem_cell_t (*network_cells_p)[MPID_NEM_NUM_CELLS];
     MPID_nem_queue_t *recv_queues_p = NULL;
     MPID_nem_queue_t *free_queues_p = NULL;
-    MPID_nem_barrier_t *barrier_region_p = NULL;
-    pid_t *pids_p = NULL;
-#ifdef USE_ATOMIC_EMULATION
-    MPIDU_Process_lock_t *process_lock;
-#endif
-    
+
     MPIU_CHKPMEM_DECL(9);
 
     /* Make sure the nemesis packet is no larger than the generic
@@ -116,7 +114,6 @@ _MPID_nem_init (int pg_rank, MPIDI_PG_t *pg_p, int ckpt_restart,
 
     MPID_nem_mem_region.num_seg        = 7;
     MPIU_CHKPMEM_MALLOC (MPID_nem_mem_region.seg, MPID_nem_seg_info_ptr_t, MPID_nem_mem_region.num_seg * sizeof(MPID_nem_seg_info_t), mpi_errno, "mem_region segments");
-    MPIU_CHKPMEM_MALLOC (MPID_nem_mem_region.pid, pid_t *, num_local * sizeof(pid_t), mpi_errno, "mem_region pid list");
     MPID_nem_mem_region.rank           = pg_rank;
     MPID_nem_mem_region.num_local      = num_local;
     MPID_nem_mem_region.num_procs      = num_procs;
@@ -206,68 +203,23 @@ _MPID_nem_init (int pg_rank, MPIDI_PG_t *pg_p, int ckpt_restart,
     mpi_errno = MPIDI_CH3I_Seg_alloc(num_local * sizeof(MPID_nem_queue_t), (void **)&recv_queues_p);
     if (mpi_errno) MPIU_ERR_POP(mpi_errno);
 
-    /* Request local process barrier data region */
-    mpi_errno = MPIDI_CH3I_Seg_alloc(sizeof(MPID_nem_barrier_t), (void **)&barrier_region_p);
-    if (mpi_errno) MPIU_ERR_POP(mpi_errno);
-
     /* Request shared collectives barrier vars region */
     mpi_errno = MPIDI_CH3I_Seg_alloc(MPID_NEM_NUM_BARRIER_VARS * sizeof(MPID_nem_barrier_vars_t),
                                      (void **)&MPID_nem_mem_region.barrier_vars);
     if (mpi_errno) MPIU_ERR_POP(mpi_errno);
 
-    /* Request pids region */
-    mpi_errno = MPIDI_CH3I_Seg_alloc(num_local * sizeof(pid_t), (void **)&pids_p);
-    if (mpi_errno) MPIU_ERR_POP(mpi_errno);
-
-#ifdef USE_ATOMIC_EMULATION
-    /* Request process lock region */
-    mpi_errno = MPIDI_CH3I_Seg_alloc(sizeof(MPIDU_Process_lock_t), (void **)&process_lock);
-    if (mpi_errno) MPIU_ERR_POP(mpi_errno);
-#endif
-    
     /* Actually allocate the segment and assign regions to the pointers */
     mpi_errno = MPIDI_CH3I_Seg_commit(&MPID_nem_mem_region.memory, num_local, local_rank);
     if (mpi_errno) MPIU_ERR_POP (mpi_errno);
-
-    
-#ifdef USE_ATOMIC_EMULATION
-    /* Init process lock */
-    mpi_errno = MPIDU_Interprocess_lock_init(process_lock, local_rank == 0);
-    if (mpi_errno) MPIU_ERR_POP (mpi_errno);
-#endif
 
     /* init shared collectives barrier region */
     mpi_errno = MPID_nem_barrier_vars_init(MPID_nem_mem_region.barrier_vars);
     if (mpi_errno) MPIU_ERR_POP (mpi_errno);
 
-    /* set up local process barrier region */
-    mpi_errno = MPID_nem_barrier_init(num_local, barrier_region_p);
-    if (mpi_errno) MPIU_ERR_POP (mpi_errno);
-
-    /* global barrier */
-    pmi_errno = PMI_Barrier();
-    MPIU_ERR_CHKANDJUMP1 (pmi_errno != PMI_SUCCESS, mpi_errno, MPI_ERR_OTHER, "**pmi_barrier", "**pmi_barrier %d", pmi_errno);
-
-    
-    /* exchange PIDs */
-    my_pid = getpid();
-    pids_p[local_rank] = my_pid;
-
-    /* local procs barrier */
-    mpi_errno = MPID_nem_barrier(num_local, local_rank);
-    if (mpi_errno) MPIU_ERR_POP (mpi_errno);
-
-    /* read pids */
-    for (index = 0 ; index < num_local ; index ++)
-    {
-	MPID_nem_mem_region.pid[index] = pids_p[index];
-    }
-
     /* local procs barrier */
     mpi_errno = MPID_nem_barrier (num_local, local_rank);
     if (mpi_errno) MPIU_ERR_POP (mpi_errno);
 
-    
     /* find our cell regions */
     MPID_nem_mem_region.Elements = cells_p[local_rank];
     MPID_nem_mem_region.net_elements = network_cells_p[local_rank];
@@ -370,6 +322,19 @@ _MPID_nem_init (int pg_rank, MPIDI_PG_t *pg_p, int ckpt_restart,
     }
 #undef MAILBOX_INDEX
 
+    /* setup local LMT */
+#if MPID_NEM_LOCAL_LMT_IMPL == MPID_NEM_LOCAL_LMT_SHM_COPY
+        MPID_nem_local_lmt_progress = MPID_nem_lmt_shm_progress;
+#elif MPID_NEM_LOCAL_LMT_IMPL == MPID_NEM_LOCAL_LMT_DMA
+        MPID_nem_local_lmt_progress = MPID_nem_lmt_dma_progress;
+#elif MPID_NEM_LOCAL_LMT_IMPL == MPID_NEM_LOCAL_LMT_VMSPLICE
+        MPID_nem_local_lmt_progress = MPID_nem_lmt_vmsplice_progress;
+#elif MPID_NEM_LOCAL_LMT_IMPL == MPID_NEM_LOCAL_LMT_NONE
+        MPID_nem_local_lmt_progress = NULL;
+#else
+#  error Must select a valid local LMT implementation!
+#endif
+
     /* publish business card */
     mpi_errno = MPIDI_PG_SetConnInfo(pg_rank, (const char *)publish_bc_orig);
     if (mpi_errno) MPIU_ERR_POP(mpi_errno);
@@ -443,6 +408,8 @@ MPID_nem_vc_init (MPIDI_VC_t *vc)
 
     if (vc_ch->is_local)
     {
+        MPIDI_CHANGE_VC_STATE(vc, ACTIVE);
+        
 	vc_ch->fbox_out = &MPID_nem_mem_region.mailboxes.out[MPID_nem_mem_region.local_ranks[vc->lpid]]->mpich2;
 	vc_ch->fbox_in = &MPID_nem_mem_region.mailboxes.in[MPID_nem_mem_region.local_ranks[vc->lpid]]->mpich2;
 	vc_ch->recv_queue = MPID_nem_mem_region.RecvQ[vc->lpid];
@@ -468,6 +435,13 @@ MPID_nem_vc_init (MPIDI_VC_t *vc)
         vc_ch->lmt_handle_cookie = MPID_nem_lmt_dma_handle_cookie;
         vc_ch->lmt_done_send     = MPID_nem_lmt_dma_done_send;
         vc_ch->lmt_done_recv     = MPID_nem_lmt_dma_done_recv;
+#elif MPID_NEM_LOCAL_LMT_IMPL == MPID_NEM_LOCAL_LMT_VMSPLICE
+        vc_ch->lmt_initiate_lmt  = MPID_nem_lmt_vmsplice_initiate_lmt;
+        vc_ch->lmt_start_recv    = MPID_nem_lmt_vmsplice_start_recv;
+        vc_ch->lmt_start_send    = MPID_nem_lmt_vmsplice_start_send;
+        vc_ch->lmt_handle_cookie = MPID_nem_lmt_vmsplice_handle_cookie;
+        vc_ch->lmt_done_send     = MPID_nem_lmt_vmsplice_done_send;
+        vc_ch->lmt_done_recv     = MPID_nem_lmt_vmsplice_done_recv;
 #elif MPID_NEM_LOCAL_LMT_IMPL == MPID_NEM_LOCAL_LMT_NONE
         vc_ch->lmt_initiate_lmt  = NULL;
         vc_ch->lmt_start_recv    = NULL;
@@ -481,6 +455,8 @@ MPID_nem_vc_init (MPIDI_VC_t *vc)
 
         vc_ch->lmt_copy_buf        = NULL;
         mpi_errno = MPIU_SHMW_Hnd_init(&(vc_ch->lmt_copy_buf_handle));
+        if(mpi_errno != MPI_SUCCESS) { MPIU_ERR_POP(mpi_errno); }
+        mpi_errno = MPIU_SHMW_Hnd_init(&(vc_ch->lmt_recv_copy_buf_handle));
         if(mpi_errno != MPI_SUCCESS) { MPIU_ERR_POP(mpi_errno); }
         vc_ch->lmt_queue.head      = NULL;
         vc_ch->lmt_queue.tail      = NULL;

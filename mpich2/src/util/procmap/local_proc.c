@@ -7,7 +7,7 @@
 #include "mpiimpl.h"
 #include "mpidimpl.h" /* FIXME this is including a ch3 include file!
                          Implement these functions at the device level. */
-#include "pmi.h"
+
 #if defined(HAVE_LIMITS_H)
 #include <limits.h>
 #endif
@@ -206,8 +206,7 @@ int MPIU_Find_local_and_external(MPID_Comm *comm, int *local_size_p, int *local_
                                  int *external_size_p, int *external_rank_p, int **external_ranks_p,
                                  int **intranode_table_p, int **internode_table_p)
 {
-    return MPI_ERR_UNKNOWN;
-    int mpi_errno;
+    int mpi_errno = MPI_SUCCESS;
     
     /* The upper level can catch this non-fatal error and should be
        able to recover gracefully. */

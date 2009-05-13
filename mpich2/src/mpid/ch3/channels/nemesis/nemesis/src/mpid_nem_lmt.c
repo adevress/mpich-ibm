@@ -73,7 +73,7 @@ int MPID_nem_lmt_RndvSend(MPID_Request **sreq_p, const void * buf, int count, MP
 
     MPIDI_FUNC_ENTER(MPID_STATE_MPID_NEM_LMT_RNDVSEND);
 
-    MPIDI_Comm_get_vc(comm, rank, &vc);
+    MPIDI_Comm_get_vc_set_active(comm, rank, &vc);
 
     /* if the lmt functions are not set, fall back to the default rendezvous code */
     if (((MPIDI_CH3I_VC *)vc->channel_private)->lmt_initiate_lmt == NULL)
@@ -403,7 +403,15 @@ static int pkt_COOKIE_handler(MPIDI_VC_t *vc, MPIDI_CH3_Pkt_t *pkt, MPIDI_msg_sz
     data_len = *buflen - sizeof(MPIDI_CH3_Pkt_t);
     data_buf = (char *)pkt + sizeof(MPIDI_CH3_Pkt_t);
 
-    MPID_Request_get_ptr(cookie_pkt->req_id, req);
+    if (cookie_pkt->from_sender) {
+        MPID_Request_get_ptr(cookie_pkt->receiver_req_id, req);
+        req->ch.lmt_req_id = cookie_pkt->sender_req_id;
+    }
+    else {
+        MPID_Request_get_ptr(cookie_pkt->sender_req_id, req);
+        req->ch.lmt_req_id = cookie_pkt->receiver_req_id;
+    }
+    MPIU_Assert(req != NULL);
 
     if (cookie_pkt->cookie_len != 0)
     {

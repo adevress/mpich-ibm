@@ -60,7 +60,7 @@ int MPIR_CommGetAttr( MPI_Comm comm, int comm_keyval, void *attribute_val,
             /* A common user error is to pass the address of a 4-byte
 	       int when the address of a pointer (or an address-sized int)
 	       should have been used.  We can test for this specific
-	       case.  Note that this code assumes sizeof(MPI_Aint) is 
+	       case.  Note that this code assumes sizeof(MPIR_Pint) is 
 	       a power of 2. */
 	    if ((MPIR_Pint)attribute_val & (sizeof(MPIR_Pint)-1)) {
 		MPIU_ERR_SET(mpi_errno,MPI_ERR_ARG,"**attrnotptr");
@@ -110,9 +110,6 @@ int MPIR_CommGetAttr( MPI_Comm comm, int comm_keyval, void *attribute_val,
 	   On some 64-bit plaforms, such as Solaris-SPARC, using an MPI_Fint
 	   will cause the value to placed into the high, rather than low,
 	   end of the output value. */
-#if 0
-	MPIR_Pint  *attr_int = (MPIR_Pint *)attribute_val;
-#endif
 #endif
 	*flag = 1;
 
@@ -192,77 +189,15 @@ int MPIR_CommGetAttr( MPI_Comm comm, int comm_keyval, void *attribute_val,
 		*attr_val_p = &attr_copy.appnum;
 	    }
 	    break;
-#if 0
-#ifdef HAVE_FORTRAN_BINDING
-	case 2: /* Fortran TAG_UB */
-	    *attr_int = attr_copy.tag_ub;
-	    break;
-	case 4: /* Fortran HOST */
-	    *attr_int = attr_copy.host;
-	    break;
-	case 6: /* Fortran IO */
-	    *attr_int = attr_copy.io;
-	    break;
-	case 8: /* Fortran WTIME */
-	    *attr_int = attr_copy.wtime_is_global;
-	    break;
-	case 10: /* UNIVERSE_SIZE */
-	    /* This is a special case.  If universe is not set, then we
-	       attempt to get it from the device.  If the device is doesn't
-	       supply a value, then we set the flag accordingly */
-	    if (attr_copy.universe >= 0)
-	    { 
-		*attr_int = attr_copy.universe;
-	    }
-	    else if (attr_copy.universe == MPIR_UNIVERSE_SIZE_NOT_AVAILABLE)
-	    {
-		*flag = 0;
-	    }
-	    else
-	    {
-		mpi_errno = MPID_Get_universe_size(&attr_copy.universe);
-		/* --BEGIN ERROR HANDLING-- */
-		if (mpi_errno != MPI_SUCCESS)
-		{
-		    attr_copy.universe = MPIR_UNIVERSE_SIZE_NOT_AVAILABLE;
-		    goto fn_fail;
-		}
-		/* --END ERROR HANDLING-- */
-		
-		if (attr_copy.universe >= 0)
-		{
-		    *attr_int = attr_copy.universe;
-		}
-		else
-		{
-		    attr_copy.universe = MPIR_UNIVERSE_SIZE_NOT_AVAILABLE;
-		    *flag = 0;
-		}
-	    }
-	    break;
-	case 12: /* LASTUSEDCODE */
-	    *attr_int = attr_copy.lastusedcode;
-	    break;
-	case 14: /* APPNUM */
-	    /* This is another special case.  If appnum is negative,
-	       we take that as indicating no value of APPNUM, and set
-	       the flag accordingly */
-	    if (attr_copy.appnum < 0) {
-		*flag = 0;
-	    }
-	    else {
-		*attr_int = attr_copy.appnum;
-	    }
-	    break;
-#endif
-#endif
 	}
 	/* All of the predefined attributes are INTEGER; since we've set 
 	   the output value as the pointer to these, we need to dereference
 	   it here. */
 	if (*flag) {
+            /* Use the internal pointer-sized-int for systems (e.g., BG/P)
+ *             that define MPI_Aint as a different size that MPIR_Pint */
 	    if (outAttrType == MPIR_ATTR_AINT)
-		*(MPI_Aint*)attr_val_p = *(MPI_Aint*)*(void **)attr_val_p;
+		*(MPIR_Pint*)attr_val_p = *(MPIR_Pint*)*(void **)attr_val_p;
 	    else if (outAttrType == MPIR_ATTR_INT)
 		*(MPIR_Pint*)attr_val_p = *(int *)*(void **)attr_val_p;
 	}

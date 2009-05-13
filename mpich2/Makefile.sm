@@ -1,5 +1,5 @@
 # -*- Mode: makefile; -*-
-SUBDIRS = . src @EXTERNAL_SRC_DIRS@ examples
+SUBDIRS = . @EXTERNAL_SRC_DIRS@ src examples
 # Do not include test in the basic build.  
 OTHER_DIRS = test
 DOC_SUBDIRS = doc
@@ -65,7 +65,7 @@ cleanlibs:
 
 all-preamble:
 	@echo "Beginning make"
-	@echo "Using variables CC='@CC@' CFLAGS='@CFLAGS@' LDFLAGS='@LDFLAGS@' AR='@AR@' FC='@FC@' F90='@F90@' FFLAGS='@FFLAGS@' F90FLAGS='@F90FLAGS@' CXX='@CXX@'"
+	@echo "Using variables CC='@CC@' CFLAGS='@CFLAGS@' LDFLAGS='@LDFLAGS@' AR='@AR@' FC='@FC@' F90='@F90@' FFLAGS='@FFLAGS@' F90FLAGS='@F90FLAGS@' CXX='@CXX@' CPPFLAGS='@CPPFLAGS@'"
 
 # Add any final extras:
 #    1) Build the debugger interface if requested
