@@ -555,27 +555,6 @@ void STAR_InitRepositories()
 			    MPIDO_USE_BCAST_SCATTER,
                             MPIDO_END_ARGS);
 
-#if 0
-  /* algorithms for barrier */
-  curr = 0;
-  num = 2;
-  STAR_info.barrier_algorithms = num;
-  STAR_barrier_repository = malloc(alg_size * num);
-
-  STAR_SetRepositoryElement(&STAR_barrier_repository[curr++],
-			    (STAR_Func_Ptr) (&MPIDO_Barrier_gi),
-			    0, 0,
-			    0, 0,
-			    "barrier_gi",
-			    MPIDO_USE_GI_BARRIER, MPIDO_END_ARGS);
-
-  STAR_SetRepositoryElement(&STAR_barrier_repository[curr++],
-			    (STAR_Func_Ptr) (&MPIDO_Barrier_dcmf),
-			    0, 0,
-			    0, 0,
-			    "barrier_dcmf",
-			    MPIDO_TORUS_COMM, MPIDO_END_ARGS);
-#endif
 #else /* !USE_CCMI_COLL */
   STAR_bcast_repository = NULL;
   STAR_allreduce_repository = NULL;

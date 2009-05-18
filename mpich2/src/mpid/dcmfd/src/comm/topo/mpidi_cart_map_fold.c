@@ -80,7 +80,7 @@ static int find_fold( int nd1, int d1[], int nd2, int d2[], int fold[][3] )
     int neg_nfold=0, pos_nfold=0;
     int neg_fold=1,  pos_fold=1;
     int i, j;
-#if 0
+#if TRACE
     static int count=0;
 #endif
 
@@ -188,7 +188,7 @@ static int find_fold( int nd1, int d1[], int nd2, int d2[], int fold[][3] )
         }
     }
 
-#if 0
+#if TRACE
     if (!count) {
     printf( "\t\tfold 1 = " );
     for (i=0; i<3; i++) { for (j=0; j<3; j++) printf( "%4d", fold[i][j] ); printf( "; " ); }

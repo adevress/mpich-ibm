@@ -7,7 +7,7 @@
 #include "mpidi_star.h"
 
 /** \page env_vars Environment Variables
- * - DCMF_VERBOSE - Increases the amount of information dumped during an 
+ * - DCMF_VERBOSE - Increases the amount of information dumped during an
  *   MPI_Abort() call.  Possible values:
  *   - 0 - No additional information is dumped.
  *   - 1 - Additional information is dumped.
@@ -33,26 +33,26 @@
  *   are identical.  This takes an argument, in bytes.  The
  *   optimized rendezvous protocol will be used if:
  *   eager_limit <= message_size < (eager_limit + DCMF_OPTRZV).
- *   For sending, one of three protocols will be used depending on the message 
- *   size:  The eager protocol for small messages, the optimized rendezvous 
- *   protocol for medium messages, and the default rendezvous protocol for 
- *   large messages. The optimized rendezvous protocol generally has less 
- *   latency than the default rendezvous protocol, but does not wait for a 
- *   receive to be posted first.  Therefore, unexpected messages in this size 
- *   range may be received, consuming storage until the receives are issued. 
- *   The default rendezvous protocol waits for a receive to be posted first. 
- *   Therefore, no unexpected messages in this size range will be received. 
- *   The optimized rendezvous protocol also avoids filling injection fifos 
- *   which can cause delays while larger fifos are allocated.  For example, 
- *   alltoall on large subcommunicators with thread mode multiple will 
- *   benefit from optimized rendezvous. 
+ *   For sending, one of three protocols will be used depending on the message
+ *   size:  The eager protocol for small messages, the optimized rendezvous
+ *   protocol for medium messages, and the default rendezvous protocol for
+ *   large messages. The optimized rendezvous protocol generally has less
+ *   latency than the default rendezvous protocol, but does not wait for a
+ *   receive to be posted first.  Therefore, unexpected messages in this size
+ *   range may be received, consuming storage until the receives are issued.
+ *   The default rendezvous protocol waits for a receive to be posted first.
+ *   Therefore, no unexpected messages in this size range will be received.
+ *   The optimized rendezvous protocol also avoids filling injection fifos
+ *   which can cause delays while larger fifos are allocated.  For example,
+ *   alltoall on large subcommunicators with thread mode multiple will
+ *   benefit from optimized rendezvous.
  *   - Default is 0 bytes, meaning that optimized rendezvous is not used.
  *
  * - DCMF_NUMREQUESTS - Sets the number of outstanding asynchronous
  *   broadcasts to have before a barrier is called.  This is mostly
- *   used in allgather/allgatherv using asynchronous broadcasts. 
+ *   used in allgather/allgatherv using asynchronous broadcasts.
  *   Higher numbers can help on larger partitions and larger
- *   message sizes. 
+ *   message sizes.
  *   - Default is 32.
  *
  * - DCMF_RMA_PENDING - Maximum outstanding RMA requests.
@@ -85,7 +85,7 @@
  *   - 1 - Optimized topology creation functions are used.
  *   - Default is 1.
  *
- * - DCMF_COLLECTIVE - 
+ * - DCMF_COLLECTIVE -
  * - DCMF_COLLECTIVES - Controls whether optimized collectives are used.
  *   Possible values:
  *   - 0 - Optimized collectives are not used.
@@ -101,38 +101,38 @@
  * - DCMF_SCATTER - Controls the protocol used for scatter.
  *   Possible values:
  *   - MPICH - Use the MPICH point-to-point protocol.
- *   - Default (or if anything else is specified) 
- *     is to use a broadcast-based scatter at a 2k or larger 
- *     message size. 
+ *   - Default (or if anything else is specified)
+ *     is to use a broadcast-based scatter at a 2k or larger
+ *     message size.
  *
  * - DCMF_SCATTERV - Controls the protocol used for scatterv.
  *   Possible values:
- *   - ALLTOALL - Use an all-to-all based protocol when the 
- *     message size is above 2k. This is optimal for larger messages 
- *     and larger partitions. 
- *   - BCAST - Use a broadcast-based scatterv.  This works well 
- *     for small messages. 
+ *   - ALLTOALL - Use an all-to-all based protocol when the
+ *     message size is above 2k. This is optimal for larger messages
+ *     and larger partitions.
+ *   - BCAST - Use a broadcast-based scatterv.  This works well
+ *     for small messages.
  *   - MPICH - Use the MPICH point-to-point protocol.
  *   - Default is ALLTOALL.
  *
  * - DCMF_GATHER - Controls the protocol used for gather.
  *   Possible values:
  *   - MPICH - Use the MPICH point-to-point protocol.
- *   - Default (or if anything else is specified) 
- *     is to use a reduce-based algorithm for larger message sizes. 
+ *   - Default (or if anything else is specified)
+ *     is to use a reduce-based algorithm for larger message sizes.
  *
  * - DCMF_REDUCESCATTER - Controls the protocol used for reduce_scatter
- *   operations.  The options for DCMF_SCATTERV and DCMF_REDUCE can change the 
+ *   operations.  The options for DCMF_SCATTERV and DCMF_REDUCE can change the
  *   behavior of reduce_scatter.  Possible values:
  *   - MPICH - Use the MPICH point-to-point protocol.
- *   - Default (or if anything else is specified) 
+ *   - Default (or if anything else is specified)
  *     is to use an optimized reduce followed by an optimized scatterv.
  *     This works well for larger messages.
  *
  * - DCMF_BCAST - Controls the protocol used for broadcast.  Possible values:
  *   - MPICH - Turn off all optimizations for broadcast and use the MPICH
  *     point-to-point protocol.
- *   - TREE - Use the collective network. This is the default on MPI_COMM_WORLD and 
+ *   - TREE - Use the collective network. This is the default on MPI_COMM_WORLD and
  *     duplicates of MPI_COMM_WORLD in MPI_THREAD_SINGLE mode.  This provides
  *     the fastest possible broadcast.
  *   - CCMI - Use the CCMI collective network protocol.  This is off by default.
@@ -166,7 +166,7 @@
  *   irregular subcommunicators where the allreduce can be expensive.
  *   Possible values:
  *   - N - Perform the allreduce.
- *   - Y - Skip the allreduce.  Setting this with "unsafe" datatypes will 
+ *   - Y - Skip the allreduce.  Setting this with "unsafe" datatypes will
  *         yield unpredictable results, usually hangs.
  *   - Default is N.
  *
@@ -175,12 +175,12 @@
  *   also requires continuous displacements.  To verify
  *   this is true, we must do an allreduce at the beginning of the
  *   allgatherv call.  If the application uses "well behaved" datatypes and
- *   displacements, you can set this option to skip over the allreduce. 
- *   This is most useful in irregular subcommunicators where the allreduce 
+ *   displacements, you can set this option to skip over the allreduce.
+ *   This is most useful in irregular subcommunicators where the allreduce
  *   can be expensive.
  *   Possible values:
  *   - N - Perform the allreduce.
- *   - Y - Skip the allreduce.  Setting this with "unsafe" datatypes will 
+ *   - Y - Skip the allreduce.  Setting this with "unsafe" datatypes will
  *         yield unpredictable results, usually hangs.
  *   - Default is N.
  *
@@ -189,27 +189,27 @@
  *   also requires continuous displacements.  To verify
  *   this is true, we must do an allreduce at the beginning of the
  *   scatterv call.  If the application uses "well behaved" datatypes and
- *   displacements, you can set this option to skip over the allreduce. 
- *   This is most useful in irregular subcommunicators where the allreduce 
+ *   displacements, you can set this option to skip over the allreduce.
+ *   This is most useful in irregular subcommunicators where the allreduce
  *   can be expensive.
  *   Possible values:
  *   - N - Perform the allreduce.
- *   - Y - Skip the allreduce.  Setting this with "unsafe" datatypes will 
+ *   - Y - Skip the allreduce.  Setting this with "unsafe" datatypes will
  *         yield unpredictable results, usually hangs.
  *   - Default is N.
  *
  * - DCMF_ALLTOALL -
- * - DCMF_ALLTOALLV - 
- * - DCMF_ALLTOALLW - Controls the protocol used for 
+ * - DCMF_ALLTOALLV -
+ * - DCMF_ALLTOALLW - Controls the protocol used for
  *   alltoall/alltoallv/alltoallw.  Possible values:
  *   - MPICH - Turn off all optimizations and use the MPICH
  *     point-to-point protocol.
- *   - Default (or if anything else is specified) 
+ *   - Default (or if anything else is specified)
  *     is to use an optimized alltoall/alltoallv/alltoallw.
  *
  * - DCMF_ALLTOALL_PREMALLOC -
  * - DCMF_ALLTOALLV_PREMALLOC -
- * - DCMF_ALLTOALLW_PREMALLOC - These are equivalent options. 
+ * - DCMF_ALLTOALLW_PREMALLOC - These are equivalent options.
  *   The alltoall protocols require 6 arrays to be setup
  *   before communication begins.  These 6 arrays are each of size
  *   (comm_size) so can be sizeable on large machines.  If your application
@@ -224,9 +224,9 @@
  *
  * - DCMF_ALLGATHER - Controls the protocol used for allgather.
  Possible values:
- *   - MPICH - Turn off all optimizations for allgather and use the MPICH 
+ *   - MPICH - Turn off all optimizations for allgather and use the MPICH
  *     point-to-point protocol.
- *   - ALLREDUCE - Use a collective network based allreduce.  This is the default on 
+ *   - ALLREDUCE - Use a collective network based allreduce.  This is the default on
  *     MPI_COMM_WORLD for smaller messages.
  *   - ALLTOALL - Use an all-to-all based algorithm.  This is the default on
  *     irregular communicators.  It works very well for larger messages.
@@ -238,11 +238,11 @@
  *     rectangular or irregular subcommunicators.
  *   - Default varies based on the communicator.  See above.
  *
- * - DCMF_ALLGATHERV - Controls the protocol used for allgatherv. 
+ * - DCMF_ALLGATHERV - Controls the protocol used for allgatherv.
  Possible values:
- *   - MPICH - Turn off all optimizations for allgather and use the MPICH 
+ *   - MPICH - Turn off all optimizations for allgather and use the MPICH
  *     point-to-point protocol.
- *   - ALLREDUCE - Use a collective network based allreduce.  This is the default on 
+ *   - ALLREDUCE - Use a collective network based allreduce.  This is the default on
  *     MPI_COMM_WORLD for smaller messages.
  *   - ALLTOALL - Use an all-to-all based algorithm.  This is the default on
  *     irregular communicators.  It works very well for larger messages.
@@ -256,7 +256,7 @@
  *
  * - DCMF_ALLREDUCE - Controls the protocol used for allreduce.
  *   Possible values:
- *   - MPICH - Turn off all optimizations for allreduce and use the MPICH 
+ *   - MPICH - Turn off all optimizations for allreduce and use the MPICH
  *     point-to-point protocol.
  *   - RING - Use a rectangular ring protocol.  This is the default for
  *     rectangular subcommunicators.
@@ -267,13 +267,13 @@
  *     duplicates of MPI_COMM_WORLD in MPI_THREAD_SINGLE mode.
  *   - CCMI - Use the CCMI collective network protocol.  This is off by default.
  *   - PIPE - Use the pipelined CCMI collective network protocol. This is off by default.
- *   - ASYNC - Enable the asynchronous versions of BINOM, RING, and RECT 
+ *   - ASYNC - Enable the asynchronous versions of BINOM, RING, and RECT
  *     protocols (above). These are off by default.
- *   - ARING - Enable the asynchronous version of the rectangular ring protocol.  
+ *   - ARING - Enable the asynchronous version of the rectangular ring protocol.
  *     This is off by default.
- *   - ARECT - Enable the asynchronous version of the rectangular/binomial protocol.  
+ *   - ARECT - Enable the asynchronous version of the rectangular/binomial protocol.
  *     This is off by default.
- *   - ABINOM - Enable the asynchronous version of the binomial protocol.  
+ *   - ABINOM - Enable the asynchronous version of the binomial protocol.
  *     This is off by default.
  *   - Default varies based on the communicator.  See above.
  *
@@ -326,7 +326,7 @@
  *
  * - DCMF_BARRIER - Controls the protocol used for barriers.
  *   Possible values:
- *   - MPICH - Turn off optimized barriers and use the MPICH 
+ *   - MPICH - Turn off optimized barriers and use the MPICH
  *     point-to-point protocol.
  *   - BINOM - Use the binomial barrier.  This is the default for all
  *     subcommunicators.
@@ -342,34 +342,34 @@
  *   - 1 - turn on
  *
  * - DCMF_STAR_NUM_INVOCS: sets the number of invocations that STAR-MPI uses
- *                         to examine performance of each communication 
+ *                         to examine performance of each communication
  *                         algorithm.
  *   - Possible values:
  *     - any integer value > 0 (default is 10).
  *
- * - DCMF_STAR_TRACEBACK_LEVEL: sets the traceback level of an MPI collective 
- *                              routine, which will be used to get the address 
- *                              of the caller to the collective routine. 
- *                              The default is 3 (MPI app, MPICH, MPIDO). 
- *                              If users utilize or write their own collective 
+ * - DCMF_STAR_TRACEBACK_LEVEL: sets the traceback level of an MPI collective
+ *                              routine, which will be used to get the address
+ *                              of the caller to the collective routine.
+ *                              The default is 3 (MPI app, MPICH, MPIDO).
+ *                              If users utilize or write their own collective
  *                              wrappers, then they must increase the traceback
- *                              level (beyond 3) depending on the extra levels 
+ *                              level (beyond 3) depending on the extra levels
  *                              they introduce by their wrappers.
  *   - Possible values:
  *     - any integer value > 3 (default is 3).
  *
- * - DCMF_STAR_CHECK_CALLSITE: turns on sanity check that makes sure all ranks 
- *                             are involved in the same collective call site. 
- *                             This is important in root-like call sites 
- *                             (Bcast, Reduce, Gather...etc) where the call 
- *                             site of the root might be different than non 
- *                             root ranks (different if 
+ * - DCMF_STAR_CHECK_CALLSITE: turns on sanity check that makes sure all ranks
+ *                             are involved in the same collective call site.
+ *                             This is important in root-like call sites
+ *                             (Bcast, Reduce, Gather...etc) where the call
+ *                             site of the root might be different than non
+ *                             root ranks (different if
  *                             statements).
  *   - Possible values:
  *     - 1 - (default is 1: on).
  *
- * - DCMF_STAR_VERBOSE: turns on verbosity of STAR-MPI by writing to an output 
- *                      file in the form "exec_name-star-rank#.log".  
+ * - DCMF_STAR_VERBOSE: turns on verbosity of STAR-MPI by writing to an output
+ *                      file in the form "exec_name-star-rank#.log".
  *                      This is turned off by default.
  *
  *   - Possible values:
@@ -427,10 +427,10 @@ MPIDI_Env_setup()
   MPIDO_Embedded_Info_Set * properties = &MPIDI_CollectiveProtocols.properties;
   int   dval = 0;
   char *envopts;
-  
+
   /* unset all properties of a mpidi_coll_protocol by default */
   MPIDO_INFO_ZERO(properties);
-  
+
   /* Set the verbose level */
   dval = 0;
   ENV_Int(getenv("DCMF_VERBOSE"), &dval);
@@ -499,22 +499,22 @@ MPIDI_Env_setup()
       MPIDI_Process.optimized.tree = 1;
     }
   }
-  
+
   dval = 1000;
   ENV_Int(getenv("DCMF_RMA_PENDING"), &dval);
   MPIDI_Process.rma_pending = dval;
-  
-  
+
+
   /* Initialize selection variables */
   /* turn these off in MPIDI_Coll_register if registration fails
    * or based on env vars (below) */
   if(!MPIDI_Process.optimized.collectives)
-    MPIDO_INFO_SET(properties, MPIDO_USE_MPICH); 
+    MPIDO_INFO_SET(properties, MPIDO_USE_MPICH);
   if(!MPIDI_Process.optimized.tree)
-    MPIDO_INFO_SET(properties, MPIDO_USE_NOTREE_OPT_COLLECTIVES); 
-  
+    MPIDO_INFO_SET(properties, MPIDO_USE_NOTREE_OPT_COLLECTIVES);
+
   /* default setting of flags for the mpidi_coll_protocol object */
-  MPIDO_MSET_INFO(properties, 
+  MPIDO_MSET_INFO(properties,
                   MPIDO_USE_GI_BARRIER,
                   //MPIDO_USE_CCMI_GI_BARRIER,
                   MPIDO_USE_RECT_BARRIER,
@@ -529,10 +529,10 @@ MPIDI_Env_setup()
                   MPIDO_USE_BINOM_BCAST,
                   MPIDO_USE_ABINOM_BCAST,
                   MPIDO_USE_SCATTER_GATHER_BCAST,
-                  MPIDO_USE_TREE_BCAST, 
-                  MPIDO_USE_TREE_SHMEM_BCAST, 
-                  MPIDO_USE_CCMI_TREE_BCAST, 
-                  MPIDO_USE_CCMI_TREE_DPUT_BCAST, 
+                  MPIDO_USE_TREE_BCAST,
+                  MPIDO_USE_TREE_SHMEM_BCAST,
+                  MPIDO_USE_CCMI_TREE_BCAST,
+                  MPIDO_USE_CCMI_TREE_DPUT_BCAST,
                   MPIDO_USE_STORAGE_ALLREDUCE,
                   MPIDO_USE_RECT_ALLREDUCE,
                   MPIDO_USE_SHORT_ASYNC_RECT_ALLREDUCE,
@@ -544,7 +544,7 @@ MPIDI_Env_setup()
                   MPIDO_USE_RRING_DPUT_SINGLETH_ALLREDUCE,
                   MPIDO_USE_TREE_ALLREDUCE,
                   MPIDO_USE_PIPELINED_TREE_ALLREDUCE,
-                  MPIDO_USE_TREE_DPUT_ALLREDUCE,                 
+                  MPIDO_USE_TREE_DPUT_ALLREDUCE,
                   MPIDO_USE_STORAGE_REDUCE,
                   //MPIDO_USE_PIPELINED_TREE_REDUCE,
                   MPIDO_USE_TREE_REDUCE,
@@ -574,7 +574,7 @@ MPIDI_Env_setup()
                   MPIDO_USE_TORUS_ALLTOALLW,
                   MPIDO_USE_PREMALLOC_ALLTOALL,
                   MPIDO_END_ARGS);
-  
+
   MPIDI_CollectiveProtocols.bcast_asynccutoff = 8192;
   MPIDI_CollectiveProtocols.allreduce_asynccutoff = 131072;
   MPIDI_CollectiveProtocols.numcolors = 0;
@@ -582,7 +582,7 @@ MPIDI_Env_setup()
   dval = 8192;
   ENV_Int(getenv("DCMF_ASYNCCUTOFF"), &dval);
   MPIDI_CollectiveProtocols.bcast_asynccutoff = dval;
-  
+
   envopts = getenv("DCMF_SCATTER");
   if(envopts != NULL)
   {
@@ -623,7 +623,7 @@ MPIDI_Env_setup()
       MPIDO_INFO_UNSET(properties, MPIDO_USE_REDUCE_GATHER);
     }
   }
-  
+
   envopts = getenv("DCMF_REDUCESCATTER");
   if(envopts != NULL)
   {
@@ -633,8 +633,8 @@ MPIDI_Env_setup()
       MPIDO_INFO_UNSET(properties, MPIDO_USE_REDUCESCATTER);
     }
   }
-  
-  
+
+
   envopts = getenv("DCMF_BCAST");
   if(envopts != NULL)
   {
@@ -714,8 +714,8 @@ MPIDI_Env_setup()
               "Valid bcasts are: M, AR, AB, R, B, T, C, CD, D, SR, SB, and SG. Using MPICH\n");
       MPIDO_INFO_SET(properties, MPIDO_USE_MPICH_BCAST);
     }
-  } 
-   
+  }
+
   envopts = getenv("DCMF_NUMCOLORS");
   if(envopts != NULL)
   {
@@ -725,29 +725,29 @@ MPIDI_Env_setup()
     else
       MPIDI_CollectiveProtocols.numcolors = colors;
   }
-  
+
   envopts = getenv("DCMF_SAFEALLGATHER");
   if(envopts != NULL)
   {
     if((strncasecmp(envopts, "Y", 1) == 0) || atoi(envopts)==1)
       MPIDO_INFO_UNSET(properties, MPIDO_USE_PREALLREDUCE_ALLGATHER);
   }
-  
+
   envopts = getenv("DCMF_SAFEALLGATHERV");
   if(envopts != NULL)
   {
     if((strncasecmp(envopts, "Y", 1) == 0) || atoi(envopts)==1)
       MPIDO_INFO_UNSET(properties, MPIDO_USE_PREALLREDUCE_ALLGATHERV);
   }
-  
+
   envopts = getenv("DCMF_SAFESCATTERV");
   if(envopts != NULL)
   {
     if((strncasecmp(envopts, "Y", 1) == 0) || atoi(envopts)==1)
       MPIDO_INFO_UNSET(properties, MPIDO_USE_PREALLREDUCE_SCATTERV);
   }
-  
-  
+
+
   envopts = getenv("DCMF_ALLTOALL");
   if(envopts != NULL)
   {
@@ -763,7 +763,7 @@ MPIDI_Env_setup()
     else
       fprintf(stderr,"Invalid DCMF_ALLTOALL option\n");
   }
-  
+
   envopts = getenv("DCMF_ALLTOALL_PREMALLOC");
   if(envopts == NULL)
     envopts = getenv("DCMF_ALLTOALLV_PREMALLOC");
@@ -782,8 +782,8 @@ MPIDI_Env_setup()
     else
       fprintf(stderr,"Invalid DCMF_ALLTOALL(VW)_PREMALLOC option\n");
   }
-  
-  
+
+
   envopts = getenv("DCMF_ALLTOALLV");
   if(envopts != NULL)
   {
@@ -799,7 +799,7 @@ MPIDI_Env_setup()
     else
       fprintf(stderr,"Invalid DCMF_ALLTOALLV option\n");
   }
-  
+
   envopts = getenv("DCMF_ALLTOALLW");
   if(envopts != NULL)
   {
@@ -815,7 +815,7 @@ MPIDI_Env_setup()
     else
       fprintf(stderr,"Invalid DCMF_ALLTOALLW option\n");
   }
-  
+
   envopts = getenv("DCMF_ALLGATHER");
   if(envopts != NULL)
   {
@@ -862,7 +862,7 @@ MPIDI_Env_setup()
       MPIDO_INFO_SET(properties, MPIDO_USE_MPICH_ALLGATHER);
     }
   }
-  
+
   envopts = getenv("DCMF_ALLGATHERV");
   if(envopts != NULL)
   {
@@ -907,7 +907,7 @@ MPIDI_Env_setup()
       MPIDO_INFO_SET(properties, MPIDO_USE_MPICH_ALLGATHERV);
     }
   }
-  
+
   envopts = getenv("DCMF_ALLREDUCE");
   if(envopts != NULL)
   {
@@ -963,7 +963,7 @@ MPIDI_Env_setup()
       MPIDO_INFO_SET(properties, MPIDO_USE_MPICH_ALLREDUCE);
     }
   }
-  
+
   envopts = getenv("DCMF_ALLREDUCE_REUSE_STORAGE");
   if(envopts != NULL)
   {
@@ -1031,23 +1031,13 @@ MPIDI_Env_setup()
     {
       MPIDO_INFO_SET(properties, MPIDO_USE_TREE_REDUCE);
     }
-#if 0
-    else if(strncasecmp(envopts, "TD", 2) == 0) /* Tree dput*/
-    {
-      MPIDO_INFO_SET(properties, MPIDO_USE_TREE_DPUT_REDUCE);
-    }
-    else if(strncasecmp(envopts, "P", 1) == 0) /* Pipelined Tree */
-    {
-      MPIDO_INFO_SET(properties, MPIDO_USE_PIPELINED_TREE_REDUCE);
-    }
-#endif
     else
     {
       fprintf(stderr,"Invalid DCMF_REDUCE option. Defaulting to MPICH\n");
       MPIDO_INFO_SET(properties, MPIDO_USE_MPICH_REDUCE);
     }
   }
-  
+
   envopts = getenv("DCMF_REDUCE_REUSE_STORAGE");
   if(envopts != NULL)
   {
@@ -1060,7 +1050,7 @@ MPIDI_Env_setup()
     else
       fprintf(stderr,"Invalid DCMF_REDUCE_REUSE_STORAGE option\n");
   }
-  
+
   envopts = getenv("DCMF_BARRIER");
   if(envopts != NULL)
   {
@@ -1070,7 +1060,7 @@ MPIDI_Env_setup()
 
       /* still need to register a barrier for DCMF collectives */
       MPIDO_INFO_SET(properties, MPIDO_USE_BINOM_BARRIER);
-         
+
       /* MPIDI_Coll_register changes this state for us */
       /* MPIDI_CollectiveProtocols.barrier.usegi = 1; */
     }
@@ -1092,18 +1082,10 @@ MPIDI_Env_setup()
       MPIDO_INFO_UNSET(properties, MPIDO_USE_BINOM_BARRIER);
       MPIDO_INFO_UNSET(properties, MPIDO_USE_GI_BARRIER);
     }
-#if 0    
-    else if(strncasecmp(envopts, "C", 1) == 0) /* GI */
-    {
-      MPIDO_INFO_UNSET(properties, MPIDO_USE_BINOM_BARRIER);
-      MPIDO_INFO_UNSET(properties, MPIDO_USE_RECT_BARRIER);
-      MPIDO_INFO_UNSET(properties, MPIDO_USE_GI_BARRIER);
-    }
-#endif
     else
       fprintf(stderr,"Invalid DCMF_BARRIER option\n");
   }
-  
+
   envopts = getenv("DCMF_LOCALBARRIER");
   if(envopts != NULL)
   {
@@ -1134,12 +1116,12 @@ MPIDI_Env_setup()
   ENV_Int(getenv("DCMF_STAR_NUM_INVOCS"), &dval);
   if (dval > 0 )
     STAR_info.invocs_per_algorithm = dval;
-  
+
   dval = 0;
   ENV_Int(getenv("DCMF_STAR_TRACEBACK_LEVEL"), &dval);
   if (dval > 0)
     STAR_info.traceback_levels = dval;
-  
+
   dval = 0;
   ENV_Int(getenv("DCMF_STAR_CHECK_CALLSITE"), &dval);
   if (dval > 0)
@@ -1180,6 +1162,6 @@ MPIDI_Env_setup()
   ENV_Int(getenv("DCMF_STAR_GATHER_THRESHOLD"), &dval);
   if (dval >= 0 )
     STAR_info.gather_threshold = dval;
-   
-  /* end of star stuff */  
+
+  /* end of star stuff */
 }

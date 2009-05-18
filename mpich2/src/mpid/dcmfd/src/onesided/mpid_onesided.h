@@ -91,13 +91,6 @@ typedef struct {
         size_t mpid_xtra_w3;	/**< word 3 */
 } MPIDU_Onesided_xtra_t;
 
-#if 0
-/**
- * \brief Translate message type into string
- */
-extern char *msgtypes[];
-#endif
-
 /** \brief DCMF Protocol object for DCMF_Send() calls */
 extern DCMF_Protocol_t bg1s_sn_proto;
 /** \brief DCMF Protocol object for DCMF_Put() calls */

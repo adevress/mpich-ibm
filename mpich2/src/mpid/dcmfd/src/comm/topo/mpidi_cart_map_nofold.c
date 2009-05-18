@@ -109,7 +109,7 @@ int MPIDI_Cart_map_nofold( MPIDI_VirtualCart *vir_cart,
 
     MPIDI_Cart_map_coord_to_rank( vir_cart->size, 4, vir_cart->dims, rcoord, newrank );
 
-#if 0
+#if TRACE
     printf( "<" );
     for (i=0;i<phy_cart->ndims;i++) {
         printf( "%d/%d", phy_cart->coord[i], phy_cart->dims[i] );
