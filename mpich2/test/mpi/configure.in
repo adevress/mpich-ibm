@@ -364,6 +364,13 @@ PAC_C_RESTRICT
 # General headers
 AC_CHECK_HEADERS(unistd.h stdarg.h string.h stdlib.h memory.h)
 
+# Headers needed for threads tests
+if test "$threadsdir" = "threads" ; then
+    # Check for needed threads headers and needed and optional routines
+    AC_CHECK_HEADERS(pthread.h)
+    AC_CHECK_FUNCS(pthread_create pthread_yield pthread_barrier_init pthread_barrier_wait)
+fi
+
 
 # Define functionality that we support
 
@@ -954,6 +961,27 @@ AC_TRY_COMPILE([#include "mpi.h"],[MPI_Datatype t = MPI_2DOUBLE_COMPLEX;],pac_cv
 if test "$pac_cv_have_mpi_2double_complex" = yes ; then 
     AC_DEFINE(HAVE_MPI_2DOUBLE_COMPLEX,1,[Define if MPI_2DOUBE_COMPLEX is available])
 fi
+
+# MPI_Aint was intended as an address-sized int.  However, MPI didn't 
+# specify this - MPI_Aint must be large enough to hold an address-sized
+# integer, but it can be larger.  To get clean compilation in some places,
+# we need a pointer-sized integer.  The following code looks for one.
+AC_CHECK_SIZEOF(void *,$CROSS_SIZEOF_VOID_P)
+AC_CHECK_SIZEOF(int,$CROSS_SIZEOF_INT)
+AC_CHECK_SIZEOF(long,$CROSS_SIZEOF_LONG)
+AC_CHECK_SIZEOF(long long,$CROSS_SIZEOF_LONG_LONG)
+AC_CHECK_SIZEOF(short,$CROSS_SIZEOF_SHORT)
+POINTERINT=MPI_Aint
+AC_MSG_CHECKING([for C integer type of address size])
+for type in int long long_long short ; do
+    eval len=\$ac_cv_sizeof_$type
+    if test "$len" = "$ac_cv_sizeof_void_p" ; then
+        POINTERINT=`echo $type | sed -e 's/_/ /'`
+        break
+    fi
+done
+AC_MSG_RESULT($POINTERINT)
+AC_DEFINE_UNQUOTED(POINTERINT_t,$POINTERINT,[POINTERINT_t is a pointer-sized integer])
 
 # Find perl; used to create some of the tests from template and 
 # defintion files

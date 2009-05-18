@@ -7,17 +7,21 @@
 #include "hydra_utils.h"
 #include "bsci.h"
 #include "bscu.h"
+#include "slurm.h"
 
-struct HYD_BSCI_fns HYD_BSCI_fns;
-
-HYD_Status HYD_BSCI_query_node_list(int num_nodes, struct HYD_Partition **partition_list)
+HYD_Status HYD_BSCD_slurm_query_partition_id(int *partition_id)
 {
     HYD_Status status = HYD_SUCCESS;
 
     HYDU_FUNC_ENTER();
 
-    status = HYD_BSCI_fns.query_node_list(num_nodes, partition_list);
-    HYDU_ERR_POP(status, "bootstrap device returned error while querying node list\n");
+    if (getenv("SLURM_NODEID")) {
+        *partition_id = atoi(getenv("SLURM_NODEID"));
+    }
+    else {
+        *partition_id = -1;
+        HYDU_ERR_SETANDJUMP(status, HYD_INTERNAL_ERROR, "cannot find slurm partition ID\n");
+    }
 
   fn_exit:
     HYDU_FUNC_EXIT();

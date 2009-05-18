@@ -165,6 +165,21 @@ struct HYD_Partition_exec {
 
 #define dprintf(...)
 
+#ifndef ATTRIBUTE
+#ifdef HAVE_GCC_ATTRIBUTE
+#define ATTRIBUTE(a_) __attribute__(a_)
+#else
+#define ATTRIBUTE(a_)
+#endif
+#endif
+
+#define FORALL_ACTIVE_PARTITIONS(partition, partition_list)    \
+    for ((partition) = (partition_list); (partition) && (partition)->base->active; \
+         (partition) = (partition)->next)
+
+#define FORALL_PARTITIONS(partition, partition_list)    \
+    for ((partition) = (partition_list); (partition); (partition) = (partition)->next)
+
 struct HYD_Thread_context {
     pthread_t thread;
 };
@@ -172,7 +187,6 @@ struct HYD_Thread_context {
 struct HYD_Partition_base {
     char *name;
     char *exec_args[HYD_NUM_TMP_STRINGS];       /* Full argument list */
-    char *proxy_args[HYD_NUM_TMP_STRINGS];      /* Proxy argument list */
 
     int partition_id;
     int active;
