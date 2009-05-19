@@ -1753,7 +1753,7 @@ void epoch_clear(MPID_Win *win) {
 	win->_dev.epoch_rma_ok = 0;
 	win->_dev.my_rma_recvs = 0;
 	win->_dev.my_sync_done = 0;
-	win->_dev.my_sync_begin = 0;
+	// win->_dev.my_sync_begin = 0;
 	for (x = 0; x < size; ++x) {
 		win->_dev.coll_info[x].rma_sends = 0;
 	}

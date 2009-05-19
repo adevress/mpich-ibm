@@ -901,9 +901,9 @@ int MPID_Win_unlock(int dest, MPID_Win *win_ptr)
                                         win_ptr->_dev.my_sync_done == 0);
                 }
         }
+	epoch_clear(win_ptr);
         win_ptr->_dev.epoch_size = 0;
         win_ptr->_dev.epoch_assert = 0;
-	epoch_clear(win_ptr);
         epoch_end_cb(win_ptr);
 
 fn_exit:

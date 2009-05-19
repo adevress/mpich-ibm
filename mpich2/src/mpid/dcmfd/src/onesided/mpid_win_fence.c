@@ -134,9 +134,9 @@ int MPID_Win_fence(int assert, MPID_Win *win_ptr)
 				win_ptr->_dev.my_rma_recvs > 0) {
 		/* TBD: handled earlier? */
 	}
+	epoch_clear(win_ptr);
 	win_ptr->_dev.epoch_size = 0;
 	win_ptr->_dev.epoch_assert = 0;
-	epoch_clear(win_ptr);
 	epoch_end_cb(win_ptr); /* might start exposure epoch via LOCK... */
 
 	if (!(assert & MPI_MODE_NOSUCCEED)) {
@@ -149,7 +149,7 @@ int MPID_Win_fence(int assert, MPID_Win *win_ptr)
 		win_ptr->_dev.epoch_rma_ok = 1;
 		win_ptr->_dev.my_rma_recvs = 0;
 		win_ptr->_dev.my_sync_done = 0;	// not used
-		win_ptr->_dev.my_sync_begin = 0;	// not used
+		// win_ptr->_dev.my_sync_begin = 0;	// not used
 		/* wait for everyone else to reach this point */
 		mpi_errno = NMPI_Barrier(win_ptr->_dev.comm_ptr->handle);
 		if (mpi_errno) { MPIU_ERR_POP(mpi_errno); }
