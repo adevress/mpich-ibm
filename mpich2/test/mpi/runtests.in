@@ -827,8 +827,16 @@ sub RunMPIProgram {
 	    }
 	}
     }
-    open ( MPIOUT, "$mpiexec $np_arg $np $mpiexecArgs -cwd $mpi_cwd -exe $stagingdir/$programname $progArgs 2>&1 |" ) ||
-	 die "Could not run ./$programname\n";
+    if($mpirunflag==0)
+    {
+        open ( MPIOUT, "$mpiexec $np_arg $np $mpiexecArgs --home $mpi_cwd $stagingdir/$programname $progArgs 2>&1 |" ) ||
+            die "Could not run ./$programname\n";
+    }
+    else
+    {
+        open ( MPIOUT, "$mpiexec $np_arg $np $mpiexecArgs -cwd $mpi_cwd $stagingdir/$programname $progArgs 2>&1 |" ) ||
+            die "Could not run ./$programname\n";
+    }
     if ($progEnv ne "") {
 	%ENV = %saveEnv;
     }
