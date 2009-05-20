@@ -4,15 +4,15 @@
  *      See COPYRIGHT in top-level directory.
  */
 
-#include "hydra.h"
 #include "hydra_utils.h"
 #include "bsci.h"
 #include "bscu.h"
 #include "fork.h"
 
-extern HYD_Handle handle;
+struct HYD_BSCI_info HYD_BSCI_info;
 
-HYD_Status HYD_BSCD_fork_launch_procs(void)
+HYD_Status HYD_BSCD_fork_launch_procs(char **global_args, char *partition_id_str,
+                                      struct HYD_Partition *partition_list)
 {
     struct HYD_Partition *partition;
     char *client_arg[HYD_NUM_TMP_STRINGS];
@@ -21,19 +21,22 @@ HYD_Status HYD_BSCD_fork_launch_procs(void)
 
     HYDU_FUNC_ENTER();
 
-    /* FIXME: Instead of directly reading from the HYD_Handle
-     * structure, the upper layers should be able to pass what exactly
-     * they want launched. Without this functionality, the proxy
-     * cannot use this and will have to perfom its own launch. */
     process_id = 0;
-    FORALL_ACTIVE_PARTITIONS(partition, handle.partition_list) {
+    FORALL_ACTIVE_PARTITIONS(partition, partition_list) {
         /* Setup the executable arguments */
         arg = 0;
-        for (i = 0; partition->base->proxy_args[i]; i++)
-            client_arg[arg++] = HYDU_strdup(partition->base->proxy_args[i]);
+
+        for (i = 0; global_args[i]; i++)
+            client_arg[arg++] = HYDU_strdup(global_args[i]);
+
+        if (partition_id_str) {
+            client_arg[arg++] = HYDU_strdup(partition_id_str);
+            client_arg[arg++] = HYDU_int_to_str(partition->base->partition_id);
+        }
+
         client_arg[arg++] = NULL;
 
-        if (HYD_BSCI_debug) {
+        if (HYD_BSCI_info.debug) {
             HYDU_Dump("Launching process: ");
             HYDU_print_strlist(client_arg);
         }
@@ -46,8 +49,7 @@ HYD_Status HYD_BSCD_fork_launch_procs(void)
                                      &partition->base->pid, -1);
         HYDU_ERR_POP(status, "create process returned error\n");
 
-        for (arg = 0; client_arg[arg]; arg++)
-            HYDU_FREE(client_arg[arg]);
+        HYDU_free_strlist(client_arg);
 
         process_id++;
     }

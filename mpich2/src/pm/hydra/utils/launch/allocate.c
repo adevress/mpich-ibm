@@ -15,12 +15,12 @@ static HYD_Status alloc_partition_base(struct HYD_Partition_base **base)
 
     (*base)->name = NULL;
     (*base)->pid = -1;
+    (*base)->in = -1;
     (*base)->out = -1;
     (*base)->err = -1;
 
     (*base)->partition_id = partition_id++;
     (*base)->active = 0;
-    (*base)->proxy_args[0] = NULL;
     (*base)->exec_args[0] = NULL;
 
     (*base)->next = NULL;
@@ -36,7 +36,6 @@ static void free_partition_base(struct HYD_Partition_base *base)
 {
     if (base->name)
         HYDU_FREE(base->name);
-    HYDU_free_strlist(base->proxy_args);
     HYDU_free_strlist(base->exec_args);
 
     HYDU_FREE(base);

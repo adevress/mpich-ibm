@@ -25,6 +25,7 @@
 #define MAX_NTHREAD 128
 
 static int ownerWaits = 0;
+static int nthreads = -1;
 
 void run_test_send(void *arg)
 {
@@ -33,21 +34,24 @@ void run_test_send(void *arg)
     double t;
     static MPI_Request r[MAX_NTHREAD];
 
+    /* Create the buf just once to avoid finding races in malloc instead
+       of the MPI library */
+    buf = (int *)malloc( MAX_CNT * sizeof(int) );
+    MTestPrintfMsg( 1, "buf address %p (size %d)\n", buf, MAX_CNT * sizeof(int) );
     MPI_Comm_size( MPI_COMM_WORLD, &wsize );
     if (wsize >= MAX_NTHREAD) wsize = MAX_NTHREAD;
-    
-    for (cnt=1; cnt < MAX_CNT; cnt = 2*cnt) {
-	buf = (int *)malloc( cnt * sizeof(int) );
-	/* printf( "%d My buf is at %p (%d)\n", 
-	   pthread_self(), buf, cnt * sizeof(int) );fflush(stdout); */
+    /* Sanity check */
+    if (nthreads != wsize-1) 
+	fprintf( stderr, "Panic wsize = %d nthreads = %d\n", 
+		 wsize, nthreads );
 
+    for (cnt=1; cnt < MAX_CNT; cnt = 2*cnt) {
 	/* Wait for all senders to be ready */
-	for (j=0; j<wsize; j++) r[j] = MPI_REQUEST_NULL;
-	MTest_thread_barrier(-1);
+	MTest_thread_barrier(nthreads);
 
 	t = MPI_Wtime();
 	for (j=0; j<MAX_LOOP; j++) {
-	    MTest_thread_barrier(-1);
+	    MTest_thread_barrier(nthreads);
 	    MPI_Isend( buf, cnt, MPI_INT, thread_num, cnt, MPI_COMM_WORLD,
 		       &r[thread_num-1]);
 	    if (ownerWaits) {
@@ -55,16 +59,19 @@ void run_test_send(void *arg)
 	    }
 	    else {
 		/* Wait for all threads to start the sends */
-		MTest_thread_barrier(-1);
-		if (thread_num == 1) 
+		MTest_thread_barrier(nthreads);
+		if (thread_num == 1) {
 		    MPI_Waitall( wsize-1, r, MPI_STATUSES_IGNORE );
+		}
 	    }
 	}
 	t = MPI_Wtime() - t;
-	free( buf );
 	if (thread_num == 1) 
-	    MTestPrintfMsg( 1, "buf size %d: time %f\n", cnt, t / MAX_LOOP );
+	    MTestPrintfMsg( 1, "buf size %d: time %f\n", cnt*sizeof(int), 
+			    t / MAX_LOOP );
     }
+    MTest_thread_barrier(nthreads);
+    free( buf );
 }
 void run_test_recv( void )
 {
@@ -109,6 +116,7 @@ int main(int argc, char ** argv)
     }
     MPI_Barrier( MPI_COMM_WORLD );
     if (rank == 0) {
+	nthreads = nprocs - 1;
 	for (i=1; i<nprocs; i++) 
 	    MTest_Start_thread( run_test_send,  (void *)i );
 

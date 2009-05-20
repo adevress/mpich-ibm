@@ -86,6 +86,6 @@
 
 #endif
 
-#define MPIU_ISTHREADED(_s) { MPIU_THREAD_CHECK_BEGIN _s MPIU_THREAD_CHECK_END }
+#define MPIU_ISTHREADED() ({ DCMF_CriticalSection_flag; })
 
 #endif /* !MPICH_MPIDTHREAD_H_INCLUDED */
