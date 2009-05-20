@@ -82,10 +82,9 @@ MPIDO_Bcast(void *buffer,
    if(MPIDO_INFO_ISSET(properties, MPIDO_USE_PREALLREDUCE_BCAST) && dputok)
    {
       dputok = (dputok && buffer_aligned);
-/*      int before = dputok;  */
       STAR_info.internal_control_flow = 1;
       MPIDO_Allreduce(MPI_IN_PLACE, &dputok, 1, MPI_INT, MPI_BAND, comm);
-/*      fprintf(stderr,"before: %d dputok: %d\n", before, dputok); */
+      STAR_info.internal_control_flow = 0;
    }
 
 
@@ -313,10 +312,11 @@ MPIDO_Bcast(void *buffer,
           comm->dcmf.last_algorithm = MPIDO_USE_CCMI_TREE_BCAST;
         }
         
-         /* We now have global knowledge for dput. However, we don't globally have
-          * buffer alignement as part of the dputok variable because we might skip
-          * over the allreduce step which adds buffer_alignment checks to dputok.
-          * Therefore, dput checks need dputok && buffer_alignment in the general case
+         /* We now have global knowledge for dput. However, we don't globally 
+          * have buffer alignement as part of the dputok variable because we 
+          * might skip over the allreduce step which adds buffer_alignment 
+          * checks to dputok. Therefore, dput checks need (dputok && 
+          * buffer_alignment) in the general case
           */
         if(!func && dputok && buffer_aligned)
         {
