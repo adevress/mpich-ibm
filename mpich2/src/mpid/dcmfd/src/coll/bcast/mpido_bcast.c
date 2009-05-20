@@ -82,10 +82,10 @@ MPIDO_Bcast(void *buffer,
    if(MPIDO_INFO_ISSET(properties, MPIDO_USE_PREALLREDUCE_BCAST) && dputok)
    {
       dputok = (dputok && buffer_aligned);
-      int before = dputok;
+/*      int before = dputok;  */
       STAR_info.internal_control_flow = 1;
       MPIDO_Allreduce(MPI_IN_PLACE, &dputok, 1, MPI_INT, MPI_BAND, comm);
-      fprintf(stderr,"before: %d dputok: %d\n", before, dputok);
+/*      fprintf(stderr,"before: %d dputok: %d\n", before, dputok); */
    }
 
 
