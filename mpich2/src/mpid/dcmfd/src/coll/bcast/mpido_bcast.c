@@ -24,6 +24,7 @@ MPIDO_Bcast(void *buffer,
   int data_size, data_contig, rc = MPI_ERR_INTERN;
   char *data_buffer = NULL, *noncontig_buff = NULL;
   int buffer_aligned;
+  int dputok=0;
 
   unsigned char userenvset = MPIDO_INFO_ISSET(properties, MPIDO_BCAST_ENVVAR);
   
@@ -67,7 +68,27 @@ MPIDO_Bcast(void *buffer,
   }
 
   buffer_aligned = !((unsigned) data_buffer & 0x0F);
+  /* Are we likely to use DPUT? If so, we must pre-allreduce to see if 
+   * everyone has an aligned buffer. This sucks, but dput is a bandwidth
+   * optimized protocol so it shouldn't be a huge deal 
+   * These properties are the same on all nodes, so if they are valid
+   * and we haven't turned off the pre-allreduce check, then we will need
+   * to do the allreduce. Note: We add buffer alignment inside the
+   * preallreduce step because everyone must agree to *do* the allreduce.
+   */
+  dputok = MPIDO_INFO_ISSET(properties, MPIDO_USE_RECT_DPUT_BCAST) &&
+           (userenvset || data_size>8192);
   
+   if(MPIDO_INFO_ISSET(properties, MPIDO_USE_PREALLREDUCE_BCAST) && dputok)
+   {
+      dputok = (dputok && buffer_aligned);
+      int before = dputok;
+      STAR_info.internal_control_flow = 1;
+      MPIDO_Allreduce(MPI_IN_PLACE, &dputok, 1, MPI_INT, MPI_BAND, comm);
+      fprintf(stderr,"before: %d dputok: %d\n", before, dputok);
+   }
+
+
   if (!STAR_info.enabled || STAR_info.internal_control_flow ||
       data_size < STAR_info.bcast_threshold)
   {
@@ -123,8 +144,7 @@ MPIDO_Bcast(void *buffer,
         func = MPIDO_Bcast_rect_sync;
         comm->dcmf.last_algorithm = MPIDO_USE_RECT_BCAST;        
       }
-      if (!func && buffer_aligned &&
-          MPIDO_INFO_ISSET(properties, MPIDO_USE_RECT_DPUT_BCAST))         
+      if(!func && dputok && buffer_aligned)
       {
         func = MPIDO_Bcast_rect_dput;
         comm->dcmf.last_algorithm = MPIDO_USE_RECT_DPUT_BCAST;
@@ -293,8 +313,12 @@ MPIDO_Bcast(void *buffer,
           comm->dcmf.last_algorithm = MPIDO_USE_CCMI_TREE_BCAST;
         }
         
-        if (!func && buffer_aligned &&
-            MPIDO_INFO_ISSET(properties, MPIDO_USE_RECT_DPUT_BCAST))
+         /* We now have global knowledge for dput. However, we don't globally have
+          * buffer alignement as part of the dputok variable because we might skip
+          * over the allreduce step which adds buffer_alignment checks to dputok.
+          * Therefore, dput checks need dputok && buffer_alignment in the general case
+          */
+        if(!func && dputok && buffer_aligned)
         {
           func = MPIDO_Bcast_rect_dput;
           comm->dcmf.last_algorithm = MPIDO_USE_RECT_DPUT_BCAST;
@@ -330,12 +354,11 @@ MPIDO_Bcast(void *buffer,
       }
       else
       {
-        if (MPIDO_INFO_ISSET(properties, MPIDO_USE_RECT_DPUT_BCAST) &&
-            buffer_aligned)
-        {
-          func = MPIDO_Bcast_rect_dput;
-          comm->dcmf.last_algorithm = MPIDO_USE_RECT_DPUT_BCAST;
-        }
+         if(dputok && buffer_aligned)
+         {
+            func = MPIDO_Bcast_rect_dput;
+            comm->dcmf.last_algorithm = MPIDO_USE_RECT_DPUT_BCAST;
+         }
         if (!func && MPIDO_INFO_ISSET(properties, MPIDO_USE_RECT_BCAST))
         {
           func = MPIDO_Bcast_rect_sync;

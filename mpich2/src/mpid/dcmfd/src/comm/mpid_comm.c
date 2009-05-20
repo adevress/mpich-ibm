@@ -151,12 +151,25 @@
  *     shaped subcommunicators for large messages.  This disables the asynchronous
  *     protocol.
  *   - Default varies based on the communicator.  See above.
- *
+ 
  * - DCMF_NUMCOLORS - Controls how many colors are used for rectangular
  *   broadcasts.  Possible values:
  *   - 0 - Let the lower-level messaging system decide.
  *   - 1, 2, or 3.
  *   - Default is 0.
+ *
+ * - DCMF_SAFEBCAST - The rectangle direct put bcast bandwidth optimization
+ *   protocol requires the bcast buffers to be 16-byte aligned on all nodes.
+ *   Unfortunately, you can have root's buffer be misaligned from the rest of 
+ *   the nodes. Therefore, by default we must do an allreduce before dput
+ *   bcasts to ensure all nodes have the same alignment. If you know all of
+ *   your buffers are 16 byte aligned, turning on this option will skip the
+ *   allreduce step.
+ *   Possible values:
+ *   - N - Perform the allreduce 
+ *   - Y - Bypass the allreduce. If you have mismatched alignment, you will
+ *         likely get weird behavior or asserts.
+ *   - Default is N.
  *
  * - DCMF_SAFEALLGATHER - The optimized allgather protocols require
  *   contiguous datatypes and similar datatypes on all nodes.  To verify
@@ -533,6 +546,7 @@ MPIDI_Env_setup()
                   MPIDO_USE_TREE_SHMEM_BCAST,
                   MPIDO_USE_CCMI_TREE_BCAST,
                   MPIDO_USE_CCMI_TREE_DPUT_BCAST,
+                  MPIDO_USE_PREALLREDUCE_BCAST,
                   MPIDO_USE_STORAGE_ALLREDUCE,
                   MPIDO_USE_RECT_ALLREDUCE,
                   MPIDO_USE_SHORT_ASYNC_RECT_ALLREDUCE,
@@ -725,6 +739,13 @@ MPIDI_Env_setup()
     else
       MPIDI_CollectiveProtocols.numcolors = colors;
   }
+
+   envopts = getenv("DCMF_SAFEBCAST");
+   if(envopts != NULL)
+   {
+      if((strncasecmp(envopts, "Y", 1) == 0) || atoi(envopts) == 1)
+         MPIDO_INFO_UNSET(properties, MPIDO_USE_PREALLREDUCE_BCAST);
+   }
 
   envopts = getenv("DCMF_SAFEALLGATHER");
   if(envopts != NULL)
