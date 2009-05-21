@@ -36,22 +36,17 @@ int PREPEND_PREFIX(Segment_contig_m2m)(DLOOP_Offset *blocks_p,
 #endif
 
     if (paramp->direction == DLOOP_M2M_TO_USERBUF) {
-	/* Ensure that pointer increment fits in a pointer */
-	/* userbuf is a pointer (not a displacement) since it is being
-	 * used on a memcpy */
-	MPID_Ensure_Aint_fits_in_pointer((MPI_VOID_PTR_CAST_TO_MPI_AINT (paramp->userbuf)) + rel_off);
-	memcpy((char *) paramp->userbuf + rel_off, paramp->streambuf, size);
+	memcpy((char *) MPI_AINT_CAST_TO_VOID_PTR ((MPI_PTR_DISP_CAST_TO_MPI_AINT (paramp->userbuf)) + rel_off),
+	       paramp->streambuf,
+	       size);
     }
     else {
-	/* Ensure that pointer increment fits in a pointer */
-	/* userbuf is a pointer (not a displacement) since it is being used on a memcpy */
-	MPID_Ensure_Aint_fits_in_pointer((MPI_VOID_PTR_CAST_TO_MPI_AINT (paramp->userbuf)) + rel_off);
-	memcpy(paramp->streambuf, (char *) paramp->userbuf + rel_off, size);
+	memcpy(paramp->streambuf,
+	       (char *) MPI_AINT_CAST_TO_VOID_PTR ((MPI_PTR_DISP_CAST_TO_MPI_AINT (paramp->userbuf)) + rel_off),
+	       size);
     }
-    /* Ensure that pointer increment fits in a pointer */
-    /* streambuf is a pointer (not a displacement) since it was used on a memcpy */
-    MPID_Ensure_Aint_fits_in_pointer((MPI_VOID_PTR_CAST_TO_MPI_AINT (paramp->streambuf)) + size);
-    paramp->streambuf += size;
+    paramp->streambuf = (char*) MPI_AINT_CAST_TO_VOID_PTR
+	                        ((MPI_PTR_DISP_CAST_TO_MPI_AINT (paramp->streambuf)) + size);
     return 0;
 }
 
@@ -76,10 +71,8 @@ int PREPEND_PREFIX(Segment_vector_m2m)(DLOOP_Offset *blocks_p,
     struct PREPEND_PREFIX(m2m_params) *paramp = v_paramp;
     char *cbufp;
 
-    /* Ensure that pointer increment fits in a pointer */
-    /* userbuf is a pointer (not a displacement) since it is being used for a memory copy */
-    MPID_Ensure_Aint_fits_in_pointer((MPI_VOID_PTR_CAST_TO_MPI_AINT (paramp->userbuf)) + rel_off);
-    cbufp = (char*) paramp->userbuf + rel_off;
+    cbufp = (char*) MPI_AINT_CAST_TO_VOID_PTR
+	            ( (MPI_PTR_DISP_CAST_TO_MPI_AINT (paramp->userbuf)) + rel_off );
     DLOOP_Handle_get_size_macro(el_type, el_size);
 
     whole_count = (blksz > 0) ? (*blocks_p / (DLOOP_Offset) blksz) : 0;
@@ -111,23 +104,20 @@ int PREPEND_PREFIX(Segment_vector_m2m)(DLOOP_Offset *blocks_p,
 	else {
 	    for (i=0; i < whole_count; i++) {
 		memcpy(cbufp, paramp->streambuf, ((DLOOP_Offset) blksz) * el_size);
-		/* Ensure that pointer increment fits in a pointer */
-		/* streambuf is a pointer (not a displacement) since it is being used for a memory copy */
-		MPID_Ensure_Aint_fits_in_pointer((MPI_VOID_PTR_CAST_TO_MPI_AINT (paramp->streambuf)) +
-						 ((DLOOP_Offset) blksz) * el_size);
-		paramp->streambuf += ((DLOOP_Offset) blksz) * el_size;
 
-		MPID_Ensure_Aint_fits_in_pointer((MPI_VOID_PTR_CAST_TO_MPI_AINT (cbufp)) + stride);
-		cbufp += stride;
+		paramp->streambuf = (char*) MPI_AINT_CAST_TO_VOID_PTR
+		                            ( (MPI_PTR_DISP_CAST_TO_MPI_AINT (paramp->streambuf)) +
+					      (((DLOOP_Offset)blksz) * el_size) );
+
+		cbufp = (char*) MPI_AINT_CAST_TO_VOID_PTR
+		                ( (MPI_PTR_DISP_CAST_TO_MPI_AINT (cbufp)) + stride);
 	    }
 	    if (blocks_left) {
 		memcpy(cbufp, paramp->streambuf, ((DLOOP_Offset) blocks_left) * el_size);
-		/* Ensure that pointer increment fits in a pointer */
-		/* streambuf is a pointer (not a displacement) since
-		 * it is being used for a memory copy */
-		MPID_Ensure_Aint_fits_in_pointer((MPI_VOID_PTR_CAST_TO_MPI_AINT (paramp->streambuf)) +
-						 ((DLOOP_Offset) blocks_left) * el_size);
-		paramp->streambuf += ((DLOOP_Offset) blocks_left) * el_size;
+
+		paramp->streambuf = (char*) MPI_AINT_CAST_TO_VOID_PTR
+		                            ( (MPI_PTR_DISP_CAST_TO_MPI_AINT (paramp->streambuf)) +
+					      ((DLOOP_Offset)blocks_left * el_size));
 	    }
 	}
     }
@@ -157,22 +147,20 @@ int PREPEND_PREFIX(Segment_vector_m2m)(DLOOP_Offset *blocks_p,
 	else {
 	    for (i=0; i < whole_count; i++) {
 		memcpy(paramp->streambuf, cbufp, (DLOOP_Offset) blksz * el_size);
-		/* Ensure that pointer increment fits in a pointer */
-		/* streambuf is a pointer (not a displacement) since
-		 * it is being used for a memory copy */
-		MPID_Ensure_Aint_fits_in_pointer((MPI_VOID_PTR_CAST_TO_MPI_AINT (paramp->streambuf)) +
-						 (DLOOP_Offset) blksz * el_size);
-		paramp->streambuf += (DLOOP_Offset) blksz * el_size;
-		cbufp += stride;
+
+		paramp->streambuf = (char*) MPI_AINT_CAST_TO_VOID_PTR
+		                            ( (MPI_PTR_DISP_CAST_TO_MPI_AINT (paramp->streambuf)) +
+					      (((DLOOP_Offset)blksz) * el_size) );
+
+		cbufp = (char*) MPI_AINT_CAST_TO_VOID_PTR
+		                ( (MPI_PTR_DISP_CAST_TO_MPI_AINT (cbufp)) + stride);
 	    }
 	    if (blocks_left) {
 		memcpy(paramp->streambuf, cbufp, (DLOOP_Offset) blocks_left * el_size);
-		/* Ensure that pointer increment fits in a pointer */
-		/* streambuf is a pointer (not a displacement) since
-		 * it is being used for a memory copy */
-		MPID_Ensure_Aint_fits_in_pointer((MPI_VOID_PTR_CAST_TO_MPI_AINT (paramp->streambuf)) +
-						 (DLOOP_Offset) blocks_left * el_size);
-		paramp->streambuf += (DLOOP_Offset) blocks_left * el_size;
+
+		paramp->streambuf = (char*) MPI_AINT_CAST_TO_VOID_PTR
+		                            ( (MPI_PTR_DISP_CAST_TO_MPI_AINT (paramp->streambuf)) +
+					      ((DLOOP_Offset)blocks_left * el_size));
 	    }
 	}
     }
@@ -204,12 +192,9 @@ int PREPEND_PREFIX(Segment_blkidx_m2m)(DLOOP_Offset *blocks_p,
 
 	DLOOP_Assert(curblock < count);
 
-	/* Ensure that pointer increment fits in a pointer */
-	/* userbuf is a pointer (not a displacement) since it is being
-	 * used for a memory copy */
-	MPID_Ensure_Aint_fits_in_pointer((MPI_VOID_PTR_CAST_TO_MPI_AINT (paramp->userbuf)) +
+	cbufp = (char*) MPI_AINT_CAST_TO_VOID_PTR
+	                ((MPI_PTR_DISP_CAST_TO_MPI_AINT (paramp->userbuf)) +
 					 rel_off + offsetarray[curblock]);
-	cbufp = (char*) paramp->userbuf + rel_off + offsetarray[curblock];
 
 	if (blocklen > blocks_left) blocklen = blocks_left;
 
@@ -240,12 +225,9 @@ int PREPEND_PREFIX(Segment_blkidx_m2m)(DLOOP_Offset *blocks_p,
 	    memcpy(dest, src, (DLOOP_Offset) blocklen * el_size);
 	}
 
-	/* Ensure that pointer increment fits in a pointer */
-	/* streambuf is a pointer (not a displacement) since it is
-	 * being used for a memory copy */
-	MPID_Ensure_Aint_fits_in_pointer((MPI_VOID_PTR_CAST_TO_MPI_AINT (paramp->streambuf)) +
-					 (DLOOP_Offset) blocklen * el_size);
-	paramp->streambuf += (DLOOP_Offset) blocklen * el_size;
+	paramp->streambuf = (char*) MPI_AINT_CAST_TO_VOID_PTR
+	                            ((MPI_PTR_DISP_CAST_TO_MPI_AINT (paramp->streambuf)) +
+				     ((DLOOP_Offset)blocklen * el_size));
 	blocks_left -= blocklen;
 	curblock++;
     }
@@ -278,12 +260,9 @@ int PREPEND_PREFIX(Segment_index_m2m)(DLOOP_Offset *blocks_p,
 	DLOOP_Assert(curblock < count);
 	cur_block_sz = blockarray[curblock];
 
-	/* Ensure that pointer increment fits in a pointer */
-	/* userbuf is a pointer (not a displacement) since it is being
-	 * used for a memory copy */
-	MPID_Ensure_Aint_fits_in_pointer((MPI_VOID_PTR_CAST_TO_MPI_AINT (paramp->userbuf)) +
+	cbufp = (char*) MPI_AINT_CAST_TO_VOID_PTR
+	                ((MPI_PTR_DISP_CAST_TO_MPI_AINT (paramp->userbuf)) +
 					 rel_off + offsetarray[curblock]);
-	cbufp = (char*) paramp->userbuf + rel_off + offsetarray[curblock];
 
 	if (cur_block_sz > blocks_left) cur_block_sz = blocks_left;
 
@@ -314,12 +293,9 @@ int PREPEND_PREFIX(Segment_index_m2m)(DLOOP_Offset *blocks_p,
 	    memcpy(dest, src, cur_block_sz * el_size);
 	}
 
-	/* Ensure that pointer increment fits in a pointer */
-	/* streambuf is a pointer (not a displacement) since it is
-	 * being used for a memory copy */
-	MPID_Ensure_Aint_fits_in_pointer((MPI_VOID_PTR_CAST_TO_MPI_AINT (paramp->streambuf)) +
-					 cur_block_sz * el_size);
-	paramp->streambuf += cur_block_sz * el_size;
+	paramp->streambuf = (char*) MPI_AINT_CAST_TO_VOID_PTR
+ 	                            ((MPI_PTR_DISP_CAST_TO_MPI_AINT (paramp->streambuf)) +
+				     (cur_block_sz * el_size) );
 	blocks_left -= cur_block_sz;
 	curblock++;
     }
