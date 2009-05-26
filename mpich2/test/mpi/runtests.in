@@ -101,6 +101,8 @@ $virtualnodemodeflag=0;
 $datestamp=0;
 $partitionflag=0;
 $hostflag=0;
+$etime = 0;
+$totaltime = time();
 
 if(defined($ENV{"PARTITION"}))
 {
@@ -487,6 +489,8 @@ if (($nofree==1) && !$compileonly && !$otp) {
 if (!$compileonly) {
     if ($xmloutput && $closeXMLOutput) { 
 	print XMLOUT "</MPITESTRESULTS>$newline";
+   my $ttime = time() - $totaltime;
+   print XMLOUT "<TOTALTIME>$ttime</TOTALTIME>$newline";
 	close XMLOUT; 
     }
 
@@ -1149,10 +1153,13 @@ sub RunPreMsg {
 	print XMLOUT "<MPITEST>$newline<NAME>$programname</NAME>$newline";
 	print XMLOUT "<NP>$np</NP>$newline";
 	print XMLOUT "<WORKDIR>$workdir</WORKDIR>$newline";
+   $etime = time();
     }
 }
 sub RunPostMsg {
     if ($xmloutput) {
+    my $runtime = time() - $etime;
+   print XMLOUT "<RUNTIME>$runtime</RUNTIME>$newline";
 	print XMLOUT "</MPITEST>$newline";
     }
 }
