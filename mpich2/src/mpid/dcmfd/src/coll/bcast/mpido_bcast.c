@@ -24,14 +24,14 @@ MPIDO_Bcast(void *buffer,
   int data_size, data_contig, rc = MPI_ERR_INTERN;
   char *data_buffer = NULL, *noncontig_buff = NULL;
   int buffer_aligned;
-  int dputok=0;
+  int dputok[2];
 
   unsigned char userenvset = MPIDO_INFO_ISSET(properties, MPIDO_BCAST_ENVVAR);
   
   MPI_Aint data_true_lb = 0;
   MPID_Datatype *data_ptr;
   MPID_Segment segment;
-     
+
   if (count==0)
     return MPI_SUCCESS;
 
@@ -75,15 +75,29 @@ MPIDO_Bcast(void *buffer,
    * and we haven't turned off the pre-allreduce check, then we will need
    * to do the allreduce. Note: We add buffer alignment inside the
    * preallreduce step because everyone must agree to *do* the allreduce.
+   *
+   * CCMI Tree Dput is suggested as a protocol for 1 byte messages. Is
+   * this really true? It appears that a "normal" Tree protocol has
+   * priority at least. I'd rather not add *more* complexity to this
+   * mess, so I don't see a need to check for small messages && tree
+   * dput || medium to large messages && rect dput. I'm going
+   * to leave the allreduce cutoff where the rect dput cutoff is, namely
+   * 8192. If CCMI Tree Dput is viable at 1 byte and beats nondput tree,
+   * then we'll have to reevaluate this decision and reorder the protocols
+   * inside the if() checks..
    */
-  dputok = MPIDO_INFO_ISSET(properties, MPIDO_USE_RECT_DPUT_BCAST) &&
-           (userenvset || data_size>8192);
-  
-   if(MPIDO_INFO_ISSET(properties, MPIDO_USE_PREALLREDUCE_BCAST) && dputok)
+   dputok[0] = MPIDO_INFO_ISSET(properties, MPIDO_USE_RECT_DPUT_BCAST) &&
+              (userenvset || data_size>8192);
+   dputok[1] = MPIDO_INFO_ISSET(properties, MPIDO_USE_CCMI_TREE_DPUT_BCAST) &&
+              (userenvset || data_size>1);
+
+   if(MPIDO_INFO_ISSET(properties, MPIDO_USE_PREALLREDUCE_BCAST) && 
+      (dputok[0] || dputok[1]))
    {
-      dputok = (dputok && buffer_aligned);
+      dputok[0] = (dputok[0] && buffer_aligned);
+      dputok[1] = (dputok[1] && buffer_aligned);
       STAR_info.internal_control_flow = 1;
-      MPIDO_Allreduce(MPI_IN_PLACE, &dputok, 1, MPI_INT, MPI_BAND, comm);
+      MPIDO_Allreduce(MPI_IN_PLACE, &dputok, 2, MPI_INT, MPI_BAND, comm);
       STAR_info.internal_control_flow = 0;
    }
 
@@ -110,8 +124,7 @@ MPIDO_Bcast(void *buffer,
         func = MPIDO_Bcast_CCMI_tree;
         comm->dcmf.last_algorithm = MPIDO_USE_CCMI_TREE_BCAST;        
       }
-      if (!func && buffer_aligned &&
-          MPIDO_INFO_ISSET(properties, MPIDO_USE_CCMI_TREE_DPUT_BCAST))
+      if (!func && dputok[1] && buffer_aligned) 
       {
         func = MPIDO_Bcast_CCMI_tree_dput;
         comm->dcmf.last_algorithm = MPIDO_USE_CCMI_TREE_DPUT_BCAST;
@@ -143,7 +156,7 @@ MPIDO_Bcast(void *buffer,
         func = MPIDO_Bcast_rect_sync;
         comm->dcmf.last_algorithm = MPIDO_USE_RECT_BCAST;        
       }
-      if(!func && dputok && buffer_aligned)
+      if(!func && dputok[0] && buffer_aligned)
       {
         func = MPIDO_Bcast_rect_dput;
         comm->dcmf.last_algorithm = MPIDO_USE_RECT_DPUT_BCAST;
@@ -216,8 +229,7 @@ MPIDO_Bcast(void *buffer,
           func = MPIDO_Bcast_CCMI_tree;
           comm->dcmf.last_algorithm = MPIDO_USE_CCMI_TREE_BCAST;
         }
-        if (!func && buffer_aligned &&
-            MPIDO_INFO_ISSET(properties, MPIDO_USE_CCMI_TREE_DPUT_BCAST))
+        if (!func && buffer_aligned && dputok[1])
         {
           func = MPIDO_Bcast_CCMI_tree_dput;
           comm->dcmf.last_algorithm = MPIDO_USE_CCMI_TREE_DPUT_BCAST;
@@ -277,8 +289,7 @@ MPIDO_Bcast(void *buffer,
           comm->dcmf.last_algorithm = MPIDO_USE_CCMI_TREE_BCAST;
         }
         
-        if (!func && buffer_aligned &&
-            MPIDO_INFO_ISSET(properties, MPIDO_USE_CCMI_TREE_DPUT_BCAST))
+        if (!func && buffer_aligned && dputok[1])
         {
           func = MPIDO_Bcast_CCMI_tree_dput;
           comm->dcmf.last_algorithm = MPIDO_USE_CCMI_TREE_DPUT_BCAST;
@@ -299,8 +310,7 @@ MPIDO_Bcast(void *buffer,
           comm->dcmf.last_algorithm = MPIDO_USE_TREE_BCAST;        
         }
 
-        if (!func && buffer_aligned &&
-            MPIDO_INFO_ISSET(properties, MPIDO_USE_CCMI_TREE_DPUT_BCAST))
+        if (!func && buffer_aligned && dputok[1])
         {
           func = MPIDO_Bcast_CCMI_tree_dput;
           comm->dcmf.last_algorithm = MPIDO_USE_CCMI_TREE_DPUT_BCAST;
@@ -311,14 +321,13 @@ MPIDO_Bcast(void *buffer,
           func = MPIDO_Bcast_CCMI_tree;
           comm->dcmf.last_algorithm = MPIDO_USE_CCMI_TREE_BCAST;
         }
-        
          /* We now have global knowledge for dput. However, we don't globally 
           * have buffer alignement as part of the dputok variable because we 
           * might skip over the allreduce step which adds buffer_alignment 
           * checks to dputok. Therefore, dput checks need (dputok && 
           * buffer_alignment) in the general case
           */
-        if(!func && dputok && buffer_aligned)
+        if(!func && dputok[0] && buffer_aligned)
         {
           func = MPIDO_Bcast_rect_dput;
           comm->dcmf.last_algorithm = MPIDO_USE_RECT_DPUT_BCAST;
@@ -354,7 +363,7 @@ MPIDO_Bcast(void *buffer,
       }
       else
       {
-         if(dputok && buffer_aligned)
+         if(dputok[0] && buffer_aligned)
          {
             func = MPIDO_Bcast_rect_dput;
             comm->dcmf.last_algorithm = MPIDO_USE_RECT_DPUT_BCAST;
@@ -391,8 +400,7 @@ MPIDO_Bcast(void *buffer,
           func = MPIDO_Bcast_CCMI_tree;
           comm->dcmf.last_algorithm = MPIDO_USE_CCMI_TREE_BCAST;
         }
-        if (!func && buffer_aligned &&
-            MPIDO_INFO_ISSET(properties, MPIDO_USE_CCMI_TREE_DPUT_BCAST))
+        if (!func && buffer_aligned && dputok[1])
         {
           func = MPIDO_Bcast_CCMI_tree_dput;
           comm->dcmf.last_algorithm = MPIDO_USE_CCMI_TREE_DPUT_BCAST;
