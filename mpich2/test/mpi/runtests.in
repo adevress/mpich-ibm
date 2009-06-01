@@ -802,20 +802,6 @@ sub RunMPIProgram {
     if ($InitForTest ne "") {
 	&$InitForTest();
     }
-    if($mpirunflag==0)
-    {
-        print STDOUT "$mpiexec $np_arg $np $stagingdir/$programname $progArgs\n" if $verbose;
-        print STDOUT "." if $showProgress;
-        open(MPIOUT, "$mpiexec $np_arg $np $stagingdir/$programname $progArgs 2>&1 |" ) ||
-   	  die "Could not run ./$programname\n";
-    }
-    else
-    {
-        print STDOUT "$mpiexec $np_arg $np -cwd $mpi_cwd -exe $stagingdir/$programname $progArgs\n" if $verbose;
-        print STDOUT "." if $showProgress;
-        open(MPIOUT, "$mpiexec $np_arg $np -cwd $mpi_cwd -exe $stagingdir/$programname $progArgs 2>&1 |" ) ||
-          die "Could not run ./$programname\n";
-    }
     print STDOUT "Env includes $progEnv\n" if $verbose;
     print STDOUT "$mpiexec $np_arg $np ./$programname $progArgs\n" if $verbose;
     print STDOUT "." if $showProgress;
