@@ -435,7 +435,7 @@ void ADIOI_PVFS2_OldWriteStrided(ADIO_File fd, void *buf, int count,
             file_list_count = extra_blks;
             if(!i) {
                 file_offsets[0] = offset;
-                file_lengths[0] = st_fwr_size;
+                file_lengths[0] = ADIOI_MIN(st_fwr_size, bufsize);
             }
             for (k=0; k<extra_blks; k++) {
                 if(i || k) {
@@ -932,19 +932,22 @@ void ADIOI_PVFS2_OldWriteStrided(ADIO_File fd, void *buf, int count,
 	ADIOI_Free(mem_offsets);
 	ADIOI_Free(mem_lengths);
     }
-    ADIOI_Free(file_offsets);
-    ADIOI_Free(file_lengths);
-
     /* when incrementing fp_ind, need to also take into account the file type:
      * consider an N-element 1-d subarray with a lb and ub: ( |---xxxxx-----|
      * if we wrote N elements, offset needs to point at beginning of type, not
-     * at empty region at offset N+1) */
+     * at empty region at offset N+1).  
+     *
+     * As we discussed on mpich-discuss in may/june 2009, the code below might
+     * look wierd, but by putting fp_ind at the last byte written, the next
+     * time we run through the strided code we'll update the fp_ind to the
+     * right location. */
     if (file_ptr_type == ADIO_INDIVIDUAL) {
-	/* this is closer, but still incorrect for the cases where a small
-	 * amount of a file type is "leftover" after a write */
-	fd->fp_ind = disp + flat_file->indices[j] + 
-	    ((ADIO_Offset)n_filetypes)*filetype_extent;
+	fd->fp_ind = file_offsets[file_list_count-1]+
+	    file_lengths[file_list_count-1];
     }
+    ADIOI_Free(file_offsets);
+    ADIOI_Free(file_lengths);
+
     *error_code = MPI_SUCCESS;
 
 error_state:
