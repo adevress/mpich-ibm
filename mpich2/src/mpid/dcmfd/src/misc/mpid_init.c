@@ -16,6 +16,12 @@ MPID_Request __totalview_request_dummyvar;
 void MPIDI_DCMF_Configure(int requested,
                           int * provided)
 {
+  /* Exit the critical section, since DCMF_Messager_configure must be
+     called outside of all critical sections */
+#if MPIU_THREAD_GRANULARITY == MPIU_THREAD_GRANULARITY_GLOBAL
+  MPIU_THREAD_CS_EXIT(DCMF,);
+#endif
+
   DCMF_Configure_t dcmf_config;
   memset(&dcmf_config, 0x00, sizeof(DCMF_Configure_t));
 
@@ -34,6 +40,10 @@ void MPIDI_DCMF_Configure(int requested,
   DCMF_Messager_configure(&dcmf_config, &dcmf_config);
   *provided = dcmf_config.thread_level;
   MPIR_ThreadInfo.thread_provided = *provided;
+
+#if MPIU_THREAD_GRANULARITY == MPIU_THREAD_GRANULARITY_GLOBAL
+  MPIU_THREAD_CS_ENTER(DCMF,);
+#endif
 }
 
 
@@ -57,10 +67,6 @@ int MPID_Init(int * argc,
   int rank, size, i, rc;
   MPID_Comm * comm;
   DCMF_Result dcmf_rc;
-
-#if MPIU_THREAD_GRANULARITY != MPIU_THREAD_GRANULARITY_GLOBAL
-  MPIU_THREAD_CS_ENTER(DCMF,);
-#endif
 
   MPID_Executable_name = "FORTRAN";
   if (argc && *argv != NULL && *argv[0] != NULL)
@@ -237,10 +243,6 @@ int MPID_Init(int * argc,
   /* ------------------------------- */
   *has_args = TRUE;
   *has_env  = TRUE;
-
-#if MPIU_THREAD_GRANULARITY != MPIU_THREAD_GRANULARITY_GLOBAL
-  MPIU_THREAD_CS_EXIT(DCMF,);
-#endif
 
   return MPI_SUCCESS;
 }

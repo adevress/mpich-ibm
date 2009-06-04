@@ -191,21 +191,22 @@ DCMF_Send_Protocol gasnetc_get_protocol(gasnetc_dcmf_send_category_t sendcat) {
 static void gasnetc_dcmf_init(gasnet_node_t* mynode, gasnet_node_t *nodes) {
   int i,j,k;
   int ret;
+  DCMF_Configure_t dcmf_config, dcmf_config_out;
   GASNETC_DCMF_LOCK();
   ret = DCMF_Messager_initialize();
-  
+
   if(ret==0) {
     GASNETI_TRACE_PRINTF(C,("DCMF already intialized... first from MPI?"));
   } else {
     GASNETI_TRACE_PRINTF(C,("DCMF successfully intialized"));
   }
-    
+
   *mynode = DCMF_Messager_rank();
   *nodes = DCMF_Messager_size();
   GASNETC_DCMF_UNLOCK();
-    
+
   gasnetc_dcmf_bootstrap_coll_init();
-  
+
   GASNETC_DCMF_LOCK();
   /***Initialize all the active message handlers*/
   GASNETI_TRACE_PRINTF(C,("amregistraion (%d bytes) each", (int) sizeof(gasnetc_dcmf_amregistration_t)));
@@ -214,7 +215,7 @@ static void gasnetc_dcmf_init(gasnet_node_t* mynode, gasnet_node_t *nodes) {
       for(k=0; k<GASNETC_DCMF_NUM_SENDCATS; k++) {
         gasnetc_dcmf_amregistration[i][j][k] = gasneti_malloc_aligned(16, sizeof(gasnetc_dcmf_amregistration_t));
         REGISTER_SEND_HANDLER(i,j,k);
-      } 
+      }
     }
   }
 
@@ -223,18 +224,18 @@ static void gasnetc_dcmf_init(gasnet_node_t* mynode, gasnet_node_t *nodes) {
     bzero(&ack_config, sizeof(DCMF_Control_Configuration_t));
     bzero(&nack_config,  sizeof(DCMF_Control_Configuration_t));
     bzero(&short_msg_config,  sizeof(DCMF_Control_Configuration_t));
-    
+
     short_msg_config.protocol = nack_config.protocol = ack_config.protocol =DCMF_DEFAULT_CONTROL_PROTOCOL;
     short_msg_config.network = nack_config.network = ack_config.network =DCMF_DEFAULT_NETWORK;
     ack_config.cb_recv = gasnetc_ack_msg_cb;
     nack_config.cb_recv = gasnetc_add_to_nack_list_cb;
-  
+
     short_msg_config.cb_recv = gasnetc_dcmf_handle_am_short_control;
-    
-    short_msg_config.cb_recv_clientdata =   
-      ack_config.cb_recv_clientdata = 
+
+    short_msg_config.cb_recv_clientdata =
+      ack_config.cb_recv_clientdata =
       nack_config.cb_recv_clientdata = NULL;
-    
+
     DCMF_SAFE(DCMF_Control_register(&gasnetc_dcmf_ack_registration, &ack_config));
     DCMF_SAFE(DCMF_Control_register(&gasnetc_dcmf_nack_registration, &nack_config));
     DCMF_SAFE(DCMF_Control_register(&gasnetc_dcmf_short_msg_registration, &short_msg_config));
@@ -244,43 +245,40 @@ static void gasnetc_dcmf_init(gasnet_node_t* mynode, gasnet_node_t *nodes) {
 
   do {
     DCMF_Hardware_t hw;
-    DCMF_Configure_t dcmf_config, dcmf_config_out;
     DCMF_SAFE(DCMF_Hardware(&hw));
     if(gasneti_getenv_yesno_withdefault("GASNET_DCMF_PRINT_TORUS_LOCATION", 0)) {
       fprintf(stderr, "%d/%d> (x,y,z,t) Location: (%d,%d,%d,%d) Sizes: (%d,%d,%d,%d) isTorus?: (%d,%d,%d,%d)\n",
               gasneti_mynode, gasneti_nodes, hw.xCoord, hw.yCoord, hw.zCoord, hw.tCoord,
               hw.xSize, hw.ySize, hw.zSize, hw.tSize,
               hw.xTorus, hw.yTorus, hw.zTorus, hw.tTorus);
-      
+
     } else {
       GASNETI_TRACE_PRINTF(C,("(x,y,z,t) Coords: (%d,%d,%d,%d) Sizes: (%d,%d,%d,%d) isTorus?: (%d,%d,%d,%d)",
                               hw.xCoord, hw.yCoord, hw.zCoord, hw.tCoord,
                               hw.xSize, hw.ySize, hw.zSize, hw.tSize,
                               hw.xTorus, hw.yTorus, hw.zTorus, hw.tTorus));
-    }    
+    }
+  } while(0);
+
+
+  GASNETC_DCMF_UNLOCK();
 
 #if GASNET_SEQ
-    dcmf_config.thread_level = DCMF_THREAD_SINGLE;
+  dcmf_config.thread_level = DCMF_THREAD_SINGLE;
 #else
-    dcmf_config.thread_level = DCMF_THREAD_MULTIPLE;
+  dcmf_config.thread_level = DCMF_THREAD_MULTIPLE;
 #endif
 
 #if GASNETC_DCMF_INTERRUPTS
-    dcmf_config.interrupts = DCMF_INTERRUPTS_ON;
+  dcmf_config.interrupts = DCMF_INTERRUPTS_ON;
 #else
-    dcmf_config.interrupts = DCMF_INTERRUPTS_OFF;
+  dcmf_config.interrupts = DCMF_INTERRUPTS_OFF;
 #endif
 
-    DCMF_SAFE(DCMF_Messager_configure(&dcmf_config, &dcmf_config_out));
+  DCMF_Messager_configure(&dcmf_config, &dcmf_config_out);
 
-    gasneti_assert(dcmf_config.thread_level == dcmf_config_out.thread_level);
-    gasneti_assert(dcmf_config.interrupts == dcmf_config_out.interrupts);
-
-
-  } while(0);
-  
-  
-  GASNETC_DCMF_UNLOCK();  
+  gasneti_assert(dcmf_config.thread_level == dcmf_config_out.thread_level);
+  gasneti_assert(dcmf_config.interrupts == dcmf_config_out.interrupts);
 }
 
 void gasnetc_dcmf_finalize() {

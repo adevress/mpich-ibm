@@ -231,14 +231,12 @@ int ARMCIX_Init ()
   ENV_Bool (getenv ("DCMF_INTERRUPT"),  &interrupts);
   ENV_Bool (getenv ("DCMF_INTERRUPTS"), &interrupts);
 
+  DCMF_CriticalSection_exit(0);
+
   DCMF_Configure_t config;
   memset (&config, 0x00, sizeof(DCMF_Configure_t));
   config.interrupts = (interrupts==0)?DCMF_INTERRUPTS_OFF:DCMF_INTERRUPTS_ON;
   DCMF_Messager_configure (&config, &config);
 
-  DCMF_Messager_configure (NULL, &config);
-
   //ARMCIX_DCMF_request_print ("after armcix_init");
-
-  DCMF_CriticalSection_exit(0);
 }
