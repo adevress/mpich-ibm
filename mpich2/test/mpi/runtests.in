@@ -488,9 +488,9 @@ if (($nofree==1) && !$compileonly && !$otp) {
 
 if (!$compileonly) {
     if ($xmloutput && $closeXMLOutput) { 
-	print XMLOUT "</MPITESTRESULTS>$newline";
    my $ttime = time() - $totaltime;
    print XMLOUT "<TOTALTIME>$ttime</TOTALTIME>$newline";
+	print XMLOUT "</MPITESTRESULTS>$newline";
 	close XMLOUT; 
     }
 
@@ -504,6 +504,7 @@ if (!$compileonly) {
     }
     else {
 	print "All $total_count tests passed!\n";
+   print "Total runtime: $ttime\n";
     }
     print "\n";
 }
