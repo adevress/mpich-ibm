@@ -32,8 +32,8 @@ MPIDO_Allreduce(void * sendbuf,
 
   /* Did the user want to force a specific algorithm? */
   int userenvset = MPIDO_INFO_ISSET(properties, MPIDO_ALLREDUCE_ENVVAR);
-  int dput_available, buffer_aligned = 0;
-  
+  int dputok[2], buffers_aligned = 0;
+
   if(count == 0)
     return MPI_SUCCESS;
 
@@ -58,10 +58,36 @@ MPIDO_Allreduce(void * sendbuf,
   if (sendbuf == MPI_IN_PLACE)
     sbuf = rbuf;
 
-  buffer_aligned = !((unsigned)sbuf & 0x0F) && !((unsigned)rbuf & 0x0F);
-  dput_available = buffer_aligned &&
-                   MPIDO_INFO_ISSET(properties,
-                                   MPIDO_USE_RRING_DPUT_SINGLETH_ALLREDUCE);
+   /* First, verify if sbuf/rbuf are aligned. dputs require this */
+  buffers_aligned = !((unsigned)sbuf & 0x0F) && !((unsigned)rbuf & 0x0F);
+  /* Now, set dputok based on the properties value. We only use dput when
+   * message size is >16384, or the user wants us to use it */
+  dputok[0] = MPIDO_INFO_ISSET(properties, 
+                               MPIDO_USE_RRING_DPUT_SINGLETH_ALLREDUCE) &&
+                              (userenvset || data_size > 16384);
+   /* Dput tree is more complicated. First, check properties. Then,
+    * if we are in VNM and the count is >512 or the size is >4096, we can
+    * use dput. dput tree internals looks at count in one place and data_size
+    * in another place. dput tree also has internal cutoffs between multiple
+    * protocols. we should fix that before v1r4m1 
+    */
+  dputok[1] = MPIDO_INFO_ISSET(properties, MPIDO_USE_TREE_DPUT_ALLREDUCE) &&
+                              && mpid_hw.tSize > 1 &&
+                               (userenvset || count > 512 || data_size > 4096);
+   /* Ok, does the user want us to skip over the allreduce? If not, do it
+    * now 
+    */
+   if(MPIDO_INFO_ISSET(properties, MPIDO_USE_PREALLREDUCE_ALLREDUCE) &&
+      (dputok[0] || dputok[1]))
+   {
+      dputok[0] = (dputok[0] && buffers_aligned);
+      dputok[1] = (dputok[1] && buffers_aligned);
+      STAR_info.internal_control_flow = 1;
+      MPIDO_Allreduce(MPI_IN_PLACE, &dputok, 2, MPI_INT, MPI_BAND, comm);
+      STAR_info.internal_control_flow = 0;
+   }
+
+
 
   if (!STAR_info.enabled || STAR_info.internal_control_flow ||
       data_size < STAR_info.allreduce_threshold)
@@ -75,7 +101,7 @@ MPIDO_Allreduce(void * sendbuf,
         if (mpid_hw.tSize > 1 &&
             MPIDO_INFO_ISSET(properties, MPIDO_USE_TREE_DPUT_ALLREDUCE))
         {
-          if (buffer_aligned)
+         if(dputok[1] && buffers_aligned)
           {
             func = MPIDO_Allreduce_tree_dput;
             comm->dcmf.last_algorithm = MPIDO_USE_TREE_DPUT_ALLREDUCE;
@@ -93,7 +119,7 @@ MPIDO_Allreduce(void * sendbuf,
           comm->dcmf.last_algorithm = MPIDO_USE_TREE_ALLREDUCE;
         }
 
-        if (dput_available && data_size >= 32768 &&
+        if (dputok[0] && data_size >= 32768 &&
             op_type_support != MPIDO_TREE_SUPPORT)
           func = NULL;
       }
@@ -136,9 +162,7 @@ MPIDO_Allreduce(void * sendbuf,
         
         if(!func && data_size > 16384)
         {
-          if(MPIDO_INFO_ISSET(properties, 
-                             MPIDO_USE_RRING_DPUT_SINGLETH_ALLREDUCE) &&
-             !((unsigned)sbuf & 0x0F) && !((unsigned)rbuf & 0x0F))
+         if(dputok[0] && buffers_aligned)
           {
             func = MPIDO_Allreduce_rring_dput_singleth;
             comm->dcmf.last_algorithm = MPIDO_USE_RRING_DPUT_SINGLETH_ALLREDUCE;
@@ -163,8 +187,7 @@ MPIDO_Allreduce(void * sendbuf,
           comm->dcmf.last_algorithm = MPIDO_USE_TREE_ALLREDUCE;
         }
         if (!func && mpid_hw.tSize > 1 &&
-            MPIDO_INFO_ISSET(properties, MPIDO_USE_TREE_DPUT_ALLREDUCE) &&
-            buffer_aligned)
+            dputok[1] && buffers_aligned)
         {
           func = MPIDO_Allreduce_tree_dput;
           comm->dcmf.last_algorithm = MPIDO_USE_TREE_DPUT_ALLREDUCE;
@@ -198,8 +221,7 @@ MPIDO_Allreduce(void * sendbuf,
       }
 
       if(!func &&
-         MPIDO_INFO_ISSET(properties, MPIDO_USE_RRING_DPUT_SINGLETH_ALLREDUCE) &&
-         !((unsigned)sbuf & 0x0F) && !((unsigned)rbuf & 0x0F))
+            dputok[0] && buffers_aligned)
       {
         func = MPIDO_Allreduce_rring_dput_singleth;
         comm->dcmf.last_algorithm = MPIDO_USE_RRING_DPUT_SINGLETH_ALLREDUCE;
@@ -260,7 +282,7 @@ MPIDO_Allreduce(void * sendbuf,
     collective_site.op_type_support = op_type_support;
 
     /* decide buffer alignment */
-    collective_site.buff_attributes[3] = buffer_aligned;
+    collective_site.buff_attributes[3] = buffers_aligned;
 
     rc = STAR_Allreduce(sbuf, rbuf, count, dcmf_data, dcmf_op,
                         datatype, &collective_site,

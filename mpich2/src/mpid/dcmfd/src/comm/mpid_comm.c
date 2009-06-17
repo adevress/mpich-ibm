@@ -547,6 +547,7 @@ MPIDI_Env_setup()
                   MPIDO_USE_CCMI_TREE_BCAST,
                   MPIDO_USE_CCMI_TREE_DPUT_BCAST,
                   MPIDO_USE_PREALLREDUCE_BCAST,
+                  MPIDO_USE_PREALLREDUCE_ALLREDUCE,
                   MPIDO_USE_STORAGE_ALLREDUCE,
                   MPIDO_USE_RECT_ALLREDUCE,
                   MPIDO_USE_SHORT_ASYNC_RECT_ALLREDUCE,
@@ -768,6 +769,12 @@ MPIDI_Env_setup()
       MPIDO_INFO_UNSET(properties, MPIDO_USE_PREALLREDUCE_SCATTERV);
   }
 
+   envopts = getenv("DCMF_SAFEALLREDUCE");
+   if(envopts != NULL)
+  {
+    if((strncasecmp(envopts, "Y", 1) == 0) || atoi(envopts)==1)
+      MPIDO_INFO_UNSET(properties, MPIDO_USE_PREALLREDUCE_ALLREDUCE);
+  }
 
   envopts = getenv("DCMF_ALLTOALL");
   if(envopts != NULL)

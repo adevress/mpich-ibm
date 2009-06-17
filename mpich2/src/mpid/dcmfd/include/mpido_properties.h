@@ -120,7 +120,7 @@
 #define MPIDO_USE_SHORT_ASYNC_BINOM_ALLREDUCE                              60
 #define MPIDO_USE_RRING_DPUT_SINGLETH_ALLREDUCE                            61
 #define MPIDO_USE_MPICH_ALLREDUCE                                          62
-#define MPIDO_ALLREDUCE_RESERVED                                           63
+#define MPIDO_USE_PREALLREDUCE_ALLREDUCE                                       63
 /* Controls whether or not we reuse storage in allreduce */
 #define MPIDO_USE_STORAGE_ALLREDUCE                                        64
 
