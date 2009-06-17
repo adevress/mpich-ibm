@@ -158,6 +158,19 @@
  *   - 1, 2, or 3.
  *   - Default is 0.
  *
+ * - DCMF_SAFEALLREDUCE - The direct put allreduce bandwidth optimization
+ *   protocols require the send/recv buffers to be 16-byte aligned on all nodes.
+ *   Unfortunately, you can have root's buffer be misaligned from the rest of 
+ *   the nodes. Therefore, by default we must do an allreduce before dput
+ *   allreduces to ensure all nodes have the same alignment. If you know all of
+ *   your buffers are 16 byte aligned, turning on this option will skip the
+ *   allreduce step and improve performance.
+ *   Possible values:
+ *   - N - Perform the allreduce 
+ *   - Y - Bypass the allreduce. If you have mismatched alignment, you will
+ *         likely get weird behavior or asserts.
+ *   - Default is N.
+ *
  * - DCMF_SAFEBCAST - The rectangle direct put bcast bandwidth optimization
  *   protocol requires the bcast buffers to be 16-byte aligned on all nodes.
  *   Unfortunately, you can have root's buffer be misaligned from the rest of 
