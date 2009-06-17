@@ -14,6 +14,13 @@ static void allgather_async_done(void *clientdata, DCMF_Error_t *err)
   MPID_Progress_signal();
   return;
 }
+static void allgather_barrier_done(void *clientdata, DCMF_Error_t *err)
+{
+  volatile unsigned *work_left = (unsigned *)clientdata;
+  (*work_left)--;
+  MPID_Progress_signal();
+  return;
+}
 
 /* ****************************************************************** */
 /**
@@ -42,10 +49,12 @@ int MPIDO_Allgather_bcast_rect_async(void *sendbuf,
   int i, j, np, max_size, left_over, data_sz, dt_contig;
   MPI_Aint extent, dt_true_lb;
   volatile unsigned active = 0;
+  volatile unsigned barrier_active = 0;
 
   int numrequests = MPIDI_CollectiveProtocols.numrequests;
   DCMF_CollectiveRequest_t *requests;
   DCMF_Callback_t callback = {allgather_async_done, (void *)&active};
+  DCMF_Callback_t barrier_callback = {allgather_barrier_done, (void *)&barrier_active};
   DCMF_CollectiveProtocol_t *protocol =
     &(MPIDI_CollectiveProtocols.async_rectangle_bcast);
 
@@ -98,6 +107,15 @@ int MPIDO_Allgather_bcast_rect_async(void *sendbuf,
     }
 
     MPID_PROGRESS_WAIT_WHILE(active);
+    /* Barrier occasionally to reduce unexpected messages - in SMP/DUAL mode only.  */
+    if (mpid_hw.tSize < 4)
+    {
+      barrier_active = 1;
+      DCMF_Barrier(&comm_ptr->dcmf.geometry,
+                   barrier_callback,
+                   DCMF_MATCH_CONSISTENCY);
+      MPID_PROGRESS_WAIT_WHILE(barrier_active);
+    }
   }
 
 
@@ -280,7 +298,6 @@ int MPIDO_Allgather_allreduce(void *sendbuf,
     char *outputbuf = (char *) sendbuf + send_true_lb;
     memcpy(destbuf, outputbuf, send_size);
   }
-
   rc = MPIDO_Allreduce(MPI_IN_PLACE,
 		       startbuf,
 		       recv_size/sizeof(int),

@@ -17,6 +17,7 @@ typedef struct {
   int recv_continuous;
   int largecount;
   int mediumcount;
+  int aligned_buffer;
 } MPIDO_Coll_config;
 
 /* Helpers */

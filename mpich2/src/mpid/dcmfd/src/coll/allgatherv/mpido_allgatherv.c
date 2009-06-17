@@ -32,7 +32,7 @@ MPIDO_Allgatherv(void *sendbuf,
   MPI_Aint recv_true_lb  = 0;
   size_t   send_size     = 0;
   size_t   recv_size     = 0;
-  MPIDO_Coll_config config = {1,1,1,1,1};
+  MPIDO_Coll_config config = {1,1,1,1,1,1};
 
   double msize;
   
@@ -94,8 +94,10 @@ MPIDO_Allgatherv(void *sendbuf,
   
   if (MPIDO_INFO_ISSET(coll_prop, MPIDO_USE_PREALLREDUCE_ALLGATHERV))
   {
+    /* Check buffer alignment now, since we're pre-allreducing anyway */
+    config.aligned_buffer = !((unsigned)sendbuf & 0x0F) && !((unsigned)recvbuf & 0x0F);
     STAR_info.internal_control_flow = 1;
-    MPIDO_Allreduce(MPI_IN_PLACE, &config, 5, MPI_INT, MPI_BAND, comm);
+    MPIDO_Allreduce(MPI_IN_PLACE, &config, 6, MPI_INT, MPI_BAND, comm);
     STAR_info.internal_control_flow = 0;
   }
 
@@ -220,10 +222,24 @@ MPIDO_Allgatherv(void *sendbuf,
                              comm);
     }
     
+    /* If we're using allreduce, we might have verified the buffer
+       alignment. If so, tell allreduce that it's "safe".
+    */
+    int is_set = 0;
+    if((func == MPIDO_Allgatherv_allreduce) && config.aligned_buffer)
+    {
+      is_set = MPIDO_INFO_ISSET(comm_prop, MPIDO_USE_PREALLREDUCE_ALLREDUCE);
+      MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_PREALLREDUCE_ALLREDUCE);
+    }
     rc = (func)(sendbuf, sendcount, sendtype,
                 recvbuf, recvcounts, buffer_sum, displs, recvtype,
                 send_true_lb, recv_true_lb, send_size, recv_size,
                 comm);
+    /* Reset the "safe" property */
+    if(is_set)
+    {
+      MPIDO_INFO_SET(comm_prop, MPIDO_USE_PREALLREDUCE_ALLREDUCE);
+    }
   }
   else
   {
