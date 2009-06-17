@@ -72,7 +72,7 @@ MPIDO_Allreduce(void * sendbuf,
     * protocols. we should fix that before v1r4m1 
     */
   dputok[1] = MPIDO_INFO_ISSET(properties, MPIDO_USE_TREE_DPUT_ALLREDUCE) &&
-                              && mpid_hw.tSize > 1 &&
+                              mpid_hw.tSize > 1 &&
                                (userenvset || count > 512 || data_size > 4096);
    /* Ok, does the user want us to skip over the allreduce? If not, do it
     * now 
