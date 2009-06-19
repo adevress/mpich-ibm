@@ -13,6 +13,13 @@
 
 #pragma weak PMPIDO_Allgatherv = MPIDO_Allgatherv
 
+static void allred_cb_done(void *clientdata, DCMF_Error_t *err)
+{
+   volatile unsigned *work_left = (unsigned *)clientdata;
+   *work_left = 0;
+   MPID_Progress_signal();
+}
+
 int
 MPIDO_Allgatherv(void *sendbuf,
 		 int sendcount,
@@ -32,13 +39,18 @@ MPIDO_Allgatherv(void *sendbuf,
   MPI_Aint recv_true_lb  = 0;
   size_t   send_size     = 0;
   size_t   recv_size     = 0;
-  MPIDO_Coll_config config = {1,1,1,1,1,1};
-
+  int config[6];
   double msize;
   
   int i, rc, buffer_sum = 0, np = comm->local_size;
   char use_tree_reduce, use_alltoall, use_rect_async, use_bcast;
   char *sbuf, *rbuf;
+
+  DCMF_CollectiveRequest_t request;
+  volatile unsigned allred_active = 1;
+  DCMF_Callback_t allred_cb = {allred_cb_done, (void *) &allred_active};
+
+  for(i=0;i<6;i++) config[i] = 1;
 
   MPIDO_Embedded_Info_Set * comm_prop = &(comm->dcmf.properties);
   MPIDO_Embedded_Info_Set * coll_prop = &MPIDI_CollectiveProtocols.properties;
@@ -55,7 +67,7 @@ MPIDO_Allgatherv(void *sendbuf,
   }
   MPIDI_Datatype_get_info(1,
 			  recvtype,
-			  config.recv_contig,
+			  config[MPIDO_RECV_CONTIG],
 			  recv_size,
 			  dt_null,
 			  recv_true_lb);
@@ -65,7 +77,7 @@ MPIDO_Allgatherv(void *sendbuf,
   {
     MPIDI_Datatype_get_info(sendcount,
                             sendtype,
-                            config.send_contig,
+                            config[MPIDO_SEND_CONTIG],
                             send_size,
                             dt_null,
                             send_true_lb);
@@ -73,14 +85,14 @@ MPIDO_Allgatherv(void *sendbuf,
   }
   
   if (displs[0])
-    config.recv_continuous = 0;
+    config[MPIDO_RECV_CONTINUOUS] = 0;
   
   for (i = 1; i < np; i++)
   {
     buffer_sum += recvcounts[i - 1];
     if (buffer_sum != displs[i])
     {
-      config.recv_continuous = 0;
+      config[MPIDO_RECV_CONTINUOUS] = 0;
       break;
     }
   }
@@ -92,14 +104,32 @@ MPIDO_Allgatherv(void *sendbuf,
   
   MPIDI_VerifyBuffer(recvbuf, rbuf, (recv_true_lb + buffer_sum));
   
-  if (MPIDO_INFO_ISSET(coll_prop, MPIDO_USE_PREALLREDUCE_ALLGATHERV))
-  {
-    /* Check buffer alignment now, since we're pre-allreducing anyway */
-    config.aligned_buffer = !((unsigned)sendbuf & 0x0F) && !((unsigned)recvbuf & 0x0F);
-    STAR_info.internal_control_flow = 1;
-    MPIDO_Allreduce(MPI_IN_PLACE, &config, 6, MPI_INT, MPI_BAND, comm);
-    STAR_info.internal_control_flow = 0;
-  }
+   if (MPIDO_INFO_ISSET(coll_prop, MPIDO_USE_PREALLREDUCE_ALLGATHERV))
+   {
+      /* Check buffer alignment now, since we're pre-allreducing anyway */
+      config[MPIDO_ALIGNEDBUFFER] = 
+            !((unsigned)sendbuf & 0x0F) && !((unsigned)recvbuf & 0x0F);
+      if(comm->dcmf.short_allred == NULL)
+      {
+         STAR_info.internal_control_flow = 1;
+         MPIDO_Allreduce(MPI_IN_PLACE, &config, 6, MPI_INT, MPI_BAND, comm);
+         STAR_info.internal_control_flow = 0;
+      }
+      else
+      {      
+         DCMF_Allreduce(comm->dcmf.short_allred,
+                     &request,
+                     allred_cb,
+                     DCMF_MATCH_CONSISTENCY,
+                     &(comm->dcmf.geometry),
+                     (void *)config,
+                     (void *)config,
+                     6,
+                     DCMF_SIGNED_INT,
+                     DCMF_BAND);
+         MPID_PROGRESS_WAIT_WHILE(allred_active);
+      }
+   }
 
   if (!STAR_info.enabled || STAR_info.internal_control_flow ||
       ((double)buffer_sum / (double)np) < STAR_info.allgather_threshold)
@@ -107,21 +137,21 @@ MPIDO_Allgatherv(void *sendbuf,
     use_tree_reduce = MPIDO_INFO_ISSET(comm_prop, MPIDO_USE_TREE_ALLREDUCE) &&
       MPIDO_INFO_ISSET(comm_prop,
                       MPIDO_USE_ALLREDUCE_ALLGATHERV) &&
-      config.recv_contig &&
-      config.send_contig &&
-      config.recv_continuous &&
+      config[MPIDO_RECV_CONTIG] &&
+      config[MPIDO_SEND_CONTIG] &&
+      config[MPIDO_RECV_CONTINUOUS] &&
       buffer_sum % sizeof(int) == 0;
     
     use_alltoall = MPIDO_INFO_ISSET(comm_prop, MPIDO_USE_TORUS_ALLTOALL) &&
       MPIDO_INFO_ISSET(comm_prop, MPIDO_USE_ALLTOALL_ALLGATHERV) &&
-      config.recv_contig &&
-      config.send_contig;
+      config[MPIDO_RECV_CONTIG] &&
+      config[MPIDO_SEND_CONTIG];
 
     use_rect_async = MPIDO_INFO_ISSET(comm_prop,
                                      MPIDO_USE_ARECT_BCAST_ALLGATHERV) &&
       MPIDO_INFO_ISSET(comm_prop, MPIDO_USE_ARECT_BCAST) &&
-      config.recv_contig &&
-      config.send_contig;
+      config[MPIDO_RECV_CONTIG] &&
+      config[MPIDO_SEND_CONTIG];
     
     use_bcast = //MPIDO_INFO_ISSET(comm_prop, MPIDO_USE_TREE_BCAST) &&
       MPIDO_INFO_ISSET(comm_prop, MPIDO_USE_BCAST_ALLGATHERV);
@@ -226,7 +256,7 @@ MPIDO_Allgatherv(void *sendbuf,
        alignment. If so, tell allreduce that it's "safe".
     */
     int is_set = 0;
-    if((func == MPIDO_Allgatherv_allreduce) && config.aligned_buffer)
+    if((func == MPIDO_Allgatherv_allreduce) && config[MPIDO_ALIGNEDBUFFER])
     {
       is_set = MPIDO_INFO_ISSET(comm_prop, MPIDO_USE_PREALLREDUCE_ALLREDUCE);
       MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_PREALLREDUCE_ALLREDUCE);
@@ -258,9 +288,9 @@ MPIDO_Allgatherv(void *sendbuf,
     collective_site.comm = comm;
     collective_site.bytes = buffer_sum;
     collective_site.op_type_support = MPIDO_SUPPORT_NOT_NEEDED;
-    collective_site.buff_attributes[0] = config.send_contig;
-    collective_site.buff_attributes[1] = config.recv_contig;
-    collective_site.buff_attributes[2] = config.recv_continuous;
+    collective_site.buff_attributes[0] = config[MPIDO_SEND_CONTIG];
+    collective_site.buff_attributes[1] = config[MPIDO_RECV_CONTIG];
+    collective_site.buff_attributes[2] = config[MPIDO_RECV_CONTINUOUS];
       
     /* decide buffer alignment */
     collective_site.buff_attributes[3] = 1; /* assume aligned */

@@ -13,6 +13,14 @@
 
 #pragma weak PMPIDO_Allgather = MPIDO_Allgather
 
+static void allred_cb_done(void *clientdata, DCMF_Error_t *err)
+{
+   volatile unsigned *work_left = (unsigned *)clientdata;
+   *work_left = 0;
+   MPID_Progress_signal();
+}
+
+
 int
 MPIDO_Allgather(void *sendbuf,
                 int sendcount,
@@ -29,13 +37,19 @@ MPIDO_Allgather(void *sendbuf,
   allgather_fptr func = NULL;
   MPIDO_Embedded_Info_Set * coll_prop = &MPIDI_CollectiveProtocols.properties;
   MPIDO_Embedded_Info_Set * comm_prop = &(comm->dcmf.properties);
-  MPIDO_Coll_config config = {1,1,1,1,1,1};
+//  MPIDO_Coll_config config = {1,1,1,1,1,1};
+  int config[6], i;
   MPID_Datatype * dt_null = NULL;
   MPI_Aint send_true_lb = 0;
   MPI_Aint recv_true_lb = 0;
   int rc, comm_size = comm->local_size;
   size_t send_size = 0;
   size_t recv_size = 0;
+  volatile unsigned allred_active = 1;
+  DCMF_CollectiveRequest_t request;
+  for (i=0;i<6;i++) config[i] = 1;
+   
+  DCMF_Callback_t allred_cb = {allred_cb_done, (void*) &allred_active};
 
   unsigned char userenvset = MPIDO_INFO_ISSET(comm_prop,
                                              MPIDO_ALLGATHER_ENVVAR);
@@ -56,7 +70,7 @@ MPIDO_Allgather(void *sendbuf,
    
   MPIDI_Datatype_get_info(recvcount,
 			  recvtype,
-			  config.recv_contig,
+           config[MPIDO_RECV_CONTIG],
 			  recv_size,
 			  dt_null,
 			  recv_true_lb);
@@ -69,7 +83,7 @@ MPIDO_Allgather(void *sendbuf,
   {
     MPIDI_Datatype_get_info(sendcount,
                             sendtype,
-                            config.send_contig,
+                            config[MPIDO_SEND_CONTIG],
                             send_size,
                             dt_null,
                             send_true_lb);
@@ -79,11 +93,36 @@ MPIDO_Allgather(void *sendbuf,
   /* verify everyone's datatype contiguity */
   if (MPIDO_INFO_ISSET(coll_prop, MPIDO_USE_PREALLREDUCE_ALLGATHER))
   {
+
     /* Check buffer alignment now, since we're pre-allreducing anyway */
-    config.aligned_buffer = !((unsigned)sendbuf & 0x0F) && !((unsigned)recvbuf & 0x0F);
-    STAR_info.internal_control_flow = 1;
-    MPIDO_Allreduce(MPI_IN_PLACE, &config, 6, MPI_INT, MPI_BAND, comm);
-    STAR_info.internal_control_flow = 0;
+    config[MPIDO_ALIGNEDBUFFER] = 
+            !((unsigned)sendbuf & 0x0F) && !((unsigned)recvbuf & 0x0F);
+
+      if(comm->dcmf.short_allred == NULL)
+      {
+         STAR_info.internal_control_flow = 1;
+         MPIDO_Allreduce(MPI_IN_PLACE, &config, 6, MPI_INT, MPI_BAND, comm);
+         STAR_info.internal_control_flow = 0;
+      }
+      else
+      {
+         DCMF_Allreduce(comm->dcmf.short_allred,
+                     &request,
+                     allred_cb,
+                     DCMF_MATCH_CONSISTENCY,
+                     &(comm->dcmf.geometry),
+                     (void *)config,
+                     (void *)config,
+                     6,
+                     DCMF_SIGNED_INT,
+                     DCMF_BAND);
+         MPID_PROGRESS_WAIT_WHILE(allred_active);
+      }
+
+
+
+//    MPIDO_Allreduce(MPI_IN_PLACE, &config, 6, MPI_INT, MPI_BAND, comm);
+//    STAR_info.internal_control_flow = 0;
   }
 
   /* Here is the Default code path or if coming from within another coll */
@@ -93,7 +132,7 @@ MPIDO_Allgather(void *sendbuf,
     use_alltoall = 
       MPIDO_INFO_ISSET(comm_prop, MPIDO_USE_TORUS_ALLTOALL) &&
       MPIDO_INFO_ISSET(comm_prop, MPIDO_USE_ALLTOALL_ALLGATHER) &&
-      config.recv_contig && config.send_contig;
+      config[MPIDO_RECV_CONTIG] && config[MPIDO_SEND_CONTIG];
     /* The tree doesn't support reduce of chars for the operation we need,
      * so we change to ints. Therefore the size needs to be a multiple of
      * sizeof(int) */
@@ -102,13 +141,13 @@ MPIDO_Allgather(void *sendbuf,
     use_tree_reduce = 
       MPIDO_INFO_ISSET(comm_prop, MPIDO_USE_TREE_ALLREDUCE) &&
       MPIDO_INFO_ISSET(comm_prop, MPIDO_USE_ALLREDUCE_ALLGATHER) &&
-      config.recv_contig && config.send_contig && 
-      config.recv_continuous && (recv_size % sizeof(int) == 0);
+      config[MPIDO_RECV_CONTIG] && config[MPIDO_SEND_CONTIG] && 
+      config[MPIDO_RECV_CONTINUOUS] && (recv_size % sizeof(int) == 0);
 
     use_rect_async = 
       MPIDO_INFO_ISSET(comm_prop, MPIDO_USE_ARECT_BCAST_ALLGATHER) &&
       MPIDO_INFO_ISSET(comm_prop, MPIDO_USE_ARECT_BCAST) &&
-      config.recv_contig && config.send_contig;
+      config[MPIDO_RECV_CONTIG] && config[MPIDO_SEND_CONTIG];
 
     if(userenvset)
     {
@@ -209,7 +248,7 @@ MPIDO_Allgather(void *sendbuf,
        alignment. If so, tell allreduce that it's "safe".
     */
     int is_set = 0;
-    if((func == MPIDO_Allgather_allreduce) && config.aligned_buffer)
+    if((func == MPIDO_Allgather_allreduce) && config[MPIDO_ALIGNEDBUFFER])
     {
       is_set = MPIDO_INFO_ISSET(comm_prop, MPIDO_USE_PREALLREDUCE_ALLREDUCE);
       MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_PREALLREDUCE_ALLREDUCE);
@@ -239,9 +278,9 @@ MPIDO_Allgather(void *sendbuf,
     collective_site.comm = comm;
     collective_site.bytes = recv_size;
     collective_site.op_type_support = MPIDO_SUPPORT_NOT_NEEDED;
-    collective_site.buff_attributes[0] = config.send_contig;
-    collective_site.buff_attributes[1] = config.recv_contig;
-    collective_site.buff_attributes[2] = config.recv_continuous;
+    collective_site.buff_attributes[0] = config[MPIDO_SEND_CONTIG];
+    collective_site.buff_attributes[1] = config[MPIDO_RECV_CONTIG];
+    collective_site.buff_attributes[2] = config[MPIDO_RECV_CONTINUOUS];
     
     /* decide buffer alignment */
     collective_site.buff_attributes[3] = 1; /* assume aligned */

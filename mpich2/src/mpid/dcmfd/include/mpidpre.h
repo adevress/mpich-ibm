@@ -278,6 +278,7 @@ struct MPIDI_DCMF_Comm
   unsigned *rdispls;
   unsigned *sndcounters;
   unsigned *rcvcounters;
+  DCMF_CollectiveProtocol_t *short_allred;
   unsigned last_algorithm;
   unsigned bcast_iter;   /* async broadcast is only used every 32
 			  * steps to prevent too many unexpected

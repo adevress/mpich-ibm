@@ -280,6 +280,30 @@
  *     rectangular or irregular subcommunicators.
  *   - Default varies based on the communicator.  See above.
  *
+ * - DCMF_PREALLREDUCE - Controls the protocol used for the pre-allreducing
+ *   employed by bcast, allreduce, allgather(v), and scatterv. This option
+ *   is mostly independant from DCMF_ALLREDUCE. Possible values are:
+ *   - MPIDO - Just call MPIDO_Allreduce and let the existing logic determine
+ *             what allreduce to use. This can be expensive, but it is the only
+ *             guaranteed option, and it is the only way to get MPICH for the
+ *             pre-allreduce
+ *   - SRECT - Use the short rectangle protocol. If you set this and do not
+ *             have a rectnagular (sub)communicator, you'll get the MPIDO
+ *             option. This is the default selection for rectangular subcomms.
+ *   - SBINOM - Use the short binomial protocol. This is the default for 
+ *             irregular subcomms.
+ *   - ARING - Use the async rectangular ring protocol
+ *   - ARECT - Use the async rectangle protocol
+ *   - ABINOM - Use the async binomial protocol
+ *   - RING - Use the rectangular ring protocol
+ *   - RECT - Use the rectangle protocol
+ *   - TDPUT - Use the tree dput protocol. This is the default in virtual
+ *             node mode on MPI_COMM_WORLD
+ *   - TREE - Use the tree. This is the default in SMP mode on MPI_COMM_WORLD
+ *   - DPUT - Use the rectangular direct put protocol
+ *   - PIPE - Use the pipelined CCMI tree protocol
+ *   - BINOM - Use a binomial protocol
+ *
  * - DCMF_ALLREDUCE - Controls the protocol used for allreduce.
  *   Possible values:
  *   - MPICH - Turn off all optimizations for allreduce and use the MPICH
@@ -289,19 +313,21 @@
  *   - RECT - Use a rectangular/binomial protocol.  This is off by default.
  *   - BINOM - Use a binomial protocol.  This is the default for irregular
  *     subcommunicators.
- *   - TREE - Use the collective network.  This is the default for MPI_COMM_WORLD and
- *     duplicates of MPI_COMM_WORLD in MPI_THREAD_SINGLE mode.
+ *   - TREE - Use the collective network.  This is the default for 
+ *       MPI_COMM_WORLD and duplicates of MPI_COMM_WORLD in MPI_THREAD_SINGLE 
+ *       mode.
  *   - CCMI - Use the CCMI collective network protocol.  This is off by default.
- *   - PIPE - Use the pipelined CCMI collective network protocol. This is off by default.
- *   - ASYNC - Enable the asynchronous versions of BINOM, RING, and RECT
- *     protocols (above). These are off by default.
+ *   - PIPE - Use the pipelined CCMI collective network protocol. This is off 
+ *       by default.
+ *   - ARECT - Enable the asynchronous rectangle protocol
+ *   - ABINOM - Enable the async binomial protocol
  *   - ARING - Enable the asynchronous version of the rectangular ring protocol.
- *     This is off by default.
- *   - ARECT - Enable the asynchronous version of the rectangular/binomial protocol.
- *     This is off by default.
- *   - ABINOM - Enable the asynchronous version of the binomial protocol.
- *     This is off by default.
- *   - Default varies based on the communicator.  See above.
+ *   - TDPUT - Use the tree+direct put protocol. This is the default for VNM
+ *       on MPI_COMM_WORLD
+ *   - DPUT - Use the rectangular direct put protocol. This is the default for
+ *       large messages on rectangular subcomms and MPI_COMM_WORLD
+ *   - Default varies based on the communicator and message size and if the
+ *     operation/datatype pair is supported on the tree hardware.
  *
  * - DCMF_ALLREDUCE_REUSE_STORAGE - This allows the lower
  *   level protcols to reuse some storage instead of malloc/free
@@ -949,6 +975,16 @@ MPIDI_Env_setup()
     }
   }
 
+   /* Check for the env var now. Actually protocol selection is in the end
+    * of communicator creation. See mpid_coll.c in collselect/ directory
+    */
+   MPIDO_INFO_UNSET(properties, MPIDO_PREALLREDUCE_ENVVAR);
+   envopts = getenv("DCMF_PREALLREDUCE");
+   if(envopts != NULL)
+   {
+      MPIDO_INFO_SET(properties, MPIDO_PREALLREDUCE_ENVVAR);
+   }
+
   envopts = getenv("DCMF_ALLREDUCE");
   if(envopts != NULL)
   {
@@ -981,10 +1017,10 @@ MPIDI_Env_setup()
       MPIDO_INFO_SET(properties, MPIDO_USE_ABINOM_ALLREDUCE);
     else if(strncasecmp(envopts, "RI", 2) == 0)
       MPIDO_INFO_SET(properties, MPIDO_USE_RECTRING_ALLREDUCE);
-    else if(strncasecmp(envopts, "R", 1) == 0)
-      MPIDO_INFO_SET(properties, MPIDO_USE_RECT_ALLREDUCE);
     else if(strncasecmp(envopts, "TD", 2) == 0)
       MPIDO_INFO_SET(properties, MPIDO_USE_TREE_DPUT_ALLREDUCE);
+    else if(strncasecmp(envopts, "R", 1) == 0)
+      MPIDO_INFO_SET(properties, MPIDO_USE_RECT_ALLREDUCE);
     else if(strncasecmp(envopts, "B", 1) == 0)
       MPIDO_INFO_SET(properties, MPIDO_USE_BINOM_ALLREDUCE);
     else if(strncasecmp(envopts, "M", 1) == 0) /* MPICH */

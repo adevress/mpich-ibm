@@ -13,6 +13,13 @@
 
 #pragma weak PMPIDO_Allreduce = MPIDO_Allreduce
 
+static void pre_allred_cb_done(void *clientdata, DCMF_Error_t *err)
+{
+   volatile unsigned *work_left = (unsigned *) clientdata;
+   *work_left = 0;
+   MPID_Progress_signal();
+}
+
 int
 MPIDO_Allreduce(void * sendbuf,
 		void * recvbuf,
@@ -29,6 +36,11 @@ MPIDO_Allreduce(void * sendbuf,
   int rc, op_type_support, data_size;
   char *sbuf = sendbuf;
   char *rbuf = recvbuf;
+  DCMF_CollectiveRequest_t request;
+  volatile unsigned preallred_active = 1;
+  DCMF_Callback_t pre_allred_cb = 
+      {pre_allred_cb_done, (void *)&preallred_active};
+
 
   /* Did the user want to force a specific algorithm? */
   int userenvset = MPIDO_INFO_ISSET(properties, MPIDO_ALLREDUCE_ENVVAR);
@@ -82,9 +94,26 @@ MPIDO_Allreduce(void * sendbuf,
    {
       dputok[0] = (dputok[0] && buffers_aligned);
       dputok[1] = (dputok[1] && buffers_aligned);
-      STAR_info.internal_control_flow = 1;
-      MPIDO_Allreduce(MPI_IN_PLACE, &dputok, 2, MPI_INT, MPI_BAND, comm);
-      STAR_info.internal_control_flow = 0;
+      if(comm->dcmf.short_allred == NULL)
+      {
+         STAR_info.internal_control_flow = 1;
+         MPIDO_Allreduce(MPI_IN_PLACE, &dputok, 2, MPI_INT, MPI_BAND, comm);
+         STAR_info.internal_control_flow = 0;
+      }
+      else
+      {
+         DCMF_Allreduce(comm->dcmf.short_allred,
+                        &request,
+                        pre_allred_cb,
+                        DCMF_MATCH_CONSISTENCY,
+                        &(comm->dcmf.geometry),
+                        (void *)dputok,
+                        (void *)dputok,
+                        2,
+                        DCMF_SIGNED_INT,
+                        DCMF_BAND);
+         MPID_PROGRESS_WAIT_WHILE(preallred_active);
+      }
    }
 
 

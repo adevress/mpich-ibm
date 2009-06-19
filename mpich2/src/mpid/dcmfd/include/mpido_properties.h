@@ -21,6 +21,8 @@
 /* Communicator properties  */
 /****************************/
 
+/* MPIDO_SINGLE_THREAD_MODE and MPIDO_THREADED_MODE seem highly redundant */
+
 /* if comm size is power of 2 */
 #define MPIDO_POF2_COMM                                                    0  
 /* Is comm in threaded mode? */
@@ -65,8 +67,8 @@
 #define MPIDO_ALLREDUCE_ENVVAR                                             21
 #define MPIDO_BCAST_ENVVAR                                                 22
 #define MPIDO_REDUCE_ENVVAR                                                23
+#define MPIDO_PREALLREDUCE_ENVVAR                                          24
 /* In case we have complicated cutoffs in future algorithms */
-#define MPIDO_ENVVAR_RESERVED1                                             24
 #define MPIDO_ENVVAR_RESERVED2                                             25
 
 /* this indicates the bit index that represent properties for collectives */
@@ -120,7 +122,7 @@
 #define MPIDO_USE_SHORT_ASYNC_BINOM_ALLREDUCE                              60
 #define MPIDO_USE_RRING_DPUT_SINGLETH_ALLREDUCE                            61
 #define MPIDO_USE_MPICH_ALLREDUCE                                          62
-#define MPIDO_USE_PREALLREDUCE_ALLREDUCE                                       63
+#define MPIDO_USE_PREALLREDUCE_ALLREDUCE                                   63
 /* Controls whether or not we reuse storage in allreduce */
 #define MPIDO_USE_STORAGE_ALLREDUCE                                        64
 

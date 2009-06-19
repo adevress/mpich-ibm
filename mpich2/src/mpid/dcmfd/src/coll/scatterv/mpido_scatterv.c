@@ -13,6 +13,13 @@
 
 #pragma weak PMPIDO_Scatterv = MPIDO_Scatterv
 
+static void allred_cb_done(void *clientdata, DCMF_Error_t *err)
+{
+   volatile unsigned *work_left = (unsigned *)clientdata;
+   *work_left = 0;
+   MPID_Progress_signal();
+}
+
 int MPIDO_Scatterv(void *sendbuf,
                    int *sendcounts,
                    int *displs,
@@ -28,6 +35,10 @@ int MPIDO_Scatterv(void *sendbuf,
   int i, nbytes, sum=0, contig;
   MPID_Datatype *dt_ptr;
   MPI_Aint true_lb=0;
+  DCMF_CollectiveRequest_t request;
+  volatile unsigned allred_active = 1;
+  DCMF_Callback_t allred_cb = {allred_cb_done, (void *)&allred_active};
+
 
   if (MPIDO_INFO_ISSET(properties, MPIDO_USE_MPICH_SCATTERV) ||
       comm->comm_kind != MPID_INTRACOMM)
@@ -100,12 +111,24 @@ int MPIDO_Scatterv(void *sendbuf,
 
    if(MPIDO_INFO_ISSET(properties, MPIDO_USE_PREALLREDUCE_SCATTERV))
    {
-      MPIDO_Allreduce(MPI_IN_PLACE,
-		  optscatterv,
-		  3,
-		  MPI_INT,
-		  MPI_BOR,
-		  comm);
+      if(comm->dcmf.short_allred == NULL)
+      {
+         MPIDO_Allreduce(MPI_IN_PLACE, optscatterv, 3, MPI_INT, MPI_BOR, comm);
+      }
+      else
+      {
+         DCMF_Allreduce(comm->dcmf.short_allred,
+                        &request,
+                        allred_cb,
+                        DCMF_MATCH_CONSISTENCY,
+                        &(comm->dcmf.geometry),
+                        (void *)optscatterv,
+                        (void *)optscatterv,
+                        3,
+                        DCMF_SIGNED_INT,
+                        DCMF_BOR);
+         MPID_PROGRESS_WAIT_WHILE(allred_active);
+      }
    }
   /* reset flag */
   STAR_info.internal_control_flow = 0;  

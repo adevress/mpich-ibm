@@ -714,8 +714,116 @@ void MPIDI_Coll_Comm_create (MPID_Comm *comm)
       free(tmp);
     }
   }
-
-
+   /* Check to see if the user wants to override our pre-allreduce
+    * selection
+    */
+   comm->dcmf.short_allred = NULL;
+   if(!MPIDO_INFO_ISSET(comm_prop, MPIDO_PREALLREDUCE_ENVVAR))
+   {
+      /* If not, basically follow the existing MPIDO_Allreduce glue,
+       * just not as complicated 
+       */
+      if(MPIDO_INFO_ISSET(comm_prop, MPIDO_RECT_COMM) &&
+         MPIDO_INFO_ISSET(comm_prop, MPIDO_USE_SHORT_ASYNC_RECT_ALLREDUCE))
+      {
+         comm->dcmf.short_allred = 
+            &MPIDI_CollectiveProtocols.short_async_rect_allreduce;
+      }
+      else if(MPIDO_INFO_ISSET(comm_prop, MPIDO_IRREG_COMM) &&
+         MPIDO_INFO_ISSET(comm_prop, MPIDO_USE_SHORT_ASYNC_BINOM_ALLREDUCE))
+      {
+         comm->dcmf.short_allred = 
+            &MPIDI_CollectiveProtocols.short_async_binom_allreduce;
+      }
+      if(global)
+      {
+         if(MPIDO_INFO_ISSET(comm_prop, MPIDO_USE_TREE_DPUT_ALLREDUCE))
+            comm->dcmf.short_allred = 
+               &MPIDI_CollectiveProtocols.pipelinedtree_dput_allreduce;
+         else if(MPIDO_INFO_ISSET(comm_prop, MPIDO_USE_TREE_ALLREDUCE))
+            comm->dcmf.short_allred = 
+               &MPIDI_CollectiveProtocols.tree_allreduce;
+      }
+   }
+   /* The user wants a specific preallreduce. Let the fun begin. */
+   else
+   {
+      char *envopts;
+      envopts = getenv("DCMF_PREALLREDUCE");
+      if(strncasecmp(envopts,"ARI", 3) == 0)
+      { 
+         if(MPIDO_INFO_ISSET(comm_prop, MPIDO_USE_ARECTRING_ALLREDUCE))
+            comm->dcmf.short_allred = 
+               &MPIDI_CollectiveProtocols.async_ringrectangle_allreduce;
+      }
+      else if(strncasecmp(envopts,"AR", 2) == 0)
+      {
+         if(MPIDO_INFO_ISSET(comm_prop, MPIDO_USE_ARECT_ALLREDUCE))
+            comm->dcmf.short_allred = 
+               &MPIDI_CollectiveProtocols.async_rectangle_allreduce;
+      }
+      else if(strncasecmp(envopts, "SR", 2) == 0)
+      {
+         if(MPIDO_INFO_ISSET(comm_prop, MPIDO_USE_SHORT_ASYNC_RECT_ALLREDUCE))
+            comm->dcmf.short_allred = 
+               &MPIDI_CollectiveProtocols.short_async_rect_allreduce;
+      }
+      else if(strncasecmp(envopts, "SB", 2) == 0)
+      {
+         if(MPIDO_INFO_ISSET(comm_prop, MPIDO_USE_SHORT_ASYNC_BINOM_ALLREDUCE))
+            comm->dcmf.short_allred = 
+               &MPIDI_CollectiveProtocols.short_async_binom_allreduce;
+      }
+      else if(strncasecmp(envopts, "AB", 2) == 0)
+      {
+         if(MPIDO_INFO_ISSET(comm_prop, MPIDO_USE_ABINOM_ALLREDUCE))
+            comm->dcmf.short_allred = 
+               &MPIDI_CollectiveProtocols.async_binomial_allreduce;
+      }
+      else if(strncasecmp(envopts, "RI", 2) == 0)
+      {
+         if(MPIDO_INFO_ISSET(comm_prop, MPIDO_USE_RECTRING_ALLREDUCE))
+            comm->dcmf.short_allred = 
+               &MPIDI_CollectiveProtocols.rectanglering_allreduce;
+      }
+      else if(strncasecmp(envopts, "TD", 2) == 0)
+      {
+         if(MPIDO_INFO_ISSET(comm_prop, MPIDO_USE_TREE_DPUT_ALLREDUCE))
+            comm->dcmf.short_allred =
+               &MPIDI_CollectiveProtocols.pipelinedtree_dput_allreduce;
+      }
+      else if(strncasecmp(envopts, "R", 1) == 0)
+      {
+         if(MPIDO_INFO_ISSET(comm_prop, MPIDO_USE_RECT_ALLREDUCE));
+            comm->dcmf.short_allred = 
+               &MPIDI_CollectiveProtocols.rectangle_allreduce;
+      }
+      else if(strncasecmp(envopts, "B", 1) == 0)
+      {
+         if(MPIDO_INFO_ISSET(comm_prop, MPIDO_USE_BINOM_ALLREDUCE))
+            comm->dcmf.short_allred =
+               &MPIDI_CollectiveProtocols.binomial_allreduce;
+      }
+      else if(strncasecmp(envopts, "T", 1) == 0)
+      {
+         if(MPIDO_INFO_ISSET(comm_prop, MPIDO_USE_TREE_ALLREDUCE))
+            comm->dcmf.short_allred = 
+               &MPIDI_CollectiveProtocols.tree_allreduce;
+      }
+      else if(strncasecmp(envopts, "P", 1) == 0)
+      {
+         if(MPIDO_INFO_ISSET(comm_prop, MPIDO_USE_PIPELINED_TREE_ALLREDUCE))
+            comm->dcmf.short_allred =
+               &MPIDI_CollectiveProtocols.pipelinedtree_allreduce;
+      }
+      else if(strncasecmp(envopts, "D", 1) == 0)
+      {
+         if(MPIDO_INFO_ISSET(comm_prop,MPIDO_USE_RRING_DPUT_SINGLETH_ALLREDUCE))
+            comm->dcmf.short_allred =
+               &MPIDI_CollectiveProtocols.rring_dput_allreduce_singleth;
+      }
+   }
+      
 #else /* !USE_CCMI_COLL */
 
   comm->coll_fns->Barrier        = NULL;

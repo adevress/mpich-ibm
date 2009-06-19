@@ -11,6 +11,13 @@
 
 #define NOTTREEOP 1
 
+#define MPIDO_SEND_CONTIG 0
+#define MPIDO_RECV_CONTIG 1
+#define MPIDO_RECV_CONTINUOUS 2
+#define MPIDO_LARGECOUNT 3
+#define MPIDO_MEDIUMCOUNT 4
+#define MPIDO_ALIGNEDBUFFER 5
+
 typedef struct {
   int send_contig;
   int recv_contig;
@@ -19,6 +26,7 @@ typedef struct {
   int mediumcount;
   int aligned_buffer;
 } MPIDO_Coll_config;
+
 
 /* Helpers */
 int MPIDO_AllocateAlltoallBuffers(MPID_Comm * comm);

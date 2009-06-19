@@ -14,6 +14,14 @@
 
 #pragma weak PMPIDO_Bcast = MPIDO_Bcast
 
+static void allred_cb_done(void *clientdata, DCMF_Error_t *err)
+{
+   volatile unsigned *work_left = (unsigned *)clientdata;
+   *work_left=0;
+   MPID_Progress_signal();
+}
+
+
 int
 MPIDO_Bcast(void *buffer,
             int count, MPI_Datatype datatype, int root, MPID_Comm * comm)
@@ -23,6 +31,9 @@ MPIDO_Bcast(void *buffer,
 
   int data_size, data_contig, rc = MPI_ERR_INTERN;
   char *data_buffer = NULL, *noncontig_buff = NULL;
+  volatile unsigned allred_active = 1;
+  DCMF_CollectiveRequest_t request;
+  DCMF_Callback_t allred_cb = {allred_cb_done, (void*) &allred_active};
   int buffer_aligned;
   int dputok[2];
 
@@ -96,9 +107,28 @@ MPIDO_Bcast(void *buffer,
    {
       dputok[0] = (dputok[0] && buffer_aligned);
       dputok[1] = (dputok[1] && buffer_aligned);
-      STAR_info.internal_control_flow = 1;
-      MPIDO_Allreduce(MPI_IN_PLACE, &dputok, 2, MPI_INT, MPI_BAND, comm);
-      STAR_info.internal_control_flow = 0;
+      if(comm->dcmf.short_allred == NULL)
+      {
+         STAR_info.internal_control_flow = 1;
+         MPIDO_Allreduce(MPI_IN_PLACE, &dputok, 2, MPI_INT, MPI_BAND, comm);
+         STAR_info.internal_control_flow = 0;
+      }
+      else
+      {
+         DCMF_Allreduce(comm->dcmf.short_allred,
+                     &request,
+                     allred_cb,
+                     DCMF_MATCH_CONSISTENCY,
+                     &(comm->dcmf.geometry),
+                     (void *)dputok,
+                     (void *)dputok,
+                     2,
+                     DCMF_SIGNED_INT,
+                     DCMF_BAND);
+         MPID_PROGRESS_WAIT_WHILE(allred_active);
+      }
+
+
    }
 
 
