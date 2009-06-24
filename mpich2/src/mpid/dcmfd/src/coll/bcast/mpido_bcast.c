@@ -99,8 +99,11 @@ MPIDO_Bcast(void *buffer,
    */
    dputok[0] = MPIDO_INFO_ISSET(properties, MPIDO_USE_RECT_DPUT_BCAST) &&
               (userenvset || data_size>8192);
+   /* We never do CCMI_TREE_DPUT_BCAST unless a lot of other stuff is turned
+    * off. That stuff can only be turned off via env vars, so it doesn't make
+    * sense to do this preallreduce UNLESS env vars are set */
    dputok[1] = MPIDO_INFO_ISSET(properties, MPIDO_USE_CCMI_TREE_DPUT_BCAST) &&
-              (userenvset || data_size>1);
+              userenvset;
 
    if(MPIDO_INFO_ISSET(properties, MPIDO_USE_PREALLREDUCE_BCAST) && 
       (dputok[0] || dputok[1]))
@@ -137,7 +140,7 @@ MPIDO_Bcast(void *buffer,
   {
     if (userenvset)
     {
-      if (mpid_hw.tSize > 1 && data_size <= 8192 &&
+      if (mpid_hw.tSize > 1 && // data_size <= 8192 &&
           MPIDO_INFO_ISSET(properties, MPIDO_USE_TREE_SHMEM_BCAST))
       {
         func = MPIDO_Bcast_tree_shmem;
@@ -220,6 +223,9 @@ MPIDO_Bcast(void *buffer,
           comm->dcmf.last_algorithm = MPIDO_USE_TREE_BCAST;        
         }
 
+         /* We don't actually use this protocol yet, but the performance
+          * isn't horrible so we will use it some day when we get rid of
+          * global tree. so leaving this one alone for now. */
         if (!func && MPIDO_INFO_ISSET(properties, MPIDO_USE_CCMI_TREE_BCAST))
         {
           func = MPIDO_Bcast_CCMI_tree;
@@ -259,11 +265,16 @@ MPIDO_Bcast(void *buffer,
           func = MPIDO_Bcast_CCMI_tree;
           comm->dcmf.last_algorithm = MPIDO_USE_CCMI_TREE_BCAST;
         }
+        /* This will never ever be used unless done via env vars. There is
+         * no reason to ruin other protocols performance for that. */
+        /** \todo Decide if there is ever a case to actually use this 
+
         if (!func && buffer_aligned && dputok[1])
         {
           func = MPIDO_Bcast_CCMI_tree_dput;
           comm->dcmf.last_algorithm = MPIDO_USE_CCMI_TREE_DPUT_BCAST;
         }
+        */
         
       }
       else if (data_size <= 8192)
@@ -319,11 +330,15 @@ MPIDO_Bcast(void *buffer,
           comm->dcmf.last_algorithm = MPIDO_USE_CCMI_TREE_BCAST;
         }
         
+        /* This will never ever be used unless done via env vars. There is
+         * no reason to ruin other protocols performance for that. */
+        /** \todo Decide if there is ever a case to actually use this 
         if (!func && buffer_aligned && dputok[1])
         {
           func = MPIDO_Bcast_CCMI_tree_dput;
           comm->dcmf.last_algorithm = MPIDO_USE_CCMI_TREE_DPUT_BCAST;
         }
+        */
       }
       else if (data_size <= 65536)
       {
@@ -340,11 +355,15 @@ MPIDO_Bcast(void *buffer,
           comm->dcmf.last_algorithm = MPIDO_USE_TREE_BCAST;        
         }
 
+        /* This will never ever be used unless done via env vars. There is
+         * no reason to ruin other protocols performance for that. */
+        /** \todo Decide if there is ever a case to actually use this 
         if (!func && buffer_aligned && dputok[1])
         {
           func = MPIDO_Bcast_CCMI_tree_dput;
           comm->dcmf.last_algorithm = MPIDO_USE_CCMI_TREE_DPUT_BCAST;
         }      
+        */
 
         if (!func && MPIDO_INFO_ISSET(properties, MPIDO_USE_CCMI_TREE_BCAST))
         {          
@@ -430,11 +449,15 @@ MPIDO_Bcast(void *buffer,
           func = MPIDO_Bcast_CCMI_tree;
           comm->dcmf.last_algorithm = MPIDO_USE_CCMI_TREE_BCAST;
         }
+        /* This will never ever be used unless done via env vars. There is
+         * no reason to ruin other protocols performance for that. */
+        /** \todo Decide if there is ever a case to actually use this 
         if (!func && buffer_aligned && dputok[1])
         {
           func = MPIDO_Bcast_CCMI_tree_dput;
           comm->dcmf.last_algorithm = MPIDO_USE_CCMI_TREE_DPUT_BCAST;
         }        
+        */
       }
     }
     
