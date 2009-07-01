@@ -196,10 +196,10 @@
 /* Reduce protocols */
 /*---------------------------------------------------------------------------*/
 #define MPIDO_USE_BINOM_REDUCE                                             100
-#define MPIDO_USE_TREE_REDUCE                                              101
+#define MPIDO_USE_GLOBAL_TREE_REDUCE                                       101
 #define MPIDO_USE_RECT_REDUCE                                              102
 #define MPIDO_USE_RECTRING_REDUCE                                          103
-#define MPIDO_USE_CCMI_TREE_REDUCE                                         104
+#define MPIDO_USE_TREE_REDUCE                                              104
 #define MPIDO_USE_MPICH_REDUCE                                             105
 #define MPIDO_USE_ALLREDUCE_REDUCE                                         106
 #define MPIDO_USE_PREMALLOC_REDUCE                                         107
@@ -235,6 +235,7 @@
 #define MPIDO_USE_CCMI_TREE_BCAST                                          123
 #define MPIDO_USE_CCMI_TREE_DPUT_BCAST                                     124
 #define MPIDO_USE_CCMI_GI_BARRIER                                          125
+#define MPIDO_USE_GLOBAL_TREE_ALLREDUCE                                    126
 
 
 extern char * mpido_algorithms[];

@@ -139,7 +139,8 @@ MPIDO_Allgather(void *sendbuf,
     use_bcast = MPIDO_INFO_ISSET(comm_prop, MPIDO_USE_BCAST_ALLGATHER); 
 
     use_tree_reduce = 
-      MPIDO_INFO_ISSET(comm_prop, MPIDO_USE_TREE_ALLREDUCE) &&
+      (MPIDO_INFO_ISSET(comm_prop, MPIDO_USE_TREE_ALLREDUCE) ||
+       MPIDO_INFO_ISSET(comm_prop, MPIDO_USE_GLOBAL_TREE_ALLREDUCE)) &&
       MPIDO_INFO_ISSET(comm_prop, MPIDO_USE_ALLREDUCE_ALLGATHER) &&
       config[MPIDO_RECV_CONTIG] && config[MPIDO_SEND_CONTIG] && 
       config[MPIDO_RECV_CONTINUOUS] && (recv_size % sizeof(int) == 0);

@@ -134,7 +134,9 @@ MPIDO_Allgatherv(void *sendbuf,
   if (!STAR_info.enabled || STAR_info.internal_control_flow ||
       ((double)buffer_sum / (double)np) < STAR_info.allgather_threshold)
   {
-    use_tree_reduce = MPIDO_INFO_ISSET(comm_prop, MPIDO_USE_TREE_ALLREDUCE) &&
+    use_tree_reduce = 
+      (MPIDO_INFO_ISSET(comm_prop, MPIDO_USE_TREE_ALLREDUCE) ||
+       MPIDO_INFO_ISSET(comm_prop, MPIDO_USE_GLOBAL_TREE_ALLREDUCE)) &&
       MPIDO_INFO_ISSET(comm_prop,
                       MPIDO_USE_ALLREDUCE_ALLGATHERV) &&
       config[MPIDO_RECV_CONTIG] &&

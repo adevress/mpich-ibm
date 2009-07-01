@@ -78,14 +78,13 @@ MPIDO_Allreduce(void * sendbuf,
                                MPIDO_USE_RRING_DPUT_SINGLETH_ALLREDUCE) &&
                               (userenvset || data_size > 16384);
    /* Dput tree is more complicated. First, check properties. Then,
-    * if we are in VNM and the count is >512 or the size is >4096, we can
-    * use dput. dput tree internals looks at count in one place and data_size
-    * in another place. dput tree also has internal cutoffs between multiple
+    * if we are in VNM and the size is >4096, we can
+    * use dput. dput tree also has internal cutoffs between multiple
     * protocols. we should fix that before v1r4m1 
     */
   dputok[1] = MPIDO_INFO_ISSET(properties, MPIDO_USE_TREE_DPUT_ALLREDUCE) &&
                               mpid_hw.tSize > 1 &&
-                               (userenvset || count > 512 || data_size > 4096);
+                               (userenvset || data_size > 4096);
    /* Ok, does the user want us to skip over the allreduce? If not, do it
     * now 
     */
@@ -127,7 +126,13 @@ MPIDO_Allreduce(void * sendbuf,
            op_type_support == MPIDO_TREE_MIN_SUPPORT) &&
           MPIDO_INFO_ISSET(properties, MPIDO_TREE_COMM))
       {
-        if (mpid_hw.tSize > 1 &&
+        if (MPIDO_INFO_ISSET(properties, MPIDO_USE_GLOBAL_TREE_ALLREDUCE) &&
+            data_size > 512 && data_size < 8192)
+        {
+          func = MPIDO_Allreduce_global_tree;
+          comm->dcmf.last_algorithm = MPIDO_USE_GLOBAL_TREE_ALLREDUCE;
+        }
+        if (!func && mpid_hw.tSize > 1 &&
             MPIDO_INFO_ISSET(properties, MPIDO_USE_TREE_DPUT_ALLREDUCE))
         {
          if(dputok[1] && buffers_aligned)
@@ -147,7 +152,6 @@ MPIDO_Allreduce(void * sendbuf,
           func = MPIDO_Allreduce_tree;
           comm->dcmf.last_algorithm = MPIDO_USE_TREE_ALLREDUCE;
         }
-
         if (dputok[0] && data_size >= 32768 &&
             op_type_support != MPIDO_TREE_SUPPORT)
           func = NULL;
@@ -210,7 +214,12 @@ MPIDO_Allreduce(void * sendbuf,
       if (op_type_support == MPIDO_TREE_SUPPORT ||
           op_type_support == MPIDO_TREE_MIN_SUPPORT)
       {
-        if (MPIDO_INFO_ISSET(properties, MPIDO_USE_TREE_ALLREDUCE))
+        if (MPIDO_INFO_ISSET(properties, MPIDO_USE_GLOBAL_TREE_ALLREDUCE))
+        {
+          func = MPIDO_Allreduce_global_tree;
+          comm->dcmf.last_algorithm = MPIDO_USE_GLOBAL_TREE_ALLREDUCE;
+        }
+        if (!func && MPIDO_INFO_ISSET(properties, MPIDO_USE_TREE_ALLREDUCE))
         {
           func = MPIDO_Allreduce_tree;
           comm->dcmf.last_algorithm = MPIDO_USE_TREE_ALLREDUCE;

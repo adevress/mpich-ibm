@@ -313,9 +313,13 @@
  *   - RECT - Use a rectangular/binomial protocol.  This is off by default.
  *   - BINOM - Use a binomial protocol.  This is the default for irregular
  *     subcommunicators.
- *   - TREE - Use the collective network.  This is the default for 
- *       MPI_COMM_WORLD and duplicates of MPI_COMM_WORLD in MPI_THREAD_SINGLE 
- *       mode.
+ *   - TREE - Use the collective network.  This is the default
+ *       (except for GLOBAL between 512 and 8K) for
+ *       MPI_COMM_WORLD and duplicates of MPI_COMM_WORLD in
+ *       MPI_THREAD_SINGLE mode.
+ *   - GLOBAL - Use the global collective network protocol for
+ *     sizes between 512 and 8K. Otherwise this defaults the
+ *     same as TREE.
  *   - CCMI - Use the CCMI collective network protocol.  This is off by default.
  *   - PIPE - Use the pipelined CCMI collective network protocol. This is off 
  *       by default.
@@ -601,8 +605,10 @@ MPIDI_Env_setup()
                   MPIDO_USE_TREE_DPUT_ALLREDUCE,
                   MPIDO_USE_STORAGE_REDUCE,
                   //MPIDO_USE_PIPELINED_TREE_REDUCE,
-                  MPIDO_USE_TREE_REDUCE,
+                  MPIDO_USE_GLOBAL_TREE_REDUCE,
+                  MPIDO_USE_GLOBAL_TREE_ALLREDUCE,
                   //MPIDO_USE_TREE_DPUT_REDUCE,
+                  //MPIDO_USE_TREE_REDUCE,
                   MPIDO_USE_RECT_REDUCE,
                   MPIDO_USE_RECTRING_REDUCE,
                   MPIDO_USE_BINOM_REDUCE,
@@ -994,6 +1000,7 @@ MPIDI_Env_setup()
     MPIDO_INFO_UNSET(properties, MPIDO_USE_ARECT_ALLREDUCE);
     MPIDO_INFO_UNSET(properties, MPIDO_USE_ABINOM_ALLREDUCE);
     MPIDO_INFO_UNSET(properties, MPIDO_USE_ARECTRING_ALLREDUCE);
+    MPIDO_INFO_UNSET(properties, MPIDO_USE_GLOBAL_TREE_ALLREDUCE);
     MPIDO_INFO_UNSET(properties, MPIDO_USE_TREE_ALLREDUCE);
     MPIDO_INFO_UNSET(properties, MPIDO_USE_BINOM_ALLREDUCE);
     MPIDO_INFO_UNSET(properties, MPIDO_USE_RECTRING_ALLREDUCE);
@@ -1033,6 +1040,8 @@ MPIDI_Env_setup()
       MPIDO_INFO_SET(properties, MPIDO_USE_PIPELINED_TREE_ALLREDUCE);
     else if(strncasecmp(envopts, "D", 1) == 0) /* Rect dput */
       MPIDO_INFO_SET(properties, MPIDO_USE_RRING_DPUT_SINGLETH_ALLREDUCE);
+    else if(strncasecmp(envopts, "G", 1) == 0) /* Global tree */
+      MPIDO_INFO_SET(properties, MPIDO_USE_GLOBAL_TREE_ALLREDUCE);
     else
     {
       fprintf(stderr,
@@ -1076,7 +1085,7 @@ MPIDI_Env_setup()
   {
     MPIDO_INFO_SET(properties, MPIDO_REDUCE_ENVVAR);
     MPIDO_INFO_UNSET(properties, MPIDO_USE_ALLREDUCE_REDUCE);
-    MPIDO_INFO_UNSET(properties, MPIDO_USE_TREE_REDUCE);
+    MPIDO_INFO_UNSET(properties, MPIDO_USE_GLOBAL_TREE_REDUCE);
     //MPIDO_INFO_UNSET(properties, MPIDO_USE_TREE_DPUT_REDUCE);
     //MPIDO_INFO_UNSET(properties, MPIDO_USE_PIPELINED_TREE_REDUCE);
     MPIDO_INFO_UNSET(properties, MPIDO_USE_BINOM_REDUCE);
@@ -1103,6 +1112,10 @@ MPIDI_Env_setup()
     else if(strncasecmp(envopts, "B", 1) == 0) /* Binomial */
     {
       MPIDO_INFO_SET(properties, MPIDO_USE_BINOM_REDUCE);
+    }
+    else if(strncasecmp(envopts, "G", 1) == 0) /* Tree */
+    {
+      MPIDO_INFO_SET(properties, MPIDO_USE_GLOBAL_TREE_REDUCE);
     }
     else if(strncasecmp(envopts, "T", 1) == 0) /* Tree */
     {
