@@ -286,10 +286,27 @@ int mqs_image_has_queues (mqs_image *image, char **message)
 	    have_req = 1;
 	    i_info->req_status_offs = dbgr_field_offset( req_type, "status" );
 	    i_info->req_cc_offs     = dbgr_field_offset( req_type, "cc" );
-	    i_info->req_next_offs = dbgr_field_offset( req_type, "next" );
-	    i_info->req_tag_offs = dbgr_field_offset( req_type, "tag" );
-	    i_info->req_rank_offs = dbgr_field_offset( req_type, "rank" );
-	    i_info->req_context_id_offs = dbgr_field_offset( req_type, "context_id" );
+
+       i_info->req_dcmf_offs = dbgr_field_offset(req_type, "dcmf");
+       /* This is down inside the dcmf request structure. I don't
+        * see a way to get this, so I used offsetof() to find the
+        * field offsets. 
+        */
+       i_info->req_next_offs = i_info->req_dcmf_offs + 48;
+
+       /* I see no way using these interfaces to get down to 
+        * dcmf->envelope->msginfo->MPItag, so I just manually
+        * used offsetof() to find the offset of each individual
+        * structure and added them together. The intermediate
+        * structures (envelope and msginfo) are both the first 
+        * elements in their respective structures, so their offset is
+        * zero. There is a field in msginfo before tag, but after that
+        * it goes tag/rank/ctxt, so our offsets are just 4, 8, and 12.
+        */
+       i_info->req_tag_offs = i_info->req_dcmf_offs + 4;
+       i_info->req_rank_offs = i_info->req_tag_offs + 4;
+       i_info->req_context_id_offs = i_info->req_rank_offs + 4;
+
 	}
     }
 

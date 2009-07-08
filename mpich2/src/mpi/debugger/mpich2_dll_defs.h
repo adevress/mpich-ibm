@@ -36,6 +36,7 @@ typedef struct
   int req_tag_offs;
   int req_rank_offs;
   int req_context_id_offs;
+  int req_dcmf_offs;
 
 } mpich_image_info; 
 
