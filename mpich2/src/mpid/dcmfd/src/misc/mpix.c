@@ -8,10 +8,10 @@
 #include "mpix.h"
 
 #pragma weak PMI_torus2rank = MPIX_torus2rank
-unsigned MPIX_torus2rank (unsigned        x,
-                          unsigned        y,
-                          unsigned        z,
-                          unsigned        t)
+unsigned MPIX_torus2rank(unsigned x,
+                         unsigned y,
+                         unsigned z,
+                         unsigned t)
 {
   size_t rank;
   DCMF_Network network = DCMF_TORUS_NETWORK;
@@ -21,39 +21,42 @@ unsigned MPIX_torus2rank (unsigned        x,
   addr.torus.y = y;
   addr.torus.z = z;
   addr.torus.t = t;
-  if (DCMF_Messager_network2rank(&addr, &rank, &network) == DCMF_SUCCESS) return rank;
-  return (unsigned) -1;
+  if (DCMF_Messager_network2rank(&addr, &rank, &network) == DCMF_SUCCESS)
+    return rank;
+  else
+    return (unsigned) -1;
 }
 
 #pragma weak PMI_Comm_torus2rank = MPIX_Comm_torus2rank
-unsigned MPIX_Comm_torus2rank (MPI_Comm comm,
-                               unsigned x,
-                               unsigned y,
-                               unsigned z,
-                               unsigned t)
+unsigned MPIX_Comm_torus2rank(MPI_Comm comm,
+                              unsigned x,
+                              unsigned y,
+                              unsigned z,
+                              unsigned t)
 {
   int rank, worldrank = MPIX_torus2rank(x, y, z, t);
-  if (comm == MPI_COMM_WORLD) rank = worldrank;
+  if (comm == MPI_COMM_WORLD)
+    rank = worldrank;
   else
-  {
-    MPI_Group group_a, worldgroup;
-    PMPI_Comm_group (comm, &group_a);
-    PMPI_Comm_group (MPI_COMM_WORLD, &worldgroup);
-    PMPI_Group_translate_ranks (worldgroup, 1, &worldrank, group_a, &rank);
-  }
+    {
+      MPI_Group group_a, worldgroup;
+      PMPI_Comm_group (comm, &group_a);
+      PMPI_Comm_group (MPI_COMM_WORLD, &worldgroup);
+      PMPI_Group_translate_ranks (worldgroup, 1, &worldrank, group_a, &rank);
+    }
   return rank;
 }
 
 #pragma weak PMI_rank2torus = MPIX_rank2torus
-void MPIX_rank2torus (unsigned        rank,
-                      unsigned       *x,
-                      unsigned       *y,
-                      unsigned       *z,
-                      unsigned       *t)
+void MPIX_rank2torus(unsigned  rank,
+                     unsigned *x,
+                     unsigned *y,
+                     unsigned *z,
+                     unsigned *t)
 {
   DCMF_NetworkCoord_t addr;
-  if (DCMF_Messager_rank2network(rank, DCMF_DEFAULT_NETWORK, &addr) != DCMF_SUCCESS) abort();
-
+  if (DCMF_Messager_rank2network(rank, DCMF_DEFAULT_NETWORK, &addr) != DCMF_SUCCESS)
+    abort();
   *x = addr.torus.x;
   *y = addr.torus.y;
   *z = addr.torus.z;
@@ -69,15 +72,16 @@ void MPIX_Comm_rank2torus(MPI_Comm comm,
                           unsigned *t)
 {
   int worldrank;
-  if (comm == MPI_COMM_WORLD) worldrank = rank;
+  if (comm == MPI_COMM_WORLD)
+    worldrank = rank;
   else
-  {
-    MPI_Group group_a, worldgroup;
-    PMPI_Comm_group (comm, &group_a);
-    PMPI_Comm_group (MPI_COMM_WORLD, &worldgroup);
-    PMPI_Group_translate_ranks (group_a, 1, (int*)&rank, worldgroup, &worldrank);
-  }
-  MPIX_rank2torus (worldrank, x, y, z, t);
+    {
+      MPI_Group group_a, worldgroup;
+      PMPI_Comm_group (comm, &group_a);
+      PMPI_Comm_group (MPI_COMM_WORLD, &worldgroup);
+      PMPI_Group_translate_ranks (group_a, 1, (int*)&rank, worldgroup, &worldrank);
+    }
+  MPIX_rank2torus(worldrank, x, y, z, t);
 }
 
 
@@ -100,13 +104,15 @@ int MPIX_Cart_comm_create(MPI_Comm *cart_comm)
 {
   int result;
   int rank, numprocs,
-    dims[4],
-    wrap[4],
-    coords[4];
-  int new_rank,
-    new_dims[4],
-    new_wrap[4],
-    new_coords[4];
+      dims[4],
+      wrap[4],
+      coords[4];
+  int new_rank1, new_rank2;
+  MPI_Comm new_comm = MPI_COMM_NULL;
+  int cart_rank,
+      cart_dims[4],
+      cart_wrap[4],
+      cart_coords[4];
   DCMF_Hardware_t pers;
 
 
@@ -121,7 +127,7 @@ int MPIX_Cart_comm_create(MPI_Comm *cart_comm)
   dims[1]   = pers.zSize;
   dims[0]   = pers.tSize;
 
-  /* This only works if MPI_COMM_WORLD is the full partition */
+/* This only works if MPI_COMM_WORLD is the full partition */
   if (dims[3] * dims[2] * dims[1] * dims[0] != numprocs)
     return MPI_ERR_TOPOLOGY;
 
@@ -135,25 +141,37 @@ int MPIX_Cart_comm_create(MPI_Comm *cart_comm)
   coords[1] = pers.zCoord;
   coords[0] = pers.tCoord;
 
+  new_rank1 =                     coords[3] +
+                        dims[3] * coords[2] +
+              dims[3] * dims[2] * coords[1] +
+    dims[3] * dims[2] * dims[1] * coords[0];
+  result = PMPI_Comm_split(MPI_COMM_WORLD, 0, new_rank1, &new_comm);
+  if (result != MPI_SUCCESS)
+    {
+      PMPI_Comm_free(&new_comm);
+      return result;
+    }
+  PMPI_Comm_rank(new_comm, &new_rank2);
+  assert(new_rank1 == new_rank2);
 
-  result = PMPI_Cart_create(
-                            MPI_COMM_WORLD,
+  result = PMPI_Cart_create(new_comm,
                             4,
                             dims,
                             wrap,
                             0,
-                            cart_comm
-                            );
-  if (result != MPI_SUCCESS) return result;
+                            cart_comm);
+  if (result != MPI_SUCCESS)
+    return result;
 
 
-  PMPI_Comm_rank(*cart_comm, &new_rank);
-  PMPI_Cart_get (*cart_comm, 4, new_dims, new_wrap, new_coords);
+  PMPI_Comm_rank(*cart_comm, &cart_rank);
+  PMPI_Cart_get (*cart_comm, 4, cart_dims, cart_wrap, cart_coords);
 
-  CMP_4(dims,   new_dims);
-  CMP_4(wrap,   new_wrap);
-  CMP_4(coords, new_coords);
+  CMP_4(dims,   cart_dims);
+  CMP_4(wrap,   cart_wrap);
+  CMP_4(coords, cart_coords);
 
+  PMPI_Comm_free(&new_comm);
   return MPI_SUCCESS;
 }
 
@@ -199,23 +217,23 @@ void MPIX_Dump_stacks()
   char **strings = backtrace_symbols(array, size);
   fprintf(stderr, "Dumping %zd frames:\n", size - 1);
   for (i = 1; i < size; i++)
-  {
-    if (strings != NULL)
-      fprintf(stderr, "\tFrame %zd: %p: %s\n", i, array[i], strings[i]);
-    else
-      fprintf(stderr, "\tFrame %zd: %p\n", i, array[i]);
-  }
+    {
+      if (strings != NULL)
+        fprintf(stderr, "\tFrame %zd: %p: %s\n", i, array[i], strings[i]);
+      else
+        fprintf(stderr, "\tFrame %zd: %p\n", i, array[i]);
+    }
 
   free(strings); /* Since this is not allocated by MPIU_Malloc, do not use MPIU_Free */
 }
 
-#pragma weak PMI_Get_properties = MPIX_Get_properties
+
 int MPIX_Get_properties(MPI_Comm comm, int * array)
 {
   int i;
   MPID_Comm * comm_ptr;
   MPID_Comm_get_ptr(comm, comm_ptr);
-  
+
   if (!comm_ptr || comm == MPI_COMM_NULL)
     return MPI_ERR_COMM;
 
@@ -226,7 +244,6 @@ int MPIX_Get_properties(MPI_Comm comm, int * array)
   return MPI_SUCCESS;
 }
 
-#pragma weak PMI_Get_property = MPIX_Get_property
 int MPIX_Get_property(MPI_Comm comm, int prop, int * result)
 {
   MPID_Comm * comm_ptr;
@@ -238,18 +255,17 @@ int MPIX_Get_property(MPI_Comm comm, int prop, int * result)
     return MPI_ERR_ARG;
 
   *result = MPIDO_INFO_ISSET(&(comm_ptr->dcmf.properties), prop);
-  return MPI_SUCCESS; 
+  return MPI_SUCCESS;
 }
 
-#pragma weak PMI_Set_property = MPIX_Set_property
 int MPIX_Set_property(MPI_Comm comm, int prop, int value)
 {
   MPID_Comm * comm_ptr;
   MPID_Comm_get_ptr(comm, comm_ptr);
-  
+
   if (!comm_ptr || comm == MPI_COMM_NULL)
     return MPI_ERR_COMM;
-  
+
   if (prop < 0 || prop > MPIDO_MAX_NUM_BITS)
     return MPI_ERR_ARG;
 
@@ -257,7 +273,7 @@ int MPIX_Set_property(MPI_Comm comm, int prop, int value)
     MPIDO_INFO_UNSET(&(comm_ptr->dcmf.properties), prop);
   else
     MPIDO_INFO_SET(&(comm_ptr->dcmf.properties), prop);
-  
+
   /* if we are attempting changing a communicator property */
   if (prop == MPIDO_TREE_COMM || prop == MPIDO_RECT_COMM ||
       prop == MPIDO_IRREG_COMM)
@@ -271,7 +287,7 @@ int MPIX_Get_coll_protocol(MPI_Comm comm, char * protocol, int length)
 {
   MPID_Comm * comm_ptr;
   MPID_Comm_get_ptr(comm, comm_ptr);
-  
+
   if (!comm_ptr || comm == MPI_COMM_NULL)
     return MPI_ERR_COMM;
 
@@ -283,7 +299,7 @@ int MPIX_Get_coll_protocol(MPI_Comm comm, char * protocol, int length)
     strncpy(protocol, mpido_algorithms[comm_ptr->dcmf.last_algorithm -
                                        MPIDO_COLL_PROP], length);
   }
-  
+
   return MPI_SUCCESS;
 }
 
