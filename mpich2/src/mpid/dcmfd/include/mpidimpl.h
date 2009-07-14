@@ -75,12 +75,12 @@ typedef struct
   optimized;
   unsigned eager_limit;
   unsigned optrzv_limit;
+  unsigned rma_pending;		/**< The max num outstanding requests during an RMA op */
   unsigned verbose        :  8;  /**< The current level of verbosity for end-of-job stats. */
   unsigned statistics     :  8;  /**< The current level of stats collection.               */
   unsigned use_interrupts :  1;  /**< Should interrupts be turned on.                      */
   unsigned use_ssm        :  1;  /**< Enable Sender-Side-Matching of messages.             */
-  unsigned rma_pending    :  1;
-/*unsigned unused_flags   : 13; */
+/*unsigned unused_flags   : 14; */
 }      MPIDI_Process_t;
 extern MPIDI_Process_t MPIDI_Process;
 
