@@ -92,7 +92,8 @@ int MPIDI_Recvq_FU(int source, int tag, int context_id, MPI_Status * status)
                    )
                   {
                     found = 1;
-                    *status = (rreq->status);
+                    if(status != MPI_STATUS_IGNORE)
+                       *status = (rreq->status);
                     break;
                   }
 
@@ -143,7 +144,8 @@ int MPIDI_Recvq_FU(int source, int tag, int context_id, MPI_Status * status)
                    )
                   {
                     found = 1;
-                    *status = (rreq->status);
+                    if(status != MPI_STATUS_IGNORE)
+                       *status = (rreq->status);
                     break;
                   }
 
