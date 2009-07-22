@@ -233,7 +233,6 @@ int MPID_Put(void *origin_addr, int origin_count,
                          * it was sent (use our lpid) */
                         (void)MPIDU_check_dt(mpid_my_lpid, target_datatype, &dti);
                         MPID_assert(dti.map != NULL);
-                        xtra.mpid_xtra_w1 = (size_t)&win_ptr->_dev.my_rma_pends;
                         b = win_ptr->_dev.coll_info[target_rank].base_addr +
                                 win_ptr->_dev.coll_info[target_rank].disp_unit *
                                 target_disp;
