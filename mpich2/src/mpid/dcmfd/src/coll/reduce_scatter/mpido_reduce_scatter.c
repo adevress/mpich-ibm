@@ -34,7 +34,7 @@ int MPIDO_Reduce_scatter(void *sendbuf,
 
   if(MPIDO_INFO_ISSET(properties, MPIDO_USE_MPICH_REDUCESCATTER) ||
      !MPIDO_INFO_ISSET(properties, MPIDO_USE_REDUCESCATTER) ||
-     recvcounts[0] < 256 || 
+     recvcounts[0] < 256 || sendbuf == MPI_IN_PLACE || 
      !MPIDI_IsTreeOp(op, datatype) || op == MPI_MINLOC || op == MPI_MAXLOC)
   {
     comm->dcmf.last_algorithm = MPIDO_USE_MPICH_REDUCESCATTER;
