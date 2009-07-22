@@ -65,8 +65,7 @@ int MPID_nem_lmt_RndvSend(MPID_Request **sreq_p, const void * buf, int count, MP
                           MPIDI_msg_sz_t data_sz, MPI_Aint dt_true_lb, int rank, int tag, MPID_Comm * comm, int context_offset)
 {
     int mpi_errno = MPI_SUCCESS;
-    MPIDI_CH3_Pkt_t upkt;
-    MPID_nem_pkt_lmt_rts_t * const rts_pkt = (MPID_nem_pkt_lmt_rts_t *)&upkt;
+    MPID_PKT_DECL_CAST(upkt, MPID_nem_pkt_lmt_rts_t, rts_pkt);
     MPIDI_VC_t *vc;
     MPID_Request *sreq =*sreq_p;
     MPIDI_STATE_DECL(MPID_STATE_MPID_NEM_LMT_RNDVSEND);
@@ -99,7 +98,7 @@ int MPID_nem_lmt_RndvSend(MPID_Request **sreq_p, const void * buf, int count, MP
     MPIDI_Pkt_set_seqnum(rts_pkt, seqnum);
     MPIDI_Request_set_seqnum(sreq, seqnum);
 
-    mpi_errno = ((MPIDI_CH3I_VC *)vc->channel_private)->lmt_initiate_lmt(vc, &upkt, sreq);
+    mpi_errno = ((MPIDI_CH3I_VC *)vc->channel_private)->lmt_initiate_lmt(vc, &upkt.p, sreq);
     if (mpi_errno) MPIU_ERR_POP(mpi_errno);
 
  fn_exit:
@@ -224,7 +223,7 @@ static int pkt_RTS_handler(MPIDI_VC_t *vc, MPIDI_CH3_Pkt_t *pkt, MPIDI_msg_sz_t 
             MPIU_CHKPMEM_MALLOC(rreq->ch.lmt_tmp_cookie.MPID_IOV_BUF, char *, rts_pkt->cookie_len, mpi_errno, "tmp cookie buf");
             rreq->ch.lmt_tmp_cookie.MPID_IOV_LEN = rts_pkt->cookie_len;
         
-            MPID_NEM_MEMCPY(rreq->ch.lmt_tmp_cookie.MPID_IOV_BUF, data_buf, rts_pkt->cookie_len);
+            MPIU_Memcpy(rreq->ch.lmt_tmp_cookie.MPID_IOV_BUF, data_buf, rts_pkt->cookie_len);
             *buflen = sizeof(MPIDI_CH3_Pkt_t) + rts_pkt->cookie_len;
             *rreqp = NULL;
         }

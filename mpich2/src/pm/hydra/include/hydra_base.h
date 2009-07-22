@@ -53,6 +53,8 @@
 #define MAX_HOSTNAME_LEN 256
 #endif /* MAXHOSTNAMELEN */
 
+#define HYDRA_MAX_PATH 4096
+
 #if defined MANUAL_EXTERN_ENVIRON
 extern char **environ;
 #endif /* MANUAL_EXTERN_ENVIRON */
@@ -120,6 +122,11 @@ typedef struct HYD_Env {
     struct HYD_Env *next;
 } HYD_Env_t;
 
+typedef enum HYD_Env_overwrite {
+    HYD_ENV_OVERWRITE_TRUE,
+    HYD_ENV_OVERWRITE_FALSE
+} HYD_Env_overwrite_t;
+
 typedef enum {
     HYD_ENV_PROP_UNSET,
     HYD_ENV_PROP_ALL,
@@ -134,7 +141,12 @@ typedef enum {
     HYD_BIND_BUDDY,
     HYD_BIND_PACK,
     HYD_BIND_USER
-} HYD_Binding;
+} HYD_Binding_t;
+
+typedef enum {
+    HYD_BINDLIB_UNSET,
+    HYD_BINDLIB_PLPA
+} HYD_Bindlib_t;
 
 /* List of contiguous segments of processes on a partition */
 struct HYD_Partition_segment {
@@ -149,7 +161,7 @@ struct HYD_Partition_exec {
     char *exec[HYD_NUM_TMP_STRINGS];
     int proc_count;
     HYD_Env_prop_t prop;
-    HYD_Env_t *prop_env;
+    HYD_Env_t *user_env;
 
     int pgid;                   /* All executables with the same PGID belong to the same
                                  * job. */
@@ -182,7 +194,7 @@ struct HYD_Partition_exec {
 
 struct HYD_Partition_base {
     char *name;
-    char *exec_args[HYD_NUM_TMP_STRINGS];       /* Full argument list */
+    char **exec_args;       /* Full argument list */
 
     int partition_id;
     int active;
@@ -224,7 +236,6 @@ struct HYD_Exec_info {
     /* Local environment */
     HYD_Env_t *user_env;
     HYD_Env_prop_t prop;
-    HYD_Env_t *prop_env;
 
     struct HYD_Exec_info *next;
 };

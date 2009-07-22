@@ -16,3 +16,5 @@
 /config.system
 /.deps
 /.*-cache
+/depcomp
+/missing

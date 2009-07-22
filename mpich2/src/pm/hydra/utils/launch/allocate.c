@@ -21,7 +21,7 @@ static HYD_Status alloc_partition_base(struct HYD_Partition_base **base)
 
     (*base)->partition_id = partition_id++;
     (*base)->active = 0;
-    (*base)->exec_args[0] = NULL;
+    (*base)->exec_args = NULL;
 
     (*base)->next = NULL;
 
@@ -36,7 +36,10 @@ static void free_partition_base(struct HYD_Partition_base *base)
 {
     if (base->name)
         HYDU_FREE(base->name);
-    HYDU_free_strlist(base->exec_args);
+    if (base->exec_args) {
+        HYDU_free_strlist(base->exec_args);
+        HYDU_FREE(base->exec_args);
+    }
 
     HYDU_FREE(base);
 }
@@ -81,7 +84,6 @@ HYD_Status HYDU_alloc_exec_info(struct HYD_Exec_info **exec_info)
     (*exec_info)->exec[0] = NULL;
     (*exec_info)->user_env = NULL;
     (*exec_info)->prop = HYD_ENV_PROP_UNSET;
-    (*exec_info)->prop_env = NULL;
     (*exec_info)->next = NULL;
 
   fn_exit:
@@ -106,9 +108,6 @@ void HYDU_free_exec_info_list(struct HYD_Exec_info *exec_info_list)
 
         HYDU_env_free_list(exec_info->user_env);
         exec_info->user_env = NULL;
-
-        HYDU_env_free_list(exec_info->prop_env);
-        exec_info->prop_env = NULL;
 
         HYDU_FREE(exec_info);
         exec_info = run;
@@ -153,8 +152,8 @@ void HYDU_free_partition_list(struct HYD_Partition *partition_list)
         while (exec) {
             texec = exec->next;
             HYDU_free_strlist(exec->exec);
-            if (exec->prop_env)
-                HYDU_env_free(exec->prop_env);
+            if (exec->user_env)
+                HYDU_env_free(exec->user_env);
             HYDU_FREE(exec);
             exec = texec;
         }
@@ -243,7 +242,7 @@ HYD_Status HYDU_merge_partition_segment(char *name, struct HYD_Partition_segment
 }
 
 
-static int count_elements(char *str, char *delim)
+static int count_elements(char *str, const char *delim)
 {
     int count;
 
@@ -260,7 +259,7 @@ static int count_elements(char *str, char *delim)
 }
 
 
-static char *pad_string(char *str, char *pad, int count)
+static char *pad_string(char *str, const char *pad, int count)
 {
     char *tmp[HYD_NUM_TMP_STRINGS], *out;
     int i, j;
@@ -371,7 +370,7 @@ HYD_Status HYDU_alloc_partition_exec(struct HYD_Partition_exec **exec)
     (*exec)->exec[0] = NULL;
     (*exec)->proc_count = 0;
     (*exec)->prop = HYD_ENV_PROP_UNSET;
-    (*exec)->prop_env = NULL;
+    (*exec)->user_env = NULL;
     (*exec)->next = NULL;
 
   fn_exit:

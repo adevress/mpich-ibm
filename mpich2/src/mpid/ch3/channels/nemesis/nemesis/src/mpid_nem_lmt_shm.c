@@ -621,7 +621,7 @@ static int lmt_shm_recv_progress(MPIDI_VC_t *vc, MPID_Request *req, int *done)
             if (buf_num == NUM_BUFS-1)
             {
                 /* if we're wrapping back to buf 0, then we can copy it directly */
-                memcpy(((char *)copy_buf->buf[0]) - surfeit, surfeit_ptr, surfeit);
+                MPIU_Memcpy(((char *)copy_buf->buf[0]) - surfeit, surfeit_ptr, surfeit);
 
                 OPA_read_write_barrier();
                 copy_buf->len[buf_num].val = 0;
@@ -629,8 +629,8 @@ static int lmt_shm_recv_progress(MPIDI_VC_t *vc, MPID_Request *req, int *done)
             else
             {
                 /* otherwise, we need to copy to a tmpbuf first to make sure the src and dest addresses don't overlap */
-                memcpy(tmpbuf, surfeit_ptr, surfeit);
-                memcpy(((char *)copy_buf->buf[buf_num+1]) - surfeit, tmpbuf, surfeit);
+                MPIU_Memcpy(tmpbuf, surfeit_ptr, surfeit);
+                MPIU_Memcpy(((char *)copy_buf->buf[buf_num+1]) - surfeit, tmpbuf, surfeit);
             }
 
             MPIU_DBG_MSG(CH3_CHANNEL, VERBOSE, "copied leftover data");
@@ -759,7 +759,7 @@ static inline int lmt_shm_progress_vc(MPIDI_VC_t *vc, int *done)
 #define FUNCNAME MPID_nem_lmt_shm_progress
 #undef FCNAME
 #define FCNAME MPIDI_QUOTE(FUNCNAME)
-int MPID_nem_lmt_shm_progress()
+int MPID_nem_lmt_shm_progress(void)
 {
     int mpi_errno = MPI_SUCCESS;
     lmt_shm_prog_element_t *pe;

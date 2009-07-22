@@ -145,50 +145,47 @@ static HYD_Status fill_in_proxy_args(HYD_Launch_mode_t mode, char **proxy_args)
 {
     int i, arg;
     char *path_str[HYD_NUM_TMP_STRINGS];
-    struct HYD_Partition *partition;
     HYD_Status status = HYD_SUCCESS;
 
     if (mode != HYD_LAUNCH_RUNTIME && mode != HYD_LAUNCH_BOOT &&
         mode != HYD_LAUNCH_BOOT_FOREGROUND)
         goto fn_exit;
 
-    FORALL_ACTIVE_PARTITIONS(partition, HYD_handle.partition_list) {
-        arg = 0;
-        i = 0;
-        path_str[i++] = HYDU_strdup(HYD_handle.base_path);
-        path_str[i++] = HYDU_strdup("pmi_proxy");
-        path_str[i] = NULL;
-        status = HYDU_str_alloc_and_join(path_str, &proxy_args[arg++]);
-        HYDU_ERR_POP(status, "unable to join strings\n");
-        HYDU_free_strlist(path_str);
+    arg = 0;
+    i = 0;
+    path_str[i++] = HYDU_strdup(HYD_handle.base_path);
+    path_str[i++] = HYDU_strdup("pmi_proxy");
+    path_str[i] = NULL;
+    status = HYDU_str_alloc_and_join(path_str, &proxy_args[arg++]);
+    HYDU_ERR_POP(status, "unable to join strings\n");
+    HYDU_free_strlist(path_str);
 
-        proxy_args[arg++] = HYDU_strdup("--launch-mode");
-        proxy_args[arg++] = HYDU_int_to_str(mode);
+    proxy_args[arg++] = HYDU_strdup("--launch-mode");
+    proxy_args[arg++] = HYDU_int_to_str(mode);
 
-        proxy_args[arg++] = HYDU_strdup("--proxy-port");
-        if (mode == HYD_LAUNCH_RUNTIME)
-            proxy_args[arg++] = HYDU_strdup(proxy_port_str);
-        else
-            proxy_args[arg++] = HYDU_int_to_str(HYD_handle.proxy_port);
+    proxy_args[arg++] = HYDU_strdup("--proxy-port");
+    if (mode == HYD_LAUNCH_RUNTIME)
+        proxy_args[arg++] = HYDU_strdup(proxy_port_str);
+    else
+        proxy_args[arg++] = HYDU_int_to_str(HYD_handle.proxy_port);
 
-        if (HYD_handle.debug)
-            proxy_args[arg++] = HYDU_strdup("--debug");
+    if (HYD_handle.debug)
+        proxy_args[arg++] = HYDU_strdup("--debug");
 
-        if (HYD_handle.enablex != -1) {
-            proxy_args[arg++] = HYDU_strdup("--enable-x");
-            proxy_args[arg++] = HYDU_int_to_str(HYD_handle.enablex);
-        }
-
-        proxy_args[arg++] = HYDU_strdup("--bootstrap");
-        proxy_args[arg++] = HYDU_strdup(HYD_handle.bootstrap);
-
-        if (HYD_handle.bootstrap_exec) {
-            proxy_args[arg++] = HYDU_strdup("--bootstrap-exec");
-            proxy_args[arg++] = HYDU_strdup(HYD_handle.bootstrap_exec);
-        }
-
-        proxy_args[arg++] = NULL;
+    if (HYD_handle.enablex != -1) {
+        proxy_args[arg++] = HYDU_strdup("--enable-x");
+        proxy_args[arg++] = HYDU_int_to_str(HYD_handle.enablex);
     }
+
+    proxy_args[arg++] = HYDU_strdup("--bootstrap");
+    proxy_args[arg++] = HYDU_strdup(HYD_handle.bootstrap);
+
+    if (HYD_handle.bootstrap_exec) {
+        proxy_args[arg++] = HYDU_strdup("--bootstrap-exec");
+        proxy_args[arg++] = HYDU_strdup(HYD_handle.bootstrap_exec);
+    }
+
+    proxy_args[arg++] = NULL;
 
   fn_exit:
     return status;
@@ -200,6 +197,9 @@ static HYD_Status fill_in_proxy_args(HYD_Launch_mode_t mode, char **proxy_args)
 static HYD_Status fill_in_exec_args(void)
 {
     int i, arg, process_id;
+    int inherited_env_count, user_env_count, system_env_count;
+    int segment_count, exec_count, total_args;
+    static int proxy_count = 0;
     HYD_Env_t *env;
     struct HYD_Partition *partition;
     struct HYD_Partition_exec *exec;
@@ -209,6 +209,36 @@ static HYD_Status fill_in_exec_args(void)
     /* Create the arguments list for each proxy */
     process_id = 0;
     FORALL_ACTIVE_PARTITIONS(partition, HYD_handle.partition_list) {
+        for (inherited_env_count = 0, env = HYD_handle.inherited_env; env;
+             env = env->next, inherited_env_count++);
+        for (user_env_count = 0, env = HYD_handle.user_env; env;
+             env = env->next, user_env_count++);
+        for (system_env_count = 0, env = HYD_handle.system_env; env;
+             env = env->next, system_env_count++);
+
+        for (segment_count = 0, segment = partition->segment_list; segment;
+             segment = segment->next)
+            segment_count++;
+
+        for (exec_count = 0, exec = partition->exec_list; exec; exec = exec->next)
+            exec_count++;
+
+        total_args = HYD_NUM_TMP_STRINGS; /* For the basic arguments */
+
+        /* Environments */
+        total_args += inherited_env_count;
+        total_args += user_env_count;
+        total_args += system_env_count;
+
+        /* For each segment add a few strings */
+        total_args += (segment_count * HYD_NUM_TMP_STRINGS);
+
+        /* For each exec add a few strings */
+        total_args += (exec_count * HYD_NUM_TMP_STRINGS);
+
+        HYDU_MALLOC(partition->base->exec_args, char **, total_args * sizeof(char *),
+                    status);
+
         arg = 0;
         partition->base->exec_args[arg++] = HYDU_strdup("--global-core-count");
         partition->base->exec_args[arg++] = HYDU_int_to_str(HYD_handle.global_core_count);
@@ -231,15 +261,33 @@ static HYD_Status fill_in_exec_args(void)
         else
             partition->base->exec_args[arg++] = HYDU_strdup("HYDRA_NULL");
 
-        /* Pass the global environment separately, instead of for each
-         * executable, as an optimization */
-        partition->base->exec_args[arg++] = HYDU_strdup("--global-env");
+        partition->base->exec_args[arg++] = HYDU_strdup("--bindlib");
+        partition->base->exec_args[arg++] = HYDU_int_to_str(HYD_handle.bindlib);
+
+        partition->base->exec_args[arg++] = HYDU_strdup("--inherited-env");
+        for (i = 0, env = HYD_handle.inherited_env; env; env = env->next, i++);
+        partition->base->exec_args[arg++] = HYDU_int_to_str(i);
+        partition->base->exec_args[arg++] = NULL;
+        HYDU_list_append_env_to_str(HYD_handle.inherited_env, partition->base->exec_args);
+
+        arg = HYDU_strlist_lastidx(partition->base->exec_args);
+        partition->base->exec_args[arg++] = HYDU_strdup("--user-env");
+        for (i = 0, env = HYD_handle.user_env; env; env = env->next, i++);
+        partition->base->exec_args[arg++] = HYDU_int_to_str(i);
+        partition->base->exec_args[arg++] = NULL;
+        HYDU_list_append_env_to_str(HYD_handle.user_env, partition->base->exec_args);
+
+        arg = HYDU_strlist_lastidx(partition->base->exec_args);
+        partition->base->exec_args[arg++] = HYDU_strdup("--system-env");
         for (i = 0, env = HYD_handle.system_env; env; env = env->next, i++);
-        for (env = HYD_handle.prop_env; env; env = env->next, i++);
         partition->base->exec_args[arg++] = HYDU_int_to_str(i);
         partition->base->exec_args[arg++] = NULL;
         HYDU_list_append_env_to_str(HYD_handle.system_env, partition->base->exec_args);
-        HYDU_list_append_env_to_str(HYD_handle.prop_env, partition->base->exec_args);
+
+        arg = HYDU_strlist_lastidx(partition->base->exec_args);
+        partition->base->exec_args[arg++] = HYDU_strdup("--genv-prop");
+        partition->base->exec_args[arg++] = HYDU_int_to_str(HYD_handle.prop);
+        partition->base->exec_args[arg++] = NULL;
 
         /* Pass the segment information */
         for (segment = partition->segment_list; segment; segment = segment->next) {
@@ -261,22 +309,35 @@ static HYD_Status fill_in_exec_args(void)
 
             partition->base->exec_args[arg++] = HYDU_strdup("--exec-proc-count");
             partition->base->exec_args[arg++] = HYDU_int_to_str(exec->proc_count);
-            partition->base->exec_args[arg++] = NULL;
 
-            arg = HYDU_strlist_lastidx(partition->base->exec_args);
             partition->base->exec_args[arg++] = HYDU_strdup("--exec-local-env");
-            for (i = 0, env = exec->prop_env; env; env = env->next, i++);
+            for (i = 0, env = exec->user_env; env; env = env->next, i++);
             partition->base->exec_args[arg++] = HYDU_int_to_str(i);
             partition->base->exec_args[arg++] = NULL;
-            HYDU_list_append_env_to_str(exec->prop_env, partition->base->exec_args);
+            HYDU_list_append_env_to_str(exec->user_env, partition->base->exec_args);
+
+            arg = HYDU_strlist_lastidx(partition->base->exec_args);
+            partition->base->exec_args[arg++] = HYDU_strdup("--exec-env-prop");
+            partition->base->exec_args[arg++] = HYDU_int_to_str(exec->prop);
+            partition->base->exec_args[arg++] = NULL;
 
             HYDU_list_append_strlist(exec->exec, partition->base->exec_args);
 
             process_id += exec->proc_count;
         }
+
+        if (HYD_handle.debug) {
+            printf("Arguments being passed to proxy %d:\n", proxy_count++);
+            HYDU_print_strlist(partition->base->exec_args);
+            printf("\n");
+        }
     }
 
+  fn_exit:
     return status;
+
+  fn_fail:
+    goto fn_exit;
 }
 
 HYD_Status HYD_PMCI_launch_procs(void)

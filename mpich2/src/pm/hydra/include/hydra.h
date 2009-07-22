@@ -19,7 +19,8 @@ struct HYD_Handle_ {
     char *bootstrap;
     char *css;
     char *rmk;
-    HYD_Binding binding;
+    HYD_Binding_t binding;
+    HYD_Bindlib_t bindlib;
     char *user_bind_map;
 
     int debug;
@@ -34,11 +35,10 @@ struct HYD_Handle_ {
     char *bootstrap_exec;
 
     /* Global environment */
-    HYD_Env_t *global_env;
     HYD_Env_t *system_env;
     HYD_Env_t *user_env;
+    HYD_Env_t *inherited_env;
     HYD_Env_prop_t prop;
-    HYD_Env_t *prop_env;
 
      HYD_Status(*stdin_cb) (int fd, HYD_Event_t events, void *userp);
      HYD_Status(*stdout_cb) (int fd, HYD_Event_t events, void *userp);

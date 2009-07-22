@@ -87,8 +87,8 @@ ENABLE_SHLIB=none
 AC_SUBST(ENABLE_SHLIB)
 dnl
 dnl     check for compiler characteristics
-dnl Set CFLAGS for enable strict if necessary
-PAC_CC_STRICT
+
+PAC_ARG_STRICT
 AC_C_CONST
 PAC_C_VOLATILE
 PAC_C_RESTRICT

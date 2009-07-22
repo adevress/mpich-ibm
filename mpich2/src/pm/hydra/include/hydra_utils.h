@@ -8,16 +8,28 @@
 #define HYDRA_UTILS_H_INCLUDED
 
 #include "hydra_base.h"
-#include "mpimem.h"
+#include "mpl.h"
 
 int HYDU_Error_printf_simple(const char *str, ...);
 
 #if !defined COMPILER_ACCEPTS_VA_ARGS
 #define HYDU_Error_printf HYDU_Error_printf_simple
-#elif defined COMPILER_ACCEPTS_FUNC && defined __LINE__
+#elif defined HAVE__FUNC__ && defined __LINE__
 #define HYDU_Error_printf(...)                            \
     {                                                     \
         fprintf(stderr, "%s (%d): ", __func__, __LINE__); \
+        HYDU_Error_printf_simple(__VA_ARGS__);            \
+    }
+#elif defined HAVE_CAP__FUNC__ && defined __LINE__
+#define HYDU_Error_printf(...)                            \
+    {                                                     \
+        fprintf(stderr, "%s (%d): ", __FUNC__, __LINE__); \
+        HYDU_Error_printf_simple(__VA_ARGS__);            \
+    }
+#elif defined HAVE__FUNCTION__ && defined __LINE__
+#define HYDU_Error_printf(...)                            \
+    {                                                     \
+        fprintf(stderr, "%s (%d): ", __FUNCTION__, __LINE__); \
         HYDU_Error_printf_simple(__VA_ARGS__);            \
     }
 #elif defined __FILE__ && defined __LINE__
@@ -117,9 +129,6 @@ int HYDU_Error_printf_simple(const char *str, ...);
 #if !defined ENABLE_DEBUG
 #define HYDU_FUNC_ENTER() {}
 #define HYDU_FUNC_EXIT() {}
-#elif defined COMPILER_ACCEPTS_FUNC
-#define HYDU_FUNC_ENTER() {}
-#define HYDU_FUNC_EXIT() {}
 #else
 #define HYDU_FUNC_ENTER() {}
 #define HYDU_FUNC_EXIT() {}
@@ -127,34 +136,29 @@ int HYDU_Error_printf_simple(const char *str, ...);
 
 
 /* args */
-HYD_Status HYDU_find_in_path(char *execname, char **path);
-HYD_Status HYDU_get_base_path(char *execname, char *wdir, char **path);
+HYD_Status HYDU_find_in_path(const char *execname, char **path);
+char *HYDU_getcwd(void);
+HYD_Status HYDU_get_base_path(const char *execname, char *wdir, char **path);
 
 
 /* bind */
-#if defined PROC_BINDING
-HYD_Status HYDU_bind_init(char *user_bind_map);
+HYD_Status HYDU_bind_init(HYD_Bindlib_t bindlib, char *user_bind_map);
 HYD_Status HYDU_bind_process(int core);
-int HYDU_bind_get_core_id(int id, HYD_Binding binding);
-#else
-#define HYDU_bind_init(...) HYD_SUCCESS
-#define HYDU_bind_process(...) HYD_SUCCESS
-#define HYDU_bind_get_core_id(...) (-1)
-#endif /* PROC_BINDING */
+int HYDU_bind_get_core_id(int id, HYD_Binding_t binding);
 
 
 /* env */
 HYD_Env_t *HYDU_str_to_env(char *str);
 HYD_Status HYDU_list_append_env_to_str(HYD_Env_t * env_list, char **str_list);
-HYD_Status HYDU_list_global_env(HYD_Env_t ** env_list);
+HYD_Status HYDU_list_inherited_env(HYD_Env_t ** env_list);
 HYD_Env_t *HYDU_env_list_dup(HYD_Env_t * env);
-HYD_Status HYDU_env_create(HYD_Env_t ** env, char *env_name, char *env_value);
+HYD_Status HYDU_env_create(HYD_Env_t ** env, const char *env_name, char *env_value);
 HYD_Status HYDU_env_free(HYD_Env_t * env);
 HYD_Status HYDU_env_free_list(HYD_Env_t * env);
 HYD_Env_t *HYDU_env_lookup(HYD_Env_t env, HYD_Env_t * env_list);
 HYD_Status HYDU_append_env_to_list(HYD_Env_t env, HYD_Env_t ** env_list);
-HYD_Status HYDU_putenv(HYD_Env_t * env);
-HYD_Status HYDU_putenv_list(HYD_Env_t * env_list);
+HYD_Status HYDU_putenv(HYD_Env_t * env, HYD_Env_overwrite_t overwrite);
+HYD_Status HYDU_putenv_list(HYD_Env_t * env_list, HYD_Env_overwrite_t overwrite);
 HYD_Status HYDU_comma_list_to_env_list(char *str, HYD_Env_t ** env_list);
 
 
@@ -217,11 +221,11 @@ HYD_Status HYDU_sock_listen(int *listen_fd, char *port_range, uint16_t * port);
 HYD_Status HYDU_sock_connect(const char *host, uint16_t port, int *fd);
 HYD_Status HYDU_sock_accept(int listen_fd, int *fd);
 HYD_Status HYDU_sock_readline(int fd, char *buf, int maxlen, int *linelen);
-HYD_Status HYDU_sock_writeline(int fd, char *buf, int maxsize);
+HYD_Status HYDU_sock_writeline(int fd, const char *buf, int maxsize);
 HYD_Status HYDU_sock_read(int fd, void *buf, int maxlen, int *count,
                           enum HYDU_sock_comm_flag flag);
-HYD_Status HYDU_sock_write(int fd, void *buf, int maxsize);
-HYD_Status HYDU_sock_trywrite(int fd, void *buf, int maxsize);
+HYD_Status HYDU_sock_write(int fd, const void *buf, int maxsize);
+HYD_Status HYDU_sock_trywrite(int fd, const void *buf, int maxsize);
 HYD_Status HYDU_sock_set_nonblock(int fd);
 HYD_Status HYDU_sock_set_cloexec(int fd);
 HYD_Status HYDU_sock_stdout_cb(int fd, HYD_Event_t events, int stdout_fd, int *closed);
@@ -232,9 +236,17 @@ HYD_Status HYDU_sock_stdin_cb(int fd, HYD_Event_t events, int stdin_fd, char *bu
 /* Memory utilities */
 #include <ctype.h>
 
+/* FIXME: This should eventually become MPL_malloc and friends */
+#define HYDU_malloc malloc
+#define HYDU_calloc calloc
+#define HYDU_free   free
+
+#define HYDU_snprintf MPL_snprintf
+#define HYDU_strdup MPL_strdup
+
 #define HYDU_MALLOC(p, type, size, status)                              \
     {                                                                   \
-        (p) = (type) MPIU_Malloc((size));                               \
+        (p) = (type) HYDU_malloc((size));                               \
         if ((p) == NULL)                                                \
             HYDU_ERR_SETANDJUMP1((status), HYD_NO_MEM,                  \
                                  "failed to allocate %d bytes\n",       \
@@ -243,7 +255,7 @@ HYD_Status HYDU_sock_stdin_cb(int fd, HYD_Event_t events, int stdin_fd, char *bu
 
 #define HYDU_CALLOC(p, type, num, size, status)                         \
     {                                                                   \
-        (p) = (type) MPIU_Calloc((num), (size));                        \
+        (p) = (type) HYDU_calloc((num), (size));                        \
         if ((p) == NULL)                                                \
             HYDU_ERR_SETANDJUMP1((status), HYD_NO_MEM,                  \
                                  "failed to allocate %d bytes\n",       \
@@ -252,11 +264,21 @@ HYD_Status HYDU_sock_stdin_cb(int fd, HYD_Event_t events, int stdin_fd, char *bu
 
 #define HYDU_FREE(p)                            \
     {                                           \
-        MPIU_Free(p);                           \
+        HYDU_free(p);                           \
     }
 
-#define HYDU_snprintf MPIU_Snprintf
-#define HYDU_strdup MPIU_Strdup
+#define HYDU_STRLIST_CONSOLIDATE(strlist, i, status)                    \
+    {                                                                   \
+        char *out;                                                      \
+        if ((i) >= (HYD_NUM_TMP_STRINGS / 2)) {                         \
+            (strlist)[(i)] = NULL;                                      \
+            (status) = HYDU_str_alloc_and_join((strlist), &out);        \
+            HYDU_ERR_POP((status), "unable to join strings\n");         \
+            HYDU_free_strlist((strlist));                               \
+            strlist[0] = out;                                           \
+            (i) = 1;                                                    \
+        }                                                               \
+    }
 
 HYD_Status HYDU_list_append_strlist(char **exec, char **client_arg);
 HYD_Status HYDU_print_strlist(char **args);
