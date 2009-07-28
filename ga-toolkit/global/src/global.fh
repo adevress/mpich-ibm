@@ -6,7 +6,7 @@
       integer ga_max_dim
       parameter (ga_max_dim = 7)
 #define GA_VERSION_MAJOR 4
-#define GA_VERSION_MINOR 0
+#define GA_VERSION_MINOR 1
 !
       integer ga_nnodes, ga_nodeid, ga_read_inc
       integer ga_pgroup_nnodes, ga_pgroup_nodeid

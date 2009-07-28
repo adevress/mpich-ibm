@@ -1208,6 +1208,7 @@ static void vapi_connect_client()
                  | IBV_QP_PORT
                  | IBV_QP_ACCESS_FLAGS;
 
+    memset(&qp_attr, 0, sizeof qp_attr);
     qp_attr.qp_state = IBV_QPS_INIT;
     qp_attr.pkey_index = DEFAULT_PKEY_IX;
     qp_attr.port_num = SRV_nic->active_port;
@@ -1230,6 +1231,7 @@ static void vapi_connect_client()
                  | IBV_QP_RQ_PSN
                  | IBV_QP_MIN_RNR_TIMER;
 
+    memset(&qp_attr, 0, sizeof qp_attr);
     qp_attr.qp_state        = IBV_QPS_RTR;
     qp_attr.max_dest_rd_atomic   = 4;
     qp_attr.path_mtu        = IBV_MTU_1024;
@@ -1270,6 +1272,7 @@ static void vapi_connect_client()
                  | IBV_QP_RNR_RETRY
                  | IBV_QP_MAX_QP_RD_ATOMIC;
 
+    memset(&qp_attr, 0, sizeof qp_attr);
     qp_attr.qp_state            = IBV_QPS_RTS;
     qp_attr.sq_psn              = 0;
     qp_attr.timeout             = 18;
@@ -1450,6 +1453,7 @@ void armci_server_initial_connection()
                  | IBV_QP_PORT
                  | IBV_QP_ACCESS_FLAGS;
 
+    memset(&qp_attr, 0, sizeof qp_attr);
     qp_attr.qp_state        = IBV_QPS_INIT;
     qp_attr.pkey_index      = DEFAULT_PKEY_IX;
     qp_attr.port_num        = CLN_nic->active_port;
@@ -1467,6 +1471,7 @@ void armci_server_initial_connection()
                  | IBV_QP_PATH_MTU
                  | IBV_QP_RQ_PSN
                  | IBV_QP_MIN_RNR_TIMER;
+    memset(&qp_attr, 0, sizeof qp_attr);
     qp_attr.qp_state           = IBV_QPS_RTR;
     qp_attr.path_mtu           = IBV_MTU_1024;          /*MTU*/
     qp_attr.max_dest_rd_atomic = 4;
@@ -1509,6 +1514,7 @@ void armci_server_initial_connection()
                  | IBV_QP_RNR_RETRY
                  | IBV_QP_MAX_QP_RD_ATOMIC;
 
+    memset(&qp_attr, 0, sizeof qp_attr);
     qp_attr.qp_state            = IBV_QPS_RTS;
     qp_attr.sq_psn              = 0;
     qp_attr.timeout             = 18;

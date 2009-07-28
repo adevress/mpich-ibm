@@ -16,14 +16,14 @@ endif
 
 MSG_COMMS=MPI
 #defines communication libs and symbols
-include ../armci/config/makemp.h
-include ../armci/config/makecoms.h
+include ../$(ARMCI_DIR_NAME)/config/makemp.h
+include ../$(ARMCI_DIR_NAME)/config/makecoms.h
 
 LIBRARY = libtcgmsg-mpi.a
 LIBRARY_SHARED = libtcgmsg-mpi.so
 LIB_DISTRIB = ../lib
 INCDIR = ../include
-LIB_INCLUDES += -I$(INCDIR) -I../armci/src $(MP_INCLUDES)
+LIB_INCLUDES += -I$(INCDIR) -I../$(ARMCI_DIR_NAME)/src $(MP_INCLUDES)
 LIB_DEFINES += -DARMCI
 LIB_TARGETS = *.x
 

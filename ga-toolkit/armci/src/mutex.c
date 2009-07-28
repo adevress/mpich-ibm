@@ -348,14 +348,13 @@ int direct;
 #endif
 
         if(DEBUG)fprintf(stderr,"%d enter lock\n",armci_me);
+        if(armci_nproc == 1) return;
 
         if(!num_mutexes) armci_die("armci_lock: create mutexes first",0);
 
         if(mutex > glob_mutex[proc].count)
            armci_die2("armci_lock: mutex not allocated", mutex,
                       glob_mutex[proc].count); 
-
-        if(armci_nproc == 1) return;
 
 #       if defined(SERVER_LOCK)
            direct=SAMECLUSNODE(proc); 
@@ -373,14 +372,13 @@ int direct;
 void ARMCI_Unlock(int mutex, int proc)
 {
         if(DEBUG)fprintf(stderr,"%d enter unlock\n",armci_me);
-
+        if(armci_nproc == 1) return;
+        
         if(!num_mutexes) armci_die("armci_lock: create mutexes first",0);
 
         if(mutex > glob_mutex[proc].count)
            armci_die2("armci_lock: mutex not allocated", mutex,
                       glob_mutex[proc].count); 
-
-        if(armci_nproc == 1) return;
 
 #       if defined(SERVER_LOCK)
            if(armci_nclus >1) { 

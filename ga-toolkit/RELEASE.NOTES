@@ -49,7 +49,15 @@ DIRECTORY STRUCTURE
   X        - source code for GA visualization program
 
 
-HISTORY
+HISTORY (Only Major Releases)
+  version 4.2   July 2009
+              * Support for several new platforms
+                * Optimized portals port for Cray XT5
+                * BlueGene/P
+                * Optimized OpenIB port
+                * Support for Sparse Data Operations
+                    + (See GA user manual - Chapter 11 for more details)
+
   version 4.1   May 2008
               * Support for several new platforms
                 * Cray XT4

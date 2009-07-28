@@ -120,7 +120,8 @@
 #define  ga_set_update4_info_      GA_SET_UPDATE4_INFO
 #define  ga_set_update5_info_      GA_SET_UPDATE5_INFO
 #define  nga_update_ghost_dir_     NGA_UPDATE_GHOST_DIR
-#define  nga_nbget_ghost_dir_     NGA_NBGET_GHOST_DIR
+#define  nga_nbget_ghost_dir_      NGA_NBGET_GHOST_DIR
+#define  nga_get_ghost_block_      NGA_GET_GHOST_BLOCK
 #define  ga_update_ghosts_         GA_UPDATE_GHOSTS
 #define  ga_merge_mirrored_        GA_MERGE_MIRRORED
 #define  ga_fast_merge_mirrored_   GA_FAST_MERGE_MIRRORED
@@ -381,6 +382,7 @@
 #define  ga_set_update5_info_      ga_set_update5_info__  
 #define  nga_update_ghost_dir_     nga_update_ghost_dir__   
 #define  nga_nbget_ghost_dir_      nga_nbget_ghost_dir__   
+#define  nga_get_ghost_block_      nga_get_ghost_block__   
 #define  ga_update_ghosts_         ga_update_ghosts__     
 #define  ga_merge_mirrored_        ga_merge_mirrored__     
 #define  ga_fast_merge_mirrored_   ga_fast_merge_mirrored__     

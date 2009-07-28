@@ -643,7 +643,8 @@ int ARMCI_Init()
     /* NOTE: FOR PROCESS-BASED DATA SERVER WE CANNOT call ARMCI_Malloc yet */
 
 #   if defined(DATA_SERVER) || defined(ELAN_ACC)
-       if(armci_nclus >1) armci_start_server();
+       if(armci_nclus >1) 
+           armci_start_server();
 #   endif
 #if defined(GM) || defined(VAPI) || defined(PORTALS) || (defined(LAPI) && defined(LAPI_RDMA))
     /* initialize registration of memory */
@@ -805,6 +806,7 @@ int direct=SAMECLUSNODE(nb_handle->proc);
 #       ifdef ARMCI_PROFILE
         armci_profile_stop(ARMCI_PROF_WAIT);
 #       endif
+        ARMCI_Fence(nb_handle->proc);
         return (success);
       }
     }
@@ -836,6 +838,8 @@ int direct=SAMECLUSNODE(nb_handle->proc);
 #     endif
     }
 #endif
+
+    ARMCI_Fence(nb_handle->proc);
 
 #ifdef ARMCI_PROFILE
     armci_profile_stop(ARMCI_PROF_WAIT);
@@ -1054,7 +1058,8 @@ void ARMCI_Ckpt_create_ds(armci_ckpt_ds_t *ckptds, int count)
     armci_create_ckptds(ckptds,count);
 }
 
-int ARMCI_Ckpt_init(char *filename, ARMCI_Group *grp, int savestack, int saveheap, armci_ckpt_ds_t *ckptds)
+int ARMCI_Ckpt_init(char *filename, ARMCI_Group *grp, int savestack, 
+        int saveheap, armci_ckpt_ds_t *ckptds)
 {
 int rid;
     rid = armci_icheckpoint_init(filename,grp,savestack,saveheap,ckptds);
@@ -1268,10 +1273,14 @@ char           *ret = 0;
 static int in_error_cleanup=0;
 
 void derr_printf(const char *format, ...) {
+    
   extern int AR_caught_sigint;
   extern int AR_caught_sigterm;
   if(!in_error_cleanup) {
-    if((!AR_caught_sigterm && !AR_caught_sigint) || armci_me==0) {
+#ifdef SYSV
+    if((!AR_caught_sigterm && !AR_caught_sigint) || armci_me==0) 
+#endif
+    {
       va_list ap;
       va_start(ap, format);
       vprintf(format, ap);
@@ -1287,7 +1296,10 @@ int dassertp_fail(const char *cond_string, const char *file,
   extern int AR_caught_sigterm;
   if(!in_error_cleanup) {
     in_error_cleanup=1;
-    if((!AR_caught_sigterm && !AR_caught_sigint) || armci_me==0) {
+#ifdef SYSV
+    if((!AR_caught_sigterm && !AR_caught_sigint) || armci_me==0)
+#endif
+    {
       printf("(rank:%d hostname:%s pid:%d):ARMCI DASSERT fail. %s:%s():%d cond:%s\n",
 	     armci_me,armci_clus_info[armci_clus_me].hostname, 
 	     getpid(), file,func,line,cond_string);

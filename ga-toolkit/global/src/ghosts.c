@@ -243,6 +243,72 @@ unsigned long    lref, lptr;
    GA_POP_NAME;
 }
 
+/*\ GET DATA FROM LOCAL BLOCK
+\*/
+void FATR nga_get_ghost_block_(Integer *g_a,
+                               Integer *lo,
+                               Integer *hi,
+                               void *buf,
+                               Integer *ld)
+{
+  /* g_a:      Global array handle
+     lo[]:     Array of lower indices of patch of global array
+     hi[]:     Array of upper indices of patch of global array
+     buf[]:    Local buffer that array patch will be copied into
+     ld[]:     Array of physical ndim-1 dimensions of local buffer */
+  Integer handle=GA_OFFSET + *g_a, ndim;
+  Integer i, glo[MAXDIM], ghi[MAXDIM], ichk, me, grp_id;
+  Integer llo[MAXDIM];
+  int  stride_rem[MAXDIM], stride_loc[MAXDIM], count[MAXDIM];
+  Integer ldrem[MAXDIM];
+  Integer offset, factor, size;
+  char *ptr;
+
+  me = GAme;
+  grp_id = (Integer)GA[handle].p_handle;
+  if (grp_id>0) me = PGRP_LIST[grp_id].map_proc_list[me];
+  ndim = GA[handle].ndim;
+
+  /* Figure out whether or not lo and hi can be accessed completely
+     from local data */
+  nga_distribution_(g_a, &me, glo, ghi);
+  ichk = 1;
+  for (i=0; i<ndim; i++) {
+    if (lo[i] < glo[i]-(Integer)GA[handle].width[i]) ichk = 0;
+    if (hi[i] > ghi[i]+(Integer)GA[handle].width[i]) ichk = 0;
+    llo[i] = glo[i] - (Integer)GA[handle].width[i];
+    if (i<ndim-1) ldrem[i] = ghi[i] - glo[i] + 1
+      + 2*(Integer)GA[handle].width[i];
+  }
+
+  /* Get data. Use local copy if possible, otherwise use a periodic get */
+  if (ichk) {
+    offset = 0;
+    factor = 1;
+    size = GA[handle].elemsize;
+    for (i=0; i<ndim-1; i++) {
+      offset += (lo[i]-llo[i])*factor;
+      factor *= ghi[i] - glo[i] + 1 + 2*(Integer)GA[handle].width[i];
+    }
+    offset += (lo[ndim-1]-llo[ndim-1])*factor;
+    ptr = GA[handle].ptr[me] + offset;
+    /* compute number of elements in each dimension and store result in count */
+    gam_ComputeCount(ndim, lo, hi, count);
+
+    /* scale first element in count by element size. The ARMCI_GetS
+       routine uses this convention to figure out memory sizes.*/
+    count[0] *= size;
+
+    /* Return strides for memory containing global array on remote
+       processor indexed by proc (stride_rem) and for local buffer
+       buf (stride_loc) */
+    gam_setstride(ndim, size, ld, ldrem, stride_rem, stride_loc);
+    ARMCI_GetS(ptr,stride_rem,buf,stride_loc,count,ndim-1,me);
+  } else {
+    nga_periodic_get_(g_a,lo,hi,buf,ld);
+  }
+}
+
 /*\ UPDATE GHOST CELLS OF GLOBAL ARRAY USING SHIFT ALGORITHM
 \*/
 void FATR ga_update1_ghosts_(Integer *g_a)
@@ -2825,7 +2891,7 @@ logical ga_update5_ghosts_(Integer *g_a)
       }
       if(count[0]>1000000){
         /*tries to use armci direct put when possible */
-        ARMCI_PutS_flag_dir(ptr_loc, stride_loc, ptr_rem, stride_rem, count,
+        ARMCI_PutS_flag(ptr_loc, stride_loc, ptr_rem, stride_rem, count,
             (int)(ndim - 1), GA_Update_Flags[proc_rem]+msgcnt,
             *GA_Update_Signal, proc_rem);
       }
@@ -2855,7 +2921,7 @@ logical ga_update5_ghosts_(Integer *g_a)
       }
       if(count[0]>1000000){
         /*tries to use armci direct put when possible */
-        ARMCI_PutS_flag_dir(ptr_loc, stride_loc, ptr_rem, stride_rem, count,
+        ARMCI_PutS_flag(ptr_loc, stride_loc, ptr_rem, stride_rem, count,
             (int)(ndim - 1), GA_Update_Flags[proc_rem]+msgcnt,
             *GA_Update_Signal, proc_rem);
       }
@@ -3205,7 +3271,7 @@ logical FATR ga_update6_ghosts_(Integer *g_a)
    *
    * This implementation make use of a combination of explicit message
    * passing between processors on different nodes and shared memory
-   * copies with and additional flag between processors on the same node
+   * copies with an additional flag between processors on the same node
    * to perform the update. Separate message types for the messages and
    * the use of the additional flag are for the updates in each
    * coordinate direction are used to maintain synchronization locally

@@ -4,7 +4,6 @@
 DEPENDENCIES ON OTHER SOFTWARE
 
  - ARMCI - one-sided communication library used by GA as its run-time system
-   This s/w is new in release 3.0
 
  - MPI or TCGMSG: more or less extensive run-time support is required. For
    example, a message-passing library is used on some platforms to
@@ -134,9 +133,4 @@ CONTACT
 
    For suggestions, comments and bug report:
 
-   Jarek Nieplocha
-   Pacific Northwest National Laboratory
-   P.O. Box 999, MS K1-87
-   Richland, WA 99352
-   (509) 372-4469
-   Email: Jarek.Nieplocha@pnl.gov
+        hpctools@pnl.gov

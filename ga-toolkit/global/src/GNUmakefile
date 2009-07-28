@@ -90,7 +90,7 @@ endif
   ifeq ($(TARGET), cray-sv2)
     LIB_DEFINES += -DNO_GA_STATS
   endif
-  LIB_INCLUDES += -I../../armci/src -I$(INCDIR)
+  LIB_INCLUDES += -I../../$(ARMCI_DIR_NAME)/src -I$(INCDIR)
   ifeq ($(ARMCI_NETWORK), MPI-SPAWN)
     LIB_DEFINES += -DMPI_SPAWN
   endif
@@ -102,10 +102,10 @@ ifdef USE_MPI
   endif
 endif
 ifeq ($(MSG_COMMS),MPI)
-include ../../armci/config/makemp.h
+include ../../$(ARMCI_DIR_NAME)/config/makemp.h
 endif
 ifeq ($(MSG_COMMS),BGMLMPI)
-include ../../armci/config/makemp.h
+include ../../$(ARMCI_DIR_NAME)/config/makemp.h
 endif
 
 # We can remove entire library when cleaning rather than individual objects

@@ -673,6 +673,9 @@ GLOB_DEFINES += -DLINUX
 ifneq (,$(findstring mpif,$(_FC)))
          _FC = $(shell $(FC) -v 2>&1 | awk ' /g95/ { print "g95"; exit }; /g77 version/ { print "g77"; exit }; /gcc version 4/ { print "gfortran"; exit }; /gcc version/ { print "g77"; exit }; /efc/ { print "efc" ; exit }; /ifort/ { print "ifort" ; exit }; / frt / { print "frt" ; exit }; /Version/ {print "ifort"; exit } ' )
 endif
+ifeq ($(_FC), )
+         _FC = $(shell $(FC) -V 2>&1 | awk ' /Intel/ { print "ifort"; exit }')
+endif
 
 ifneq ($(_FC),g77)
   ifdef USE_INTEGER4
@@ -857,6 +860,9 @@ ifeq  ($(_CPU),x86_64)
 
 ifneq (,$(findstring mpif,$(_FC)))
   _FC = $(shell $(FC) -v 2>&1 | awk ' /g95/ { print "g95"; exit }; /g77 version/ { print "g77"; exit };/gcc version 4/ { print "gfortran"; exit }; /gcc version/ { print "g77"; exit }; /ifc/ { print "ifort" ; exit }; /ifort/ { print "ifort" ; exit }; /efc/ { print "efc" ; exit }; /pgf90/ { pgf90count++}; /pgf77/ { pgf77count++}; /PathScale/ { pathf90count++}; END {if(pgf77count)print "pgf77" ; if(pgf90count)print "pgf90" ; if(pathf90count)print "pathf90"} ; /Version/ {print "ifort"; exit } ; / frt / { print "frt" ; exit }')
+endif
+ifeq ($(_FC), )
+  _FC = $(shell $(FC) -V 2>&1 | awk ' /Intel/ { print "ifort"; exit }')
 endif
 ifeq ($(_FC), ftn)
   _FC = $(shell $(FC) -v 2>&1 | awk ' /g95/ { print "g95"; exit }; /g77 version/ { print "g77"; exit };/gcc version 4/ { print "gfortran"; exit }; /gcc version/ { print "g77"; exit }; /ifc/ { print "ifort" ; exit }; /ifort/ { print "ifort" ; exit }; /efc/ { print "efc" ; exit }; /pgf90/ { pgf90count++}; /pgf77/ { pgf77count++}; /PathScale/ { pathf90count++}; END {if(pgf77count)print "pgf77" ; if(pgf90count)print "pgf90" ; if(pathf90count)print "pathf90"} ; /Version/ {print "ifort"; exit }')

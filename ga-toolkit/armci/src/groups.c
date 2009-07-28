@@ -283,7 +283,8 @@ void ARMCI_Group_create_child(int n, int *pid_list, ARMCI_Group *group_out,
     for(i=0; i<n; i++)  {
       grp_attr->proc_list[i] = ARMCI_Absolute_id(grp_parent,pid_list[i]); 
     }
-    MPI_Comm_rank(MPI_COMM_WORLD, &world_me);
+    /*  MPI_Comm_rank(MPI_COMM_WORLD, &world_me); */
+    world_me = armci_msg_me();
     grp_attr->grp_me = grp_me = MPI_UNDEFINED;
     for(i=0; i<n; i++) {
       if(igroup->grp_attr.proc_list[i] == world_me) {
@@ -376,8 +377,15 @@ void armci_group_init()
 
 #ifdef ARMCI_GROUP
     /*setup the world proc group*/
+
+    /*
     MPI_Comm_size(MPI_COMM_WORLD, &igroup->grp_attr.nproc); 
     MPI_Comm_rank(MPI_COMM_WORLD, &igroup->grp_attr.grp_me); 
+    */
+
+    igroup->grp_attr.nproc = armci_msg_nproc();
+    igroup->grp_attr.grp_me = armci_msg_me();
+
     igroup->grp_attr.proc_list = (int *)malloc(igroup->grp_attr.nproc*sizeof(int));
     assert(igroup->grp_attr.proc_list != NULL);
     for(i=0; i<igroup->grp_attr.nproc; i++) {

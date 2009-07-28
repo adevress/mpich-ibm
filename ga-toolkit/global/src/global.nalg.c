@@ -717,6 +717,24 @@ DoubleComplex sum;
 
 /*\ SingleComplex ga_cdot - C version
 \*/ 
+#if defined(NO_REAL_32)
+DoubleComplex ga_cdot(Integer *g_a, Integer *g_b)
+{
+DoubleComplex sum;
+
+#ifdef GA_USE_VAMPIR
+        vampir_begin(GA_CDOT,__FILE__,__LINE__);
+#endif
+
+        gai_dot(C_DCPL, g_a, g_b, &sum);
+
+#ifdef GA_USE_VAMPIR
+        vampir_end(GA_CDOT,__FILE__,__LINE__);
+#endif
+
+        return sum;
+}
+#else
 SingleComplex ga_cdot(Integer *g_a, Integer *g_b)
 {
 SingleComplex sum;
@@ -733,7 +751,7 @@ SingleComplex sum;
 
         return sum;
 }
-
+#endif
 
 #if defined(CRAY) || defined(WIN32) ||defined(HITACHI)
 # define gai_zdot_ GAI_ZDOT

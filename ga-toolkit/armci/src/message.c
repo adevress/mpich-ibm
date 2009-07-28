@@ -28,6 +28,10 @@
 #    include "shmem.h"
 #endif
 
+#ifdef ARMCI_PROFILE
+#include "armci_profile.h"
+#endif
+
 /* global operations are use buffer size of BUF_SIZE doubles */ 
 #define BUF_SIZE  (4*2048)
 #define INFO_BUF_SIZE  (BUF_SIZE*sizeof(BUF_SIZE) - sizeof(double))
@@ -394,6 +398,10 @@ static void _armci_msg_barrier(){
 #endif /*barrier enabled only for lapi*/
 void armci_msg_barrier()
 {
+#ifdef ARMCI_PROFILE
+    armci_profile_start(ARMCI_PROF_BARRIER);    
+#endif
+    
 #ifdef BGML
   bgml_barrier (3); /* this is always faster than MPI_Barrier() */
 #elif defined(MPI)
@@ -411,21 +419,34 @@ void armci_msg_barrier()
        SYNCH_(&tag);
      }
 #  else
-     long tag=ARMCI_TAG;
-     SYNCH_(&tag);
+     {
+        long tag=ARMCI_TAG;
+        SYNCH_(&tag);
+     }
 #  endif
+     
+#ifdef ARMCI_PROFILE
+     armci_profile_stop(ARMCI_PROF_BARRIER);     
+#endif
+     
 }
 /***********************End Barrier Code*************************************/
 
 
 int armci_msg_me()
 {
+static int counter = 0;
 #ifdef BGML
      return(BGML_Messager_rank());
 #  elif defined(MPI)
      int me;
-     MPI_Comm_rank(MPI_COMM_WORLD, &me);
-     return(me);
+     if (counter == 0) {
+         MPI_Comm_rank(MPI_COMM_WORLD, &me);
+         armci_me = me;   
+         counter = 1;
+     }
+     return armci_me;
+
 #  elif defined(PVM)
        return(pvm_getinst(mp_group_name,pvm_mytid()));
 #  else
@@ -436,12 +457,17 @@ int armci_msg_me()
 
 int armci_msg_nproc()
 {
+static int counter = 0;
 #ifdef BGML
    return(BGML_Messager_size());
 #elif defined(MPI)
      int nproc;
-     MPI_Comm_size(MPI_COMM_WORLD, &nproc);
-     return nproc;
+     if (counter == 0) {
+         MPI_Comm_size(MPI_COMM_WORLD, &nproc);
+         armci_nproc = nproc;
+         counter = 1;
+     }
+     return armci_nproc;
 #  elif defined(PVM)
      return(pvm_gsize(mp_group_name));
 #  else
@@ -1848,6 +1874,10 @@ void armci_exchange_address(void *ptr_ar[], int n)
 void armci_msg_group_barrier(ARMCI_Group *group)
 {
     ARMCI_iGroup *igroup = (ARMCI_iGroup *)group;
+#ifdef ARMCI_PROFILE
+    armci_profile_start(ARMCI_PROF_BARRIER);    
+#endif
+    
 #ifdef ARMCI_GROUP
  {
    int val=0;
@@ -1856,6 +1886,10 @@ void armci_msg_group_barrier(ARMCI_Group *group)
 #else
     MPI_Barrier((MPI_Comm)(igroup->icomm));
 #endif
+
+#ifdef ARMCI_PROFILE
+     armci_profile_stop(ARMCI_PROF_BARRIER);     
+#endif    
 }
 void armci_grp_clus_brdcst(void *buf, int len, int grp_master,
                            int grp_clus_nproc, ARMCI_Group *mastergroup) {

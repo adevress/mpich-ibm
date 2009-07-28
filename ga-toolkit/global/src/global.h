@@ -324,6 +324,8 @@ extern logical ga_set_update4_info(Integer *g_a);
 extern logical ga_set_update5_info(Integer *g_a);
 extern logical nga_update_ghost_dir(Integer *g_a, Integer *idim, 
                                     Integer *idir, logical *flag);
+extern void FATR nga_get_ghost_block_(Integer *g_a, Integer *lo, Integer *hi, 
+                          void *buf, Integer *ld);
 extern void FATR ga_merge_mirrored_(Integer *g_a);
 extern void FATR ga_fast_merge_mirrored_(Integer *g_a);
 extern logical FATR ga_is_mirrored_(Integer *g_a);

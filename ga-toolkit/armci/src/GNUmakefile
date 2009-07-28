@@ -1,7 +1,7 @@
 #$Id: GNUmakefile,v 1.103.2.18 2007-08-30 22:31:04 manoj Exp $
 
-         FOPT = -O
-         COPT = -O
+         FOPT = -O0
+         COPT = -O0
 
 OBJ= strided.o armci.o memory.o fence.o rmw.o acc.o kr_malloc.o\
  memlock.o pack.o vector.o clusterinfo.o mutex.o locks.o aggregate.o\
@@ -54,7 +54,7 @@ ifeq ($(MSG_COMMS), DCMFMPI)
 endif
    OBJ += request.o
    LIB_DEFINES += -DARMCIX
-   DCMF_VER = dcmf2
+   DCMF_VER = dcmf-0.2.0
    OBJ += armcix/$(DCMF_VER)/armcix_impl.o armcix/$(DCMF_VER)/armcix_wait.o \
 	  armcix/$(DCMF_VER)/armcix_fence.o armcix/$(DCMF_VER)/armcix_rmw.o \
 	  armcix/$(DCMF_VER)/armcix_get.o armcix/$(DCMF_VER)/armcix_put.o   \
