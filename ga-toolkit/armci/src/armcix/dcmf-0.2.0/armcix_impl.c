@@ -234,7 +234,8 @@ void ARMCIX_DCMF_Connection_initialize ()
   };
   DCMF_Send_register (&send_protocol, &send_configuration);
 
-  DCMF_Request_t request;
+  DCMF_Request_t* request;
+  request = malloc(size*sizeof(DCMF_Request_t));
   volatile unsigned active;
   DCMF_Callback_t cb_done = { ARMCIX_DCMF_cb_decrement, (void *) &active };
 
@@ -245,7 +246,7 @@ void ARMCIX_DCMF_Connection_initialize ()
     unsigned peer = (rank+i)%size;
     active = 1;
     DCMF_Send (&send_protocol,
-               &request,
+               &request[i],
                cb_done,
                DCMF_SEQUENTIAL_CONSISTENCY,
                peer,
@@ -256,7 +257,7 @@ void ARMCIX_DCMF_Connection_initialize ()
     while (active) DCMF_Messager_advance();
   }
   while (__memregions_to_receive) DCMF_Messager_advance();
-
+  free(request);
   DCMF_CriticalSection_exit(0);
 }
 
