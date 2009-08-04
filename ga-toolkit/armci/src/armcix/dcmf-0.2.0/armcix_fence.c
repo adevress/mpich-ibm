@@ -80,7 +80,7 @@ void ARMCIX_DCMF_Fence_register (ARMCIX_DCMF_Connection_t * connection_array)
 
   DCMF_Send_Configuration_t send_configuration = {
     DCMF_DEFAULT_SEND_PROTOCOL,
-    DCMF_DefaultNetwork,
+    DCMF_DEFAULT_NETWORK,
     ARMCIX_DCMF_ReceiveFenceRequest,
     connection_array,
     NULL,
@@ -90,7 +90,7 @@ void ARMCIX_DCMF_Fence_register (ARMCIX_DCMF_Connection_t * connection_array)
 
   DCMF_Control_Configuration_t configuration = {
     DCMF_DEFAULT_CONTROL_PROTOCOL,
-    DCMF_DefaultNetwork,
+    DCMF_DEFAULT_NETWORK,
     ARMCIX_DCMF_ReceiveFenceAck,
     connection_array
   };

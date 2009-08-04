@@ -65,7 +65,7 @@
 #endif
 
 //#include <ga/armci.h>
-#include "armci.h"
+#include "armcip.h"
 #include <string.h>
 
 #define DIM1 5
@@ -124,9 +124,10 @@ typedef struct {
 
 /***************************** macros ************************/
 #define COPY(src, dst, bytes) memcpy((dst),(src),(bytes))
-#define MAX(a,b) (((a) >= (b)) ? (a) : (b))
-#define MIN(a,b) (((a) <= (b)) ? (a) : (b))
-#define ABS(a) (((a) <0) ? -(a) : (a))
+// Now from armcip.h
+//#define MAX(a,b) (((a) >= (b)) ? (a) : (b))
+//#define MIN(a,b) (((a) <= (b)) ? (a) : (b))
+//#define ABS(a) (((a) <0) ? -(a) : (a))
 
 /***************************** global data *******************/
 int me, nproc;
@@ -1399,8 +1400,9 @@ void test_memlock()
 #endif
     void *pstart, *pend;
     int first, last;
-    void armci_lockmem(void*, void*, int);
-    void armci_unlockmem(void);
+    //Now from armcip.h
+    //void armci_lockmem(void*, void*, int);
+    //void armci_unlockmem(void);
 
     elems = ELEMS;
     dim = 1;
@@ -1445,7 +1447,7 @@ void test_memlock()
 
             assert(!ARMCI_Get(pstart, c, bytes, proc));
             assert(!ARMCI_Get(pstart, c, bytes, proc));
-            armci_unlockmem();
+            armci_unlockmem(proc);
             for(k = 0; k < elems; k++)
                 if(a[k]!=c[k])
                 {

@@ -193,7 +193,7 @@ void ARMCIX_DCMF_Acc_register (ARMCIX_DCMF_Connection_t * connection_array)
 
   DCMF_Send_Configuration_t configuration = {
     DCMF_DEFAULT_SEND_PROTOCOL,
-    DCMF_DefaultNetwork,
+    DCMF_DEFAULT_NETWORK,
     ARMCIX_DCMF_RecvAcc1,
     connection_array,
     ARMCIX_DCMF_RecvAcc2,
@@ -387,7 +387,8 @@ int ARMCIX_AccV (int datatype, void * scale, armci_giov_t * darr, int len, int p
 
   volatile unsigned active = n;
   DCMF_Callback_t cb_wait = { ARMCIX_DCMF_cb_decrement, (void *)&active };
-  DCMF_Request_t request[n];
+  DCMF_Request_t *request;
+  request = malloc(n*sizeof(DCMF_Request_t)); 
 
   ARMCIX_DCMF_AccInfo_t info;
   info.datatype = datatype;
@@ -445,6 +446,7 @@ int ARMCIX_AccV (int datatype, void * scale, armci_giov_t * darr, int len, int p
 
   DCMF_CriticalSection_exit  (0);
 #endif
+  free(request);
   return 0;
 }
 
