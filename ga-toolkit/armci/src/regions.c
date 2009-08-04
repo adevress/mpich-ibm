@@ -65,7 +65,9 @@ extern int armci_pin_contig1(void *ptr, size_t bytes);
 static void **exch_list=(void**)0;
 static char exch_loc[MAX_REGIONS];
 static char exch_rem[MAX_REGIONS];
+#ifdef REGIONS_REQUIRE_MEMHDL
 void armci_serv_register_req(void *start,long bytes, ARMCI_MEMHDL_T *reg_mem);
+#endif
 
 
 static int armci_region_record(void *start, void *end, armci_reglist_t *reg)

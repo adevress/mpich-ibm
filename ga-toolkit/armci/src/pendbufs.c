@@ -545,7 +545,7 @@ static void _armci_serv_pendbuf_progress_get(pendbuf_t *pbuf) {
 #warning "PEND_BUFS: Abusing msginfo->tag.ack_ptr for GETS with large descriptors!"
       assert(msginfo->tag.ack_ptr != NULL); /*sanity check. Should point to tag.ack on the client side*/
       void *lptr = ((char *)msginfo)+IMM_BUF_LEN;
-      void *rptr = ((char *)msginfo->tag.ack_ptr) - (int)(&((request_header_t *)0)->tag.ack) + IMM_BUF_LEN;
+      void *rptr = ((char *)msginfo->tag.ack_ptr) - (unsigned long)(&((request_header_t *)0)->tag.ack) + IMM_BUF_LEN;
 /*       printf("%d(s):: GET getting rest of descriptor index=%d bytes=%d ptr=%p from=%d\n", */
 /* 	     armci_me,index,bytes,rptr,msginfo->from); */
 /*       fflush(stdout); */
@@ -612,7 +612,7 @@ static void _armci_serv_pendbuf_progress_putacc(pendbuf_t *pbuf) {
 #warning "PEND_BUFS: Abusing msginfo->tag.ack_ptr for GETS with large descriptors!"
       assert(msginfo->tag.ack_ptr != NULL); /*sanity check. Should point to tag.ack on the client side*/
       void *lptr = ((char *)msginfo)+IMM_BUF_LEN;
-      void *rptr = ((char *)msginfo->tag.ack_ptr) - (int)(&((request_header_t *)0)->tag.ack) + IMM_BUF_LEN;
+      void *rptr = ((char *)msginfo->tag.ack_ptr) - (unsigned long)(&((request_header_t *)0)->tag.ack) + IMM_BUF_LEN;
 /*       printf("%d(s):: PUT getting rest of descriptor index=%d bytes=%d ptr=%p from=%d\n", */
 /* 	     armci_me,index,bytes,rptr,msginfo->from); */
 /*       fflush(stdout); */

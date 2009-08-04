@@ -2,7 +2,7 @@
 #include <string.h>
 #include "global.h"
 #include "globalp.h"
-#include "../../armci/src/message.h"
+#include "message.h"
   
 #if defined(CRAY)
 #  include <fortran.h>

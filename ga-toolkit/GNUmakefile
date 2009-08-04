@@ -8,17 +8,22 @@ SUPPORTED_TARGETS+= LAPI DECOSF LINUX LINUX64 CRAY-T3E CRAY-YMP CYGNUS CYGWIN IN
 SUPPORTED_TARGETS+= FUJITSU-VPP FUJITSU-VPP64 NEC MACX MACX64 BGL BGP $(EXPERIMENTAL)
 ALL_SUPPORTED_TARGETS = $(SUPPORTED_TARGETS) WIN32
 ifndef TARGET
- TARGET=UNDEFINED
+  TARGET=UNDEFINED
 endif
 
-# Makesure to avoid periods (i.e. dot) in GA_VERSION as that might(!) be problematic 
-# in Windows
- GA_VERSION = 4-1-1
+  export ARMCI_DIR_NAME := armci
+ifeq ($(ARMCI_NETWORK),PORTALS)
+  export ARMCI_DIR_NAME := armci-portals
+endif
+
+# Makesure to avoid periods (i.e. dot) in GA_VERSION as that might(!) be
+# problematic in Windows
+ GA_VERSION = 4-2
      TOPDIR = ga-$(GA_VERSION)
          RM = rm
       MKDIR = mkdir
 MAKESUBDIRS = for dir in $(SUBDIRS); do $(MAKE)  -C $$dir $@ || exit 1 ; done
-    SUBDIRS = ma global tcgmsg-mpi LinAlg/lapack+blas tcgmsg armci/src pario ga++
+    SUBDIRS = ma global tcgmsg-mpi LinAlg/lapack+blas tcgmsg $(ARMCI_DIR_NAME)/src pario ga++
   USE_ARMCI = yes
 
 ifdef USE_MPI
@@ -90,7 +95,7 @@ libs:   info $(STAMP) $(MAKEDIRS) include
            endif
         endif
 	@echo '>>> making ARMCI remote memory copy library <<< '
-	(cd ./armci/src; \
+	(cd ./$(ARMCI_DIR_NAME)/src; \
 	$(MAKE) LIB_DISTRIB=../../lib $(EXTRA) $(EXTRA_INC) )
 	@echo '>>> making Global Arrays library <<< '
 	(cd ./global; $(MAKE))
@@ -98,8 +103,8 @@ libs:   info $(STAMP) $(MAKEDIRS) include
 #	(cd ./pario; $(MAKE) LARGE_FILES=yes)
 	(cd ./ga++; $(MAKE))
 
-include ./armci/config/makecoms.h
-include ./armci/config/makemp.h
+include ./$(ARMCI_DIR_NAME)/config/makecoms.h
+include ./$(ARMCI_DIR_NAME)/config/makemp.h
 include ./config/makefile.h
 ifndef LIBDIR
    LIB_DISTRIB = $(PWD)/lib
@@ -164,7 +169,7 @@ include:
 clean:
 	$(MAKESUBDIRS) $^
 	$(RM) -rf include/* *.stamp
-	(cd ./armci/src; $(MAKE) LIB_DISTRIB=../../lib clean )
+	(cd ./$(ARMCI_DIR_NAME)/src; $(MAKE) LIB_DISTRIB=../../lib clean )
 
 realclean: clean
 

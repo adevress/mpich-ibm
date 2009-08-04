@@ -559,10 +559,15 @@ ifeq  ($(_CPU),x86_64)
   endif
 
   _FC = $(shell $(FC) -v 2>&1 | awk ' /g95/ { print "g95"; exit }; /g77 version/ { print "g77"; exit }; /gcc version 4/ { print "gfortran"; exit }; /gcc version/ { print "g77"; exit }; /Path/ { print "pathf90" ; exit }; /efc/ { print "efc" ; exit }; /ifc/ { print "ifort" ; exit };/ifort/ { print "ifort" ; exit }; /pgf90/ { apgf90count++}; /pgf77/ { apgf77count++}; END {if(apgf77count)print "pgf77" ; if(apgf90count)print "pgf90"}  ; / frt / { print "frt" ; exit }')
+  ifeq ($(_FC), )
+        _FC = $(shell $(FC) -V 2>&1 | awk ' /Intel/ { print "ifort"; exit }')
+  endif
+
   ifeq ($(_FC),g77)
         FOPT_REN  += -fstrength-reduce -mfpmath=sse 
   endif
   ifeq ($(_FC),ifort)
+        FOPT = 
         FOPT_REN  += -O3  -w -cm -xW -tpp7
   endif
   ifeq ($(_FC),pathf90)

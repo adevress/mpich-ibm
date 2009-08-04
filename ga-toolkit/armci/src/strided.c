@@ -941,6 +941,7 @@ int ARMCI_GetS( void *src_ptr,  	/* pointer to 1st segment at source*/
   ARMCI_INIT_HANDLE(&nbh);
   ARMCI_NbGetS(src_ptr,src_stride_arr,dst_ptr,dst_stride_arr,seg_count,stride_levels,proc,&nbh);
   ARMCI_Wait(&nbh);
+  ARMCI_Fence(proc);
   ARMCI_PROFILE_STOP_STRIDED(ARMCI_PROF_GETS);
 #ifdef GA_USE_VAMPIR
   if (armci_me != proc)

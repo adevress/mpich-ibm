@@ -1151,6 +1151,7 @@ int ARMCI_Free_group(void *ptr, ARMCI_Group *group)
     return 0;
 }
 /* ***************** End Group Collective Memory Allocation ******************/
+#endif
 
 /* ************** Begin Non-Collective Memory Allocation ******************
  * Prototype similar to SysV shared memory.
@@ -1263,4 +1264,3 @@ void ARMCI_Memctl(armci_meminfo_t *meminfo) {
 
 /* ***************** End Non-Collective Memory Allocation ******************/
 
-#endif

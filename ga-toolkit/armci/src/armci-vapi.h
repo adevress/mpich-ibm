@@ -244,7 +244,7 @@ void armci_vapi_set_mark_buf_send_complete(int);
 
 #define HAS_RDMA_GET
 
-#if defined(OPENIB)
+#if defined(OPENIB) && defined(PEND_BUFS)
 #if 1
 #define PUT_NO_SRV_COPY /*server rdma-s from to client buffers (in
 			  buffers.c) to

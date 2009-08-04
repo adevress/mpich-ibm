@@ -87,7 +87,7 @@ void ga_msg_sync_()
     if(p_grp>0)
        armci_msg_group_barrier(&(PGRP_LIST[p_grp].group));
     else
-       MPI_Barrier(MPI_COMM_WORLD);
+       armci_msg_barrier();
 #else
      long type=GA_TYPE_SYN;
 #  ifdef LAPI
@@ -109,15 +109,11 @@ void ga_msg_pgroup_sync_(Integer *grp_id)
 #     endif
     }
     else {
-#     ifdef MPI       
-        MPI_Barrier(MPI_COMM_WORLD);
+#     if defined(MPI) || defined(LAPI)
+       armci_msg_barrier();
 #     else
-        long type=GA_TYPE_SYN;
-#       ifdef LAPI
-          armci_msg_barrier();
-#       else
-          SYNCH_(&type);
-#       endif
+       long type=GA_TYPE_SYN;
+       SYNCH_(&type);
 #    endif
     }
 }

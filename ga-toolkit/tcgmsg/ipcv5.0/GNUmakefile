@@ -141,8 +141,8 @@ ifdef GA_USE_VAMPIR
    EXTRA += tcgmsg_vampir.o ga_vt.o
 endif 
 
-include ../../armci/config/makecoms.h
-include ../../armci/config/makemp.h
+include ../../$(ARMCI_DIR_NAME)/config/makecoms.h
+include ../../$(ARMCI_DIR_NAME)/config/makemp.h
 include ../../config/makefile.h
 include ../../config/makelib.h
 

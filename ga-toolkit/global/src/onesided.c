@@ -59,6 +59,7 @@
 
 int    ProcListPerm[MAX_NPROC];            /* permuted list of processes */
 
+#define DISABLE_NBOPT /* disables Non-Blocking OPTimization */
 
 /*uncomment line below to verify consistency of MA in every sync */
 /*#define CHECK_MA yes */
@@ -429,7 +430,7 @@ void nga_put_common(Integer *g_a,
 #endif
 
     if(nbhandle)ga_init_nbhandle(nbhandle);
-#ifndef __crayx1
+#if !defined(__crayx1) && !defined(DISABLE_NBOPT)
     else ga_init_nbhandle(&ga_nbhandle);
 #endif
 
@@ -440,7 +441,7 @@ void nga_put_common(Integer *g_a,
 
     gaPermuteProcList(np);
 
-#ifndef __crayx1
+#if !defined(__crayx1) && !defined(DISABLE_NBOPT)
     for(loop=0; loop<num_loops; loop++) {
       __CRAYX1_PRAGMA("_CRI novector");
 #endif
@@ -461,7 +462,7 @@ void nga_put_common(Integer *g_a,
 
         /* check if it is local to SMP */
 
-#ifndef __crayx1
+#if !defined(__crayx1) && !defined(DISABLE_NBOPT)
         cond = armci_domain_same_id(ARMCI_DOMAIN_SMP,(int)proc);
         if(loop==0) cond = !cond;
         if(cond) {
@@ -502,7 +503,7 @@ void nga_put_common(Integer *g_a,
           /*casting what ganb_get_armci_handle function returns to armci_hdl is 
             very crucial here as on 64 bit platforms, pointer is 64 bits where 
             as temporary is only 32 bits*/ 
-#ifdef __crayx1
+#if defined(__crayx1) || defined(DISABLE_NBOPT)
           ARMCI_PutS(pbuf,stride_loc,prem,stride_rem,count,ndim-1,proc);
 #else
           if(nbhandle) 
@@ -523,7 +524,7 @@ void nga_put_common(Integer *g_a,
       }
 #endif
     }
-#ifndef __crayx1
+#if !defined(__crayx1) && !defined(DISABLE_NBOPT)
     if(!nbhandle) nga_wait_internal(&ga_nbhandle);  
 #endif
   } else {
@@ -996,7 +997,7 @@ void FATR nga_get_common(Integer *g_a,
 #endif
 
     if(nbhandle)ga_init_nbhandle(nbhandle);
-#ifndef __crayx1
+#if !defined(__crayx1) && !defined(DISABLE_NBOPT)
     else ga_init_nbhandle(&ga_nbhandle);
 #endif
 
@@ -1007,7 +1008,7 @@ void FATR nga_get_common(Integer *g_a,
 
     gaPermuteProcList(np);
 
-#ifndef __crayx1
+#if !defined(__crayx1) && !defined(DISABLE_NBOPT)
     for(loop=0; loop<num_loops; loop++) {
       __CRAYX1_PRAGMA("_CRI novector");
 #endif
@@ -1027,7 +1028,7 @@ void FATR nga_get_common(Integer *g_a,
 #endif
 
         /* check if it is local to SMP */
-#ifndef __crayx1
+#if !defined(__crayx1) && !defined(DISABLE_NBOPT)
         cond = armci_domain_same_id(ARMCI_DOMAIN_SMP,(int)proc);
         if(loop==0) cond = !cond;
         if(cond) {
@@ -1077,7 +1078,7 @@ void FATR nga_get_common(Integer *g_a,
             GAbytes.getloc += (double)size*elems;
           }
 #endif
-#ifdef __crayx1
+#if defined(__crayx1) || defined(DISABLE_NBOPT)
           ARMCI_GetS(prem,stride_rem,pbuf,stride_loc,count,ndim-1,proc);
 #else
           if(nbhandle) 
@@ -1097,7 +1098,7 @@ void FATR nga_get_common(Integer *g_a,
 #endif
     }
 
-#ifndef __crayx1
+#if !defined(__crayx1) && !defined(DISABLE_NBOPT)
     if(!nbhandle) nga_wait_internal(&ga_nbhandle);  
 #endif
   } else {

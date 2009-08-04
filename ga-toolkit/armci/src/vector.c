@@ -519,6 +519,7 @@ int ARMCI_GetV( armci_giov_t darr[], /* descriptor array */
     vampir_end(ARMCI_GETV,__FILE__,__LINE__);
 #endif
 
+    ARMCI_Fence(proc);
     if(rc) return FAIL6;
     else return 0;
 }

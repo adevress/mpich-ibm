@@ -3,6 +3,7 @@
 #include "globalp.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include "armci.h"
 
 Integer _ga_lo[MAXDIM], _ga_hi[MAXDIM], _ga_work[MAXDIM];
 Integer _ga_dims[MAXDIM], _ga_map_capi[MAX_NPROC];
@@ -1085,6 +1086,27 @@ int GA_Has_ghosts(int g_a)
     return (int)st;
 }
 
+void NGA_Get_ghost_block(int g_a, int lo[], int hi[], void *buf, int ld[])
+{
+    Integer a=(Integer)g_a;
+    Integer ndim = ga_ndim_(&a);
+    COPYINDEX_C2F(lo,_ga_lo, ndim);
+    COPYINDEX_C2F(hi,_ga_hi, ndim);
+    COPYC2F(ld,_ga_work, ndim-1);
+    nga_get_ghost_block_(&a, _ga_lo, _ga_hi, buf, _ga_work);
+}
+
+void NGA_Get_ghost_block64(int g_a, int64_t lo[], int64_t hi[],
+    void *buf, int64_t ld[])
+{
+    Integer a=(Integer)g_a;
+    Integer ndim = ga_ndim_(&a);
+    COPYINDEX_C2F(lo,_ga_lo, ndim);
+    COPYINDEX_C2F(hi,_ga_hi, ndim);
+    COPYC2F(ld,_ga_work, ndim-1);
+    nga_get_ghost_block_(&a, _ga_lo, _ga_hi, buf, _ga_work);
+}
+
 void GA_Mask_sync(int first, int last)
 {
     Integer ifirst = (Integer)first;
@@ -1331,6 +1353,30 @@ int NGA_NbTest(ga_nbhdl_t* nbhandle)
 int NGA_NbWait(ga_nbhdl_t* nbhandle)
 {
     return(nga_wait_internal((Integer *)nbhandle));
+}
+
+void NGA_Strided_get(int g_a, int lo[], int hi[], int skip[],
+                     void* buf, int ld[])
+{
+    Integer a=(Integer)g_a;
+    Integer ndim = ga_ndim_(&a);
+    COPYINDEX_C2F(lo,_ga_lo, ndim);
+    COPYINDEX_C2F(hi,_ga_hi, ndim);
+    COPYC2F(ld,_ga_work, ndim-1);
+    COPYC2F(skip, _ga_skip, ndim);
+    nga_strided_get_(&a, _ga_lo, _ga_hi, _ga_skip, buf, _ga_work);
+}    
+
+void NGA_Strided_get64(int g_a, int64_t lo[], int64_t hi[], int64_t skip[],
+                     void* buf, int64_t ld[])
+{
+    Integer a=(Integer)g_a;
+    Integer ndim = ga_ndim_(&a);
+    COPYINDEX_C2F(lo,_ga_lo, ndim);
+    COPYINDEX_C2F(hi,_ga_hi, ndim);
+    COPYC2F(ld,_ga_work, ndim-1);
+    COPYC2F(skip, _ga_skip, ndim);
+    nga_strided_get_(&a, _ga_lo, _ga_hi, _ga_skip, buf, _ga_work);
 }
 
 void NGA_Strided_put(int g_a, int lo[], int hi[], int skip[],
@@ -3594,12 +3640,6 @@ void GA_Median_patch64(int g_a, int64_t *alo, int64_t *ahi,
     COPYINDEX_C2F(mhi,_ga_mhi, mndim);
     ga_median_patch_(&a, _ga_alo, _ga_ahi, &b, _ga_blo, _ga_bhi, &c, _ga_clo, _ga_chi, &m, _ga_mlo, _ga_mhi);
 }
-
-#ifdef WIN32
-#include <armci.h>
-#else
-#include <../../armci/src/armci.h>
-#endif
 
 /* return number of nodes being used in a cluster */
 int GA_Cluster_nnodes()

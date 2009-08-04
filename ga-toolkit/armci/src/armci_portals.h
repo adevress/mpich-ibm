@@ -7,7 +7,7 @@
 #ifdef XT3
 
 #include <portals/portals3.h>
-#include <catamount/cnos_mpi_os.h>
+#include <cnos_mpi_os.h>
 
 #else
 
