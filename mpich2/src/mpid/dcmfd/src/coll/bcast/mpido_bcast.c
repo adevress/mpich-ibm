@@ -34,8 +34,8 @@ MPIDO_Bcast(void *buffer,
   volatile unsigned allred_active = 1;
   DCMF_CollectiveRequest_t request;
   DCMF_Callback_t allred_cb = {allred_cb_done, (void*) &allred_active};
-  int buffer_aligned;
-  int dputok[2];
+  int buffer_aligned = 0, skip_buff_check = 0;
+  int dputok[2] = {0, 0};
 
   unsigned char userenvset = MPIDO_INFO_ISSET(properties, MPIDO_BCAST_ENVVAR);
   
@@ -78,47 +78,62 @@ MPIDO_Bcast(void *buffer,
     }
   }
 
-  buffer_aligned = !((unsigned) data_buffer & 0x0F);
-  /* Are we likely to use DPUT? If so, we must pre-allreduce to see if 
-   * everyone has an aligned buffer. This sucks, but dput is a bandwidth
-   * optimized protocol so it shouldn't be a huge deal 
-   * These properties are the same on all nodes, so if they are valid
-   * and we haven't turned off the pre-allreduce check, then we will need
-   * to do the allreduce. Note: We add buffer alignment inside the
-   * preallreduce step because everyone must agree to *do* the allreduce.
-   *
-   * CCMI Tree Dput is suggested as a protocol for 1 byte messages. Is
-   * this really true? It appears that a "normal" Tree protocol has
-   * priority at least. I'd rather not add *more* complexity to this
-   * mess, so I don't see a need to check for small messages && tree
-   * dput || medium to large messages && rect dput. I'm going
-   * to leave the allreduce cutoff where the rect dput cutoff is, namely
-   * 8192. If CCMI Tree Dput is viable at 1 byte and beats nondput tree,
-   * then we'll have to reevaluate this decision and reorder the protocols
-   * inside the if() checks..
+  /*
+    this conditions checks for one special case where R protocol is better
+    than Dput protocol at large configurations in VN mode and at 65KB messages
+    on rectangle subcomms.
    */
-   dputok[0] = MPIDO_INFO_ISSET(properties, MPIDO_USE_RECT_DPUT_BCAST) &&
-              (userenvset || data_size>8192);
-   /* We never do CCMI_TREE_DPUT_BCAST unless a lot of other stuff is turned
-    * off. That stuff can only be turned off via env vars, so it doesn't make
-    * sense to do this preallreduce UNLESS env vars are set */
-   dputok[1] = MPIDO_INFO_ISSET(properties, MPIDO_USE_CCMI_TREE_DPUT_BCAST) &&
-              userenvset;
+  if (data_size == 65536 &&
+      mpid_hw.tSize == 4 &&
+      !userenvset &&
+      MPIDO_INFO_ISSET(properties, MPIDO_USE_PREALLREDUCE_BCAST) &&
+      MPIDO_INFO_ISSET(properties, MPIDO_RECT_COMM))
+    skip_buff_check = 1;
 
-   if(MPIDO_INFO_ISSET(properties, MPIDO_USE_PREALLREDUCE_BCAST) && 
-      (dputok[0] || dputok[1]))
-   {
-      dputok[0] = (dputok[0] && buffer_aligned);
-      dputok[1] = (dputok[1] && buffer_aligned);
-      if(comm->dcmf.short_allred == NULL)
-      {
-         STAR_info.internal_control_flow = 1;
-         MPIDO_Allreduce(MPI_IN_PLACE, &dputok, 2, MPI_INT, MPI_BAND, comm);
-         STAR_info.internal_control_flow = 0;
-      }
-      else
-      {
-         DCMF_Allreduce(comm->dcmf.short_allred,
+  if (!skip_buff_check)
+  {
+    buffer_aligned = !((unsigned) data_buffer & 0x0F);
+    /* Are we likely to use DPUT? If so, we must pre-allreduce to see if 
+     * everyone has an aligned buffer. This sucks, but dput is a bandwidth
+     * optimized protocol so it shouldn't be a huge deal 
+     * These properties are the same on all nodes, so if they are valid
+     * and we haven't turned off the pre-allreduce check, then we will need
+     * to do the allreduce. Note: We add buffer alignment inside the
+     * preallreduce step because everyone must agree to *do* the allreduce.
+     *
+     * CCMI Tree Dput is suggested as a protocol for 1 byte messages. Is
+     * this really true? It appears that a "normal" Tree protocol has
+     * priority at least. I'd rather not add *more* complexity to this
+     * mess, so I don't see a need to check for small messages && tree
+     * dput || medium to large messages && rect dput. I'm going
+     * to leave the allreduce cutoff where the rect dput cutoff is, namely
+     * 8192. If CCMI Tree Dput is viable at 1 byte and beats nondput tree,
+     * then we'll have to reevaluate this decision and reorder the protocols
+     * inside the if() checks..
+     */
+    dputok[0] = MPIDO_INFO_ISSET(properties, MPIDO_USE_RECT_DPUT_BCAST) &&
+                (userenvset || data_size>8192);
+    /* We never do CCMI_TREE_DPUT_BCAST unless a lot of other stuff is turned
+     * off. That stuff can only be turned off via env vars, so it doesn't make
+     * sense to do this preallreduce UNLESS env vars are set */
+    dputok[1] = MPIDO_INFO_ISSET(properties, MPIDO_USE_CCMI_TREE_DPUT_BCAST) &&
+                userenvset;
+  }
+  
+  if(MPIDO_INFO_ISSET(properties, MPIDO_USE_PREALLREDUCE_BCAST) && 
+     (dputok[0] || dputok[1]))
+  {
+    dputok[0] = (dputok[0] && buffer_aligned);
+    dputok[1] = (dputok[1] && buffer_aligned);
+    if(comm->dcmf.short_allred == NULL)
+    {
+      STAR_info.internal_control_flow = 1;
+      MPIDO_Allreduce(MPI_IN_PLACE, &dputok, 2, MPI_INT, MPI_BAND, comm);
+      STAR_info.internal_control_flow = 0;
+    }
+    else
+    {
+      DCMF_Allreduce(comm->dcmf.short_allred,
                      &request,
                      allred_cb,
                      DCMF_MATCH_CONSISTENCY,
@@ -128,13 +143,11 @@ MPIDO_Bcast(void *buffer,
                      2,
                      DCMF_SIGNED_INT,
                      DCMF_BAND);
-         MPID_PROGRESS_WAIT_WHILE(allred_active);
-      }
-
-
-   }
-
-
+      MPID_PROGRESS_WAIT_WHILE(allred_active);
+    }
+  }
+  
+  
   if (!STAR_info.enabled || STAR_info.internal_control_flow ||
       data_size < STAR_info.bcast_threshold)
   {
