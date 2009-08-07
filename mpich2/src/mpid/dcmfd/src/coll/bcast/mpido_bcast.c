@@ -88,7 +88,7 @@ MPIDO_Bcast(void *buffer,
     behavior to occur in the case of Rect subcomms. Otherwise, tree protocols
     should be used.
    */
-  if (comm->local_size > 32768 &&
+  if (comm->local_size >= 32768 &&
       data_size == 65536 &&
       mpid_hw.tSize == 4 &&
       !userenvset &&
