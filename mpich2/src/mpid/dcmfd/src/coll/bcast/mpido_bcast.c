@@ -81,7 +81,12 @@ MPIDO_Bcast(void *buffer,
   /*
     this conditions checks for one special case where R protocol is better
     than Dput protocol at large configurations in VN mode and at 65KB messages
-    on rectangle subcomms.
+    on rectangle subcomms.  If bcast is safe, this condition will fail and
+    we would want to use Dput since it is faster. Skipping the buffer check
+    will make the control go thru the normal code path and will eventually
+    skip dput and go for Rectangle protocol. Note that we want this overall
+    behavior to occur in the case of Rect subcomms. Otherwise, tree protocols
+    should be used.
    */
   if (data_size == 65536 &&
       mpid_hw.tSize == 4 &&
