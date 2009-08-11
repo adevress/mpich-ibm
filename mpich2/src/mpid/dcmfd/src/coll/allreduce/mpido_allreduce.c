@@ -38,6 +38,7 @@ MPIDO_Allreduce(void * sendbuf,
   char *rbuf = recvbuf;
   DCMF_CollectiveRequest_t request;
   volatile unsigned preallred_active = 1;
+  int use_nd = 1;
   DCMF_Callback_t pre_allred_cb = 
       {pre_allred_cb_done, (void *)&preallred_active};
 
@@ -114,7 +115,18 @@ MPIDO_Allreduce(void * sendbuf,
          MPID_PROGRESS_WAIT_WHILE(preallred_active);
       }
    }
-
+   /* Using dcmf_data prevents having to check for all 57 MPI datatypes
+    * that are equivalent to a double for example */
+   if((dcmf_data == DCMF_DOUBLE || dcmf_data == DCMF_FLOAT ||
+       dcmf_data == DCMF_DOUBLE_COMPLEX || dcmf_data == DCMF_SINGLE_COMPLEX ||
+       dcmf_data == DCMF_LOC_2DOUBLE || dcmf_data == DCMF_LOC_2FLOAT ||
+       dcmf_data == DCMF_LOC_FLOAT_INT || dcmf_data == DCMF_LOC_DOUBLE_INT ||
+       dcmf_data == DCMF_LONG_DOUBLE) &&
+       (dcmf_op == DCMF_SUM || dcmf_op == DCMF_PROD) &&
+       MPIDO_INFO_ISSET(properties, MPIDO_REQUIRE_DETERMINISTIC_ALLRED))
+   {
+       use_nd = 0;
+   }
 
 
   if (!STAR_info.enabled || STAR_info.internal_control_flow ||
@@ -162,22 +174,21 @@ MPIDO_Allreduce(void * sendbuf,
         
         if (data_size < 208)
         {
-               
           if(MPIDO_INFO_ISSET(properties, 
-                             MPIDO_USE_SHORT_ASYNC_RECT_ALLREDUCE))
+                        MPIDO_USE_SHORT_ASYNC_RECT_ALLREDUCE) && use_nd)
           {
             func = MPIDO_Allreduce_short_async_rect;
             comm->dcmf.last_algorithm = MPIDO_USE_SHORT_ASYNC_RECT_ALLREDUCE;
           }
           
           if(!func && MPIDO_INFO_ISSET(properties, 
-                                      MPIDO_USE_SHORT_ASYNC_BINOM_ALLREDUCE))
+                        MPIDO_USE_SHORT_ASYNC_BINOM_ALLREDUCE) && use_nd)
           {
             func = MPIDO_Allreduce_short_async_binom;
             comm->dcmf.last_algorithm = MPIDO_USE_SHORT_ASYNC_BINOM_ALLREDUCE;
           }
           if (!func && MPIDO_INFO_ISSET(properties, 
-                                       MPIDO_USE_ABINOM_ALLREDUCE))
+                        MPIDO_USE_ABINOM_ALLREDUCE) && use_nd)
           {
             func = MPIDO_Allreduce_async_binom;
             comm->dcmf.last_algorithm = MPIDO_USE_ABINOM_ALLREDUCE;

@@ -51,8 +51,11 @@
 /* is buff size multiple of 4? */
 #define MPIDO_BUFF_SIZE_MUL4                                               13
 #define MPIDO_BUFF_ALIGNED                                                 14
+/* I still can't get anyone to tell me why we need MPIDO_SINGLE_THREAD_MODE
+ * AND MPIDO_THREADED_MODE. Aren't they redundant???
+ */
 #define MPIDO_THREADED_MODE                                                15
-/*#define MPIDO_USE_SMP_TREE_SHORTCUT                                      16*/
+#define MPIDO_REQUIRE_DETERMINISTIC_ALLRED                                 16
 
 /*******************/
 /* Collective bits */
@@ -121,121 +124,125 @@
 #define MPIDO_USE_SHORT_ASYNC_RECT_ALLREDUCE                               59
 #define MPIDO_USE_SHORT_ASYNC_BINOM_ALLREDUCE                              60
 #define MPIDO_USE_RRING_DPUT_SINGLETH_ALLREDUCE                            61
-#define MPIDO_USE_MPICH_ALLREDUCE                                          62
-#define MPIDO_USE_PREALLREDUCE_ALLREDUCE                                   63
+#define MPIDO_USE_GLOBAL_TREE_ALLREDUCE                                    62
+#define MPIDO_USE_MPICH_ALLREDUCE                                          63
+#define MPIDO_USE_PREALLREDUCE_ALLREDUCE                                   64
 /* Controls whether or not we reuse storage in allreduce */
-#define MPIDO_USE_STORAGE_ALLREDUCE                                        64
+#define MPIDO_USE_STORAGE_ALLREDUCE                                        65
 
 
 
 /* Alltoall(vw) protocols */
 /*---------------------------------------------------------------------------*/
-#define MPIDO_USE_TORUS_ALLTOALL                                           65
-#define MPIDO_USE_MPICH_ALLTOALL                                           66
+#define MPIDO_USE_TORUS_ALLTOALL                                           66
+#define MPIDO_USE_MPICH_ALLTOALL                                           67
 
 /*---------------------------------------------------------------------------*/
-#define MPIDO_USE_TORUS_ALLTOALLV                                          67
-#define MPIDO_USE_MPICH_ALLTOALLV                                          68  
+#define MPIDO_USE_TORUS_ALLTOALLV                                          68
+#define MPIDO_USE_MPICH_ALLTOALLV                                          69  
 
 /*---------------------------------------------------------------------------*/
-#define MPIDO_USE_TORUS_ALLTOALLW                                          69
-#define MPIDO_USE_MPICH_ALLTOALLW                                          70  
+#define MPIDO_USE_TORUS_ALLTOALLW                                          70
+#define MPIDO_USE_MPICH_ALLTOALLW                                          71  
 
-#define MPIDO_ALLTOALL_RESERVED1                                           71
+#define MPIDO_ALLTOALL_RESERVED1                                           72
 
 /* Alltoall(vw) use a large number of arrays. This lazy allocs them at comm
  * create time */
-#define MPIDO_USE_PREMALLOC_ALLTOALL                                       72
+#define MPIDO_USE_PREMALLOC_ALLTOALL                                       73
 
 
 /* Barrier protocols */
 /*---------------------------------------------------------------------------*/
-#define MPIDO_USE_BINOM_BARRIER                                            73
-#define MPIDO_USE_GI_BARRIER                                               74
-#define MPIDO_USE_RECT_BARRIER                                             75
-#define MPIDO_USE_MPICH_BARRIER                                            76
+#define MPIDO_USE_BINOM_BARRIER                                            74
+#define MPIDO_USE_GI_BARRIER                                               75
+#define MPIDO_USE_CCMI_GI_BARRIER                                          76
+#define MPIDO_USE_RECT_BARRIER                                             77
+#define MPIDO_USE_MPICH_BARRIER                                            78
 
 /* Local barriers */
 /*---------------------------------------------------------------------------*/
-#define MPIDO_USE_BINOM_LBARRIER                                           77
-#define MPIDO_USE_LOCKBOX_LBARRIER                                         78
-#define MPIDO_USE_RECT_LOCKBOX_LBARRIER                                    79
-#define MPIDO_BARRIER_RESERVED1                                            80
+#define MPIDO_USE_BINOM_LBARRIER                                           79
+#define MPIDO_USE_LOCKBOX_LBARRIER                                         80
+#define MPIDO_USE_RECT_LOCKBOX_LBARRIER                                    81
+#define MPIDO_BARRIER_RESERVED1                                            82
 
 /* Bcast protocols */
 /*---------------------------------------------------------------------------*/
-#define MPIDO_USE_ABINOM_BCAST                                             81
-#define MPIDO_USE_ARECT_BCAST                                              82
-#define MPIDO_USE_BINOM_BCAST                                              83
-#define MPIDO_USE_BINOM_SINGLETH_BCAST                                     84
-#define MPIDO_USE_RECT_BCAST                                               85
-#define MPIDO_USE_RECT_DPUT_BCAST                                          86
-#define MPIDO_USE_RECT_SINGLETH_BCAST                                      87
-#define MPIDO_USE_SCATTER_GATHER_BCAST                                     88
-#define MPIDO_USE_TREE_BCAST                                               89
-#define MPIDO_USE_MPICH_BCAST                                              90
-#define MPIDO_USE_TREE_SHMEM_BCAST                                         91
-#define MPIDO_USE_PREALLREDUCE_BCAST                                       92
+#define MPIDO_USE_ABINOM_BCAST                                             83
+#define MPIDO_USE_ARECT_BCAST                                              84
+#define MPIDO_USE_BINOM_BCAST                                              85
+#define MPIDO_USE_BINOM_SINGLETH_BCAST                                     86
+#define MPIDO_USE_RECT_BCAST                                               87
+#define MPIDO_USE_RECT_DPUT_BCAST                                          88
+#define MPIDO_USE_RECT_SINGLETH_BCAST                                      89
+#define MPIDO_USE_SCATTER_GATHER_BCAST                                     90
+#define MPIDO_USE_TREE_BCAST                                               91
+#define MPIDO_USE_CCMI_TREE_BCAST                                          92
+#define MPIDO_USE_CCMI_TREE_DPUT_BCAST                                     93
+#define MPIDO_USE_TREE_SHMEM_BCAST                                         94
+#define MPIDO_USE_MPICH_BCAST                                              95
+#define MPIDO_USE_PREALLREDUCE_BCAST                                       96
 
 /* Exscan in case someone implements something */
 /*---------------------------------------------------------------------------*/
-#define MPIDO_USE_MPICH_EXSCAN                                             93
-#define MPIDO_EXSCAN_RESERVED1                                             94
+#define MPIDO_USE_MPICH_EXSCAN                                             97
+#define MPIDO_EXSCAN_RESERVED1                                             98
 
 /* Gather protocols */
 /*---------------------------------------------------------------------------*/
-#define MPIDO_USE_REDUCE_GATHER                                            95
-#define MPIDO_USE_MPICH_GATHER                                             96
-#define MPIDO_GATHER_RESERVED1                                             97
+#define MPIDO_USE_REDUCE_GATHER                                            99
+#define MPIDO_USE_MPICH_GATHER                                             100
+#define MPIDO_GATHER_RESERVED1                                             101
 
 /* Gatherv protocols in case someone implements something */
 /*---------------------------------------------------------------------------*/
-#define MPIDO_USE_MPICH_GATHERV                                            98
-#define MPIDO_GATHERV_RESERVED1                                            99
+#define MPIDO_USE_MPICH_GATHERV                                            102
+#define MPIDO_GATHERV_RESERVED1                                            103
 
 /* Reduce protocols */
 /*---------------------------------------------------------------------------*/
-#define MPIDO_USE_BINOM_REDUCE                                             100
-#define MPIDO_USE_GLOBAL_TREE_REDUCE                                       101
-#define MPIDO_USE_RECT_REDUCE                                              102
-#define MPIDO_USE_RECTRING_REDUCE                                          103
-#define MPIDO_USE_TREE_REDUCE                                              104
-#define MPIDO_USE_MPICH_REDUCE                                             105
-#define MPIDO_USE_ALLREDUCE_REDUCE                                         106
-#define MPIDO_USE_PREMALLOC_REDUCE                                         107
+#define MPIDO_USE_BINOM_REDUCE                                             104
+#define MPIDO_USE_GLOBAL_TREE_REDUCE                                       105
+#define MPIDO_USE_RECT_REDUCE                                              106
+#define MPIDO_USE_RECTRING_REDUCE                                          107
+#define MPIDO_USE_TREE_REDUCE                                              108
+#define MPIDO_USE_MPICH_REDUCE                                             109
+#define MPIDO_USE_ALLREDUCE_REDUCE                                         110
+#define MPIDO_USE_PREMALLOC_REDUCE                                         111
 /* Controls whether or not we reuse storage in reduce */
-#define MPIDO_USE_STORAGE_REDUCE                                           108
+#define MPIDO_USE_STORAGE_REDUCE                                           112
 
 /* Reduce_scatter protocols */
 /*---------------------------------------------------------------------------*/
-#define MPIDO_USE_REDUCESCATTER                                            109
-#define MPIDO_USE_MPICH_REDUCESCATTER                                      110
-#define MPIDO_REDUCESCATTER_RESERVED1                                      111
+#define MPIDO_USE_REDUCESCATTER                                            113
+#define MPIDO_USE_MPICH_REDUCESCATTER                                      114
+#define MPIDO_REDUCESCATTER_RESERVED1                                      115
 
 /* Scan protocols in case someone implements something */
 /*---------------------------------------------------------------------------*/
-#define MPIDO_USE_MPICH_SCAN                                               112
-#define MPIDO_SCAN_RESERVED1                                               113
+#define MPIDO_USE_MPICH_SCAN                                               116
+#define MPIDO_SCAN_RESERVED1                                               117
                                               
 /* Scatter protocols */                                              
 /*---------------------------------------------------------------------------*/
-#define MPIDO_USE_BCAST_SCATTER                                            114  
-#define MPIDO_USE_MPICH_SCATTER                                            115
-#define MPIDO_SCATTER_RESERVED1                                            116
+#define MPIDO_USE_BCAST_SCATTER                                            118  
+#define MPIDO_USE_MPICH_SCATTER                                            119
+#define MPIDO_SCATTER_RESERVED1                                            120
 
 /* Scatterv protocols */
 /*---------------------------------------------------------------------------*/
-#define MPIDO_USE_BCAST_SCATTERV                                           117
-#define MPIDO_USE_ALLTOALL_SCATTERV                                        118
-#define MPIDO_USE_ALLREDUCE_SCATTERV                                       119
-#define MPIDO_USE_MPICH_SCATTERV                                           120
-#define MPIDO_SCATTERV_RESERVED1                                           121
-#define MPIDO_USE_PREALLREDUCE_SCATTERV                                    122
+#define MPIDO_USE_BCAST_SCATTERV                                           121
+#define MPIDO_USE_ALLTOALL_SCATTERV                                        122
+#define MPIDO_USE_ALLREDUCE_SCATTERV                                       123
+#define MPIDO_USE_MPICH_SCATTERV                                           124
+#define MPIDO_SCATTERV_RESERVED1                                           125
+#define MPIDO_USE_PREALLREDUCE_SCATTERV                                    126
 
-#define MPIDO_USE_CCMI_TREE_BCAST                                          123
-#define MPIDO_USE_CCMI_TREE_DPUT_BCAST                                     124
-#define MPIDO_USE_CCMI_GI_BARRIER                                          125
-#define MPIDO_USE_GLOBAL_TREE_ALLREDUCE                                    126
+/* Don't just add stuff down here. It's not that hard to put the bit where it
+ * goes and renumber stuff. 
+ */
+
 
 
 extern char * mpido_algorithms[];

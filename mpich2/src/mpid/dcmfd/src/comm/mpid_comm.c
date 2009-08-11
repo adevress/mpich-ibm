@@ -560,6 +560,20 @@ MPIDI_Env_setup()
   ENV_Int(getenv("DCMF_RMA_PENDING"), &dval);
   MPIDI_Process.rma_pending = dval;
 
+   /* Are nondeterministic allreduce protocols ok? Right now, AB, SR
+    * and SB are nondeterministic for noncommutative data, eg,
+    * floating point sum/prods.
+    */
+   MPIDO_INFO_SET(properties, MPIDO_REQUIRE_DETERMINISTIC_ALLRED);
+   dval = 0;
+   ENV_Bool(getenv("DCMF_ALLREDUCE_NDOK"), &dval);
+   ENV_Bool(getenv("DCMF_ALLREDUCE_ND"), &dval);
+   if(dval)
+   {
+      MPIDO_INFO_UNSET(properties, MPIDO_REQUIRE_DETERMINISTIC_ALLRED);
+   }
+
+
 
   /* Initialize selection variables */
   /* turn these off in MPIDI_Coll_register if registration fails
