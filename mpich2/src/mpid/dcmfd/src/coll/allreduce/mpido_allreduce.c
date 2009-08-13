@@ -175,7 +175,7 @@ MPIDO_Allreduce(void * sendbuf,
         if (data_size < 208)
         {
           if(MPIDO_INFO_ISSET(properties, 
-                        MPIDO_USE_SHORT_ASYNC_RECT_ALLREDUCE) && use_nd)
+                        MPIDO_USE_SHORT_ASYNC_RECT_ALLREDUCE))
           {
             func = MPIDO_Allreduce_short_async_rect;
             comm->dcmf.last_algorithm = MPIDO_USE_SHORT_ASYNC_RECT_ALLREDUCE;
