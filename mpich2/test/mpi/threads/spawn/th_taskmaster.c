@@ -25,7 +25,7 @@ int comm_world_size;
 
 void process_spawn(MPI_Comm * comm, int thread_id)
 {
-    CHECK_SUCCESS(MPI_Comm_spawn("./taskmaster", (char **) NULL, 1, MPI_INFO_NULL, 0,
+    CHECK_SUCCESS(MPI_Comm_spawn("./th_taskmaster", (char **) NULL, 1, MPI_INFO_NULL, 0,
 				 MPI_COMM_WORLD, comm, NULL));
 }
 
@@ -63,11 +63,15 @@ int main(int argc, char *argv[])
     MPI_Comm * child;
 #endif /* USE_THREADS */
 
+#ifdef USE_THREADS
     CHECK_SUCCESS(MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &provided));
     if (provided != MPI_THREAD_MULTIPLE) {
 	fprintf(stderr, "MPI does not provide THREAD_MULTIPLE support\n");
 	MPI_Abort(MPI_COMM_WORLD, -1);
     }
+#else
+    MPI_Init(&argc, &argv);
+#endif
 
     CHECK_SUCCESS(MPI_Comm_get_parent(&parent));
 

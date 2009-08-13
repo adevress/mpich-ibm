@@ -5,6 +5,7 @@
 /config.*
 /hydra_config.h*
 /autom4te*
+/mpiexec
 /*.gcov
 /*.gcda
 /*.gcno
