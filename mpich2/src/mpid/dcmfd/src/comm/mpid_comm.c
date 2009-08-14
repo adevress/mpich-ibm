@@ -607,7 +607,7 @@ MPIDI_Env_setup()
                   MPIDO_USE_PREALLREDUCE_ALLREDUCE,
                   MPIDO_USE_STORAGE_ALLREDUCE,
                   MPIDO_USE_RECT_ALLREDUCE,
-                  MPIDO_USE_SHORT_ASYNC_RECT_ALLREDUCE,
+                  //MPIDO_USE_SHORT_ASYNC_RECT_ALLREDUCE,
                   MPIDO_USE_RECTRING_ALLREDUCE,
                   MPIDO_USE_BINOM_ALLREDUCE,
                   MPIDO_USE_ARECT_ALLREDUCE,
