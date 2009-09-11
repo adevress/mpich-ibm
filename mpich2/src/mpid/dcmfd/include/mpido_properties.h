@@ -72,7 +72,7 @@
 #define MPIDO_REDUCE_ENVVAR                                                23
 #define MPIDO_PREALLREDUCE_ENVVAR                                          24
 /* In case we have complicated cutoffs in future algorithms */
-#define MPIDO_ENVVAR_RESERVED2                                             25
+#define MPIDO_NOTSMP_MODE                                                  25
 
 /* this indicates the bit index that represent properties for collectives */
 #define MPIDO_COLL_PROP                                                    26

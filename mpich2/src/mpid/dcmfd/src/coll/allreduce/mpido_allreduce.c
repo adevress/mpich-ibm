@@ -129,7 +129,7 @@ MPIDO_Allreduce(void * sendbuf,
    }
 
 
-  if (!STAR_info.enabled || STAR_info.internal_control_flow ||
+  if (!STAR_info.allreduce_enabled || STAR_info.internal_control_flow ||
       data_size < STAR_info.allreduce_threshold)
   {
     if(!userenvset)
@@ -138,8 +138,9 @@ MPIDO_Allreduce(void * sendbuf,
            op_type_support == MPIDO_TREE_MIN_SUPPORT) &&
           MPIDO_INFO_ISSET(properties, MPIDO_TREE_COMM))
       {
-        if (MPIDO_INFO_ISSET(properties, MPIDO_USE_GLOBAL_TREE_ALLREDUCE) &&
-            data_size > 512 && data_size < 8192)
+        if (MPIDO_INFO_ISSET(properties, MPIDO_USE_GLOBAL_TREE_ALLREDUCE))
+          // &&
+          //  data_size > 512 && data_size < 8192)
         {
           func = MPIDO_Allreduce_global_tree;
           comm->dcmf.last_algorithm = MPIDO_USE_GLOBAL_TREE_ALLREDUCE;

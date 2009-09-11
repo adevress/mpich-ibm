@@ -235,7 +235,15 @@ typedef struct STAR_Tuning_Session
 typedef struct
 {
   /* env variable setting the use of STAR */
-  int enabled;
+  int alltoall_enabled;
+  int allreduce_enabled;
+  int allgather_enabled;
+  int allgatherv_enabled;
+  int scatter_enabled;
+  int gather_enabled;
+  int reduce_enabled;
+  int bcast_enabled;
+  int barrier_enabled;
 
   int alltoall_threshold; /* min message size to have star kick in */
   int allgather_threshold; /* min message size to have star kick in */

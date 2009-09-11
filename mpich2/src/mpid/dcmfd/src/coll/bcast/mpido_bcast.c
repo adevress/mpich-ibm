@@ -153,8 +153,7 @@ MPIDO_Bcast(void *buffer,
     }
   }
   
-  
-  if (!STAR_info.enabled || STAR_info.internal_control_flow ||
+  if (!STAR_info.bcast_enabled || STAR_info.internal_control_flow ||
       data_size < STAR_info.bcast_threshold)
   {
     if (userenvset)

@@ -1206,16 +1206,66 @@ MPIDI_Env_setup()
   }
 
   /* star-mpi is off by default unless user requests it */
+
   dval = 0;
-  ENV_Int(getenv("DCMF_STAR"), &dval);
+  ENV_Int(getenv("DCMF_STAR_ALLTOALL"), &dval);
   if (dval > 0 )
-  {
-    STAR_info.enabled = dval;
+    STAR_info.alltoall_enabled = dval;
 
-    /* initialize the repositories of STAR */
-    STAR_InitRepositories();
-  }
+  dval = 0;
+  ENV_Int(getenv("DCMF_STAR_ALLGATHER"), &dval);
+  if (dval > 0 )
+    STAR_info.allgather_enabled = dval;
 
+  dval = 0;
+  ENV_Int(getenv("DCMF_STAR_ALLGATHERV"), &dval);
+  if (dval > 0 )
+    STAR_info.allgatherv_enabled = dval;
+
+  dval = 0;
+  ENV_Int(getenv("DCMF_STAR_ALLREDUCE"), &dval);
+  if (dval > 0 )
+    STAR_info.allreduce_enabled = dval;
+
+  dval = 0;
+  ENV_Int(getenv("DCMF_STAR_REDUCE"), &dval);
+  if (dval > 0 )
+    STAR_info.reduce_enabled = dval;
+
+  dval = 0;
+  ENV_Int(getenv("DCMF_STAR_BCAST"), &dval);
+  if (dval > 0 )
+    STAR_info.bcast_enabled = dval;
+
+  dval = 0;
+  ENV_Int(getenv("DCMF_STAR_GATHER"), &dval);
+  if (dval > 0 )
+    STAR_info.gather_enabled = dval;
+
+  dval = 0;
+  ENV_Int(getenv("DCMF_STAR_SCATTER"), &dval);
+  if (dval > 0 )
+    STAR_info.scatter_enabled = dval;
+
+  dval = 0;
+  ENV_Int(getenv("DCMF_STAR_BARRIER"), &dval);
+  if (dval > 0 )
+    STAR_info.barrier_enabled = dval;
+
+  /* initialize the repositories of STAR */
+  STAR_InitRepositories();
+  
+  int star_on = 0;
+  star_on = STAR_info.alltoall_enabled ||
+            STAR_info.allreduce_enabled ||
+            STAR_info.allgather_enabled ||
+            STAR_info.allgatherv_enabled ||
+            STAR_info.barrier_enabled ||
+            STAR_info.bcast_enabled ||
+            STAR_info.gather_enabled ||
+            STAR_info.scatter_enabled ||
+            STAR_info.reduce_enabled;
+  
   dval = 0;
   ENV_Int(getenv("DCMF_STAR_NUM_INVOCS"), &dval);
   if (dval > 0 )
@@ -1232,7 +1282,7 @@ MPIDI_Env_setup()
     STAR_info.agree_on_callsite = dval;
 
   ENV_Int(getenv("DCMF_STAR_VERBOSE"), &dval);
-  if (STAR_info.enabled && dval > 0)
+  if (star_on && dval > 0)
     STAR_info.debug = dval;
   dval = -1;
   ENV_Int(getenv("DCMF_STAR_ALLTOALL_THRESHOLD"), &dval);

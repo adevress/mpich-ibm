@@ -5,6 +5,7 @@
  */
 #include "mpidimpl.h"
 extern void STAR_FreeMem(MPID_Comm *);
+extern void STAR_FreeRepos();
 
 /**
  * \brief Shut down the system
@@ -20,6 +21,7 @@ int MPID_Finalize()
   PMPI_Barrier(MPI_COMM_WORLD);
 
   STAR_FreeMem(comm);
+  STAR_FreeRepos();
 
   /* ------------------------- */
   /* shutdown the statistics   */

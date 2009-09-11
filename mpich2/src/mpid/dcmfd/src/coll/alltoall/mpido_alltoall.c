@@ -71,7 +71,7 @@ MPIDO_Alltoall(void *sendbuf,
   }
       
 
-  if (!STAR_info.enabled || STAR_info.internal_control_flow ||
+  if (!STAR_info.alltoall_enabled || STAR_info.internal_control_flow ||
       tsndlen < STAR_info.alltoall_threshold)
   {
     comm->dcmf.last_algorithm = MPIDO_USE_TORUS_ALLTOALL;

@@ -131,7 +131,7 @@ MPIDO_Allgatherv(void *sendbuf,
       }
    }
 
-  if (!STAR_info.enabled || STAR_info.internal_control_flow ||
+  if (!STAR_info.allgatherv_enabled || STAR_info.internal_control_flow ||
       ((double)buffer_sum / (double)np) < STAR_info.allgather_threshold)
   {
     use_tree_reduce = 

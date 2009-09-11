@@ -746,9 +746,43 @@ STAR_DisplayStatistics(MPID_Comm * comm)
 }
 
 void
+STAR_FreeRepos()
+{
+  if (STAR_bcast_repository)
+    free(STAR_bcast_repository);
+  if (STAR_barrier_repository)
+    free(STAR_barrier_repository);
+  if (STAR_reduce_repository)
+    free(STAR_reduce_repository);
+  if (STAR_scatter_repository)
+    free(STAR_scatter_repository);
+  if (STAR_gather_repository)
+    free(STAR_gather_repository);
+  if (STAR_allgather_repository)
+    free(STAR_allgather_repository);
+  if (STAR_allgatherv_repository)
+    free(STAR_allgatherv_repository);
+  if (STAR_allreduce_repository)
+    free(STAR_allreduce_repository);
+  if (STAR_alltoall_repository)
+    free(STAR_alltoall_repository);
+}
+
+void
 STAR_FreeMem(MPID_Comm * comm)
 {
-  if (STAR_info.enabled)
+  int star_on = 0;
+  star_on = STAR_info.alltoall_enabled ||
+            STAR_info.allreduce_enabled ||
+            STAR_info.allgather_enabled ||
+            STAR_info.allgatherv_enabled ||
+            STAR_info.barrier_enabled ||
+            STAR_info.bcast_enabled ||
+            STAR_info.gather_enabled ||
+            STAR_info.scatter_enabled ||
+            STAR_info.reduce_enabled;
+  
+  if (star_on)
   {
     STAR_Tuning_Session * ptr, * to_be_freed;
     ptr = comm -> dcmf.tuning_session;

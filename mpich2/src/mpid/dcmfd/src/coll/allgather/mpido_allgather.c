@@ -126,7 +126,7 @@ MPIDO_Allgather(void *sendbuf,
   }
 
   /* Here is the Default code path or if coming from within another coll */
-  if (!STAR_info.enabled || STAR_info.internal_control_flow ||
+  if (!STAR_info.allgather_enabled || STAR_info.internal_control_flow ||
       send_size < STAR_info.allgather_threshold) 
   {
     use_alltoall = 

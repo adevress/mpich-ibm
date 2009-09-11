@@ -191,8 +191,8 @@ void MPIDI_Coll_register(void)
                                        &gallreduce_config);
     if(rc != DCMF_SUCCESS)
     {
-        MPIDO_INFO_UNSET(properties, MPIDO_USE_GLOBAL_TREE_REDUCE);
-        MPIDO_INFO_UNSET(properties, MPIDO_USE_GLOBAL_TREE_ALLREDUCE);
+      MPIDO_INFO_UNSET(properties, MPIDO_USE_GLOBAL_TREE_REDUCE);
+      MPIDO_INFO_UNSET(properties, MPIDO_USE_GLOBAL_TREE_ALLREDUCE);
     }
   }
 
@@ -227,15 +227,15 @@ void MPIDI_Coll_register(void)
     barrier_proto = DCMF_TORUS_RECTANGLE_BARRIER_PROTOCOL;
 
 
-   if (MPIDO_INFO_ISSET(properties, MPIDO_USE_GI_BARRIER))
-     //   if (MPIDO_INFO_ISSET(properties, MPIDO_USE_CCMI_GI_BARRIER))
-   {
-      if (BARRIER_REGISTER(DCMF_GI_BARRIER_PROTOCOL,
-         &MPIDI_CollectiveProtocols.gi_barrier,
-         &barrier_config) != DCMF_SUCCESS)
+  if (MPIDO_INFO_ISSET(properties, MPIDO_USE_GI_BARRIER))
+    //   if (MPIDO_INFO_ISSET(properties, MPIDO_USE_CCMI_GI_BARRIER))
+  {
+    if (BARRIER_REGISTER(DCMF_GI_BARRIER_PROTOCOL,
+                         &MPIDI_CollectiveProtocols.gi_barrier,
+                         &barrier_config) != DCMF_SUCCESS)
       MPIDO_INFO_UNSET(properties, MPIDO_USE_GI_BARRIER);
-      //MPIDO_INFO_UNSET(properties, MPIDO_USE_CCMI_GI_BARRIER);
-   }
+    //MPIDO_INFO_UNSET(properties, MPIDO_USE_CCMI_GI_BARRIER);
+  }
   if (!MPIDO_INFO_ISSET(properties, MPIDO_USE_RECT_BARRIER) &&
       MPIDO_INFO_ISSET(properties, MPIDO_USE_BINOM_BARRIER))
   {
@@ -308,17 +308,17 @@ void MPIDI_Coll_register(void)
 			    &barrier_config) != DCMF_SUCCESS)
     MPIDO_INFO_UNSET(properties, MPIDO_USE_BINOM_LBARRIER);
 
-   /* MPID doesn't care if this actually works.  Let someone else
-    * handle problems as needed.
-    * MPID_assert_debug(local_barriers_num >  0);
-    */
+  /* MPID doesn't care if this actually works.  Let someone else
+   * handle problems as needed.
+   * MPID_assert_debug(local_barriers_num >  0);
+   */
 
-   /* -------------------------------------------------------------- */
-   /* Register single-thread (memory optimized) protocols if desired */
-   /* -------------------------------------------------------------- */
-   /* Sort out the single thread memory optimizations first. If we
-    * are single threaed, we want to register the single thread versions
-    * to save memory */
+  /* -------------------------------------------------------------- */
+  /* Register single-thread (memory optimized) protocols if desired */
+  /* -------------------------------------------------------------- */
+  /* Sort out the single thread memory optimizations first. If we
+   * are single threaed, we want to register the single thread versions
+   * to save memory */
 
   if(MPIDO_INFO_ISSET(properties, MPIDO_USE_TREE_SHMEM_BCAST))
   {
@@ -326,64 +326,64 @@ void MPIDI_Coll_register(void)
                           &MPIDI_CollectiveProtocols.tree_shmem_bcast,
                           &broadcast_config) != DCMF_SUCCESS)
       MPIDO_INFO_UNSET(properties, MPIDO_USE_TREE_SHMEM_BCAST);
-   }
-   if(MPIDO_INFO_ISSET(properties, MPIDO_USE_RECT_DPUT_BCAST) &&
-  messager_config.thread_level != DCMF_THREAD_MULTIPLE)
-   {
-      if(BROADCAST_REGISTER(
-            DCMF_TORUS_RECTANGLE_BROADCAST_PROTOCOL_DPUT_SINGLETH,
-            &MPIDI_CollectiveProtocols.rectangle_bcast_dput,
-            &broadcast_config) != DCMF_SUCCESS)
-         MPIDO_INFO_UNSET(properties, MPIDO_USE_RECT_DPUT_BCAST);
-   }
+  }
+  if(MPIDO_INFO_ISSET(properties, MPIDO_USE_RECT_DPUT_BCAST) &&
+     messager_config.thread_level != DCMF_THREAD_MULTIPLE)
+  {
+    if(BROADCAST_REGISTER(
+                          DCMF_TORUS_RECTANGLE_BROADCAST_PROTOCOL_DPUT_SINGLETH,
+                          &MPIDI_CollectiveProtocols.rectangle_bcast_dput,
+                          &broadcast_config) != DCMF_SUCCESS)
+      MPIDO_INFO_UNSET(properties, MPIDO_USE_RECT_DPUT_BCAST);
+  }
 
-   if(MPIDO_INFO_ISSET(properties, MPIDO_USE_RECT_SINGLETH_BCAST) &&
-  messager_config.thread_level != DCMF_THREAD_MULTIPLE)
-   {
-      if(BROADCAST_REGISTER(
-            DCMF_TORUS_RECTANGLE_BROADCAST_PROTOCOL_SINGLETH,
-            &MPIDI_CollectiveProtocols.rectangle_bcast_singleth,
-            &broadcast_config) != DCMF_SUCCESS)
-         MPIDO_INFO_UNSET(properties, MPIDO_USE_RECT_SINGLETH_BCAST);
-   }
+  if(MPIDO_INFO_ISSET(properties, MPIDO_USE_RECT_SINGLETH_BCAST) &&
+     messager_config.thread_level != DCMF_THREAD_MULTIPLE)
+  {
+    if(BROADCAST_REGISTER(
+                          DCMF_TORUS_RECTANGLE_BROADCAST_PROTOCOL_SINGLETH,
+                          &MPIDI_CollectiveProtocols.rectangle_bcast_singleth,
+                          &broadcast_config) != DCMF_SUCCESS)
+      MPIDO_INFO_UNSET(properties, MPIDO_USE_RECT_SINGLETH_BCAST);
+  }
 
-   if(MPIDO_INFO_ISSET(properties, MPIDO_USE_BINOM_SINGLETH_BCAST) &&
-  messager_config.thread_level != DCMF_THREAD_MULTIPLE)
-   {
-      if(BROADCAST_REGISTER(
-            DCMF_TORUS_BINOMIAL_BROADCAST_PROTOCOL_SINGLETH,
-            &MPIDI_CollectiveProtocols.binomial_bcast_singleth,
-            &broadcast_config) != DCMF_SUCCESS)
-         MPIDO_INFO_UNSET(properties, MPIDO_USE_BINOM_SINGLETH_BCAST);
-   }
-   /* --------------------------------------------------- */
-   /* Register all other bcast protocols needed/requested */
-   /* --------------------------------------------------- */
-   if(MPIDO_INFO_ISSET(properties, MPIDO_USE_CCMI_TREE_BCAST))
-     {
-       if(BROADCAST_REGISTER(DCMF_TREE_BROADCAST_PROTOCOL,
-			     &MPIDI_CollectiveProtocols.tree_bcast,
-			     &broadcast_config) != DCMF_SUCCESS)
-	 MPIDO_INFO_UNSET(properties, MPIDO_USE_CCMI_TREE_BCAST);
-     }
+  if(MPIDO_INFO_ISSET(properties, MPIDO_USE_BINOM_SINGLETH_BCAST) &&
+     messager_config.thread_level != DCMF_THREAD_MULTIPLE)
+  {
+    if(BROADCAST_REGISTER(
+                          DCMF_TORUS_BINOMIAL_BROADCAST_PROTOCOL_SINGLETH,
+                          &MPIDI_CollectiveProtocols.binomial_bcast_singleth,
+                          &broadcast_config) != DCMF_SUCCESS)
+      MPIDO_INFO_UNSET(properties, MPIDO_USE_BINOM_SINGLETH_BCAST);
+  }
+  /* --------------------------------------------------- */
+  /* Register all other bcast protocols needed/requested */
+  /* --------------------------------------------------- */
+  if(MPIDO_INFO_ISSET(properties, MPIDO_USE_CCMI_TREE_BCAST))
+  {
+    if(BROADCAST_REGISTER(DCMF_TREE_BROADCAST_PROTOCOL,
+                          &MPIDI_CollectiveProtocols.tree_bcast,
+                          &broadcast_config) != DCMF_SUCCESS)
+      MPIDO_INFO_UNSET(properties, MPIDO_USE_CCMI_TREE_BCAST);
+  }
 
-   if(MPIDO_INFO_ISSET(properties, MPIDO_USE_CCMI_TREE_DPUT_BCAST))
-     {
-       if(BROADCAST_REGISTER(DCMF_TREE_DPUT_BROADCAST_PROTOCOL,
-			     &MPIDI_CollectiveProtocols.tree_dput_bcast,
-			     &broadcast_config) != DCMF_SUCCESS)
-	 MPIDO_INFO_UNSET(properties, MPIDO_USE_CCMI_TREE_DPUT_BCAST);
-     }
+  if(MPIDO_INFO_ISSET(properties, MPIDO_USE_CCMI_TREE_DPUT_BCAST))
+  {
+    if(BROADCAST_REGISTER(DCMF_TREE_DPUT_BROADCAST_PROTOCOL,
+                          &MPIDI_CollectiveProtocols.tree_dput_bcast,
+                          &broadcast_config) != DCMF_SUCCESS)
+      MPIDO_INFO_UNSET(properties, MPIDO_USE_CCMI_TREE_DPUT_BCAST);
+  }
 
-   if(BROADCAST_REGISTER(DCMF_TORUS_RECTANGLE_BROADCAST_PROTOCOL,
-			 &MPIDI_CollectiveProtocols.rectangle_bcast,
-			 &broadcast_config) != DCMF_SUCCESS)
-     MPIDO_INFO_UNSET(properties, MPIDO_USE_RECT_BCAST);
+  if(BROADCAST_REGISTER(DCMF_TORUS_RECTANGLE_BROADCAST_PROTOCOL,
+                        &MPIDI_CollectiveProtocols.rectangle_bcast,
+                        &broadcast_config) != DCMF_SUCCESS)
+    MPIDO_INFO_UNSET(properties, MPIDO_USE_RECT_BCAST);
 
-   if(ASYNC_BROADCAST_REGISTER(DCMF_TORUS_ASYNCBROADCAST_RECTANGLE_PROTOCOL,
-			    &MPIDI_CollectiveProtocols.async_rectangle_bcast,
-			    &a_broadcast_config) != DCMF_SUCCESS)
-      MPIDO_INFO_UNSET(properties, MPIDO_USE_ARECT_BCAST);
+  if(ASYNC_BROADCAST_REGISTER(DCMF_TORUS_ASYNCBROADCAST_RECTANGLE_PROTOCOL,
+                              &MPIDI_CollectiveProtocols.async_rectangle_bcast,
+                              &a_broadcast_config) != DCMF_SUCCESS)
+    MPIDO_INFO_UNSET(properties, MPIDO_USE_ARECT_BCAST);
 
   if(BROADCAST_REGISTER(DCMF_TORUS_BINOMIAL_BROADCAST_PROTOCOL,
                         &MPIDI_CollectiveProtocols.binomial_bcast,
@@ -400,37 +400,37 @@ void MPIDI_Coll_register(void)
   /* --------------------------------------------- */
   if(MPIDO_INFO_ISSET(properties, MPIDO_USE_TREE_ALLREDUCE))
 
-   {
-     if(ALLREDUCE_REGISTER(DCMF_TREE_ALLREDUCE_PROTOCOL,
-                           &MPIDI_CollectiveProtocols.tree_allreduce,
-                           &allreduce_config) != DCMF_SUCCESS)
-      {
-        MPIDO_INFO_UNSET(properties, MPIDO_USE_TREE_ALLREDUCE);
-      }
-   }
-   if(MPIDO_INFO_ISSET(properties, MPIDO_USE_SHORT_ASYNC_RECT_ALLREDUCE))
-   {
-     if(ALLREDUCE_REGISTER(DCMF_TORUS_ASYNC_SHORT_RECTANGLE_ALLREDUCE_PROTOCOL,
-                           &MPIDI_CollectiveProtocols.short_async_rect_allreduce,
-                           &allreduce_config) != DCMF_SUCCESS)
-       MPIDO_INFO_UNSET(properties, MPIDO_USE_SHORT_ASYNC_RECT_ALLREDUCE);
-   }
+  {
+    if(ALLREDUCE_REGISTER(DCMF_TREE_ALLREDUCE_PROTOCOL,
+                          &MPIDI_CollectiveProtocols.tree_allreduce,
+                          &allreduce_config) != DCMF_SUCCESS)
+    {
+      MPIDO_INFO_UNSET(properties, MPIDO_USE_TREE_ALLREDUCE);
+    }
+  }
+  if(MPIDO_INFO_ISSET(properties, MPIDO_USE_SHORT_ASYNC_RECT_ALLREDUCE))
+  {
+    if(ALLREDUCE_REGISTER(DCMF_TORUS_ASYNC_SHORT_RECTANGLE_ALLREDUCE_PROTOCOL,
+                          &MPIDI_CollectiveProtocols.short_async_rect_allreduce,
+                          &allreduce_config) != DCMF_SUCCESS)
+      MPIDO_INFO_UNSET(properties, MPIDO_USE_SHORT_ASYNC_RECT_ALLREDUCE);
+  }
 
-   if(MPIDO_INFO_ISSET(properties, MPIDO_USE_SHORT_ASYNC_BINOM_ALLREDUCE))
-   {
-      if(ALLREDUCE_REGISTER(DCMF_TORUS_ASYNC_SHORT_BINOMIAL_ALLREDUCE_PROTOCOL,
-                  &MPIDI_CollectiveProtocols.short_async_binom_allreduce,
-                  &allreduce_config) != DCMF_SUCCESS)
-         MPIDO_INFO_UNSET(properties, MPIDO_USE_SHORT_ASYNC_BINOM_ALLREDUCE);
-   }
+  if(MPIDO_INFO_ISSET(properties, MPIDO_USE_SHORT_ASYNC_BINOM_ALLREDUCE))
+  {
+    if(ALLREDUCE_REGISTER(DCMF_TORUS_ASYNC_SHORT_BINOMIAL_ALLREDUCE_PROTOCOL,
+                          &MPIDI_CollectiveProtocols.short_async_binom_allreduce,
+                          &allreduce_config) != DCMF_SUCCESS)
+      MPIDO_INFO_UNSET(properties, MPIDO_USE_SHORT_ASYNC_BINOM_ALLREDUCE);
+  }
 
-   if(MPIDO_INFO_ISSET(properties, MPIDO_USE_RRING_DPUT_SINGLETH_ALLREDUCE))
-   {
-      if(ALLREDUCE_REGISTER(DCMF_TORUS_RRING_DPUT_ALLREDUCE_PROTOCOL_SINGLETH,
-                            &MPIDI_CollectiveProtocols.rring_dput_allreduce_singleth,
-                            &allreduce_config) != DCMF_SUCCESS)
-         MPIDO_INFO_UNSET(properties, MPIDO_USE_RRING_DPUT_SINGLETH_ALLREDUCE);
-   }
+  if(MPIDO_INFO_ISSET(properties, MPIDO_USE_RRING_DPUT_SINGLETH_ALLREDUCE))
+  {
+    if(ALLREDUCE_REGISTER(DCMF_TORUS_RRING_DPUT_ALLREDUCE_PROTOCOL_SINGLETH,
+                          &MPIDI_CollectiveProtocols.rring_dput_allreduce_singleth,
+                          &allreduce_config) != DCMF_SUCCESS)
+      MPIDO_INFO_UNSET(properties, MPIDO_USE_RRING_DPUT_SINGLETH_ALLREDUCE);
+  }
 
   if(MPIDO_INFO_ISSET(properties, MPIDO_USE_PIPELINED_TREE_ALLREDUCE))
   {
@@ -581,22 +581,31 @@ void MPIDI_Coll_Comm_create (MPID_Comm *comm)
   /* let us assume global context is comm_world */
   global = 1;
 
-   /* assume single threaded mode until we find out differently */
-   MPIDO_INFO_SET(comm_prop, MPIDO_SINGLE_THREAD_MODE);
-
-   if(dcmf_config.thread_level == MPI_THREAD_MULTIPLE)
-   {
-      STAR_info.enabled = 0;
-      MPIDO_INFO_UNSET(comm_prop, MPIDO_SINGLE_THREAD_MODE);
-      if(comm!= comm_world)
-         global = 0;
-   }
-   else /* single MPI thread. */
-   {
-      /* and if we are not dup of comm_world, global context is not safe */
-      if(comm->local_size != comm_world->local_size)
-         global = 0;
-   }
+  /* assume single threaded mode until we find out differently */
+  MPIDO_INFO_SET(comm_prop, MPIDO_SINGLE_THREAD_MODE);
+  
+  if(dcmf_config.thread_level == MPI_THREAD_MULTIPLE)
+  {
+    STAR_info.alltoall_enabled = 0;
+    STAR_info.allreduce_enabled = 0;
+    STAR_info.allgather_enabled = 0;
+    STAR_info.allgatherv_enabled = 0;
+    STAR_info.barrier_enabled = 0;
+    STAR_info.bcast_enabled = 0;
+    STAR_info.gather_enabled = 0;
+    STAR_info.scatter_enabled = 0;
+    STAR_info.reduce_enabled = 0;
+    
+    MPIDO_INFO_UNSET(comm_prop, MPIDO_SINGLE_THREAD_MODE);
+    if(comm!= comm_world)
+      global = 0;
+  }
+  else /* single MPI thread. */
+  {
+    /* and if we are not dup of comm_world, global context is not safe */
+    if(comm->local_size != comm_world->local_size)
+      global = 0;
+  }
 
 #ifdef USE_CCMI_COLL
   /* ******************************************************* */
@@ -638,6 +647,9 @@ void MPIDI_Coll_Comm_create (MPID_Comm *comm)
   comm->coll_fns->Exscan         = MPIDO_Exscan;
 
   /* set geometric properties of the communicator */
+  if (mpid_hw.tSize != 1)
+    MPIDO_INFO_SET(comm_prop, MPIDO_NOTSMP_MODE);
+  
   if (MPIDO_ISPOF2(comm->local_size))
     MPIDO_INFO_SET(comm_prop, MPIDO_POF2_COMM);
 
@@ -691,7 +703,18 @@ void MPIDI_Coll_Comm_create (MPID_Comm *comm)
 
   MPIDI_Comm_setup_properties(comm, 1); /* 1 means this is initial setup */
 
-  if (STAR_info.enabled && STAR_info.debug &&
+  int star_on = 0;
+  star_on = STAR_info.alltoall_enabled ||
+            STAR_info.allreduce_enabled ||
+            STAR_info.allgather_enabled ||
+            STAR_info.allgatherv_enabled ||
+            STAR_info.barrier_enabled ||
+            STAR_info.bcast_enabled ||
+            STAR_info.gather_enabled ||
+            STAR_info.scatter_enabled ||
+            STAR_info.reduce_enabled;
+
+  if (star_on && STAR_info.debug &&
       comm -> comm_kind == MPID_INTRACOMM &&
       comm -> rank == 0)
   {
@@ -719,115 +742,115 @@ void MPIDI_Coll_Comm_create (MPID_Comm *comm)
       free(tmp);
     }
   }
-   /* Check to see if the user wants to override our pre-allreduce
-    * selection
-    */
-   comm->dcmf.short_allred = NULL;
-   if(!MPIDO_INFO_ISSET(comm_prop, MPIDO_PREALLREDUCE_ENVVAR))
-   {
-      /* If not, basically follow the existing MPIDO_Allreduce glue,
-       * just not as complicated 
-       */
-      if(MPIDO_INFO_ISSET(comm_prop, MPIDO_RECT_COMM) &&
-         MPIDO_INFO_ISSET(comm_prop, MPIDO_USE_SHORT_ASYNC_RECT_ALLREDUCE))
-      {
-         comm->dcmf.short_allred = 
-            &MPIDI_CollectiveProtocols.short_async_rect_allreduce;
-      }
-      else if(MPIDO_INFO_ISSET(comm_prop, MPIDO_IRREG_COMM) &&
-         MPIDO_INFO_ISSET(comm_prop, MPIDO_USE_SHORT_ASYNC_BINOM_ALLREDUCE))
-      {
-         comm->dcmf.short_allred = 
-            &MPIDI_CollectiveProtocols.short_async_binom_allreduce;
-      }
-      if(global)
-      {
-         if(MPIDO_INFO_ISSET(comm_prop, MPIDO_USE_TREE_DPUT_ALLREDUCE))
-            comm->dcmf.short_allred = 
-               &MPIDI_CollectiveProtocols.pipelinedtree_dput_allreduce;
-         else if(MPIDO_INFO_ISSET(comm_prop, MPIDO_USE_TREE_ALLREDUCE))
-            comm->dcmf.short_allred = 
-               &MPIDI_CollectiveProtocols.tree_allreduce;
-      }
-   }
-   /* The user wants a specific preallreduce. Let the fun begin. */
-   else
-   {
-      char *envopts;
-      envopts = getenv("DCMF_PREALLREDUCE");
-      if(strncasecmp(envopts,"ARI", 3) == 0)
-      { 
-         if(MPIDO_INFO_ISSET(comm_prop, MPIDO_USE_ARECTRING_ALLREDUCE))
-            comm->dcmf.short_allred = 
-               &MPIDI_CollectiveProtocols.async_ringrectangle_allreduce;
-      }
-      else if(strncasecmp(envopts,"AR", 2) == 0)
-      {
-         if(MPIDO_INFO_ISSET(comm_prop, MPIDO_USE_ARECT_ALLREDUCE))
-            comm->dcmf.short_allred = 
-               &MPIDI_CollectiveProtocols.async_rectangle_allreduce;
-      }
-      else if(strncasecmp(envopts, "SR", 2) == 0)
-      {
-         if(MPIDO_INFO_ISSET(comm_prop, MPIDO_USE_SHORT_ASYNC_RECT_ALLREDUCE))
-            comm->dcmf.short_allred = 
-               &MPIDI_CollectiveProtocols.short_async_rect_allreduce;
-      }
-      else if(strncasecmp(envopts, "SB", 2) == 0)
-      {
-         if(MPIDO_INFO_ISSET(comm_prop, MPIDO_USE_SHORT_ASYNC_BINOM_ALLREDUCE))
-            comm->dcmf.short_allred = 
-               &MPIDI_CollectiveProtocols.short_async_binom_allreduce;
-      }
-      else if(strncasecmp(envopts, "AB", 2) == 0)
-      {
-         if(MPIDO_INFO_ISSET(comm_prop, MPIDO_USE_ABINOM_ALLREDUCE))
-            comm->dcmf.short_allred = 
-               &MPIDI_CollectiveProtocols.async_binomial_allreduce;
-      }
-      else if(strncasecmp(envopts, "RI", 2) == 0)
-      {
-         if(MPIDO_INFO_ISSET(comm_prop, MPIDO_USE_RECTRING_ALLREDUCE))
-            comm->dcmf.short_allred = 
-               &MPIDI_CollectiveProtocols.rectanglering_allreduce;
-      }
-      else if(strncasecmp(envopts, "TD", 2) == 0)
-      {
-         if(MPIDO_INFO_ISSET(comm_prop, MPIDO_USE_TREE_DPUT_ALLREDUCE))
-            comm->dcmf.short_allred =
-               &MPIDI_CollectiveProtocols.pipelinedtree_dput_allreduce;
-      }
-      else if(strncasecmp(envopts, "R", 1) == 0)
-      {
-         if(MPIDO_INFO_ISSET(comm_prop, MPIDO_USE_RECT_ALLREDUCE));
-            comm->dcmf.short_allred = 
-               &MPIDI_CollectiveProtocols.rectangle_allreduce;
-      }
-      else if(strncasecmp(envopts, "B", 1) == 0)
-      {
-         if(MPIDO_INFO_ISSET(comm_prop, MPIDO_USE_BINOM_ALLREDUCE))
-            comm->dcmf.short_allred =
-               &MPIDI_CollectiveProtocols.binomial_allreduce;
-      }
-      else if(strncasecmp(envopts, "T", 1) == 0)
-      {
-         if(MPIDO_INFO_ISSET(comm_prop, MPIDO_USE_TREE_ALLREDUCE))
-            comm->dcmf.short_allred = 
-               &MPIDI_CollectiveProtocols.tree_allreduce;
-      }
-      else if(strncasecmp(envopts, "P", 1) == 0)
-      {
-         if(MPIDO_INFO_ISSET(comm_prop, MPIDO_USE_PIPELINED_TREE_ALLREDUCE))
-            comm->dcmf.short_allred =
-               &MPIDI_CollectiveProtocols.pipelinedtree_allreduce;
-      }
-      else if(strncasecmp(envopts, "D", 1) == 0)
-      {
-         if(MPIDO_INFO_ISSET(comm_prop,MPIDO_USE_RRING_DPUT_SINGLETH_ALLREDUCE))
-            comm->dcmf.short_allred =
-               &MPIDI_CollectiveProtocols.rring_dput_allreduce_singleth;
-      }
-   }
+  /* Check to see if the user wants to override our pre-allreduce
+   * selection
+   */
+  comm->dcmf.short_allred = NULL;
+  if(!MPIDO_INFO_ISSET(comm_prop, MPIDO_PREALLREDUCE_ENVVAR))
+  {
+    /* If not, basically follow the existing MPIDO_Allreduce glue,
+     * just not as complicated 
+     */
+    if(MPIDO_INFO_ISSET(comm_prop, MPIDO_RECT_COMM) &&
+       MPIDO_INFO_ISSET(comm_prop, MPIDO_USE_SHORT_ASYNC_RECT_ALLREDUCE))
+    {
+      comm->dcmf.short_allred = 
+        &MPIDI_CollectiveProtocols.short_async_rect_allreduce;
+    }
+    else if(MPIDO_INFO_ISSET(comm_prop, MPIDO_IRREG_COMM) &&
+            MPIDO_INFO_ISSET(comm_prop, MPIDO_USE_SHORT_ASYNC_BINOM_ALLREDUCE))
+    {
+      comm->dcmf.short_allred = 
+        &MPIDI_CollectiveProtocols.short_async_binom_allreduce;
+    }
+    if(global)
+    {
+      if(MPIDO_INFO_ISSET(comm_prop, MPIDO_USE_TREE_DPUT_ALLREDUCE))
+        comm->dcmf.short_allred = 
+          &MPIDI_CollectiveProtocols.pipelinedtree_dput_allreduce;
+      else if(MPIDO_INFO_ISSET(comm_prop, MPIDO_USE_TREE_ALLREDUCE))
+        comm->dcmf.short_allred = 
+          &MPIDI_CollectiveProtocols.tree_allreduce;
+    }
+  }
+  /* The user wants a specific preallreduce. Let the fun begin. */
+  else
+  {
+    char *envopts;
+    envopts = getenv("DCMF_PREALLREDUCE");
+    if(strncasecmp(envopts,"ARI", 3) == 0)
+    { 
+      if(MPIDO_INFO_ISSET(comm_prop, MPIDO_USE_ARECTRING_ALLREDUCE))
+        comm->dcmf.short_allred = 
+          &MPIDI_CollectiveProtocols.async_ringrectangle_allreduce;
+    }
+    else if(strncasecmp(envopts,"AR", 2) == 0)
+    {
+      if(MPIDO_INFO_ISSET(comm_prop, MPIDO_USE_ARECT_ALLREDUCE))
+        comm->dcmf.short_allred = 
+          &MPIDI_CollectiveProtocols.async_rectangle_allreduce;
+    }
+    else if(strncasecmp(envopts, "SR", 2) == 0)
+    {
+      if(MPIDO_INFO_ISSET(comm_prop, MPIDO_USE_SHORT_ASYNC_RECT_ALLREDUCE))
+        comm->dcmf.short_allred = 
+          &MPIDI_CollectiveProtocols.short_async_rect_allreduce;
+    }
+    else if(strncasecmp(envopts, "SB", 2) == 0)
+    {
+      if(MPIDO_INFO_ISSET(comm_prop, MPIDO_USE_SHORT_ASYNC_BINOM_ALLREDUCE))
+        comm->dcmf.short_allred = 
+          &MPIDI_CollectiveProtocols.short_async_binom_allreduce;
+    }
+    else if(strncasecmp(envopts, "AB", 2) == 0)
+    {
+      if(MPIDO_INFO_ISSET(comm_prop, MPIDO_USE_ABINOM_ALLREDUCE))
+        comm->dcmf.short_allred = 
+          &MPIDI_CollectiveProtocols.async_binomial_allreduce;
+    }
+    else if(strncasecmp(envopts, "RI", 2) == 0)
+    {
+      if(MPIDO_INFO_ISSET(comm_prop, MPIDO_USE_RECTRING_ALLREDUCE))
+        comm->dcmf.short_allred = 
+          &MPIDI_CollectiveProtocols.rectanglering_allreduce;
+    }
+    else if(strncasecmp(envopts, "TD", 2) == 0)
+    {
+      if(MPIDO_INFO_ISSET(comm_prop, MPIDO_USE_TREE_DPUT_ALLREDUCE))
+        comm->dcmf.short_allred =
+          &MPIDI_CollectiveProtocols.pipelinedtree_dput_allreduce;
+    }
+    else if(strncasecmp(envopts, "R", 1) == 0)
+    {
+      if(MPIDO_INFO_ISSET(comm_prop, MPIDO_USE_RECT_ALLREDUCE));
+      comm->dcmf.short_allred = 
+        &MPIDI_CollectiveProtocols.rectangle_allreduce;
+    }
+    else if(strncasecmp(envopts, "B", 1) == 0)
+    {
+      if(MPIDO_INFO_ISSET(comm_prop, MPIDO_USE_BINOM_ALLREDUCE))
+        comm->dcmf.short_allred =
+          &MPIDI_CollectiveProtocols.binomial_allreduce;
+    }
+    else if(strncasecmp(envopts, "T", 1) == 0)
+    {
+      if(MPIDO_INFO_ISSET(comm_prop, MPIDO_USE_TREE_ALLREDUCE))
+        comm->dcmf.short_allred = 
+          &MPIDI_CollectiveProtocols.tree_allreduce;
+    }
+    else if(strncasecmp(envopts, "P", 1) == 0)
+    {
+      if(MPIDO_INFO_ISSET(comm_prop, MPIDO_USE_PIPELINED_TREE_ALLREDUCE))
+        comm->dcmf.short_allred =
+          &MPIDI_CollectiveProtocols.pipelinedtree_allreduce;
+    }
+    else if(strncasecmp(envopts, "D", 1) == 0)
+    {
+      if(MPIDO_INFO_ISSET(comm_prop,MPIDO_USE_RRING_DPUT_SINGLETH_ALLREDUCE))
+        comm->dcmf.short_allred =
+          &MPIDI_CollectiveProtocols.rring_dput_allreduce_singleth;
+    }
+  }
       
 #else /* !USE_CCMI_COLL */
 
@@ -920,80 +943,80 @@ void MPIDI_Comm_setup_properties(MPID_Comm * comm, int initial_setup)
   coll_prop = &MPIDI_CollectiveProtocols.properties;
 
   /*
-     we basically be optimistic and assume all conditions are available
-     for all protocols based on the mpidi_protocol properties. As such, we
-     copy the informative bits from coll_prop to comm_prop. Then, we check
-     the geometry bits of the communicator to uncheck any bit for a
-     protocol
+    we basically be optimistic and assume all conditions are available
+    for all protocols based on the mpidi_protocol properties. As such, we
+    copy the informative bits from coll_prop to comm_prop. Then, we check
+    the geometry bits of the communicator to uncheck any bit for a
+    protocol
   */
 
   if (initial_setup)
     MPIDO_INFO_OR(coll_prop, comm_prop);
 
-    if(messager_config.thread_level == DCMF_THREAD_MULTIPLE)
-    {
-      MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_RRING_DPUT_SINGLETH_ALLREDUCE);
-      MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_RECT_DPUT_BCAST);
-      MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_RECT_SINGLETH_BCAST);
-      MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_BINOM_SINGLETH_BCAST);
-    }
+  if(messager_config.thread_level == DCMF_THREAD_MULTIPLE)
+  {
+    MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_RRING_DPUT_SINGLETH_ALLREDUCE);
+    MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_RECT_DPUT_BCAST);
+    MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_RECT_SINGLETH_BCAST);
+    MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_BINOM_SINGLETH_BCAST);
+  }
 
-    if (!MPIDO_INFO_ISSET(comm_prop, MPIDO_RECT_COMM))
-    {
-      MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_RECT_BARRIER);
-      MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_ARECT_BCAST);
-      MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_RECT_BCAST);
-      MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_RECT_DPUT_BCAST);
-      MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_RECT_SINGLETH_BCAST);
-      MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_RECT_BCAST_ALLGATHER);
-      MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_ARECT_BCAST_ALLGATHER);
-      MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_RECT_BCAST_ALLGATHERV);
-      MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_ARECT_BCAST_ALLGATHERV);
-      MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_SHORT_ASYNC_RECT_ALLREDUCE);
-      MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_RRING_DPUT_SINGLETH_ALLREDUCE);
-      MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_RECT_ALLREDUCE);
-      MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_RECTRING_ALLREDUCE);
-      MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_ARECT_ALLREDUCE);
-      MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_ARECTRING_ALLREDUCE);
-      MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_RECT_REDUCE);
-      MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_RECTRING_REDUCE);
-    }
+  if (!MPIDO_INFO_ISSET(comm_prop, MPIDO_RECT_COMM))
+  {
+    MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_RECT_BARRIER);
+    MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_ARECT_BCAST);
+    MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_RECT_BCAST);
+    MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_RECT_DPUT_BCAST);
+    MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_RECT_SINGLETH_BCAST);
+    MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_RECT_BCAST_ALLGATHER);
+    MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_ARECT_BCAST_ALLGATHER);
+    MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_RECT_BCAST_ALLGATHERV);
+    MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_ARECT_BCAST_ALLGATHERV);
+    MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_SHORT_ASYNC_RECT_ALLREDUCE);
+    MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_RRING_DPUT_SINGLETH_ALLREDUCE);
+    MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_RECT_ALLREDUCE);
+    MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_RECTRING_ALLREDUCE);
+    MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_ARECT_ALLREDUCE);
+    MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_ARECTRING_ALLREDUCE);
+    MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_RECT_REDUCE);
+    MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_RECTRING_REDUCE);
+  }
 
-   if(!MPIDO_INFO_ISSET(comm_prop, MPIDO_GLOBAL_CONTEXT) &&
-      !MPIDO_INFO_ISSET(comm_prop, MPIDO_SINGLE_THREAD_MODE))
-   {
-      MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_TORUS_ALLTOALL);
-      MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_TORUS_ALLTOALLW);
-      MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_TORUS_ALLTOALLV);
-      MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_ALLTOALL_SCATTERV);
-      MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_REDUCESCATTER);
-    }
-   if(!MPIDO_INFO_ISSET(comm_prop, MPIDO_GLOBAL_CONTEXT))
-   {
-     MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_GI_BARRIER);
-     MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_CCMI_GI_BARRIER);
-   }
+  if(!MPIDO_INFO_ISSET(comm_prop, MPIDO_GLOBAL_CONTEXT) &&
+     !MPIDO_INFO_ISSET(comm_prop, MPIDO_SINGLE_THREAD_MODE))
+  {
+    MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_TORUS_ALLTOALL);
+    MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_TORUS_ALLTOALLW);
+    MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_TORUS_ALLTOALLV);
+    MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_ALLTOALL_SCATTERV);
+    MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_REDUCESCATTER);
+  }
+  if(!MPIDO_INFO_ISSET(comm_prop, MPIDO_GLOBAL_CONTEXT))
+  {
+    MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_GI_BARRIER);
+    MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_CCMI_GI_BARRIER);
+  }
 
-   if (!MPIDO_INFO_ISSET(comm_prop, MPIDO_GLOBAL_CONTEXT) ||
-       !MPIDO_INFO_ISSET(comm_prop, MPIDO_TREE_COMM) ||
-       MPIDO_INFO_ISSET(comm_prop, MPIDO_USE_NOTREE_OPT_COLLECTIVES))
-   {
-     MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_TREE_BCAST);
-     MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_TREE_SHMEM_BCAST);
-     MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_CCMI_TREE_BCAST);
-     MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_CCMI_TREE_DPUT_BCAST);
-     MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_TREE_ALLREDUCE);
-     MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_TREE_DPUT_ALLREDUCE);
-     MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_PIPELINED_TREE_ALLREDUCE);
-     MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_GLOBAL_TREE_ALLREDUCE);
-     MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_GLOBAL_TREE_REDUCE);
-     MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_TREE_REDUCE);
-     //MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_PIPELINED_TREE_REDUCE);
-     //MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_TREE_DPUT_REDUCE);
-     MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_REDUCE_GATHER);
-     /*      MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_BCAST_SCATTER); */
-     MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_REDUCESCATTER);
-   }
+  if (!MPIDO_INFO_ISSET(comm_prop, MPIDO_GLOBAL_CONTEXT) ||
+      !MPIDO_INFO_ISSET(comm_prop, MPIDO_TREE_COMM) ||
+      MPIDO_INFO_ISSET(comm_prop, MPIDO_USE_NOTREE_OPT_COLLECTIVES))
+  {
+    MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_TREE_BCAST);
+    MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_TREE_SHMEM_BCAST);
+    MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_CCMI_TREE_BCAST);
+    MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_CCMI_TREE_DPUT_BCAST);
+    MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_TREE_ALLREDUCE);
+    MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_TREE_DPUT_ALLREDUCE);
+    MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_PIPELINED_TREE_ALLREDUCE);
+    MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_GLOBAL_TREE_ALLREDUCE);
+    MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_GLOBAL_TREE_REDUCE);
+    MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_TREE_REDUCE);
+    //MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_PIPELINED_TREE_REDUCE);
+    //MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_TREE_DPUT_REDUCE);
+    MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_REDUCE_GATHER);
+    /*      MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_BCAST_SCATTER); */
+    MPIDO_INFO_UNSET(comm_prop, MPIDO_USE_REDUCESCATTER);
+  }
 
   if (comm->comm_kind != MPID_INTRACOMM || comm->local_size <= 4)
     MPIDO_MSET_INFO(comm_prop,

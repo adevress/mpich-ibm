@@ -91,7 +91,7 @@ int MPIDO_Scatter(void *sendbuf,
   MPIDI_VerifyBuffer(sendbuf, sbuf, true_lb);
   MPIDI_VerifyBuffer(recvbuf, rbuf, true_lb);
   
-  if (!STAR_info.enabled || STAR_info.internal_control_flow ||
+  if (!STAR_info.scatter_enabled || STAR_info.internal_control_flow ||
       STAR_info.scatter_algorithms == 1)
   {
     if (MPIDO_INFO_ISSET(properties, MPIDO_USE_BCAST_SCATTER))

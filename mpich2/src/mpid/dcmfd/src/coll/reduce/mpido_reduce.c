@@ -61,7 +61,7 @@ int MPIDO_Reduce(void * sendbuf,
   if (sendbuf == MPI_IN_PLACE)
     sbuf = rbuf;
 
-  if (!STAR_info.enabled || STAR_info.internal_control_flow ||
+  if (!STAR_info.reduce_enabled || STAR_info.internal_control_flow ||
       (((op_type_support == MPIDO_TREE_SUPPORT ||
          op_type_support == MPIDO_TREE_MIN_SUPPORT) &&
         MPIDO_INFO_ISSET(properties, MPIDO_TREE_COMM)) ||
