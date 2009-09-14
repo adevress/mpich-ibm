@@ -16,7 +16,7 @@ unsigned MPIX_torus2rank(unsigned x,
   size_t rank;
   DCMF_Network network = DCMF_TORUS_NETWORK;
   DCMF_NetworkCoord_t addr;
-  addr.network = DCMF_TORUS_NETWORK;
+  addr.network = network;
   addr.torus.x = x;
   addr.torus.y = y;
   addr.torus.z = z;
