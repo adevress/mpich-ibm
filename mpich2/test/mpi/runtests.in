@@ -504,8 +504,8 @@ if (!$compileonly) {
     }
     else {
 	print "All $total_count tests passed!\n";
-   print "Total runtime: $ttime\n";
     }
+    print "Total runtime: $ttime\n";
     print "\n";
 }
 
