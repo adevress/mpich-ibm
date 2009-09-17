@@ -64,8 +64,8 @@ static int perm_next( int size, int inperm[] )
     return 0;
 }
 
-/* fail = find_fold( dims1[ndims1], dims2[ndims2], fold[3][3] )
-       searchs a folding schedule, the folding schedule is stored in matrix fold[3][3]
+/* fail = find_fold( dims1[ndims1], dims2[ndims2], fold[4][4] )
+       searchs a folding schedule, the folding schedule is stored in matrix fold[4][4]
        e.g. fold[i][j] = 3 indicates to unfold dimension i onto dimension j.
        fold[i][i] has no meaning.
        For 3D case as here, there will be at most 2 non-zero, non-diagonal entries.
@@ -75,7 +75,7 @@ static int perm_next( int size, int inperm[] )
        when the 2 entries are in the same coloum, the virtual cartesian is actually
        folded from the physical cartesian.
  */
-static int find_fold( int nd1, int d1[], int nd2, int d2[], int fold[][3] )
+static int find_fold( int nd1, int d1[], int nd2, int d2[], int fold[][4] )
 {
     int neg_nfold=0, pos_nfold=0;
     int neg_fold=1,  pos_fold=1;
@@ -205,7 +205,7 @@ static int find_fold( int nd1, int d1[], int nd2, int d2[], int fold[][3] )
         dim_from (Z) and dim_onto (X) are both updated. The coordinate of the other
         dimension (Y) does not change.
 */
-static void unfold_3d( int pdims[3], int coord[3], int dim_from, int dim_onto, int folds )
+static void unfold_3d( int pdims[4], int coord[4], int dim_from, int dim_onto, int folds )
 {
     int layers   = pdims[dim_from] / folds;
     int fold_num = coord[dim_from] / layers;
@@ -226,12 +226,12 @@ static void unfold_3d( int pdims[3], int coord[3], int dim_from, int dim_onto, i
     pdims[dim_onto] *= folds;
 }
 
-/* perform_fold( vir_coord[], phy_coord[], fold[3][3] )
-        does the folding following the schedule given by fold[3][3].
+/* perform_fold( vir_coord[], phy_coord[], fold[4][4] )
+        does the folding following the schedule given by fold[4][4].
  */
-static void perform_fold( int nd1, int d1[], int c1[], int nd2, int d2[], int c2[], int perm[], int fold[][3] )
+static void perform_fold( int nd1, int d1[], int c1[], int nd2, int d2[], int c2[], int perm[], int fold[][4] )
 {
-    int i, j, nf, fold_list[9][3], t, dd2[3];
+    int i, j, nf, fold_list[9][4], t, dd2[4];
 
     /* fold[][] has 2 useful entries out of 9. Then it is a sparse matrix, right? */
     nf = 0;
@@ -305,8 +305,8 @@ static void perform_fold( int nd1, int d1[], int c1[], int nd2, int d2[], int c2
            gets the next permutation. It returns 1 when there is no next permutation.
            For ndims = 3, the permutation sequence is
                 0,1,2 --> 0,2,1 --> 1,0,2 --> 1,2,0 --> 2,0,1 --> 2,0,1 --> finished.
-        3. fail = find_fold( dims1[ndims1], dims2[ndims2], fold[3][3] )
-           searchs a folding schedule, the folding schedule is stored in matrix fold[3][3]
+        3. fail = find_fold( dims1[ndims1], dims2[ndims2], fold[4][4] )
+           searchs a folding schedule, the folding schedule is stored in matrix fold[4][4]
            e.g. fold[i][j] = 3 indicates to unfold dimension i onto dimension j.
            fold[i][i] has no meaning.
            For 3D case as here, there will be at most 2 non-zero, non-diagonal entries.
@@ -315,15 +315,15 @@ static void perform_fold( int nd1, int d1[], int c1[], int nd2, int d2[], int c2
            unfolded from the row_id dimension onto the other dimensions in physical cartesian.
            when the 2 entries are in the same coloum, the virtual cartesian is actually
            folded from the physical cartesian.
-        4. perform_fold( vir_coord[], phy_coord[], fold[3][3] )
-           does the folding following the schedule given by fold[3][3].
+        4. perform_fold( vir_coord[], phy_coord[], fold[4][4] )
+           does the folding following the schedule given by fold[4][4].
  */
 static int perm_dims_match( int nd1, int d1[], int c1[], int nd2, int d2[], int c2[] )
 {
-    int perm[3] = {0,1,2};
-    int fold[3][3] = {{0,0,0}, {0,0,0}, {0,0,0}};
+    int perm[4] = {0,1,2,3};
+    int fold[4][4] = {{0,0,0,0}, {0,0,0,0}, {0,0,0,0}, {0,0,0,0}};
     int fail, finished;
-    int dd2[3], i;
+    int dd2[4], i;
 
     fail = 1;
     finished = 0;
@@ -343,7 +343,7 @@ static int perm_dims_match( int nd1, int d1[], int c1[], int nd2, int d2[], int 
 }
 
 /* C_order means the right-most dimension is the fastest changing dimension.
-    Of course, dims[3] is on the right of dims[0]. The cart utilities routines
+    Of course, dims[4] is on the right of dims[0]. The cart utilities routines
     of MPICH2 follows this order; BG/L XYZT mapping following the reverse order
     (Fortran order).
  */
@@ -388,16 +388,15 @@ int MPIDI_Cart_map_fold( MPIDI_VirtualCart *vir_cart,
                          MPIDI_PhysicalCart *phy_cart,
                          int *newrank )
 {
-    int notdone, i, j;
-    int c1[3], d1[3], c2[3], d2[3], cc[3];
+printf("%s:%d *newrank=%d\n", __FILE__, __LINE__, *newrank);
+    int notdone=1, i, j;
+    int c1[4], d1[4], c2[4], d2[4], cc[4];
     int vir_perm[4] = {0,1,2,3};
     int phy_perm[4] = {0,1,2,3};
 
     /* sort dimension in decreasing order to hope reduce the number of foldings. */
     MPIDI_Cart_dims_sort( vir_cart->ndims, vir_cart->dims, vir_perm );
     MPIDI_Cart_dims_sort( 3, phy_cart->dims, phy_perm );
-
-    notdone = 1;
 
     /* covers case:
      *	1. 4 = phy_cart->ndims > vir_cart->ndims > 1
@@ -409,9 +408,12 @@ int MPIDI_Cart_map_fold( MPIDI_VirtualCart *vir_cart,
      */
     if (phy_cart->ndims==4 && vir_cart->ndims<4)
     {
+printf("%s:%d *newrank=%d\n", __FILE__, __LINE__, *newrank);
         for (i=vir_cart->ndims-1; i>=0; i--) {
             d1[i] = (vir_cart->dims[vir_perm[i]]+1)/2;
-            for (j=0; j<vir_cart->ndims; j++) if (j!=i) d1[j] = vir_cart->dims[vir_perm[j]];
+            for (j=0; j<vir_cart->ndims; j++)
+              if (j!=i)
+                d1[j] = vir_cart->dims[vir_perm[j]];
 
             for (j=0; j<3; j++) {
                 c2[j] = phy_cart->coord[phy_perm[j]] - phy_cart->start[phy_perm[j]];
@@ -420,8 +422,11 @@ int MPIDI_Cart_map_fold( MPIDI_VirtualCart *vir_cart,
             }
 
             if (perm_dims_match( vir_cart->ndims, d1, c1, 3, d2, c2 )) continue;
+printf("%s:%d *newrank=%d\n", __FILE__, __LINE__, *newrank);
 
-            for (j=0; j<3; j++) if (j!=i) cc[vir_perm[j]] = c1[j];
+            for (j=0; j<3; j++)
+              if (j!=i)
+                cc[vir_perm[j]] = c1[j];
             cc[vir_perm[i]] = c1[i] * 2 + (phy_cart->coord[3] - phy_cart->start[3]);
             notdone = 0;
             break;
@@ -437,25 +442,32 @@ int MPIDI_Cart_map_fold( MPIDI_VirtualCart *vir_cart,
      */
     else
     {
+printf("%s:%d *newrank=%d\n", __FILE__, __LINE__, *newrank);
         int vir_ndims = vir_cart->ndims;
 
         if (vir_ndims == 4) {
-            if (vir_cart->dims[vir_perm[3]] != 2) return 1;
+            if (vir_cart->dims[vir_perm[3]] != 2)
+              return 1;
             vir_ndims = 3;
         }
 
-        for (j=0; j<vir_ndims; j++) d1[j] = vir_cart->dims[vir_perm[j]];
+        for (j=0; j<vir_ndims; j++)
+          d1[j] = vir_cart->dims[vir_perm[j]];
         for (j=0; j<3; j++) {
-            c2[j] = phy_cart->coord[phy_perm[j]] - phy_cart->start[phy_perm[j]];
-            d2[j] = phy_cart->dims [phy_perm[j]];
-            c1[j] = 0;
+          c2[j] = phy_cart->coord[phy_perm[j]] - phy_cart->start[phy_perm[j]];
+          d2[j] = phy_cart->dims [phy_perm[j]];
+          c1[j] = 0;
         }
 
-        if (!perm_dims_match( vir_ndims, d1, c1, phy_cart->ndims, d2, c2 )) {
-            for (j=0; j<3; j++) cc[vir_perm[j]] = c1[j];
+        if (!perm_dims_match( vir_ndims, d1, c1, phy_cart->ndims, d2, c2 ))
+          {
+printf("%s:%d *newrank=%d\n", __FILE__, __LINE__, *newrank);
+            for (j=0; j<4; j++)
+              cc[vir_perm[j]] = c1[j];
             notdone = 0;
         }
     }
+printf("%s:%d *newrank=%d\n", __FILE__, __LINE__, *newrank);
 
     if (notdone) return notdone;
 
@@ -464,7 +476,11 @@ int MPIDI_Cart_map_fold( MPIDI_VirtualCart *vir_cart,
         of MPICH2 follows this order; BG/L XYZT mapping following the reverse order
         (Fortran order).
      */
+printf("%s:%d *newrank=%d\n", __FILE__, __LINE__, *newrank);
+    MPIDI_VirtualCart_printf(vir_cart);
+printf("         cc=<%d,%d,%d,%d>\n",cc[0],   cc[1],   cc[2],   cc[3]   );
     MPIDI_Cart_map_coord_to_rank( vir_cart->size, vir_cart->ndims, vir_cart->dims, cc, newrank );
+printf("%s:%d *newrank=%d\n", __FILE__, __LINE__, *newrank);
 
     /*
     printf( "\t<%2d,%2d,%2d,%2d> to %4d (notdone = %d)\n",
@@ -484,23 +500,23 @@ int MPIDI_Cart_map_fold( MPIDI_VirtualCart *vir_cart,
 int main( int argc, char *argv[] )
 {
     int perm[5] = {0,1,2,3,4}, next=0, cnt = 0, i, size=4;
-    int fold[3][3];
-    int ret, c2[3], c1[3];
+    int fold[4][4];
+    int ret, c2[4], c1[4];
 
-    // int n1=450, nd1=3, d1[3] = {15,15,2};
-    // int n2=512, nd2=3, d2[3] = {8,8,8};
+    // int n1=450, nd1=3, d1[4] = {15,15,2};
+    // int n2=512, nd2=3, d2[4] = {8,8,8};
 
-    // int n1=343, nd1=3, d1[3] = {7,7,7};
-    // int n2=512, nd2=3, d2[3] = {16,16,2};
+    // int n1=343, nd1=3, d1[4] = {7,7,7};
+    // int n2=512, nd2=3, d2[4] = {16,16,2};
 
-    // int n1=343, nd1=3, d1[3] = {7,7,7};
-    // int n2=512, nd2=3, d2[3] = {64,4,2};
+    // int n1=343, nd1=3, d1[4] = {7,7,7};
+    // int n2=512, nd2=3, d2[4] = {64,4,2};
 
-    // int n1=465, nd1=2, d1[3] = {31,15};
-    // int n2=512, nd2=3, d2[3] = {64,4,2};
+    // int n1=465, nd1=2, d1[4] = {31,15};
+    // int n2=512, nd2=3, d2[4] = {64,4,2};
 
-    int n1=49,  nd1=2, d1[3] = {3,5,1};
-    int n2=64,  nd2=3, d2[3] = {2,2,6};
+    int n1=49,  nd1=2, d1[4] = {3,5,1};
+    int n2=64,  nd2=3, d2[4] = {2,2,6};
 
     for (c2[0]=0; c2[0]<d2[0]; c2[0]++)
     for (c2[1]=0; c2[1]<d2[1]; c2[1]++)
@@ -531,23 +547,23 @@ int main( int argc, char *argv[] )
 int main( int argc, char *argv[] )
 {
     int perm[5] = {0,1,2,3,4}, next=0, cnt = 0, i, size=4;
-    int fold[3][3];
+    int fold[4][4];
     int ret;
 
-    // int n1=450, nd1=3, d1[3] = {15,15,2};
-    // int n2=512, nd2=3, d2[3] = {8,8,8};
+    // int n1=450, nd1=3, d1[4] = {15,15,2};
+    // int n2=512, nd2=3, d2[4] = {8,8,8};
 
-    // int n1=343, nd1=3, d1[3] = {7,7,7};
-    // int n2=512, nd2=3, d2[3] = {16,16,2};
+    // int n1=343, nd1=3, d1[4] = {7,7,7};
+    // int n2=512, nd2=3, d2[4] = {16,16,2};
 
-    // int n1=343, nd1=3, d1[3] = {7,7,7};
-    // int n2=512, nd2=3, d2[3] = {64,4,2};
+    // int n1=343, nd1=3, d1[4] = {7,7,7};
+    // int n2=512, nd2=3, d2[4] = {64,4,2};
 
-    // int n1=465, nd1=2, d1[3] = {31,15};
-    // int n2=512, nd2=3, d2[3] = {64,4,2};
+    // int n1=465, nd1=2, d1[4] = {31,15};
+    // int n2=512, nd2=3, d2[4] = {64,4,2};
 
-    int n1=465, nd1=2, d1[3] = {31,15};
-    int n2=512, nd2=3, d2[3] = {64,8,1};
+    int n1=465, nd1=2, d1[4] = {31,15};
+    int n2=512, nd2=3, d2[4] = {64,8,1};
 
     ret = find_fold( nd1, d1, nd2, d2, fold );
     printf( "ret = %d\n", ret );
