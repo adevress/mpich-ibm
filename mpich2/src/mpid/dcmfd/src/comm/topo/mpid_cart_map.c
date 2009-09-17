@@ -37,8 +37,8 @@ static int MPIDI_Cart_map_work( const MPID_Comm *comm_ptr,
     if (notdone)
         notdone = MPIDI_Cart_map_nofold( vir_cart, phy_cart, newrank );
 
-    if (notdone)
-        notdone = MPIDI_Cart_map_fold( vir_cart, phy_cart, newrank );
+    /* if (notdone) */
+    /*     notdone = MPIDI_Cart_map_fold( vir_cart, phy_cart, newrank ); */
 
 fn_fail:
     MPIDI_VirtualCart_free(  vir_cart );
