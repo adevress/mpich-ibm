@@ -307,8 +307,6 @@ int MPID_Put(void *origin_addr, int origin_count,
                                 info->info, MPIDU_1SINFO_NQUADS);
 		}
 #endif /* USE_DCMF_PUT */
-                /* TBD: someday this will be done elsewhere */
-                MPIDU_Progress_spin(win_ptr->_dev.my_rma_pends > 0);
                 if (sent == 0 && xtra.mpid_xtra_w2) {
                         MPIDU_FREE(xtra.mpid_xtra_w2, mpi_errno, "MPID_Put");
                 }

@@ -440,10 +440,6 @@ int MPID_Accumulate(void *origin_addr, int origin_count,
                         dd += dti.dtp->extent;
                 } /* for target_count */
         }
-        /*
-         * TBD: Could return without waiting for sends...
-         */
-        MPIDU_Progress_spin(win_ptr->_dev.my_rma_pends > 0);
         if (sent == 0 && xtra.mpid_xtra_w2) {
                 MPIDU_FREE(xtra.mpid_xtra_w2, mpi_errno, "MPID_Accumulate");
         }

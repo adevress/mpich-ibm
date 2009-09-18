@@ -128,6 +128,7 @@ int MPID_Win_fence(int assert, MPID_Win *win_ptr)
 	}
 	MPID_assert_debug(MPIDU_is_lock_free(win_ptr));
 	MPIDU_Progress_spin(win_ptr->_dev.my_get_pends > 0 ||
+				win_ptr->_dev.my_rma_pends > 0 ||
 				win_ptr->_dev.my_rma_recvs <
 					win_ptr->_dev.coll_info[rank].rma_sends);
 	if ((win_ptr->_dev.epoch_assert & MPI_MODE_NOPUT) &&
