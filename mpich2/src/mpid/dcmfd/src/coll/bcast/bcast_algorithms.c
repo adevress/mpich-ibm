@@ -21,6 +21,14 @@ bcast_cb_done(void *clientdata, DCMF_Error_t *err)
   MPID_Progress_signal();
 }
 
+static void bcast_barrier_done(void *clientdata, DCMF_Error_t *err)
+{
+   volatile unsigned *work_left = (unsigned *)clientdata;
+   (*work_left)--;
+   MPID_Progress_signal();
+   return;
+}
+
 
 int MPIDO_Bcast_CCMI_tree(void *buffer,
                           int bytes,
@@ -257,16 +265,22 @@ int MPIDO_Bcast_binom_async(void * buffer,
 			    int root,
 			    MPID_Comm * comm)
 {
-  int rc;
-  unsigned int hw_root;
-  DCMF_Geometry_t * geometry = &(comm->dcmf.geometry);
-  DCMF_CollectiveRequest_t request;
-  volatile unsigned active = 1;
-  DCMF_Callback_t callback = {bcast_cb_done, (void *)&active };
+   static int count = 0;
+   int rc;
+   unsigned int hw_root;
+   DCMF_Geometry_t * geometry = &(comm->dcmf.geometry);
+   DCMF_CollectiveRequest_t request;
+   volatile unsigned active = 1;
+   volatile unsigned barrier_active = 0;
+   int num_requests = MPIDI_CollectiveProtocols.numrequests;
+   DCMF_Callback_t barrier_callback = {bcast_barrier_done, 
+                                       (void*)&barrier_active};
 
-  hw_root = comm->vcr[root];
+   DCMF_Callback_t callback = {bcast_cb_done, (void *)&active };
 
-  rc = DCMF_AsyncBroadcast(&MPIDI_CollectiveProtocols.async_binomial_bcast,
+   hw_root = comm->vcr[root];
+
+   rc = DCMF_AsyncBroadcast(&MPIDI_CollectiveProtocols.async_binomial_bcast,
 			   &request,
 			   callback,
 			   DCMF_MATCH_CONSISTENCY,
@@ -275,9 +289,20 @@ int MPIDO_Bcast_binom_async(void * buffer,
 			   buffer,
 			   bytes);
 
-  MPID_PROGRESS_WAIT_WHILE(active);
+   MPID_PROGRESS_WAIT_WHILE(active);
+   count++;
+   if(count == num_requests)
+   {
+      count = 0;
+      barrier_active = 1;
+      DCMF_Barrier(&comm->dcmf.geometry,
+                  barrier_callback,
+                  DCMF_MATCH_CONSISTENCY);
+      MPID_PROGRESS_WAIT_WHILE(barrier_active);
+   }
 
-  return rc;
+
+   return rc;
 }
 
 int MPIDO_Bcast_rect_async(void * buffer,
@@ -285,15 +310,20 @@ int MPIDO_Bcast_rect_async(void * buffer,
 			   int root,
 			   MPID_Comm * comm)
 {
-  int rc;
-  unsigned int hw_root;
-  DCMF_Geometry_t * geometry = &(comm->dcmf.geometry);
-  DCMF_CollectiveRequest_t request;
-  volatile unsigned active = 1;
-  DCMF_Callback_t callback = { bcast_cb_done, (void *) &active };
+   int rc;
+   static int count = 0;
+   unsigned int hw_root;
+   DCMF_Geometry_t * geometry = &(comm->dcmf.geometry);
+   DCMF_CollectiveRequest_t request;
+   volatile unsigned active = 1;
+   volatile unsigned barrier_active = 0;
+   int num_requests = MPIDI_CollectiveProtocols.numrequests;
+   DCMF_Callback_t barrier_callback = {bcast_barrier_done, 
+                                       (void*)&barrier_active};
+   DCMF_Callback_t callback = { bcast_cb_done, (void *) &active };
 
-  hw_root = comm->vcr[root];
-  rc=DCMF_AsyncBroadcast(&MPIDI_CollectiveProtocols.async_rectangle_bcast,
+   hw_root = comm->vcr[root];
+   rc=DCMF_AsyncBroadcast(&MPIDI_CollectiveProtocols.async_rectangle_bcast,
                          &request,
                          callback,
                          DCMF_MATCH_CONSISTENCY,
@@ -302,9 +332,19 @@ int MPIDO_Bcast_rect_async(void * buffer,
                          buffer,
                          bytes);
 
-  MPID_PROGRESS_WAIT_WHILE(active);
+   MPID_PROGRESS_WAIT_WHILE(active);
+   count++;
+   if(count == num_requests)
+   {
+      count = 0;
+      barrier_active = 1;
+      DCMF_Barrier(&comm->dcmf.geometry,
+                  barrier_callback,
+                  DCMF_MATCH_CONSISTENCY);
+      MPID_PROGRESS_WAIT_WHILE(barrier_active);
+   }
 
-  return rc;
+   return rc;
 }
 
 #endif
