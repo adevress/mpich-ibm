@@ -149,7 +149,7 @@ void MPIDI_Coll_register(void)
     /* Check if we are in dual or vn mode and that all ranks in the system */
     /* are physically located on one node. */
     unsigned size = DCMF_Messager_size ();
-    if (size <= mpid_hw.tSize)
+    if (mpid_hw.tSize > 1 && size <= mpid_hw.tSize)
     {
       size_t rank;
       gbcast_config.protocol = DCMF_INTRANODE_GLOBALBCAST_PROTOCOL;
