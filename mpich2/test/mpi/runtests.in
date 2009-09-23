@@ -774,8 +774,8 @@ sub RunMPIProgram {
           unless($resume && -e "$stagingdir/$programname")
           {
              chop($executablepath);
-             print "Copying $executablepath/$programname to $stagingdir..." if $verbose;
-             system("cp $executablepath/$programname $stagingdir");
+             print "Linking or Copying $executablepath/$programname to $stagingdir..." if $verbose;
+             system("ln $executablepath/$programname $stagingdir/ 2>/dev/null || cp $executablepath/$programname $stagingdir/");
              print "done\n" if $verbose;
           }
       }
