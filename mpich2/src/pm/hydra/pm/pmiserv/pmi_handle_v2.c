@@ -71,7 +71,7 @@ static HYD_Status send_command(int fd, char *cmd)
 
     HYDU_FUNC_ENTER();
 
-    HYDU_snprintf(cmdlen, 7, "%6d", strlen(cmd));
+    HYDU_snprintf(cmdlen, 7, "%6u", (unsigned)strlen(cmd));
     status = HYDU_sock_write(fd, cmdlen, 6);
     HYDU_ERR_POP(status, "error writing PMI line\n");
 
@@ -324,7 +324,7 @@ HYD_Status HYD_PMCD_pmi_handle_v2_job_getid(int fd, char *args[])
 
 HYD_Status HYD_PMCD_pmi_handle_v2_info_putnodeattr(int fd, char *args[])
 {
-    char *tmp[HYD_NUM_TMP_STRINGS], *cmd, *key_pair_str;
+    char *tmp[HYD_NUM_TMP_STRINGS], *cmd;
     char *key, *val, *thrid;
     int i, ret;
     HYD_PMCD_pmi_process_t *process;
@@ -352,7 +352,7 @@ HYD_Status HYD_PMCD_pmi_handle_v2_info_putnodeattr(int fd, char *args[])
         HYDU_ERR_SETANDJUMP1(status, HYD_INTERNAL_ERROR,
                              "unable to find process structure for fd %d\n", fd);
 
-    status = HYD_PMCD_pmi_add_kvs(key, val, process->node->kvs, &key_pair_str, &ret);
+    status = HYD_PMCD_pmi_add_kvs(key, val, process->node->kvs, &ret);
     HYDU_ERR_POP(status, "unable to put data into kvs\n");
 
     i = 0;
@@ -496,8 +496,9 @@ HYD_Status HYD_PMCD_pmi_handle_v2_info_getjobattr(int fd, char *args[])
     int i, ret;
     HYD_PMCD_pmi_process_t *process;
     HYD_PMCD_pmi_kvs_pair_t *run;
-    char *key, *thrid;
-    char *tmp[HYD_NUM_TMP_STRINGS], *cmd, *node_list, *key_pair_str;
+    const char *key;
+    char *thrid;
+    char *tmp[HYD_NUM_TMP_STRINGS], *cmd, *node_list;
     struct token *tokens;
     int token_count, found;
     HYD_Status status = HYD_SUCCESS;
@@ -518,10 +519,6 @@ HYD_Status HYD_PMCD_pmi_handle_v2_info_getjobattr(int fd, char *args[])
         HYDU_ERR_SETANDJUMP1(status, HYD_INTERNAL_ERROR,
                              "unable to find process structure for fd %d\n", fd);
 
-    /* If no format is specified, use the default values */
-    if (strcmp(key, "process-mapping") == 0)
-        key = "process-mapping-vector";
-
     /* Try to find the key */
     found = 0;
     for (run = process->node->pg->kvs->key_pair; run; run = run->next) {
@@ -534,7 +531,7 @@ HYD_Status HYD_PMCD_pmi_handle_v2_info_getjobattr(int fd, char *args[])
     if (found == 0) {
         /* Didn't find the job attribute; see if we know how to
          * generate it */
-        if (strcmp(key, "process-mapping-vector") == 0) {
+        if (strcmp(key, "process-mapping") == 0) {
             /* Create a vector format */
             status = HYD_PMCD_pmi_process_mapping(process, HYD_PMCD_pmi_vector, &node_list);
             HYDU_ERR_POP(status, "Unable to get process mapping information\n");
@@ -543,20 +540,8 @@ HYD_Status HYD_PMCD_pmi_handle_v2_info_getjobattr(int fd, char *args[])
                 HYDU_ERR_SETANDJUMP(status, HYD_INTERNAL_ERROR,
                                     "key value larger than maximum allowed\n");
 
-            status = HYD_PMCD_pmi_add_kvs("process-mapping-vector", node_list,
-                                          process->node->pg->kvs, &key_pair_str, &ret);
-            HYDU_ERR_POP(status, "unable to add process_mapping to KVS\n");
-        }
-        else if (strcmp(key, "process-mapping-explicit") == 0) {
-            status = HYD_PMCD_pmi_process_mapping(process, HYD_PMCD_pmi_explicit, &node_list);
-            HYDU_ERR_POP(status, "Unable to get process mapping information\n");
-
-            if (strlen(node_list) > MAXVALLEN)
-                HYDU_ERR_SETANDJUMP(status, HYD_INTERNAL_ERROR,
-                                    "key value larger than maximum allowed\n");
-
-            status = HYD_PMCD_pmi_add_kvs("process-mapping-explicit", node_list,
-                                          process->node->pg->kvs, &key_pair_str, &ret);
+            status = HYD_PMCD_pmi_add_kvs("process-mapping", node_list,
+                                          process->node->pg->kvs, &ret);
             HYDU_ERR_POP(status, "unable to add process_mapping to KVS\n");
         }
 
@@ -608,7 +593,7 @@ HYD_Status HYD_PMCD_pmi_handle_v2_info_getjobattr(int fd, char *args[])
 
 HYD_Status HYD_PMCD_pmi_handle_v2_kvs_put(int fd, char *args[])
 {
-    char *tmp[HYD_NUM_TMP_STRINGS], *cmd, *key_pair_str;
+    char *tmp[HYD_NUM_TMP_STRINGS], *cmd;
     char *key, *val, *thrid;
     int i, ret;
     HYD_PMCD_pmi_process_t *process;
@@ -636,7 +621,7 @@ HYD_Status HYD_PMCD_pmi_handle_v2_kvs_put(int fd, char *args[])
         HYDU_ERR_SETANDJUMP1(status, HYD_INTERNAL_ERROR,
                              "unable to find process structure for fd %d\n", fd);
 
-    status = HYD_PMCD_pmi_add_kvs(key, val, process->node->pg->kvs, &key_pair_str, &ret);
+    status = HYD_PMCD_pmi_add_kvs(key, val, process->node->pg->kvs, &ret);
     HYDU_ERR_POP(status, "unable to put data into kvs\n");
 
     i = 0;
@@ -676,7 +661,7 @@ HYD_Status HYD_PMCD_pmi_handle_v2_kvs_put(int fd, char *args[])
 
 HYD_Status HYD_PMCD_pmi_handle_v2_kvs_get(int fd, char *args[])
 {
-    int i, found;
+    int i, found, node_count;
     HYD_PMCD_pmi_process_t *process, *prun;
     HYD_PMCD_pmi_node_t *node;
     HYD_PMCD_pmi_kvs_pair_t *run;
@@ -716,7 +701,9 @@ HYD_Status HYD_PMCD_pmi_handle_v2_kvs_get(int fd, char *args[])
             goto fn_exit;
 
         consistent_epoch = 1;
+        node_count = 0;
         for (node = process->node->pg->node_list; node; node = node->next) {
+            node_count++;
             for (prun = node->process_list; prun; prun = prun->next) {
                 if (prun->epoch != process->epoch) {
                     /* The epochs are not consistent */
@@ -726,7 +713,8 @@ HYD_Status HYD_PMCD_pmi_handle_v2_kvs_get(int fd, char *args[])
             }
         }
 
-        if (consistent_epoch == 0) {
+        if (consistent_epoch == 0 ||
+            ((process->epoch > 0) && (node_count != HYD_pg_list->num_procs))) {
             /* queue up */
             status = queue_outstanding_req(fd, KVS_GET, args);
             HYDU_ERR_POP(status, "unable to queue outstanding request\n");
@@ -735,6 +723,8 @@ HYD_Status HYD_PMCD_pmi_handle_v2_kvs_get(int fd, char *args[])
             goto fn_exit;
         }
     }
+    else if (progress_nest_count)
+        req_complete = 1;
 
     i = 0;
     tmp[i++] = HYDU_strdup("cmd=kvs-get-response;");
@@ -794,8 +784,6 @@ HYD_Status HYD_PMCD_pmi_handle_v2_kvs_fence(int fd, char *args[])
                              "unable to find process structure for fd %d\n", fd);
 
     process->epoch++;   /* We have reached the next epoch */
-
-    process->node->pg->barrier_count++;
 
     i = 0;
     tmp[i++] = HYDU_strdup("cmd=kvs-fence-response;");

@@ -13,8 +13,9 @@
 
 struct HYDU_bind_info HYDU_bind_info;
 
-HYD_Status HYDU_bind_init(HYD_Bindlib_t bindlib, char *user_bind_map)
+HYD_Status HYDU_bind_init(char *binding, char *bindlib)
 {
+    char *user_bind_map;
     HYD_Status status = HYD_SUCCESS;
 
     HYDU_FUNC_ENTER();
@@ -22,8 +23,22 @@ HYD_Status HYDU_bind_init(HYD_Bindlib_t bindlib, char *user_bind_map)
     HYDU_bind_info.support_level = HYDU_BIND_NONE;
     HYDU_bind_info.bind_map = NULL;
 
+    if (binding)
+        HYDU_bind_info.binding = HYDU_strdup(binding);
+    else
+        HYDU_bind_info.binding = HYDU_strdup("none");
+
+    if (!strncmp(HYDU_bind_info.binding, "user:", strlen("user:"))) {
+        user_bind_map = HYDU_bind_info.binding + strlen("user:");
+        HYDU_bind_info.binding[strlen("user")] = '\0';
+    }
+    else
+        user_bind_map = NULL;
+
+    HYDU_bind_info.bindlib = bindlib;
+
 #if defined HAVE_PLPA
-    if (bindlib == HYD_BINDLIB_PLPA) {
+    if (!strcmp(HYDU_bind_info.bindlib, "plpa")) {
         status = HYDU_bind_plpa_init(user_bind_map, &HYDU_bind_info.support_level);
         HYDU_ERR_POP(status, "unable to initialize plpa\n");
     }
@@ -44,8 +59,10 @@ HYD_Status HYDU_bind_process(int core)
     HYDU_FUNC_ENTER();
 
 #if defined HAVE_PLPA
-    status = HYDU_bind_plpa_process(core);
-    HYDU_ERR_POP(status, "PLPA failure binding process to core\n");
+    if (!strcmp(HYDU_bind_info.bindlib, "plpa")) {
+        status = HYDU_bind_plpa_process(core);
+        HYDU_ERR_POP(status, "PLPA failure binding process to core\n");
+    }
 #endif /* HAVE_PLPA */
 
   fn_exit:
@@ -57,9 +74,10 @@ HYD_Status HYDU_bind_process(int core)
 }
 
 
-int HYDU_bind_get_core_id(int id, HYD_Binding_t binding)
+int HYDU_bind_get_core_id(int id)
 {
-    int socket, core, thread, i, realid;
+    int sock, core, thread, i, realid;
+    HYD_Status status = HYD_SUCCESS;
 
     HYDU_FUNC_ENTER();
 
@@ -68,13 +86,13 @@ int HYDU_bind_get_core_id(int id, HYD_Binding_t binding)
 
         /* NONE, RR and USER are supported at the basic binding
          * level */
-        if (binding == HYD_BIND_NONE) {
+        if (!strcmp(HYDU_bind_info.binding, "none")) {
             return -1;
         }
-        else if (binding == HYD_BIND_RR) {
+        else if (!strcmp(HYDU_bind_info.binding, "rr")) {
             return HYDU_bind_info.bind_map[realid].processor_id;
         }
-        else if (binding == HYD_BIND_USER) {
+        else if (!strcmp(HYDU_bind_info.binding, "user")) {
             if (!HYDU_bind_info.user_bind_valid)
                 return -1;
             else
@@ -84,25 +102,28 @@ int HYDU_bind_get_core_id(int id, HYD_Binding_t binding)
         /* If we reached here, the user requested for topology aware
          * binding. */
         if (HYDU_bind_info.support_level == HYDU_BIND_TOPO) {
-            if (binding == HYD_BIND_BUDDY) {
+            if (!strcmp(HYDU_bind_info.binding, "buddy")) {
                 thread = realid / (HYDU_bind_info.num_sockets * HYDU_bind_info.num_cores);
 
                 core = realid % (HYDU_bind_info.num_sockets * HYDU_bind_info.num_cores);
                 core /= HYDU_bind_info.num_sockets;
 
-                socket = realid % HYDU_bind_info.num_sockets;
+                sock = realid % HYDU_bind_info.num_sockets;
             }
-            else if (binding == HYD_BIND_PACK) {
-                socket = realid / (HYDU_bind_info.num_cores * HYDU_bind_info.num_threads);
+            else if (!strcmp(HYDU_bind_info.binding, "pack")) {
+                sock = realid / (HYDU_bind_info.num_cores * HYDU_bind_info.num_threads);
 
                 core = realid % (HYDU_bind_info.num_cores * HYDU_bind_info.num_threads);
                 core /= HYDU_bind_info.num_threads;
 
                 thread = realid % HYDU_bind_info.num_threads;
             }
+            else {
+                HYDU_ERR_SETANDJUMP(status, HYD_INTERNAL_ERROR, "unknown binding option\n");
+            }
 
             for (i = 0; i < HYDU_bind_info.num_procs; i++) {
-                if (HYDU_bind_info.bind_map[i].socket_rank == socket &&
+                if (HYDU_bind_info.bind_map[i].socket_rank == sock &&
                     HYDU_bind_info.bind_map[i].core_rank == core &&
                     HYDU_bind_info.bind_map[i].thread_rank == thread) {
                     return HYDU_bind_info.bind_map[i].processor_id;
@@ -114,6 +135,10 @@ int HYDU_bind_get_core_id(int id, HYD_Binding_t binding)
         }
     }
 
+fn_exit:
     HYDU_FUNC_EXIT();
     return -1;
+
+fn_fail:
+    goto fn_exit;
 }

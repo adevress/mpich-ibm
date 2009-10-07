@@ -19,9 +19,15 @@ struct HYD_Handle_ {
     char *bootstrap;
     char *css;
     char *rmk;
-    HYD_Binding_t binding;
-    HYD_Bindlib_t bindlib;
+
+    char *binding;
+    char *bindlib;
     char *user_bind_map;
+
+    char *ckpointlib;
+    int ckpoint_int;
+    char *ckpoint_prefix;
+    int ckpoint_restart;
 
     int debug;
     int print_rank_map;

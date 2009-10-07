@@ -88,6 +88,13 @@ static void usage(void)
     printf("    -bindlib                         process-to-core binding library (plpa)\n");
 
     printf("\n");
+    printf("  Checkpoint/Restart options:\n");
+    printf("    -ckpoint-interval                checkpoint interval\n");
+    printf("    -ckpoint-prefix                  checkpoint file prefix\n");
+    printf("    -ckpointlib                      checkpointing library (blcr)\n");
+    printf("    -ckpoint-restart                 restart a checkpointed application\n");
+
+    printf("\n");
     printf("  Other Hydra options:\n");
     printf("    -verbose                         verbose mode\n");
     printf("    -info                            build information\n");
@@ -100,10 +107,14 @@ int main(int argc, char **argv)
 {
     struct HYD_Partition *partition;
     struct HYD_Partition_exec *exec;
-    int exit_status = 0, timeout, i, process_id, proc_count;
+    struct HYD_Exec_info *exec_info;
+    int exit_status = 0, timeout, i, process_id, proc_count, num_nodes = 0;
     HYD_Status status = HYD_SUCCESS;
 
     HYDU_FUNC_ENTER();
+
+    status = HYDU_dbg_init("mpiexec");
+    HYDU_ERR_POP(status, "unable to initialization debugging\n");
 
     status = HYD_UII_mpx_get_parameters(argv);
     if (status == HYD_GRACEFUL_ABORT) {
@@ -121,7 +132,7 @@ int main(int argc, char **argv)
         /* User did not provide any host file. Query the RMK. We pass
          * a zero node count, so the RMK will give us all the nodes it
          * already has and won't try to allocate any more. */
-        status = HYD_RMKI_query_node_list(0, &HYD_handle.partition_list);
+        status = HYD_RMKI_query_node_list(&num_nodes, &HYD_handle.partition_list);
         HYDU_ERR_POP(status, "unable to query the RMK for a node list\n");
 
         /* We don't have an allocation capability yet, but when we do,
@@ -137,6 +148,17 @@ int main(int argc, char **argv)
         /* Use the user specified host file */
         status = HYDU_create_node_list_from_file(HYD_handle.host_file, &HYD_handle.partition_list);
         HYDU_ERR_POP(status, "unable to create host list\n");
+    }
+
+    /* If the number of processes is not given, we allocate all the
+     * available nodes to each executable */
+    for (exec_info = HYD_handle.exec_info_list; exec_info; exec_info = exec_info->next) {
+        if (exec_info->exec_proc_count == 0) {
+            if (num_nodes == 0)
+                exec_info->exec_proc_count = 1;
+            else
+                exec_info->exec_proc_count = num_nodes;
+        }
     }
 
     /* Consolidate the environment list that we need to propagate */
@@ -170,26 +192,27 @@ int main(int argc, char **argv)
     else
         timeout = -1;   /* Set a negative timeout */
     HYDU_time_set(&HYD_handle.timeout, &timeout);
-    HYDU_Debug(HYD_handle.debug, "Timeout set to %d (-1 means infinite)\n", timeout);
+    if (HYD_handle.debug)
+        HYDU_dump(stdout, "Timeout set to %d (-1 means infinite)\n", timeout);
 
     if (HYD_handle.print_rank_map) {
         FORALL_ACTIVE_PARTITIONS(partition, HYD_handle.partition_list) {
-            HYDU_Dump("[%s] ", partition->base->name);
+            HYDU_dump(stdout, "[%s] ", partition->base->name);
 
             process_id = 0;
             for (exec = partition->exec_list; exec; exec = exec->next) {
                 for (i = 0; i < exec->proc_count; i++) {
-                    HYDU_Dump("%d", HYDU_local_to_global_id(process_id++,
+                    HYDU_dump(stdout, "%d", HYDU_local_to_global_id(process_id++,
                                                             partition->partition_core_count,
                                                             partition->segment_list,
                                                             HYD_handle.global_core_count));
                     if (i < exec->proc_count - 1)
-                        HYDU_Dump(",");
+                        HYDU_dump(stdout, ",");
                 }
             }
-            HYDU_Dump("\n");
+            HYDU_dump(stdout, "\n");
         }
-        HYDU_Dump("\n");
+        HYDU_dump(stdout, "\n");
     }
 
     /* Launch the processes */
@@ -249,7 +272,7 @@ int main(int argc, char **argv)
 
     /* Check for the exit status for all the processes */
     if (HYD_handle.print_all_exitcodes)
-        HYDU_Dump("Exit codes: ");
+        HYDU_dump(stdout, "Exit codes: ");
     exit_status = 0;
     FORALL_ACTIVE_PARTITIONS(partition, HYD_handle.partition_list) {
         proc_count = 0;
@@ -257,18 +280,18 @@ int main(int argc, char **argv)
             proc_count += exec->proc_count;
         for (i = 0; i < proc_count; i++) {
             if (HYD_handle.print_all_exitcodes) {
-                HYDU_Dump("[%d]", HYDU_local_to_global_id(i, partition->partition_core_count,
+                HYDU_dump(stdout, "[%d]", HYDU_local_to_global_id(i, partition->partition_core_count,
                                                           partition->segment_list,
                                                           HYD_handle.global_core_count));
-                HYDU_Dump("%d", WEXITSTATUS(partition->exit_status[i]));
+                HYDU_dump(stdout, "%d", WEXITSTATUS(partition->exit_status[i]));
                 if (i < proc_count - 1)
-                    HYDU_Dump(",");
+                    HYDU_dump(stdout, ",");
             }
             exit_status |= partition->exit_status[i];
         }
     }
     if (HYD_handle.print_all_exitcodes)
-        HYDU_Dump("\n");
+        HYDU_dump(stdout, "\n");
 
     /* Call finalize functions for lower layers to cleanup their resources */
     status = HYD_PMCI_finalize();
@@ -285,8 +308,13 @@ int main(int argc, char **argv)
         return -1;
     else {
         if (WIFSIGNALED(exit_status))
-            printf("%s\n", strsignal(exit_status));
-        return (WEXITSTATUS(exit_status));
+            printf("%s (signal %d)\n", strsignal(WTERMSIG(exit_status)),
+                   WTERMSIG(exit_status));
+        else if (WIFEXITED(exit_status))
+            return (WEXITSTATUS(exit_status));
+        else if (WIFSTOPPED(exit_status))
+            return (WSTOPSIG(exit_status));
+        return exit_status;
     }
 
   fn_fail:

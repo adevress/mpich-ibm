@@ -27,7 +27,6 @@ static struct {
 
 static int g_tbl_size = 0;
 static int g_tbl_capacity = CONN_PLFD_TBL_INIT_SIZE;
-static int g_tbl_grow_size = CONN_PLFD_TBL_GROW_SIZE;
 
 static sockconn_t *g_sc_tbl = NULL;
 struct pollfd *MPID_nem_tcp_plfd_tbl = NULL;
@@ -200,7 +199,7 @@ static int expand_sc_plfd_tbls (void)
     int mpi_errno = MPI_SUCCESS; 
     sockconn_t *new_sc_tbl = NULL;
     struct pollfd *new_plfd_tbl = NULL;
-    int new_capacity = g_tbl_capacity + g_tbl_grow_size, i;
+    int new_capacity = g_tbl_capacity + CONN_PLFD_TBL_GROW_SIZE, i;
     MPIU_CHKPMEM_DECL (2);
 
     MPIU_DBG_MSG_FMT(NEM_SOCK_DET, VERBOSE, (MPIU_DBG_FDEST, "expand_sc_plfd_tbls Entry"));
@@ -1430,6 +1429,10 @@ static int MPID_nem_tcp_recv_handler (struct pollfd *pfd, sockconn_t *sc)
         MPID_Request *rreq = ((MPIDI_CH3I_VC *)sc->vc->channel_private)->recv_active;
         MPID_IOV *iov = &rreq->dev.iov[rreq->dev.iov_offset];
         int (*reqFn)(MPIDI_VC_t *, MPID_Request *, int *);
+
+        MPIU_Assert(rreq->dev.iov_count > 0);
+        MPIU_Assert(rreq->dev.iov_offset >= 0);
+        MPIU_Assert(rreq->dev.iov_count + rreq->dev.iov_offset <= MPID_IOV_LIMIT);
 
         CHECK_EINTR(bytes_recvd, readv(sc->fd, iov, rreq->dev.iov_count));
         if (bytes_recvd <= 0)

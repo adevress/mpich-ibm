@@ -7,17 +7,7 @@
 #include "mpiimpl.h"
 #include <stdio.h>
 
-#if defined(MPICH_DEBUG_MEMINIT)
-#  if defined(HAVE_VALGRIND_H) && defined(HAVE_MEMCHECK_H)
-#    include <valgrind.h>
-#    include <memcheck.h>
-#    define USE_VALGRIND_MACROS 1
-#  elif defined(HAVE_VALGRIND_VALGRIND_H) && defined(HAVE_VALGRIND_MEMCHECK_H)
-#    include <valgrind/valgrind.h>
-#    include <valgrind/memcheck.h>
-#    define USE_VALGRIND_MACROS 1
-#  endif
-#endif
+#include "mpiu_valgrind.h"
 
 #ifdef NEEDS_PRINT_HANDLE
 static void MPIU_Print_handle( int handle );
@@ -157,7 +147,8 @@ void *MPIU_Handle_direct_init(void *direct,
 	    (handle_type << HANDLE_MPI_KIND_SHIFT) | i;
     }
 
-    hptr->next = 0;
+    if (hptr)
+        hptr->next = 0;
     return direct;
 }
 
@@ -356,24 +347,21 @@ void *MPIU_Handle_obj_alloc_unsafe(MPIU_Object_alloc_t *objmem)
     }
 
     MPIU_DBG_MSG_FMT(HANDLE,TYPICAL,(MPIU_DBG_FDEST,
-				     "Allocating handle %p (0x%08x)\n",
+                                     "Allocating object ptr %p (handle val 0x%08x)",
 				     ptr, ptr->handle));
 
+    if (ptr) {
 #ifdef USE_MEMORY_TRACING
     /* We set the object to an invalid pattern.  This is similar to 
        what is done by MPIU_trmalloc by default (except that trmalloc uses
        0xda as the byte in the memset)
     */
-    if (ptr) {
-#if defined(USE_VALGRIND_MACROS)
-        VALGRIND_MAKE_MEM_DEFINED(&ptr->ref_count, objmem->size - sizeof(int));
+        MPIU_VG_MAKE_MEM_DEFINED(&ptr->ref_count, objmem->size - sizeof(int));
 	memset( (void*)&ptr->ref_count, 0xef, objmem->size-sizeof(int));
-        VALGRIND_MAKE_MEM_UNDEFINED(&ptr->ref_count, objmem->size - sizeof(int));
-#else
-	memset( (void*)&ptr->ref_count, 0xef, objmem->size-sizeof(int));
-#endif
-    }
 #endif /* USE_MEMORY_TRACING */
+        /* mark the mem as addressable yet undefined if valgrind is available */
+        MPIU_VG_MAKE_MEM_UNDEFINED(&ptr->ref_count, objmem->size - sizeof(int));
+    }
 
     return ptr;
 }
@@ -394,11 +382,14 @@ void MPIU_Handle_obj_free( MPIU_Object_alloc_t *objmem, void *object )
     MPIU_Handle_common *obj = (MPIU_Handle_common *)object;
 
     MPIU_THREAD_CS_ENTER(HANDLEALLOC,);
-#if defined(USE_VALGRIND_MACROS)
-    VALGRIND_MAKE_MEM_NOACCESS(&obj->ref_count, objmem->size - sizeof(int));
-    VALGRIND_MAKE_MEM_UNDEFINED(&obj->next, sizeof(obj->next));
-#endif
-    /* printf( "Freeing %p in %d\n", object, objmem->kind ); */
+
+    MPIU_VG_MAKE_MEM_NOACCESS(&obj->ref_count, objmem->size - sizeof(int));
+    MPIU_VG_MAKE_MEM_UNDEFINED(&obj->next, sizeof(obj->next));
+
+    MPIU_DBG_MSG_FMT(HANDLE,TYPICAL,(MPIU_DBG_FDEST,
+                                     "Freeing object ptr %p (handle val 0x%08x)",
+                                     obj, obj->handle));
+
     obj->next	        = objmem->avail;
     objmem->avail	= obj;
     MPIU_THREAD_CS_EXIT(HANDLEALLOC,);

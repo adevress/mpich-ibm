@@ -48,18 +48,11 @@ static HYD_Status wait_for_procs_to_finish(void)
         }
     }
 
-    /* FIXME: If we did not break out yet, add a small usleep to yield
-     * CPU here. We can not just sleep for the remaining time, as the
-     * timeout value might be large and the application might exit
-     * much quicker. Note that the sched_yield() call is broken on
-     * newer linux kernel versions and should not be used. */
-    /* Once all the sockets are closed, wait for all the processes to
-     * finish. We poll here, but hopefully not for too long. */
     do {
         if (HYD_PMCD_pmi_proxy_params.procs_are_launched == 0)
             break;
 
-        pid = waitpid(-1, &ret_status, WNOHANG);
+        pid = waitpid(-1, &ret_status, 0);
 
         /* Find the pid and mark it as complete. */
         if (pid > 0)
@@ -95,6 +88,9 @@ int main(int argc, char **argv)
 {
     int listenfd;
     HYD_Status status = HYD_SUCCESS;
+
+    status = HYDU_dbg_init("proxy");
+    HYDU_ERR_POP(status, "unable to initialization debugging\n");
 
     status = HYD_PMCD_pmi_proxy_get_params(argv);
     HYDU_ERR_POP(status, "bad parameters passed to the proxy\n");
@@ -139,12 +135,6 @@ int main(int argc, char **argv)
         HYDU_ERR_POP(status, "unable to cleanup params\n");
     }
     else {      /* Persistent mode */
-        if (HYD_PMCD_pmi_proxy_params.proxy.launch_mode != HYD_LAUNCH_BOOT_FOREGROUND) {
-            /* Spawn a persistent daemon proxy and exit parent proxy */
-            status = HYDU_fork_and_exit(-1);
-            HYDU_ERR_POP(status, "Error spawning persistent proxy\n");
-        }
-
         status = HYDU_sock_listen(&listenfd, NULL,
                                   (uint16_t *) & HYD_PMCD_pmi_proxy_params.proxy.server_port);
         HYDU_ERR_POP(status, "unable to listen on socket\n");
@@ -153,6 +143,12 @@ int main(int argc, char **argv)
         status = HYD_DMX_register_fd(1, &listenfd, HYD_STDOUT, NULL,
                                      HYD_PMCD_pmi_proxy_control_connect_cb);
         HYDU_ERR_POP(status, "unable to register fd\n");
+
+        if (HYD_PMCD_pmi_proxy_params.proxy.launch_mode == HYD_LAUNCH_BOOT) {
+            /* Spawn a persistent daemon proxy and exit parent proxy */
+            status = HYDU_fork_and_exit(-1);
+            HYDU_ERR_POP(status, "Error spawning persistent proxy\n");
+        }
 
         do {
             /* Wait for the processes to finish. If there are no

@@ -3,10 +3,10 @@
 /configure
 /configure.lineno
 /config.*
-/hydra_config.h*
 /autom4te*
 /mpiexec
-/*.gcov
-/*.gcda
-/*.gcno
 /aclocal.m4
+/.deps
+/confdefs.h
+/pmi_proxy
+/TAGS

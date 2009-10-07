@@ -26,9 +26,13 @@ static HYD_Status init_params(void)
 
     HYD_PMCD_pmi_proxy_params.wdir = NULL;
     HYD_PMCD_pmi_proxy_params.pmi_port_str = NULL;
-    HYD_PMCD_pmi_proxy_params.binding = HYD_BIND_UNSET;
-    HYD_PMCD_pmi_proxy_params.bindlib = HYD_BINDLIB_UNSET;
+    HYD_PMCD_pmi_proxy_params.binding = NULL;
+    HYD_PMCD_pmi_proxy_params.bindlib = NULL;
     HYD_PMCD_pmi_proxy_params.user_bind_map = NULL;
+
+    HYD_PMCD_pmi_proxy_params.ckpointlib = NULL;
+    HYD_PMCD_pmi_proxy_params.ckpoint_prefix = NULL;
+    HYD_PMCD_pmi_proxy_params.ckpoint_restart = 0;
 
     HYD_PMCD_pmi_proxy_params.system_env = NULL;
     HYD_PMCD_pmi_proxy_params.user_env = NULL;
@@ -97,7 +101,11 @@ static HYD_Status parse_params(char **t_argv)
         /* Binding */
         if (!strcmp(*argv, "--binding")) {
             argv++;
-            HYD_PMCD_pmi_proxy_params.binding = (HYD_Binding_t) (unsigned int) atoi(*argv);
+            if (!strcmp(*argv, "HYDRA_NULL"))
+                HYD_PMCD_pmi_proxy_params.binding = NULL;
+            else
+                HYD_PMCD_pmi_proxy_params.binding = HYDU_strdup(*argv);
+
             argv++;
             if (!strcmp(*argv, "HYDRA_NULL"))
                 HYD_PMCD_pmi_proxy_params.user_bind_map = NULL;
@@ -109,14 +117,35 @@ static HYD_Status parse_params(char **t_argv)
         /* Binding library */
         if (!strcmp(*argv, "--bindlib")) {
             argv++;
-            HYD_PMCD_pmi_proxy_params.bindlib = (HYD_Bindlib_t) (unsigned int) atoi(*argv);
+            HYD_PMCD_pmi_proxy_params.bindlib = HYDU_strdup(*argv);
+            continue;
+        }
+
+        /* Checkpointing library */
+        if (!strcmp(*argv, "--ckpointlib")) {
+            argv++;
+            HYD_PMCD_pmi_proxy_params.ckpointlib = HYDU_strdup(*argv);
+            continue;
+        }
+
+        if (!strcmp(*argv, "--ckpoint-prefix")) {
+            argv++;
+            if (!strcmp(*argv, "HYDRA_NULL"))
+                HYD_PMCD_pmi_proxy_params.ckpoint_prefix = NULL;
+            else
+                HYD_PMCD_pmi_proxy_params.ckpoint_prefix = HYDU_strdup(*argv);
+            continue;
+        }
+
+        if (!strcmp(*argv, "--ckpoint-restart")) {
+            HYD_PMCD_pmi_proxy_params.ckpoint_restart = 1;
             continue;
         }
 
         /* Global env */
-        if ((!strcmp(*argv, "--inherited-env")) ||
-            (!strcmp(*argv, "--system-env")) ||
-            (!strcmp(*argv, "--user-env"))) {
+        if ((!strcmp(*argv, "--global-inherited-env")) ||
+            (!strcmp(*argv, "--global-system-env")) ||
+            (!strcmp(*argv, "--global-user-env"))) {
 
             argtype = *argv;
 
@@ -135,11 +164,11 @@ static HYD_Status parse_params(char **t_argv)
                 }
                 env = HYDU_str_to_env(str);
 
-                if (!strcmp(argtype, "--inherited-env"))
+                if (!strcmp(argtype, "--global-inherited-env"))
                     HYDU_append_env_to_list(*env, &HYD_PMCD_pmi_proxy_params.inherited_env);
-                else if (!strcmp(argtype, "--system-env"))
+                else if (!strcmp(argtype, "--global-system-env"))
                     HYDU_append_env_to_list(*env, &HYD_PMCD_pmi_proxy_params.system_env);
-                else if (!strcmp(argtype, "--user-env"))
+                else if (!strcmp(argtype, "--global-user-env"))
                     HYDU_append_env_to_list(*env, &HYD_PMCD_pmi_proxy_params.user_env);
 
                 HYDU_FREE(env);
@@ -375,8 +404,20 @@ HYD_Status HYD_PMCD_pmi_proxy_cleanup_params(void)
     if (HYD_PMCD_pmi_proxy_params.pmi_port_str)
         HYDU_FREE(HYD_PMCD_pmi_proxy_params.pmi_port_str);
 
+    if (HYD_PMCD_pmi_proxy_params.binding)
+        HYDU_FREE(HYD_PMCD_pmi_proxy_params.binding);
+
+    if (HYD_PMCD_pmi_proxy_params.bindlib)
+        HYDU_FREE(HYD_PMCD_pmi_proxy_params.bindlib);
+
     if (HYD_PMCD_pmi_proxy_params.user_bind_map)
         HYDU_FREE(HYD_PMCD_pmi_proxy_params.user_bind_map);
+
+    if (HYD_PMCD_pmi_proxy_params.ckpointlib)
+        HYDU_FREE(HYD_PMCD_pmi_proxy_params.ckpointlib);
+
+    if (HYD_PMCD_pmi_proxy_params.ckpoint_prefix)
+        HYDU_FREE(HYD_PMCD_pmi_proxy_params.ckpoint_prefix);
 
     if (HYD_PMCD_pmi_proxy_params.system_env)
         HYDU_env_free_list(HYD_PMCD_pmi_proxy_params.system_env);
@@ -494,6 +535,7 @@ HYD_Status HYD_PMCD_pmi_proxy_launch_procs(void)
     struct HYD_Partition_segment *segment;
     struct HYD_Partition_exec *exec;
     HYD_Status status = HYD_SUCCESS;
+    int *pmi_ids;
 
     HYDU_FUNC_ENTER();
 
@@ -505,6 +547,14 @@ HYD_Status HYD_PMCD_pmi_proxy_launch_procs(void)
     for (exec = HYD_PMCD_pmi_proxy_params.exec_list; exec; exec = exec->next)
         HYD_PMCD_pmi_proxy_params.exec_proc_count += exec->proc_count;
 
+    HYDU_MALLOC(pmi_ids, int *, HYD_PMCD_pmi_proxy_params.exec_proc_count * sizeof(int), status);
+    for (i = 0; i < HYD_PMCD_pmi_proxy_params.exec_proc_count; i++) {
+        pmi_ids[i] = HYDU_local_to_global_id(i,
+                                             HYD_PMCD_pmi_proxy_params.partition_core_count,
+                                             HYD_PMCD_pmi_proxy_params.segment_list,
+                                             HYD_PMCD_pmi_proxy_params.global_core_count);
+    }
+    
     HYDU_MALLOC(HYD_PMCD_pmi_proxy_params.out, int *,
                 HYD_PMCD_pmi_proxy_params.exec_proc_count * sizeof(int), status);
     HYDU_MALLOC(HYD_PMCD_pmi_proxy_params.err, int *,
@@ -518,30 +568,68 @@ HYD_Status HYD_PMCD_pmi_proxy_launch_procs(void)
     for (i = 0; i < HYD_PMCD_pmi_proxy_params.exec_proc_count; i++)
         HYD_PMCD_pmi_proxy_params.exit_status[i] = -1;
 
-    status = HYDU_bind_init(HYD_PMCD_pmi_proxy_params.bindlib,
-                            HYD_PMCD_pmi_proxy_params.user_bind_map);
+    status = HYDU_bind_init(HYD_PMCD_pmi_proxy_params.binding,
+                            HYD_PMCD_pmi_proxy_params.bindlib);
     HYDU_ERR_POP(status, "unable to initialize process binding\n");
+
+    status = HYDU_ckpoint_init(HYD_PMCD_pmi_proxy_params.ckpointlib,
+                               HYD_PMCD_pmi_proxy_params.ckpoint_prefix);
+    HYDU_ERR_POP(status, "unable to initialize checkpointing\n");
+
+    if (HYD_PMCD_pmi_proxy_params.ckpoint_restart) {
+
+        env = HYDU_str_pair_to_env("PMI_PORT", HYD_PMCD_pmi_proxy_params.pmi_port_str);
+        if (env == NULL)
+            HYDU_ERR_POP(status, "unable to create env\n");
+
+
+        /* Restart the partition.  Specify stdin fd only if pmi_id 0 is in this partition. */
+        status = HYDU_ckpoint_restart(env, HYD_PMCD_pmi_proxy_params.exec_proc_count,
+                                      pmi_ids,
+                                      pmi_ids[0] ? NULL : &HYD_PMCD_pmi_proxy_params.in,
+                                      HYD_PMCD_pmi_proxy_params.out,
+                                      HYD_PMCD_pmi_proxy_params.err);
+        HYDU_ERR_POP(status, "checkpoint restart failure\n");
+        goto fn_spawn_complete;
+    }
 
     /* Spawn the processes */
     process_id = 0;
     for (exec = HYD_PMCD_pmi_proxy_params.exec_list; exec; exec = exec->next) {
 
-        /* The priority order is: (1) system env, (2) local executable
-         * env, (3) global executable env and (4) inherited env. */
-        if (exec->prop == HYD_ENV_PROP_UNSET || exec->prop == HYD_ENV_PROP_ALL) {
+        /*
+         * Increasing priority order:
+         *    - Global inherited env
+         *    - Global user env
+         *    - Local user env
+         *    - System env
+         */
+
+        /* Global inherited env is set when either genvall or envall
+         * is specified. */
+        if ((exec->prop != HYD_ENV_PROP_NONE) &&
+            ((exec->prop == HYD_ENV_PROP_ALL) ||
+             (exec->prop == HYD_ENV_PROP_UNSET &&
+              HYD_PMCD_pmi_proxy_params.genv_prop == HYD_ENV_PROP_ALL))) {
             for (env = HYD_PMCD_pmi_proxy_params.inherited_env; env; env = env->next) {
                 status = HYDU_append_env_to_list(*env, &prop_env);
                 HYDU_ERR_POP(status, "unable to add env to list\n");
             }
-            for (env = HYD_PMCD_pmi_proxy_params.user_env; env; env = env->next) {
-                status = HYDU_append_env_to_list(*env, &prop_env);
-                HYDU_ERR_POP(status, "unable to add env to list\n");
-            }
         }
+
+        /* Next priority order is the global user env */
+        for (env = HYD_PMCD_pmi_proxy_params.user_env; env; env = env->next) {
+            status = HYDU_append_env_to_list(*env, &prop_env);
+            HYDU_ERR_POP(status, "unable to add env to list\n");
+        }
+
+        /* Next priority order is the local user env */
         for (env = exec->user_env; env; env = env->next) {
             status = HYDU_append_env_to_list(*env, &prop_env);
             HYDU_ERR_POP(status, "unable to add env to list\n");
         }
+
+        /* Highest priority is the system env */
         for (env = HYD_PMCD_pmi_proxy_params.system_env; env; env = env->next) {
             status = HYDU_append_env_to_list(*env, &prop_env);
             HYDU_ERR_POP(status, "unable to add env to list\n");
@@ -550,10 +638,10 @@ HYD_Status HYD_PMCD_pmi_proxy_launch_procs(void)
         /* Set the PMI port string to connect to. We currently just
          * use the global PMI port. */
         if (HYD_PMCD_pmi_proxy_params.pmi_port_str) {
-            str = HYDU_strdup(HYD_PMCD_pmi_proxy_params.pmi_port_str);
-            status = HYDU_env_create(&env, "PMI_PORT", str);
-            HYDU_ERR_POP(status, "unable to create env\n");
-            HYDU_FREE(str);
+            env = HYDU_str_pair_to_env("PMI_PORT", HYD_PMCD_pmi_proxy_params.pmi_port_str);
+            if (env == NULL)
+                HYDU_ERR_POP(status, "unable to create env\n");
+
             status = HYDU_append_env_to_list(*env, &prop_env);
             HYDU_ERR_POP(status, "unable to add env to list\n");
         }
@@ -581,7 +669,7 @@ HYD_Status HYD_PMCD_pmi_proxy_launch_procs(void)
                 client_args[arg++] = HYDU_strdup(exec->exec[j]);
             client_args[arg++] = NULL;
 
-            core = HYDU_bind_get_core_id(process_id, HYD_PMCD_pmi_proxy_params.binding);
+            core = HYDU_bind_get_core_id(process_id);
             if (pmi_id == 0) {
                 status = HYDU_create_process(client_args, prop_env,
                                              &HYD_PMCD_pmi_proxy_params.in,
@@ -592,7 +680,10 @@ HYD_Status HYD_PMCD_pmi_proxy_launch_procs(void)
                 HYD_PMCD_pmi_proxy_params.stdin_buf_offset = 0;
                 HYD_PMCD_pmi_proxy_params.stdin_buf_count = 0;
 
-                stdin_fd = HYD_PMCD_pmi_proxy_params.upstream.in;
+                status = HYDU_sock_set_nonblock(HYD_PMCD_pmi_proxy_params.upstream.in);
+                HYDU_ERR_POP(status, "unable to set upstream stdin fd to nonblocking\n");
+
+                stdin_fd = HYD_PMCD_pmi_proxy_params.in;
                 status = HYD_DMX_register_fd(1, &stdin_fd, HYD_STDIN, NULL,
                                              HYD_PMCD_pmi_proxy_stdin_cb);
                 HYDU_ERR_POP(status, "unable to register fd\n");
@@ -612,6 +703,7 @@ HYD_Status HYD_PMCD_pmi_proxy_launch_procs(void)
         prop_env = NULL;
     }
 
+fn_spawn_complete:
     /* Everything is spawned, register the required FDs  */
     status = HYD_DMX_register_fd(HYD_PMCD_pmi_proxy_params.exec_proc_count,
                                  HYD_PMCD_pmi_proxy_params.out,
@@ -626,9 +718,8 @@ HYD_Status HYD_PMCD_pmi_proxy_launch_procs(void)
     /* Indicate that the processes have been launched */
     HYD_PMCD_pmi_proxy_params.procs_are_launched = 1;
 
-    HYDU_FUNC_EXIT();
-
   fn_exit:
+    HYDU_FUNC_EXIT();
     return status;
 
   fn_fail:

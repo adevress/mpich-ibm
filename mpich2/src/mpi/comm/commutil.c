@@ -55,6 +55,30 @@ MPIU_Object_alloc_t MPID_Comm_mem = { 0, 0, 0, 0, MPID_COMM,
 #endif /* MPIU_THREAD_GRANULARITY */
 #endif /* MPICH_IS_THREADED */
 
+/* utility function to pretty print a context ID for debugging purposes, see
+ * mpiimpl.h for more info on the various fields */
+static void MPIR_Comm_dump_context_id(MPIR_Context_id_t context_id, char *out_str, int len)
+{
+    int subcomm_type = MPID_CONTEXT_READ_FIELD(SUBCOMM,context_id);
+    const char *subcomm_type_name = NULL;
+
+    switch (subcomm_type) {
+        case 0: subcomm_type_name = "parent"; break;
+        case 1: subcomm_type_name = "intranode"; break;
+        case 2: subcomm_type_name = "internode"; break;
+        default: MPIU_Assert(FALSE); break;
+    }
+    MPIU_Snprintf(out_str, len,
+                  "context_id=%d (%#x): DYNAMIC_PROC=%d PREFIX=%#x IS_LOCALCOMM=%d SUBCOMM=%s SUFFIX=%s",
+                  context_id,
+                  context_id,
+                  MPID_CONTEXT_READ_FIELD(DYNAMIC_PROC,context_id),
+                  MPID_CONTEXT_READ_FIELD(PREFIX,context_id),
+                  MPID_CONTEXT_READ_FIELD(IS_LOCALCOMM,context_id),
+                  subcomm_type_name,
+                  (MPID_CONTEXT_READ_FIELD(SUFFIX,context_id) ? "coll" : "pt2pt"));
+}
+
 /* FIXME :
    Reusing context ids can lead to a race condition if (as is desirable)
    MPI_Comm_free does not include a barrier.  Consider the following:
@@ -139,11 +163,8 @@ int MPIR_Comm_create( MPID_Comm **newcomm_ptr )
     return mpi_errno;
 }
 
-/* Create a local intra communicator from the local group of the 
+/* Create a local intra communicator from the local group of the
    specified intercomm. */
-/* FIXME : 
-   For the context id, use the intercomm's context id + 2.  (?)
- */
 /* FIXME this is an alternative constructor that doesn't use MPIR_Comm_create! */
 #undef FUNCNAME
 #define FUNCNAME MPIR_Setup_intercomm_localcomm
@@ -158,27 +179,12 @@ int MPIR_Setup_intercomm_localcomm( MPID_Comm *intercomm_ptr )
     MPID_MPI_FUNC_ENTER(MPID_STATE_MPIR_SETUP_INTERCOMM_LOCALCOMM);
 
     localcomm_ptr = (MPID_Comm *)MPIU_Handle_obj_alloc( &MPID_Comm_mem );
-    /* --BEGIN ERROR HANDLING-- */
-    if (!localcomm_ptr) {
-	mpi_errno = MPIR_Err_create_code( MPI_SUCCESS, MPIR_ERR_RECOVERABLE, 
-					  FCNAME, __LINE__,
-					  MPI_ERR_OTHER, "**nomem", 0 );
-	goto fn_fail;
-    }
-    /* --END ERROR HANDLING-- */
+    MPIU_ERR_CHKANDJUMP(!localcomm_ptr,mpi_errno,MPI_ERR_OTHER,"**nomem");
+
     MPIU_Object_set_ref( localcomm_ptr, 1 );
-    /* Note that we must not free this context id since we are sharing it
-       with the intercomm's context */
-    /* FIXME: This was + 2 (in agreement with the docs) but that
-       caused some errors with an apparent use of the same context id
-       by operations in different communicators.  Switching this to +1
-       seems to have fixed that problem, but this isn't the right answer. */
-/*    printf( "intercomm context ids; %d %d\n",
-      intercomm_ptr->context_id, intercomm_ptr->recvcontext_id ); */
-    /* We use the recvcontext id for both contextids for the localcomm 
-     because the localcomm is an intra (not inter) communicator */
-    localcomm_ptr->context_id	  = intercomm_ptr->recvcontext_id + 1;
-    localcomm_ptr->recvcontext_id = intercomm_ptr->recvcontext_id + 1;
+    /* use the parent intercomm's recv ctx as the basis for our ctx */
+    localcomm_ptr->recvcontext_id = MPID_CONTEXT_SET_FIELD(IS_LOCALCOMM, intercomm_ptr->recvcontext_id, 1);
+    localcomm_ptr->context_id = localcomm_ptr->recvcontext_id;
 
     /* Duplicate the VCRT references */
     MPID_VCRT_Add_ref( intercomm_ptr->local_vcrt );
@@ -187,7 +193,7 @@ int MPIR_Setup_intercomm_localcomm( MPID_Comm *intercomm_ptr )
 
     /* Save the kind of the communicator */
     localcomm_ptr->comm_kind   = MPID_INTRACOMM;
-    
+
     /* Set the sizes and ranks */
     localcomm_ptr->remote_size = intercomm_ptr->local_size;
     localcomm_ptr->local_size  = intercomm_ptr->local_size;
@@ -389,18 +395,11 @@ int MPIR_Comm_is_node_consecutive(MPID_Comm * comm)
  * Here are the routines to find a new context id.  The algorithm is discussed 
  * in detail in the mpich2 coding document.  There are versions for
  * single threaded and multithreaded MPI.
- * 
- * These assume that int is 32 bits; they should use uint_32 instead,
- * and an MPI_UINT32 type (should be able to use MPI_INTEGER4). Code
- * in src/mpid/ch3/src/ch3u_port.c for creating the temporary
- * communicator assumes that the context_mask array is made up of
- * unsigned ints. If this is changed, that code will need to be
- * changed as well.
  *
  * Both the threaded and non-threaded routines use the same mask of
  * available context id values.
  */
-static unsigned int context_mask[MPIR_MAX_CONTEXT_MASK];
+static uint32_t context_mask[MPIR_MAX_CONTEXT_MASK];
 static int initialize_context_mask = 1;
 
 #ifdef USE_DBG_LOGGING
@@ -425,6 +424,23 @@ static char *MPIR_ContextMaskToStr( void )
 }
 #endif
 
+#ifdef MPICH_DEBUG_HANDLEALLOC
+static int MPIU_CheckContextIDsOnFinalize(void *context_mask_ptr)
+{
+    int i;
+    uint32_t *mask = context_mask_ptr;
+    /* the predefined communicators should be freed by this point, so we don't
+     * need to special case bits 0,1, and 2 */
+    for (i = 0; i < MPIR_MAX_CONTEXT_MASK; ++i) {
+        if (~mask[i]) {
+            /* some bits were still cleared */
+            printf("leaked context IDs detected: mask=%p mask[%d]=%#x\n", mask, i, (int)mask[i]);
+        }
+    }
+    return MPI_SUCCESS;
+}
+#endif
+
 static void MPIR_Init_contextid(void)
 {
     int i;
@@ -436,15 +452,24 @@ static void MPIR_Init_contextid(void)
        and the internal-only copy of comm_world) */
     context_mask[0] = 0xFFFFFFF8; 
     initialize_context_mask = 0;
+
+#ifdef MPICH_DEBUG_HANDLEALLOC
+    /* check for context ID leaks in MPI_Finalize.  Use (_PRIO-1) to make sure
+     * that we run after MPID_Finalize. */
+    MPIR_Add_finalize(MPIU_CheckContextIDsOnFinalize, context_mask,
+                      MPIR_FINALIZE_CALLBACK_PRIO - 1);
+#endif
 }
+
 /* Return the context id corresponding to the first set bit in the mask.
-   Return 0 if no bit found */
-static int MPIR_Find_context_bit( unsigned int local_mask[] ) {
+   Return 0 if no bit found.  This function does _not_ alter local_mask. */
+static int MPIR_Locate_context_bit(uint32_t local_mask[])
+{
     int i, j, context_id = 0;
     for (i=0; i<MPIR_MAX_CONTEXT_MASK; i++) {
 	if (local_mask[i]) {
 	    /* There is a bit set in this word. */
-	    register unsigned int val, nval;
+	    register uint32_t     val, nval;
 	    /* The following code finds the highest set bit by recursively
 	       checking the top half of a subword for a bit, and incrementing
 	       the bit location by the number of bit of the lower sub word if 
@@ -473,19 +498,53 @@ static int MPIR_Find_context_bit( unsigned int local_mask[] ) {
 		j += 2;
 		val = nval;
 	    }
-	    if (val & 0xAAAAAAAA) { 
+	    if (val & 0xAAAAAAAA) {
 		j += 1;
 	    }
-	    context_mask[i] &= ~(1<<j);
-	    context_id = (32 * i + j) << MPID_CONTEXT_PREFIX_SHIFT;
-	    MPIU_DBG_MSG_FMT(COMM,VERBOSE,(MPIU_DBG_FDEST,
-                    "allocating contextid = %d, (mask[%d], bit %d)", 
-		    context_id, i, j ) ); 
+	    context_id = (MPIR_CONTEXT_INT_BITS * i + j) << MPID_CONTEXT_PREFIX_SHIFT;
 	    return context_id;
 	}
     }
     return 0;
 }
+
+/* Allocates a context ID from the given mask by clearing the bit
+ * corresponding to the the given id.  Returns 0 on failure, id on
+ * success. */
+static int MPIR_Allocate_context_bit(uint32_t mask[], MPIR_Context_id_t id)
+{
+    int raw_prefix, idx, bitpos;
+    raw_prefix = MPID_CONTEXT_READ_FIELD(PREFIX,id);
+    idx    = raw_prefix / MPIR_CONTEXT_INT_BITS;
+    bitpos = raw_prefix % MPIR_CONTEXT_INT_BITS;
+
+    /* the bit should not already be cleared (allocated) */
+    MPIU_Assert(mask[idx] & (1<<bitpos));
+
+    /* clear the bit */
+    mask[idx] &= ~(1<<bitpos);
+
+    MPIU_DBG_MSG_FMT(COMM,VERBOSE,(MPIU_DBG_FDEST,
+            "allocating contextid = %d, (mask=%p, mask[%d], bit %d)",
+            id, mask, idx, bitpos));
+    return id;
+}
+
+/* Allocates the first available context ID from context_mask based on the available
+ * bits given in local_mask.  This function will clear the corresponding bit in
+ * context_mask if allocation was successful.
+ *
+ * Returns 0 on failure.  Returns the allocated context ID on success. */
+static int MPIR_Find_and_allocate_context_id(uint32_t local_mask[])
+{
+    MPIR_Context_id_t context_id;
+    context_id = MPIR_Locate_context_bit(local_mask);
+    if (context_id != 0) {
+        context_id = MPIR_Allocate_context_bit(context_mask, context_id);
+    }
+    return context_id;
+}
+
 #ifndef MPICH_IS_THREADED
 /* Unthreaded (only one MPI call active at any time) */
 
@@ -496,7 +555,7 @@ static int MPIR_Find_context_bit( unsigned int local_mask[] ) {
 int MPIR_Get_contextid( MPID_Comm *comm_ptr, MPIR_Context_id_t *context_id )
 {
     int mpi_errno = MPI_SUCCESS;
-    unsigned int local_mask[MPIR_MAX_CONTEXT_MASK];
+    uint32_t     local_mask[MPIR_MAX_CONTEXT_MASK];
     MPIU_THREADPRIV_DECL;
     MPID_MPI_STATE_DECL(MPID_STATE_MPIR_GET_CONTEXTID);
 
@@ -516,10 +575,10 @@ int MPIR_Get_contextid( MPID_Comm *comm_ptr, MPIR_Context_id_t *context_id )
     mpi_errno = NMPI_Allreduce( MPI_IN_PLACE, local_mask, MPIR_MAX_CONTEXT_MASK, 
 				MPI_INT, MPI_BAND, comm_ptr->handle );
     MPIR_Nest_decr();
-    /* FIXME: We should return the error code upward */
     if (mpi_errno) MPIU_ERR_POP(mpi_errno);
 
-    *context_id = MPIR_Find_context_bit( local_mask );
+    *context_id = MPIR_Find_and_allocate_context_id(local_mask);
+    MPIU_ERR_CHKANDJUMP(!(*context_id), mpi_errno, MPIR_ERR_RECOVERABLE, "**toomanycomm");
 
 fn_exit:
     MPIU_DBG_MSG_S(COMM,VERBOSE,"Context mask = %s",MPIR_ContextMaskToStr());
@@ -546,7 +605,7 @@ static volatile int lowestContextId = MPIR_MAXID;
 int MPIR_Get_contextid( MPID_Comm *comm_ptr, MPIR_Context_id_t *context_id )
 {
     int          mpi_errno = MPI_SUCCESS;
-    unsigned int local_mask[MPIR_MAX_CONTEXT_MASK];
+    uint32_t     local_mask[MPIR_MAX_CONTEXT_MASK];
     int          own_mask = 0;
     int          testCount = 10; /* if you change this value, you need to also change 
 				    it below where it is reinitialized */
@@ -617,8 +676,8 @@ int MPIR_Get_contextid( MPID_Comm *comm_ptr, MPIR_Context_id_t *context_id )
 	if (own_mask) {
 	    /* There is a chance that we've found a context id */
 	    MPIU_THREAD_CS_ENTER(CONTEXTID,);
-	    /* Find_context_bit updates the context array if it finds a match */
-	    *context_id = MPIR_Find_context_bit( local_mask );
+	    /* Find_and_allocate_context_id updates the context_mask if it finds a match */
+	    *context_id = MPIR_Find_and_allocate_context_id(local_mask);
 	    MPIU_DBG_MSG_D( COMM, VERBOSE, 
 			    "Context id is now %hd", *context_id );
 	    if (*context_id > 0) {
@@ -669,7 +728,7 @@ int MPIR_Get_contextid( MPID_Comm *comm_ptr, MPIR_Context_id_t *context_id )
 	    int hasNoId, totalHasNoId;
 	    /* We don't need to lock on this because we're just looking for
 	       zero or nonzero */
-	    hasNoId = MPIR_Find_context_bit( context_mask ) == 0;
+	    hasNoId = MPIR_Locate_context_bit(context_mask) == 0;
 	    mpi_errno = NMPI_Allreduce( &hasNoId, &totalHasNoId, 1, MPI_INT, 
 			    MPI_MAX, comm_ptr->handle );
 	    if (mpi_errno) MPIU_ERR_POP(mpi_errno);
@@ -678,10 +737,11 @@ int MPIR_Get_contextid( MPID_Comm *comm_ptr, MPIR_Context_id_t *context_id )
 		if (own_mask) {
 		    mask_in_use = 0;
 		}
-		MPIU_ERR_SETANDJUMP(mpi_errno, MPI_ERR_OTHER, "**toomanycomm" );
+		MPIU_ERR_SETANDJUMP(mpi_errno, MPI_ERR_OTHER, "**toomanycomm");
 	    }
 	    else { /* reinitialize testCount */
 		testCount = 10;
+                MPIU_DBG_MSG_D(COMM, VERBOSE, "reinitialized testCount to %d", testCount);
 	    }
 	}
     }
@@ -769,6 +829,10 @@ int MPIR_Get_intercomm_contextid( MPID_Comm *comm_ptr, MPIR_Context_id_t *contex
     MPIR_Nest_decr();
     if (mpi_errno) MPIU_ERR_POP(mpi_errno);
 
+    /* The recvcontext_id must be the one that was allocated out of the local
+     * group, not the remote group.  Otherwise we could end up posting two
+     * MPI_ANY_SOURCE,MPI_ANY_TAG recvs on the same context IDs even though we
+     * are attempting to post them for two separate communicators. */
     *context_id     = remote_context_id;
     *recvcontext_id = mycontext_id;
  fn_fail:
@@ -779,17 +843,18 @@ int MPIR_Get_intercomm_contextid( MPID_Comm *comm_ptr, MPIR_Context_id_t *contex
 #undef FUNCNAME
 #define FUNCNAME MPIR_Free_contextid
 #undef FCNAME
-#define FCNAME "MPIR_Free_contextid"
+#define FCNAME MPIU_QUOTE(FUNCNAME)
 void MPIR_Free_contextid( MPIR_Context_id_t context_id )
 {
-    int idx, bitpos;
+    int idx, bitpos, raw_prefix;
     MPID_MPI_STATE_DECL(MPID_STATE_MPIR_FREE_CONTEXTID);
     
     MPID_MPI_FUNC_ENTER(MPID_STATE_MPIR_FREE_CONTEXTID);
 
     /* Convert the context id to the bit position */
-    idx    = (context_id >> MPID_CONTEXT_PREFIX_SHIFT) / 32;
-    bitpos = (context_id >> MPID_CONTEXT_PREFIX_SHIFT) % 32;
+    raw_prefix = MPID_CONTEXT_READ_FIELD(PREFIX,context_id);
+    idx    = raw_prefix / MPIR_CONTEXT_INT_BITS;
+    bitpos = raw_prefix % MPIR_CONTEXT_INT_BITS;
 
     /* --BEGIN ERROR HANDLING-- */
     if (idx < 0 || idx >= MPIR_MAX_CONTEXT_MASK) {
@@ -797,21 +862,42 @@ void MPIR_Free_contextid( MPIR_Context_id_t context_id )
 		    "In MPIR_Free_contextid, idx is out of range" );
     }
 
-    /* Check that this context id has been allocated */
-    if ( (context_mask[idx] & (0x1 << bitpos)) != 0) {
-        MPIU_DBG_MSG_D(COMM,VERBOSE,"context_id=%d", context_id);
-        MPIU_DBG_MSG_S(COMM,VERBOSE,"Context mask = %s",MPIR_ContextMaskToStr());
-        /* FIXME This abort cannot be enabled at this time.  The local and
-           remote communicators in an intercommunicator (always?) share a
-           context_id prefix (bits 15..MPID_CONTEXT_NUM_SUFFIX_BITS) and free
-           will be called on both of them by the higher level code.  This should
-           probably be fixed but we can't until we understand the context_id
-           code better.  One possible solution is to only free when
-           (context_id&MPID_CONTEXT_SUFFIX_MASK)!=0.  [goodell@ 2008-08-18]
+    /* The low order bits for dynamic context IDs don't have meaning the
+     * same way that low bits of non-dynamic ctx IDs do.  So we have to
+     * check the dynamic case first. */
+    if (MPID_CONTEXT_READ_FIELD(DYNAMIC_PROC, context_id)) {
+        MPIU_DBG_MSG_D(COMM,VERBOSE,"skipping dynamic process ctx id, context_id=%d", context_id);
+        goto fn_exit;
+    }
+    else { /* non-dynamic context ID */
+        /* In terms of the context ID bit vector, intercomms and their constituent
+         * localcomms have the same value.  To avoid a double-free situation we just
+         * don't free the context ID for localcomms and assume it will be cleaned up
+         * when the parent intercomm is itself completely freed. */
+        if (MPID_CONTEXT_READ_FIELD(IS_LOCALCOMM, context_id)) {
+#ifdef USE_DBG_LOGGING
+            char dump_str[1024];
+            MPIR_Comm_dump_context_id(context_id, dump_str, sizeof(dump_str));
+            MPIU_DBG_MSG_S(COMM,VERBOSE,"skipping localcomm id: %s", dump_str);
+#endif
+            goto fn_exit;
+        }
+        else if (MPID_CONTEXT_READ_FIELD(SUBCOMM, context_id)) {
+            MPIU_DBG_MSG_D(COMM,VERBOSE,"skipping non-parent communicator ctx id, context_id=%d", context_id);
+            goto fn_exit;
+        }
+    }
 
+    /* Check that this context id has been allocated */
+    if ( (context_mask[idx] & (0x1 << bitpos)) != 0 ) {
+#ifdef USE_DBG_LOGGING
+        char dump_str[1024];
+        MPIR_Comm_dump_context_id(context_id, dump_str, sizeof(dump_str));
+        MPIU_DBG_MSG_S(COMM,VERBOSE,"context dump: %s", dump_str);
+        MPIU_DBG_MSG_S(COMM,VERBOSE,"context mask = %s",MPIR_ContextMaskToStr());
+#endif
 	MPID_Abort( 0, MPI_ERR_INTERN, 1, 
 		    "In MPIR_Free_contextid, the context id is not in use" );
-         */
     }
     /* --END ERROR HANDLING-- */
 
@@ -822,9 +908,11 @@ void MPIR_Free_contextid( MPIR_Context_id_t context_id )
     context_mask[idx] |= (0x1 << bitpos);
     MPIU_THREAD_CS_EXIT(CONTEXTID,);
 
-    MPIU_DBG_MSG_FMT(COMM,VERBOSE,(MPIU_DBG_FDEST,
-			"Freed context %d, mask[%d] bit %d", 
-			context_id, idx, bitpos ) );
+    MPIU_DBG_MSG_FMT(COMM,VERBOSE,
+                     (MPIU_DBG_FDEST,
+                      "Freed context %d, mask[%d] bit %d (prefix=%#x)",
+                      context_id, idx, bitpos, raw_prefix));
+fn_exit:
     MPID_MPI_FUNC_EXIT(MPID_STATE_MPIR_FREE_CONTEXTID);
 }
 
@@ -1021,9 +1109,6 @@ int MPIR_Comm_release(MPID_Comm * comm_ptr, int isDisconnect)
                     MPIR_Comm_release(comm_ptr->local_comm, isDisconnect );
             }
 
-	    /* Free the context value */
-	    MPIR_Free_contextid( comm_ptr->recvcontext_id );
-
 	    /* Free the local and remote groups, if they exist */
             if (comm_ptr->local_group)
                 MPIR_Group_release(comm_ptr->local_group);
@@ -1039,6 +1124,15 @@ int MPIR_Comm_release(MPID_Comm * comm_ptr, int isDisconnect)
                 MPIU_Free(comm_ptr->intranode_table);
             if (comm_ptr->internode_table != NULL)
                 MPIU_Free(comm_ptr->internode_table);
+
+            /* Free the context value.  This should come after freeing the
+             * intra/inter-node communicators since those free calls won't
+             * release this context ID and releasing this before then could lead
+             * to races once we make threading finer grained. */
+            /* This must be the recvcontext_id (i.e. not the (send)context_id)
+             * because in the case of intercommunicators the send context ID is
+             * allocated out of the remote group's bit vector, not ours. */
+            MPIR_Free_contextid( comm_ptr->recvcontext_id );
 
 	    /* We need to release the error handler */
 	    if (comm_ptr->errhandler && 

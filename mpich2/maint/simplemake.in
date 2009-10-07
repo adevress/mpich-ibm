@@ -413,8 +413,8 @@ $top_builddir_name =         "top_builddir    = \@master_top_builddir\@";
 %install_methods = ( 'LIB'     => '$(INSTALL_DATA)',
 		     'BIN'     => '$(INSTALL_PROGRAM) $(INSTALL_STRIP_FLAG)',
 		     'SCRIPT'  => '$(INSTALL_SCRIPT)',
-		     'SHLIB'   => '$(CREATESHLIB) --mode=install',
-		     'DLLLIB'  => '$(CREATESHLIB) --mode=install',
+		     'SHLIB'   => '$(CREATESHLIB) -version-info $(ABIVERSION) --mode=install',
+		     'DLLLIB'  => '$(CREATESHLIB) -version-info $(ABIVERSION) --mode=install',
 		     'INCLUDE' => '$(INSTALL_DATA)',
 		     'MAN'     => '$(INSTALL_DATA)',
 		     'HTML'    => '$(INSTALL_DATA)',
@@ -1266,6 +1266,7 @@ sub DefaultVariables {
 	    # libtool to provide the shared library.
 	    printMakeVariable( FD, "LIBTOOL", "\@LIBTOOL\@" );
 	    printMakeVariable( FD, "CREATESHLIB", "\@CREATESHLIB\@" );
+	    printMakeVariable( FD, "ABIVERSION", "\@ABIVERSION\@" );
 	    printMakeVariable( FD, "LIBS", "\@LIBS\@" );
 	    printMakeVariable( FD, "LDFLAGS", "\@LDFLAGS\@" );
 	    print FD "$shlibdefs{'c'}$newline";
@@ -2788,6 +2789,11 @@ sub TargetClean {
     # Add clean of local libraries
     foreach $lib (keys(%extra_libs)) {
 	print FD "\t-${quietLine}rm -f $lib$newline";
+	if ($do_sharedlibs && !defined($libNotShared{$lib})) {
+	    my $libshared = $lib;
+	    $libshared =~ s/\.a/.la/;
+	    print FD "\t-${quietLine}rm -f $libshared$newline";
+	}
     }
 
     # Remove any local files last (in case this file is one of them)
@@ -3512,15 +3518,6 @@ sub TargetTags {
 	}
     }
 
-    if ($has_headers || $has_sources) {
-	# Make it eaiser to change the tags program options.
-	# For example, this adds .i as a known "C" language file
-	printMakeVariable( FD, "ETAGS", "\@ETAGS\@ \@ETAGSADD\@" );
-	# The value of ETAGS was "etags --langmap=c:+.i" but
-	# some Linux systems have a very old version of etags
-	# that does not support --langmap.
-    }
-
     # Add a synonym for tags.
     if ($foundDerivedHeader) {
 	printMakeVariable( FD, "HEADERFILES", $headerFiles );
@@ -3534,49 +3531,6 @@ sub TargetTags {
     else {
 	printMakeVariable( FD, "SOURCEFILES", '$(SOURCES)' );
     }
-    print FD "tags: TAGS$newline"; 
-    # By adding "Makefile" to TAGS, we ensure that the TAGS target
-    # will be rebuilt anytime the package is reconfigured.  We
-    # could also make TAGS always rebuild, to catch any source changes.
-    print FD "TAGS: Makefile";
-    # Only generate a local etags call if there are local sources
-    # This target is designed for VPATH builds to build a TAGS file in
-    if ($has_headers || $has_sources) {
-        if ($local_tags) {
-	    print FD '${HEADERFILES} ${SOURCEFILES}
-	here=`pwd`;\
-	(cd ${srcdir} && $(ETAGS) -o $$here/TAGS --append ${HEADERFILES} ${SOURCEFILES};)
-';
-        }
-        elsif ($root_tags) {
-	    print FD "\${HEADERFILES} \${SOURCEFILES}$newline";
-	    if (defined($rootdirpath)) {
-		$rpath = $rootdirpath;
-		$rpath =~ s/\/$//;
-	    }
-	    else {
-		# Use current directory
-		# Question: in this case, should we leave out the tags 
-		# target?
-		$rpath = ".";
-	    }
-	    # For vpath builds, make the root path point to the
-	    # VPATH root.
-	    
-	    print FD "\there=\`cd $rpath && pwd\` ; cd \${srcdir} && \$(ETAGS) -o \$\$here/TAGS --append \${HEADERFILES} \${SOURCEFILES}$newline";
-        }
-        else {
-	    print FD "$newline";
-        }
-    }
-    else {
-	print FD "$newline";
-    }
-    # Tags on only the subdirs (really the source subdirs) and any
-    # additional tags dirs
-    @tmp_tags_dirs = (@subdirs,@tags_dirs);
-    &RecursiveOp( "TAGS", "tmp_tags_dirs" );
-    $#tmp_tags_dirs = -1;
 }
 #
 # The generation of documentation (e.g., manual pages) is handled 

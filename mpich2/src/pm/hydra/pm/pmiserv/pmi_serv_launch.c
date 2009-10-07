@@ -253,7 +253,10 @@ static HYD_Status fill_in_exec_args(void)
             partition->base->exec_args[arg++] = HYDU_strdup("HYDRA_NULL");
 
         partition->base->exec_args[arg++] = HYDU_strdup("--binding");
-        partition->base->exec_args[arg++] = HYDU_int_to_str(HYD_handle.binding);
+        if (HYD_handle.binding)
+            partition->base->exec_args[arg++] = HYDU_strdup(HYD_handle.binding);
+        else
+            partition->base->exec_args[arg++] = HYDU_strdup("HYDRA_NULL");
         if (HYD_handle.user_bind_map)
             partition->base->exec_args[arg++] = HYDU_strdup(HYD_handle.user_bind_map);
         else if (partition->user_bind_map)
@@ -262,23 +265,35 @@ static HYD_Status fill_in_exec_args(void)
             partition->base->exec_args[arg++] = HYDU_strdup("HYDRA_NULL");
 
         partition->base->exec_args[arg++] = HYDU_strdup("--bindlib");
-        partition->base->exec_args[arg++] = HYDU_int_to_str(HYD_handle.bindlib);
+        partition->base->exec_args[arg++] = HYDU_strdup(HYD_handle.bindlib);
 
-        partition->base->exec_args[arg++] = HYDU_strdup("--inherited-env");
+        partition->base->exec_args[arg++] = HYDU_strdup("--ckpointlib");
+        partition->base->exec_args[arg++] = HYDU_strdup(HYD_handle.ckpointlib);
+
+        partition->base->exec_args[arg++] = HYDU_strdup("--ckpoint-prefix");
+        if (HYD_handle.ckpoint_prefix)
+            partition->base->exec_args[arg++] = HYDU_strdup(HYD_handle.ckpoint_prefix);
+        else
+            partition->base->exec_args[arg++] = HYDU_strdup("HYDRA_NULL");
+
+        if (HYD_handle.ckpoint_restart)
+            partition->base->exec_args[arg++] = HYDU_strdup("--ckpoint-restart");
+
+        partition->base->exec_args[arg++] = HYDU_strdup("--global-inherited-env");
         for (i = 0, env = HYD_handle.inherited_env; env; env = env->next, i++);
         partition->base->exec_args[arg++] = HYDU_int_to_str(i);
         partition->base->exec_args[arg++] = NULL;
         HYDU_list_append_env_to_str(HYD_handle.inherited_env, partition->base->exec_args);
 
         arg = HYDU_strlist_lastidx(partition->base->exec_args);
-        partition->base->exec_args[arg++] = HYDU_strdup("--user-env");
+        partition->base->exec_args[arg++] = HYDU_strdup("--global-user-env");
         for (i = 0, env = HYD_handle.user_env; env; env = env->next, i++);
         partition->base->exec_args[arg++] = HYDU_int_to_str(i);
         partition->base->exec_args[arg++] = NULL;
         HYDU_list_append_env_to_str(HYD_handle.user_env, partition->base->exec_args);
 
         arg = HYDU_strlist_lastidx(partition->base->exec_args);
-        partition->base->exec_args[arg++] = HYDU_strdup("--system-env");
+        partition->base->exec_args[arg++] = HYDU_strdup("--global-system-env");
         for (i = 0, env = HYD_handle.system_env; env; env = env->next, i++);
         partition->base->exec_args[arg++] = HYDU_int_to_str(i);
         partition->base->exec_args[arg++] = NULL;
@@ -359,7 +374,8 @@ HYD_Status HYD_PMCI_launch_procs(void)
     /* Initialize PMI */
     status = create_and_listen_portstr(HYD_PMCD_pmi_connect_cb, &pmi_port_str);
     HYDU_ERR_POP(status, "unable to create PMI port\n");
-    HYDU_Debug(HYD_handle.debug, "Got a PMI port string of %s\n", pmi_port_str);
+    if (HYD_handle.debug)
+        HYDU_dump(stdout, "Got a PMI port string of %s\n", pmi_port_str);
 
     status = HYD_PMCD_pmi_init();
     HYDU_ERR_POP(status, "unable to create process group\n");
@@ -368,7 +384,8 @@ HYD_Status HYD_PMCI_launch_procs(void)
         status = create_and_listen_portstr(HYD_PMCD_pmi_serv_control_connect_cb,
                                            &proxy_port_str);
         HYDU_ERR_POP(status, "unable to create PMI port\n");
-        HYDU_Debug(HYD_handle.debug, "Got a proxy port string of %s\n", proxy_port_str);
+        if (HYD_handle.debug)
+            HYDU_dump(stdout, "Got a proxy port string of %s\n", proxy_port_str);
 
         status = fill_in_proxy_args(HYD_handle.launch_mode, proxy_args);
         HYDU_ERR_POP(status, "unable to fill in proxy arguments\n");
@@ -469,7 +486,8 @@ HYD_Status HYD_PMCI_wait_for_completion(void)
 
     HYDU_FUNC_ENTER();
 
-    if ((HYD_handle.launch_mode == HYD_LAUNCH_BOOT) || (HYD_handle.launch_mode == HYD_LAUNCH_SHUTDOWN)) {
+    if ((HYD_handle.launch_mode == HYD_LAUNCH_BOOT) ||
+        (HYD_handle.launch_mode == HYD_LAUNCH_SHUTDOWN)) {
         status = HYD_SUCCESS;
     }
     else {
@@ -517,6 +535,9 @@ HYD_Status HYD_PMCI_wait_for_completion(void)
             HYDU_ERR_POP(status, "error waiting for event\n");
         } while (1);
     }
+
+    status = HYD_BSCI_wait_for_completion(HYD_handle.partition_list);
+    HYDU_ERR_POP(status, "bootstrap server returned error waiting for completion\n");
 
   fn_exit:
     HYDU_FUNC_EXIT();

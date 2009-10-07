@@ -158,7 +158,7 @@ static struct HYD_PMCD_pmi_node *allocate_node(HYD_PMCD_pmi_pg_t * pg, int node_
 
 
 HYD_Status HYD_PMCD_pmi_add_kvs(const char *key, char *val, HYD_PMCD_pmi_kvs_t * kvs,
-                                char **key_pair_str, int *ret)
+                                int *ret)
 {
     HYD_PMCD_pmi_kvs_pair_t *key_pair, *run;
     HYD_Status status = HYD_SUCCESS;
@@ -170,7 +170,6 @@ HYD_Status HYD_PMCD_pmi_add_kvs(const char *key, char *val, HYD_PMCD_pmi_kvs_t *
     HYDU_snprintf(key_pair->val, MAXVALLEN, "%s", val);
     key_pair->next = NULL;
 
-    key_pair_str = NULL;
     *ret = 0;
 
     if (kvs->key_pair == NULL) {
@@ -181,7 +180,6 @@ HYD_Status HYD_PMCD_pmi_add_kvs(const char *key, char *val, HYD_PMCD_pmi_kvs_t *
         while (run->next) {
             if (!strcmp(run->key, key_pair->key)) {
                 /* duplicate key found */
-                *key_pair_str = HYDU_strdup(key_pair->key);
                 *ret = -1;
                 break;
             }
@@ -223,7 +221,7 @@ HYD_Status HYD_PMCD_pmi_process_mapping(HYD_PMCD_pmi_process_t * process,
                                         enum HYD_PMCD_pmi_process_mapping_type type,
                                         char **process_mapping_str)
 {
-    int i, j, k, node_id, *process_mapping;
+    int i, node_id;
     char *tmp[HYD_NUM_TMP_STRINGS];
     struct HYD_Partition *partition;
     struct HYD_Partition_segment *segment;
@@ -305,33 +303,7 @@ HYD_Status HYD_PMCD_pmi_process_mapping(HYD_PMCD_pmi_process_t * process,
         }
     }
 
-    if (type == HYD_PMCD_pmi_explicit) {
-        /* Explicit process mapping */
-        HYDU_MALLOC(process_mapping, int *, process->node->pg->num_procs * sizeof(int),
-                    status);
-
-        k = 0;
-        for (block = blocklist_head; block; block = block->next)
-            for (i = 0; i < block->num_blocks; i++)
-                for (j = 0; j < block->block_size; j++)
-                    process_mapping[k++] = block->start_node_id + i;
-
-        i = 0;
-        tmp[i++] = HYDU_strdup("explicit,");
-        for (j = 0; j < k; j++) {
-            tmp[i++] = HYDU_int_to_str(process_mapping[j]);
-            if (j < k - 1)
-                tmp[i++] = HYDU_strdup(",");
-            HYDU_STRLIST_CONSOLIDATE(tmp, i, status);
-        }
-        tmp[i++] = NULL;
-
-        status = HYDU_str_alloc_and_join(tmp, process_mapping_str);
-        HYDU_ERR_POP(status, "error while joining strings\n");
-
-        HYDU_free_strlist(tmp);
-    }
-    else if (type == HYD_PMCD_pmi_vector) {
+    if (type == HYD_PMCD_pmi_vector) {
         i = 0;
         tmp[i++] = HYDU_strdup("(");
         tmp[i++] = HYDU_strdup("vector,");

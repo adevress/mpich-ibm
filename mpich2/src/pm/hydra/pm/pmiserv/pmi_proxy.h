@@ -26,9 +26,14 @@ struct HYD_PMCD_pmi_proxy_params {
 
     char *wdir;
     char *pmi_port_str;
-    HYD_Binding_t binding;
-    HYD_Bindlib_t bindlib;
+
+    char *binding;
+    char *bindlib;
     char *user_bind_map;
+
+    char *ckpointlib;
+    char *ckpoint_prefix;
+    int ckpoint_restart;
 
     HYD_Env_t *system_env;
     HYD_Env_t *user_env;

@@ -56,11 +56,13 @@ cleanlibs:
 	rm -f lib/lib${MPICXXLIBNAME}.@SHLIB_EXT@* 
 	rm -f lib/libf${MPILIBNAME}.@SHLIB_EXT@* 
 	rm -f lib/lib${MPILIBNAME}f90.@SHLIB_EXT@* 
+	rm -f lib/lib${MPILIBNAME}f90.*.@SHLIB_EXT@* 
 	rm -f lib/lib${MPILIBNAME}.*.@SHLIB_EXT@* 
 	rm -f lib/lib${PMPILIBNAME}.*.@SHLIB_EXT@*
 	rm -f lib/lib${MPICXXLIBNAME}.*.@SHLIB_EXT@* 
 	rm -f lib/libf${MPILIBNAME}.*.@SHLIB_EXT@* 
 	rm -f lib/lib${MPILIBNAME}.la* lib/lib${PMPILIBNAME}.la*
+	rm -f lib/lib${MPILIBNAME}f90.la*
 	rm -f lib/lib${MPICXXLIBNAME}.la* 
 	rm -f lib/libf${MPILIBNAME}.la* 
 
@@ -169,7 +171,7 @@ optinstall_SHLIB = lib/lib${MPICXXLIBNAME}.@SHLIB_EXT@
 
 # Some of the subsidiary packages may need to be installed.  This target will
 # invoke their install targets as part of the installation process
-INSTALL_SUBDIRS = src/util/thread src/env src/packaging/pkgconfig src/packaging/envmods \
+INSTALL_SUBDIRS = src/env src/packaging/pkgconfig src/packaging/envmods \
                   @bindings_dirs@ @other_install_dirs@
 
 # Install preamble checks for possible problems

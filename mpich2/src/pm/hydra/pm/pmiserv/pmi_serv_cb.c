@@ -313,6 +313,34 @@ HYD_Status HYD_PMCD_pmi_serv_cleanup(void)
 }
 
 
+HYD_Status HYD_PMCD_pmi_serv_ckpoint(void)
+{
+    struct HYD_Partition *partition;
+    enum HYD_PMCD_pmi_proxy_cmds cmd;
+    HYD_Status status = HYD_SUCCESS;
+
+    HYDU_FUNC_ENTER();
+
+    /* FIXME: Instead of doing this from this process itself, fork a
+     * bunch of processes to do this. */
+    /* Connect to all proxies and send the checkpoint command */
+    FORALL_ACTIVE_PARTITIONS(partition, HYD_handle.partition_list) {
+        cmd = CKPOINT;
+        status = HYDU_sock_write(partition->control_fd, &cmd,
+                                    sizeof(enum HYD_PMCD_pmi_proxy_cmds));
+        HYDU_ERR_POP(status, "unable to send checkpoint message\n");
+    }
+
+    HYDU_FUNC_EXIT();
+
+fn_exit:
+    return status;
+
+fn_fail:
+    goto fn_exit;
+}
+
+
 void HYD_PMCD_pmi_serv_signal_cb(int sig)
 {
     HYDU_FUNC_ENTER();
@@ -327,9 +355,11 @@ void HYD_PMCD_pmi_serv_signal_cb(int sig)
 ) {
         /* There's nothing we can do with the return value for now. */
         HYD_PMCD_pmi_serv_cleanup();
-        exit(-1);
     }
     else {
+        if (sig == SIGUSR1) {
+            HYD_PMCD_pmi_serv_ckpoint();
+        }
         /* Ignore other signals for now */
     }
 

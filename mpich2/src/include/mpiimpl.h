@@ -89,7 +89,6 @@
 /* Include some basic (and easily shared) definitions */
 #include "mpibase.h"
 
-
 /* FIXME: The code base should not define two of these */
 /* This is used to quote a name in a definition (see FUNCNAME/FCNAME below) */
 #ifndef MPIDI_QUOTE
@@ -108,7 +107,9 @@
 /* This is the default implementation of MPIU_Memcpy.  We define this
    before including mpidpre.h so that it can be used when a device or
    channel can use it if it's overriding MPIU_Memcpy.  */
-static inline void MPIUI_Memcpy(void * dst, const void * src, size_t len)
+MPIU_DBG_ATTRIBUTE_NOINLINE
+ATTRIBUTE((unused))
+static MPIU_DBG_INLINE_KEYWORD void MPIUI_Memcpy(void * dst, const void * src, size_t len)
 {
     memcpy(dst, src, len);
 }
@@ -130,15 +131,17 @@ static inline void MPIUI_Memcpy(void * dst, const void * src, size_t len)
    memcpy.
 */
 #ifndef MPIU_Memcpy
-#define MPIU_Memcpy(dst, src, len) MPIUI_Memcpy(dst, src, len)
+#define MPIU_Memcpy(dst, src, len)                \
+    do {                                          \
+        MPIU_MEM_CHECK_MEMCPY((dst),(src),(len)); \
+        MPIUI_Memcpy((dst), (src), (len));        \
+    } while (0)
 #endif
-
 
 #include "mpiimplthread.h"
 /* #include "mpiu_monitors.h" */
 
 #include "mpiutil.h"
-
 
 /* ------------------------------------------------------------------------- */
 /* mpidebug.h */
@@ -489,20 +492,20 @@ M*/
    defined above, and adds an additional sanity check for the refcounts
 */
 #define MPIU_Object_set_ref(objptr,val)                \
-    {((MPIU_Handle_head*)(objptr))->ref_count = val;   \
+    {((objptr))->ref_count = val;   \
     MPIU_DBG_MSG_FMT(HANDLE,TYPICAL,(MPIU_DBG_FDEST,   \
             "set %p (0x%08x) refcount to %d",          \
        (objptr), (objptr)->handle, val));              \
     }
 #define MPIU_Object_add_ref(objptr)                    \
-    {((MPIU_Handle_head*)(objptr))->ref_count++;       \
+    {((objptr))->ref_count++;       \
     MPIU_DBG_MSG_FMT(HANDLE,TYPICAL,(MPIU_DBG_FDEST,   \
       "incr %p (0x%08x) refcount to %d",	       \
      (objptr), (objptr)->handle, (objptr)->ref_count));\
     MPIU_HANDLE_CHECK_REFCOUNT(objptr,"incr");         \
     }
 #define MPIU_Object_release_ref(objptr,inuse_ptr)             \
-    {*(inuse_ptr)=--((MPIU_Handle_head*)(objptr))->ref_count; \
+    {*(inuse_ptr)=--((objptr))->ref_count; \
 	MPIU_DBG_MSG_FMT(HANDLE,TYPICAL,(MPIU_DBG_FDEST,      \
         "decr %p (0x%08x) refcount to %d",                    \
         (objptr), (objptr)->handle, (objptr)->ref_count));    \
@@ -1026,6 +1029,18 @@ typedef struct MPID_Keyval {
          "Decr keyval %p ref count to %d",_keyval,_keyval->ref_count)); \
     } while(0)
 
+
+/* Attribute values in C/C++ are void * and in Fortran are ADDRESS_SIZED
+   integers.  Normally, these are the same size, but in at least one 
+   case, the address-sized integers was selected as longer than void *
+   to work with the datatype code used in the I/O library.  While this
+   is really a limitation in the current Datatype implementation. */
+#ifdef USE_AINT_FOR_ATTRVAL
+typedef MPI_Aint MPID_AttrVal_t;
+#else
+typedef void * MPID_AttrVal_t;
+#endif
+
 /* Attributes need no ref count or handle, but since we want to use the
    common block allocator for them, we must provide those elements 
 */
@@ -1076,7 +1091,9 @@ typedef struct MPID_Attribute {
     MPIR_AttrType attrType;         /* Type of the attribute */
     long        pre_sentinal;       /* Used to detect user errors in accessing
 				       the value */
-    void *      value;              /* Stored value */
+    MPID_AttrVal_t value;           /* Stored value. An Aint must be at least
+				       as large as an address - some builds
+				       may make an Aint larger than a void * */
     long        post_sentinal;      /* Like pre_sentinal */
     /* other, device-specific information */
 #ifdef MPID_DEV_ATTR_DECL
@@ -1328,22 +1345,54 @@ extern MPID_Comm MPID_Comm_direct[];
    of the handle is 3-1 (e.g., the index in the builtin array) */
 #define MPIR_ICOMM_WORLD  ((MPI_Comm)0x44000002)
 
+/* The following preprocessor macros provide bitfield access information for
+ * context ID values.  They follow a uniform naming pattern:
+ *
+ * MPID_CONTEXT_foo_WIDTH - the width in bits of the field
+ * MPID_CONTEXT_foo_MASK  - A valid bit mask for bit-wise AND and OR operations
+ *                          with exactly all of the bits in the field set.
+ * MPID_CONTEXT_foo_SHIFT - The number of bits that the field should be shifted
+ *                          rightwards to place it in the least significant bits
+ *                          of the ID.  There may still be higher order bits
+ *                          from other fields, so the _MASK should be used first
+ *                          if you want to reliably retrieve the exact value of
+ *                          the field.
+ */
+
+/* yields an rvalue that is the value of the field_name_ in the least significant bits */
+#define MPID_CONTEXT_READ_FIELD(field_name_,id_) \
+    (((id_) & MPID_CONTEXT_##field_name_##_MASK) >> MPID_CONTEXT_##field_name_##_SHIFT)
+/* yields an rvalue that is the old_id_ with field_name_ set to field_val_ */
+#define MPID_CONTEXT_SET_FIELD(field_name_,old_id_,field_val_) \
+    ((old_id_ & ~MPID_CONTEXT_##field_name_##_MASK) | ((field_val_) << MPID_CONTEXT_##field_name_##_SHIFT))
+
 /* Context suffixes for separating pt2pt and collective communication */
-#define MPID_CONTEXT_NUM_SUFFIX_BITS 1
-#define MPID_CONTEXT_SUFFIX_MASK ((1 << MPID_CONTEXT_NUM_SUFFIX_BITS) - 1)
-#define MPID_CONTEXT_INTRA_PT2PT 0
-#define MPID_CONTEXT_INTRA_COLL  1
-#define MPID_CONTEXT_INTER_PT2PT 0
-#define MPID_CONTEXT_INTER_COLL  1
+#define MPID_CONTEXT_SUFFIX_WIDTH (1)
+#define MPID_CONTEXT_SUFFIX_SHIFT (0)
+#define MPID_CONTEXT_SUFFIX_MASK ((1 << MPID_CONTEXT_SUFFIX_WIDTH) - 1)
+#define MPID_CONTEXT_INTRA_PT2PT (0)
+#define MPID_CONTEXT_INTRA_COLL  (1)
+#define MPID_CONTEXT_INTER_PT2PT (0)
+#define MPID_CONTEXT_INTER_COLL  (1)
 
 /* Used to derive context IDs for sub-communicators from a parent communicator's
    context ID value.  This field comes after the one bit suffix.
    values are shifted left by 1. */
-#define MPID_CONTEXT_NUM_SUBCOMM_BITS 2
-#define MPID_CONTEXT_SUBCOMM_MASK      (((1 << MPID_CONTEXT_NUM_SUBCOMM_BITS) - 1) << MPID_CONTEXT_NUM_SUFFIX_BITS)
-#define MPID_CONTEXT_PARENT_OFFSET    (0 << MPID_CONTEXT_NUM_SUFFIX_BITS)
-#define MPID_CONTEXT_INTRANODE_OFFSET (1 << MPID_CONTEXT_NUM_SUFFIX_BITS)
-#define MPID_CONTEXT_INTERNODE_OFFSET (2 << MPID_CONTEXT_NUM_SUFFIX_BITS)
+#define MPID_CONTEXT_SUBCOMM_WIDTH (2)
+#define MPID_CONTEXT_SUBCOMM_SHIFT (MPID_CONTEXT_SUFFIX_WIDTH + MPID_CONTEXT_SUFFIX_SHIFT)
+#define MPID_CONTEXT_SUBCOMM_MASK      (((1 << MPID_CONTEXT_SUBCOMM_WIDTH) - 1) << MPID_CONTEXT_SUBCOMM_SHIFT)
+
+/* these values may be added/subtracted directly to/from an existing context ID
+ * in order to determine the context ID of the child/parent */
+#define MPID_CONTEXT_PARENT_OFFSET    (0 << MPID_CONTEXT_SUBCOMM_SHIFT)
+#define MPID_CONTEXT_INTRANODE_OFFSET (1 << MPID_CONTEXT_SUBCOMM_SHIFT)
+#define MPID_CONTEXT_INTERNODE_OFFSET (2 << MPID_CONTEXT_SUBCOMM_SHIFT)
+
+/* this field (IS_LOCALCOM) is used to derive a context ID for local
+ * communicators of intercommunicators without communication */
+#define MPID_CONTEXT_IS_LOCALCOMM_WIDTH (1)
+#define MPID_CONTEXT_IS_LOCALCOMM_SHIFT (MPID_CONTEXT_SUBCOMM_SHIFT + MPID_CONTEXT_SUBCOMM_WIDTH)
+#define MPID_CONTEXT_IS_LOCALCOMM_MASK (((1 << MPID_CONTEXT_IS_LOCALCOMM_WIDTH) - 1) << MPID_CONTEXT_IS_LOCALCOMM_SHIFT)
 
 /* MPIR_MAX_CONTEXT_MASK is the number of ints that make up the bit vector that
  * describes the context ID prefix space.
@@ -1351,7 +1400,7 @@ extern MPID_Comm MPID_Comm_direct[];
  * The following must hold:
  * (num_bits_in_vector) <= (maximum_context_id_prefix)
  *   which is the following in concrete terms:
- * MPIR_MAX_CONTEXT_MASK*MPIR_CONTEXT_INT_BITS <= 2**(MPIR_CONTEXT_ID_BITS - (MPID_CONTEXT_PREFIX_SHIFT + MPID_CONTEXT_DYNAMIC_PROC_BITS))
+ * MPIR_MAX_CONTEXT_MASK*MPIR_CONTEXT_INT_BITS <= 2**(MPIR_CONTEXT_ID_BITS - (MPID_CONTEXT_PREFIX_SHIFT + MPID_CONTEXT_DYNAMIC_PROC_WIDTH))
  *
  * We currently always assume MPIR_CONTEXT_INT_BITS is 32, regardless of the
  * value of sizeof(int)*CHAR_BITS.  We also make the assumption that CHAR_BITS==8.
@@ -1360,14 +1409,19 @@ extern MPID_Comm MPID_Comm_direct[];
  */
 
 /* number of bits to shift right by in order to obtain the context ID prefix */
-#define MPID_CONTEXT_PREFIX_SHIFT (MPID_CONTEXT_NUM_SUFFIX_BITS + MPID_CONTEXT_NUM_SUBCOMM_BITS)
+#define MPID_CONTEXT_PREFIX_SHIFT (MPID_CONTEXT_IS_LOCALCOMM_SHIFT + MPID_CONTEXT_IS_LOCALCOMM_WIDTH)
+#define MPID_CONTEXT_PREFIX_WIDTH (MPIR_CONTEXT_ID_BITS - (MPID_CONTEXT_PREFIX_SHIFT + MPID_CONTEXT_DYNAMIC_PROC_WIDTH))
+#define MPID_CONTEXT_PREFIX_MASK (((1 << MPID_CONTEXT_PREFIX_WIDTH) - 1) << MPID_CONTEXT_PREFIX_SHIFT)
+
+#define MPID_CONTEXT_DYNAMIC_PROC_WIDTH (1) /* the upper half is reserved for dynamic procs */
+#define MPID_CONTEXT_DYNAMIC_PROC_SHIFT (MPIR_CONTEXT_ID_BITS - MPID_CONTEXT_DYNAMIC_PROC_WIDTH) /* the upper half is reserved for dynamic procs */
+#define MPID_CONTEXT_DYNAMIC_PROC_MASK (((1 << MPID_CONTEXT_DYNAMIC_PROC_WIDTH) - 1) << MPID_CONTEXT_DYNAMIC_PROC_SHIFT)
 
 /* should probably be (sizeof(int)*CHAR_BITS) once we make the code CHAR_BITS-clean */
 #define MPIR_CONTEXT_INT_BITS (32)
 #define MPIR_CONTEXT_ID_BITS (sizeof(MPIR_Context_id_t)*8) /* 8 --> CHAR_BITS eventually */
-#define MPID_CONTEXT_DYNAMIC_PROC_BITS (1) /* the upper half is reserved for dynamic procs */
 #define MPIR_MAX_CONTEXT_MASK \
-    ((1 << (MPIR_CONTEXT_ID_BITS - (MPID_CONTEXT_PREFIX_SHIFT + MPID_CONTEXT_DYNAMIC_PROC_BITS))) / MPIR_CONTEXT_INT_BITS)
+    ((1 << (MPIR_CONTEXT_ID_BITS - (MPID_CONTEXT_PREFIX_SHIFT + MPID_CONTEXT_DYNAMIC_PROC_WIDTH))) / MPIR_CONTEXT_INT_BITS)
 
 /* Utility routines.  Where possible, these are kept in the source directory
    with the other comm routines (src/mpi/comm, in mpicomm.h).  However,
@@ -3559,6 +3613,8 @@ posted at once. */
 #define MPIR_LOCALCOPY_TAG            23
 #define MPIR_EXSCAN_TAG               24
 #define MPIR_ALLTOALLW_TAG            25
+#define MPIR_TOPO_A_TAG               26
+#define MPIR_TOPO_B_TAG               27
 
 /* These functions are used in the implementation of collective
    operations. They are wrappers around MPID send/recv functions. They do
@@ -3574,6 +3630,10 @@ int MPIC_Sendrecv(void *sendbuf, int sendcount, MPI_Datatype sendtype,
                   int dest, int sendtag, void *recvbuf, int recvcount,
                   MPI_Datatype recvtype, int source, int recvtag,
                   MPI_Comm comm, MPI_Status *status);
+int MPIC_Sendrecv_replace(void *buf, int count, MPI_Datatype type,
+                          int dest, int sendtag,
+                          int source, int recvtag,
+                          MPI_Comm comm, MPI_Status *status);
 int MPIR_Localcopy(void *sendbuf, int sendcount, MPI_Datatype sendtype,
                    void *recvbuf, int recvcount, MPI_Datatype recvtype);
 int MPIC_Irecv(void *buf, int count, MPI_Datatype datatype, int

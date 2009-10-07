@@ -10,38 +10,35 @@
 #include "hydra_base.h"
 #include "mpl.h"
 
-int HYDU_Error_printf_simple(const char *str, ...);
+#if defined HAVE__FUNC__
+#define HYDU_FUNC __func__
+#elif defined HAVE_CAP__FUNC__
+#define HYDU_FUNC __FUNC__
+#elif defined HAVE__FUNCTION__
+#define HYDU_FUNC __FUNCTION__
+#endif
 
 #if !defined COMPILER_ACCEPTS_VA_ARGS
-#define HYDU_Error_printf HYDU_Error_printf_simple
-#elif defined HAVE__FUNC__ && defined __LINE__
-#define HYDU_Error_printf(...)                            \
-    {                                                     \
-        fprintf(stderr, "%s (%d): ", __func__, __LINE__); \
-        HYDU_Error_printf_simple(__VA_ARGS__);            \
+#define HYDU_Error_printf printf
+#elif defined __FILE__ && defined HYDU_FUNC
+#define HYDU_Error_printf(...)                                          \
+    {                                                                   \
+        HYDU_dump_prefix(stderr);                                       \
+        HYDU_dump_noprefix(stderr, "%s (%s:%d): ", __func__, __FILE__, __LINE__); \
+        HYDU_dump_noprefix(stderr, __VA_ARGS__);                        \
     }
-#elif defined HAVE_CAP__FUNC__ && defined __LINE__
+#elif defined __FILE__
 #define HYDU_Error_printf(...)                            \
     {                                                     \
-        fprintf(stderr, "%s (%d): ", __FUNC__, __LINE__); \
-        HYDU_Error_printf_simple(__VA_ARGS__);            \
-    }
-#elif defined HAVE__FUNCTION__ && defined __LINE__
-#define HYDU_Error_printf(...)                            \
-    {                                                     \
-        fprintf(stderr, "%s (%d): ", __FUNCTION__, __LINE__); \
-        HYDU_Error_printf_simple(__VA_ARGS__);            \
-    }
-#elif defined __FILE__ && defined __LINE__
-#define HYDU_Error_printf(...)                            \
-    {                                                     \
-        fprintf(stderr, "%s (%d): ", __FILE__, __LINE__); \
-        HYDU_Error_printf_simple(__VA_ARGS__);            \
+        HYDU_dump_prefix(stderr);                                       \
+        HYDU_dump_noprefix(stderr, "%s (%d): ", __FILE__, __LINE__);    \
+        HYDU_dump_noprefix(stderr, __VA_ARGS__);                        \
     }
 #else
-#define HYDU_Error_printf(...)                  \
-    {                                           \
-        HYDU_Error_printf_simple(__VA_ARGS__);  \
+#define HYDU_Error_printf(...)                                          \
+    {                                                                   \
+        HYDU_dump_prefix(stderr);                                       \
+        HYDU_dump_noprefix(stderr, __VA_ARGS__);                        \
     }
 #endif
 
@@ -114,17 +111,6 @@ int HYDU_Error_printf_simple(const char *str, ...);
 #define HYDU_Warn_printf(...) {}
 #endif /* ENABLE_WARNINGS */
 
-#define HYDU_Dump printf
-#if defined COMPILER_ACCEPTS_VA_ARGS
-#define HYDU_Debug(debug, ...)                  \
-    {                                           \
-        if ((debug))                            \
-            HYDU_Dump(__VA_ARGS__);             \
-    }
-#else
-#define HYDU_Debug(...) {}
-#endif
-
 /* We need to add more information in here later */
 #if !defined ENABLE_DEBUG
 #define HYDU_FUNC_ENTER() {}
@@ -142,13 +128,21 @@ HYD_Status HYDU_get_base_path(const char *execname, char *wdir, char **path);
 
 
 /* bind */
-HYD_Status HYDU_bind_init(HYD_Bindlib_t bindlib, char *user_bind_map);
+HYD_Status HYDU_bind_init(char *binding, char *bindlib);
 HYD_Status HYDU_bind_process(int core);
-int HYDU_bind_get_core_id(int id, HYD_Binding_t binding);
+int HYDU_bind_get_core_id(int id);
+
+
+/* debug */
+HYD_Status HYDU_dbg_init(const char *str);
+void HYDU_dump_prefix(FILE *fp);
+void HYDU_dump_noprefix(FILE *fp, const char *str, ...);
+void HYDU_dump(FILE *fp, const char *str, ...);
 
 
 /* env */
 HYD_Env_t *HYDU_str_to_env(char *str);
+HYD_Env_t *HYDU_str_pair_to_env(const char *env_name, const char *env_value);
 HYD_Status HYDU_list_append_env_to_str(HYD_Env_t * env_list, char **str_list);
 HYD_Status HYDU_list_inherited_env(HYD_Env_t ** env_list);
 HYD_Env_t *HYDU_env_list_dup(HYD_Env_t * env);
@@ -300,5 +294,12 @@ char **HYDU_str_to_strlist(char *str);
 typedef struct timeval HYD_Time;
 void HYDU_time_set(HYD_Time * time, int *val);
 int HYDU_time_left(HYD_Time start, HYD_Time timeout);
+
+
+/* checkpointing */
+HYD_Status HYDU_ckpoint_init(char *ckpointlib, char *ckpoint_prefix);
+HYD_Status HYDU_ckpoint_suspend(void);
+HYD_Status HYDU_ckpoint_restart(HYD_Env_t *envlist, int num_ranks, int ranks[], int *in, int *out, int *err);
+
 
 #endif /* HYDRA_UTILS_H_INCLUDED */
