@@ -557,7 +557,8 @@ void MPIDI_Coll_Comm_create (MPID_Comm *comm)
   /* unset all properties of a comm by default */
   MPIDO_INFO_ZERO(comm_prop);
   comm -> dcmf.tuning_session = NULL;
-  comm -> dcmf.bcast_iter = 0;
+  comm -> dcmf.bcast_rect_iter = 0;
+  comm -> dcmf.bcast_binom_iter = 0;
 
   comm->dcmf.last_algorithm = 0;
 

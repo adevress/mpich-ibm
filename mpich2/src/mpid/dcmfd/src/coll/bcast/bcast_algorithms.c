@@ -265,7 +265,6 @@ int MPIDO_Bcast_binom_async(void * buffer,
 			    int root,
 			    MPID_Comm * comm)
 {
-   static int count = 0;
    int rc;
    unsigned int hw_root;
    DCMF_Geometry_t * geometry = &(comm->dcmf.geometry);
@@ -273,6 +272,7 @@ int MPIDO_Bcast_binom_async(void * buffer,
    volatile unsigned active = 1;
    volatile unsigned barrier_active = 0;
    int num_requests = MPIDI_CollectiveProtocols.numrequests;
+   int count = comm->dcmf.bcast_binom_iter;
    DCMF_Callback_t barrier_callback = {bcast_barrier_done, 
                                        (void*)&barrier_active};
 
@@ -290,10 +290,11 @@ int MPIDO_Bcast_binom_async(void * buffer,
 			   bytes);
 
    MPID_PROGRESS_WAIT_WHILE(active);
+
    count++;
    if(count == num_requests)
    {
-      count = 0;
+      comm->dcmf.bcast_binom_iter = 0;
       barrier_active = 1;
       DCMF_Barrier(&comm->dcmf.geometry,
                   barrier_callback,
@@ -311,13 +312,13 @@ int MPIDO_Bcast_rect_async(void * buffer,
 			   MPID_Comm * comm)
 {
    int rc;
-   static int count = 0;
    unsigned int hw_root;
    DCMF_Geometry_t * geometry = &(comm->dcmf.geometry);
    DCMF_CollectiveRequest_t request;
    volatile unsigned active = 1;
    volatile unsigned barrier_active = 0;
    int num_requests = MPIDI_CollectiveProtocols.numrequests;
+   int count = comm->dcmf.bcast_rect_iter;
    DCMF_Callback_t barrier_callback = {bcast_barrier_done, 
                                        (void*)&barrier_active};
    DCMF_Callback_t callback = { bcast_cb_done, (void *) &active };
@@ -336,7 +337,7 @@ int MPIDO_Bcast_rect_async(void * buffer,
    count++;
    if(count == num_requests)
    {
-      count = 0;
+      comm->dcmf.bcast_rect_iter = 0;
       barrier_active = 1;
       DCMF_Barrier(&comm->dcmf.geometry,
                   barrier_callback,

@@ -280,9 +280,10 @@ struct MPIDI_DCMF_Comm
   unsigned *rcvcounters;
   DCMF_CollectiveProtocol_t *short_allred;
   unsigned last_algorithm;
-  unsigned bcast_iter;   /* async broadcast is only used every 32
+  unsigned short bcast_binom_iter;   /* async broadcast is only used every 32
 			  * steps to prevent too many unexpected
 			  * messages */
+  unsigned short bcast_rect_iter;
 
   /* this will hold a list of tuning session for the collective sites */
   struct STAR_Tuning_Session * tuning_session;
