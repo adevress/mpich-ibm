@@ -9,51 +9,16 @@
 
 /* This is the utility file for comm that contains the basic comm items
    and storage management */
-#ifndef MPID_COMM_PREALLOC 
+#ifndef MPID_COMM_PREALLOC
 #define MPID_COMM_PREALLOC 8
 #endif
 
 /* Preallocated comm objects */
-MPID_Comm MPID_Comm_builtin[MPID_COMM_N_BUILTIN] = { {0,0} };
-MPID_Comm MPID_Comm_direct[MPID_COMM_PREALLOC] = { {0,0} };
+MPID_Comm MPID_Comm_builtin[MPID_COMM_N_BUILTIN] = { { MPIU_OBJECT_HEADER_INITIALIZER(0,0) } };
+MPID_Comm MPID_Comm_direct[MPID_COMM_PREALLOC]   = { { MPIU_OBJECT_HEADER_INITIALIZER(0,0) } };
 MPIU_Object_alloc_t MPID_Comm_mem = { 0, 0, 0, 0, MPID_COMM, 
 				      sizeof(MPID_Comm), MPID_Comm_direct,
                                       MPID_COMM_PREALLOC};
-
-/* Support for threading */
-
-#ifdef MPICH_IS_THREADED
-#if MPIU_THREAD_GRANULARITY == MPIU_THREAD_GRANULARITY_GLOBAL
-/* There is a single, global lock, held for the duration of an MPI call */
-#define MPIU_THREAD_CS_ENTER_CONTEXTID(_context)
-#define MPIU_THREAD_CS_EXIT_CONTEXTID(_context)
-#define MPIU_THREAD_CS_YIELD_CONTEXTID(_context) \
-		MPID_Thread_mutex_unlock(&MPIR_ThreadInfo.global_mutex);\
-		MPID_Thread_yield();\
-		MPID_Thread_mutex_lock(&MPIR_ThreadInfo.global_mutex);
-
-#elif MPIU_THREAD_GRANULARITY == MPIU_THREAD_GRANULARITY_BRIEF_GLOBAL || \
-      MPIU_THREAD_GRANULARITY == MPIU_THREAD_GRANULARITY_PER_OBJECT
-/* There is a single, global lock, held only when needed */
-#define MPIU_THREAD_CS_ENTER_CONTEXTID(_context) \
-   MPIU_THREAD_CHECK_BEGIN MPIU_THREAD_CS_ENTER_LOCKNAME(global_mutex) MPIU_THREAD_CHECK_END
-#define MPIU_THREAD_CS_EXIT_CONTEXTID(_context) \
-   MPIU_THREAD_CHECK_BEGIN MPIU_THREAD_CS_EXIT_LOCKNAME(global_mutex) MPIU_THREAD_CHECK_END
-#define MPIU_THREAD_CS_YIELD_CONTEXTID(_context) \
-    MPIU_THREAD_CHECKDEPTH(global_mutex,1);\
-		MPID_Thread_mutex_unlock(&MPIR_ThreadInfo.global_mutex);\
-		MPID_Thread_yield();\
-		MPID_Thread_mutex_lock(&MPIR_ThreadInfo.global_mutex);
-
-#elif MPIU_THREAD_GRANULARITY == MPIU_THREAD_GRANULARITY_LOCK_FREE
-/* Updates to shared data and access to shared services is handled without 
-   locks where ever possible. */
-#error lock-free not yet implemented
-
-#else
-#error Unrecognized thread granularity
-#endif /* MPIU_THREAD_GRANULARITY */
-#endif /* MPICH_IS_THREADED */
 
 /* utility function to pretty print a context ID for debugging purposes, see
  * mpiimpl.h for more info on the various fields */
@@ -967,7 +932,9 @@ int MPIR_Comm_copy( MPID_Comm *comm_ptr, int size, MPID_Comm **outcomm_ptr )
     /* This is the local size, not the remote size, in the case of
        an intercomm */
     if (comm_ptr->rank >= size) {
-	*outcomm_ptr = 0;
+        *outcomm_ptr = 0;
+        /* always free the recvcontext ID, never the "send" ID */
+        MPIR_Free_contextid(new_recvcontext_id);
 	goto fn_exit;
     }
 
@@ -1049,6 +1016,129 @@ int MPIR_Comm_copy( MPID_Comm *comm_ptr, int size, MPID_Comm **outcomm_ptr )
     return mpi_errno;
 }
 
+/* Common body between MPIR_Comm_release and MPIR_comm_release_always.  This
+ * helper function frees the actual MPID_Comm structure and any associated
+ * storage.  It also releases any refernces to other objects, such as the VCRT.
+ * This function should only be called when the communicator's reference count
+ * has dropped to 0. */
+#undef FUNCNAME
+#define FUNCNAME comm_delete
+#undef FCNAME
+#define FCNAME MPIU_QUOTE(FUNCNAME)
+static int comm_delete(MPID_Comm * comm_ptr, int isDisconnect)
+{
+    int in_use;
+    int mpi_errno = MPI_SUCCESS;
+    MPID_MPI_STATE_DECL(MPID_STATE_COMM_DELETE);
+
+    MPID_MPI_FUNC_ENTER(MPID_STATE_COMM_DELETE);
+
+    MPIU_Assert(MPIU_Object_get_ref(comm_ptr) == 0); /* sanity check */
+
+    /* Remove the attributes, executing the attribute delete routine.
+       Do this only if the attribute functions are defined.
+       This must be done first, because if freeing the attributes
+       returns an error, the communicator is not freed */
+    if (MPIR_Process.attr_free && comm_ptr->attributes) {
+        /* Temporarily add a reference to this communicator because
+           the attr_free code requires a valid communicator */
+        MPIU_Object_add_ref( comm_ptr );
+        mpi_errno = MPIR_Process.attr_free( comm_ptr->handle,
+                                            &comm_ptr->attributes );
+        /* Release the temporary reference added before the call to
+           attr_free */
+        MPIU_Object_release_ref( comm_ptr, &in_use);
+    }
+
+    /* If the attribute delete functions return failure, the
+       communicator must not be freed.  That is the reason for the
+       test on mpi_errno here. */
+    if (mpi_errno == MPI_SUCCESS) {
+        /* If this communicator is our parent, and we're disconnecting
+           from the parent, mark that fact */
+        if (MPIR_Process.comm_parent == comm_ptr)
+            MPIR_Process.comm_parent = NULL;
+
+        /* Notify the device that the communicator is about to be
+           destroyed */
+        MPID_Dev_comm_destroy_hook(comm_ptr);
+
+        /* Free the VCRT */
+        mpi_errno = MPID_VCRT_Release(comm_ptr->vcrt, isDisconnect);
+        if (mpi_errno != MPI_SUCCESS) {
+            MPIU_ERR_POP(mpi_errno);
+        }
+        if (comm_ptr->comm_kind == MPID_INTERCOMM) {
+            mpi_errno = MPID_VCRT_Release(
+                                          comm_ptr->local_vcrt, isDisconnect);
+            if (mpi_errno != MPI_SUCCESS) {
+                MPIU_ERR_POP(mpi_errno);
+            }
+            if (comm_ptr->local_comm)
+                MPIR_Comm_release(comm_ptr->local_comm, isDisconnect );
+        }
+
+        /* Free the local and remote groups, if they exist */
+        if (comm_ptr->local_group)
+            MPIR_Group_release(comm_ptr->local_group);
+        if (comm_ptr->remote_group)
+            MPIR_Group_release(comm_ptr->remote_group);
+
+        /* free the intra/inter-node communicators, if they exist */
+        if (comm_ptr->node_comm)
+            MPIR_Comm_release(comm_ptr->node_comm, isDisconnect);
+        if (comm_ptr->node_roots_comm)
+            MPIR_Comm_release(comm_ptr->node_roots_comm, isDisconnect);
+        if (comm_ptr->intranode_table != NULL)
+            MPIU_Free(comm_ptr->intranode_table);
+        if (comm_ptr->internode_table != NULL)
+            MPIU_Free(comm_ptr->internode_table);
+
+        /* Free the context value.  This should come after freeing the
+         * intra/inter-node communicators since those free calls won't
+         * release this context ID and releasing this before then could lead
+         * to races once we make threading finer grained. */
+        /* This must be the recvcontext_id (i.e. not the (send)context_id)
+         * because in the case of intercommunicators the send context ID is
+         * allocated out of the remote group's bit vector, not ours. */
+        MPIR_Free_contextid( comm_ptr->recvcontext_id );
+
+        /* We need to release the error handler */
+        if (comm_ptr->errhandler &&
+            ! (HANDLE_GET_KIND(comm_ptr->errhandler->handle) ==
+               HANDLE_KIND_BUILTIN) ) {
+            int errhInuse;
+            MPIR_Errhandler_release_ref( comm_ptr->errhandler,&errhInuse);
+            if (!errhInuse) {
+                MPIU_Handle_obj_free( &MPID_Errhandler_mem,
+                                      comm_ptr->errhandler );
+            }
+        }
+
+        /* Check for predefined communicators - these should not
+           be freed */
+        if (! (HANDLE_GET_KIND(comm_ptr->handle) == HANDLE_KIND_BUILTIN) )
+            MPIU_Handle_obj_free( &MPID_Comm_mem, comm_ptr );
+
+        /* Remove from the list of active communicators if
+           we are supporting message-queue debugging.  We make this
+           conditional on having debugger support since the
+           operation is not constant-time */
+        MPIR_COMML_FORGET( comm_ptr );
+    }
+    else {
+        /* If the user attribute free function returns an error,
+           then do not free the communicator */
+        MPIR_Comm_add_ref( comm_ptr );
+    }
+
+ fn_exit:
+    MPID_MPI_FUNC_EXIT(MPID_STATE_COMM_DELETE);
+    return mpi_errno;
+ fn_fail:
+    goto fn_exit;
+}
+
 /* Release a reference to a communicator.  If there are no pending
    references, delete the communicator and recover all storage and 
    context ids */
@@ -1059,109 +1149,15 @@ int MPIR_Comm_copy( MPID_Comm *comm_ptr, int size, MPID_Comm **outcomm_ptr )
 int MPIR_Comm_release(MPID_Comm * comm_ptr, int isDisconnect)
 {
     int mpi_errno = MPI_SUCCESS;
-    int inuse;
+    int in_use;
     MPID_MPI_STATE_DECL(MPID_STATE_MPIR_COMM_RELEASE);
 
     MPID_MPI_FUNC_ENTER(MPID_STATE_MPIR_COMM_RELEASE);
-    
-    MPIR_Comm_release_ref( comm_ptr, &inuse );
-    if (!inuse) {
-	/* Remove the attributes, executing the attribute delete routine.  
-           Do this only if the attribute functions are defined. 
-	   This must be done first, because if freeing the attributes
-	   returns an error, the communicator is not freed */
-	if (MPIR_Process.attr_free && comm_ptr->attributes) {
-	    /* Temporarily add a reference to this communicator because 
-               the attr_free code requires a valid communicator */ 
-	    MPIU_Object_add_ref( comm_ptr ); 
-	    mpi_errno = MPIR_Process.attr_free( comm_ptr->handle, 
-						&comm_ptr->attributes );
-	    /* Release the temporary reference added before the call to 
-               attr_free */ 
-	    MPIU_Object_release_ref( comm_ptr, &inuse); 
-	}
 
-	/* If the attribute delete functions return failure, the
-	   communicator must not be freed.  That is the reason for the
-	   test on mpi_errno here. */
-	if (mpi_errno == MPI_SUCCESS) {
-	    /* If this communicator is our parent, and we're disconnecting
-	       from the parent, mark that fact */
-	    if (MPIR_Process.comm_parent == comm_ptr)
-		MPIR_Process.comm_parent = NULL;
-
-	    /* Notify the device that the communicator is about to be 
-	       destroyed */
-	    MPID_Dev_comm_destroy_hook(comm_ptr);
-	    
-	    /* Free the VCRT */
-	    mpi_errno = MPID_VCRT_Release(comm_ptr->vcrt, isDisconnect);
-	    if (mpi_errno != MPI_SUCCESS) {
-		MPIU_ERR_POP(mpi_errno);
-	    }
-            if (comm_ptr->comm_kind == MPID_INTERCOMM) {
-                mpi_errno = MPID_VCRT_Release(
-		    comm_ptr->local_vcrt, isDisconnect);
-		if (mpi_errno != MPI_SUCCESS) {
-		    MPIU_ERR_POP(mpi_errno);
-		}
-                if (comm_ptr->local_comm) 
-                    MPIR_Comm_release(comm_ptr->local_comm, isDisconnect );
-            }
-
-	    /* Free the local and remote groups, if they exist */
-            if (comm_ptr->local_group)
-                MPIR_Group_release(comm_ptr->local_group);
-            if (comm_ptr->remote_group)
-                MPIR_Group_release(comm_ptr->remote_group);
-
-            /* free the intra/inter-node communicators, if they exist */
-            if (comm_ptr->node_comm)
-                MPIR_Comm_release(comm_ptr->node_comm, isDisconnect);
-            if (comm_ptr->node_roots_comm)
-                MPIR_Comm_release(comm_ptr->node_roots_comm, isDisconnect);
-            if (comm_ptr->intranode_table != NULL)
-                MPIU_Free(comm_ptr->intranode_table);
-            if (comm_ptr->internode_table != NULL)
-                MPIU_Free(comm_ptr->internode_table);
-
-            /* Free the context value.  This should come after freeing the
-             * intra/inter-node communicators since those free calls won't
-             * release this context ID and releasing this before then could lead
-             * to races once we make threading finer grained. */
-            /* This must be the recvcontext_id (i.e. not the (send)context_id)
-             * because in the case of intercommunicators the send context ID is
-             * allocated out of the remote group's bit vector, not ours. */
-            MPIR_Free_contextid( comm_ptr->recvcontext_id );
-
-	    /* We need to release the error handler */
-	    if (comm_ptr->errhandler && 
-		! (HANDLE_GET_KIND(comm_ptr->errhandler->handle) == 
-		   HANDLE_KIND_BUILTIN) ) {
-		int errhInuse;
-		MPIR_Errhandler_release_ref( comm_ptr->errhandler,&errhInuse);
-		if (!errhInuse) {
-		    MPIU_Handle_obj_free( &MPID_Errhandler_mem, 
-					  comm_ptr->errhandler );
-		}
-	    }
-
-	    /* Check for predefined communicators - these should not
-	       be freed */
-	    if (! (HANDLE_GET_KIND(comm_ptr->handle) == HANDLE_KIND_BUILTIN) )
-		MPIU_Handle_obj_free( &MPID_Comm_mem, comm_ptr );  
-	    
-	    /* Remove from the list of active communicators if 
-	       we are supporting message-queue debugging.  We make this
-	       conditional on having debugger support since the
-	       operation is not constant-time */
-	    MPIR_COMML_FORGET( comm_ptr );
-	}
-	else {
-	    /* If the user attribute free function returns an error,
-	       then do not free the communicator */
-	    MPIR_Comm_add_ref( comm_ptr );
-	}
+    MPIR_Comm_release_ref(comm_ptr, &in_use);
+    if (!in_use) {
+        mpi_errno = comm_delete(comm_ptr, isDisconnect);
+        if (mpi_errno) MPIU_ERR_POP(mpi_errno);
     }
 
  fn_exit:
@@ -1170,3 +1166,35 @@ int MPIR_Comm_release(MPID_Comm * comm_ptr, int isDisconnect)
  fn_fail:
     goto fn_exit;
 }
+
+/* Release a reference to a communicator.  If there are no pending
+   references, delete the communicator and recover all storage and
+   context ids.  This version of the function always manipulates the reference
+   counts, even for predefined objects. */
+#undef FUNCNAME
+#define FUNCNAME MPIR_Comm_release_always
+#undef FCNAME
+#define FCNAME MPIU_QUOTE(FUNCNAME)
+int MPIR_Comm_release_always(MPID_Comm *comm_ptr, int isDisconnect)
+{
+    int mpi_errno = MPI_SUCCESS;
+    int in_use;
+    MPID_MPI_STATE_DECL(MPID_STATE_MPIR_COMM_RELEASE_ALWAYS);
+
+    MPID_MPI_FUNC_ENTER(MPID_STATE_MPIR_COMM_RELEASE_ALWAYS);
+
+    /* we want to short-circuit any optimization that avoids reference counting
+     * predefined communicators, such as MPI_COMM_WORLD or MPI_COMM_SELF. */
+    MPIU_Object_release_ref_always(comm_ptr, &in_use);
+    if (!in_use) {
+        mpi_errno = comm_delete(comm_ptr, isDisconnect);
+        if (mpi_errno) MPIU_ERR_POP(mpi_errno);
+    }
+
+ fn_exit:
+    MPID_MPI_FUNC_EXIT(MPID_STATE_MPIR_COMM_RELEASE_ALWAYS);
+    return mpi_errno;
+ fn_fail:
+    goto fn_exit;
+}
+

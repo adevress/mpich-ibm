@@ -4,16 +4,18 @@ AC_PREREQ(2.62)
 #     See COPYRIGHT in top-level directory.
 #
 
-AC_INIT([Hydra], [0.1])
+AC_INIT([Hydra], [0])
 AC_CONFIG_AUX_DIR(mpl/confdb)
+AC_CONFIG_MACRO_DIR(mpl/confdb)
 AM_INIT_AUTOMAKE([-Wall -Werror foreign 1.11])
-
 
 # When built as a subconfigure, pull in FLAGS from above
 PAC_SUBCONFIG_INIT()
 
 AC_CONFIG_HEADER(include/hydra_config.h)
 
+# Non-verbose make
+m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 
 # Bug in autoconf adds -O2 and -g by default. Make sure we only get
 # the flags we want.
@@ -22,13 +24,49 @@ AC_PROG_CC
 AC_TYPE_SIZE_T
 CFLAGS=$save_cflags
 
+# Libtool might be required for third-party packages
+LT_INIT
+
 AM_PROG_MKDIR_P
-AC_PROG_RANLIB
+AC_PROG_INSTALL
 PAC_ARG_CACHING
 PAC_ARG_STRICT
 PAC_C_GNU_ATTRIBUTE
 PAC_CC_FUNCTION_NAME_SYMBOL
 
+# Build information
+if test "x$MPICH2_VERSION" = "x" ; then
+   HYDRA_VERSION="unknown"
+else
+   HYDRA_VERSION=$MPICH2_VERSION
+fi
+AC_SUBST(HYDRA_VERSION)
+AC_DEFINE_UNQUOTED(HYDRA_VERSION,"$HYDRA_VERSION",[Hydra version information])
+AC_DEFINE_UNQUOTED(HYDRA_CC,"$CC",[C compiler])
+AC_DEFINE_UNQUOTED(HYDRA_CXX,"$CXX",[C++ compiler])
+AC_DEFINE_UNQUOTED(HYDRA_F77,"$F77",[Fortran 77 compiler])
+AC_DEFINE_UNQUOTED(HYDRA_F90,"$F90",[Fortran 90 compiler])
+AC_DEFINE_UNQUOTED(HYDRA_CONFIGURE_ARGS_CLEAN,"$ac_configure_args",[Configure arguments])
+
+# Dirty hack -- If we are compiling within MPICH2, use the MPL in the
+# src/mpl directory. If not, use the one we checked out separately for
+# Hydra.
+if test "$FROM_MPICH2" = "yes" ; then
+   mpl_srcdir="../../mpl"
+   AC_CONFIG_SUBDIRS(../../mpl)
+else
+   mpl_srcdir="mpl"
+   AC_CONFIG_SUBDIRS(mpl)
+fi
+AC_SUBST(mpl_srcdir)
+
+# Documentation
+AC_PATH_PROG([DOXYGEN],[doxygen],,$PATH)
+AC_SUBST(DOXYGEN)
+AC_SUBST(top_srcdir)
+
+# Find the full path of the source dir (for VPATH builds)
+abs_srcdir=`(cd $srcdir && pwd)`
 
 # Check if the necessary headers are available
 AC_CHECK_HEADERS(unistd.h stdlib.h string.h strings.h stdarg.h sys/types.h sys/socket.h \
@@ -102,9 +140,9 @@ for hydra_bss_name in ${hydra_bss_names}; do
     fi
     hydra_bss_makefiles="$hydra_bss_makefiles bootstrap/${hydra_bss_name}/Makefile"
     hydra_bss_init_decl="${hydra_bss_init_decl}
-HYD_Status HYD_BSCI_${hydra_bss_name}_init(void);"
+HYD_status HYDT_bsci_${hydra_bss_name}_init(void);"
     hydra_bss_name_array="${hydra_bss_name_array} \"${hydra_bss_name}\", "
-    hydra_bss_init_array="${hydra_bss_init_array} HYD_BSCI_${hydra_bss_name}_init, "
+    hydra_bss_init_array="${hydra_bss_init_array} HYDT_bsci_${hydra_bss_name}_init, "
 
     case "$hydra_bss_name" in
     	ssh)
@@ -159,9 +197,9 @@ for hydra_css_name in ${hydra_css_names}; do
     fi
     hydra_css_makefiles="$hydra_css_makefiles css/${hydra_css_name}/Makefile"
     hydra_css_init_decl="${hydra_css_init_decl}
-HYD_Status HYD_CSSI_${hydra_css_name}_init(void);"
+HYD_status HYD_cssi_${hydra_css_name}_init(void);"
     hydra_css_name_array="${hydra_css_name_array} \"${hydra_css_name}\", "
-    hydra_css_init_array="${hydra_css_init_array} HYD_CSSI_${hydra_css_name}_init, "
+    hydra_css_init_array="${hydra_css_init_array} HYD_cssi_${hydra_css_name}_init, "
 
     case "$hydra_css_name" in
     	dummy)
@@ -204,9 +242,9 @@ for hydra_rmk_name in ${hydra_rmk_names}; do
     fi
     hydra_rmk_makefiles="$hydra_rmk_makefiles rmk/${hydra_rmk_name}/Makefile"
     hydra_rmk_init_decl="${hydra_rmk_init_decl}
-HYD_Status HYD_RMKI_${hydra_rmk_name}_init(void);"
+HYD_status HYD_rmki_${hydra_rmk_name}_init(void);"
     hydra_rmk_name_array="${hydra_rmk_name_array} \"${hydra_rmk_name}\", "
-    hydra_rmk_init_array="${hydra_rmk_init_array} HYD_RMKI_${hydra_rmk_name}_init, "
+    hydra_rmk_init_array="${hydra_rmk_init_array} HYD_rmki_${hydra_rmk_name}_init, "
 
     case "$hydra_rmk_name" in
     	dummy)
@@ -302,7 +340,7 @@ fi
 #########################################################################
 # Process Binding
 #########################################################################
-AC_ARG_WITH(hydra-bindlib, [  --with-hydra-procbind       Process Binding Library],
+AC_ARG_WITH(hydra-bindlib, [  --with-hydra-bindlib       Process Binding Library],
 			   [ hydra_bindlib=$withval ],
 			   [ hydra_bindlib=plpa ])
 AC_MSG_CHECKING(process binding library)
@@ -313,16 +351,17 @@ AC_DEFINE_UNQUOTED(HYDRA_BINDLIB_NAMES,"$hydra_bindlib_names",
 		[Definition of enabled binding libraries])
 
 have_plpa=no
+have_hwloc=no
 for hydra_bindlib_name in ${hydra_bindlib_names}; do
     case "$hydra_bindlib_name" in
     	plpa)
 		AC_MSG_CHECKING(if plpa works correctly)
 		old_CFLAGS=$CFLAGS
 		old_LDFLAGS=$LDFLAGS
-		CFLAGS="$CFLAGS -I${srcdir}/utils/bind/plpa/plpa"
-		LDFLAGS="$LDFLAGS ${srcdir}/utils/bind/plpa/plpa/plpa_api_probe.c"
-		LDFLAGS="$LDFLAGS ${srcdir}/utils/bind/plpa/plpa/plpa_runtime.c"
-		LDFLAGS="$LDFLAGS ${srcdir}/utils/bind/plpa/plpa/plpa_map.c"
+		CFLAGS="$CFLAGS -I${srcdir}/tools/bind/plpa/plpa"
+		LDFLAGS="$LDFLAGS ${srcdir}/tools/bind/plpa/plpa/plpa_api_probe.c"
+		LDFLAGS="$LDFLAGS ${srcdir}/tools/bind/plpa/plpa/plpa_runtime.c"
+		LDFLAGS="$LDFLAGS ${srcdir}/tools/bind/plpa/plpa/plpa_map.c"
 		AC_TRY_LINK([#include <plpa_internal.h>],[
 				PLPA_NAME(api_type_t) p;
 				PLPA_NAME(api_probe)(&p);
@@ -338,6 +377,11 @@ for hydra_bindlib_name in ${hydra_bindlib_names}; do
 		   AC_DEFINE(HAVE_PLPA,1,[Define if plpa is available])
 		fi
 		;;		
+	hwloc)
+		AC_CONFIG_SUBDIRS(tools/bind/hwloc/hwloc)
+		have_hwloc=yes
+		AC_DEFINE(HAVE_HWLOC,1,[Define if hwloc is available])
+		;;
 	*)
 		;;
     esac
@@ -345,6 +389,7 @@ done
 AC_DEFINE_UNQUOTED(HYDRA_DEFAULT_BINDLIB,"$hydra_default_bindlib",
 	[Default binding library])
 AM_CONDITIONAL([hydra_have_plpa], [test "${have_plpa}" = "yes"])
+AM_CONDITIONAL([hydra_have_hwloc], [test "${have_hwloc}" = "yes"])
 
 
 #########################################################################
@@ -400,6 +445,9 @@ EOF
 pac_tmp_compile='$CC $CFLAGS conftest.c -o conftest'
 if AC_TRY_EVAL(pac_tmp_compile) && test -s conftest ; then
    AC_DEFINE(COMPILER_ACCEPTS_VA_ARGS,1,[Define if compiler supports __VA_ARGS__])
+   AC_MSG_RESULT(yes)
+else
+   AC_MSG_RESULT(no)
 fi
 rm -f conftest*
 
@@ -450,7 +498,6 @@ elif test "$ac_cv_func_signal" = "yes" ; then
     AC_DEFINE(USE_SIGNAL,,[Define if signal should be used to set signals])
 fi
 
-
 # gethostname() returns host name
 AC_CHECK_FUNCS(gethostname)
 if test "$ac_cv_func_gethostname" = "yes" ; then
@@ -458,35 +505,16 @@ if test "$ac_cv_func_gethostname" = "yes" ; then
     PAC_FUNC_NEEDS_DECL([#include <unistd.h>],gethostname)
 fi
 
-
-# Substitute common variables. Some versions of autoconf have trouble
-# with this.
-AC_SUBST(CC)
-AC_SUBST(CFLAGS)
-AC_SUBST(LDFLAGS)
-AC_SUBST(CC_SHL)
-AC_SUBST(C_LINK_SHL)
-
-ENABLE_SHLIB=none
-AC_SUBST(ENABLE_SHLIB)
-AC_SUBST(RANLIB)
-AC_SUBST(MAKE_DEPEND_C)
-
-AC_PROG_INSTALL
-
-AC_CONFIG_SUBDIRS(mpl)
-
-
 # Place holder macro for finalization
 PAC_SUBCONFIG_FINALIZE()
 
-
 # Final output
 AC_OUTPUT(Makefile
-	bootstrap/src/bsci_init.c
-	bootstrap/include/bsci.h
+	tools/bootstrap/src/bsci_init.c
+	tools/bootstrap/include/bsci.h
 	rmk/src/rmki_init.c
 	rmk/include/rmki.h
 	css/src/cssi_init.c
 	css/include/cssi.h
+	hydra-doxygen.cfg
 )

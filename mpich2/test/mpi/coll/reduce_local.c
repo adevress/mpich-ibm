@@ -51,13 +51,12 @@ int main( int argc, char *argv[] )
     inbuf = malloc(sizeof(int) * MAX_BUF_ELEMENTS);
     inoutbuf = malloc(sizeof(int) * MAX_BUF_ELEMENTS);
 
-
-    for (count = 0; count < MAX_BUF_ELEMENTS; count *= 2) {
+    for (count = 0; count < MAX_BUF_ELEMENTS; count > 0 ? count*=2 : count++) {
         for (i = 0; i < count; ++i) {
-            inbuf = i;
+            inbuf[i] = i;
             inoutbuf[i] = i;
         }
-        MPI_Reduce_local(inbuf, inoutbuf, count, MPI_INT, MPI_OP_SUM);
+        MPI_Reduce_local(inbuf, inoutbuf, count, MPI_INT, MPI_SUM);
         for (i = 0; i < count; ++i)
             if (inbuf[i] != i) {
                 ++errs;
@@ -68,9 +67,9 @@ int main( int argc, char *argv[] )
 
     /* make sure that user-define ops work too */
     MPI_Op_create(&user_op, 0/*!commute*/, &uop);
-    for (count = 0; count < MAX_BUF_ELEMENTS; count *= 2) {
+    for (count = 0; count < MAX_BUF_ELEMENTS; count > 0 ? count*=2 : count++) {
         for (i = 0; i < count; ++i) {
-            inbuf = i;
+            inbuf[i] = i;
             inoutbuf[i] = i;
         }
         MPI_Reduce_local(inbuf, inoutbuf, count, MPI_INT, uop);
@@ -82,7 +81,7 @@ int main( int argc, char *argv[] )
                 ++errs;
         }
     }
-    MPI_Op_free(&user_op);
+    MPI_Op_free(&uop);
 
     free(inbuf);
     free(inoutbuf);

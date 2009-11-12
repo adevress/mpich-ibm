@@ -1,4 +1,28 @@
 ===============================================================================
+                               Changes in 1.2.1
+===============================================================================
+
+ # OVERALL: Improved support for fine-grained multithreading.
+
+ # OVERALL: Improved integration with Valgrind for debugging builds of MPICH2.
+
+ # PM/PMI: Initial support for hwloc process-core binding library in
+   Hydra.
+
+ # PM/PMI: Updates to the PMI-2 code to match the PMI-2 API and
+   wire-protocol draft.
+
+ # Several other minor bug fixes, memory leak fixes, and code cleanup.
+   A full list of changes is available using:
+
+     svn log -r5425:HEAD https://svn.mcs.anl.gov/repos/mpi/mpich2/tags/release/mpich2-1.2.1
+
+     ... or at the following link:
+
+     https://trac.mcs.anl.gov/projects/mpich2/log/mpich2/tags/release/mpich2-1.2.1?action=follow_copy&rev=HEAD&stop_rev=5425&mode=follow_copy
+
+
+===============================================================================
                                Changes in 1.2
 ===============================================================================
 

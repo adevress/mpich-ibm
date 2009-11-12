@@ -346,7 +346,7 @@ MPID_nem_mx_poll(int in_blocking_poll)
      else
      {
          /* Error : unknown REQ type */
-         MPIU_ERR_CHKANDJUMP1(TRUE, mpi_errno, MPI_ERR_OTHER, "**intern", "**intern %s", "unknown REQ type");
+         MPIU_ERR_CHKINTERNAL(TRUE, mpi_errno, "unknown REQ type");
      }
    }
    
@@ -387,7 +387,7 @@ MPID_nem_mx_poll(int in_blocking_poll)
      else
      {
          /* Error : unknown REQ type */
-         MPIU_ERR_CHKANDJUMP1(TRUE, mpi_errno, MPI_ERR_OTHER, "**intern", "**intern %s", "unknown REQ type");
+         MPIU_ERR_CHKINTERNAL(TRUE, mpi_errno, "unknown REQ type");
      }
    }   
  fn_exit:
@@ -692,8 +692,8 @@ int MPID_nem_mx_anysource_matched(MPID_Request *rreq)
   mx_request_t *mx_request = NULL;
   mx_return_t ret;
   uint32_t    result;
-  int matched = FALSE;
-
+  int matched   = FALSE;
+  int mpi_errno = MPI_SUCCESS;
    
   MPID_NEM_MX_GET_REQ_FROM_HASH(rreq,mx_request);
   if(mx_request != NULL)
@@ -752,10 +752,17 @@ c");
   rreq->dev.segment_first = 0;
   rreq->dev.segment_size = data_sz;
   last = rreq->dev.segment_size;
+  
+  /* 
+  MPID_Segment_count_contig_blocks(sreq->dev.segment_ptr ,first,&last,&n_iov);
+  MPIU_Assert(n_iov > 0);
+  */
+
   if(n_iov <= 0)
   {
      n_iov = rreq->dev.user_count * dt_ptr->n_elements;
-  }   
+  } 
+   
   iov = MPIU_Malloc(n_iov*sizeof(MPID_IOV));
   MPID_Segment_unpack_vector(rreq->dev.segment_ptr, rreq->dev.segment_first, &last, iov, &n_iov);
   MPIU_Assert(last == rreq->dev.segment_size);

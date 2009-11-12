@@ -192,7 +192,6 @@ typedef int MPI_Op;
 
 /* Pre-defined constants */
 #define MPI_UNDEFINED      (-32766)
-#define MPI_UNDEFINED_RANK MPI_UNDEFINED
 #define MPI_KEYVAL_INVALID 0x24000000
 
 /* Upper bound on the overhead in bsend for each message buffer */
@@ -301,8 +300,8 @@ typedef int (MPI_Delete_function) ( MPI_Comm, int, void *, void * );
  * digits for REV, 1 digit for EXT and 2 digits for EXT_NUMBER. So,
  * 1.0.7rc1 will have the numeric version 10007201.
  */
-#define MPICH2_VERSION "@VERSION@"
-#define MPICH2_NUMVERSION @NUMVERSION@
+#define MPICH2_VERSION "@MPICH2_VERSION@"
+#define MPICH2_NUMVERSION @MPICH2_NUMVERSION@
 
 #define MPICH2_RELEASE_TYPE_ALPHA  0
 #define MPICH2_RELEASE_TYPE_BETA   1
@@ -313,7 +312,7 @@ typedef int (MPI_Delete_function) ( MPI_Comm, int, void *, void * );
     (((MAJOR) * 10000000) + ((MINOR) * 100000) + ((REVISION) * 1000) + ((TYPE) * 100) + (PATCH))
 
 /* for the datatype decoders */
-enum MPI_COMBINER_ENUM {
+enum MPIR_Combiner_enum {
     MPI_COMBINER_NAMED            = 1,
     MPI_COMBINER_DUP              = 2,
     MPI_COMBINER_CONTIGUOUS       = 3, 

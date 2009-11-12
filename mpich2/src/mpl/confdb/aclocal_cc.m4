@@ -162,66 +162,6 @@ AC_DEFUN([PAC_C_OPTIMIZATION],[
 ])
 
 dnl/*D
-dnl PAC_C_VOLATILE - Check if C supports volatile
-dnl
-dnl Synopsis:
-dnl PAC_C_VOLATILE
-dnl
-dnl Output Effect:
-dnl Defines 'volatile' as empty if volatile is not available.
-dnl
-dnl D*/
-AC_DEFUN([PAC_C_VOLATILE],[
-AC_CACHE_CHECK([for volatile],
-pac_cv_c_volatile,[
-AC_TRY_COMPILE(,[volatile int a;],pac_cv_c_volatile="yes",
-pac_cv_c_volatile="no")])
-if test "$pac_cv_c_volatile" = "no" ; then
-    AC_DEFINE(volatile,,[if C does not support volatile])
-fi
-])
-
-dnl/*D
-dnl PAC_C_RESTRICT - Check if C supports restrict
-dnl
-dnl Synopsis:
-dnl PAC_C_RESTRICT
-dnl
-dnl Output Effect:
-dnl Defines 'restrict' if some version of restrict is supported; otherwise
-dnl defines 'restrict' as empty.  This allows you to include 'restrict' in 
-dnl declarations in the same way that 'AC_C_CONST' allows you to use 'const'
-dnl in declarations even when the C compiler does not support 'const'
-dnl
-dnl Note that some compilers accept restrict only with additional options.
-dnl DEC/Compaq/HP Alpha Unix (Tru64 etc.) -accept restrict_keyword
-dnl
-dnl D*/
-AC_DEFUN([PAC_C_RESTRICT],[
-AC_CACHE_CHECK([for restrict],
-pac_cv_c_restrict,[
-AC_TRY_COMPILE(,[int * restrict a;],pac_cv_c_restrict="restrict",
-pac_cv_c_restrict="no")
-if test "$pac_cv_c_restrict" = "no" ; then
-   AC_TRY_COMPILE(,[int * _Restrict a;],pac_cv_c_restrict="_Restrict",
-   pac_cv_c_restrict="no")
-fi
-if test "$pac_cv_c_restrict" = "no" ; then
-   AC_TRY_COMPILE(,[int * __restrict a;],pac_cv_c_restrict="__restrict",
-   pac_cv_c_restrict="no")
-fi
-])
-if test "$pac_cv_c_restrict" = "no" ; then
-  restrict_val=""
-elif test "$pac_cv_c_restrict" != "restrict" ; then
-  restrict_val=$pac_cv_c_restrict
-fi
-if test "$restrict_val" != "restrict" ; then 
-  AC_DEFINE_UNQUOTED(restrict,$restrict_val,[if C does not support restrict])
-fi
-])
-
-dnl/*D
 dnl PAC_PROG_C_UNALIGNED_DOUBLES - Check that the C compiler allows unaligned
 dnl doubles
 dnl
@@ -542,11 +482,16 @@ if test "$enable_strict_done" != "yes" ; then
     #   -Wpadded -- We catch struct padding with asserts when we need to
     #   -Wredundant-decls -- Having redundant declarations is benign and the 
     #	    code already has some.
+    #   -Waggregate-return -- This seems to be a performance-related warning
+    #       aggregate return values are legal in ANSI C, but they may be returned
+    #	    in memory rather than through a register.  We do use aggregate return
+    #	    values, but they are structs of a single basic type (used to enforce
+    #	    type checking for relative vs. absolute ptrs), and with optimization
+    #	    the aggregate value is converted to a scalar.
     # the embedded newlines in this string are safe because we evaluate each
     # argument in the for-loop below and append them to the CFLAGS with a space
     # as the separator instead
     pac_common_strict_flags="
-        -O2
         -Wall
         -Wextra
         -Wno-missing-field-initializers
@@ -567,7 +512,6 @@ if test "$enable_strict_done" != "yes" ; then
         -Wcast-align
         -Wwrite-strings
         -Wno-sign-compare
-        -Waggregate-return
         -Wold-style-definition
         -Wno-multichar
         -Wno-deprecated-declarations
@@ -584,13 +528,18 @@ if test "$enable_strict_done" != "yes" ; then
     case "$1" in 
         yes|all|posix)
 		enable_strict_done="yes"
-		pac_cc_strict_flags="$pac_common_strict_flags -D_POSIX_C_SOURCE=199506L"
+		pac_cc_strict_flags="-O2 $pac_common_strict_flags -D_POSIX_C_SOURCE=199506L"
         ;;
 
         noposix)
 		enable_strict_done="yes"
-		pac_cc_strict_flags="$pac_common_strict_flags"
+		pac_cc_strict_flags="-O2 $pac_common_strict_flags"
         ;;
+
+	noopt)
+		enable_strict_done="yes"
+		pac_cc_strict_flags="$pac_common_strict_flags -D_POSIX_C_SOURCE=199506L"
+	;;
         
         no)
 		# Accept and ignore this value
@@ -632,7 +581,7 @@ dnl
 dnl D*/
 AC_DEFUN([PAC_ARG_STRICT],[
 AC_ARG_ENABLE(strict,
-[--enable-strict  - Turn on strict compilation testing when using gcc])
+[--enable-strict  - Turn on strict compilation testing])
 PAC_CC_STRICT($enable_strict)
 CFLAGS="$CFLAGS $pac_cc_strict_flags"
 export CFLAGS

@@ -661,7 +661,13 @@ if dtypes.Exists("MPI_WCHAR_T") then
 else
 	'missing_datatypes = missing_datatypes & "MPI_WCHAR_T" & vbCrLf
 	'MPI_WCHAR_T           = "0x" + mpi_datatype_prefix + len_wchar_t     + "0e"
-	MPI_WCHAR_T = dtypes.Item("MPI_WCHAR")
+        if dtypes.Exists("MPI_WCHAR") then
+            MPI_WCHAR_T = dtypes.Item("MPI_WCHAR")
+            dtypes.Add "MPI_WCHAR_T", MPI_WCHAR_T
+        else
+            missing_datatypes = missing_datatypes & "MPI_WCHAR_T" & vbCrLf
+            MPI_WCHAR_T       = "0x" + mpi_datatype_prefix + len_wchar       + "0e"
+        end if
 end if
 if dtypes.Exists("MPI_SHORT") then
 	MPI_SHORT = dtypes.Item("MPI_SHORT")
@@ -692,7 +698,13 @@ if dtypes.Exists("MPI_UNSIGNED") then
 else
 	'missing_datatypes = missing_datatypes & "MPI_UNSIGNED" & vbCrLf
 	'MPI_UNSIGNED          = "0x" + mpi_datatype_prefix + len_int         + "06"
-	MPI_UNSIGNED = dtypes.Item("MPI_UNSIGNED_INT")
+        if dtypes.Exists("MPI_UNSIGNED_INT") then
+            MPI_UNSIGNED = dtypes.Item("MPI_UNSIGNED_INT")
+            dtypes.Add "MPI_UNSIGNED", MPI_UNSIGNED
+        else
+            missing_datatypes = missing_datatypes & "MPI_UNSIGNED" & vbCrLf
+            MPI_UNSIGNED      = "0x" + mpi_datatype_prefix + len_int         + "06"
+        end if
 end if
 if dtypes.Exists("MPI_LONG") then
 	MPI_LONG = dtypes.Item("MPI_LONG")
@@ -717,7 +729,13 @@ if dtypes.Exists("MPI_LONG_LONG_INT") then
 else
 	'missing_datatypes = missing_datatypes & "MPI_LONG_LONG_INT" & vbCrLf
 	'MPI_LONG_LONG_INT     = "0x" + mpi_datatype_prefix + len_long_long   + "09"
-	MPI_LONG_LONG_INT = dtypes.Item("MPI_LONG_LONG")
+        if dtypes.Exists("MPI_LONG_LONG") then
+            MPI_LONG_LONG_INT = dtypes.Item("MPI_LONG_LONG")
+            dtypes.Add "MPI_LONG_LONG_INT", MPI_LONG_LONG_INT
+        else
+            missing_datatypes = missing_datatypes & "MPI_LONG_LONG_INT" & vbCrLf
+            MPI_LONG_LONG_INT = "0x" + mpi_datatype_prefix + len_long_long   + "09"
+        end if
 end if
 if dtypes.Exists("MPI_UNSIGNED_LONG_LONG") then
 	MPI_UNSIGNED_LONG_LONG = dtypes.Item("MPI_UNSIGNED_LONG_LONG")
@@ -833,6 +851,7 @@ else
 	'missing_datatypes = missing_datatypes & "MPI_FLOAT_INT" & vbCrLf
 	'MPI_FLOAT_INT         = "0x" + mpi_datatype_prefix + len_float_int       + "12"
 	MPI_FLOAT_INT         = "0x8c000000"
+        dtypes.Add "MPI_FLOAT_INT", MPI_FLOAT_INT
 end if
 if dtypes.Exists("MPI_DOUBLE_INT") then
 	MPI_DOUBLE_INT = dtypes.Item("MPI_DOUBLE_INT")
@@ -840,6 +859,7 @@ else
 	'missing_datatypes = missing_datatypes & "MPI_DOUBLE_INT" & vbCrLf
 	'MPI_DOUBLE_INT        = "0x" + mpi_datatype_prefix + len_double_int      + "13"
 	MPI_DOUBLE_INT        = "0x8c000001"
+        dtypes.Add "MPI_DOUBLE_INT", MPI_DOUBLE_INT
 end if
 if dtypes.Exists("MPI_LONG_INT") then
 	MPI_LONG_INT = dtypes.Item("MPI_LONG_INT")
@@ -847,6 +867,7 @@ else
 	'missing_datatypes = missing_datatypes & "MPI_LONG_INT" & vbCrLf
 	'MPI_LONG_INT          = "0x" + mpi_datatype_prefix + len_long_int        + "14"
 	MPI_LONG_INT          = "0x8c000002"
+        dtypes.Add "MPI_LONG_INT", MPI_LONG_INT
 end if
 if dtypes.Exists("MPI_SHORT_INT") then
 	MPI_SHORT_INT = dtypes.Item("MPI_SHORT_INT")
@@ -854,6 +875,7 @@ else
 	'missing_datatypes = missing_datatypes & "MPI_SHORT_INT" & vbCrLf
 	'MPI_SHORT_INT         = "0x" + mpi_datatype_prefix + len_short_int       + "15"
 	MPI_SHORT_INT         = "0x8c000003"
+        dtypes.Add "MPI_SHORT_INT", MPI_SHORT_INT
 end if
 if dtypes.Exists("MPI_2INT") then
 	MPI_2INT = dtypes.Item("MPI_2INT")
@@ -867,6 +889,7 @@ else
 	'missing_datatypes = missing_datatypes & "MPI_LONG_DOUBLE_INT" & vbCrLf
 	'MPI_LONG_DOUBLE_INT   = "0x" + mpi_datatype_prefix + len_long_double_int + "17"
 	MPI_LONG_DOUBLE_INT   = "0x8c000004"
+        dtypes.Add "MPI_LONG_DOUBLE_INT", MPI_LONG_DOUBLE_INT
 end if
 if dtypes.Exists("MPI_CHARACTER") then
 	MPI_CHARACTER = dtypes.Item("MPI_CHARACTER")
@@ -1030,6 +1053,17 @@ else
     missing_datatypes = missing_datatypes & "MPI_C_FLOAT_COMPLEX" & vbCrLf
     MPI_C_FLOAT_COMPLEX = "0x" + mpi_datatype_prefix + len_float__Complex + "40"
 end if
+if dtypes.Exists("MPI_C_COMPLEX") then
+    MPI_C_COMPLEX = dtypes.Item("MPI_C_COMPLEX")
+else
+    if dtypes.Exists("MPI_C_FLOAT_COMPLEX") then
+        MPI_C_COMPLEX = dtypes.Item("MPI_C_FLOAT_COMPLEX")
+        dtypes.Add "MPI_C_COMPLEX", MPI_C_COMPLEX
+    else
+        missing_datatypes = missing_datatypes & "MPI_C_COMPLEX" & vbCrLf
+        MPI_C_COMPLEX = "0x" + mpi_datatype_prefix + len_float__Complex + "40"
+    end if
+end if
 if dtypes.Exists("MPI_C_DOUBLE_COMPLEX") then
     MPI_C_DOUBLE_COMPLEX = dtypes.Item("MPI_C_DOUBLE_COMPLEX")
 else
@@ -1049,12 +1083,16 @@ else
     missing_datatypes = missing_datatypes & "MPI_AINT" & vbCrLf
     MPI_AINT_W32 = "0x" + mpi_datatype_prefix + len_mpi_aint32 + "43"
 end if
+dtypes.Add "MPI_AINT_W32", MPI_AINT_W32
+
 if dtypes64.Exists("MPI_AINT_DATATYPE") then
     MPI_AINT_W64 = dtypes64.Item("MPI_AINT_DATATYPE")
 else
     missing_datatypes = missing_datatypes & "MPI_AINT" & vbCrLf
     MPI_AINT_W64 = "0x" + mpi_datatype_prefix + len_mpi_aint64 + "43"
 end if
+dtypes64.Add "MPI_AINT_W64", MPI_AINT_W64
+
 ' Note that in configure.in MPI_OFFSET is named as MPI_OFFSET_DATATYPE - due to name collision
 if dtypes.Exists("MPI_OFFSET_DATATYPE") then
     MPI_OFFSET_W64 = dtypes.Item("MPI_OFFSET_DATATYPE")
@@ -1062,6 +1100,8 @@ else
     missing_datatypes = missing_datatypes & "MPI_OFFSET" & vbCrLf
     MPI_OFFSET_W64 = "0x" + mpi_datatype_prefix + len_mpi_offset + "44"
 end if
+dtypes.Add "MPI_OFFSET_W64", MPI_OFFSET_W64
+dtypes64.Add "MPI_OFFSET_W64", MPI_OFFSET_W64
 
 
 if missing_datatypes <> "" then
@@ -1160,6 +1200,22 @@ F77_LONG_INT				= HexToInt(dtypes.Item("MPI_LONG_INT"))
 F77_SHORT_INT				= HexToInt(dtypes.Item("MPI_SHORT_INT"))
 F77_2INT					= HexToInt(dtypes.Item("MPI_2INT"))
 F77_LONG_DOUBLE_INT			= HexToInt(dtypes.Item("MPI_LONG_DOUBLE_INT"))
+F77_INT8_T              = HexToInt(dtypes.Item("MPI_INT8_T"))
+F77_INT16_T             = HexToInt(dtypes.Item("MPI_INT16_T"))
+F77_INT32_T             = HexToInt(dtypes.Item("MPI_INT32_T"))
+F77_INT64_T             = HexToInt(dtypes.Item("MPI_INT64_T"))
+F77_UINT8_T             = HexToInt(dtypes.Item("MPI_UINT8_T"))
+F77_UINT16_T            = HexToInt(dtypes.Item("MPI_UINT16_T"))
+F77_UINT32_T            = HexToInt(dtypes.Item("MPI_UINT32_T"))
+F77_UINT64_T            = HexToInt(dtypes.Item("MPI_UINT64_T"))
+F77_C_BOOL              = HexToInt(dtypes.Item("MPI_C_BOOL"))
+F77_C_FLOAT_COMPLEX     = HexToInt(dtypes.Item("MPI_C_FLOAT_COMPLEX"))
+F77_C_COMPLEX           = HexToInt(dtypes.Item("MPI_C_COMPLEX"))
+F77_C_DOUBLE_COMPLEX    = HexToInt(dtypes.Item("MPI_C_DOUBLE_COMPLEX"))
+F77_C_LONG_DOUBLE_COMPLEX      = HexToInt(dtypes.Item("MPI_C_LONG_DOUBLE_COMPLEX"))
+F77_AINT_W32                = HexToInt(dtypes.Item("MPI_AINT_W32"))
+F77_AINT_W64                = HexToInt(dtypes64.Item("MPI_AINT_W64"))
+F77_OFFSET_W64              = HexToInt(dtypes.Item("MPI_OFFSET_W64"))
 
 if false then
 foo = ""
@@ -1222,19 +1278,38 @@ Function DecorateMPIFuncs(str)
 End Function
 
 '
-' Get MPICH2 Version
+' Get MPICH2 Version & ABI Version
 '
-Function GetMPICH2Version()
+Function GetMPICH2Versions(ByRef mpich2Version, ByRef mpich2ABIVersion)
+    mpich2Version = "0.0"
+    mpich2ABIVersion = "0.0"
     if f.FileExists("maint\Version") then
-    	Dim fin, ver
-		Set fin = f.OpenTextFile("maint\Version")
-		ver = fin.ReadLine()
-		Trim(ver)
-		fin.Close()
-		GetMPICH2Version = ver
-	else
-		GetMPICH2Version = "0.0.0"
-	end if
+        Dim fin, str
+        Set fin = f.OpenTextFile("maint\Version")
+        Do Until fin.AtEndOfStream
+            Dim strTokenArr
+            str = fin.ReadLine()
+            Trim(str)
+            strTokenArr = Split(str, " ", -1 , 1)
+            If UBound(strTokenArr, 1) = 1 Then
+                If(StrComp(Left(strTokenArr(0), 14), "MPICH2_VERSION") = 0) Then
+                    mpich2Version = strTokenArr(1)
+                ElseIf(StrComp(Left(strTokenArr(0), 17), "MPICH2_ABIVERSION") = 0) Then
+                    mpich2ABIVersion = Replace(strTokenArr(1), ":", ".")
+                Else
+                    printMsg "ERROR", "Invalid String """ & str & """ found in mpich2 Version file"
+                End If
+            Else
+                printMsg "ERROR", "Invalid format in mpich2 Version file. Expected: ""MPICH2_VERSION_NAME MPICH2_VERSION"" format"
+            End If
+        Loop
+        fin.Close()
+    end if
+    If (StrComp(mpich2Version, "0.0") <> 0) AND (StrComp(mpich2ABIVersion, "0.0") <> 0) Then
+        GetMPICH2Versions = True
+    Else
+        GetMPICH2Versions = False
+    End If
 End Function
 
 ' Does the string contain only ints ?
@@ -1450,7 +1525,8 @@ Function GetMPICH2NumVersion(ver)
 	printMsg "VERBOSE", " MPICH2 NUM VERSION " & numVer
 End Function
 
-mpich2Version = GetMPICH2Version()
+GetMPICH2Versions mpich2Version, mpich2ABIVersion
+printMsg "VERBOSE", "MPICH2_VERSION = " & mpich2Version & " MPICH2_ABIVERSION = " & mpich2ABIVersion
 mpich2NumVersion = GetMPICH2NumVersion(mpich2Version)
 
 Function RegExpFind(pattern, str)
@@ -1858,6 +1934,40 @@ Function ReplaceAts( str, use_f77, b64 )
 				str = Replace(str, "@MPI_F77_2INT@", F77_2INT)
 			Case "@MPI_F77_LONG_DOUBLE_INT@"
 				str = Replace(str, "@MPI_F77_LONG_DOUBLE_INT@", F77_LONG_DOUBLE_INT)
+			Case "@MPI_F77_INT8_T@"
+				str = Replace(str, "@MPI_F77_INT8_T@", F77_INT8_T)
+			Case "@MPI_F77_INT16_T@"
+				str = Replace(str, "@MPI_F77_INT16_T@", F77_INT16_T)
+			Case "@MPI_F77_INT32_T@"
+				str = Replace(str, "@MPI_F77_INT32_T@", F77_INT32_T)
+			Case "@MPI_F77_INT64_T@"
+				str = Replace(str, "@MPI_F77_INT64_T@", F77_INT64_T)
+			Case "@MPI_F77_UINT8_T@"
+				str = Replace(str, "@MPI_F77_UINT8_T@", F77_UINT8_T)
+			Case "@MPI_F77_UINT16_T@"
+				str = Replace(str, "@MPI_F77_UINT16_T@", F77_UINT16_T)
+			Case "@MPI_F77_UINT32_T@"
+				str = Replace(str, "@MPI_F77_UINT32_T@", F77_UINT32_T)
+			Case "@MPI_F77_UINT64_T@"
+				str = Replace(str, "@MPI_F77_UINT64_T@", F77_UINT64_T)
+			Case "@MPI_F77_C_BOOL@"
+				str = Replace(str, "@MPI_F77_C_BOOL@", F77_C_BOOL)
+			Case "@MPI_F77_C_FLOAT_COMPLEX@"
+				str = Replace(str, "@MPI_F77_C_FLOAT_COMPLEX@", F77_C_FLOAT_COMPLEX)
+			Case "@MPI_F77_C_COMPLEX@"
+				str = Replace(str, "@MPI_F77_C_COMPLEX@", F77_C_COMPLEX)
+			Case "@MPI_F77_C_DOUBLE_COMPLEX@"
+				str = Replace(str, "@MPI_F77_C_DOUBLE_COMPLEX@", F77_C_DOUBLE_COMPLEX)
+			Case "@MPI_F77_C_LONG_DOUBLE_COMPLEX@"
+				str = Replace(str, "@MPI_F77_C_LONG_DOUBLE_COMPLEX@", F77_C_LONG_DOUBLE_COMPLEX)
+			Case "@MPI_F77_AINT@"
+                                If b64 Then
+                                    str = Replace(str, "@MPI_F77_AINT@", F77_AINT_W64)
+                                Else
+                                    str = Replace(str, "@MPI_F77_AINT@", F77_AINT_W32)
+                                End If
+			Case "@MPI_F77_OFFSET@"
+				str = Replace(str, "@MPI_F77_OFFSET@", F77_OFFSET_W64)
 			Case "@MPI_STATUS_SIZE@"
 				str = Replace(str, "@MPI_STATUS_SIZE@", "5")
 			Case "@HAVE_CXX_EXCEPTIONS@"
@@ -2023,9 +2133,9 @@ Function ReplaceAts( str, use_f77, b64 )
 			Case "@F90FLAGS@"
 				' FIXME: Not the complete list of F90FLAGS --- only some listed
 				str = Replace(str, "@F90FLAGS@", "/names:lowercase /iface:cref /assume:underscore")
-			Case "@VERSION@"
+			Case "@MPICH2_VERSION@"
 				str = Replace(str, "@VERSION@", mpich2Version)
-			Case "@NUMVERSION@"
+			Case "@MPICH2_NUMVERSION@"
 				str = Replace(str, "@NUMVERSION@", mpich2NumVersion)
 			Case "@nemesis_nets_macro_defs@"
 				str = Replace(str, "@nemesis_nets_macro_defs@", "#define MPIDI_NEM_NEWTCP_MODULE 0")
@@ -2248,6 +2358,22 @@ Sub AddDefinitions( fout, filename, b64 )
 				Case "_UINT64_T"
 					' Needed only for SOLARIS machines
 					fout.WriteLine("/* #undef _UINT64_T */")
+				Case "u_char"
+                                        ' Needed only on unix builds where --enable-strict
+                                        ' option removes these types
+                                        fout.WriteLine("/* #undef u_char */")
+				Case "u_int"
+                                        ' Needed only on unix builds where --enable-strict
+                                        ' option removes these types
+                                        fout.WriteLine("/* #undef u_int */")
+				Case "u_long"
+                                        ' Needed only on unix builds where --enable-strict
+                                        ' option removes these types
+                                        fout.WriteLine("/* #undef u_long */")
+				Case "u_short"
+                                        ' Needed only on unix builds where --enable-strict
+                                        ' option removes these types
+                                        fout.WriteLine("/* #undef u_short */")
 				Case "POINTERINT_t"
 					If b64 Then
 						fout.WriteLine("#define POINTERINT_t __int64")
@@ -2414,6 +2540,8 @@ Sub AddDefinitions( fout, filename, b64 )
 					fout.WriteLine("/* #undef HAVE_SYS_STAT_H */")
 				Case "HAVE_SYS_TYPES_H"
 					fout.WriteLine("#define HAVE_SYS_TYPES_H 1")
+				Case "HAVE_SYS_ATTR_H"
+					fout.WriteLine("/* #undef HAVE_SYS_ATTR_H */")
 				Case "HAVE_THR_CREATE"
 					fout.WriteLine("/* #undef HAVE_THR_CREATE */")
 				Case "HAVE_TIMING"
@@ -2866,29 +2994,21 @@ Sub AddDefinitions( fout, filename, b64 )
                                         fout.WriteLine("#define USE_THREAD_IMPL MPICH_THREAD_IMPL_NONE")
                                         fout.WriteLine("#endif")
                                 Case "MPIU_THREAD_PACKAGE_NAME"
-                                        fout.WriteLine("#ifdef MPICH_MULTITHREADED")
                                         fout.WriteLine("#define MPIU_THREAD_PACKAGE_NAME MPIU_THREAD_PACKAGE_WIN")
-                                        fout.WriteLine("#else")
-                                        fout.WriteLine("#define MPIU_THREAD_PACKAGE_NAME MPIU_THREAD_PACKAGE_NONE")
-                                        fout.WriteLine("#endif")
 				Case "MPIU_THREAD_REFCOUNT"
-					fout.WriteLine("#ifdef MPICH_MULTITHREADED")
 					fout.WriteLine("#define MPIU_THREAD_REFCOUNT MPIU_REFCOUNT_NONE")
-					fout.WriteLine("#else")
-					fout.WriteLine("/* #undef MPIU_THREAD_REFCOUNT */")
-					fout.WriteLine("#endif")
 				Case "MPIU_THREAD_GRANULARITY"
 					fout.WriteLine("#ifdef MPICH_MULTITHREADED")
 					fout.WriteLine("#define MPIU_THREAD_GRANULARITY MPIU_THREAD_GRANULARITY_GLOBAL")
 					fout.WriteLine("#else")
-					fout.WriteLine("/* #undef MPIU_THREAD_GRANULARITY */")
+					fout.WriteLine("#define MPIU_THREAD_GRANULARITY MPIU_THREAD_GRANULARITY_SINGLE")
 					fout.WriteLine("#endif")
+                                Case "MPIU_THREAD_SUPPRESS_PREDEFINED_REFCOUNTS"
+                                        ' Currently we only build MPICH2 with global lock 
+                                        ' -Introduce this option when building lock-free version
+                                        fout.WriteLine("/* #undef MPIU_THREAD_SUPPRESS_PREDEFINED_REFCOUNTS */")
 				Case "MPIU_HANDLE_ALLOCATION_METHOD"
-					fout.WriteLine("#ifdef MPICH_MULTITHREADED")
 					fout.WriteLine("#define MPIU_HANDLE_ALLOCATION_METHOD MPIU_HANDLE_ALLOCATION_MUTEX")
-					fout.WriteLine("#else")
-					fout.WriteLine("/* #undef MPIU_HANDLE_ALLOCATION_METHOD */")
-					fout.WriteLine("#endif")
 				Case "MPIU_MUTEX_WAIT_TIME"
 					fout.WriteLine("/* #undef MPIU_MUTEX_WAIT_TIME */")
 				Case "_REENTRANT"
@@ -3505,6 +3625,20 @@ Sub AddDefinitions( fout, filename, b64 )
                                 ' Not applicable on windows
                                 Case "NO_MINUS_C_MINUS_O"
                                         fout.WriteLine("/* #undef NO_MINUS_C_MINUS_O */")
+                                ' Disable falut tolerance code on windows
+                                Case "ENABLE_FTB"
+                                        fout.WriteLine("/* #undef ENABLE_FTB */")
+                                Case "HAVE_LIBFTB"
+                                        fout.WriteLine("/* #undef HAVE_LIBFTB */")
+                                ' FIXME: The size of openpa ptr should not be hardcoded...
+                                Case "SIZEOF_OPA_PTR_T"
+                                        If b64 Then
+                                            fout.WriteLine("#define SIZEOF_OPA_PTR_T 8")
+                                        Else
+                                            fout.WriteLine("#define SIZEOF_OPA_PTR_T 4")
+                                        End if
+                                Case "USE_ASYNC_PROGRESS"
+                                        fout.WriteLine("/* #undef USE_ASYNC_PROGRESS */")
 				Case Else
 					'MsgBox("Unhandled definition <" & define & ">")
 					If appendUniqueString(unhandled_definitions, macroname) Then
@@ -6388,6 +6522,7 @@ Function GenBuild()
 '	CreateRules f.GetFolder("src\util\timing"), trimlength
 	CreateRules f.GetFolder("src\util\logging\common"), trimlength
 	CreateRules f.GetFolder("src\util\param"), trimlength
+        CreateRules f.GetFolder("src\util\thread"), trimlength
 	' Insert rules for romio manually since romio is not build with Makefile.sm files
 	mfile.WriteLine("{..\src\mpi\romio\adio\ad_ntfs}.c{$(OUTDIR)}.obj:")
 	mfile.WriteLine("    $(cc) $(cflags) /Fo""$(OUTDIR)\\"" /Fd""$(OUTDIR)\\"" $**")
@@ -6424,6 +6559,7 @@ Function GenBuild()
 '	CreateObjs "mpich2", f.GetFolder("src\util\timing"), trimlength, false, false
 	CreateObjs "mpich2", f.GetFolder("src\util\logging\common"), trimlength, false, false
 	CreateObjs "mpich2", f.GetFolder("src\util\param"), trimlength, false, false
+        CreateObjs "mpich2", f.GetFolder("src\util\thread"), trimlength, false, false
 	mfile.WriteLine(" \" & vbCrLf & "	$(OUTDIR)\ad_ntfs.obj \")
 	mfile.WriteLine("	$(OUTDIR)\ad_ntfs_close.obj \")
 	mfile.WriteLine("	$(OUTDIR)\ad_ntfs_done.obj \")
@@ -6576,13 +6712,9 @@ Function GenBuild()
 	CreateRules f.GetFolder("src\mpid\ch3\channels\sock"), trimlength
 	CreateRules f.GetFolder("src\mpid\ch3\util\sock"), trimlength
 	'CreateRules f.GetFolder("src\util\events"), trimlength
-	mfile.WriteLine("{..\src\util\thread}.c{$(MT_OUTDIR)}.obj:")
-	mfile.WriteLine("    $(cc) $(cflags) /Fo""$(MT_OUTDIR)\\"" /Fd""$(MT_OUTDIR)\\"" $**")
-	mfile.WriteLine
 	CreateObjs "ch3mt", f.GetFolder("src\mpid\ch3\channels\sock"), trimlength, true, false
-	CreateObjs "ch3mt", f.GetFolder("src\mpid\ch3\util\sock"), trimlength, false, false
+	CreateObjs "ch3mt", f.GetFolder("src\mpid\ch3\util\sock"), trimlength, false, true
 	'CreateObjs "ch3mt", f.GetFolder("src\util\events"), trimlength, false, false
-	mfile.WriteLine(" \" & vbCrLf & "	$(MT_OUTDIR)\mpiu_thread.obj")
 
 	mfile.WriteLine
 	mfile.WriteLine("# ch3nemesis")
@@ -6592,14 +6724,10 @@ Function GenBuild()
 	CreateRules f.GetFolder("src\mpid\ch3\channels\nemesis\nemesis\src"), trimlength
 '	CreateRules f.GetFolder("src\mpid\ch3\channels\nemesis\nemesis\utils"), trimlength
 	CreateRules f.GetFolder("src\mpid\ch3\channels\nemesis\nemesis\netmod\wintcp"), trimlength
-	mfile.WriteLine("{..\src\util\thread}.c{$(NEMESIS_OUTDIR)}.obj:")
-	mfile.WriteLine("    $(cc) $(cflags) /Fo""$(NEMESIS_OUTDIR)\\"" /Fd""$(NEMESIS_OUTDIR)\\"" $**")
-	mfile.WriteLine
 	CreateObjs "ch3nemesis", f.GetFolder("src\mpid\ch3\channels\nemesis\src"), trimlength, true, false
 	CreateObjs "ch3nemesis", f.GetFolder("src\mpid\ch3\channels\nemesis\nemesis\src"), trimlength, false, false
 '	CreateObjs "ch3nemesis", f.GetFolder("src\mpid\ch3\channels\nemesis\nemesis\utils"), trimlength, false, false
-	CreateObjs "ch3nemesis", f.GetFolder("src\mpid\ch3\channels\nemesis\nemesis\netmod\wintcp"), trimlength, false, false
-	mfile.WriteLine(" \" & vbCrLf & "	$(NEMESIS_OUTDIR)\mpiu_thread.obj")
+	CreateObjs "ch3nemesis", f.GetFolder("src\mpid\ch3\channels\nemesis\nemesis\netmod\wintcp"), trimlength, false, true
 
 	mfile.WriteLine
 	mfile.WriteLine("# ch3ssm")
@@ -7517,13 +7645,11 @@ If bRemoveFortran Then
 End If
 
 Sub UpdateSMPDVersion
-	Set fin = f.OpenTextFile("maint\Version")
-	version_str = MyTrim(fin.ReadLine())
-	fin.Close()
+        GetMPICH2Versions mpich2VerStr, mpich2ABIVerStr
 	'WScript.Echo "Version = " & version_str
 	printMsg "VERBOSE", "Creating src\pm\smpd\smpd_version.h: " & version_str
 	Set fout = f.CreateTextFile("src\pm\smpd\smpd_version.h", true)
-	fout.WriteLine("#define SMPD_VERSION """ & version_str & """")
+	fout.WriteLine("#define SMPD_VERSION """ & mpich2VerStr & """")
 	fout.Close()
 End Sub
 
