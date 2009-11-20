@@ -11,6 +11,8 @@
 
 static char MTEST_Descrip[] = "A simple test of MPI_Op_create/commute/free";
 
+static int uop_errs = 0;
+
 /* prototype to keep the compiler happy */
 static void comm_user_op(void *invec, void *inoutvec, int *len, MPI_Datatype *datatype);
 static void noncomm_user_op(void *invec, void *inoutvec, int *len, MPI_Datatype *datatype);
@@ -62,7 +64,7 @@ int main( int argc, char *argv[] )
 
 #define CHECK_COMMUTATIVE(op_)                     \
     do {                                           \
-        MPI_Op_commutative(MPI_, &is_commutative); \
+        MPI_Op_commutative(op_, &is_commutative); \
         if (!is_commutative) { ++errs; }           \
     } while (0)
 
