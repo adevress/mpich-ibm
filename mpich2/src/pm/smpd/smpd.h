@@ -6,6 +6,7 @@
 #ifndef SMPD_H
 #define SMPD_H
 
+#include "mpichconf.h"
 #include "smpdconf.h"
 
 #ifdef HAVE_WINDOWS_H
@@ -55,7 +56,6 @@
 #endif
 #endif
 
-#include "mpichconf.h"
 #include "mpimem.h"
 #include "smpd_database.h"
 #include "pmi.h"
@@ -511,6 +511,7 @@ typedef struct smpd_process_t
     char path[SMPD_MAX_PATH_LENGTH];
     char clique[SMPD_MAX_CLIQUE_LENGTH];
     int rank;
+    int binding_proc;
     int nproc;
     smpd_pwait_t wait;
     int exitcode;
@@ -539,6 +540,7 @@ typedef struct smpd_launch_node_t
     char hostname[SMPD_MAX_HOST_LENGTH];
     char alt_hostname[SMPD_MAX_HOST_LENGTH];
     int iproc;
+    int binding_proc;
     int nproc;
     int appnum;
     int priority_class, priority_thread;
@@ -702,6 +704,13 @@ typedef struct smpd_global_t
     int use_process_session;
     int nproc, nproc_launched, nproc_exited;
     SMPD_BOOL verbose;
+#ifdef HAVE_WINDOWS_H
+    /* set_affinity is TRUE if the user explicitly specifies MPI process binding */
+    SMPD_BOOL set_affinity;
+    /* The affinity map contains the user defined MPI process affinity map, if any */
+    int *affinity_map;
+    int affinity_map_sz;
+#endif
     /*SMPD_BOOL shutdown, restart, validate, do_status;*/ /* built in commands */
     smpd_builtin_commands_t builtin_cmd;
 #ifdef HAVE_WINDOWS_H
@@ -951,6 +960,7 @@ SMPD_BOOL smpd_unmap_user_drives(char *pszMap);
 void smpd_finalize_drive_maps(void);
 int smpd_append_env_option(char *str, int maxlen, const char *env_name, const char *env_val);
 #ifdef HAVE_WINDOWS_H
+int smpd_get_network_drives(char *pMapList, int mapListLen);
 int smpd_add_job_key(const char *key, const char *username, const char *domain, const char *full_domain);
 int smpd_add_job_key_and_handle(const char *key, const char *username, const char *domain, const char *full_domain, HANDLE hUser);
 int smpd_remove_job_key(const char *key);
@@ -966,6 +976,12 @@ int smpd_parse_map_string(const char *str, smpd_map_drive_node_t **list);
 int smpd_delayed_spawn_enqueue(smpd_context_t *context);
 int smpd_delayed_spawn_dequeue(smpd_context_t **context);
 int smpd_handle_delayed_spawn_command(void);
+
+#ifdef HAVE_WINDOWS_H
+DWORD_PTR smpd_get_next_process_affinity_mask(void );
+DWORD_PTR smpd_get_processor_affinity_mask(int proc_num);
+BOOL smpd_init_affinity_table(void );
+#endif
 
 #if defined(__cplusplus)
 }

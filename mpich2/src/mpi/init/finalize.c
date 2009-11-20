@@ -6,6 +6,7 @@
 /* style: allow:fprintf:1 sig:0 */
 
 #include "mpiimpl.h"
+#include "mpi_init.h"
 
 /* -- Begin Profiling Symbol Block for routine MPI_Finalize */
 #if defined(HAVE_PRAGMA_WEAK)
@@ -117,6 +118,7 @@ int MPI_Finalize( void )
 #if defined(HAVE_USLEEP) && defined(USE_COVERAGE)
     int rank=0;
 #endif
+    MPIU_THREADPRIV_DECL;
     MPID_MPI_FINALIZE_STATE_DECL(MPID_STATE_MPI_FINALIZE);
 
     MPIR_ERRTEST_INITIALIZED_ORDIE();
@@ -127,6 +129,15 @@ int MPI_Finalize( void )
     MPID_MPI_FINALIZE_FUNC_ENTER(MPID_STATE_MPI_FINALIZE);
     
     /* ... body of routine ... */
+
+#if defined USE_ASYNC_PROGRESS
+    /* If the user requested for asynchronous progress, we need to
+     * shutdown the progress thread */
+    if (MPIR_async_thread_initialized) {
+        mpi_errno = MPIR_Finalize_async_thread();
+        if (mpi_errno) goto fn_fail;
+    }
+#endif /* USE_ASYNC_PROGRESS */
     
 #if defined(HAVE_USLEEP) && defined(USE_COVERAGE)
     /* We need to get the rank before freeing MPI_COMM_WORLD */
@@ -165,6 +176,7 @@ int MPI_Finalize( void )
 	if (!in_use) {
 	    MPIU_Handle_obj_free( &MPID_Errhandler_mem, 
 				  MPIR_Process.comm_world->errhandler );
+            MPIR_Process.comm_world->errhandler = NULL;
 	}
     }
     if (MPIR_Process.comm_self->errhandler && 
@@ -176,18 +188,10 @@ int MPI_Finalize( void )
 	if (!in_use) {
 	    MPIU_Handle_obj_free( &MPID_Errhandler_mem, 
 				  MPIR_Process.comm_self->errhandler );
+            MPIR_Process.comm_self->errhandler = NULL;
 	}
     }
 
-    /* At this point, we end the critical section for the Finalize call.
-       Since we've set MPIR_Process.initialized value to POST_FINALIZED, 
-       if the user erroneously calls Finalize from another thread, an
-       error message will be issued. */
-    /* We put this here to avoid nesting problems with the callbacks - 
-       however, an erroneous user program could cause problems here if if
-       makes its own MPI calls. */
-    MPIU_THREAD_CS_EXIT(ALLFUNC,);
-    
     /* FIXME: Why is this not one of the finalize callbacks?.  Do we need
        pre and post MPID_Finalize callbacks? */
     MPIU_Timer_finalize();
@@ -229,8 +233,6 @@ int MPI_Finalize( void )
 	parmFound = MPIU_GetEnvBool( "MPICH_NESTCHECK", &parmValue );
 	if (!parmFound) parmValue = 1;
 	if (parmValue) {
-	    MPIU_THREADPRIV_DECL;
-	    
 	    MPIU_THREADPRIV_GET;
 	    /* Check for an error in the nesting level */
 	    if (MPIR_Nest_value()) {
@@ -248,6 +250,7 @@ int MPI_Finalize( void )
     }
 #endif
 
+    MPIU_THREAD_CS_EXIT(ALLFUNC,);
     MPIR_Process.initialized = MPICH_POST_FINALIZED;
 
     MPID_CS_FINALIZE();
@@ -316,7 +319,9 @@ int MPI_Finalize( void )
     }
 #   endif
     mpi_errno = MPIR_Err_return_comm( 0, FCNAME, mpi_errno );
-    MPIU_THREAD_CS_EXIT(ALLFUNC,);
+    if (MPIR_Process.initialized < MPICH_POST_FINALIZED) {
+        MPIU_THREAD_CS_EXIT(ALLFUNC,);
+    }
     goto fn_exit;
     /* --END ERROR HANDLING-- */
 }

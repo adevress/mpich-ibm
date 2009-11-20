@@ -1,11 +1,1 @@
-/Makefile
-/Makefile.in
-/configure
-/configure.lineno
-/config.*
-/hydra_config.h*
-/autom4te*
-/mpiexec
-/*.gcov
-/*.gcda
-/*.gcno
+/bsci.h

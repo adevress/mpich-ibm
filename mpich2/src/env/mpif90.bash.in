@@ -62,8 +62,8 @@ MPILIBNAME="@MPILIBNAME@"
 PMPILIBNAME="@PMPILIBNAME@"
 MPI_OTHERLIBS="@LIBS@ @F90_OTHER_LIBS@"
 NEEDSPLIB="@NEEDSPLIB@"
-# MPIVERSION is the version of the MPICH2 library for which mpif90 is intended
-MPIVERSION="@VERSION@"
+# MPICH2_VERSION is the version of the MPICH2 library for which mpif90 is intended
+MPICH2_VERSION="@MPICH2_VERSION@"
 #
 #
 # Internal variables
@@ -154,7 +154,7 @@ for arg in "$@" ; do
     ;;
     -v)
     # Pass this argument to the compiler as well.
-    echo "mpif90 for $MPIVERSION"
+    echo "mpif90 for MPICH2 version $MPICH2_VERSION"
     # if there is only 1 argument, it must be -v.
     if [ "$#" -eq "1" ] ; then
         linking=no
@@ -340,10 +340,10 @@ if [ "$linking" = yes ] ; then
         # Prepend the path for the shared libraries to the library list
         mpilibs="$F90_LINKPATH_SHL$libdir $mpilibs"
     fi
-    $Show $F90 "${allargs[@]}" $F90INCDIRS $F90MODDIRS $F90FLAGS $LDFLAGS -L$libdir -L$opalibdir $F90MODLIBS $mpilibs $MPI_OTHERLIBS
+    $Show $F90 $MPICH2_MPIF90_FLAGS "${allargs[@]}" $F90INCDIRS $F90MODDIRS $F90FLAGS $LDFLAGS -L$libdir -L$opalibdir $MPICH2_LDFLAGS $F90MODLIBS $mpilibs $MPI_OTHERLIBS
     rc=$?
 else
-    $Show $F90 "${allargs[@]}" $F90INCDIRS $F90MODDIRS $F90FLAGS
+    $Show $F90 $MPICH2_MPIF90_FLAGS "${allargs[@]}" $F90INCDIRS $F90MODDIRS $F90FLAGS
     rc=$?
 fi
 if [ -n "$rmfiles" ] ; then

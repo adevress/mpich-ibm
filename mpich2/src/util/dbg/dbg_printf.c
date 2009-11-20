@@ -352,8 +352,8 @@ int MPIU_DBG_MaxLevel      = MPIU_DBG_TYPICAL;
 static enum {MPIU_DBG_UNINIT, MPIU_DBG_PREINIT, MPIU_DBG_INITIALIZED}
     mpiu_dbg_initialized = MPIU_DBG_UNINIT;
 static char filePatternBuf[MAXPATHLEN] = "";
-static char *filePattern = "-stdout-"; /* "log%d.log"; */
-static char *defaultFilePattern = "dbg@W%w-@%d@T-%t@.log";
+static const char *filePattern = "-stdout-"; /* "log%d.log"; */
+static const char *defaultFilePattern = "dbg@W%w-@%d@T-%t@.log";
 static char temp_filename[MAXPATHLEN] = "";
 static int worldNum  = 0;
 static int worldRank = -1;
@@ -438,8 +438,8 @@ int MPIU_DBG_Outevent( const char *file, int line, int class, int kind,
 
 #ifdef MPICH_IS_THREADED
     {
-	MPE_Thread_id_t tid;
-	MPE_Thread_self(&tid);
+	MPIU_Thread_id_t tid;
+	MPIU_Thread_self(&tid);
 	threadID = (int)tid;
     }
 #endif
@@ -536,6 +536,8 @@ static const MPIU_DBG_ClassName MPIU_Classnames[] = {
     { MPIU_DBG_NEM_SOCK_DET,  "NEM_SOCK_DET",  "nem_sock_det"},
     { MPIU_DBG_VC,            "VC",            "vc"},
     { MPIU_DBG_REFCOUNT,      "REFCOUNT",      "refcount"},
+    { MPIU_DBG_ROMIO,         "ROMIO",         "romio"},
+    { MPIU_DBG_ERRHAND,       "ERRHAND",       "errhand"},
     { MPIU_DBG_ALL,           "ALL",           "all" }, 
     { 0,                      0,               0 }
 };
@@ -834,12 +836,12 @@ static int MPIU_DBG_Open_temp_file(FILE **dbg_fp)
     int ret;
     
     ret = MPIU_Strncpy(temp_filename, filePattern, MAXPATHLEN);
-    MPIU_ERR_CHKANDJUMP1(ret, mpi_errno, MPI_ERR_OTHER, "**intern", "**intern %s", "logfile path too long");
+    MPIU_ERR_CHKINTERNAL(ret, mpi_errno, "logfile path too long");
 
     MPIU_Basename(temp_filename, &basename);
 
     /* make sure there's enough room in temp_filename to store temp_pattern */
-    MPIU_ERR_CHKANDJUMP1(basename - temp_filename > MAXPATHLEN - sizeof(temp_pattern), mpi_errno, MPI_ERR_OTHER, "**intern", "**intern %s", "logfile path too long");
+    MPIU_ERR_CHKINTERNAL(basename - temp_filename > MAXPATHLEN - sizeof(temp_pattern), mpi_errno, "logfile path too long");
 
     MPIU_Strncpy(basename, temp_pattern, sizeof(temp_pattern));
     
@@ -906,7 +908,8 @@ static int MPIU_DBG_Get_filename(char *filename, int len)
     int nThread = 1;
 #endif
     static char worldNumAsChar[10] = "0";
-    char *pDest, *p;
+    char *pDest;
+    const char *p;
 
     /* FIXME: This is a hack to handle the common case of two worlds */
     if (MPIR_Process.comm_parent != NULL) {
@@ -975,8 +978,8 @@ static int MPIU_DBG_Get_filename(char *filename, int len)
             else if (*p == 't') {
 #ifdef MPICH_IS_THREADED
                 char threadIDAsChar[20];
-                MPE_Thread_id_t tid;
-                MPE_Thread_self(&tid);
+                MPIU_Thread_id_t tid;
+                MPIU_Thread_self(&tid);
                 threadID = (int)tid;
 
                 MPIU_Snprintf( threadIDAsChar, sizeof(threadIDAsChar), 

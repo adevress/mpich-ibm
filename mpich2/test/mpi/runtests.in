@@ -39,7 +39,8 @@ use Cwd;
 #
 
 # Global variables
-$np_arg  = "-np";         # Name of argument to specify the number of processes
+$mpiexec = "@MPIEXEC@";  # Name of mpiexec program (including path, if necessary)
+$np_arg  = "-np";        # Name of argument to specify the number of processes
 $err_count = 0;          # Number of programs that failed.
 $total_count = 0;        # Number of programs tested
 $np_default = 2;         # Default number of processes to use
@@ -69,6 +70,8 @@ $clean_pgms      = 1;
 $resume = 0; # 1 = do not remake existing binaries
 $preserve = 0 ; # 1 = do not erase binaries after running
 
+my $program_wrapper = '';
+
 #---------------------------------------------------------------------------
 # Get some arguments from the environment
 #   Currently, only the following are understood:
@@ -84,6 +87,9 @@ $preserve = 0 ; # 1 = do not erase binaries after running
 #   STAGINGDIR or BGLTMP path to temporary staging directory to copy executables
 #   VIRTUALNODEMODE if set, use VNM
 #   MPITEST_TIMEOUT
+#   MPITEST_PROGRAM_WRAPPER (Value is added after -np but before test
+#                            executable.  Tools like valgrind may be inserted
+#                            this way.)
 #---------------------------------------------------------------------------
 if ( defined($ENV{"VERBOSE"}) || defined($ENV{"RUNTESTS_VERBOSE"}) ) {
     $verbose = 1;
@@ -226,6 +232,10 @@ if($ENV{'RESUME'} == 1)
 if($ENV{'PRESERVE'} == 1)
 {
    $preserve = 1;
+}
+
+if (defined($ENV{'MPITEST_PROGRAM_WRAPPER'})) {
+    $program_wrapper = $ENV{'MPITEST_PROGRAM_WRAPPER'};
 }
 
 #---------------------------------------------------------------------------
@@ -804,7 +814,7 @@ sub RunMPIProgram {
 	&$InitForTest();
     }
     print STDOUT "Env includes $progEnv\n" if $verbose;
-    print STDOUT "$mpiexec $np_arg $np ./$programname $progArgs\n" if $verbose;
+    print STDOUT "$mpiexec $np_arg $np $program_wrapper ./$programname $progArgs\n" if $verbose;
     print STDOUT "." if $showProgress;
     # Save and restore the environment if necessary before running mpiexec.
     if ($progEnv ne "") {
@@ -1067,6 +1077,8 @@ sub TestTimeout {
 	if (/signaled with Interrupt/) { next; }
 	# Allow 'job ending due to env var MPIEXEC_TIMEOUT' (mpd)
 	if (/job ending due to env var MPIEXEC_TIMEOUT/) { next; }
+	# Allow 'Terminated \(signal 15\)' (hydra)
+	if (/Terminated \(signal 15\)/) { next; }
 	# ANY output is an error (other than timeout) 
 	if (! /^\s*$/) {
 	    print STDERR "Unexpected output in $programname: $_" if !$verbose;

@@ -13,7 +13,6 @@
 #include "mpid_nem_net_module_defs.h"
 #include "mpid_nem_atomics.h"
 #include "mpid_nem_defs.h"
-#include "mpid_nem_memdefs.h"
 #include "mpid_nem_fbox.h"
 #include "mpid_nem_nets.h"
 #include "mpid_nem_queue.h"
@@ -28,8 +27,7 @@ int MPIDI_CH3I_Seg_alloc(size_t len, void **ptr_p);
 int MPIDI_CH3I_Seg_commit(MPID_nem_seg_ptr_t memory, int num_local, int local_rank);
 int MPIDI_CH3I_Seg_destroy(void);
 int MPID_nem_check_alloc(int);
-int MPID_nem_mpich2_init (int ckpt_restart);
-int MPID_nem_mpich2_send_ckpt_marker (unsigned short wave, MPIDI_VC_t *vc, int *try_again);
+int MPID_nem_mpich2_init(void);
 int MPID_nem_coll_barrier_init (void);
 int MPID_nem_send_iov(MPIDI_VC_t *vc, MPID_Request **sreq_ptr, MPID_IOV *iov, int n_iov);
 int MPID_nem_lmt_pkthandler_init(MPIDI_CH3_PktHandler_Fcn *pktArray[], int arraySize);
@@ -106,6 +104,25 @@ typedef union MPIDI_CH3_nem_pkt
     MPID_nem_pkt_lmt_cookie_t lmt_cookie;
 } MPIDI_CH3_nem_pkt_t;
 
+
+/* MPID_PKT_DECL_CAST(pkt_u_var, s_pkt_type, s_pkt_p_var)
+   To avoid strict aliasing warnings when doing something like:
+       pkt_t upkt;
+       rts_pkt_t * const rts_pkt = (rts_pkt_t *)&upkt;
+   this macro does the same but through a union.
+
+   pkt_u_var -- variable name of the packet union
+   s_pkt_type -- type of the sub-packet
+   s_pkt_p_var -- variable name of the sub-packet pointer
+ */
+#define MPID_PKT_DECL_CAST(pkt_u_var, s_pkt_type, s_pkt_p_var)  \
+    union                                                       \
+    {                                                           \
+        MPIDI_CH3_Pkt_t p;                                      \
+        s_pkt_type s;                                           \
+    } pkt_u_var;                                                \
+    s_pkt_type * const s_pkt_p_var = &pkt_u_var.s
+
     
 
 /*  Macros for sending lmt messages from inside network modules.
@@ -153,8 +170,7 @@ typedef union MPIDI_CH3_nem_pkt
     } while (0)
 
 #define MPID_nem_lmt_send_CTS(vc, rreq, r_cookie_buf, r_cookie_len) do {                                \
-        MPIDI_CH3_Pkt_t _upkt;                                                                          \
-        MPID_nem_pkt_lmt_cts_t * const _cts_pkt = (MPID_nem_pkt_lmt_cts_t *)&_upkt;                     \
+        MPID_PKT_DECL_CAST(_upkt, MPID_nem_pkt_lmt_cts_t, _cts_pkt);                                    \
         MPID_Request *_cts_req;                                                                         \
         MPID_IOV _iov[2];                                                                               \
                                                                                                         \
@@ -187,8 +203,7 @@ static inline int MPID_nem_lmt_send_COOKIE(MPIDI_VC_t *vc, MPID_Request *req,
                                            void *cookie_buf, MPI_Aint cookie_len)
 {
     int mpi_errno = MPI_SUCCESS;
-    MPIDI_CH3_Pkt_t _upkt;
-    MPID_nem_pkt_lmt_cookie_t * const cookie_pkt = (MPID_nem_pkt_lmt_cookie_t *)&_upkt;
+    MPID_PKT_DECL_CAST(_upkt, MPID_nem_pkt_lmt_cookie_t, cookie_pkt);
     MPID_Request *cookie_req;
     MPID_IOV iov[2];
 
@@ -210,7 +225,7 @@ static inline int MPID_nem_lmt_send_COOKIE(MPIDI_VC_t *vc, MPID_Request *req,
             cookie_pkt->receiver_req_id = (req)->ch.lmt_req_id;
             break;
         default:
-            MPIU_ERR_SETANDJUMP1(mpi_errno, MPI_ERR_OTHER, "**intern", "**intern %s", "unexpected request type");
+            MPIU_ERR_INTERNALANDJUMP(mpi_errno, "unexpected request type");
             break;
     }
 
@@ -232,15 +247,14 @@ fn_fail:
 }
         
 #define MPID_nem_lmt_send_DONE(vc, rreq) do {                                                                   \
-        MPIDI_CH3_Pkt_t _upkt;                                                                                  \
-        MPID_nem_pkt_lmt_done_t * const _done_pkt = (MPID_nem_pkt_lmt_done_t *)&_upkt;                          \
+        MPID_PKT_DECL_CAST(_upkt, MPID_nem_pkt_lmt_done_t, _done_pkt);                                          \
         MPID_Request *_done_req;                                                                                \
                                                                                                                 \
         MPIU_DBG_MSG(CH3_OTHER,VERBOSE,"sending rndv DONE packet");                                             \
         MPIDI_Pkt_init(_done_pkt, MPIDI_NEM_PKT_LMT_DONE);                                                      \
         _done_pkt->req_id = (rreq)->ch.lmt_req_id;                                                              \
                                                                                                                 \
-        mpi_errno = MPIDI_CH3_iStartMsg((vc), _done_pkt, sizeof(*_done_pkt), &_done_req);                        \
+        mpi_errno = MPIDI_CH3_iStartMsg((vc), _done_pkt, sizeof(*_done_pkt), &_done_req);                       \
         MPIU_ERR_CHKANDJUMP(mpi_errno, mpi_errno, MPI_ERR_OTHER, "**donepkt");                                  \
         if (_done_req != NULL)                                                                                  \
         {                                                                                                       \

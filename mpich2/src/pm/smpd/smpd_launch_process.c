@@ -1286,6 +1286,30 @@ int smpd_launch_process(smpd_process_t *process, int priorityClass, int priority
 	bSuccess = FALSE;
     }
 
+#ifdef HAVE_WINDOWS_H
+    if(smpd_process.set_affinity)
+    {
+        DWORD_PTR mask;
+        if(process->binding_proc != -1){
+            /* Get affinity mask corresponding to the binding proc */
+            mask = smpd_get_processor_affinity_mask(process->binding_proc);
+        }
+        else{
+            /* Get affinity mask decided by smpd - auto binding */
+            mask = smpd_get_next_process_affinity_mask();
+        }
+        if(mask != NULL){
+            /* FIXME: The return vals of these functions are not checked ! */
+            smpd_dbg_printf("Setting the process/thread affinity (mask=%lu)\n", mask);
+            SetProcessAffinityMask(psInfo.hProcess, mask);
+            SetThreadAffinityMask(psInfo.hThread, mask);
+		}
+        else{
+            smpd_dbg_printf("Unable to set process/thread affinity (mask=%lu)\n", mask);
+        }
+    }
+#endif
+
     FreeEnvironmentStrings((TCHAR*)pEnv);
     SetCurrentDirectory(tSavedPath);
     RemoveEnvironmentVariables(process->env);
@@ -1651,7 +1675,7 @@ static void add_environment_variables(char *str, char **vars, char *bEnv)
 static void child_exited(int signo)
 {
     pid_t pid;
-    int status = WNOHANG;
+    int status;
     smpd_process_t *iter;
 
     /*
@@ -1666,9 +1690,9 @@ static void child_exited(int signo)
 	smpd_dbg_printf("SIGCHLD received\n");
 	for (;;)
 	{
-	    status = WNOHANG;
-	    pid = wait(&status);
-	    if (pid == -1)
+	    status = 0;
+	    pid = waitpid(-1, &status, WNOHANG);
+	    if (pid <= 0)
 		break;
 
 	    smpd_dbg_printf("SIGCHILD pid = %d\n", pid);

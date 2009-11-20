@@ -10,7 +10,7 @@
 #define FUNCNAME MPID_nem_tcp_finalize
 #undef FCNAME
 #define FCNAME MPIDI_QUOTE(FUNCNAME)
-int MPID_nem_tcp_finalize()
+int MPID_nem_tcp_finalize(void)
 {
     int mpi_errno = MPI_SUCCESS;
     int ret;
@@ -34,14 +34,5 @@ int MPID_nem_tcp_finalize()
     return mpi_errno;
  fn_fail:
     goto fn_exit;
-}
-
-#undef FUNCNAME
-#define FUNCNAME MPID_nem_tcp_ckpt_shutdown
-#undef FCNAME
-#define FCNAME MPIDI_QUOTE(FUNCNAME)
-int MPID_nem_tcp_ckpt_shutdown()
-{
-    return MPID_nem_tcp_finalize();
 }
 

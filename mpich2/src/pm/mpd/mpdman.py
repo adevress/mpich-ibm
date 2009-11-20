@@ -95,11 +95,16 @@ class MPDMan(object):
         # NOTE: this will also close syslog's fd inherited from mpd; re-opened below
         try:     max_fds = os.sysconf('SC_OPEN_MAX')
         except:  max_fds = 1024
-        for fd in range(3,max_fds):
-            if fd == self.mpdSock.fileno()  or  fd == self.listenRingSock.fileno():
-                continue
-            try:    os.close(fd)
-            except: pass
+        # FIXME This snippet causes problems on Fedora Core 12.  FC12's python
+        # opens a file object to /etc/abrt/pyhook.conf.  Closing the fd out from
+        # under the higher level object causes problems at exit time when the
+        # higher level object is garbage collected.  See MPICH2 ticket #902 for
+        # more information.
+        #for fd in range(3,max_fds):
+        #    if fd == self.mpdSock.fileno()  or  fd == self.listenRingSock.fileno():
+        #        continue
+        #    try:    os.close(fd)
+        #    except: pass
         if syslog_module_available:
             syslog.openlog("mpdman",0,syslog.LOG_DAEMON)
             syslog.syslog(syslog.LOG_INFO,"mpdman starting new log; %s" % (self.myId) )
@@ -373,6 +378,7 @@ class MPDMan(object):
                       'spawner_manpid' : int(os.environ['MPDMAN_SPAWNER_MANPID']),
                       'spawner_mpd' : os.environ['MPDMAN_SPAWNER_MPD'] }
         self.mpdSock.send_dict_msg(msgToSend)
+
         if not self.subproc:
             self.streamHandler.set_handler(self.fd_read_cli_stdout,
                                            self.handle_cli_stdout_input)
@@ -423,6 +429,24 @@ class MPDMan(object):
                 sys.exit(0)
             # rshipSock.close()
             self.waitPids.append(rshipPid)
+
+        if not self.spawned:
+            # receive the final process mapping from our MPD overlords
+            msg = self.mpdSock.recv_dict_msg(timeout=-1)
+
+            # a few defensive checks now to make sure that the various parts of the
+            # code are all on the same page
+            if not msg.has_key('cmd') or msg['cmd'] != 'process_mapping':
+                mpd_print(1,'expected cmd="process_mapping", got cmd="%s" instead' % (msg.get('cmd','**not_present**')))
+                sys.exit(-1)
+            if msg['jobid'] != self.jobid:
+                mpd_print(1,'expected jobid="%s", got jobid="%s" instead' % (self.jobid,msg['jobid']))
+                sys.exit(-1)
+            if not msg.has_key('process_mapping'):
+                mpd_print(1,'expected msg to contain a process_mapping key')
+                sys.exit(-1)
+            self.KVSs[self.default_kvsname]['PMI_process_mapping'] = msg['process_mapping']
+
 
         self.tvReady = 0
         self.pmiBarrierInRecvd = 0

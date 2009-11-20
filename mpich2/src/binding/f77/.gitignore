@@ -86,6 +86,10 @@
 /commseterrf.c
 /commtesticf.c
 /dims_createf.c
+/dist_graph_create_adjacentf.c
+/dist_graph_createf.c
+/dist_graph_neighborsf.c
+/dist_graph_neighbors_countf.c
 /dup_fnf.c
 /dup_comm_fnf.c
 /dup_type_fnf.c
@@ -164,6 +168,7 @@
 /null_comm_del_fnf.c
 /null_type_del_fnf.c
 /null_win_del_fnf.c
+/op_commutativef.c
 /op_createf.c
 /op_freef.c
 /open_portf.c
@@ -180,6 +185,8 @@
 /recvf.c
 /redscatf.c
 /reducef.c
+/reduce_localf.c
+/reduce_scatter_blockf.c
 /register_datarepf.c
 /reqgetstatf.c
 /request_freef.c

@@ -133,12 +133,12 @@ int MPIR_Gatherv (
             if (min_procs_str != NULL)
                 min_procs = atoi(min_procs_str);
             else
-               min_procs = comm_size + 1; /* Disable ssend if env not set */
+                min_procs = comm_size + 1; /* Disable ssend if env not set */
 
-            if(min_procs == -1)
-               min_procs = comm_size + 1; /* Disable ssend */
+            if (min_procs == -1)
+                min_procs = comm_size + 1; /* Disable ssend */
             else if (min_procs == 0)
-               min_procs = MPIR_GATHERV_MIN_PROCS; /* Use the default value */
+                min_procs = MPIR_GATHERV_MIN_PROCS; /* Use the default value */
 
             if (comm_size >= min_procs) {
                 mpi_errno = MPIC_Ssend(sendbuf, sendcnt, sendtype, root, 
@@ -212,6 +212,7 @@ int MPI_Gatherv(void *sendbuf, int sendcnt, MPI_Datatype sendtype,
     static const char FCNAME[] = "MPI_Gatherv";
     int mpi_errno = MPI_SUCCESS;
     MPID_Comm *comm_ptr = NULL;
+    MPIU_THREADPRIV_DECL;
     MPID_MPI_STATE_DECL(MPID_STATE_MPI_GATHERV);
 
     MPIR_ERRTEST_INITIALIZED_ORDIE();
@@ -336,7 +337,6 @@ int MPI_Gatherv(void *sendbuf, int sendcnt, MPI_Datatype sendtype,
     }
     else
     {
-	MPIU_THREADPRIV_DECL;
 	MPIU_THREADPRIV_GET;
         
         MPIR_Nest_incr();

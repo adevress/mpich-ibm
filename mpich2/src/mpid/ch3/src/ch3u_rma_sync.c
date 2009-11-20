@@ -525,8 +525,11 @@ static int MPIDI_CH3I_Send_rma_msg(MPIDI_RMA_ops *rma_op, MPID_Win *win_ptr,
 			    mpi_errno, "dataloop");
 
 	MPIDI_FUNC_ENTER(MPID_STATE_MEMCPY);
-        memcpy(*dataloop, target_dtp->dataloop, target_dtp->dataloop_size);
+        MPIU_Memcpy(*dataloop, target_dtp->dataloop, target_dtp->dataloop_size);
 	MPIDI_FUNC_EXIT(MPID_STATE_MEMCPY);
+        /* the dataloop can have undefined padding sections, so we need to let
+         * valgrind know that it is OK to pass this data to writev later on */
+        MPIU_VG_MAKE_MEM_DEFINED(*dataloop, target_dtp->dataloop_size);
 
         if (rma_op->type == MPIDI_RMA_PUT)
 	{
@@ -749,8 +752,12 @@ static int MPIDI_CH3I_Recv_rma_msg(MPIDI_RMA_ops *rma_op, MPID_Win *win_ptr,
 			    mpi_errno, "dataloop");
 
 	MPIDI_FUNC_ENTER(MPID_STATE_MEMCPY);
-        memcpy(*dataloop, dtp->dataloop, dtp->dataloop_size);
+        MPIU_Memcpy(*dataloop, dtp->dataloop, dtp->dataloop_size);
 	MPIDI_FUNC_EXIT(MPID_STATE_MEMCPY);
+
+        /* the dataloop can have undefined padding sections, so we need to let
+         * valgrind know that it is OK to pass this data to writev later on */
+        MPIU_VG_MAKE_MEM_DEFINED(*dataloop, dtp->dataloop_size);
 
         get_pkt->dataloop_size = dtp->dataloop_size;
 
@@ -760,7 +767,7 @@ static int MPIDI_CH3I_Recv_rma_msg(MPIDI_RMA_ops *rma_op, MPID_Win *win_ptr,
         iov[1].MPID_IOV_LEN = sizeof(*dtype_info);
         iov[2].MPID_IOV_BUF = (MPID_IOV_BUF_CAST)*dataloop;
         iov[2].MPID_IOV_LEN = dtp->dataloop_size;
-        
+
 	MPIU_THREAD_CS_ENTER(CH3COMM,vc);
         mpi_errno = MPIU_CALL(MPIDI_CH3,iStartMsgv(vc, iov, 3, &req));
 	MPIU_THREAD_CS_EXIT(CH3COMM,vc);
@@ -2253,8 +2260,8 @@ int MPIDI_CH3_PktHandler_Put( MPIDI_VC_t *vc, MPIDI_CH3_Pkt_t *pkt,
         if (data_len >= sizeof(MPIDI_RMA_dtype_info) + put_pkt->dataloop_size)
         {
             /* copy all of dtype_info and dataloop */
-            memcpy(req->dev.dtype_info, data_buf, sizeof(MPIDI_RMA_dtype_info));
-            memcpy(req->dev.dataloop, data_buf + sizeof(MPIDI_RMA_dtype_info), put_pkt->dataloop_size);
+            MPIU_Memcpy(req->dev.dtype_info, data_buf, sizeof(MPIDI_RMA_dtype_info));
+            MPIU_Memcpy(req->dev.dataloop, data_buf + sizeof(MPIDI_RMA_dtype_info), put_pkt->dataloop_size);
 
             *buflen = sizeof(MPIDI_CH3_Pkt_t) + sizeof(MPIDI_RMA_dtype_info) + put_pkt->dataloop_size;
           
@@ -2392,8 +2399,8 @@ int MPIDI_CH3_PktHandler_Get( MPIDI_VC_t *vc, MPIDI_CH3_Pkt_t *pkt,
         if (data_len >= sizeof(MPIDI_RMA_dtype_info) + get_pkt->dataloop_size)
         {
             /* copy all of dtype_info and dataloop */
-            memcpy(req->dev.dtype_info, data_buf, sizeof(MPIDI_RMA_dtype_info));
-            memcpy(req->dev.dataloop, data_buf + sizeof(MPIDI_RMA_dtype_info), get_pkt->dataloop_size);
+            MPIU_Memcpy(req->dev.dtype_info, data_buf, sizeof(MPIDI_RMA_dtype_info));
+            MPIU_Memcpy(req->dev.dataloop, data_buf + sizeof(MPIDI_RMA_dtype_info), get_pkt->dataloop_size);
 
             *buflen = sizeof(MPIDI_CH3_Pkt_t) + sizeof(MPIDI_RMA_dtype_info) + get_pkt->dataloop_size;
           
@@ -2541,8 +2548,8 @@ int MPIDI_CH3_PktHandler_Accumulate( MPIDI_VC_t *vc, MPIDI_CH3_Pkt_t *pkt,
         if (data_len >= sizeof(MPIDI_RMA_dtype_info) + accum_pkt->dataloop_size)
         {
             /* copy all of dtype_info and dataloop */
-            memcpy(req->dev.dtype_info, data_buf, sizeof(MPIDI_RMA_dtype_info));
-            memcpy(req->dev.dataloop, data_buf + sizeof(MPIDI_RMA_dtype_info), accum_pkt->dataloop_size);
+            MPIU_Memcpy(req->dev.dtype_info, data_buf, sizeof(MPIDI_RMA_dtype_info));
+            MPIU_Memcpy(req->dev.dataloop, data_buf + sizeof(MPIDI_RMA_dtype_info), accum_pkt->dataloop_size);
 
             *buflen = sizeof(MPIDI_CH3_Pkt_t) + sizeof(MPIDI_RMA_dtype_info) + accum_pkt->dataloop_size;
           

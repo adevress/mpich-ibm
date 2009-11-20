@@ -1004,6 +1004,8 @@ int smpd_state_reading_stdin(smpd_context_t *context, SMPDU_Sock_event_t *event_
 	    num_read = 0;
 	    smpd_dbg_printf("SMPDU_Sock_read(%d) failed (%s), assuming %s is closed.\n",
 		SMPDU_Sock_get_sock_id(context->sock), get_sock_error_string(result), smpd_get_context_str(context));
+            smpd_exit_fn(FCNAME);
+            return SMPD_FAIL;
 	}
 	smpd_dbg_printf("%d bytes read from %s\n", num_read+1, smpd_get_context_str(context));
 	smpd_encode_buffer(buffer, SMPD_MAX_CMD_LENGTH, context->read_cmd.cmd, num_read+1, &num_encoded);
@@ -1048,6 +1050,8 @@ int smpd_state_reading_stdin(smpd_context_t *context, SMPDU_Sock_event_t *event_
 	    num_read = 0;
 	    smpd_dbg_printf("SMPDU_Sock_read(%d) failed (%s), assuming %s is closed.\n",
 		SMPDU_Sock_get_sock_id(context->sock), get_sock_error_string(result), smpd_get_context_str(context));
+            smpd_exit_fn(FCNAME);
+            return SMPD_FAIL;
 	}
 	smpd_dbg_printf("%d bytes read from %s\n", num_read+1, smpd_get_context_str(context));
 
@@ -7153,7 +7157,7 @@ int smpd_enter_at_state(SMPDU_Sock_set_t set, smpd_state_t state)
 	switch (event.op_type)
 	{
 	case SMPDU_SOCK_OP_READ:
-	    smpd_dbg_printf("SOCK_OP_READ event.error = %d, result = %d, context->type=%d\n", event.error, result, context->type);
+	    smpd_dbg_printf("SOCK_OP_READ event.error = %d, result = %d, context=%s\n", event.error, result, smpd_get_context_str(context));
 	    if (event.error != SMPD_SUCCESS)
         {
 		    /* don't print EOF errors because they usually aren't errors */
@@ -7259,7 +7263,7 @@ int smpd_enter_at_state(SMPDU_Sock_set_t set, smpd_state_t state)
 	    }
 	    break;
 	case SMPDU_SOCK_OP_WRITE:
-	    smpd_dbg_printf("SOCK_OP_WRITE\n");
+	    smpd_dbg_printf("SOCK_OP_WRITE event.error = %d, result = %d, context=%s\n", event.error, result, smpd_get_context_str(context));
 	    if (event.error != SMPD_SUCCESS)
 	    {
 		smpd_err_printf("op_write error on %s context: %s\n", smpd_get_context_str(context), get_sock_error_string(event.error));
@@ -7292,7 +7296,7 @@ int smpd_enter_at_state(SMPDU_Sock_set_t set, smpd_state_t state)
 	    }
 	    break;
 	case SMPDU_SOCK_OP_ACCEPT:
-	    smpd_dbg_printf("SOCK_OP_ACCEPT\n");
+	    smpd_dbg_printf("SOCK_OP_ACCEPT event.error = %d, result = %d, context=%s\n", event.error, result, smpd_get_context_str(context));
 	    if (event.error != SMPD_SUCCESS)
 	    {
 		smpd_err_printf("error listening and accepting socket: %s\n", get_sock_error_string(event.error));
@@ -7325,7 +7329,7 @@ int smpd_enter_at_state(SMPDU_Sock_set_t set, smpd_state_t state)
 	    }
 	    break;
 	case SMPDU_SOCK_OP_CONNECT:
-	    smpd_dbg_printf("SOCK_OP_CONNECT\n");
+	    smpd_dbg_printf("SOCK_OP_CONNECT event.error = %d, result = %d, context=%s\n", event.error, result, smpd_get_context_str(context));
 	    if (event.error != SMPD_SUCCESS)
 	    {
 		smpd_err_printf("op_connect error: %s\n", get_sock_error_string(event.error));
@@ -7362,7 +7366,8 @@ int smpd_enter_at_state(SMPDU_Sock_set_t set, smpd_state_t state)
 	    }
 	    break;
 	case SMPDU_SOCK_OP_CLOSE:
-	    smpd_dbg_printf("SOCK_OP_CLOSE\n"); fflush(stdout);
+	    smpd_dbg_printf("SOCK_OP_CLOSE event.error = %d, result = %d, context=%s\n", event.error, result, smpd_get_context_str(context));
+        fflush(stdout);
 	    if (event.error != SMPD_SUCCESS)
 		smpd_err_printf("error closing the %s context socket: %s\n", smpd_get_context_str(context), get_sock_error_string(event.error));
 	    result = smpd_handle_op_close(context, &event);

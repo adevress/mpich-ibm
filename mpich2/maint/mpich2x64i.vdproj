@@ -27,6 +27,12 @@
         }
         "Entry"
         {
+        "MsmKey" = "8:_16898359DEFD4ED5A9AA75F627C67BFF"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_18D946452B7F4DBB81818445A0BC79D1"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -261,6 +267,12 @@
         }
         "Entry"
         {
+        "MsmKey" = "8:_B4E7F878516042FF8E2767782EB8741D"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_B4EC134AF8714714BD63B0EFC384A59B"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -469,6 +481,26 @@
             "TargetName" = "8:clog2TOslog2.jar"
             "Tag" = "8:"
             "Folder" = "8:_CB4581DB084E4E7E8C5A128FA780483C"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_16898359DEFD4ED5A9AA75F627C67BFF"
+            {
+            "SourcePath" = "8:..\\winbuild\\x64\\Release\\gfortran\\fmpich2g.lib"
+            "TargetName" = "8:fmpich2g.lib"
+            "Tag" = "8:"
+            "Folder" = "8:_21FB2EC726254C54839F05E4290C1045"
             "Condition" = "8:"
             "Transitive" = "11:FALSE"
             "Vital" = "11:TRUE"
@@ -1263,6 +1295,26 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_B4E7F878516042FF8E2767782EB8741D"
+            {
+            "SourcePath" = "8:..\\winbuild\\x64\\Release\\gfortran\\fmpich2g.dll"
+            "TargetName" = "8:fmpich2g.dll"
+            "Tag" = "8:"
+            "Folder" = "8:_C25C11E398284C2EAFD99160D8C6EA71"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_B4EC134AF8714714BD63B0EFC384A59B"
             {
             "SourcePath" = "8:..\\winbuild\\x64\\Release\\shmp\\mpich2shmp.dll"
@@ -1542,14 +1594,14 @@
         {
         "Name" = "8:Microsoft Visual Studio"
         "ProductName" = "8:MPICH2 64-bit"
-        "ProductCode" = "8:{EA349AD6-E964-44DB-908B-67796F0E9E7D}"
-        "PackageCode" = "8:{7EC045F0-2834-4E22-A49C-DBC9CB31CE93}"
-        "UpgradeCode" = "8:{6DAF2FEB-EFB3-4F95-8118-36EA8C9FEF20}"
+        "ProductCode" = "8:{B91EB9DA-98D2-4241-87EA-3D889B58D564}"
+        "PackageCode" = "8:{F55A402E-C195-4398-ABA6-870074B69FEC}"
+        "UpgradeCode" = "8:{B5B5129C-C50A-4382-9DCE-4533506FED67}"
         "RestartWWWService" = "11:FALSE"
         "RemovePreviousVersions" = "11:TRUE"
         "DetectNewerInstalledVersion" = "11:TRUE"
         "InstallAllUsers" = "11:FALSE"
-        "ProductVersion" = "8:1.1"
+        "ProductVersion" = "8:1.2.1"
         "Manufacturer" = "8:Argonne National Laboratory"
         "ARPHELPTELEPHONE" = "8:"
         "ARPHELPLINK" = "8:www.mcs.anl.gov/mpi/mpich2"

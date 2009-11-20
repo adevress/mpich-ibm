@@ -5,12 +5,13 @@
  */
 
 #include "hydra_utils.h"
+#include "bind.h"
 
-HYD_Status HYDU_create_process(char **client_arg, HYD_Env_t * env_list,
-                               int *in, int *out, int *err, int *pid, int core)
+HYD_status HYDU_create_process(char **client_arg, HYD_env_t * env_list,
+                               int *in, int *out, int *err, int *pid, int os_index)
 {
     int inpipe[2], outpipe[2], errpipe[2], tpid;
-    HYD_Status status = HYD_SUCCESS;
+    HYD_status status = HYD_SUCCESS;
 
     HYDU_FUNC_ENTER();
 
@@ -54,18 +55,22 @@ HYD_Status HYDU_create_process(char **client_arg, HYD_Env_t * env_list,
         }
 
         if (env_list) {
-            status = HYDU_putenv_list(env_list);
+            status = HYDU_putenv_list(env_list, HYD_ENV_OVERWRITE_FALSE);
             HYDU_ERR_POP(status, "unable to putenv\n");
         }
 
-        if (core >= 0) {
-            status = HYDU_bind_process(core);
+        if (os_index >= 0) {
+            status = HYDT_bind_process(os_index);
             HYDU_ERR_POP(status, "bind process failed\n");
         }
 
         if (execvp(client_arg[0], client_arg) < 0) {
-            HYDU_ERR_SETANDJUMP1(status, HYD_INTERNAL_ERROR, "execvp error (%s)\n",
-                                 HYDU_strerror(errno));
+            /* The child process should never get back to the proxy
+             * code; if there is an error, just throw it here and
+             * exit. */
+            HYDU_error_printf("execvp error on file %s (%s)\n", client_arg[0],
+                              HYDU_strerror(errno));
+            exit(-1);
         }
     }
     else {      /* Parent process */
@@ -95,10 +100,10 @@ HYD_Status HYDU_create_process(char **client_arg, HYD_Env_t * env_list,
 }
 
 
-HYD_Status HYDU_fork_and_exit(int core)
+HYD_status HYDU_fork_and_exit(int os_index)
 {
     pid_t tpid;
-    HYD_Status status = HYD_SUCCESS;
+    HYD_status status = HYD_SUCCESS;
 
     HYDU_FUNC_ENTER();
 
@@ -109,8 +114,8 @@ HYD_Status HYDU_fork_and_exit(int core)
         close(1);
         close(2);
 
-        if (core >= 0) {
-            status = HYDU_bind_process(core);
+        if (os_index >= 0) {
+            status = HYDT_bind_process(os_index);
             HYDU_ERR_POP(status, "bind process failed\n");
         }
     }
@@ -127,11 +132,11 @@ HYD_Status HYDU_fork_and_exit(int core)
 }
 
 #if defined HAVE_THREAD_SUPPORT
-HYD_Status HYDU_create_thread(void *(*func) (void *), void *args,
-                              struct HYD_Thread_context *ctxt)
+HYD_status HYDU_create_thread(void *(*func) (void *), void *args,
+                              struct HYD_thread_context *ctxt)
 {
     int ret;
-    HYD_Status status = HYD_SUCCESS;
+    HYD_status status = HYD_SUCCESS;
 
     HYDU_FUNC_ENTER();
 
@@ -148,10 +153,10 @@ HYD_Status HYDU_create_thread(void *(*func) (void *), void *args,
     goto fn_exit;
 }
 
-HYD_Status HYDU_join_thread(struct HYD_Thread_context ctxt)
+HYD_status HYDU_join_thread(struct HYD_thread_context ctxt)
 {
     int ret;
-    HYD_Status status = HYD_SUCCESS;
+    HYD_status status = HYD_SUCCESS;
 
     HYDU_FUNC_ENTER();
 
@@ -168,24 +173,3 @@ HYD_Status HYDU_join_thread(struct HYD_Thread_context ctxt)
     goto fn_exit;
 }
 #endif /* HAVE_THREAD_SUPPORT */
-
-int HYDU_local_to_global_id(int local_id, int partition_core_count,
-                            struct HYD_Partition_segment *segment_list, int global_core_count)
-{
-    int global_id, rem;
-    struct HYD_Partition_segment *segment;
-
-    global_id = ((local_id / partition_core_count) * global_core_count);
-    rem = (local_id % partition_core_count);
-
-    for (segment = segment_list; segment; segment = segment->next) {
-        if (rem >= segment->proc_count)
-            rem -= segment->proc_count;
-        else {
-            global_id += segment->start_pid + rem;
-            break;
-        }
-    }
-
-    return global_id;
-}

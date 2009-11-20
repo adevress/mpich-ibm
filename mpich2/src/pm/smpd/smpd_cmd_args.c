@@ -360,7 +360,7 @@ int smpd_parse_command_args(int *argcp, char **argvp[])
 	smpd_get_opt(argcp, argvp, "/install") ||
 	smpd_get_opt(argcp, argvp, "/RegServer"))
     {
-	char phrase[SMPD_PASSPHRASE_MAX_LENGTH]="", port_str[12]="";
+	char phrase[SMPD_PASSPHRASE_MAX_LENGTH]="", port_str[SMPD_MAX_PORT_STR_LENGTH]="";
 
 	if (smpd_remove_service(SMPD_FALSE) == SMPD_FALSE)
 	{
@@ -379,10 +379,12 @@ int smpd_parse_command_args(int *argcp, char **argvp[])
 	    smpd_get_password(phrase);
 	    smpd_set_smpd_data("phrase", phrase);
 	}
-	if (smpd_get_opt_string(argcp, argvp, "-port", port_str, 10))
+	if (smpd_process.port != SMPD_LISTENER_PORT)
 	{
+        snprintf(port_str, SMPD_MAX_PORT_STR_LENGTH, "%d", smpd_process.port);
 	    smpd_set_smpd_data("port", port_str);
 	}
+
 	smpd_install_service(SMPD_FALSE, SMPD_TRUE, smpd_get_opt(argcp, argvp, "-delegation"));
 	smpd_set_smpd_data("version", SMPD_VERSION);
 	ExitProcess(0);
@@ -442,6 +444,15 @@ int smpd_parse_command_args(int *argcp, char **argvp[])
 	    result = GetLastError();
 	    smpd_dbg_printf("unable to set the ctrl handler for the smpd manager, error %d.\n", result);
 	}
+#ifdef HAVE_WINDOWS_H
+    {
+        BOOL ret;
+        ret = smpd_init_affinity_table();
+        if(!ret){
+            smpd_dbg_printf("Initializing smpd affinity table failed\n");
+        }
+    }
+#endif
 
 	smpd_process.bService = SMPD_FALSE;
 	if (!smpd_get_opt_string(argcp, argvp, "-read", read_handle_str, 20))

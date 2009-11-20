@@ -62,6 +62,7 @@ int MPI_Type_create_hindexed(int count,
     MPID_Datatype *new_dtp;
     int i, *ints;
     MPIU_CHKLMEM_DECL(1);
+    MPIU_THREADPRIV_DECL;
     MPID_MPI_STATE_DECL(MPID_STATE_MPI_TYPE_CREATE_HINDEXED);
 
     MPIR_ERRTEST_INITIALIZED_ORDIE();
@@ -73,7 +74,7 @@ int MPI_Type_create_hindexed(int count,
     {
         MPID_BEGIN_ERROR_CHECKS;
         {
-	    int i;
+	    int j;
 	    MPID_Datatype *datatype_ptr = NULL;
 
 	    MPIR_ERRTEST_COUNT(count, mpi_errno);
@@ -90,8 +91,8 @@ int MPI_Type_create_hindexed(int count,
 		MPID_Datatype_get_ptr(oldtype, datatype_ptr);
 		MPID_Datatype_valid_ptr(datatype_ptr, mpi_errno);
 	    }
-	    for (i=0; i < count; i++) {
-		MPIR_ERRTEST_ARGNEG(blocklengths[i], "blocklen", mpi_errno);
+	    for (j=0; j < count; j++) {
+		MPIR_ERRTEST_ARGNEG(blocklengths[j], "blocklen", mpi_errno);
 	    }
             if (mpi_errno != MPI_SUCCESS) goto fn_fail;
         }

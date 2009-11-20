@@ -4,7 +4,6 @@ dnl aclocal_cache.m4, included by sowing/confdb/aclocal.m4, fixes
 dnl bugs in autoconf caching.
 dnl
 dnl The file name here refers to a file in the source being configured
-AC_PREREQ(2.59)
 AC_INIT(simple2pmi.c)
 
 dnl The MPICH2 top-level configure adds a bunch of flags to the
@@ -52,6 +51,15 @@ PAC_VPATH_CHECK()
 PAC_LOAD_BASE_CACHE
 
 PAC_PROG_MAKE
+
+# Check for alloca function.  May set HAVE_ALLOCA_H and HAVE_ALLOCA
+AC_FUNC_ALLOCA
+# We don't use alloca unless USE_ALLOCA is also set.
+AC_ARG_ENABLE(alloca,
+[--enable-alloca - Use alloca to allocate temporary memory if available],,enable_alloca=no)
+if test "$enable_alloca" = yes ; then
+    AC_DEFINE(USE_ALLOCA,1,[Define if alloca should be used if available])
+fi
 
 AC_CHECK_HEADERS(unistd.h string.h stdlib.h sys/socket.h strings.h)
 dnl Use snprintf if possible when creating messages
@@ -119,7 +127,7 @@ if test "$pac_cv_have_haddr_list" = "yes" ; then
     AC_DEFINE(HAVE_H_ADDR_LIST,1,[Define if struct hostent contains h_addr_list])
 fi
 
-AC_CHECK_SIZEOF(void *,$CROSS_SIZEOF_VOID_P)
+AC_CHECK_SIZEOF(void *)
 
 
 AC_SUBST(AR)

@@ -17,10 +17,10 @@ static int exists(char *filename)
     return 1;
 }
 
-HYD_Status HYDU_find_in_path(char *execname, char **path)
+HYD_status HYDU_find_in_path(const char *execname, char **path)
 {
     char *user_path = NULL, *tmp[HYD_NUM_TMP_STRINGS], *path_loc = NULL, *test_loc;
-    HYD_Status status = HYD_SUCCESS;
+    HYD_status status = HYD_SUCCESS;
 
     HYDU_FUNC_ENTER();
 
@@ -30,21 +30,23 @@ HYD_Status HYDU_find_in_path(char *execname, char **path)
         user_path = HYDU_strdup(getenv("PATH"));
         test_loc = strtok(user_path, ";:");
         do {
-            tmp[0] = test_loc;
-            tmp[1] = "/";
-            tmp[2] = execname;
+            tmp[0] = HYDU_strdup(test_loc);
+            tmp[1] = HYDU_strdup("/");
+            tmp[2] = HYDU_strdup(execname);
             tmp[3] = NULL;
 
             status = HYDU_str_alloc_and_join(tmp, &path_loc);
             HYDU_ERR_POP(status, "unable to join strings\n");
+            HYDU_free_strlist(tmp);
 
             if (exists(path_loc)) {
-                tmp[0] = test_loc;
-                tmp[1] = "/";
+                tmp[0] = HYDU_strdup(test_loc);
+                tmp[1] = HYDU_strdup("/");
                 tmp[2] = NULL;
 
                 status = HYDU_str_alloc_and_join(tmp, path);
                 HYDU_ERR_POP(status, "unable to join strings\n");
+                HYDU_free_strlist(tmp);
 
                 goto fn_exit;   /* We are done */
             }
@@ -70,11 +72,11 @@ HYD_Status HYDU_find_in_path(char *execname, char **path)
     goto fn_exit;
 }
 
-HYD_Status HYDU_get_base_path(char *execname, char *wdir, char **path)
+HYD_status HYDU_get_base_path(const char *execname, char *wdir, char **path)
 {
     char *loc, *post;
     char *tmp[HYD_NUM_TMP_STRINGS];
-    HYD_Status status = HYD_SUCCESS;
+    HYD_status status = HYD_SUCCESS;
 
     HYDU_FUNC_ENTER();
 
@@ -91,12 +93,13 @@ HYD_Status HYDU_get_base_path(char *execname, char *wdir, char **path)
 
         /* Check if its absolute or relative */
         if (post[0] != '/') {   /* relative */
-            tmp[0] = wdir;
-            tmp[1] = "/";
-            tmp[2] = post;
+            tmp[0] = HYDU_strdup(wdir);
+            tmp[1] = HYDU_strdup("/");
+            tmp[2] = HYDU_strdup(post);
             tmp[3] = NULL;
             status = HYDU_str_alloc_and_join(tmp, path);
             HYDU_ERR_POP(status, "unable to join strings\n");
+            HYDU_free_strlist(tmp);
         }
         else {  /* absolute */
             *path = HYDU_strdup(post);
@@ -106,6 +109,93 @@ HYD_Status HYDU_get_base_path(char *execname, char *wdir, char **path)
   fn_exit:
     if (post)
         HYDU_FREE(post);
+    HYDU_FUNC_EXIT();
+    return status;
+
+  fn_fail:
+    goto fn_exit;
+}
+
+
+char *HYDU_getcwd(void)
+{
+    char *pwdval, *cwdval, *retval = NULL;
+    HYD_status status = HYD_SUCCESS;
+#if defined HAVE_STAT
+    struct stat spwd, scwd;
+#endif /* HAVE_STAT */
+
+    pwdval = getenv("PWD");
+    HYDU_MALLOC(cwdval, char *, HYDRA_MAX_PATH, status);
+    if (getcwd(cwdval, HYDRA_MAX_PATH) == NULL)
+        HYDU_ERR_SETANDJUMP(status, HYD_INTERNAL_ERROR,
+                            "allocated space is too small for absolute path\n");
+
+#if defined HAVE_STAT
+    if (pwdval && stat(pwdval, &spwd) != -1 && stat(cwdval, &scwd) != -1 &&
+        spwd.st_dev == scwd.st_dev && spwd.st_ino == scwd.st_ino) {
+        /* PWD and getcwd() match; use the PWD value */
+        retval = HYDU_strdup(pwdval);
+        HYDU_free(cwdval);
+    }
+    else
+#endif /* HAVE_STAT */
+    {
+        /* PWD and getcwd() don't match; use the getcwd value and hope
+         * for the best. */
+        retval = cwdval;
+    }
+
+  fn_exit:
+    return retval;
+
+  fn_fail:
+    goto fn_exit;
+}
+
+
+HYD_status HYDU_parse_hostfile(char *hostfile,
+                               HYD_status(*process_token) (char *token, int newline))
+{
+    char line[HYD_TMP_STRLEN], **tokens;
+    FILE *fp;
+    int i;
+    HYD_status status = HYD_SUCCESS;
+
+    HYDU_FUNC_ENTER();
+
+    if ((fp = fopen(hostfile, "r")) == NULL)
+        HYDU_ERR_SETANDJUMP1(status, HYD_INTERNAL_ERROR,
+                             "unable to open host file: %s\n", hostfile);
+
+    while (fgets(line, HYD_TMP_STRLEN, fp)) {
+        char *linep = NULL;
+
+        linep = line;
+
+        strtok(linep, "#");
+        while (isspace(*linep))
+            linep++;
+
+        /* Ignore blank lines & comments */
+        if ((*linep == '#') || (*linep == '\0'))
+            continue;
+
+        tokens = HYDU_str_to_strlist(linep);
+        if (!tokens)
+            HYDU_ERR_SETANDJUMP(status, HYD_INTERNAL_ERROR,
+                                "Unable to convert host file entry to strlist\n");
+
+        for (i = 0; tokens[i]; i++) {
+            status = process_token(tokens[i], !i);
+            HYDU_ERR_POP(status, "unable to process token\n");
+        }
+    }
+
+    fclose(fp);
+
+
+  fn_exit:
     HYDU_FUNC_EXIT();
     return status;
 

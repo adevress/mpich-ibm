@@ -340,8 +340,9 @@ int MPIDI_CH3I_Progress (MPID_Progress_state *progress_state, int is_blocking)
                 MPIU_Assert(MPIDI_Request_get_type(sreq) != MPIDI_REQUEST_TYPE_GET_RESP);
                 MPIDI_CH3U_Request_complete(sreq);
 
-                MPIDI_CH3I_SendQ_dequeue(CH3_NORMAL_QUEUE);
+                /* MT - clear the current active send before dequeuing/destroying the current request */
                 MPIDI_CH3I_active_send[CH3_NORMAL_QUEUE] = NULL;
+                MPIDI_CH3I_SendQ_dequeue(CH3_NORMAL_QUEUE);
                 MPIU_DBG_MSG(CH3_CHANNEL, VERBOSE, ".... complete");
             }
             else
@@ -466,7 +467,7 @@ void MPIDI_CH3I_Progress_wakeup(void)
 int MPID_nem_handle_pkt(MPIDI_VC_t *vc, char *buf, MPIDI_msg_sz_t buflen)
 {
     int mpi_errno = MPI_SUCCESS;
-    MPID_Request *rreq;
+    MPID_Request *rreq = NULL;
     int complete;
     MPIDI_CH3I_VC *vc_ch = (MPIDI_CH3I_VC *)vc->channel_private;
     MPIDI_STATE_DECL(MPID_STATE_MPID_NEM_HANDLE_PKT);
@@ -521,7 +522,7 @@ int MPID_nem_handle_pkt(MPIDI_VC_t *vc, char *buf, MPIDI_msg_sz_t buflen)
             copylen = ((vc_ch->pending_pkt_len + buflen <= sizeof(MPIDI_CH3_Pkt_t))
                        ? buflen
                        : sizeof(MPIDI_CH3_Pkt_t) - vc_ch->pending_pkt_len);
-            MPID_NEM_MEMCPY((char *)vc_ch->pending_pkt + vc_ch->pending_pkt_len, buf, copylen);
+            MPIU_Memcpy((char *)vc_ch->pending_pkt + vc_ch->pending_pkt_len, buf, copylen);
             vc_ch->pending_pkt_len += copylen;
             if (vc_ch->pending_pkt_len < sizeof(MPIDI_CH3_Pkt_t))
                 goto fn_exit;
@@ -578,7 +579,7 @@ int MPID_nem_handle_pkt(MPIDI_VC_t *vc, char *buf, MPIDI_msg_sz_t buflen)
             {
                 int iov_len = iov->MPID_IOV_LEN;
 		MPIU_DBG_MSG_D(CH3_CHANNEL, VERBOSE, "        %d\n", iov_len);
-                MPID_NEM_MEMCPY (iov->MPID_IOV_BUF, buf, iov_len);
+                MPIU_Memcpy (iov->MPID_IOV_BUF, buf, iov_len);
 
                 buflen -= iov_len;
                 buf    += iov_len;
@@ -591,7 +592,7 @@ int MPID_nem_handle_pkt(MPIDI_VC_t *vc, char *buf, MPIDI_msg_sz_t buflen)
                 if (buflen > 0)
                 {
 		    MPIU_DBG_MSG_D(CH3_CHANNEL, VERBOSE, "        " MPIDI_MSG_SZ_FMT "\n", buflen);
-                    MPID_NEM_MEMCPY (iov->MPID_IOV_BUF, buf, buflen);
+                    MPIU_Memcpy (iov->MPID_IOV_BUF, buf, buflen);
                     iov->MPID_IOV_BUF = (void *)((char *)iov->MPID_IOV_BUF + buflen);
                     iov->MPID_IOV_LEN -= buflen;
                     buflen = 0;

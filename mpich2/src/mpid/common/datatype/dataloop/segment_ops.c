@@ -36,12 +36,12 @@ int PREPEND_PREFIX(Segment_contig_m2m)(DLOOP_Offset *blocks_p,
 #endif
 
     if (paramp->direction == DLOOP_M2M_TO_USERBUF) {
-	memcpy((char *) MPI_AINT_CAST_TO_VOID_PTR ((MPI_PTR_DISP_CAST_TO_MPI_AINT (paramp->userbuf)) + rel_off),
+	DLOOP_Memcpy((char *) MPI_AINT_CAST_TO_VOID_PTR ((MPI_PTR_DISP_CAST_TO_MPI_AINT (paramp->userbuf)) + rel_off),
 	       paramp->streambuf,
 	       size);
     }
     else {
-	memcpy(paramp->streambuf,
+	DLOOP_Memcpy(paramp->streambuf,
 	       (char *) MPI_AINT_CAST_TO_VOID_PTR ((MPI_PTR_DISP_CAST_TO_MPI_AINT (paramp->userbuf)) + rel_off),
 	       size);
     }
@@ -103,7 +103,7 @@ int PREPEND_PREFIX(Segment_vector_m2m)(DLOOP_Offset *blocks_p,
 	}
 	else {
 	    for (i=0; i < whole_count; i++) {
-		memcpy(cbufp, paramp->streambuf, ((DLOOP_Offset) blksz) * el_size);
+		DLOOP_Memcpy(cbufp, paramp->streambuf, ((DLOOP_Offset) blksz) * el_size);
 
 		paramp->streambuf = (char*) MPI_AINT_CAST_TO_VOID_PTR
 		                            ( (MPI_PTR_DISP_CAST_TO_MPI_AINT (paramp->streambuf)) +
@@ -113,7 +113,7 @@ int PREPEND_PREFIX(Segment_vector_m2m)(DLOOP_Offset *blocks_p,
 		                ( (MPI_PTR_DISP_CAST_TO_MPI_AINT (cbufp)) + stride);
 	    }
 	    if (blocks_left) {
-		memcpy(cbufp, paramp->streambuf, ((DLOOP_Offset) blocks_left) * el_size);
+		DLOOP_Memcpy(cbufp, paramp->streambuf, ((DLOOP_Offset) blocks_left) * el_size);
 
 		paramp->streambuf = (char*) MPI_AINT_CAST_TO_VOID_PTR
 		                            ( (MPI_PTR_DISP_CAST_TO_MPI_AINT (paramp->streambuf)) +
@@ -146,7 +146,7 @@ int PREPEND_PREFIX(Segment_vector_m2m)(DLOOP_Offset *blocks_p,
 	}
 	else {
 	    for (i=0; i < whole_count; i++) {
-		memcpy(paramp->streambuf, cbufp, (DLOOP_Offset) blksz * el_size);
+		DLOOP_Memcpy(paramp->streambuf, cbufp, (DLOOP_Offset) blksz * el_size);
 
 		paramp->streambuf = (char*) MPI_AINT_CAST_TO_VOID_PTR
 		                            ( (MPI_PTR_DISP_CAST_TO_MPI_AINT (paramp->streambuf)) +
@@ -156,7 +156,7 @@ int PREPEND_PREFIX(Segment_vector_m2m)(DLOOP_Offset *blocks_p,
 		                ( (MPI_PTR_DISP_CAST_TO_MPI_AINT (cbufp)) + stride);
 	    }
 	    if (blocks_left) {
-		memcpy(paramp->streambuf, cbufp, (DLOOP_Offset) blocks_left * el_size);
+		DLOOP_Memcpy(paramp->streambuf, cbufp, (DLOOP_Offset) blocks_left * el_size);
 
 		paramp->streambuf = (char*) MPI_AINT_CAST_TO_VOID_PTR
 		                            ( (MPI_PTR_DISP_CAST_TO_MPI_AINT (paramp->streambuf)) +
@@ -222,7 +222,7 @@ int PREPEND_PREFIX(Segment_blkidx_m2m)(DLOOP_Offset *blocks_p,
 	    MPIDI_COPY_FROM_VEC(src, dest, 0, int16_t, blocklen, 1);
 	}
 	else {
-	    memcpy(dest, src, (DLOOP_Offset) blocklen * el_size);
+	    DLOOP_Memcpy(dest, src, (DLOOP_Offset) blocklen * el_size);
 	}
 
 	paramp->streambuf = (char*) MPI_AINT_CAST_TO_VOID_PTR
@@ -290,7 +290,7 @@ int PREPEND_PREFIX(Segment_index_m2m)(DLOOP_Offset *blocks_p,
 	    MPIDI_COPY_FROM_VEC(src, dest, 0, int16_t, cur_block_sz, 1);
 	}
 	else {
-	    memcpy(dest, src, cur_block_sz * el_size);
+	    DLOOP_Memcpy(dest, src, cur_block_sz * el_size);
 	}
 
 	paramp->streambuf = (char*) MPI_AINT_CAST_TO_VOID_PTR

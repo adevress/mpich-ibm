@@ -10,3 +10,4 @@
 /testlist
 /*.gcda
 /*.gcno
+/reducelocalf90.f90
