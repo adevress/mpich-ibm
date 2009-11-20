@@ -42,17 +42,7 @@ int chkckeyvals_( int *, int *, int * );
 int chkcomm2inc_ (int *keyval, const int *expected, int *ierr)
 {
     int      flag;
-    /*
-     * jratt@us.ibm.com: "val" should be of type MPI_Aint*, but
-     * MPI_Comm_get_attr() stores the integer data in a void*.  That
-     * means that there are only 4 bytes of actual data, but
-     * *(MPI_Aint*)val tries to read 8 bytes.  Effectively, that means
-     * that MPI_Comm_get_attr() only returns an int*.  This is a
-     * problem caused by assuming that everything--specifically
-     * including MPI_Aint values--will fit in the space used by a
-     * void*.
-     */
-    int     *val;
+    MPI_Aint *val;
 
     /* See Example 16.19 in MPI 2.2, part B.  The use of MPI_Aint *val
        and the address of val in the get_attr call is correct, as is
