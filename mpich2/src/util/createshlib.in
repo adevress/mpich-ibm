@@ -104,6 +104,7 @@ for arg in "$@" ; do
        -l*|-L*)
        dependentLibs="$dependentLibs $arg"
        ;;
+       -Wl,-rpath*) ;;
        *)
        # The remaining arguments are used for install
        if [ -z "$srclibname" ] ; then
