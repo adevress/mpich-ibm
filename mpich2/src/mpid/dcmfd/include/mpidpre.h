@@ -70,24 +70,13 @@ typedef DCQuad DCMF_CollectiveProtocol_t[1];
 
 #include <mpidthread.h>
 
-typedef int                 MPIDI_VCR;
+typedef int                 MPID_VCR;
 typedef struct MPIDI_VCRT * MPID_VCRT;
-typedef MPIDI_VCR           MPID_VCR;
 #define MPID_GPID_Get(comm_ptr, rank, gpid)     \
 {                                               \
   gpid[0] = 0;                                  \
   gpid[1] = comm_ptr->vcr[rank];                \
 }
-/*
-#define MPID_VCR_Get_lpid(_vcr, _lpid_ptr) \
-({ \
-   MPIDI_STATE_DECL(MPID_STATE_MPID_VCR_GET_LPID); \
-   MPIDI_FUNC_ENTER(MPID_STATE_MPID_VCR_GET_LPID); \
-   *(_lpid_ptr) = _vcr; \
-   MPIDI_FUNC_EXIT(MPID_STATE_MPID_VCR_GET_LPID); \
-   MPI_SUCCESS; \
-})
-*/
 
 /** \brief Our progress engine does not require state */
 #define MPID_PROGRESS_STATE_DECL

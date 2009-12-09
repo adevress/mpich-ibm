@@ -16,10 +16,10 @@
  */
 struct MPIDI_VCRT
 {
-  int handle;              /**< This element is not used, but exists so that we may use the MPIU_Object routines for reference counting */
-  volatile int ref_count;  /**< Number of references to this table */
-  int size;                /**< Number of entries in the table */
-  MPIDI_VCR vcr_table[1];  /**< Array of virtual connection references */
+  int handle;             /**< This element is not used, but exists so that we may use the MPIU_Object routines for reference counting */
+  volatile int ref_count; /**< Number of references to this table */
+  int size;               /**< Number of entries in the table */
+  MPID_VCR vcr_table[0];  /**< Array of virtual connection references */
 };
 
 
@@ -51,7 +51,7 @@ int MPID_VCRT_Create(int size, MPID_VCRT *vcrt_ptr)
 
     MPIDI_FUNC_ENTER(MPID_STATE_MPID_VCRT_CREATE);
 
-    vcrt = MPIU_Malloc(sizeof(struct MPIDI_VCRT) + (size - 1) * sizeof(MPIDI_VCR));
+    vcrt = MPIU_Malloc(sizeof(struct MPIDI_VCRT) + size*sizeof(MPID_VCR));
     if (vcrt != NULL)
     {
         MPIU_Object_set_ref(vcrt, 1);
