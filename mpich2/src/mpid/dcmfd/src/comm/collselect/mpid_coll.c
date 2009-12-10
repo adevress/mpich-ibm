@@ -634,9 +634,9 @@ void MPIDI_Coll_Comm_create (MPID_Comm *comm)
   comm->coll_fns->Bcast          = MPIDO_Bcast;
   comm->coll_fns->Reduce         = MPIDO_Reduce;
   comm->coll_fns->Allreduce      = MPIDO_Allreduce;
-  comm->coll_fns->Alltoall       = MPIDO_Alltoall;
-  comm->coll_fns->Alltoallv      = MPIDO_Alltoallv;
-  comm->coll_fns->Alltoallw      = MPIDO_Alltoallw;
+  comm->coll_fns->Alltoall       = NULL;
+  comm->coll_fns->Alltoallv      = NULL;
+  comm->coll_fns->Alltoallw      = NULL;
   comm->coll_fns->Allgather      = MPIDO_Allgather;
   comm->coll_fns->Allgatherv     = MPIDO_Allgatherv;
   comm->coll_fns->Gather         = MPIDO_Gather;
