@@ -25,21 +25,13 @@ struct MPIDI_VCRT
 
 int MPID_VCR_Dup(MPID_VCR orig_vcr, MPID_VCR * new_vcr)
 {
-    MPIDI_STATE_DECL(MPID_STATE_MPID_VCR_DUP);
-
-    MPIDI_FUNC_ENTER(MPID_STATE_MPID_VCR_DUP);
     *new_vcr = orig_vcr;
-    MPIDI_FUNC_EXIT(MPID_STATE_MPID_VCR_DUP);
     return MPI_SUCCESS;
 }
 
 int MPID_VCR_Get_lpid(MPID_VCR vcr, int * lpid_ptr)
 {
-    MPIDI_STATE_DECL(MPID_STATE_MPID_VCR_GET_LPID);
-
-    MPIDI_FUNC_ENTER(MPID_STATE_MPID_VCR_GET_LPID);
     *lpid_ptr = vcr;
-    MPIDI_FUNC_EXIT(MPID_STATE_MPID_VCR_GET_LPID);
     return MPI_SUCCESS;
 }
 
@@ -47,9 +39,6 @@ int MPID_VCRT_Create(int size, MPID_VCRT *vcrt_ptr)
 {
     struct MPIDI_VCRT * vcrt;
     int result;
-    MPIDI_STATE_DECL(MPID_STATE_MPID_VCRT_CREATE);
-
-    MPIDI_FUNC_ENTER(MPID_STATE_MPID_VCRT_CREATE);
 
     vcrt = MPIU_Malloc(sizeof(struct MPIDI_VCRT) + size*sizeof(MPID_VCR));
     if (vcrt != NULL)
@@ -63,40 +52,27 @@ int MPID_VCRT_Create(int size, MPID_VCRT *vcrt_ptr)
     {
         result = MPIR_ERR_MEMALLOCFAILED;
     }
-    MPIDI_FUNC_EXIT(MPID_STATE_MPID_VCRT_CREATE);
     return result;
 }
 
 int MPID_VCRT_Add_ref(MPID_VCRT vcrt)
 {
-    MPIDI_STATE_DECL(MPID_STATE_MPID_VCRT_ADD_REF);
-
-    MPIDI_FUNC_ENTER(MPID_STATE_MPID_VCRT_ADD_REF);
     MPIU_Object_add_ref(vcrt);
-    MPIDI_FUNC_EXIT(MPID_STATE_MPID_VCRT_ADD_REF);
     return MPI_SUCCESS;
 }
 
 int MPID_VCRT_Release(MPID_VCRT vcrt, int isDisconnect)
 {
     int count;
-    MPIDI_STATE_DECL(MPID_STATE_MPID_VCRT_RELEASE);
-
-    MPIDI_FUNC_ENTER(MPID_STATE_MPID_VCRT_RELEASE);
 
     MPIU_Object_release_ref(vcrt, &count);
     if (count == 0)
       MPIU_Free(vcrt);
-    MPIDI_FUNC_EXIT(MPID_STATE_MPID_VCRT_RELEASE);
     return MPI_SUCCESS;
 }
 
 int MPID_VCRT_Get_ptr(MPID_VCRT vcrt, MPID_VCR **vc_pptr)
 {
-    MPIDI_STATE_DECL(MPID_STATE_MPID_VCRT_GET_PTR);
-
-    MPIDI_FUNC_ENTER(MPID_STATE_MPID_VCRT_GET_PTR);
     *vc_pptr = vcrt->vcr_table;
-    MPIDI_FUNC_EXIT(MPID_STATE_MPID_VCRT_GET_PTR);
     return MPI_SUCCESS;
 }
