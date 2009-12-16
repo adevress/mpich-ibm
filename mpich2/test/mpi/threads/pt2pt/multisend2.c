@@ -22,7 +22,7 @@
 
 static int nthreads = -1;
 
-void run_test_send(void *arg)
+void* run_test_send(void *arg)
 {
     int    cnt, j, *buf;
     int    thread_num = (int)arg;
@@ -42,6 +42,7 @@ void run_test_send(void *arg)
 	if (thread_num == 1) 
 	    MTestPrintfMsg( 1, "buf size %d: time %f\n", cnt, t / MAX_LOOP );
     }
+    return NULL;
 }
 void run_test_recv( void )
 {

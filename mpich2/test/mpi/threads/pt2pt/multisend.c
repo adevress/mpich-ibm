@@ -14,7 +14,7 @@
 
 int rank;
 
-void run_test(void * arg)
+void* run_test(void * arg)
 {
     MPI_Status  reqstat;
     int i, j;
@@ -34,6 +34,7 @@ void run_test(void * arg)
 		MPI_Send(NULL, 0, MPI_CHAR, peer, j, MPI_COMM_WORLD);
 	}
     }
+    return NULL;
 }
 
 int main(int argc, char ** argv)

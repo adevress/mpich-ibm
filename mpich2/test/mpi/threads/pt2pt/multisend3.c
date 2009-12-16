@@ -27,7 +27,7 @@
 static int ownerWaits = 0;
 static int nthreads = -1;
 
-void run_test_send(void *arg)
+void* run_test_send(void *arg)
 {
     int    cnt, j, *buf, wsize;
     int    thread_num = (int)arg;
@@ -72,6 +72,7 @@ void run_test_send(void *arg)
     }
     MTest_thread_barrier(nthreads);
     free( buf );
+    return NULL;
 }
 void run_test_recv( void )
 {

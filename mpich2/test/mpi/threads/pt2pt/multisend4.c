@@ -27,7 +27,7 @@
 static int ownerWaits = 0;
 static int nthreads = -1;
 
-void run_test_sendrecv(void *arg)
+void* run_test_sendrecv(void *arg)
 {
     int    cnt, j, *buf, wsize;
     int    thread_num = (int)arg;
@@ -75,6 +75,7 @@ void run_test_sendrecv(void *arg)
 	if (thread_num == 1) 
 	    MTestPrintfMsg( 1, "buf size %d: time %f\n", cnt, t / MAX_LOOP );
     }
+    return NULL;
 }
 
 int main(int argc, char ** argv)
