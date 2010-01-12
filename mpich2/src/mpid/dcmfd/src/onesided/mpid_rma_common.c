@@ -1750,7 +1750,6 @@ void epoch_clear(MPID_Win *win) {
 	int x;
 	int size = MPIDU_comm_size(win);
 	win->_dev.epoch_type = MPID_EPOTYPE_NONE;
-	win->_dev.epoch_rma_ok = 0;
 	win->_dev.my_rma_recvs = 0;
 	win->_dev.my_sync_done = 0;
 	// win->_dev.my_sync_begin = 0;

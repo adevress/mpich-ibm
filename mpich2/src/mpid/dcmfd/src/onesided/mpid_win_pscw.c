@@ -29,6 +29,7 @@ static int mpid_check_post_done(MPID_Win *win) {
                         win->_dev.my_rma_recvs < win->_dev.coll_info[rank].rma_sends)) {
                 return 0;
         }
+	win->_dev.epoch_rma_ok = 0;
 	epoch_clear(win);
         win->_dev.epoch_assert = 0;
         win->_dev.epoch_size = 0;
@@ -100,6 +101,7 @@ int MPID_Win_complete(MPID_Win *win_ptr)
         if (win_ptr->_dev.epoch_type == MPID_EPOTYPE_POSTSTART) {
                 win_ptr->_dev.epoch_type = MPID_EPOTYPE_POST;
         } else {
+		win_ptr->_dev.epoch_rma_ok = 0;
                 epoch_clear(win_ptr);
                 win_ptr->_dev.epoch_size = 0;
                 epoch_end_cb(win_ptr);

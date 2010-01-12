@@ -135,6 +135,7 @@ int MPID_Win_fence(int assert, MPID_Win *win_ptr)
 				win_ptr->_dev.my_rma_recvs > 0) {
 		/* TBD: handled earlier? */
 	}
+	win_ptr->_dev.epoch_rma_ok = 0;
 	epoch_clear(win_ptr);
 	win_ptr->_dev.epoch_size = 0;
 	win_ptr->_dev.epoch_assert = 0;

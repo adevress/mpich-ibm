@@ -630,6 +630,7 @@ void unlk_cb(const MPIDU_Onesided_ctl_t *info, int lpid) {
         if (ret) {	/* lock was released */
                 MPIDU_Onesided_ctl_t ack;
                 if (MPID_LOCK_IS_FREE(win)) {
+			win->_dev.epoch_rma_ok = 0;
 			epoch_clear(win);
                 }
                 epoch_end_cb(win);
@@ -901,6 +902,7 @@ int MPID_Win_unlock(int dest, MPID_Win *win_ptr)
                                         win_ptr->_dev.my_sync_done == 0);
                 }
         }
+	/* do not clear epoch_rma_ok, we unlocked remote side not local */
 	epoch_clear(win_ptr);
         win_ptr->_dev.epoch_size = 0;
         win_ptr->_dev.epoch_assert = 0;
