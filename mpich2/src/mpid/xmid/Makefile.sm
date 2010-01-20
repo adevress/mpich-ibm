@@ -1,5 +1,5 @@
-install_INCLUDE =
-SUBDIRS = .
+install_INCLUDE = ${srcdir}/include/mpix.h
+SUBDIRS = src .
 
 distclean-local:
 	true
