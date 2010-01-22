@@ -50,9 +50,9 @@
 #define HAVE_RUNTIME_THREADCHECK
 #define MPIU_THREAD_CHECK_BEGIN if (MPIR_ThreadInfo.isThreaded) {
 #define MPIU_THREAD_CHECK_END   }
-#define MPIU_THREAD_CS_ENTER(_name,_context) DCMF_CriticalSection_enter(0);
-#define MPIU_THREAD_CS_EXIT(_name,_context)  DCMF_CriticalSection_exit(0);
-#define MPIU_THREAD_CS_YIELD(_name,_context) DCMF_CriticalSection_cycle(0);
+#define MPIU_THREAD_CS_ENTER(_name,_context) // DCMF_CriticalSection_enter(0);
+#define MPIU_THREAD_CS_EXIT(_name,_context)  // DCMF_CriticalSection_exit(0);
+#define MPIU_THREAD_CS_YIELD(_name,_context) // DCMF_CriticalSection_cycle(0);
 #define MPIU_THREADSAFE_INIT_DECL(_var) static volatile int _var=1
 #define MPIU_THREADSAFE_INIT_STMT(_var,_stmt)   \
      if (_var) {                                \
@@ -79,13 +79,13 @@
   /* Destroy thread local storage created during MPID_CS_INITIALIZE */  \
   MPID_Thread_tls_destroy(&MPIR_ThreadInfo.thread_storage, NULL);       \
 }
-#define MPID_CS_ENTER()      DCMF_CriticalSection_enter(0);
-#define MPID_CS_EXIT()       DCMF_CriticalSection_exit(0);
-#define MPID_CS_CYCLE()      DCMF_CriticalSection_cycle(0);
+#define MPID_CS_ENTER()      // DCMF_CriticalSection_enter(0);
+#define MPID_CS_EXIT()       // DCMF_CriticalSection_exit(0);
+#define MPID_CS_CYCLE()      // DCMF_CriticalSection_cycle(0);
 
 
 #endif
 
-#define MPIU_ISTHREADED() ({ DCMF_CriticalSection_flag; })
+#define MPIU_ISTHREADED() ({ 0 /* DCMF_CriticalSection_flag */ ; })
 
 #endif /* !MPICH_MPIDTHREAD_H_INCLUDED */

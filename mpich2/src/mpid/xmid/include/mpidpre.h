@@ -110,40 +110,40 @@ MPIDI_RMA_dtype_info;
  */
 typedef enum
   {
-    MPIDI_DCMF_REQUEST_TYPE_RECV=0,
-    MPIDI_DCMF_REQUEST_TYPE_SEND,
-    MPIDI_DCMF_REQUEST_TYPE_RSEND,
-    MPIDI_DCMF_REQUEST_TYPE_BSEND,
-    MPIDI_DCMF_REQUEST_TYPE_SSEND,
-    MPIDI_DCMF_REQUEST_TYPE_SSEND_ACKNOWLEDGE,
-    MPIDI_DCMF_REQUEST_TYPE_CANCEL_REQUEST,
-    MPIDI_DCMF_REQUEST_TYPE_CANCEL_ACKNOWLEDGE,
-    MPIDI_DCMF_REQUEST_TYPE_CANCEL_NOT_ACKNOWLEDGE,
-    MPIDI_DCMF_REQUEST_TYPE_RENDEZVOUS_ACKNOWLEDGE,
-    MPIDI_DCMF_REQUEST_TYPE_PLACEHOLDER
+    MPIDI_REQUEST_TYPE_RECV=0,
+    MPIDI_REQUEST_TYPE_SEND,
+    MPIDI_REQUEST_TYPE_RSEND,
+    MPIDI_REQUEST_TYPE_BSEND,
+    MPIDI_REQUEST_TYPE_SSEND,
+    MPIDI_REQUEST_TYPE_SSEND_ACKNOWLEDGE,
+    MPIDI_REQUEST_TYPE_CANCEL_REQUEST,
+    MPIDI_REQUEST_TYPE_CANCEL_ACKNOWLEDGE,
+    MPIDI_REQUEST_TYPE_CANCEL_NOT_ACKNOWLEDGE,
+    MPIDI_REQUEST_TYPE_RENDEZVOUS_ACKNOWLEDGE,
+    MPIDI_REQUEST_TYPE_PLACEHOLDER
   }
-MPIDI_DCMF_REQUEST_TYPE;
+MPIDI_REQUEST_TYPE;
 
 
 typedef enum
   {
-    MPIDI_DCMF_INITIALIZED=0,
-    MPIDI_DCMF_SEND_COMPLETE,
-    MPIDI_DCMF_ACKNOWLEGED,
-    MPIDI_DCMF_REQUEST_DONE_CANCELLED
+    MPIDI_INITIALIZED=0,
+    MPIDI_SEND_COMPLETE,
+    MPIDI_ACKNOWLEGED,
+    MPIDI_REQUEST_DONE_CANCELLED
   }
-MPIDI_DCMF_REQUEST_STATE;
+MPIDI_REQUEST_STATE;
 
 
 /** \brief Request completion actions */
 typedef enum
   {
-    MPIDI_DCMF_CA_ERROR = 0,                         /* Should never see this        */
-    MPIDI_DCMF_CA_COMPLETE = 1,                      /* The request is now complete  */
-    MPIDI_DCMF_CA_UNPACK_UEBUF_AND_COMPLETE,         /* Unpack uebuf, then complete  */
-    MPIDI_DCMF_CA_UNPACK_UEBUF_AND_COMPLETE_NOFREE,  /* Unpack uebuf, then complete. do not free uebuf  */
+    MPIDI_CA_ERROR = 0,                         /* Should never see this        */
+    MPIDI_CA_COMPLETE = 1,                      /* The request is now complete  */
+    MPIDI_CA_UNPACK_UEBUF_AND_COMPLETE,         /* Unpack uebuf, then complete  */
+    MPIDI_CA_UNPACK_UEBUF_AND_COMPLETE_NOFREE,  /* Unpack uebuf, then complete. do not free uebuf  */
   }
-MPIDI_DCMF_CA;
+MPIDI_CA;
 
 
 /**
@@ -161,9 +161,9 @@ MPIDI_Message_match;
 
 /**
  * \brief Message Info (has to be exactly 128 bits long) and associated data types
- * \note sizeof(MPIDI_DCMF_MsgInfo) == 16
+ * \note sizeof(MPIDI_MsgInfo) == 16
  */
-struct MPIDI_DCMF_MsgInfo_t
+struct MPIDI_MsgInfo_t
   {
     void     * req;         /**< peer's request pointer */
     xmi_task_t peerrank;    /**< other guy's rank       */
@@ -179,29 +179,29 @@ struct MPIDI_DCMF_MsgInfo_t
     uint16_t   extra:10;    /**< Unused */
 };
 
-typedef union MPIDI_DCMF_MsgInfo
+typedef union MPIDI_MsgInfo
 {
-  struct MPIDI_DCMF_MsgInfo_t msginfo;
-  /* DCQuad quad[DCQuad_sizeof(struct MPIDI_DCMF_MsgInfo_t)]; */
+  struct MPIDI_MsgInfo_t msginfo;
+  /* DCQuad quad[DCQuad_sizeof(struct MPIDI_MsgInfo_t)]; */
 }
-MPIDI_DCMF_MsgInfo;
+MPIDI_MsgInfo;
 
 /** \brief Full Rendezvous msg info to be set as two quads of unexpected data. */
 typedef union
 {
-  struct MPIDI_DCMF_MsgEnvelope_t
+  struct MPIDI_MsgEnvelope_t
   {
-    MPIDI_DCMF_MsgInfo msginfo;
-    DCMF_Memregion_t   memregion;
+    MPIDI_MsgInfo msginfo;
+    xmi_memregion_t   memregion;
     size_t             length;
   } envelope;
-  /* DCQuad quad[DCQuad_sizeof(struct MPIDI_DCMF_MsgEnvelope_t)]; */
-} MPIDI_DCMF_MsgEnvelope;
+  /* DCQuad quad[DCQuad_sizeof(struct MPIDI_MsgEnvelope_t)]; */
+} MPIDI_MsgEnvelope;
 
-/** \brief This defines the portion of MPID_Request that is specific to the DCMF Device */
-struct MPIDI_DCMF_Request
+/** \brief This defines the portion of MPID_Request that is specific to the Device */
+struct MPIDI_Request
 {
-  MPIDI_DCMF_MsgEnvelope    envelope;
+  MPIDI_MsgEnvelope    envelope;
   struct MPID_Request     * next;         /**< Link to next req. in queue */
   unsigned                  peerrank;     /**< The other guy's rank       */
 
@@ -215,26 +215,23 @@ struct MPIDI_DCMF_Request
 
   int                       isSelf;       /**< message sent to self       */
   int                     cancel_pending; /**< Cancel State               */
-  MPIDI_DCMF_REQUEST_STATE  state;        /**< The tranfser state         */
-  MPIDI_DCMF_CA             ca;           /**< Completion action          */
+  MPIDI_REQUEST_STATE  state;        /**< The tranfser state         */
+  MPIDI_CA             ca;           /**< Completion action          */
 
-  DCMF_Request_t            msg;          /**< The message layer request  */
-  DCMF_Memregion_t          memregion;    /**< Rendezvous rcv memregion   */
+  xmi_memregion_t          memregion;    /**< Rendezvous rcv memregion   */
 };
-/** \brief This defines the portion of MPID_Request that is specific to the DCMF Device */
-#define MPID_DEV_REQUEST_DECL        struct MPIDI_DCMF_Request dcmf;
+/** \brief This defines the portion of MPID_Request that is specific to the Device */
+#define MPID_DEV_REQUEST_DECL        struct MPIDI_Request mpid;
 
 
-/** \brief needed by the (stolen) CH3 implementation of dcmf_buffer.c */
 typedef unsigned MPIDI_msg_sz_t;
 
 struct STAR_Tuning_Session;
 
-/** \brief This defines the portion of MPID_Comm that is specific to the DCMF Device */
-struct MPIDI_DCMF_Comm
+/** \brief This defines the portion of MPID_Comm that is specific to the Device */
+struct MPIDI_Comm
 {
-  DCMF_Geometry_t geometry; /**< Geometry component for collectives      */
-  DCMF_CollectiveRequest_t barrier; /**< Barrier request for collectives */
+  xmi_geometry_t geometry; /**< Geometry component for collectives      */
   unsigned char comm_shape; /* 0: commworld, 1: rect, 2: irreg */ 
   unsigned *sndlen; /**< lazy alloc alltoall vars */
   unsigned *rcvlen;
@@ -242,22 +239,15 @@ struct MPIDI_DCMF_Comm
   unsigned *rdispls;
   unsigned *sndcounters;
   unsigned *rcvcounters;
-  DCMF_CollectiveProtocol_t *short_allred;
   unsigned last_algorithm;
   unsigned short bcast_binom_iter;   /* async broadcast is only used every 32
 			  * steps to prevent too many unexpected
 			  * messages */
   unsigned short bcast_rect_iter;
-
-  /* this will hold a list of tuning session for the collective sites */
-  struct STAR_Tuning_Session * tuning_session;
-  
-  /* struct of bits holding info relavant to comm */
-  MPIDO_Embedded_Info_Set properties;
 };
 
-/** \brief This defines the portion of MPID_Comm that is specific to the DCMF Device */
-#define MPID_DEV_COMM_DECL      struct MPIDI_DCMF_Comm dcmf;
+/** \brief This defines the portion of MPID_Comm that is specific to the Device */
+#define MPID_DEV_COMM_DECL      struct MPIDI_Comm mpid;
 
 
 #ifdef HAVE_DEV_COMM_HOOK
@@ -286,7 +276,7 @@ struct MPID_Win_coll_info {
   int disp_unit;        /**< Node's exposure window displacement units            */
   MPI_Win win_handle;   /**< Node's exposure window handle (local to target node) */
   int rma_sends;        /**< Count of RMA operations that target node             */
-  DCMF_Memregion_t mem_region; /**< Memory region descriptor for each node */
+  xmi_memregion_t mem_region; /**< Memory region descriptor for each node */
 };
 
 /* assert sizeof(struct MPID_Win_coll_info) == 16 */
@@ -305,7 +295,6 @@ struct MPID_Dev_win_decl {
   volatile int my_rma_recvs;      /**< counter of RMA operations received             */
   volatile int my_rma_pends;      /**< counter of RMA operations queued to send       */
   volatile int my_get_pends;      /**< counter of GET operations queued               */
-  DCMF_Consistency my_cstcy;      /**< default consistency for window                 */
   volatile int epoch_type;        /**< current epoch type                             */
   volatile int epoch_size;        /**< current epoch size (or target for LOCK)        */
   int epoch_assert;               /**< MPI_MODE_* bits asserted at epoch start        */

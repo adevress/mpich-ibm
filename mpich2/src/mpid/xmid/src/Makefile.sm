@@ -1,3 +1,6 @@
 SUBDIRS= .
 INCLUDES = -I${master_top_srcdir}/src/include -I${top_builddir}/src/include
-lib${MPILIBNAME}_a_SOURCES = mpid_src.c
+lib${MPILIBNAME}_a_SOURCES = mpid_src.c		\
+                             mpid_recvq.c	\
+                             mpid_abort.c	\
+                             mpid_undef.c

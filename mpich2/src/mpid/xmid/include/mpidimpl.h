@@ -1,7 +1,7 @@
 /*  (C)Copyright IBM Corp.  2007, 2008  */
 /**
  * \file include/mpidimpl.h
- * \brief DCMF API MPID additions to MPI functions and structures
+ * \brief API MPID additions to MPI functions and structures
  */
 
 /*
@@ -9,8 +9,8 @@
  *      See COPYRIGHT in top-level directory.
  */
 
-#ifndef MPICH_DCMF_MPIDIMPL_H_INCLUDED
-#define MPICH_DCMF_MPIDIMPL_H_INCLUDED
+#ifndef MPICH_MPIDIMPL_H_INCLUDED
+#define MPICH_MPIDIMPL_H_INCLUDED
 
 /* ****************************************************************
  * Asserts are divided into three levels:
@@ -81,94 +81,13 @@ extern MPIDI_Process_t MPIDI_Process;
 
 typedef struct
 {
-  DCMF_Protocol_t send;
-  DCMF_Protocol_t mrzv;
-  DCMF_Protocol_t rzv;
-  DCMF_Protocol_t get;
-  DCMF_Protocol_t protocol;
-  DCMF_Protocol_t control;
-  DCMF_Protocol_t globalbarrier;
-  DCMF_Protocol_t globalbcast;
-  DCMF_Protocol_t globalallreduce;
 }      MPIDI_Protocol_t;
 extern MPIDI_Protocol_t MPIDI_Protocols;
 
 typedef struct
 {
-  MPIDO_Embedded_Info_Set properties;
-  unsigned char numcolors; /* number of colors for bcast/allreduce */
-  unsigned numrequests;
-  unsigned int bcast_asynccutoff;
-  unsigned int allreduce_asynccutoff;
-
-  /* Optimized barrier protocols and usage flags */
-  DCMF_CollectiveProtocol_t gi_barrier;
-  DCMF_CollectiveProtocol_t binomial_barrier;
-  DCMF_CollectiveProtocol_t rect_barrier;
-
-  /* Optimized local barrier protocols and usage flags  (not used directly by
-     MPICH but stored in the geometry) */
-
-  DCMF_CollectiveProtocol_t lockbox_localbarrier;
-  DCMF_CollectiveProtocol_t binomial_localbarrier;
-
-
-  /* Optimized broadcast protocols and usage flags */
-  DCMF_CollectiveProtocol_t tree_bcast;
-  DCMF_CollectiveProtocol_t tree_shmem_bcast;
-  DCMF_CollectiveProtocol_t tree_dput_bcast;
-  DCMF_CollectiveProtocol_t rectangle_bcast;
-  DCMF_CollectiveProtocol_t async_rectangle_bcast;
-  DCMF_CollectiveProtocol_t binomial_bcast;
-  DCMF_CollectiveProtocol_t async_binomial_bcast;
-  DCMF_CollectiveProtocol_t binomial_bcast_singleth;
-  DCMF_CollectiveProtocol_t rectangle_bcast_singleth;
-  DCMF_CollectiveProtocol_t rectangle_bcast_dput;
-
-
-  /* Optimized alltoall(v, w) protocol and usage flag */
-  DCMF_CollectiveProtocol_t torus_alltoallv;
-
-  /* Optimized allreduce protocols and usage flags */
-  DCMF_CollectiveProtocol_t tree_allreduce __attribute__((__aligned__(16)));
-  DCMF_CollectiveProtocol_t pipelinedtree_allreduce;
-  DCMF_CollectiveProtocol_t pipelinedtree_dput_allreduce;
-  DCMF_CollectiveProtocol_t rectangle_allreduce;
-  DCMF_CollectiveProtocol_t rectanglering_allreduce;
-  DCMF_CollectiveProtocol_t binomial_allreduce;
-  DCMF_CollectiveProtocol_t async_binomial_allreduce;
-  DCMF_CollectiveProtocol_t async_rectangle_allreduce;
-  DCMF_CollectiveProtocol_t async_ringrectangle_allreduce;
-  DCMF_CollectiveProtocol_t short_async_rect_allreduce;
-  DCMF_CollectiveProtocol_t short_async_binom_allreduce;
-  DCMF_CollectiveProtocol_t rring_dput_allreduce_singleth;
-
-  /* Optimized reduce protocols and usage flags */
-  DCMF_CollectiveProtocol_t tree_reduce;
-  DCMF_CollectiveProtocol_t tree_dput_reduce;
-  DCMF_CollectiveProtocol_t tree_pipelined_reduce;
-  DCMF_CollectiveProtocol_t rectangle_reduce;
-  DCMF_CollectiveProtocol_t rectanglering_reduce;
-  DCMF_CollectiveProtocol_t binomial_reduce;
-
 }      MPIDI_CollectiveProtocol_t;
 extern MPIDI_CollectiveProtocol_t MPIDI_CollectiveProtocols;
-
-extern DCMF_Hardware_t mpid_hw;
-
-/**
- * *************************************************************************
- * Low-level request utilities: allocation, release of
- * requests, with a holding pen for just-released requests. This is
- * code stolen from MPICH, now in mpidi_dcmfts_request.c
- * *************************************************************************
- */
-
-/**
- * *************************************************************************
- * Request queue related utilities (stolen from CH3; in src/impl)
- * *************************************************************************
- */
 
 /**
  * \addtogroup MPID_RECVQ
@@ -184,7 +103,7 @@ MPID_Request * MPIDI_Recvq_FDP_or_AEU(int s, int t, int c, int * foundp);
 void MPIDI_Recvq_DumpQueues(int verbose);
 /**\}*/
 
-void MPIDI_DCMF_Buffer_copy(const void     * const sbuf,
+void MPIDI_Buffer_copy(const void     * const sbuf,
                             int                    scount,
                             MPI_Datatype           sdt,
                             int            *       smpi_errno,
@@ -309,7 +228,7 @@ void           MPID_Request_set_completed (MPID_Request *req);
 
 
 /**
- * \defgroup MPID_CALLBACKS MPID callbacks for DCMF communication
+ * \defgroup MPID_CALLBACKS MPID callbacks for communication
  *
  * These calls are used to manage message asynchronous start and completion
  */
@@ -317,30 +236,7 @@ void           MPID_Request_set_completed (MPID_Request *req);
  * \addtogroup MPID_CALLBACKS
  * \{
  */
-DCMF_Request_t * MPIDI_BG2S_RecvCB(void                     * clientdata,
-                                   const DCQuad             * msginfo,
-                                   unsigned                   count,
-                                   size_t                     senderrank,
-                                   const size_t               sndlen,
-                                   size_t                   * rcvlen,
-                                   char                    ** rcvbuf,
-                                   DCMF_Callback_t    * const cb_info);
-void MPIDI_BG2S_RecvShortCB(void                     * clientdata,
-                            const DCQuad             * msginfo,
-                            unsigned                   count,
-                            size_t                     senderrank,
-                            const char               * sndbuf,
-                            size_t                     sndlen);
-void MPIDI_BG2S_RecvRzvCB(void                         * clientdata,
-                          const DCQuad                 * rzv_envelope,
-                          unsigned                       count,
-                          size_t                         senderrank,
-                          const char                   * sndbuf,
-                          size_t                         sndlen);
-void MPIDI_DCMF_SendDoneCB    (void *sreq, DCMF_Error_t *err);
-void MPIDI_DCMF_RecvDoneCB    (void *rreq, DCMF_Error_t *err);
-void MPIDI_DCMF_RecvRzvDoneCB (void *rreq, DCMF_Error_t *err);
-void MPIDI_DCMF_StartMsg      (MPID_Request * sreq);
+void MPIDI_StartMsg      (MPID_Request * sreq);
 int  MPIDI_Irecv(void          * buf,
                  int             count,
                  MPI_Datatype    datatype,
@@ -355,18 +251,16 @@ int  MPIDI_Irecv(void          * buf,
 
 
 /** \brief Acknowledge an MPI_Ssend() */
-int  MPIDI_DCMF_postSyncAck  (MPID_Request * req);
+int  MPIDI_postSyncAck  (MPID_Request * req);
 /** \brief Cancel an MPI_Send(). */
-int  MPIDI_DCMF_postCancelReq(MPID_Request * req);
-void MPIDI_DCMF_procCancelReq(const MPIDI_DCMF_MsgInfo *info, size_t peer);
-/** \brief This is the general PT2PT control message call-back */
-void MPIDI_BG2S_ControlCB    (void * clientdata, const DCMF_Control_t * p, size_t peer);
+int  MPIDI_postCancelReq(MPID_Request * req);
+void MPIDI_procCancelReq(const MPIDI_MsgInfo *info, size_t peer);
 /**
  * \brief Mark a request as cancel-pending
  * \param[in]  _req  The request to cancel
  * \param[out] _flag The previous state
  */
-#define MPIDI_DCMF_Request_cancel_pending(_req, _flag)  \
+#define MPIDI_Request_cancel_pending(_req, _flag)  \
 {                                                       \
   *(_flag) = (_req)->mpid.cancel_pending;               \
   (_req)->mpid.cancel_pending = TRUE;                   \
@@ -396,7 +290,7 @@ int MPIDI_Isend_self(const void    * buf,
                      MPID_Request ** request);
 
 /** \brief Helper function to complete a rendevous transfer */
-void MPIDI_DCMF_RendezvousTransfer (MPID_Request * rreq);
+void MPIDI_RendezvousTransfer (MPID_Request * rreq);
 
 
 void MPIDI_Comm_create       (MPID_Comm *comm);

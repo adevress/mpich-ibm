@@ -223,10 +223,7 @@ MPID_Request *MPIR_Sendq_head = 0;
 void MPIR_Sendq_remember( MPID_Request *req, 
 			  int rank, int tag, int context_id )
 {
-    //DCMF_assert(rank == MPID_Request_getMatchRank(req));
-    //DCMF_assert(tag == MPID_Request_getMatchTag(req));
-    //DCMF_assert(context_id == MPID_Request_getMatchCtxt(req));
-    req->dcmf.next = MPIR_Sendq_head;
+    req->mpid.next = MPIR_Sendq_head;
     MPIR_Sendq_head = req;
 }
 
@@ -240,12 +237,12 @@ void MPIR_Sendq_forget( MPID_Request *req )
     /* FIXME: Make this thread-safe */
     while (p) {
 	if (p == req) {
-	    if (prev) prev->dcmf.next = p->dcmf.next;
-	    else MPIR_Sendq_head = p->dcmf.next;
+	    if (prev) prev->mpid.next = p->mpid.next;
+	    else MPIR_Sendq_head = p->mpid.next;
 	    break;
 	}
 	prev = p;
-	p = p->dcmf.next;
+	p = p->mpid.next;
     }
     /* If we don't find the request, just ignore it */
 }
