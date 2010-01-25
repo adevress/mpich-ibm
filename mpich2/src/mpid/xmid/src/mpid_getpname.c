@@ -32,6 +32,6 @@ int MPID_Get_processor_name(char * name, int namelen, int * resultlen)
     }
   else
     {
-      return MPI_ERROR;
+      return MPI_ERR_ARG;
     }
 }
