@@ -55,12 +55,14 @@
 #include "mpidpre.h"
 #include "mpidpost.h"
 
+extern xmi_client_t MPIDI_Client;
+extern xmi_context_t MPIDI_Context[];
+
 /**
  * \brief MPI Process descriptor
  *
  * This structure contains global configuration flags.
  */
-
 typedef struct
 {
 

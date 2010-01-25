@@ -34,14 +34,14 @@
 #define MPID_Dev_datatype_create_hook(a)
 #endif /* !MPID_Dev_datatype_create_hook */
 
-#ifdef MPID_Dev_datatype_destroy_hook
-#error  MPID_Dev_datatype_destroy_hook already defined somewhere else!
-#else /* !MPID_Dev_datatype_destroy_hook */
-#define MPID_Dev_datatype_destroy_hook(a)       {       \
-        extern void MPIDU_dtc_free(MPID_Datatype *);    \
-        MPIDU_dtc_free(a);                              \
-}
-#endif /* !MPID_Dev_datatype_destroy_hook */
+/* #ifdef MPID_Dev_datatype_destroy_hook */
+/* #error  MPID_Dev_datatype_destroy_hook already defined somewhere else! */
+/* #else /\* !MPID_Dev_datatype_destroy_hook *\/ */
+/* #define MPID_Dev_datatype_destroy_hook(a)       {       \ */
+/*         extern void MPIDU_dtc_free(MPID_Datatype *);    \ */
+/*         MPIDU_dtc_free(a);                              \ */
+/* } */
+/* #endif /\* !MPID_Dev_datatype_destroy_hook *\/ */
 
 #include <mpidthread.h>
 
@@ -250,13 +250,13 @@ struct MPIDI_Comm
 #define MPID_DEV_COMM_DECL      struct MPIDI_Comm mpid;
 
 
-#ifdef HAVE_DEV_COMM_HOOK
-#error "Build error - HAVE_DEV_COMM_HOOK defined at least twice!"
-#else
-#define HAVE_DEV_COMM_HOOK
-#define MPID_Dev_comm_create_hook(a)  void MPIDI_Comm_create  (MPID_Comm *comm); MPIDI_Comm_create(a)
-#define MPID_Dev_comm_destroy_hook(a) void MPIDI_Comm_destroy (MPID_Comm *comm); MPIDI_Comm_destroy(a)
-#endif
+/* #ifdef HAVE_DEV_COMM_HOOK */
+/* #error "Build error - HAVE_DEV_COMM_HOOK defined at least twice!" */
+/* #else */
+/* #define HAVE_DEV_COMM_HOOK */
+/* #define MPID_Dev_comm_create_hook(a)  void MPIDI_Comm_create  (MPID_Comm *comm); MPIDI_Comm_create(a) */
+/* #define MPID_Dev_comm_destroy_hook(a) void MPIDI_Comm_destroy (MPID_Comm *comm); MPIDI_Comm_destroy(a) */
+/* #endif */
 
 
 struct MPID_Comm;

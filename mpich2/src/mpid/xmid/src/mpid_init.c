@@ -9,7 +9,9 @@
 MPIDI_Protocol_t MPIDI_Protocols;
 MPIDI_Process_t  MPIDI_Process;
 
-xmi_client_t client;
+int NUM_CONTEXTS = 1;
+xmi_client_t     MPIDI_Client;
+xmi_context_t    MPIDI_Context[1];
 
 
 void MPIDI_Init(int* rank, int* size)
@@ -20,19 +22,22 @@ void MPIDI_Init(int* rank, int* size)
   /* ----------------------------- */
   /* Initialize messager           */
   /* ----------------------------- */
-  XMI_Client_initialize("MPICH2", &client);
+  rc = XMI_Client_initialize("MPICH2", &MPIDI_Client);
+  MPID_assert(rc == XMI_SUCCESS);
+  rc = XMI_Context_createv(MPIDI_Client, NULL, 0, *MPIDI_Context, &NUM_CONTEXTS);
+  MPID_assert(rc == XMI_SUCCESS);
 
 
   /* ---------------------------------------- */
   /*  Get my rank and the process size        */
   /* ---------------------------------------- */
   query.name = XMI_TASK_ID;
-  rc = XMI_Configuration_query (client, &query);
+  rc = XMI_Configuration_query (MPIDI_Client, &query);
   MPID_assert(rc == XMI_SUCCESS);
   *rank = query.value.intval;
 
   query.name = XMI_NUM_TASKS;
-  rc = XMI_Configuration_query (client, &query);
+  rc = XMI_Configuration_query (MPIDI_Client, &query);
   MPID_assert(rc == XMI_SUCCESS);
   *size = query.value.intval;
 }
@@ -78,8 +83,8 @@ int MPID_Init(int * argc,
   /* ------------------------------------------------------ */
   MPIR_Process.attrs.tag_ub = INT_MAX;
   MPIR_Process.attrs.wtime_is_global = 1;
-  if (MPIDI_Process.optimized.topology)
-    MPIR_Process.dimsCreate = MPID_Dims_create;
+  /* if (MPIDI_Process.optimized.topology) */
+  /*   MPIR_Process.dimsCreate = MPID_Dims_create; */
 
 
   /* -------------------------------- */
@@ -100,7 +105,7 @@ int MPID_Init(int * argc,
    * We don't get the thread_provided updated until AFTER MPID_Init is
    * finished so we need to know the requested thread level in comm_create
    */
-  MPIDI_Comm_create(comm);
+  /* MPIDI_Comm_create(comm); */
 
   /* ------------------------------- */
   /* Initialize MPI_COMM_SELF object */
