@@ -28,7 +28,7 @@ void MPIDI_Init(int* rank, int* size)
   /* ----------------------------- */
   rc = XMI_Client_initialize("MPICH2", &MPIDI_Client);
   MPID_assert(rc == XMI_SUCCESS);
-  rc = XMI_Context_createv(MPIDI_Client, NULL, 0, *MPIDI_Context, &NUM_CONTEXTS);
+  rc = XMI_Context_createv(MPIDI_Client, NULL, 0, MPIDI_Context, &NUM_CONTEXTS);
   MPID_assert(rc == XMI_SUCCESS);
 
 
