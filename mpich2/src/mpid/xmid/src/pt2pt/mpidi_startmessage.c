@@ -30,6 +30,7 @@ MPIDI_Send(MPID_Request  * sreq,
       parameters.events.local_fn      = MPIDI_SendDoneCB;
 
       rc = XMI_Send(MPIDI_Context[0], &parameters);
+      MPID_assert(rc == XMI_SUCCESS);
     }
 
   MPID_assert(rc == XMI_SUCCESS);

@@ -354,22 +354,20 @@ MPID_Request * MPIDI_Recvq_FDU_or_AEP(int source, int tag, int context_id, int *
            so we need to allocate a new request and add it to the
            posted queue */
         rreq = MPID_Request_create();
-        if (rreq != NULL)
-        {
-            rreq->kind = MPID_REQUEST_RECV;
-            MPID_Request_setMatch(rreq, tag, source, context_id);
-            rreq->mpid.next = NULL;
 
-            if (recvq.posted_tail != NULL)
-            {
-                recvq.posted_tail->mpid.next = rreq;
-            }
-            else
-            {
-                recvq.posted_head = rreq;
-            }
-            recvq.posted_tail = rreq;
+        rreq->kind = MPID_REQUEST_RECV;
+        MPID_Request_setMatch(rreq, tag, source, context_id);
+        rreq->mpid.next = NULL;
+
+        if (recvq.posted_tail != NULL)
+        {
+            recvq.posted_tail->mpid.next = rreq;
         }
+        else
+        {
+            recvq.posted_head = rreq;
+        }
+        recvq.posted_tail = rreq;
 
         found = FALSE;
     }
@@ -495,22 +493,20 @@ MPID_Request * MPIDI_Recvq_FDP_or_AEU(int source, int tag, int context_id, int *
            need to allocate a new request and add it to the unexpected
            queue */
         rreq = MPID_Request_create();
-        if (rreq != NULL)
-        {
-            rreq->kind = MPID_REQUEST_RECV;
-            MPID_Request_setMatch(rreq, tag, source, context_id);
-            rreq->mpid.next = NULL;
 
-            if (recvq.unexpected_tail != NULL)
-            {
-                recvq.unexpected_tail->mpid.next = rreq;
-            }
-            else
-            {
-                recvq.unexpected_head = rreq;
-            }
-            recvq.unexpected_tail = rreq;
+        rreq->kind = MPID_REQUEST_RECV;
+        MPID_Request_setMatch(rreq, tag, source, context_id);
+        rreq->mpid.next = NULL;
+
+        if (recvq.unexpected_tail != NULL)
+        {
+            recvq.unexpected_tail->mpid.next = rreq;
         }
+        else
+        {
+            recvq.unexpected_head = rreq;
+        }
+        recvq.unexpected_tail = rreq;
 
         found = FALSE;
     }

@@ -52,9 +52,11 @@ void MPID_Progress_end(MPID_Progress_state * state)
  */
 int MPID_Progress_wait(MPID_Progress_state * state)
 {
+  xmi_result_t rc;
   int x = _requests;
   while (x == _requests) {
-    XMI_Context_advance(MPIDI_Context[0], 1);
+    rc = XMI_Context_advance(MPIDI_Context[0], 1);
+    MPID_assert(rc == XMI_SUCCESS);
   }
   return MPI_SUCCESS;
 }
@@ -75,7 +77,9 @@ int MPID_Progress_poke()
  */
 int MPID_Progress_test()
 {
-  XMI_Context_advance(MPIDI_Context[0], 1);
+  xmi_result_t rc;
+  rc =   XMI_Context_advance(MPIDI_Context[0], 1);
+  MPID_assert(rc == XMI_SUCCESS);
   return MPI_SUCCESS;
 }
 
