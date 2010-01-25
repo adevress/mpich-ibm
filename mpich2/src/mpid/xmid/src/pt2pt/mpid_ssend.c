@@ -1,12 +1,12 @@
 /*  (C)Copyright IBM Corp.  2007, 2008  */
 /**
- * \file src/pt2pt/mpid_send.c
- * \brief ADI level implemenation of MPI_Send()
+ * \file src/pt2pt/mpid_ssend.c
+ * \brief ADI level implemenation of MPI_Ssend()
  */
 #include "mpidimpl.h"
 
 /**
- * \brief ADI level implemenation of MPI_Send()
+ * \brief ADI level implemenation of MPI_Ssend()
  *
  * \param[in]  buf            The buffer to send
  * \param[in]  count          Number of elements in the buffer
@@ -19,14 +19,14 @@
  *
  * \returns An MPI Error code
  */
-int MPID_Send(const void    * buf,
-              int             count,
-              MPI_Datatype    datatype,
-              int             rank,
-              int             tag,
-              MPID_Comm     * comm,
-              int             context_offset,
-              MPID_Request ** request)
+int MPID_Ssend(const void    * buf,
+               int             count,
+               MPI_Datatype    datatype,
+               int             rank,
+               int             tag,
+               MPID_Comm     * comm,
+               int             context_offset,
+               MPID_Request ** request)
 {
   MPID_Request * sreq = NULL;
 
@@ -102,8 +102,8 @@ int MPID_Send(const void    * buf,
 
   /* message type info */
   sreq->kind = MPID_REQUEST_SEND;
-  MPID_Request_setType (sreq, MPIDI_REQUEST_TYPE_SEND);
-
+  MPID_Request_setType (sreq, MPIDI_REQUEST_TYPE_SSEND);
+  MPID_Request_setSync (sreq, 1);
 
   /* ----------------------------------------- */
   /*      start the message                    */
