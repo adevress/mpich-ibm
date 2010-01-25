@@ -1,0 +1,12 @@
+SUBDIRS= .
+INCLUDES = -I${master_top_srcdir}/src/include -I${top_builddir}/src/include
+lib${MPILIBNAME}_a_SOURCES =                    \
+        mpid_irecv.c                            \
+        mpid_isend.c                            \
+        mpid_recv.c                             \
+        mpid_send.c                             \
+        mpidi_callback.c                        \
+        mpidi_done.c                            \
+        mpidi_irecv.c                           \
+        mpidi_isend_self.c                      \
+        mpidi_startmessage.c

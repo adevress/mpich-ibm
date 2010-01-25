@@ -6,7 +6,10 @@
 #include "mpidimpl.h"
 #include <limits.h>
 
-MPIDI_Protocol_t MPIDI_Protocols;
+MPIDI_Protocol_t MPIDI_Protocols =
+  {
+  Send:0
+  };
 MPIDI_Process_t  MPIDI_Process;
 
 int NUM_CONTEXTS = 1;
@@ -18,6 +21,7 @@ void MPIDI_Init(int* rank, int* size)
 {
   xmi_result_t rc;
   xmi_configuration_t query;
+  xmi_send_hint_t options = {consistency:1};
 
   /* ----------------------------- */
   /* Initialize messager           */
@@ -40,6 +44,20 @@ void MPIDI_Init(int* rank, int* size)
   rc = XMI_Configuration_query (MPIDI_Client, &query);
   MPID_assert(rc == XMI_SUCCESS);
   *size = query.value.intval;
+
+
+  xmi_dispatch_callback_fn Recv = {p2p:MPIDI_RecvCB};
+  Recv.p2p = MPIDI_RecvCB;
+
+  unsigned i;
+  for (i=0; i<NUM_CONTEXTS; ++i) {
+    rc = XMI_Dispatch_set(MPIDI_Context[i],
+                          MPIDI_Protocols.Send,
+                          Recv,
+                          NULL,
+                          options);
+    MPID_assert(rc == XMI_SUCCESS);
+  }
 }
 
 

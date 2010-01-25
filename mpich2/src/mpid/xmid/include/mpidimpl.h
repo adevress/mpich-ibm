@@ -83,6 +83,7 @@ extern MPIDI_Process_t MPIDI_Process;
 
 typedef struct
 {
+  size_t Send;
 }      MPIDI_Protocol_t;
 extern MPIDI_Protocol_t MPIDI_Protocols;
 
@@ -238,7 +239,11 @@ void           MPID_Request_set_completed (MPID_Request *req);
  * \addtogroup MPID_CALLBACKS
  * \{
  */
-void MPIDI_StartMsg      (MPID_Request * sreq);
+void MPIDI_StartMsg(MPID_Request * sreq);
+void MPIDI_SendDoneCB(xmi_context_t   context,
+                      void          * clientdata,
+                      xmi_result_t    result);
+
 int  MPIDI_Irecv(void          * buf,
                  int             count,
                  MPI_Datatype    datatype,
@@ -249,6 +254,19 @@ int  MPIDI_Irecv(void          * buf,
                  MPI_Status    * status,
                  MPID_Request ** request,
                  char          * func);
+void MPIDI_RecvCB(xmi_context_t   context,
+                  size_t          contextid,
+                  void          * cookie,
+                  xmi_task_t      remote_task,
+                  void          * _msginfo,
+                  size_t          msginfo_size,
+                  void          * _addr,
+                  size_t          size,
+                  xmi_recv_t    * recv);
+void MPIDI_RecvDoneCB(xmi_context_t   context,
+                      void          * clientdata,
+                      xmi_result_t    result);
+
 /** \} */
 
 
