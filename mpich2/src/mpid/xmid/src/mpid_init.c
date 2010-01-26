@@ -12,7 +12,7 @@ MPIDI_Protocol_t MPIDI_Protocols =
   };
 MPIDI_Process_t  MPIDI_Process;
 
-int NUM_CONTEXTS = 1;
+const size_t     NUM_CONTEXTS = 1;
 xmi_client_t     MPIDI_Client;
 xmi_context_t    MPIDI_Context[1];
 
@@ -28,7 +28,7 @@ void MPIDI_Init(int* rank, int* size)
   /* ----------------------------- */
   rc = XMI_Client_initialize("MPICH2", &MPIDI_Client);
   MPID_assert(rc == XMI_SUCCESS);
-  rc = XMI_Context_createv(MPIDI_Client, NULL, 0, MPIDI_Context, &NUM_CONTEXTS);
+  rc = XMI_Context_createv(MPIDI_Client, NULL, 0, MPIDI_Context, NUM_CONTEXTS);
   MPID_assert(rc == XMI_SUCCESS);
 
 
@@ -47,14 +47,12 @@ void MPIDI_Init(int* rank, int* size)
 
 
   xmi_dispatch_callback_fn Recv = {p2p:MPIDI_RecvCB};
-  Recv.p2p = MPIDI_RecvCB;
-
-  unsigned i;
+  size_t i;
   for (i=0; i<NUM_CONTEXTS; ++i) {
     rc = XMI_Dispatch_set(MPIDI_Context[i],
                           MPIDI_Protocols.Send,
                           Recv,
-                          NULL,
+                          (void*)i,
                           options);
     MPID_assert(rc == XMI_SUCCESS);
   }

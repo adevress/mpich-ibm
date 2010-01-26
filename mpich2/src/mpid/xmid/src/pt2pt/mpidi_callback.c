@@ -16,9 +16,7 @@
  * \param[out] rcvbuf     Where we want to put the data
  */
 void MPIDI_RecvCB(xmi_context_t   context,
-                  size_t          contextid,
-                  void          * cookie,
-                  xmi_task_t      senderrank,
+                  void          * _contextid,
                   void          * _msginfo,
                   size_t          msginfo_size,
                   void          * sndbuf,
@@ -28,6 +26,8 @@ void MPIDI_RecvCB(xmi_context_t   context,
   MPID_assert((sndbuf == NULL) ^ (recv == NULL));
   MPID_assert(msginfo_size == sizeof(MPIDI_MsgInfo));
   const MPIDI_MsgInfo *msginfo = (const MPIDI_MsgInfo *)_msginfo;
+  /* size_t               contextid = (size_t)_contextid; */
+
   MPID_Request * rreq = NULL;
   int found;
   unsigned rcvlen = sndlen;
@@ -52,7 +52,7 @@ void MPIDI_RecvCB(xmi_context_t   context,
   /* ------------------------ */
   rreq->status.MPI_SOURCE = match.rank;
   rreq->status.MPI_TAG    = match.tag;
-  MPID_Request_setPeerRank(rreq,senderrank);
+  MPID_Request_setPeerRank(rreq,msginfo->msginfo.peerrank);
   MPID_Request_setPeerRequest(rreq,msginfo->msginfo.req);
   MPID_Request_setSync(rreq, msginfo->msginfo.isSync);
   MPID_Request_setRzv(rreq, 0);

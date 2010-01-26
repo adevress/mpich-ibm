@@ -17,11 +17,12 @@ MPIDI_Send(MPID_Request  * sreq,
 {
   int rc = XMI_ERROR;
   MPIDI_MsgInfo * msginfo = &sreq->mpid.envelope.envelope.msginfo;
+  xmi_endpoint_t dest     = XMI_Client_endpoint(MPIDI_Client, MPID_Request_getPeerRank(sreq), 0);
 
     {
       xmi_send_t parameters = { {0}, {0} };
       parameters.send.dispatch        = MPIDI_Protocols.Send;
-      parameters.send.task            = MPID_Request_getPeerRank(sreq);
+      parameters.send.dest            = dest;
       parameters.send.header.iov_base = msginfo;
       parameters.send.header.iov_len  = sizeof(MPIDI_MsgInfo);
       parameters.send.data.iov_base   = sndbuf;
@@ -42,9 +43,8 @@ MPIDI_Send(MPID_Request  * sreq,
  * \brief Central function for all sends.
  * \param [in,out] sreq Structure containing all relevant info about the message.
  */
-
 void
-MPIDI_StartMsg (MPID_Request  * sreq)
+MPIDI_StartMsg(MPID_Request  * sreq)
 {
   int data_sz, dt_contig;
   MPID_Datatype *dt_ptr;
