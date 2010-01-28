@@ -11,7 +11,7 @@ if test -z "$device_args" ; then
     device_args=none
 fi
 
-if test "$device_args" = "BGP-XMI" ; then
+#if test "$device_args" = "BGP" ; then
     MPID_MAX_PROCESSOR_NAME=128
     MPID_NO_LONG_LONG=no
     MPID_NO_LONG_DOUBLE=no
@@ -21,7 +21,7 @@ if test "$device_args" = "BGP-XMI" ; then
     MPID_NO_PM=yes
     MPID_NO_PMI=yes
     INSTALL_FROM_DEVICE=yes
-fi
+#fi
 
 #Possible values
 #    MPID_MAX_THREAD_LEVEL - thread level supported by device.
