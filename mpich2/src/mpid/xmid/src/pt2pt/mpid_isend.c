@@ -106,3 +106,5 @@ int MPID_Isend(const void    * buf,
   *request = sreq;
   return MPI_SUCCESS;
 }
+
+int MPID_Irsend() __attribute__((alias("MPID_Isend")));

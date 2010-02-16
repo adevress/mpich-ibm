@@ -34,14 +34,14 @@
 #define MPID_Dev_datatype_create_hook(a)
 #endif /* !MPID_Dev_datatype_create_hook */
 
-/* #ifdef MPID_Dev_datatype_destroy_hook */
-/* #error  MPID_Dev_datatype_destroy_hook already defined somewhere else! */
-/* #else /\* !MPID_Dev_datatype_destroy_hook *\/ */
-/* #define MPID_Dev_datatype_destroy_hook(a)       {       \ */
-/*         extern void MPIDU_dtc_free(MPID_Datatype *);    \ */
-/*         MPIDU_dtc_free(a);                              \ */
-/* } */
-/* #endif /\* !MPID_Dev_datatype_destroy_hook *\/ */
+#ifdef MPID_Dev_datatype_destroy_hook
+#error  MPID_Dev_datatype_destroy_hook already defined somewhere else!
+#else /* !MPID_Dev_datatype_destroy_hook */
+#define MPID_Dev_datatype_destroy_hook(a)       {       \
+        extern void MPIDU_dtc_free(MPID_Datatype *);    \
+        MPIDU_dtc_free(a);                              \
+}
+#endif /* !MPID_Dev_datatype_destroy_hook */
 
 #include <mpidthread.h>
 
@@ -112,7 +112,6 @@ typedef enum
   {
     MPIDI_REQUEST_TYPE_RECV=0,
     MPIDI_REQUEST_TYPE_SEND,
-    MPIDI_REQUEST_TYPE_RSEND,
     MPIDI_REQUEST_TYPE_BSEND,
     MPIDI_REQUEST_TYPE_SSEND,
     MPIDI_REQUEST_TYPE_SSEND_ACKNOWLEDGE,
@@ -120,7 +119,6 @@ typedef enum
     MPIDI_REQUEST_TYPE_CANCEL_ACKNOWLEDGE,
     MPIDI_REQUEST_TYPE_CANCEL_NOT_ACKNOWLEDGE,
     MPIDI_REQUEST_TYPE_RENDEZVOUS_ACKNOWLEDGE,
-    MPIDI_REQUEST_TYPE_PLACEHOLDER
   }
 MPIDI_REQUEST_TYPE;
 
@@ -174,9 +172,6 @@ struct MPIDI_MsgInfo_t
     uint16_t   type:4;      /**< message type           */
     uint16_t   isSync:1;    /**< set for sync sends     */
     uint16_t   isRzv :1;    /**< use pt2pt rendezvous   */
-
-    /* These are not currently in use : */
-    uint16_t   extra:10;    /**< Unused */
 };
 
 typedef union MPIDI_MsgInfo
@@ -201,32 +196,30 @@ typedef union
 /** \brief This defines the portion of MPID_Request that is specific to the Device */
 struct MPIDI_Request
 {
-  MPIDI_MsgEnvelope    envelope;
-  struct MPID_Request     * next;         /**< Link to next req. in queue */
-  unsigned                  peerrank;     /**< The other guy's rank       */
+  MPIDI_MsgEnvelope      envelope;
+  struct MPID_Request  * next;         /**< Link to next req. in queue */
+  unsigned               peerrank;     /**< The other guy's rank       */
 
-  char                    * userbuf;      /**< User buffer                */
-  unsigned                  userbufcount; /**< Userbuf data count         */
-  char                    * uebuf;        /**< Unexpected buffer          */
-  unsigned                  uebuflen;     /**< Length (bytes) of uebuf    */
+  char                 * userbuf;      /**< User buffer                */
+  unsigned               userbufcount; /**< Userbuf data count         */
+  char                 * uebuf;        /**< Unexpected buffer          */
+  unsigned               uebuflen;     /**< Length (bytes) of uebuf    */
 
-  MPI_Datatype              datatype;     /**< Data type of message       */
-  struct MPID_Datatype    * datatype_ptr; /**< Info about the datatype    */
+  MPI_Datatype           datatype;     /**< Data type of message       */
+  struct MPID_Datatype * datatype_ptr; /**< Info about the datatype    */
 
-  int                       isSelf;       /**< message sent to self       */
-  int                     cancel_pending; /**< Cancel State               */
-  MPIDI_REQUEST_STATE  state;        /**< The tranfser state         */
-  MPIDI_CA             ca;           /**< Completion action          */
+  int                    isSelf;       /**< message sent to self       */
+  int                  cancel_pending; /**< Cancel State               */
+  MPIDI_REQUEST_STATE    state;        /**< The tranfser state         */
+  MPIDI_CA               ca;           /**< Completion action          */
 
-  xmi_memregion_t          memregion;    /**< Rendezvous rcv memregion   */
+  xmi_memregion_t        memregion;    /**< Rendezvous rcv memregion   */
 };
 /** \brief This defines the portion of MPID_Request that is specific to the Device */
 #define MPID_DEV_REQUEST_DECL        struct MPIDI_Request mpid;
 
 
 typedef unsigned MPIDI_msg_sz_t;
-
-struct STAR_Tuning_Session;
 
 /** \brief This defines the portion of MPID_Comm that is specific to the Device */
 struct MPIDI_Comm
@@ -250,13 +243,13 @@ struct MPIDI_Comm
 #define MPID_DEV_COMM_DECL      struct MPIDI_Comm mpid;
 
 
-/* #ifdef HAVE_DEV_COMM_HOOK */
-/* #error "Build error - HAVE_DEV_COMM_HOOK defined at least twice!" */
-/* #else */
-/* #define HAVE_DEV_COMM_HOOK */
-/* #define MPID_Dev_comm_create_hook(a)  void MPIDI_Comm_create  (MPID_Comm *comm); MPIDI_Comm_create(a) */
-/* #define MPID_Dev_comm_destroy_hook(a) void MPIDI_Comm_destroy (MPID_Comm *comm); MPIDI_Comm_destroy(a) */
-/* #endif */
+#ifdef HAVE_DEV_COMM_HOOK
+#error "Build error - HAVE_DEV_COMM_HOOK defined at least twice!"
+#else
+#define HAVE_DEV_COMM_HOOK
+#define MPID_Dev_comm_create_hook(a)  void MPIDI_Comm_create (MPID_Comm *comm); MPIDI_Comm_create (a)
+#define MPID_Dev_comm_destroy_hook(a) void MPIDI_Comm_destroy(MPID_Comm *comm); MPIDI_Comm_destroy(a)
+#endif
 
 
 struct MPID_Comm;

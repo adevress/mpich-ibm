@@ -130,7 +130,7 @@ int MPIDI_Isend_self(const void    * buf,
       return MPI_SUCCESS;
     }
 
-  else if (type != MPIDI_REQUEST_TYPE_RSEND)
+  else
     {
       /* ---------------------------------------------- */
       /* no corresponding posted receive has been found */
@@ -150,38 +150,6 @@ int MPIDI_Isend_self(const void    * buf,
       MPIR_Comm_add_ref(comm);
       MPID_Request_setSelf (rreq, 1); /* it's a self request */
       MPID_Progress_signal();         /* Signal any waiter.  */
-      return MPI_SUCCESS;
-    }
-  else
-    {
-      /* --------------------------------------------- */
-      /* no corresponding poster receive, and this was */
-      /* a ready send. this is an error.               */
-      /* --------------------------------------------- */
-      sreq->status.MPI_ERROR = MPIR_Err_create_code(MPI_SUCCESS,
-                                                    MPIR_ERR_FATAL,
-                                                    "mpid_isend_self",
-                                                    __LINE__,
-                                                    MPI_ERR_OTHER,
-                                                    "**rsendnomatch", 0);
-      rreq->status.MPI_ERROR = MPIR_Err_create_code(MPI_SUCCESS,
-                                                    MPIR_ERR_FATAL,
-                                                    "mpid_isend_self",
-                                                    __LINE__,
-                                                    MPI_ERR_OTHER,
-                                                    "**rsendnomatch", 0);
-      rreq->partner_request = NULL;
-      rreq->status.count    = 0;
-
-      /* sreq has never been seen by the user or outside
-         this thread, so it is safe to reset ref_count and cc */
-      sreq->cc                   = 0;
-      *request                   = sreq;
-      sreq->comm                 = comm;
-      sreq->kind                 = MPID_REQUEST_SEND;
-      MPID_Request_setMatch(sreq, match.tag, match.rank, match.context_id);
-      MPIR_Comm_add_ref(comm);
-      MPID_Request_setSelf(rreq,1);
       return MPI_SUCCESS;
     }
 }

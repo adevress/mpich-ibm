@@ -4,8 +4,6 @@
  * \brief Normal job termination code
  */
 #include "mpidimpl.h"
-extern void STAR_FreeMem(MPID_Comm *);
-extern void STAR_FreeRepos();
 
 /**
  * \brief Shut down the system
