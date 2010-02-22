@@ -22,6 +22,12 @@
 #include <xmi.h>
 #include "mpid_dataloop.h"
 
+
+#define MPID_Irsend     MPID_Isend
+#define MPID_Rsend      MPID_Send
+#define MPID_Rsend_init MPID_Send_init
+
+
 /**
  * \brief Declare hook(s) for Datatype create/destroy
  *

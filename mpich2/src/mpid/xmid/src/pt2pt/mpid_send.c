@@ -113,5 +113,3 @@ int MPID_Send(const void    * buf,
   *request = sreq;
   return MPI_SUCCESS;
 }
-
-int MPID_Rsend() __attribute__((alias("MPID_Send")));
