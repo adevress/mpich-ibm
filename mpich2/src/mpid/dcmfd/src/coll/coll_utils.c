@@ -341,7 +341,7 @@ int MPIDI_ConvertMPItoDCMF(MPI_Op op, DCMF_Op *dcmf_op,
   case MPI_FLOAT:
   case MPI_REAL:
     *dcmf_dt = DCMF_FLOAT;
-    if(op != MPI_MAX || op != MPI_MIN )
+    if(op != MPI_MAX && op != MPI_MIN )
       return MPIDO_TORUS_SUPPORT;
     break;
 
