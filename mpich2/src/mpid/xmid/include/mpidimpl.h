@@ -84,6 +84,9 @@ extern MPIDI_Process_t MPIDI_Process;
 typedef struct
 {
   size_t Send;
+  size_t RTS;
+  size_t Control;
+  size_t Get;
 }      MPIDI_Protocol_t;
 extern MPIDI_Protocol_t MPIDI_Protocols;
 

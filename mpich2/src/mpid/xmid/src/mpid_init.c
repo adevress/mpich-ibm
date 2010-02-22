@@ -4,24 +4,93 @@
  * \brief Normal job startup code
  */
 #include "mpidimpl.h"
-#include <limits.h>
 
-MPIDI_Protocol_t MPIDI_Protocols =
-  {
-  Send:0
-  };
-MPIDI_Process_t  MPIDI_Process;
-
-const size_t     NUM_CONTEXTS = 1;
+static const size_t NUM_CONTEXTS = 1;
 xmi_client_t     MPIDI_Client;
 xmi_context_t    MPIDI_Context[1];
+
+MPIDI_Process_t  MPIDI_Process;
+
+struct protocol_t
+{
+  xmi_dispatch_p2p_fn func;
+  size_t              dispatch;
+  xmi_send_hint_t     options;
+};
+static struct
+{
+  struct protocol_t Send;
+  struct protocol_t RTS;
+  struct protocol_t Control;
+  struct protocol_t Get;
+} proto_list =
+{
+  Send: {
+    func: MPIDI_RecvCB,
+    dispatch: 0,
+    options: {
+      consistency:    1,
+      no_long_header: 1,
+      },
+  },
+  RTS: {
+    func: MPIDI_RecvCB,
+    dispatch: 1,
+    options: {
+      consistency:    1,
+      no_rdma:        1,
+      },
+  },
+  Control: {
+    func: MPIDI_RecvCB,
+    dispatch: 2,
+    options: {
+      high_priority:  1,
+      no_rdma:        1,
+      no_long_header: 1,
+      },
+  },
+  Get: {
+    func: NULL,
+    dispatch: 3,
+    options: {
+      use_rdma:       1,
+      no_long_header: 1,
+      },
+  },
+};
+MPIDI_Protocol_t MPIDI_Protocols =
+{
+  Send:    0,
+  RTS:     1,
+  Control: 2,
+  Get:     3,
+};
+
+
+void MPIDI_Init_dispath(size_t dispatch, struct protocol_t* proto)
+{
+  xmi_dispatch_callback_fn Recv = {p2p:proto->func};
+  size_t i;
+  xmi_result_t rc;
+
+  MPID_assert(dispatch == proto->dispatch);
+
+  for (i=0; i<NUM_CONTEXTS; ++i) {
+    rc = XMI_Dispatch_set(MPIDI_Context[i],
+                          proto->dispatch,
+                          Recv,
+                          (void*)i,
+                          proto->options);
+    MPID_assert(rc == XMI_SUCCESS);
+  }
+}
 
 
 void MPIDI_Init(int* rank, int* size)
 {
   xmi_result_t rc;
   xmi_configuration_t query;
-  xmi_send_hint_t options = {consistency:1};
 
   /* ----------------------------- */
   /* Initialize messager           */
@@ -45,20 +114,11 @@ void MPIDI_Init(int* rank, int* size)
   MPID_assert(rc == XMI_SUCCESS);
   *size = query.value.intval;
 
-
-  xmi_dispatch_callback_fn Recv = {p2p:MPIDI_RecvCB};
-  size_t i;
-  for (i=0; i<NUM_CONTEXTS; ++i) {
-    rc = XMI_Dispatch_set(MPIDI_Context[i],
-                          MPIDI_Protocols.Send,
-                          Recv,
-                          (void*)i,
-                          options);
-    MPID_assert(rc == XMI_SUCCESS);
-  }
+  MPIDI_Init_dispath(MPIDI_Protocols.Send,    &proto_list.Send);
+  MPIDI_Init_dispath(MPIDI_Protocols.RTS,     &proto_list.RTS);
+  MPIDI_Init_dispath(MPIDI_Protocols.Control, &proto_list.Control);
+  MPIDI_Init_dispath(MPIDI_Protocols.Get,     &proto_list.Get);
 }
-
-
 
 
 /**
