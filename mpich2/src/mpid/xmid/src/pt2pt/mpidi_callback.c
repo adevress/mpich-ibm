@@ -84,8 +84,8 @@ void MPIDI_RecvCB(xmi_context_t   context,
       /* request was already posted. */
       /* if synchronized, post ack.  */
       /* --------------------------- */
-      /* if (msginfo->msginfo.isSync) */
-      /*   MPIDI_postSyncAck(rreq); */
+      if (msginfo->msginfo.isSync)
+        MPIDI_postSyncAck(context, rreq);
 
       /* -------------------------------------- */
       /* calculate message length for reception */
