@@ -24,8 +24,12 @@ void MPIDI_RecvCB(xmi_context_t   context,
                   xmi_recv_t    * recv)
 {
   MPID_assert((sndbuf == NULL) ^ (recv == NULL));
+
+  MPID_assert(_msginfo != NULL);
   MPID_assert(msginfo_size == sizeof(MPIDI_MsgInfo));
+
   const MPIDI_MsgInfo *msginfo = (const MPIDI_MsgInfo *)_msginfo;
+  size_t senderrank = msginfo->msginfo.peerrank;
   /* size_t               contextid = (size_t)_contextid; */
 
   MPID_Request * rreq = NULL;
@@ -52,10 +56,10 @@ void MPIDI_RecvCB(xmi_context_t   context,
   /* ------------------------ */
   rreq->status.MPI_SOURCE = match.rank;
   rreq->status.MPI_TAG    = match.tag;
-  MPID_Request_setPeerRank(rreq,msginfo->msginfo.peerrank);
-  MPID_Request_setPeerRequest(rreq,msginfo->msginfo.req);
-  MPID_Request_setSync(rreq, msginfo->msginfo.isSync);
-  MPID_Request_setRzv(rreq, 0);
+  MPID_Request_setPeerRank   (rreq, senderrank);
+  MPID_Request_setPeerRequest(rreq, msginfo->msginfo.req);
+  MPID_Request_setSync       (rreq, msginfo->msginfo.isSync);
+  MPID_Request_setRzv        (rreq, 0);
 
   if (recv)
     {
@@ -66,6 +70,8 @@ void MPIDI_RecvCB(xmi_context_t   context,
       recv->cookie   = (void *)rreq;
       recv->kind     = XMI_AM_KIND_SIMPLE;
     }
+
+
 
   /* ----------------------------------------- */
   /* figure out target buffer for request data */

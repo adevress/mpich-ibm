@@ -204,7 +204,7 @@ struct MPIDI_Request
 {
   MPIDI_MsgEnvelope      envelope;
   struct MPID_Request  * next;         /**< Link to next req. in queue */
-  unsigned               peerrank;     /**< The other guy's rank       */
+  /* unsigned               peerrank;     /\**< The other guy's rank       *\/ */
 
   char                 * userbuf;      /**< User buffer                */
   unsigned               userbufcount; /**< Userbuf data count         */

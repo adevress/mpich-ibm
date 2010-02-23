@@ -42,19 +42,11 @@ static struct
       },
   },
   Control: {
-    func: MPIDI_RecvCB,
+    func: MPIDI_ControlCB,
     dispatch: 2,
     options: {
       high_priority:  1,
       no_rdma:        1,
-      no_long_header: 1,
-      },
-  },
-  Get: {
-    func: NULL,
-    dispatch: 3,
-    options: {
-      use_rdma:       1,
       no_long_header: 1,
       },
   },
@@ -64,7 +56,6 @@ MPIDI_Protocol_t MPIDI_Protocols =
   Send:    0,
   RTS:     1,
   Control: 2,
-  Get:     3,
 };
 
 
@@ -117,7 +108,6 @@ void MPIDI_Init(int* rank, int* size)
   MPIDI_Init_dispath(MPIDI_Protocols.Send,    &proto_list.Send);
   MPIDI_Init_dispath(MPIDI_Protocols.RTS,     &proto_list.RTS);
   MPIDI_Init_dispath(MPIDI_Protocols.Control, &proto_list.Control);
-  MPIDI_Init_dispath(MPIDI_Protocols.Get,     &proto_list.Get);
 }
 
 

@@ -83,10 +83,9 @@ extern MPIDI_Process_t MPIDI_Process;
 
 typedef struct
 {
-  size_t Send;
-  size_t RTS;
-  size_t Control;
-  size_t Get;
+  unsigned Send;
+  unsigned RTS;
+  unsigned Control;
 }      MPIDI_Protocol_t;
 extern MPIDI_Protocol_t MPIDI_Protocols;
 
@@ -267,15 +266,24 @@ void MPIDI_RecvCB(xmi_context_t   context,
 void MPIDI_RecvDoneCB(xmi_context_t   context,
                       void          * clientdata,
                       xmi_result_t    result);
-
+void MPIDI_RecvRzvDoneCB(xmi_context_t   context,
+                         void          * cookie,
+                         xmi_result_t    result);
 /** \} */
 
 
 /** \brief Acknowledge an MPI_Ssend() */
-int  MPIDI_postSyncAck  (MPID_Request * req);
+int  MPIDI_postSyncAck  (xmi_context_t context, MPID_Request * req);
 /** \brief Cancel an MPI_Send(). */
-int  MPIDI_postCancelReq(MPID_Request * req);
-void MPIDI_procCancelReq(const MPIDI_MsgInfo *info, size_t peer);
+void MPIDI_procCancelReq(xmi_context_t context, const MPIDI_MsgInfo *info, size_t peer);
+/** \brief This is the general PT2PT control message call-back */
+void MPIDI_ControlCB(xmi_context_t   context,
+                     void          * _contextid,
+                     void          * _msginfo,
+                     size_t          msginfo_size,
+                     void          * sndbuf,
+                     size_t          sndlen,
+                     xmi_recv_t    * recv);
 /**
  * \brief Mark a request as cancel-pending
  * \param[in]  _req  The request to cancel
@@ -311,7 +319,7 @@ int MPIDI_Isend_self(const void    * buf,
                      MPID_Request ** request);
 
 /** \brief Helper function to complete a rendevous transfer */
-void MPIDI_RendezvousTransfer (MPID_Request * rreq);
+void MPIDI_RendezvousTransfer (xmi_context_t context,MPID_Request * rreq);
 
 
 void MPIDI_Comm_create       (MPID_Comm *comm);
