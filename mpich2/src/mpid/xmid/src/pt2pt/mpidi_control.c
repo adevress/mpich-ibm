@@ -239,7 +239,6 @@ void MPIDI_ControlCB(xmi_context_t   context,
                      void          * sndbuf,
                      size_t          sndlen,
                      xmi_recv_t    * recv)
-/* void *clientdata, const DCMF_Control_t * p, size_t peer */
 {
   MPID_assert(recv == NULL);
   MPID_assert(sndlen == 0);
@@ -262,9 +261,9 @@ void MPIDI_ControlCB(xmi_context_t   context,
       MPIDI_procRzvAck(context, msginfo, peer);
       break;
     default:
-      printf("Bad msginfo type: 0x%08x  %d\n",
-             msginfo->msginfo.type,
-             msginfo->msginfo.type);
+      fprintf(stderr, "Bad msginfo type: 0x%08x  %d\n",
+              msginfo->msginfo.type,
+              msginfo->msginfo.type);
       MPID_abort();
     }
   MPID_Progress_signal();
