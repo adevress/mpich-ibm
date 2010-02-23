@@ -240,7 +240,7 @@ void MPIDI_ControlCB(xmi_context_t   context,
                      size_t          sndlen,
                      xmi_recv_t    * recv)
 {
-  MPID_assert(recv == NULL);
+  /* MPID_assert(recv == NULL); */ /**< Uncomment when ticket #50 is fixed */
   MPID_assert(sndlen == 0);
   MPID_assert(_msginfo != NULL);
   MPID_assert(msginfo_size == sizeof(MPIDI_MsgInfo));
