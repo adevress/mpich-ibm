@@ -55,7 +55,7 @@ MPIDI_postCancelReq(xmi_context_t context, MPID_Request * req)
 
   xmi_result_t rc;
   rc = XMI_Send_immediate(context, &params);
-  MPID_assert(rc = XMI_SUCCESS);
+  MPID_assert(rc == XMI_SUCCESS);
   return (int)rc;
 }
 

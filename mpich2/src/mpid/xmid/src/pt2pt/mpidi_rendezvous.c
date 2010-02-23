@@ -96,7 +96,7 @@ MPIDI_RendezvousTransfer (xmi_context_t context,
                               rcvbuf,
                               rcvlen,
                               &rreq->mpid.memregion);
-  MPID_assert(rc = XMI_SUCCESS);
+  MPID_assert(rc == XMI_SUCCESS);
 
   xmi_endpoint_t    dest   = XMI_Client_endpoint(MPIDI_Client, MPID_Request_getPeerRank(rreq), 0);
   xmi_rget_simple_t params = {
@@ -120,5 +120,5 @@ MPIDI_RendezvousTransfer (xmi_context_t context,
   };
 
   rc = XMI_Rget(context, &params);
-  MPID_assert(rc = XMI_SUCCESS);
+  MPID_assert(rc == XMI_SUCCESS);
 }

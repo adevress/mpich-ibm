@@ -30,7 +30,7 @@ MPIDI_CtrlSend(xmi_context_t context,
 
   xmi_result_t rc;
   rc = XMI_Send_immediate(context, &params);
-  MPID_assert(rc = XMI_SUCCESS);
+  MPID_assert(rc == XMI_SUCCESS);
   return rc;
 }
 
@@ -64,7 +64,7 @@ void MPIDI_RecvRzvDoneCB(xmi_context_t   context,
 
   xmi_result_t rc;
 #warning  rc = XMI_Memregion_deregister(context, rreq->mpid.memregion);
-  MPID_assert(rc = XMI_SUCCESS);
+  MPID_assert(rc == XMI_SUCCESS);
 
   MPIDI_RecvDoneCB (context, rreq, XMI_SUCCESS);
 }
@@ -220,7 +220,7 @@ static inline void MPIDI_procRzvAck(xmi_context_t context, const MPIDI_MsgInfo *
 
   xmi_result_t rc;
 #warning  rc = XMI_Memregion_deregister(context, &req->mpid.envelope.envelope.memregion);
-  MPID_assert(rc = XMI_SUCCESS);
+  MPID_assert(rc == XMI_SUCCESS);
   MPIDI_SendDoneCB(context, req, XMI_SUCCESS);
 }
 
