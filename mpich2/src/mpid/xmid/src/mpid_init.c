@@ -5,7 +5,7 @@
  */
 #include "mpidimpl.h"
 
-static const size_t NUM_CONTEXTS = 1;
+const size_t NUM_CONTEXTS = 1;
 xmi_client_t     MPIDI_Client;
 xmi_context_t    MPIDI_Context[1];
 
@@ -78,7 +78,7 @@ void MPIDI_Init_dispath(size_t dispatch, struct protocol_t* proto)
 }
 
 
-void MPIDI_Init(int* rank, int* size)
+void MPIDI_Init(int* rank, int* size, int* threading)
 {
   xmi_result_t rc;
   xmi_configuration_t query;
@@ -135,7 +135,8 @@ int MPID_Init(int * argc,
   /* ----------------------------- */
   /* Initialize messager           */
   /* ----------------------------- */
-  MPIDI_Init(&rank, &size);
+  *provided = requested;
+  MPIDI_Init(&rank, &size, provided);
 
 
   /* ------------------------- */

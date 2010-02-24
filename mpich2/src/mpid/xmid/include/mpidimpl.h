@@ -31,32 +31,9 @@
  *   active.
  * ****************************************************************
  */
-#include <mpid_config.h>
-#include <assert.h>
-
-#if ASSERT_LEVEL==0
-#define MPID_abort()         assert(0)
-#define MPID_assert(x)
-#define MPID_assert_debug(x)
-#elif ASSERT_LEVEL==1
-#define MPID_abort()         assert(0)
-#define MPID_assert(x)       assert(x)
-#define MPID_assert_debug(x)
-#else /* ASSERT_LEVEL==2 */
-/** \brief Always exit--usually implies missing functionality */
-#define MPID_abort()         assert(0)
-/** \brief Tests for likely problems--may not be active in performance code  */
-#define MPID_assert(x)       assert(x)
-/** \brief Tests for rare problems--may not be active in production code */
-#define MPID_assert_debug(x) assert(x)
-#endif
-
 #include "mpiimpl.h"
 #include "mpidpre.h"
 #include "mpidpost.h"
-
-extern xmi_client_t MPIDI_Client;
-extern xmi_context_t MPIDI_Context[];
 
 /**
  * \brief MPI Process descriptor
@@ -65,7 +42,6 @@ extern xmi_context_t MPIDI_Context[];
  */
 typedef struct
 {
-
   struct
   {
     unsigned topology;     /**< Enable optimized topology functions.   */
