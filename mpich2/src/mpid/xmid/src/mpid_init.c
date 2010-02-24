@@ -34,7 +34,7 @@ static struct
       },
   },
   RTS: {
-    func: MPIDI_RecvCB,
+    func: MPIDI_RecvRzvCB,
     dispatch: 1,
     options: {
       consistency:    1,
