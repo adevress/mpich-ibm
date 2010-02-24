@@ -17,9 +17,31 @@
 #define MPICH_MPIDPRE_H_INCLUDED
 
 #include <mpid_config.h>
-
+#include <mpid_dataloop.h>
+#include <mpidthread.h>
 #include <assert.h>
+#include <xmi.h>
 
+
+/* ****************************************************************
+ * Asserts are divided into three levels:
+ * 1. abort  - Always active and always issues assert(0).
+ *             Primarily used for unimplemented code paths.
+ * 2. assert - Active by default, or when MPID_ASSERT_PROD is defined.
+ *             Meant to flag user errors.
+ * 3. assert_debug - Active by default.  Meant to flag coding
+ *                   errors before shipping.
+ * Only one of MPID_ASSERT_ABORT, MPID_ASSERT_PROD (or nothing) should
+ * be specified.
+ * - MPID_ASSERT_ABORT means that the "abort" level is the only level
+ *   of asserts that is active.  Other levels are turned off.
+ * - MPID_ASSERT_PROD means that "abort" and "assert" levels are active.
+ *   "assert_debug" is turned off.
+ * - Not specifying MPID_ASSERT_ABORT or MPID_ASSERT_PROD means that all
+ *   levels of asserts ("abort", "assert", "assert_debug") are
+ *   active.
+ * ****************************************************************
+ */
 #if ASSERT_LEVEL==0
 #define MPID_abort()         assert(0)
 #define MPID_assert(x)
@@ -38,14 +60,45 @@
 #endif
 
 
-/* include message layer stuff */
-#include <xmi.h>
-#include "mpid_dataloop.h"
-
-
 extern const size_t NUM_CONTEXTS;
 extern xmi_client_t MPIDI_Client;
 extern xmi_context_t MPIDI_Context[];
+
+/**
+ * \brief MPI Process descriptor
+ *
+ * This structure contains global configuration flags.
+ */
+typedef struct
+{
+  struct
+  {
+    unsigned topology;     /**< Enable optimized topology functions.   */
+    unsigned collectives;  /**< Enable optimized collective functions. */
+  }
+  optimized;
+  unsigned eager_limit;
+  unsigned optrzv_limit;
+  unsigned rma_pending;    /**< The max num outstanding requests during an RMA op    */
+  unsigned verbose;        /**< The current level of verbosity for end-of-job stats. */
+  unsigned statistics;     /**< The current level of stats collection.               */
+  unsigned use_interrupts; /**< Should interrupts be turned on.                      */
+} MPIDI_Process_t;
+extern MPIDI_Process_t MPIDI_Process;
+
+typedef struct
+{
+  unsigned Send;
+  unsigned RTS;
+  unsigned Control;
+}      MPIDI_Protocol_t;
+extern MPIDI_Protocol_t MPIDI_Protocols;
+
+typedef struct
+{
+}      MPIDI_CollectiveProtocol_t;
+extern MPIDI_CollectiveProtocol_t MPIDI_CollectiveProtocols;
+
 
 
 #define MPID_Irsend     MPID_Isend
@@ -74,7 +127,6 @@ extern xmi_context_t MPIDI_Context[];
 }
 #endif /* !MPID_Dev_datatype_destroy_hook */
 
-#include <mpidthread.h>
 
 typedef int                 MPID_VCR;
 typedef struct MPIDI_VCRT * MPID_VCRT;
@@ -86,10 +138,6 @@ typedef struct MPIDI_VCRT * MPID_VCRT;
 
 /** \brief Our progress engine does not require state */
 #define MPID_PROGRESS_STATE_DECL
-
-/** \brief Our device does not support dynamic processes
- * This is used to speed up comm_create time */
-#define MPIDI_CH3_HAS_NO_DYNAMIC_PROCESS
 
 /**
  * ******************************************************************
@@ -115,22 +163,22 @@ typedef struct MPIDI_RMA_ops {
 /* to send derived datatype across in RMA ops */
 typedef struct MPIDI_RMA_dtype_info
 {
-  int           is_contig;
-  int           n_contig_blocks;
-  int           size;
-  MPI_Aint      extent;
-  int           dataloop_size;
-  void          *dataloop;
-  int           dataloop_depth;
-  int           eltype;
+  int      is_contig;
+  int      n_contig_blocks;
+  int      size;
+  MPI_Aint extent;
+  int      dataloop_size;
+  void    *dataloop;
+  int      dataloop_depth;
+  int      eltype;
   MPI_Aint ub;
   MPI_Aint lb;
   MPI_Aint true_ub;
   MPI_Aint true_lb;
-  int has_sticky_ub;
-  int has_sticky_lb;
-  int unused0;
-  int unused1;
+  int      has_sticky_ub;
+  int      has_sticky_lb;
+  int      unused0;
+  int      unused1;
 }
 MPIDI_RMA_dtype_info;
 
@@ -217,9 +265,9 @@ typedef union
 {
   struct MPIDI_MsgEnvelope_t
   {
-    MPIDI_MsgInfo msginfo;
-    xmi_memregion_t   memregion;
-    size_t             length;
+    MPIDI_MsgInfo   msginfo;
+    xmi_memregion_t memregion;
+    size_t          length;
   } envelope;
   /* DCQuad quad[DCQuad_sizeof(struct MPIDI_MsgEnvelope_t)]; */
 } MPIDI_MsgEnvelope;
@@ -227,27 +275,26 @@ typedef union
 /** \brief This defines the portion of MPID_Request that is specific to the Device */
 struct MPIDI_Request
 {
-  MPIDI_MsgEnvelope      envelope;
-  struct MPID_Request  * next;         /**< Link to next req. in queue */
-  /* unsigned               peerrank;     /\**< The other guy's rank       *\/ */
+  MPIDI_MsgEnvelope     envelope;
+  struct MPID_Request  *next;         /**< Link to next req. in queue */
 
-  char                 * userbuf;      /**< User buffer                */
-  unsigned               userbufcount; /**< Userbuf data count         */
-  char                 * uebuf;        /**< Unexpected buffer          */
-  unsigned               uebuflen;     /**< Length (bytes) of uebuf    */
+  char                 *userbuf;      /**< User buffer                */
+  unsigned              userbufcount; /**< Userbuf data count         */
+  char                 *uebuf;        /**< Unexpected buffer          */
+  unsigned              uebuflen;     /**< Length (bytes) of uebuf    */
 
-  MPI_Datatype           datatype;     /**< Data type of message       */
-  struct MPID_Datatype * datatype_ptr; /**< Info about the datatype    */
+  MPI_Datatype          datatype;     /**< Data type of message       */
+  struct MPID_Datatype *datatype_ptr; /**< Info about the datatype    */
 
-  int                    isSelf;       /**< message sent to self       */
-  int                  cancel_pending; /**< Cancel State               */
-  MPIDI_REQUEST_STATE    state;        /**< The tranfser state         */
-  MPIDI_CA               ca;           /**< Completion action          */
+  int                   isSelf;       /**< message sent to self       */
+  int                 cancel_pending; /**< Cancel State               */
+  MPIDI_REQUEST_STATE   state;        /**< The tranfser state         */
+  MPIDI_CA              ca;           /**< Completion action          */
 
-  xmi_memregion_t        memregion;    /**< Rendezvous rcv memregion   */
+  xmi_memregion_t       memregion;    /**< Rendezvous rcv memregion   */
 };
 /** \brief This defines the portion of MPID_Request that is specific to the Device */
-#define MPID_DEV_REQUEST_DECL        struct MPIDI_Request mpid;
+#define MPID_DEV_REQUEST_DECL struct MPIDI_Request mpid;
 
 
 typedef unsigned MPIDI_msg_sz_t;
@@ -256,34 +303,28 @@ typedef unsigned MPIDI_msg_sz_t;
 struct MPIDI_Comm
 {
   xmi_geometry_t geometry; /**< Geometry component for collectives      */
-  unsigned char comm_shape; /* 0: commworld, 1: rect, 2: irreg */ 
   unsigned *sndlen; /**< lazy alloc alltoall vars */
   unsigned *rcvlen;
   unsigned *sdispls;
   unsigned *rdispls;
   unsigned *sndcounters;
   unsigned *rcvcounters;
-  unsigned last_algorithm;
-  unsigned short bcast_binom_iter;   /* async broadcast is only used every 32
-			  * steps to prevent too many unexpected
-			  * messages */
-  unsigned short bcast_rect_iter;
+  unsigned  last_algorithm;
 };
+struct MPID_Comm;
 
 /** \brief This defines the portion of MPID_Comm that is specific to the Device */
-#define MPID_DEV_COMM_DECL      struct MPIDI_Comm mpid;
+#define MPID_DEV_COMM_DECL struct MPIDI_Comm mpid;
 
 
 #ifdef HAVE_DEV_COMM_HOOK
 #error "Build error - HAVE_DEV_COMM_HOOK defined at least twice!"
 #else
 #define HAVE_DEV_COMM_HOOK
-#define MPID_Dev_comm_create_hook(a)  void MPIDI_Comm_create (MPID_Comm *comm); MPIDI_Comm_create (a)
-#define MPID_Dev_comm_destroy_hook(a) void MPIDI_Comm_destroy(MPID_Comm *comm); MPIDI_Comm_destroy(a)
+#define MPID_Dev_comm_create_hook(a)  ({ void MPIDI_Comm_create (MPID_Comm *comm); MPIDI_Comm_create (a); })
+#define MPID_Dev_comm_destroy_hook(a) ({ void MPIDI_Comm_destroy(MPID_Comm *comm); MPIDI_Comm_destroy(a); })
 #endif
 
-
-struct MPID_Comm;
 
 /**
  * \brief Collective information related to a window
@@ -295,12 +336,13 @@ struct MPID_Comm;
  * The structure is allocated as an array sized for the window communicator.
  * Each entry in the array corresponds directly to the node of the same rank.
  */
-struct MPID_Win_coll_info {
-  void *base_addr;      /**< Node's exposure window base address                  */
-  int disp_unit;        /**< Node's exposure window displacement units            */
-  MPI_Win win_handle;   /**< Node's exposure window handle (local to target node) */
-  int rma_sends;        /**< Count of RMA operations that target node             */
-  xmi_memregion_t mem_region; /**< Memory region descriptor for each node */
+struct MPID_Win_coll_info
+{
+  void           *base_addr;  /**< Node's exposure window base address                  */
+  int             disp_unit;  /**< Node's exposure window displacement units            */
+  MPI_Win         win_handle; /**< Node's exposure window handle (local to target node) */
+  int             rma_sends;  /**< Count of RMA operations that target node             */
+  xmi_memregion_t mem_region; /**< Memory region descriptor for each node               */
 };
 
 /* assert sizeof(struct MPID_Win_coll_info) == 16 */
@@ -308,21 +350,22 @@ struct MPID_Win_coll_info {
 /**
  * \brief Structure of BG extensions to MPID_Win structure
  */
-struct MPID_Dev_win_decl {
-  struct MPID_Win_coll_info *coll_info; /**< allocated array of collective info       */
-  struct MPID_Comm *comm_ptr;     /**< saved pointer to window communicator           */
-  volatile int lock_granted;      /**< window lock                                    */
-  unsigned long _lock_queue[4];   /**< opaque structure used for lock wait queue      */
-  unsigned long _unlk_queue[4];   /**< opaque structure used for unlock wait queue    */
-  volatile int my_sync_begin;     /**< counter of POST messages received              */
-  volatile int my_sync_done;      /**< counter of COMPLETE messages received          */
-  volatile int my_rma_recvs;      /**< counter of RMA operations received             */
-  volatile int my_rma_pends;      /**< counter of RMA operations queued to send       */
-  volatile int my_get_pends;      /**< counter of GET operations queued               */
-  volatile int epoch_type;        /**< current epoch type                             */
-  volatile int epoch_size;        /**< current epoch size (or target for LOCK)        */
-  int epoch_assert;               /**< MPI_MODE_* bits asserted at epoch start        */
-  int epoch_rma_ok;               /**< flag indicating an exposure epoch is in affect */
+struct MPID_Dev_win_decl
+{
+  struct MPID_Win_coll_info *coll_info; /**< allocated array of collective info             */
+  struct MPID_Comm *comm_ptr;           /**< saved pointer to window communicator           */
+  volatile int      lock_granted;       /**< window lock                                    */
+  unsigned long     _lock_queue[4];     /**< opaque structure used for lock wait queue      */
+  unsigned long     _unlk_queue[4];     /**< opaque structure used for unlock wait queue    */
+  volatile int      my_sync_begin;      /**< counter of POST messages received              */
+  volatile int      my_sync_done;       /**< counter of COMPLETE messages received          */
+  volatile int      my_rma_recvs;       /**< counter of RMA operations received             */
+  volatile int      my_rma_pends;       /**< counter of RMA operations queued to send       */
+  volatile int      my_get_pends;       /**< counter of GET operations queued               */
+  volatile int      epoch_type;         /**< current epoch type                             */
+  volatile int      epoch_size;         /**< current epoch size (or target for LOCK)        */
+  int               epoch_assert;       /**< MPI_MODE_* bits asserted at epoch start        */
+  int               epoch_rma_ok;       /**< flag indicating an exposure epoch is in affect */
 };
 
 /**
@@ -332,8 +375,8 @@ struct MPID_Dev_win_decl {
 
 
 /**
- * @defgroup MPID_EPOTYPE MPID One-sided Epoch Types
- *@{
+ * \defgroup MPID_EPOTYPE MPID One-sided Epoch Types
+ * \{
  */
 #define MPID_EPOTYPE_NONE       0       /**< No epoch in affect */
 #define MPID_EPOTYPE_LOCK       1       /**< MPI_Win_lock access epoch */
@@ -342,11 +385,11 @@ struct MPID_Dev_win_decl {
 #define MPID_EPOTYPE_POSTSTART  4       /**< MPI_Win_post+MPI_Win_start access/exposure epoch */
 #define MPID_EPOTYPE_FENCE      5       /**< MPI_Win_fence access/exposure epoch */
 #define MPID_EPOTYPE_REFENCE    6       /**< MPI_Win_fence possible access/exposure epoch */
-/**@}*/
+/** \} */
 
 /**
- * @defgroup MPID_MSGTYPE MPID One-sided Message Types
- *@{
+ * \defgroup MPID_MSGTYPE MPID One-sided Message Types
+ * \{
  */
 #define MPID_MSGTYPE_NONE       0       /**< Not a valid message */
 #define MPID_MSGTYPE_LOCK       1       /**< lock window */
@@ -364,6 +407,6 @@ struct MPID_Dev_win_decl {
 #define MPID_MSGTYPE_DT_IOV     13      /**< Datatype iov payload */
 #define MPID_MSGTYPE_LOCKACK    14      /**< lock acknowledge */
 #define MPID_MSGTYPE_UNLOCKACK  15      /**< unlock acknowledge, with status */
-/**@}*/
+/** \} */
 
 #endif /* !MPICH_MPIDPRE_H_INCLUDED */

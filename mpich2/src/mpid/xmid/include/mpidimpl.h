@@ -12,63 +12,9 @@
 #ifndef MPICH_MPIDIMPL_H_INCLUDED
 #define MPICH_MPIDIMPL_H_INCLUDED
 
-/* ****************************************************************
- * Asserts are divided into three levels:
- * 1. abort  - Always active and always issues assert(0).
- *             Primarily used for unimplemented code paths.
- * 2. assert - Active by default, or when MPID_ASSERT_PROD is defined.
- *             Meant to flag user errors.
- * 3. assert_debug - Active by default.  Meant to flag coding
- *                   errors before shipping.
- * Only one of MPID_ASSERT_ABORT, MPID_ASSERT_PROD (or nothing) should
- * be specified.
- * - MPID_ASSERT_ABORT means that the "abort" level is the only level
- *   of asserts that is active.  Other levels are turned off.
- * - MPID_ASSERT_PROD means that "abort" and "assert" levels are active.
- *   "assert_debug" is turned off.
- * - Not specifying MPID_ASSERT_ABORT or MPID_ASSERT_PROD means that all
- *   levels of asserts ("abort", "assert", "assert_debug") are
- *   active.
- * ****************************************************************
- */
-#include "mpiimpl.h"
-#include "mpidpre.h"
-#include "mpidpost.h"
-
-/**
- * \brief MPI Process descriptor
- *
- * This structure contains global configuration flags.
- */
-typedef struct
-{
-  struct
-  {
-    unsigned topology;     /**< Enable optimized topology functions.   */
-    unsigned collectives;  /**< Enable optimized collective functions. */
-  }
-  optimized;
-  unsigned eager_limit;
-  unsigned optrzv_limit;
-  unsigned rma_pending;    /**< The max num outstanding requests during an RMA op */
-  unsigned verbose;        /**< The current level of verbosity for end-of-job stats. */
-  unsigned statistics;     /**< The current level of stats collection.               */
-  unsigned use_interrupts; /**< Should interrupts be turned on.                      */
-} MPIDI_Process_t;
-extern MPIDI_Process_t MPIDI_Process;
-
-typedef struct
-{
-  unsigned Send;
-  unsigned RTS;
-  unsigned Control;
-}      MPIDI_Protocol_t;
-extern MPIDI_Protocol_t MPIDI_Protocols;
-
-typedef struct
-{
-}      MPIDI_CollectiveProtocol_t;
-extern MPIDI_CollectiveProtocol_t MPIDI_CollectiveProtocols;
+#include <mpiimpl.h>
+#include <mpidpre.h>
+#include <mpidpost.h>
 
 /**
  * \addtogroup MPID_RECVQ
@@ -81,7 +27,7 @@ MPID_Request * MPIDI_Recvq_FDUR      (MPID_Request * req, int source, int tag, i
 MPID_Request * MPIDI_Recvq_FDU_or_AEP(int s, int t, int c, int * foundp);
 int            MPIDI_Recvq_FDPR      (MPID_Request * req);
 MPID_Request * MPIDI_Recvq_FDP_or_AEU(int s, int t, int c, int * foundp);
-void MPIDI_Recvq_DumpQueues(int verbose);
+void MPIDI_Recvq_DumpQueues          (int verbose);
 /**\}*/
 
 void MPIDI_Buffer_copy(const void     * const sbuf,
@@ -143,23 +89,23 @@ void MPID_Progress_signal();
  */
 #define MPIDI_Datatype_get_info(_count, _datatype,              \
 _dt_contig_out, _data_sz_out, _dt_ptr, _dt_true_lb)             \
-{                                                               \
+({                                                              \
   if (HANDLE_GET_KIND(_datatype) == HANDLE_KIND_BUILTIN)        \
     {                                                           \
-        (_dt_ptr) = NULL;                                       \
+        (_dt_ptr)        = NULL;                                \
         (_dt_contig_out) = TRUE;                                \
-        (_dt_true_lb)  = 0;                                     \
-        (_data_sz_out) = (_count) *                             \
+        (_dt_true_lb)    = 0;                                   \
+        (_data_sz_out)   = (_count) *                           \
         MPID_Datatype_get_basic_size(_datatype);                \
     }                                                           \
   else                                                          \
     {                                                           \
         MPID_Datatype_get_ptr((_datatype), (_dt_ptr));          \
         (_dt_contig_out) = (_dt_ptr)->is_contig;                \
-        (_dt_true_lb) = (_dt_ptr)->true_lb;                     \
-        (_data_sz_out) = (_count) * (_dt_ptr)->size;            \
+        (_dt_true_lb)    = (_dt_ptr)->true_lb;                  \
+        (_data_sz_out)   = (_count) * (_dt_ptr)->size;          \
     }                                                           \
-}
+})
 
 /**
  * \addtogroup MPID_REQUEST
@@ -222,16 +168,16 @@ void MPIDI_SendDoneCB(xmi_context_t   context,
                       void          * clientdata,
                       xmi_result_t    result);
 
-int  MPIDI_Irecv(void          * buf,
-                 int             count,
-                 MPI_Datatype    datatype,
-                 int             rank,
-                 int             tag,
-                 MPID_Comm     * comm,
-                 int             context_offset,
-                 MPI_Status    * status,
-                 MPID_Request ** request,
-                 char          * func);
+int MPIDI_Irecv(void          * buf,
+                int             count,
+                MPI_Datatype    datatype,
+                int             rank,
+                int             tag,
+                MPID_Comm     * comm,
+                int             context_offset,
+                MPI_Status    * status,
+                MPID_Request ** request,
+                char          * func);
 void MPIDI_RecvCB(xmi_context_t   context,
                   void          * _contextid,
                   void          * _msginfo,
@@ -239,6 +185,13 @@ void MPIDI_RecvCB(xmi_context_t   context,
                   void          * sndbuf,
                   size_t          sndlen,
                   xmi_recv_t    * recv);
+void MPIDI_RecvRzvCB(xmi_context_t   context,
+                     void          * _contextid,
+                     void          * _msginfo,
+                     size_t          msginfo_size,
+                     void          * sndbuf,
+                     size_t          sndlen,
+                     xmi_recv_t    * recv);
 void MPIDI_RecvDoneCB(xmi_context_t   context,
                       void          * clientdata,
                       xmi_result_t    result);
@@ -265,23 +218,23 @@ void MPIDI_ControlCB(xmi_context_t   context,
  * \param[in]  _req  The request to cancel
  * \param[out] _flag The previous state
  */
-#define MPIDI_Request_cancel_pending(_req, _flag)  \
-{                                                       \
+#define MPIDI_Request_cancel_pending(_req, _flag)       \
+({                                                      \
   *(_flag) = (_req)->mpid.cancel_pending;               \
   (_req)->mpid.cancel_pending = TRUE;                   \
-}
+})
 
-#define MPIDI_VerifyBuffer(_src_buff, _dst_buff, _data_lb)           \
-{                                                                    \
-  if (_src_buff == MPI_IN_PLACE)                                     \
-    _dst_buff = _src_buff;                                           \
-  else                                                               \
-  {                                                                  \
-    MPID_Ensure_Aint_fits_in_pointer(MPI_VOID_PTR_CAST_TO_MPI_AINT  \
-                                     _src_buff + _data_lb);          \
-    _dst_buff = (char *) _src_buff + _data_lb;                       \
-  }                                                                  \
-}
+#define MPIDI_VerifyBuffer(_src_buff, _dst_buff, _data_lb)              \
+({                                                                      \
+  if (_src_buff == MPI_IN_PLACE)                                        \
+    _dst_buff = _src_buff;                                              \
+  else                                                                  \
+    {                                                                   \
+      MPID_Ensure_Aint_fits_in_pointer(MPI_VOID_PTR_CAST_TO_MPI_AINT    \
+                                       _src_buff + _data_lb);           \
+      _dst_buff = (char *) _src_buff + _data_lb;                        \
+    }                                                                   \
+})
 
 /** \brief Helper function when sending to self  */
 int MPIDI_Isend_self(const void    * buf,

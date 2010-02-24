@@ -40,15 +40,15 @@
 
 
 #define MPID_CS_INITIALIZE()                                            \
-{                                                                       \
+({                                                                      \
   /* Create thread local storage for nest count that MPICH uses */      \
   MPID_Thread_tls_create(NULL, &MPIR_ThreadInfo.thread_storage, NULL);  \
-}
+})
 #define MPID_CS_FINALIZE()                                              \
-{                                                                       \
+({                                                                      \
   /* Destroy thread local storage created during MPID_CS_INITIALIZE */  \
   MPID_Thread_tls_destroy(&MPIR_ThreadInfo.thread_storage, NULL);       \
-}
+})
 #define MPID_CS_ENTER() ({ if (MPIR_ThreadInfo.isThreaded) { xmi_result_t rc; rc = XMI_Context_lock  (MPIDI_Context[0]); MPID_assert(rc == XMI_SUCCESS); } })
 #define MPID_CS_EXIT()  ({ if (MPIR_ThreadInfo.isThreaded) { xmi_result_t rc; rc = XMI_Context_unlock(MPIDI_Context[0]); MPID_assert(rc == XMI_SUCCESS); } })
 #define MPID_CS_CYCLE() ({ xmi_result_t rc; rc = XMI_Context_multiadvance(MPIDI_Context, NUM_CONTEXTS, 1); MPID_assert(rc == XMI_SUCCESS); })
@@ -62,18 +62,20 @@
 #define MPIU_THREAD_CS_YIELD(_name,_context) MPID_CS_CYCLE()
 #define MPIU_THREADSAFE_INIT_DECL(_var) static volatile int _var=1
 #define MPIU_THREADSAFE_INIT_STMT(_var,_stmt)   \
-     if (_var) {                                \
-	 MPIU_THREAD_CS_ENTER(INITFLAG,);       \
-      _stmt; _var=0;                            \
-      MPIU_THREAD_CS_EXIT(INITFLAG,);           \
-     }
+    if (_var)                                   \
+      {                                         \
+        MPIU_THREAD_CS_ENTER(INITFLAG,);        \
+        _stmt; _var=0;                          \
+        MPIU_THREAD_CS_EXIT(INITFLAG,);         \
+      }
 #define MPIU_THREADSAFE_INIT_BLOCK_BEGIN(_var)  \
     MPIU_THREAD_CS_ENTER(INITFLAG,);            \
-     if (_var) {
+    if (_var)                                   \
+      {
 #define MPIU_THREADSAFE_INIT_CLEAR(_var) _var=0
 #define MPIU_THREADSAFE_INIT_BLOCK_END(_var)    \
       }                                         \
-	  MPIU_THREAD_CS_EXIT(INITFLAG,)
+    MPIU_THREAD_CS_EXIT(INITFLAG,)
 
 
 #endif

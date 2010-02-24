@@ -14,6 +14,6 @@
 #ifndef MPICH_MPIDPOST_H_INCLUDED
 #define MPICH_MPIDPOST_H_INCLUDED
 
-#include "mpid_datatype.h"
+#include <mpid_datatype.h>
 
 #endif
