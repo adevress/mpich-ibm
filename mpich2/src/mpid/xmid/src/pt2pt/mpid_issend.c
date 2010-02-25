@@ -57,7 +57,7 @@ int MPID_Issend(const void    * buf,
   /* create a send request */
   /* --------------------- */
 
-  if (!(sreq = MPID_Request_create ()))
+  if (!(sreq = MPIDI_Request_create ()))
     {
       *request = NULL;
       int mpi_errno = MPIR_Err_create_code(MPI_SUCCESS,
@@ -70,7 +70,7 @@ int MPID_Issend(const void    * buf,
     }
 
   /* match info */
-  MPID_Request_setMatch(sreq, tag,comm->rank,comm->context_id+context_offset);
+  MPIDI_Request_setMatch(sreq, tag,comm->rank,comm->context_id+context_offset);
 
   /* data buffer info */
   sreq->mpid.userbuf          = (char *)buf;
@@ -80,13 +80,13 @@ int MPID_Issend(const void    * buf,
   /* communicator & destination info */
   sreq->comm                 = comm;  MPIR_Comm_add_ref(comm);
   if (rank != MPI_PROC_NULL)
-    MPID_Request_setPeerRank(sreq, comm->vcr[rank]);
-  MPID_Request_setPeerRequest(sreq, sreq);
+    MPIDI_Request_setPeerRank(sreq, comm->vcr[rank]);
+  MPIDI_Request_setPeerRequest(sreq, sreq);
 
   /* message type info */
   sreq->kind = MPID_REQUEST_SEND;
-  MPID_Request_setType (sreq, MPIDI_REQUEST_TYPE_SSEND);
-  MPID_Request_setSync (sreq, 1);
+  MPIDI_Request_setType (sreq, MPIDI_REQUEST_TYPE_SSEND);
+  MPIDI_Request_setSync (sreq, 1);
 
   /* ------------------------------ */
   /* special case: NULL destination */

@@ -37,7 +37,7 @@ int MPID_Irecv(void          * buf,
   if (rank == MPI_PROC_NULL)
     {
       MPID_Request * rreq;
-      rreq = MPID_Request_create();
+      rreq = MPIDI_Request_create();
       if (!rreq)
         return MPIR_Err_create_code(MPI_SUCCESS,
                                     MPIR_ERR_FATAL,
@@ -51,7 +51,7 @@ int MPID_Irecv(void          * buf,
       MPIR_Status_set_procnull(&rreq->status);
       rreq->comm             = comm;
       MPIR_Comm_add_ref(comm);
-      MPID_Request_setMatch(rreq, tag, rank, comm->recvcontext_id+context_offset);
+      MPIDI_Request_setMatch(rreq, tag, rank, comm->recvcontext_id+context_offset);
       rreq->mpid.userbuf      = buf;
       rreq->mpid.userbufcount = count;
       rreq->mpid.datatype     = datatype;

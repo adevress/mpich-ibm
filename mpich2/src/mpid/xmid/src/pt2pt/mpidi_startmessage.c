@@ -17,7 +17,7 @@ MPIDI_Send(MPID_Request  * sreq,
 {
   int rc = XMI_ERROR;
   MPIDI_MsgInfo * msginfo = &sreq->mpid.envelope.envelope.msginfo;
-  xmi_endpoint_t dest     = XMI_Client_endpoint(MPIDI_Client, MPID_Request_getPeerRank(sreq), 0);
+  xmi_endpoint_t dest     = XMI_Client_endpoint(MPIDI_Client, MPIDI_Request_getPeerRank(sreq), 0);
 
     {
       xmi_send_t parameters = { {0}, {0} };

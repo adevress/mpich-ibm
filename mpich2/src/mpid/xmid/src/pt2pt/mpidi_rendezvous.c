@@ -15,7 +15,7 @@ MPIDI_RendezvousTransfer (xmi_context_t context,
   /* --------------------------- */
   /* if synchronized, post ack.  */
   /* --------------------------- */
-  if (MPID_Request_isSync(rreq))
+  if (MPIDI_Request_isSync(rreq))
     MPIDI_postSyncAck(context, rreq);
 
   /* -------------------------------------- */
@@ -51,7 +51,7 @@ MPIDI_RendezvousTransfer (xmi_context_t context,
   /* -------------------------------------- */
   if (dt_contig)
     {
-      MPID_Request_setCA(rreq, MPIDI_CA_COMPLETE);
+      MPIDI_Request_setCA(rreq, MPIDI_CA_COMPLETE);
       rreq->mpid.uebuf = NULL;
       rreq->mpid.uebuflen = 0;
       rcvbuf = (char *)rreq->mpid.userbuf + dt_true_lb;
@@ -63,7 +63,7 @@ MPIDI_RendezvousTransfer (xmi_context_t context,
   /* --------------------------------------------- */
   else
     {
-      MPID_Request_setCA(rreq, MPIDI_CA_UNPACK_UEBUF_AND_COMPLETE);
+      MPIDI_Request_setCA(rreq, MPIDI_CA_UNPACK_UEBUF_AND_COMPLETE);
       rreq->mpid.uebuflen   = rcvlen ;
       if ((rreq->mpid.uebuf = MPIU_Malloc (rcvlen)) == NULL)
         {
@@ -98,7 +98,7 @@ MPIDI_RendezvousTransfer (xmi_context_t context,
                               &rreq->mpid.memregion);
   MPID_assert(rc == XMI_SUCCESS);
 
-  xmi_endpoint_t    dest   = XMI_Client_endpoint(MPIDI_Client, MPID_Request_getPeerRank(rreq), 0);
+  xmi_endpoint_t    dest   = XMI_Client_endpoint(MPIDI_Client, MPIDI_Request_getPeerRank(rreq), 0);
   xmi_rget_simple_t params = {
   rma : {
     dest  : dest,

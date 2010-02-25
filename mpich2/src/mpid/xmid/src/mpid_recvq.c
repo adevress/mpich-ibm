@@ -86,9 +86,9 @@ int MPIDI_Recvq_FU(int source, int tag, int context_id, MPI_Status * status)
 #ifdef USE_STATISTICS
                 ++search_length;
 #endif
-                if ( (MPID_Request_getMatchCtxt(rreq) == context_id) &&
-                     (MPID_Request_getMatchRank(rreq) == source    ) &&
-                     (MPID_Request_getMatchTag(rreq)  == tag       )
+                if ( (MPIDI_Request_getMatchCtxt(rreq) == context_id) &&
+                     (MPIDI_Request_getMatchRank(rreq) == source    ) &&
+                     (MPIDI_Request_getMatchTag(rreq)  == tag       )
                    )
                   {
                     found = 1;
@@ -138,9 +138,9 @@ int MPIDI_Recvq_FU(int source, int tag, int context_id, MPI_Status * status)
 #ifdef USE_STATISTICS
                 ++search_length;
 #endif
-                if ( (  MPID_Request_getMatchCtxt(rreq)              == match.context_id) &&
-                     ( (MPID_Request_getMatchRank(rreq) & mask.rank) == match.rank      ) &&
-                     ( (MPID_Request_getMatchTag(rreq)  & mask.tag ) == match.tag       )
+                if ( (  MPIDI_Request_getMatchCtxt(rreq)              == match.context_id) &&
+                     ( (MPIDI_Request_getMatchRank(rreq) & mask.rank) == match.rank      ) &&
+                     ( (MPIDI_Request_getMatchTag(rreq)  & mask.tag ) == match.tag       )
                    )
                   {
                     found = 1;
@@ -192,10 +192,10 @@ MPID_Request * MPIDI_Recvq_FDUR (MPID_Request * req, int source, int tag, int co
 #ifdef USE_STATISTICS
         ++search_length;
 #endif
-        if (MPID_Request_getPeerRequest(cur_rreq) == req        &&
-            MPID_Request_getMatchCtxt(cur_rreq)   == context_id &&
-            MPID_Request_getMatchRank(cur_rreq)   == source     &&
-            MPID_Request_getMatchTag(cur_rreq)    == tag)
+        if (MPIDI_Request_getPeerRequest(cur_rreq) == req        &&
+            MPIDI_Request_getMatchCtxt(cur_rreq)   == context_id &&
+            MPIDI_Request_getMatchRank(cur_rreq)   == source     &&
+            MPIDI_Request_getMatchTag(cur_rreq)    == tag)
           {
             matching_prev_rreq = prev_rreq;
             matching_cur_rreq  = cur_rreq;
@@ -264,9 +264,9 @@ MPID_Request * MPIDI_Recvq_FDU_or_AEP(int source, int tag, int context_id, int *
 #ifdef USE_STATISTICS
                 ++search_length;
 #endif
-                if ( (MPID_Request_getMatchCtxt(rreq) == context_id) &&
-                     (MPID_Request_getMatchRank(rreq) == source    ) &&
-                     (MPID_Request_getMatchTag(rreq)  == tag       )
+                if ( (MPIDI_Request_getMatchCtxt(rreq) == context_id) &&
+                     (MPIDI_Request_getMatchRank(rreq) == source    ) &&
+                     (MPIDI_Request_getMatchTag(rreq)  == tag       )
                    )
                 {
                     if (prev_rreq != NULL)
@@ -324,9 +324,9 @@ MPID_Request * MPIDI_Recvq_FDU_or_AEP(int source, int tag, int context_id, int *
 #ifdef USE_STATISTICS
                 ++search_length;
 #endif
-                if ( (  MPID_Request_getMatchCtxt(rreq)              == match.context_id) &&
-                     ( (MPID_Request_getMatchRank(rreq) & mask.rank) == match.rank      ) &&
-                     ( (MPID_Request_getMatchTag(rreq)  & mask.tag ) == match.tag       )
+                if ( (  MPIDI_Request_getMatchCtxt(rreq)              == match.context_id) &&
+                     ( (MPIDI_Request_getMatchRank(rreq) & mask.rank) == match.rank      ) &&
+                     ( (MPIDI_Request_getMatchTag(rreq)  & mask.tag ) == match.tag       )
                    )
                 {
                     if (prev_rreq != NULL)
@@ -353,10 +353,10 @@ MPID_Request * MPIDI_Recvq_FDU_or_AEP(int source, int tag, int context_id, int *
         /* A matching request was not found in the unexpected queue,
            so we need to allocate a new request and add it to the
            posted queue */
-        rreq = MPID_Request_create();
+        rreq = MPIDI_Request_create();
 
         rreq->kind = MPID_REQUEST_RECV;
-        MPID_Request_setMatch(rreq, tag, source, context_id);
+        MPIDI_Request_setMatch(rreq, tag, source, context_id);
         rreq->mpid.next = NULL;
 
         if (recvq.posted_tail != NULL)
@@ -464,9 +464,9 @@ MPID_Request * MPIDI_Recvq_FDP_or_AEU(int source, int tag, int context_id, int *
 #ifdef USE_STATISTICS
             ++search_length;
 #endif
-            if ( (MPID_Request_getMatchCtxt(rreq) == context_id) &&
-                 (MPID_Request_getMatchRank(rreq) == source || MPID_Request_getMatchRank(rreq) == MPI_ANY_SOURCE) &&
-                 (MPID_Request_getMatchTag(rreq)  == tag    || MPID_Request_getMatchTag(rreq)  == MPI_ANY_TAG)
+            if ( (MPIDI_Request_getMatchCtxt(rreq) == context_id) &&
+                 (MPIDI_Request_getMatchRank(rreq) == source || MPIDI_Request_getMatchRank(rreq) == MPI_ANY_SOURCE) &&
+                 (MPIDI_Request_getMatchTag(rreq)  == tag    || MPIDI_Request_getMatchTag(rreq)  == MPI_ANY_TAG)
                )
             {
                 if (prev_rreq != NULL)
@@ -492,10 +492,10 @@ MPID_Request * MPIDI_Recvq_FDP_or_AEU(int source, int tag, int context_id, int *
         /* A matching request was not found in the posted queue, so we
            need to allocate a new request and add it to the unexpected
            queue */
-        rreq = MPID_Request_create();
+        rreq = MPIDI_Request_create();
 
         rreq->kind = MPID_REQUEST_RECV;
-        MPID_Request_setMatch(rreq, tag, source, context_id);
+        MPIDI_Request_setMatch(rreq, tag, source, context_id);
         rreq->mpid.next = NULL;
 
         if (recvq.unexpected_tail != NULL)
@@ -542,9 +542,9 @@ void MPIDI_Recvq_DumpQueues (int verbose)
       if(verbose >= 2)
         fprintf (stderr, "P %d: MPItag=%d MPIrank=%d ctxt=%d cc=%d count=%d\n",
                  i++,
-                 MPID_Request_getMatchTag(rreq),
-                 MPID_Request_getMatchRank(rreq),
-                 MPID_Request_getMatchCtxt(rreq),
+                 MPIDI_Request_getMatchTag(rreq),
+                 MPIDI_Request_getMatchRank(rreq),
+                 MPIDI_Request_getMatchCtxt(rreq),
                  rreq->cc,
                  rreq->mpid.userbufcount
                  );
@@ -566,9 +566,9 @@ void MPIDI_Recvq_DumpQueues (int verbose)
       if(verbose >= 2)
         fprintf (stderr, "UE %d: MPItag=%d MPIrank=%d ctxt=%d cc=%d uebuf=%p uebuflen=%u\n",
                  i++,
-                 MPID_Request_getMatchTag(rreq),
-                 MPID_Request_getMatchRank(rreq),
-                 MPID_Request_getMatchCtxt(rreq),
+                 MPIDI_Request_getMatchTag(rreq),
+                 MPIDI_Request_getMatchRank(rreq),
+                 MPIDI_Request_getMatchCtxt(rreq),
                  *rreq->cc_ptr,
                  rreq->mpid.uebuf,
                  rreq->mpid.uebuflen);

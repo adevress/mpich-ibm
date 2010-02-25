@@ -19,9 +19,9 @@
  * used as a test function to ensure that the output is what you would
  * expect.
  *
- * MPID_Abort_core() simply uses the same params from MPID_Abort().
+ * MPIDI_Abort_core() simply uses the same params from MPID_Abort().
  */
-void MPID_Abort_core(MPID_Comm * comm, int mpi_errno, int exit_code, const char *user_str)
+void MPIDI_Abort_core(MPID_Comm * comm, int mpi_errno, int exit_code, const char *user_str)
 {
   char sys_str[MPI_MAX_ERROR_STRING+5] = "";
   char comm_str[MPI_MAX_ERROR_STRING] = "";
@@ -72,7 +72,7 @@ int MPID_Abort(MPID_Comm * comm, int mpi_errno, int exit_code, const char *error
   char* env     = getenv("DCMF_COREONMPIDABORT");
   if (!env) env = getenv("DCMF_COREONMPIABORT");
   if (!env) env = getenv("DCMF_COREONABORT");
-  MPID_Abort_core(comm, mpi_errno, exit_code, error_msg);
+  MPIDI_Abort_core(comm, mpi_errno, exit_code, error_msg);
 
   if (env != NULL)
     if ( (strncasecmp("no", env, 2)==0) || (strncasecmp("exit", env, 4)==0) || (strncmp("0", env, 1)==0) )

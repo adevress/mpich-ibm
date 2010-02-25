@@ -49,17 +49,17 @@ void MPIDI_RecvRzvCB(xmi_context_t   context,
   /* -------------------------------------- */
   /* Signal that the recv has been started. */
   /* -------------------------------------- */
-  MPID_Progress_signal ();
+  MPIDI_Progress_signal ();
 
   /* ------------------------ */
   /* copy in information      */
   /* ------------------------ */
   rreq->status.MPI_SOURCE = match.rank;
   rreq->status.MPI_TAG    = match.tag;
-  MPID_Request_setPeerRank   (rreq, senderrank);
-  MPID_Request_setPeerRequest(rreq, msginfo->msginfo.req);
-  MPID_Request_setSync       (rreq, msginfo->msginfo.isSync);
-  MPID_Request_setRzv        (rreq, 1);
+  MPIDI_Request_setPeerRank   (rreq, senderrank);
+  MPIDI_Request_setPeerRequest(rreq, msginfo->msginfo.req);
+  MPIDI_Request_setSync       (rreq, msginfo->msginfo.isSync);
+  MPIDI_Request_setRzv        (rreq, 1);
 
   /* ----------------------------------------------------- */
   /* Save the rendezvous information for when the target   */

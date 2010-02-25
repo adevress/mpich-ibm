@@ -45,8 +45,8 @@ void MPID_Progress_end(MPID_Progress_state * state)
  *
  * It does not check what has completed, only that the counter
  * changes.  That happens whenever there is a call to
- * MPID_Progress_signal().  It is therefore important that the ADI
- * layer include a call to MPID_Progress_signal() whenever something
+ * MPIDI_Progress_signal().  It is therefore important that the ADI
+ * layer include a call to MPIDI_Progress_signal() whenever something
  * occurs that a node might be waiting on.
  *
  */
@@ -87,10 +87,10 @@ int MPID_Progress_test()
  * \brief Signal MPID_Progress_wait() that something is done/changed
  *
  * It is therefore important that the ADI layer include a call to
- * MPID_Progress_signal() whenever something occurs that a node might
+ * MPIDI_Progress_signal() whenever something occurs that a node might
  * be waiting on.
  */
-void MPID_Progress_signal()
+void MPIDI_Progress_signal()
 {
   _requests++;
 }

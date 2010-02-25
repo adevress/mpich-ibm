@@ -14,7 +14,7 @@ MPID_Cancel_recv(MPID_Request * rreq)
     {
       rreq->status.cancelled = TRUE;
       rreq->status.count = 0;
-      MPID_Request_set_completed(rreq);
+      MPIDI_Request_set_completed(rreq);
     }
   /* This is successful, even if the recv isn't cancelled */
   return MPI_SUCCESS;
@@ -32,13 +32,13 @@ static inline int
 MPIDI_postCancelReq(xmi_context_t context, MPID_Request * req)
 {
   MPID_assert(req != NULL);
-  unsigned      peerrank  =  MPID_Request_getPeerRank(req);
+  unsigned      peerrank  =  MPIDI_Request_getPeerRank(req);
 
   MPIDI_MsgInfo cancel = {
   msginfo: {
-    MPItag   : MPID_Request_getMatchTag(req),
-    MPIrank  : MPID_Request_getMatchRank(req),
-    MPIctxt  : MPID_Request_getMatchCtxt(req),
+    MPItag   : MPIDI_Request_getMatchTag(req),
+    MPIrank  : MPIDI_Request_getMatchRank(req),
+    MPIctxt  : MPIDI_Request_getMatchCtxt(req),
     peerrank : peerrank,
     type     : MPIDI_REQUEST_TYPE_CANCEL_REQUEST,
     req      : req,
@@ -76,11 +76,11 @@ MPID_Cancel_send(MPID_Request * sreq)
   /* ------------------------------------ */
   /* Try to cancel a send request to self */
   /* ------------------------------------ */
-  if (MPID_Request_isSelf(sreq))
+  if (MPIDI_Request_isSelf(sreq))
     {
-      int source     = MPID_Request_getMatchRank(sreq);
-      int tag        = MPID_Request_getMatchTag (sreq);
-      int context_id = MPID_Request_getMatchCtxt(sreq);
+      int source     = MPIDI_Request_getMatchRank(sreq);
+      int tag        = MPIDI_Request_getMatchTag (sreq);
+      int context_id = MPIDI_Request_getMatchCtxt(sreq);
       MPID_Request * rreq = MPIDI_Recvq_FDUR(sreq, source, tag, context_id);
       if (rreq)
         {
@@ -96,7 +96,7 @@ MPID_Cancel_send(MPID_Request * sreq)
       if(!sreq->comm)
         return MPI_SUCCESS;
 
-      MPID_Request_increment_cc(sreq);
+      MPIDI_Request_increment_cc(sreq);
       MPIDI_postCancelReq(MPIDI_Context[0], sreq);
 
       return MPI_SUCCESS;

@@ -55,12 +55,12 @@ void MPIDI_RecvRzvDoneCB(xmi_context_t   context,
   MPID_assert(rreq != NULL);
 
   /* Is it neccesary to save the original value of the 'type' field ?? */
-  unsigned original_value = MPID_Request_getType(rreq);
-  MPID_Request_setType(rreq, MPIDI_REQUEST_TYPE_RENDEZVOUS_ACKNOWLEDGE);
+  unsigned original_value = MPIDI_Request_getType(rreq);
+  MPIDI_Request_setType(rreq, MPIDI_REQUEST_TYPE_RENDEZVOUS_ACKNOWLEDGE);
   MPIDI_CtrlSend(context,
                  &rreq->mpid.envelope.envelope.msginfo,
-                 MPID_Request_getPeerRank(rreq));
-  MPID_Request_setType(rreq, original_value);
+                 MPIDI_Request_getPeerRank(rreq));
+  MPIDI_Request_setType(rreq, original_value);
 
   xmi_result_t rc;
 #warning  rc = XMI_Memregion_deregister(context, rreq->mpid.memregion);
@@ -80,10 +80,10 @@ void MPIDI_RecvRzvDoneCB(xmi_context_t   context,
 int
 MPIDI_postSyncAck(xmi_context_t context, MPID_Request * req)
 {
-  MPID_Request_setType(req, MPIDI_REQUEST_TYPE_SSEND_ACKNOWLEDGE);
+  MPIDI_Request_setType(req, MPIDI_REQUEST_TYPE_SSEND_ACKNOWLEDGE);
 
   MPIDI_MsgInfo * info = &req->mpid.envelope.envelope.msginfo;
-  unsigned        peer =  MPID_Request_getPeerRank(req);
+  unsigned        peer =  MPIDI_Request_getPeerRank(req);
 
   return MPIDI_CtrlSend(context, info, peer);
 }
@@ -102,7 +102,7 @@ MPIDI_procSyncAck(xmi_context_t context, const MPIDI_MsgInfo *info, unsigned pee
   MPID_assert(req != NULL);
 
   if(req->mpid.state ==  MPIDI_SEND_COMPLETE)
-    MPID_Request_complete(req);
+    MPIDI_Request_complete(req);
   else
     req->mpid.state = MPIDI_ACKNOWLEGED;
 }
@@ -163,7 +163,7 @@ MPIDI_procCancelAck(xmi_context_t context, const MPIDI_MsgInfo *info, size_t pee
   if(info->msginfo.type == MPIDI_REQUEST_TYPE_CANCEL_NOT_ACKNOWLEDGE)
     {
       req->mpid.cancel_pending = FALSE;
-      MPID_Request_complete(req);
+      MPIDI_Request_complete(req);
       return;
     }
 
@@ -178,18 +178,18 @@ MPIDI_procCancelAck(xmi_context_t context, const MPIDI_MsgInfo *info, size_t pee
    * from the target node, and the send done callback must be
    * explicitly called here.
    */
-  if (MPID_Request_isRzv(req))
+  if (MPIDI_Request_isRzv(req))
     MPIDI_SendDoneCB(context, req, XMI_SUCCESS);
   /*
    * This checks for a Sync-Send that hasn't been ACKed (and now will
    * never be acked), but has transfered the data.  When
    * MPIDI_SendDoneCB() was called for this one, it wouldn't have
-   * called MPID_Request_complete() to decrement the CC.  Therefore,
+   * called MPIDI_Request_complete() to decrement the CC.  Therefore,
    * we call it now to simulate an ACKed message.
    */
-  if ( (MPID_Request_getType(req) == MPIDI_REQUEST_TYPE_SSEND) &&
+  if ( (MPIDI_Request_getType(req) == MPIDI_REQUEST_TYPE_SSEND) &&
        (req->mpid.state           == MPIDI_SEND_COMPLETE) )
-    MPID_Request_complete(req);
+    MPIDI_Request_complete(req);
 
   /*
    * Finally, this request has been faux-Sync-ACKed and
@@ -200,7 +200,7 @@ MPIDI_procCancelAck(xmi_context_t context, const MPIDI_MsgInfo *info, size_t pee
    * case the done callback will finish it off).
    */
   req->mpid.state=MPIDI_REQUEST_DONE_CANCELLED;
-  MPID_Request_complete(req);
+  MPIDI_Request_complete(req);
 }
 
 
@@ -266,5 +266,5 @@ void MPIDI_ControlCB(xmi_context_t   context,
               msginfo->msginfo.type);
       MPID_abort();
     }
-  MPID_Progress_signal();
+  MPIDI_Progress_signal();
 }

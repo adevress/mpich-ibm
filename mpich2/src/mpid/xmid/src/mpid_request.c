@@ -30,7 +30,7 @@ MPIU_Object_alloc_t MPID_Request_mem =
  * \brief Create and initialize a new request
  */
 
-MPID_Request * MPID_Request_create()
+MPID_Request * MPIDI_Request_create()
 {
   MPID_Request * req;
 
@@ -67,16 +67,16 @@ MPID_Request * MPID_Request_create()
   mpid->datatype_ptr             = NULL;
   mpid->cancel_pending           = FALSE;
   mpid->state                    = MPIDI_INITIALIZED;
-  MPID_Request_setCA  (req, MPIDI_CA_COMPLETE);
-  MPID_Request_setSelf(req, 0);
-  MPID_Request_setType(req, MPIDI_REQUEST_TYPE_RECV);
+  MPIDI_Request_setCA  (req, MPIDI_CA_COMPLETE);
+  MPIDI_Request_setSelf(req, 0);
+  MPIDI_Request_setType(req, MPIDI_REQUEST_TYPE_RECV);
 
   return req;
 }
 
 static inline void MPIDI_Request_try_free(MPID_Request *req)
 {
-  if ( (req->ref_count == 0) && (MPID_Request_get_cc(req) == 0) )
+  if ( (req->ref_count == 0) && (MPIDI_Request_get_cc(req) == 0) )
     {
       if (req->comm)              MPIR_Comm_release(req->comm, 0);
       if (req->mpid.datatype_ptr) MPID_Datatype_release(req->mpid.datatype_ptr);
@@ -102,21 +102,21 @@ void MPID_Request_release (MPID_Request *req)
 /*            Dealing with completion counts                               */
 /* *********************************************************************** */
 
-void MPID_Request_complete (MPID_Request *req)
+void MPIDI_Request_complete (MPID_Request *req)
 {
   int cc;
-  MPID_Request_decrement_cc(req, &cc);
+  MPIDI_Request_decrement_cc(req, &cc);
   MPID_assert(cc >= 0);
   if (cc == 0) /* decrement completion count; if 0, signal progress engine */
     {
       MPIDI_Request_try_free(req);
-      MPID_Progress_signal();
+      MPIDI_Progress_signal();
     }
 }
 
-void MPID_Request_set_completed (MPID_Request *req)
+void MPIDI_Request_set_completed (MPID_Request *req)
 {
   *(req)->cc_ptr = 0; /* force completion count to 0 */
   MPIDI_Request_try_free(req);
-  MPID_Progress_signal();
+  MPIDI_Progress_signal();
 }

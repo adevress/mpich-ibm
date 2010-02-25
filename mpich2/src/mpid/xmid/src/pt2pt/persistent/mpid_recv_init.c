@@ -17,7 +17,7 @@ int MPID_Recv_init(void * buf,
                    int context_offset,
                    MPID_Request ** request)
 {
-  MPID_Request * rreq = MPID_Request_create();
+  MPID_Request * rreq = MPIDI_Request_create();
   if (rreq == NULL) {
     *request = NULL;
     return MPIR_ERR_MEMALLOCFAILED;
@@ -26,14 +26,14 @@ int MPID_Recv_init(void * buf,
   rreq->kind = MPID_PREQUEST_RECV;
   rreq->comm = comm;
   MPIR_Comm_add_ref(comm);
-  MPID_Request_setMatch(rreq,tag,rank,comm->recvcontext_id + context_offset);
+  MPIDI_Request_setMatch(rreq,tag,rank,comm->recvcontext_id + context_offset);
   rreq->mpid.userbuf = (char *) buf;
   rreq->mpid.userbufcount = count;
   rreq->mpid.datatype = datatype;
   rreq->partner_request = NULL;
   rreq->cc = 0;
 
-  MPID_Request_setType(rreq, MPIDI_REQUEST_TYPE_RECV);
+  MPIDI_Request_setType(rreq, MPIDI_REQUEST_TYPE_RECV);
   if (HANDLE_GET_KIND(datatype) != HANDLE_KIND_BUILTIN)
     {
       MPID_Datatype_get_ptr(datatype, rreq->mpid.datatype_ptr);

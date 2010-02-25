@@ -49,17 +49,17 @@ void MPIDI_RecvCB(xmi_context_t   context,
   /* -------------------------------------- */
   /* Signal that the recv has been started. */
   /* -------------------------------------- */
-  MPID_Progress_signal ();
+  MPIDI_Progress_signal ();
 
   /* ------------------------ */
   /* copy in information      */
   /* ------------------------ */
   rreq->status.MPI_SOURCE = match.rank;
   rreq->status.MPI_TAG    = match.tag;
-  MPID_Request_setPeerRank   (rreq, senderrank);
-  MPID_Request_setPeerRequest(rreq, msginfo->msginfo.req);
-  MPID_Request_setSync       (rreq, msginfo->msginfo.isSync);
-  MPID_Request_setRzv        (rreq, 0);
+  MPIDI_Request_setPeerRank   (rreq, senderrank);
+  MPIDI_Request_setPeerRequest(rreq, msginfo->msginfo.req);
+  MPIDI_Request_setSync       (rreq, msginfo->msginfo.isSync);
+  MPIDI_Request_setRzv        (rreq, 0);
 
   if (recv)
     {
@@ -76,7 +76,7 @@ void MPIDI_RecvCB(xmi_context_t   context,
   /* ----------------------------------------- */
   /* figure out target buffer for request data */
   /* ----------------------------------------- */
-  MPID_Request_setCA(rreq, MPIDI_CA_COMPLETE);
+  MPIDI_Request_setCA(rreq, MPIDI_CA_COMPLETE);
   rreq->status.count = rcvlen;
   if (found)
     {
@@ -141,7 +141,7 @@ void MPIDI_RecvCB(xmi_context_t   context,
       /* --------------------------------------------- */
       else
         {
-          MPID_Request_setCA(rreq, MPIDI_CA_UNPACK_UEBUF_AND_COMPLETE);
+          MPIDI_Request_setCA(rreq, MPIDI_CA_UNPACK_UEBUF_AND_COMPLETE);
 
           if (!recv)
             {

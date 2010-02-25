@@ -23,12 +23,12 @@ MPID_PSendRequest (const void    * buf,
                    int             context_offset,
                    MPID_Request ** request)
 {
-  (*request) = MPID_Request_create();
+  (*request) = MPIDI_Request_create();
   if ((*request) == NULL) return MPIR_ERR_MEMALLOCFAILED;
   (*request)->kind                 = MPID_PREQUEST_SEND;
   (*request)->comm                 = comm;
   MPIR_Comm_add_ref(comm);
-  MPID_Request_setMatch((*request),tag,rank,comm->context_id + context_offset);
+  MPIDI_Request_setMatch((*request),tag,rank,comm->context_id + context_offset);
   (*request)->mpid.userbuf          = (void *) buf;
   (*request)->mpid.userbufcount     = count;
   (*request)->mpid.datatype         = datatype;
@@ -63,7 +63,7 @@ int MPID_Send_init(const void * buf,
                                      rank, tag, comm, context_offset,
                                      request);
   if (mpi_errno != MPI_SUCCESS) return mpi_errno;
-  MPID_Request_setType((*request), MPIDI_REQUEST_TYPE_SEND);
+  MPIDI_Request_setType((*request), MPIDI_REQUEST_TYPE_SEND);
   return MPI_SUCCESS;
 }
 
@@ -86,7 +86,7 @@ int MPID_Ssend_init(const void * buf,
                                      rank, tag, comm, context_offset,
                                      request);
   if (mpi_errno != MPI_SUCCESS) return mpi_errno;
-  MPID_Request_setType((*request), MPIDI_REQUEST_TYPE_SSEND);
+  MPIDI_Request_setType((*request), MPIDI_REQUEST_TYPE_SSEND);
   return MPI_SUCCESS;
 }
 
@@ -109,6 +109,6 @@ int MPID_Bsend_init(const void * buf,
                                      rank, tag, comm, context_offset,
                                      request);
   if (mpi_errno != MPI_SUCCESS) return mpi_errno;
-  MPID_Request_setType((*request), MPIDI_REQUEST_TYPE_BSEND);
+  MPIDI_Request_setType((*request), MPIDI_REQUEST_TYPE_BSEND);
   return MPI_SUCCESS;
 }

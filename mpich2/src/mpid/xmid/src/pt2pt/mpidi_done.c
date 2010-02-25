@@ -25,21 +25,21 @@ void MPIDI_SendDoneCB(xmi_context_t   context,
 
   if(sreq->status.cancelled == FALSE)
     {
-      if(MPID_Request_getType(sreq) != MPIDI_REQUEST_TYPE_SSEND)
+      if(MPIDI_Request_getType(sreq) != MPIDI_REQUEST_TYPE_SSEND)
         {
           sreq->mpid.state = MPIDI_ACKNOWLEGED;
-          MPID_Request_complete(sreq);
+          MPIDI_Request_complete(sreq);
         }
       else
         {
           if(sreq->mpid.state == MPIDI_ACKNOWLEGED)
-            MPID_Request_complete(sreq);
+            MPIDI_Request_complete(sreq);
           else
             sreq->mpid.state = MPIDI_SEND_COMPLETE;
         }
     }
   else
-    MPID_Request_complete(sreq);
+    MPIDI_Request_complete(sreq);
 }
 
 
@@ -55,7 +55,7 @@ void MPIDI_RecvDoneCB (xmi_context_t   context,
 {
   MPID_Request * rreq = (MPID_Request *)clientdata;
   MPID_assert(rreq != NULL);
-  switch (MPID_Request_getCA(rreq))
+  switch (MPIDI_Request_getCA(rreq))
     {
     case MPIDI_CA_UNPACK_UEBUF_AND_COMPLETE:
       {
@@ -75,7 +75,7 @@ void MPIDI_RecvDoneCB (xmi_context_t   context,
                                &rreq->status.MPI_ERROR);
         /* free the unexpected data buffer */
         MPIU_Free(rreq->mpid.uebuf); rreq->mpid.uebuf = NULL;
-        MPID_Request_complete(rreq);
+        MPIDI_Request_complete(rreq);
         break;
       }
     case MPIDI_CA_UNPACK_UEBUF_AND_COMPLETE_NOFREE:
@@ -94,12 +94,12 @@ void MPIDI_RecvDoneCB (xmi_context_t   context,
                                rreq->mpid.datatype, /* dest type */
                                (MPIDI_msg_sz_t*)&rreq->status.count,
                                &rreq->status.MPI_ERROR);
-        MPID_Request_complete(rreq);
+        MPIDI_Request_complete(rreq);
         break;
       }
     case MPIDI_CA_COMPLETE:
       {
-        MPID_Request_complete(rreq);
+        MPIDI_Request_complete(rreq);
         break;
       }
     default:

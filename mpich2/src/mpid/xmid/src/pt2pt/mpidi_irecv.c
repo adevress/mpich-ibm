@@ -67,7 +67,7 @@ MPIDI_Irecv(void          * buf,
   rreq->mpid.userbuf      = buf;
   rreq->mpid.userbufcount = count;
   rreq->mpid.datatype     = datatype;
-  MPID_Request_setCA(rreq, MPIDI_CA_COMPLETE);
+  MPIDI_Request_setCA(rreq, MPIDI_CA_COMPLETE);
 
   if (found)
     {
@@ -79,7 +79,7 @@ MPIDI_Irecv(void          * buf,
       /* Recv functions will ack the messages that are unexpected     */
       /* ------------------------------------------------------------ */
 
-      if (MPID_Request_isSelf(rreq))
+      if (MPIDI_Request_isSelf(rreq))
         {
           /* ---------------------- */
           /* "SELF" request         */
@@ -95,7 +95,7 @@ MPIDI_Irecv(void          * buf,
                                 datatype,
                                 (MPIDI_msg_sz_t*)&rreq->status.count,
                                 &rreq->status.MPI_ERROR);
-          MPID_Request_complete(sreq);
+          MPIDI_Request_complete(sreq);
           /* no other thread can possibly be waiting on rreq,
              so it is safe to reset ref_count and cc */
           rreq->cc = 0;
@@ -105,7 +105,7 @@ MPIDI_Irecv(void          * buf,
           return rreq->status.MPI_ERROR;
         }
 #if 0
-      else if (MPID_Request_isRzv(rreq))
+      else if (MPIDI_Request_isRzv(rreq))
         {
           /* -------------------------------------------------------- */
           /* Received an unexpected flow-control rendezvous RTS.      */
@@ -128,7 +128,7 @@ MPIDI_Irecv(void          * buf,
           /* request is complete              */
           /* if sync request, need to ack it. */
           /* -------------------------------- */
-          /* if (MPID_Request_isSync(rreq)) */
+          /* if (MPIDI_Request_isSync(rreq)) */
           /*   MPIDI_postSyncAck(rreq); */
 
           int smpi_errno;
@@ -158,13 +158,13 @@ MPIDI_Irecv(void          * buf,
           /* ----------------------- */
           /* request is incomplete.  */
           /* ----------------------- */
-          /* if (MPID_Request_isSync(rreq)) */
+          /* if (MPIDI_Request_isSync(rreq)) */
           /*   MPIDI_postSyncAck(rreq); */
 
           if(rreq->status.cancelled == FALSE)
             {
               if (rreq->mpid.uebuf) /* we have an unexpected buffer */
-                MPID_Request_setCA(rreq, MPIDI_CA_UNPACK_UEBUF_AND_COMPLETE);
+                MPIDI_Request_setCA(rreq, MPIDI_CA_UNPACK_UEBUF_AND_COMPLETE);
               else /* no unexpected buffer; must be a resend */
                 // MPIDI_postFC (rreq, 0); /* send a NAK */
                 MPID_abort();

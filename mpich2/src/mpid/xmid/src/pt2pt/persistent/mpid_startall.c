@@ -12,17 +12,17 @@ int MPID_Startall(int count, MPID_Request * requests[])
   for (i = 0; i < count; i++)
     {
       MPID_Request * const preq = requests[i];
-      switch(MPID_Request_getType(preq))
+      switch(MPIDI_Request_getType(preq))
         {
         case MPIDI_REQUEST_TYPE_RECV:
           {
             rc = MPID_Irecv(preq->mpid.userbuf,
                             preq->mpid.userbufcount,
                             preq->mpid.datatype,
-                            MPID_Request_getMatchRank(preq),
-                            MPID_Request_getMatchTag(preq),
+                            MPIDI_Request_getMatchRank(preq),
+                            MPIDI_Request_getMatchTag(preq),
                             preq->comm,
-                            MPID_Request_getMatchCtxt(preq) - preq->comm->recvcontext_id,
+                            MPIDI_Request_getMatchCtxt(preq) - preq->comm->recvcontext_id,
                             &preq->partner_request);
             break;
           }
@@ -31,10 +31,10 @@ int MPID_Startall(int count, MPID_Request * requests[])
             rc = MPID_Isend(preq->mpid.userbuf,
                             preq->mpid.userbufcount,
                             preq->mpid.datatype,
-                            MPID_Request_getMatchRank(preq),
-                            MPID_Request_getMatchTag(preq),
+                            MPIDI_Request_getMatchRank(preq),
+                            MPIDI_Request_getMatchTag(preq),
                             preq->comm,
-                            MPID_Request_getMatchCtxt(preq) - preq->comm->context_id,
+                            MPIDI_Request_getMatchCtxt(preq) - preq->comm->context_id,
                             &preq->partner_request);
             break;
           }
@@ -43,10 +43,10 @@ int MPID_Startall(int count, MPID_Request * requests[])
             rc = MPID_Issend(preq->mpid.userbuf,
                              preq->mpid.userbufcount,
                              preq->mpid.datatype,
-                             MPID_Request_getMatchRank(preq),
-                             MPID_Request_getMatchTag(preq),
+                             MPIDI_Request_getMatchRank(preq),
+                             MPIDI_Request_getMatchTag(preq),
                              preq->comm,
-                             MPID_Request_getMatchCtxt(preq) - preq->comm->context_id,
+                             MPIDI_Request_getMatchCtxt(preq) - preq->comm->context_id,
                              &preq->partner_request);
             break;
           }
@@ -55,8 +55,8 @@ int MPID_Startall(int count, MPID_Request * requests[])
             rc = MPIR_Bsend_isend(preq->mpid.userbuf,
                                   preq->mpid.userbufcount,
                                   preq->mpid.datatype,
-                                  MPID_Request_getMatchRank(preq),
-                                  MPID_Request_getMatchTag(preq),
+                                  MPIDI_Request_getMatchRank(preq),
+                                  MPIDI_Request_getMatchTag(preq),
                                   preq->comm,
                                   BSEND_INIT,
                                   &preq->partner_request);
@@ -75,7 +75,7 @@ int MPID_Startall(int count, MPID_Request * requests[])
 
         default:
           {
-            rc = MPIR_Err_create_code(MPI_SUCCESS, MPIR_ERR_FATAL, "MPID_Startall", __LINE__, MPI_ERR_INTERN,"**ch3|badreqtype","**ch3|badreqtype %d",MPID_Request_getType(preq));
+            rc = MPIR_Err_create_code(MPI_SUCCESS, MPIR_ERR_FATAL, "MPID_Startall", __LINE__, MPI_ERR_INTERN,"**ch3|badreqtype","**ch3|badreqtype %d",MPIDI_Request_getType(preq));
           }
 
         } /* switch should end here, bug fixed. */
@@ -83,7 +83,7 @@ int MPID_Startall(int count, MPID_Request * requests[])
       if (rc == MPI_SUCCESS)
       {
         preq->status.MPI_ERROR = MPI_SUCCESS;
-        if (MPID_Request_getType(preq) == MPIDI_REQUEST_TYPE_BSEND)
+        if (MPIDI_Request_getType(preq) == MPIDI_REQUEST_TYPE_BSEND)
           {
             /*
              * Complete a persistent Bsend immediately.

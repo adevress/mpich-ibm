@@ -39,7 +39,7 @@ int MPIDI_Isend_self(const void    * buf,
   /* create a send request */
   /* --------------------- */
 
-  if (!(sreq = MPID_Request_create()))
+  if (!(sreq = MPIDI_Request_create()))
     {
       *request = NULL;
       int mpi_errno = MPIR_Err_create_code(MPI_SUCCESS,
@@ -50,12 +50,12 @@ int MPIDI_Isend_self(const void    * buf,
                                            "**nomem", 0);
       return mpi_errno;
     }
-  MPID_Request_setType (sreq, type);
+  MPIDI_Request_setType (sreq, type);
   sreq->mpid.userbuf       = (char *)buf;
   sreq->mpid.userbufcount  = count;
   sreq->mpid.datatype      = datatype;
   sreq->status.count      = count;
-  MPID_Request_setSelf (sreq, 1);
+  MPIDI_Request_setSelf (sreq, 1);
 
   /* ------------------------------------------ */
   /* attempt to find a matching receive request */
@@ -116,7 +116,7 @@ int MPIDI_Isend_self(const void    * buf,
                             &rreq->status.MPI_ERROR);
 
       rreq->status.count = data_sz;
-      MPID_Request_complete(rreq);
+      MPIDI_Request_complete(rreq);
 
       /* sreq has never been seen by the user or outside this thread,
          so it is safe to reset ref_count and cc */
@@ -124,7 +124,7 @@ int MPIDI_Isend_self(const void    * buf,
       *request                   = sreq;
       sreq->comm                 = comm;
       sreq->kind                 = MPID_REQUEST_SEND;
-      MPID_Request_setMatch(sreq, match.tag, match.rank, match.context_id);
+      MPIDI_Request_setMatch(sreq, match.tag, match.rank, match.context_id);
       MPIR_Comm_add_ref(comm);
       sreq->status.count = data_sz;
       return MPI_SUCCESS;
@@ -146,10 +146,10 @@ int MPIDI_Isend_self(const void    * buf,
       *request                    = sreq;
       sreq->comm                  = comm;
       sreq->kind                  = MPID_REQUEST_SEND;
-      MPID_Request_setMatch(sreq,match.tag, match.rank, match.context_id);
+      MPIDI_Request_setMatch(sreq,match.tag, match.rank, match.context_id);
       MPIR_Comm_add_ref(comm);
-      MPID_Request_setSelf (rreq, 1); /* it's a self request */
-      MPID_Progress_signal();         /* Signal any waiter.  */
+      MPIDI_Request_setSelf (rreq, 1); /* it's a self request */
+      MPIDI_Progress_signal();         /* Signal any waiter.  */
       return MPI_SUCCESS;
     }
 }

@@ -45,12 +45,12 @@ void MPIDI_Buffer_copy(const void     * const sbuf,
  * \addtogroup MPID_PROGRESS
  * \{
  */
-void MPID_Progress_start (MPID_Progress_state * state);
-void MPID_Progress_end   (MPID_Progress_state * state);
-int  MPID_Progress_wait  (MPID_Progress_state * state);
-int  MPID_Progress_poke  ();
-int  MPID_Progress_test  ();
-void MPID_Progress_signal();
+void MPID_Progress_start  (MPID_Progress_state * state);
+void MPID_Progress_end    (MPID_Progress_state * state);
+int  MPID_Progress_wait   (MPID_Progress_state * state);
+int  MPID_Progress_poke   ();
+int  MPID_Progress_test   ();
+void MPIDI_Progress_signal();
 /**
  * \brief A macro to easily implement advancing until a specific
  * condition becomes false.
@@ -113,40 +113,40 @@ _dt_contig_out, _data_sz_out, _dt_ptr, _dt_true_lb)             \
  * \{
  */
 
-MPID_Request * MPID_Request_create        ();
-void           MPID_Request_release       (MPID_Request *req);
+MPID_Request * MPIDI_Request_create        ();
+void           MPID_Request_release        (MPID_Request *req);
 
-void           MPID_Request_complete      (MPID_Request *req);
-void           MPID_Request_set_completed (MPID_Request *req);
-#define        MPID_Request_add_ref(_req)                               \
+void           MPIDI_Request_complete      (MPID_Request *req);
+void           MPIDI_Request_set_completed (MPID_Request *req);
+#define        MPIDI_Request_add_ref(_req)                              \
 ({                                                                      \
   MPID_assert(HANDLE_GET_MPI_KIND((_req)->handle) == MPID_REQUEST);     \
   MPIU_Object_add_ref(_req);                                            \
 })
 
-#define MPID_Request_decrement_cc(_req, _inuse) ({ *(_inuse) = --(*(_req)->cc_ptr)  ;                               })
-#define MPID_Request_increment_cc(_req)         ({               (*(_req)->cc_ptr)++;                               })
-#define MPID_Request_get_cc(_req)               ({                *(_req)->cc_ptr;                                  })
+#define MPIDI_Request_decrement_cc(_req, _inuse) ({ *(_inuse) = --(*(_req)->cc_ptr)  ;                               })
+#define MPIDI_Request_increment_cc(_req)         ({               (*(_req)->cc_ptr)++;                               })
+#define MPIDI_Request_get_cc(_req)               ({                *(_req)->cc_ptr;                                  })
 
-#define MPID_Request_getCA(_req)                ({ (_req)->mpid.ca;                                                 })
-#define MPID_Request_isSelf(_req)               ({ (_req)->mpid.isSelf;                                             })
-#define MPID_Request_getPeerRank(_req)          ({ (_req)->mpid.envelope.envelope.msginfo.msginfo.peerrank;         })
-#define MPID_Request_getPeerRequest(_req)       ({ (_req)->mpid.envelope.envelope.msginfo.msginfo.req;              })
-#define MPID_Request_getType(_req)              ({ (_req)->mpid.envelope.envelope.msginfo.msginfo.type;             })
-#define MPID_Request_isSync(_req)               ({ (_req)->mpid.envelope.envelope.msginfo.msginfo.isSync;           })
-#define MPID_Request_isRzv(_req)                ({ (_req)->mpid.envelope.envelope.msginfo.msginfo.isRzv;            })
-#define MPID_Request_getMatchTag(_req)          ({ (_req)->mpid.envelope.envelope.msginfo.msginfo.MPItag;           })
-#define MPID_Request_getMatchRank(_req)         ({ (_req)->mpid.envelope.envelope.msginfo.msginfo.MPIrank;          })
-#define MPID_Request_getMatchCtxt(_req)         ({ (_req)->mpid.envelope.envelope.msginfo.msginfo.MPIctxt;          })
+#define MPIDI_Request_getCA(_req)                ({ (_req)->mpid.ca;                                                 })
+#define MPIDI_Request_isSelf(_req)               ({ (_req)->mpid.isSelf;                                             })
+#define MPIDI_Request_getPeerRank(_req)          ({ (_req)->mpid.envelope.envelope.msginfo.msginfo.peerrank;         })
+#define MPIDI_Request_getPeerRequest(_req)       ({ (_req)->mpid.envelope.envelope.msginfo.msginfo.req;              })
+#define MPIDI_Request_getType(_req)              ({ (_req)->mpid.envelope.envelope.msginfo.msginfo.type;             })
+#define MPIDI_Request_isSync(_req)               ({ (_req)->mpid.envelope.envelope.msginfo.msginfo.isSync;           })
+#define MPIDI_Request_isRzv(_req)                ({ (_req)->mpid.envelope.envelope.msginfo.msginfo.isRzv;            })
+#define MPIDI_Request_getMatchTag(_req)          ({ (_req)->mpid.envelope.envelope.msginfo.msginfo.MPItag;           })
+#define MPIDI_Request_getMatchRank(_req)         ({ (_req)->mpid.envelope.envelope.msginfo.msginfo.MPIrank;          })
+#define MPIDI_Request_getMatchCtxt(_req)         ({ (_req)->mpid.envelope.envelope.msginfo.msginfo.MPIctxt;          })
 
-#define MPID_Request_setCA(_req, _ca)           ({ (_req)->mpid.ca                                         = (_ca); })
-#define MPID_Request_setSelf(_req,_t)           ({ (_req)->mpid.isSelf                                     = (_t);  })
-#define MPID_Request_setPeerRank(_req,_r)       ({ (_req)->mpid.envelope.envelope.msginfo.msginfo.peerrank = (_r);  })
-#define MPID_Request_setPeerRequest(_req,_r)    ({ (_req)->mpid.envelope.envelope.msginfo.msginfo.req      = (_r);  })
-#define MPID_Request_setType(_req,_t)           ({ (_req)->mpid.envelope.envelope.msginfo.msginfo.type     = (_t);  })
-#define MPID_Request_setSync(_req,_t)           ({ (_req)->mpid.envelope.envelope.msginfo.msginfo.isSync   = (_t);  })
-#define MPID_Request_setRzv(_req,_t)            ({ (_req)->mpid.envelope.envelope.msginfo.msginfo.isRzv    = (_t);  })
-#define MPID_Request_setMatch(_req,_tag,_rank,_ctxtid)                  \
+#define MPIDI_Request_setCA(_req, _ca)           ({ (_req)->mpid.ca                                         = (_ca); })
+#define MPIDI_Request_setSelf(_req,_t)           ({ (_req)->mpid.isSelf                                     = (_t);  })
+#define MPIDI_Request_setPeerRank(_req,_r)       ({ (_req)->mpid.envelope.envelope.msginfo.msginfo.peerrank = (_r);  })
+#define MPIDI_Request_setPeerRequest(_req,_r)    ({ (_req)->mpid.envelope.envelope.msginfo.msginfo.req      = (_r);  })
+#define MPIDI_Request_setType(_req,_t)           ({ (_req)->mpid.envelope.envelope.msginfo.msginfo.type     = (_t);  })
+#define MPIDI_Request_setSync(_req,_t)           ({ (_req)->mpid.envelope.envelope.msginfo.msginfo.isSync   = (_t);  })
+#define MPIDI_Request_setRzv(_req,_t)            ({ (_req)->mpid.envelope.envelope.msginfo.msginfo.isRzv    = (_t);  })
+#define MPIDI_Request_setMatch(_req,_tag,_rank,_ctxtid)                 \
 ({                                                                      \
   (_req)->mpid.envelope.envelope.msginfo.msginfo.MPItag=(_tag);         \
   (_req)->mpid.envelope.envelope.msginfo.msginfo.MPIrank=(_rank);       \
