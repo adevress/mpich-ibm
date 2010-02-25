@@ -35,14 +35,14 @@ bcast2 4
 # msg algorithm (see coll definitions in mpiimpl.h)
 bcast2 10 timeLimit=420
 bcast3 10 timeLimit=420
-coll2 5
-coll3 5
+coll2 2
+coll3 2
 coll4 4
 coll5 4
-coll6 5
+coll6 2
 coll7 1
 coll7 2
-coll7 5
+#coll7 5
 coll8 4
 coll9 4
 coll10 4
