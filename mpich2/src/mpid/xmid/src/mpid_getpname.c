@@ -16,22 +16,15 @@
  */
 int MPID_Get_processor_name(char * name, int namelen, int * resultlen)
 {
-  xmi_configuration_t query;
-  xmi_result_t rc;
+  /* Get the name from XMI */
+  char* xmi_name = XMIX_Configuration_query(MPIDI_Client, XMI_PROCESSOR_NAME).value.chararray;
+  /* Copy to the destination */
+  strncpy(name, xmi_name, namelen);
+  /* Ensure that there is a trailing NULL */
+  if (namelen > 0)
+    name[namelen - 1]= '\0';
+  /* Get the size of the name */
+  *resultlen = strlen(name);
 
-  query.name = XMI_PROCESSOR_NAME;
-  rc = XMI_Configuration_query (MPIDI_Client, &query);
-  MPID_assert(rc == XMI_SUCCESS);
-
-
-  rc = snprintf(name, namelen, "%s", query.value.chararray);
-  if (rc > 0)
-    {
-      *resultlen = rc;
-      return MPI_SUCCESS;
-    }
-  else
-    {
-      return MPI_ERR_ARG;
-    }
+  return MPI_SUCCESS;
 }

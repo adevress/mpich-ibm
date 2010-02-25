@@ -59,29 +59,23 @@ MPIDI_Protocol_t MPIDI_Protocols =
 };
 
 
-void MPIDI_Init_dispath(size_t dispatch, struct protocol_t* proto)
+static inline void
+MPIDI_Init_dispath(size_t dispatch, struct protocol_t* proto)
 {
   xmi_dispatch_callback_fn Recv = {p2p:proto->func};
-  size_t i;
-  xmi_result_t rc;
-
   MPID_assert(dispatch == proto->dispatch);
-
-  for (i=0; i<NUM_CONTEXTS; ++i) {
-    rc = XMI_Dispatch_set(MPIDI_Context[i],
-                          proto->dispatch,
-                          Recv,
-                          (void*)i,
-                          proto->options);
-    MPID_assert(rc == XMI_SUCCESS);
-  }
+  XMIX_Dispatch_set(MPIDI_Context,
+                    NUM_CONTEXTS,
+                    proto->dispatch,
+                    Recv,
+                    proto->options);
 }
 
 
-void MPIDI_Init(int* rank, int* size, int* threading)
+static inline void
+MPIDI_Init(int* rank, int* size, int* threading)
 {
   xmi_result_t rc;
-  xmi_configuration_t query;
 
   /* ----------------------------- */
   /* Initialize messager           */
@@ -91,19 +85,11 @@ void MPIDI_Init(int* rank, int* size, int* threading)
   rc = XMI_Context_createv(MPIDI_Client, NULL, 0, MPIDI_Context, NUM_CONTEXTS);
   MPID_assert(rc == XMI_SUCCESS);
 
-
   /* ---------------------------------------- */
   /*  Get my rank and the process size        */
   /* ---------------------------------------- */
-  query.name = XMI_TASK_ID;
-  rc = XMI_Configuration_query (MPIDI_Client, &query);
-  MPID_assert(rc == XMI_SUCCESS);
-  *rank = query.value.intval;
-
-  query.name = XMI_NUM_TASKS;
-  rc = XMI_Configuration_query (MPIDI_Client, &query);
-  MPID_assert(rc == XMI_SUCCESS);
-  *size = query.value.intval;
+  *rank = XMIX_Configuration_query(MPIDI_Client, XMI_TASK_ID  ).value.intval;
+  *size = XMIX_Configuration_query(MPIDI_Client, XMI_NUM_TASKS).value.intval;
 
   MPIDI_Init_dispath(MPIDI_Protocols.Send,    &proto_list.Send);
   MPIDI_Init_dispath(MPIDI_Protocols.RTS,     &proto_list.RTS);

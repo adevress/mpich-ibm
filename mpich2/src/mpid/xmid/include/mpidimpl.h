@@ -12,6 +12,7 @@
 #ifndef MPICH_MPIDIMPL_H_INCLUDED
 #define MPICH_MPIDIMPL_H_INCLUDED
 
+#include <xmix.h>
 #include <mpiimpl.h>
 #include <mpidpre.h>
 #include <mpidpost.h>

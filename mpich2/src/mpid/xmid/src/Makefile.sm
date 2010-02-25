@@ -12,4 +12,5 @@ lib${MPILIBNAME}_a_SOURCES =			\
         mpid_recvq.c				\
         mpid_request.c				\
         mpid_time.c				\
-        mpid_vc.c
+        mpid_vc.c				\
+        xmix.c

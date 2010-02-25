@@ -18,15 +18,7 @@ void MPID_Wtime( MPID_Time_t *tval )
 }
 double MPID_Wtick()
 {
-  xmi_configuration_t query;
-  double result;
-  xmi_result_t rc;
-
-  query.name = XMI_WTICK;
-  rc = XMI_Configuration_query (MPIDI_Client, &query);
-  MPID_assert(rc == XMI_SUCCESS);
-  result = query.value.doubleval;
-  return result;
+  return XMIX_Configuration_query(MPIDI_Client, XMI_WTICK).value.doubleval;
 }
 void MPID_Wtime_diff( MPID_Time_t *t1, MPID_Time_t *t2, double *diff )
 {
