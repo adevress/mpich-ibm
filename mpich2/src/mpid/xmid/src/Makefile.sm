@@ -4,10 +4,13 @@ lib${MPILIBNAME}_a_SOURCES =			\
         mpid_abort.c				\
         mpid_buffer.c				\
         mpid_finalize.c				\
+        mpid_get_universe_size.c		\
         mpid_getpname.c				\
         mpid_hooks.c				\
         mpid_init.c				\
+        mpid_iprobe.c				\
         mpid_mem.c				\
+        mpid_probe.c				\
         mpid_progress.c				\
         mpid_recvq.c				\
         mpid_request.c				\
