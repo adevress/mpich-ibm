@@ -353,7 +353,7 @@ MPID_Request * MPIDI_Recvq_FDU_or_AEP(int source, int tag, int context_id, int *
         /* A matching request was not found in the unexpected queue,
            so we need to allocate a new request and add it to the
            posted queue */
-        rreq = MPIDI_Request_create();
+        rreq = MPID_Request_create();
 
         rreq->kind = MPID_REQUEST_RECV;
         MPIDI_Request_setMatch(rreq, tag, source, context_id);
@@ -492,7 +492,7 @@ MPID_Request * MPIDI_Recvq_FDP_or_AEU(int source, int tag, int context_id, int *
         /* A matching request was not found in the posted queue, so we
            need to allocate a new request and add it to the unexpected
            queue */
-        rreq = MPIDI_Request_create();
+        rreq = MPID_Request_create();
 
         rreq->kind = MPID_REQUEST_RECV;
         MPIDI_Request_setMatch(rreq, tag, source, context_id);

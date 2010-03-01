@@ -30,7 +30,7 @@ MPIU_Object_alloc_t MPID_Request_mem =
  * \brief Create and initialize a new request
  */
 
-MPID_Request * MPIDI_Request_create()
+MPID_Request * MPID_Request_create()
 {
   MPID_Request * req;
 
@@ -114,7 +114,7 @@ void MPIDI_Request_complete (MPID_Request *req)
     }
 }
 
-void MPIDI_Request_set_completed (MPID_Request *req)
+void MPID_Request_set_completed (MPID_Request *req)
 {
   *(req)->cc_ptr = 0; /* force completion count to 0 */
   MPIDI_Request_try_free(req);

@@ -39,7 +39,7 @@ int MPIDI_Isend_self(const void    * buf,
   /* create a send request */
   /* --------------------- */
 
-  if (!(sreq = MPIDI_Request_create()))
+  if (!(sreq = MPID_Request_create()))
     {
       *request = NULL;
       int mpi_errno = MPIR_Err_create_code(MPI_SUCCESS,

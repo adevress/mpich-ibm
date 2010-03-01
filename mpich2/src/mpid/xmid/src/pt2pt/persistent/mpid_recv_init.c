@@ -17,7 +17,7 @@ int MPID_Recv_init(void * buf,
                    int context_offset,
                    MPID_Request ** request)
 {
-  MPID_Request * rreq = MPIDI_Request_create();
+  MPID_Request * rreq = MPID_Request_create();
   if (rreq == NULL) {
     *request = NULL;
     return MPIR_ERR_MEMALLOCFAILED;

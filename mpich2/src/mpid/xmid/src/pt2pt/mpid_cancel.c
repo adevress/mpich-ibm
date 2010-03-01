@@ -14,7 +14,7 @@ MPID_Cancel_recv(MPID_Request * rreq)
     {
       rreq->status.cancelled = TRUE;
       rreq->status.count = 0;
-      MPIDI_Request_set_completed(rreq);
+      MPID_Request_set_completed(rreq);
     }
   /* This is successful, even if the recv isn't cancelled */
   return MPI_SUCCESS;

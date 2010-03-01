@@ -37,7 +37,7 @@ int MPID_Irecv(void          * buf,
   if (rank == MPI_PROC_NULL)
     {
       MPID_Request * rreq;
-      rreq = MPIDI_Request_create();
+      rreq = MPID_Request_create();
       if (!rreq)
         return MPIR_Err_create_code(MPI_SUCCESS,
                                     MPIR_ERR_FATAL,

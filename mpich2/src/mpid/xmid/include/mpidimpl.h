@@ -113,12 +113,8 @@ _dt_contig_out, _data_sz_out, _dt_ptr, _dt_true_lb)             \
  * \{
  */
 
-MPID_Request * MPIDI_Request_create        ();
-void           MPID_Request_release        (MPID_Request *req);
-
-void           MPIDI_Request_complete      (MPID_Request *req);
-void           MPIDI_Request_set_completed (MPID_Request *req);
-#define        MPIDI_Request_add_ref(_req)                              \
+void    MPIDI_Request_complete(MPID_Request *req);
+#define MPIDI_Request_add_ref(_req)                                     \
 ({                                                                      \
   MPID_assert(HANDLE_GET_MPI_KIND((_req)->handle) == MPID_REQUEST);     \
   MPIU_Object_add_ref(_req);                                            \
