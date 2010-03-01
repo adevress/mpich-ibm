@@ -58,7 +58,7 @@ $closeXMLOutput = 1;     # Set to false to leave XML output file open to
                          # accept additional data
 $verbose = 0;            # Set to true to get more output
 $showProgress = 0;       # Set to true to get a "." with each run program.
-$newline = "\r\n";       # Set to \r\n for Windows-friendly, \n for Unix only
+$newline = "\n";         # Set to \r\n for Windows-friendly, \n for Unix only
 
 $debug = 1;
 
