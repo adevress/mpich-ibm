@@ -45,25 +45,13 @@ MPIDI_Irecv(void          * buf,
                                 comm->recvcontext_id + context_offset,
                                 &found);
 
-  if (rreq == NULL)
-    {
-      *request = rreq;
-      mpi_errno = MPIR_Err_create_code(MPI_SUCCESS,
-                                       MPIR_ERR_FATAL,
-                                       func,
-                                       __LINE__,
-                                       MPI_ERR_NO_MEM,
-                                       "**nomem",
-                                       0);
-      return mpi_errno;
-    }
-
   /* ----------------------------------------------------------------- */
   /* populate request with our data                                    */
   /* We can do this because this is not a multithreaded implementation */
   /* ----------------------------------------------------------------- */
 
-  rreq->comm              = comm;     MPIR_Comm_add_ref (comm);
+  MPIR_Comm_add_ref(comm);
+  rreq->comm              = comm;
   rreq->mpid.userbuf      = buf;
   rreq->mpid.userbufcount = count;
   rreq->mpid.datatype     = datatype;
@@ -79,6 +67,16 @@ MPIDI_Irecv(void          * buf,
       /* Recv functions will ack the messages that are unexpected     */
       /* ------------------------------------------------------------ */
 
+      /* -------------------------------- */
+      /* request is complete              */
+      /* if sync request, need to ack it. */
+      /* -------------------------------- */
+      if (MPIDI_Request_isSync(rreq))
+        {
+          MPID_assert(!MPIDI_Request_isSelf(rreq));
+          MPIDI_postSyncAck(MPIDI_Context[0], rreq);
+        }
+
       if (MPIDI_Request_isSelf(rreq))
         {
           /* ---------------------- */
@@ -87,95 +85,75 @@ MPIDI_Irecv(void          * buf,
           MPID_Request * const sreq = rreq->partner_request;
           MPID_assert(sreq != NULL);
           MPIDI_Buffer_copy(sreq->mpid.userbuf,
-                                sreq->mpid.userbufcount,
-                                sreq->mpid.datatype,
-                                &sreq->status.MPI_ERROR,
-                                buf,
-                                count,
-                                datatype,
-                                (MPIDI_msg_sz_t*)&rreq->status.count,
-                                &rreq->status.MPI_ERROR);
+                            sreq->mpid.userbufcount,
+                            sreq->mpid.datatype,
+                            &sreq->status.MPI_ERROR,
+                            buf,
+                            count,
+                            datatype,
+                            (MPIDI_msg_sz_t*)&rreq->status.count,
+                            &rreq->status.MPI_ERROR);
           MPIDI_Request_complete(sreq);
           /* no other thread can possibly be waiting on rreq,
              so it is safe to reset ref_count and cc */
           rreq->cc = 0;
           if (status != MPI_STATUS_IGNORE)
             *status = rreq->status;
-          *request = rreq;
-          return rreq->status.MPI_ERROR;
+          mpi_errno = rreq->status.MPI_ERROR;
         }
-#if 0
       else if (MPIDI_Request_isRzv(rreq))
         {
           /* -------------------------------------------------------- */
-          /* Received an unexpected flow-control rendezvous RTS.      */
-          /*     This is very similar to the found/incolplete case    */
+          /* Received an expected flow-control rendezvous RTS.        */
+          /*     This is very similar to the found/incomplete case    */
           /* -------------------------------------------------------- */
           if (HANDLE_GET_KIND(datatype) != HANDLE_KIND_BUILTIN)
             {
               MPID_Datatype_get_ptr(datatype, rreq->mpid.datatype_ptr);
               MPID_Datatype_add_ref(rreq->mpid.datatype_ptr);
             }
-          MPIDI_RendezvousTransfer (rreq);
 
-          *request = rreq;
-          return mpi_errno;
+          MPIDI_RendezvousTransfer(MPIDI_Context[0], rreq);
         }
-#endif
       else if (*rreq->cc_ptr == 0)
         {
           /* -------------------------------- */
           /* request is complete              */
-          /* if sync request, need to ack it. */
           /* -------------------------------- */
-          /* if (MPIDI_Request_isSync(rreq)) */
-          /*   MPIDI_postSyncAck(rreq); */
-
-          int smpi_errno;
           MPID_assert(rreq->mpid.uebuf != NULL);
           if(rreq->status.cancelled == FALSE)
-            {
-              MPIDI_Buffer_copy(rreq->mpid.uebuf,
-                                     rreq->mpid.uebuflen,
-                                     MPI_CHAR,
-                                     &smpi_errno,
-                                     buf,
-                                     count,
-                                     datatype,
-                                     (MPIDI_msg_sz_t*)&rreq->status.count,
-                                     &rreq->status.MPI_ERROR);
-            }
+            MPIDI_Buffer_copy(rreq->mpid.uebuf,
+                              rreq->mpid.uebuflen,
+                              MPI_CHAR,
+                              &mpi_errno,
+                              buf,
+                              count,
+                              datatype,
+                              (MPIDI_msg_sz_t*)&rreq->status.count,
+                              &rreq->status.MPI_ERROR);
           mpi_errno = rreq->status.MPI_ERROR;
-          MPIU_Free(rreq->mpid.uebuf); rreq->mpid.uebuf = NULL;
+          MPIU_Free(rreq->mpid.uebuf);
+          rreq->mpid.uebuf = NULL;
 
-          if (status != MPI_STATUS_IGNORE) *status = rreq->status;
-          *request = rreq;
-          return mpi_errno;
+          if (status != MPI_STATUS_IGNORE)
+            *status = rreq->status;
         }
 
       else
         {
-          /* ----------------------- */
-          /* request is incomplete.  */
-          /* ----------------------- */
-          /* if (MPIDI_Request_isSync(rreq)) */
-          /*   MPIDI_postSyncAck(rreq); */
-
+          /* -------------------------------- */
+          /* request is incomplete            */
+          /* -------------------------------- */
           if(rreq->status.cancelled == FALSE)
             {
-              if (rreq->mpid.uebuf) /* we have an unexpected buffer */
-                MPIDI_Request_setCA(rreq, MPIDI_CA_UNPACK_UEBUF_AND_COMPLETE);
-              else /* no unexpected buffer; must be a resend */
-                // MPIDI_postFC (rreq, 0); /* send a NAK */
-                MPID_abort();
+              MPID_assert(rreq->mpid.uebuf != NULL);
+              MPIDI_Request_setCA(rreq, MPIDI_CA_UNPACK_UEBUF_AND_COMPLETE);
             }
           if (HANDLE_GET_KIND(datatype) != HANDLE_KIND_BUILTIN)
             {
               MPID_Datatype_get_ptr(datatype, rreq->mpid.datatype_ptr);
               MPID_Datatype_add_ref(rreq->mpid.datatype_ptr);
             }
-          *request = rreq;
-          return mpi_errno;
         }
     }
   else
@@ -183,13 +161,13 @@ MPIDI_Irecv(void          * buf,
       /* ----------------------------------------------------------- */
       /* request not found in unexpected queue, allocated and posted */
       /* ----------------------------------------------------------- */
-
       if (HANDLE_GET_KIND(datatype) != HANDLE_KIND_BUILTIN)
         {
           MPID_Datatype_get_ptr(datatype, rreq->mpid.datatype_ptr);
           MPID_Datatype_add_ref(rreq->mpid.datatype_ptr);
         }
-      *request = rreq;
-      return mpi_errno;
     }
+
+  *request = rreq;
+  return mpi_errno;
 }

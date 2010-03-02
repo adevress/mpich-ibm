@@ -12,12 +12,6 @@ MPIDI_RendezvousTransfer (xmi_context_t context,
   char *rcvbuf;
   unsigned rcvlen;
 
-  /* --------------------------- */
-  /* if synchronized, post ack.  */
-  /* --------------------------- */
-  if (MPIDI_Request_isSync(rreq))
-    MPIDI_postSyncAck(context, rreq);
-
   /* -------------------------------------- */
   /* calculate message length for reception */
   /* calculate receive message "count"      */

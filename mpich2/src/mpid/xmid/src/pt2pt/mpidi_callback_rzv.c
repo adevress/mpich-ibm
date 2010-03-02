@@ -75,6 +75,12 @@ void MPIDI_RecvRzvCB(xmi_context_t   context,
   /* ----------------------------------------- */
   if (found)
     {
+      /* --------------------------- */
+      /* if synchronized, post ack.  */
+      /* --------------------------- */
+      if (MPIDI_Request_isSync(rreq))
+        MPIDI_postSyncAck(context, rreq);
+
       MPIDI_RendezvousTransfer(context, rreq);
     }
 
