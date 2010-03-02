@@ -49,9 +49,9 @@ void MPIDI_SendDoneCB(xmi_context_t   context,
  *
  * \param[in,out] rreq MPI receive request object
  */
-void MPIDI_RecvDoneCB (xmi_context_t   context,
-                       void          * clientdata,
-                       xmi_result_t    result)
+void MPIDI_RecvDoneCB(xmi_context_t   context,
+                      void          * clientdata,
+                      xmi_result_t    result)
 {
   MPID_Request * rreq = (MPID_Request *)clientdata;
   MPID_assert(rreq != NULL);
@@ -64,15 +64,15 @@ void MPIDI_RecvDoneCB (xmi_context_t   context,
         // It is unsafe to check the user buffer against NULL.
         // Believe it or not, an IRECV can legally be posted with a NULL buffer.
         // MPID_assert(rreq->mpid.userbuf != NULL);
-        MPIDI_Buffer_copy (rreq->mpid.uebuf, /* source buffer */
-                               rreq->mpid.uebuflen,
-                               MPI_CHAR,
-                               &smpi_errno,
-                               rreq->mpid.userbuf, /* dest buffer */
-                               rreq->mpid.userbufcount, /* dest count */
-                               rreq->mpid.datatype, /* dest type */
-                               (MPIDI_msg_sz_t*)&rreq->status.count,
-                               &rreq->status.MPI_ERROR);
+        MPIDI_Buffer_copy(rreq->mpid.uebuf,        /* source buffer */
+                          rreq->mpid.uebuflen,
+                          MPI_CHAR,
+                          &smpi_errno,
+                          rreq->mpid.userbuf,      /* dest buffer */
+                          rreq->mpid.userbufcount, /* dest count */
+                          rreq->mpid.datatype,     /* dest type */
+                          (MPIDI_msg_sz_t*)&rreq->status.count,
+                          &rreq->status.MPI_ERROR);
         /* free the unexpected data buffer */
         MPIU_Free(rreq->mpid.uebuf); rreq->mpid.uebuf = NULL;
         MPIDI_Request_complete(rreq);
@@ -85,15 +85,15 @@ void MPIDI_RecvDoneCB (xmi_context_t   context,
         // It is unsafe to check the user buffer against NULL.
         // Believe it or not, an IRECV can legally be posted with a NULL buffer.
         // MPID_assert(rreq->mpid.userbuf != NULL);
-        MPIDI_Buffer_copy (rreq->mpid.uebuf, /* source buffer */
-                               rreq->mpid.uebuflen,
-                               MPI_CHAR,
-                               &smpi_errno,
-                               rreq->mpid.userbuf, /* dest buffer */
-                               rreq->mpid.userbufcount, /* dest count */
-                               rreq->mpid.datatype, /* dest type */
-                               (MPIDI_msg_sz_t*)&rreq->status.count,
-                               &rreq->status.MPI_ERROR);
+        MPIDI_Buffer_copy(rreq->mpid.uebuf,        /* source buffer */
+                          rreq->mpid.uebuflen,
+                          MPI_CHAR,
+                          &smpi_errno,
+                          rreq->mpid.userbuf,      /* dest buffer */
+                          rreq->mpid.userbufcount, /* dest count */
+                          rreq->mpid.datatype,     /* dest type */
+                          (MPIDI_msg_sz_t*)&rreq->status.count,
+                          &rreq->status.MPI_ERROR);
         MPIDI_Request_complete(rreq);
         break;
       }

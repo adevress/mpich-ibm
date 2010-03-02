@@ -57,7 +57,7 @@ int MPID_Isend(const void    * buf,
   /* create a send request */
   /* --------------------- */
 
-  if (!(sreq = MPID_Request_create ()))
+  if (!(sreq = MPID_Request_create()))
     {
       *request = NULL;
       int mpi_errno = MPIR_Err_create_code(MPI_SUCCESS,
@@ -85,7 +85,7 @@ int MPID_Isend(const void    * buf,
 
   /* message type info */
   sreq->kind = MPID_REQUEST_SEND;
-  MPIDI_Request_setType (sreq, MPIDI_REQUEST_TYPE_SEND);
+  MPIDI_Request_setType(sreq, MPIDI_REQUEST_TYPE_SEND);
 
 
   /* ------------------------------ */
@@ -102,7 +102,7 @@ int MPID_Isend(const void    * buf,
   /*      start the message                    */
   /* ----------------------------------------- */
 
-  MPIDI_StartMsg (sreq);
+  MPIDI_StartMsg(sreq);
   *request = sreq;
   return MPI_SUCCESS;
 }

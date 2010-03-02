@@ -6,8 +6,8 @@
 #include "mpidimpl.h"
 
 void
-MPIDI_RendezvousTransfer (xmi_context_t context,
-                          MPID_Request * rreq)
+MPIDI_RendezvousTransfer(xmi_context_t context,
+                         MPID_Request * rreq)
 {
   char *rcvbuf;
   unsigned rcvlen;
@@ -19,12 +19,12 @@ MPIDI_RendezvousTransfer (xmi_context_t context,
   unsigned dt_contig, dt_size;
   MPID_Datatype *dt_ptr;
   MPI_Aint dt_true_lb;
-  MPIDI_Datatype_get_info (rreq->mpid.userbufcount,
-                           rreq->mpid.datatype,
-                           dt_contig,
-                           dt_size,
-                           dt_ptr,
-                           dt_true_lb);
+  MPIDI_Datatype_get_info(rreq->mpid.userbufcount,
+                          rreq->mpid.datatype,
+                          dt_contig,
+                          dt_size,
+                          dt_ptr,
+                          dt_true_lb);
 
   /* -------------------------------------- */
   /* test for truncated message.            */
@@ -59,7 +59,7 @@ MPIDI_RendezvousTransfer (xmi_context_t context,
     {
       MPIDI_Request_setCA(rreq, MPIDI_CA_UNPACK_UEBUF_AND_COMPLETE);
       rreq->mpid.uebuflen   = rcvlen ;
-      if ((rreq->mpid.uebuf = MPIU_Malloc (rcvlen)) == NULL)
+      if ((rreq->mpid.uebuf = MPIU_Malloc(rcvlen)) == NULL)
         {
           /* ------------------------------------ */
           /* creation of temporary buffer failed. */

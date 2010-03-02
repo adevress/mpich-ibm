@@ -64,9 +64,12 @@ MPIDI_StartMsg(MPID_Request  * sreq)
   /* ----------------------------------------- */
   /*   get the datatype info                   */
   /* ----------------------------------------- */
-  MPIDI_Datatype_get_info (sreq->mpid.userbufcount,
-                           sreq->mpid.datatype,
-                           dt_contig, data_sz, dt_ptr, dt_true_lb);
+  MPIDI_Datatype_get_info(sreq->mpid.userbufcount,
+                          sreq->mpid.datatype,
+                          dt_contig,
+                          data_sz,
+                          dt_ptr,
+                          dt_true_lb);
 
   /* ----------------------------------------- */
   /* contiguous data type                      */
@@ -74,7 +77,7 @@ MPIDI_StartMsg(MPID_Request  * sreq)
   if (dt_contig)
     {
       MPID_assert(sreq->mpid.uebuf == NULL);
-      MPIDI_Send (sreq, (char *)sreq->mpid.userbuf + dt_true_lb, data_sz);
+      MPIDI_Send(sreq, (char *)sreq->mpid.userbuf + dt_true_lb, data_sz);
       return;
     }
 
@@ -95,13 +98,13 @@ MPIDI_StartMsg(MPID_Request  * sreq)
         }
 
       DLOOP_Offset last = data_sz;
-      MPID_Segment_init (sreq->mpid.userbuf,
-                         sreq->mpid.userbufcount,
-                         sreq->mpid.datatype,
-                         &segment,0);
-      MPID_Segment_pack (&segment, 0, &last, sreq->mpid.uebuf);
+      MPID_Segment_init(sreq->mpid.userbuf,
+                        sreq->mpid.userbufcount,
+                        sreq->mpid.datatype,
+                        &segment,0);
+      MPID_Segment_pack(&segment, 0, &last, sreq->mpid.uebuf);
       MPID_assert(last == data_sz);
     }
 
-  MPIDI_Send (sreq, sreq->mpid.uebuf, data_sz);
+  MPIDI_Send(sreq, sreq->mpid.uebuf, data_sz);
 }

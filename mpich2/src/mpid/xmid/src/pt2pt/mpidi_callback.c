@@ -49,7 +49,7 @@ void MPIDI_RecvCB(xmi_context_t   context,
   /* -------------------------------------- */
   /* Signal that the recv has been started. */
   /* -------------------------------------- */
-  MPIDI_Progress_signal ();
+  MPIDI_Progress_signal();
 
   /* ------------------------ */
   /* copy in information      */
@@ -94,12 +94,12 @@ void MPIDI_RecvCB(xmi_context_t   context,
       unsigned dt_contig, dt_size;
       MPID_Datatype *dt_ptr;
       MPI_Aint dt_true_lb;
-      MPIDI_Datatype_get_info (rreq->mpid.userbufcount,
-                               rreq->mpid.datatype,
-                               dt_contig,
-                               dt_size,
-                               dt_ptr,
-                               dt_true_lb);
+      MPIDI_Datatype_get_info(rreq->mpid.userbufcount,
+                              rreq->mpid.datatype,
+                              dt_contig,
+                              dt_size,
+                              dt_ptr,
+                              dt_true_lb);
 
       /* -------------------------------------- */
       /* test for truncated message.            */
@@ -159,7 +159,7 @@ void MPIDI_RecvCB(xmi_context_t   context,
   /* the temporary buffer will be unpacked later.                  */
   /* ------------------------------------------------------------- */
   rreq->mpid.uebuflen   = rcvlen;
-  if ((rreq->mpid.uebuf = MPIU_Malloc (rcvlen)) == NULL)
+  if ((rreq->mpid.uebuf = MPIU_Malloc(rcvlen)) == NULL)
     {
       /* ------------------------------------ */
       /* creation of temporary buffer failed. */

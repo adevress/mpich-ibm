@@ -49,7 +49,7 @@ void MPIDI_RecvRzvCB(xmi_context_t   context,
   /* -------------------------------------- */
   /* Signal that the recv has been started. */
   /* -------------------------------------- */
-  MPIDI_Progress_signal ();
+  MPIDI_Progress_signal();
 
   /* ------------------------ */
   /* copy in information      */

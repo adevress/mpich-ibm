@@ -161,10 +161,6 @@ void    MPIDI_Request_complete(MPID_Request *req);
  * \{
  */
 void MPIDI_StartMsg(MPID_Request * sreq);
-void MPIDI_SendDoneCB(xmi_context_t   context,
-                      void          * clientdata,
-                      xmi_result_t    result);
-
 int MPIDI_Irecv(void          * buf,
                 int             count,
                 MPI_Datatype    datatype,
@@ -175,23 +171,28 @@ int MPIDI_Irecv(void          * buf,
                 MPI_Status    * status,
                 MPID_Request ** request,
                 char          * func);
-void MPIDI_RecvCB(xmi_context_t   context,
-                  void          * _contextid,
-                  void          * _msginfo,
-                  size_t          msginfo_size,
-                  void          * sndbuf,
-                  size_t          sndlen,
-                  xmi_recv_t    * recv);
-void MPIDI_RecvRzvCB(xmi_context_t   context,
-                     void          * _contextid,
-                     void          * _msginfo,
-                     size_t          msginfo_size,
-                     void          * sndbuf,
-                     size_t          sndlen,
-                     xmi_recv_t    * recv);
-void MPIDI_RecvDoneCB(xmi_context_t   context,
-                      void          * clientdata,
-                      xmi_result_t    result);
+
+void MPIDI_SendDoneCB   (xmi_context_t   context,
+                         void          * clientdata,
+                         xmi_result_t    result);
+
+void MPIDI_RecvCB       (xmi_context_t   context,
+                         void          * _contextid,
+                         void          * _msginfo,
+                         size_t          msginfo_size,
+                         void          * sndbuf,
+                         size_t          sndlen,
+                         xmi_recv_t    * recv);
+void MPIDI_RecvRzvCB    (xmi_context_t   context,
+                         void          * _contextid,
+                         void          * _msginfo,
+                         size_t          msginfo_size,
+                         void          * sndbuf,
+                         size_t          sndlen,
+                         xmi_recv_t    * recv);
+void MPIDI_RecvDoneCB   (xmi_context_t   context,
+                         void          * clientdata,
+                         xmi_result_t    result);
 void MPIDI_RecvRzvDoneCB(xmi_context_t   context,
                          void          * cookie,
                          xmi_result_t    result);
@@ -199,7 +200,7 @@ void MPIDI_RecvRzvDoneCB(xmi_context_t   context,
 
 
 /** \brief Acknowledge an MPI_Ssend() */
-void MPIDI_postSyncAck  (xmi_context_t context, MPID_Request * req);
+void MPIDI_postSyncAck(xmi_context_t context, MPID_Request * req);
 /** \brief Cancel an MPI_Send(). */
 void MPIDI_procCancelReq(xmi_context_t context, const MPIDI_MsgInfo *info, size_t peer);
 /** \brief This is the general PT2PT control message call-back */
@@ -245,20 +246,19 @@ int MPIDI_Isend_self(const void    * buf,
                      MPID_Request ** request);
 
 /** \brief Helper function to complete a rendevous transfer */
-void MPIDI_RendezvousTransfer (xmi_context_t context,MPID_Request * rreq);
+void MPIDI_RendezvousTransfer(xmi_context_t context,MPID_Request * rreq);
 
 
-void MPIDI_Comm_create       (MPID_Comm *comm);
-void MPIDI_Comm_destroy      (MPID_Comm *comm);
-void MPIDI_Comm_setup_properties(MPID_Comm *comm, int initial_setup);
-void MPIDI_Env_setup         ();
+void MPIDI_Comm_create      (MPID_Comm *comm);
+void MPIDI_Comm_destroy     (MPID_Comm *comm);
+void MPIDI_Env_setup        ();
 
-void MPIDI_Topo_Comm_create  (MPID_Comm *comm);
-void MPIDI_Topo_Comm_destroy (MPID_Comm *comm);
-int  MPID_Dims_create        (int nnodes, int ndims, int *dims);
+void MPIDI_Topo_Comm_create (MPID_Comm *comm);
+void MPIDI_Topo_Comm_destroy(MPID_Comm *comm);
+int  MPID_Dims_create       (int nnodes, int ndims, int *dims);
 
-void MPIDI_Coll_Comm_create  (MPID_Comm *comm);
-void MPIDI_Coll_Comm_destroy (MPID_Comm *comm);
-void MPIDI_Coll_register     (void);
+void MPIDI_Coll_Comm_create (MPID_Comm *comm);
+void MPIDI_Coll_Comm_destroy(MPID_Comm *comm);
+void MPIDI_Coll_register    (void);
 
 #endif

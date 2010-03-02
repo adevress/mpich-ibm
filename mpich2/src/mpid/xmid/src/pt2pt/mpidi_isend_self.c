@@ -50,12 +50,12 @@ int MPIDI_Isend_self(const void    * buf,
                                            "**nomem", 0);
       return mpi_errno;
     }
-  MPIDI_Request_setType (sreq, type);
-  sreq->mpid.userbuf       = (char *)buf;
-  sreq->mpid.userbufcount  = count;
-  sreq->mpid.datatype      = datatype;
+  MPIDI_Request_setType(sreq, type);
+  sreq->mpid.userbuf      = (char *)buf;
+  sreq->mpid.userbufcount = count;
+  sreq->mpid.datatype     = datatype;
   sreq->status.count      = count;
-  MPIDI_Request_setSelf (sreq, 1);
+  MPIDI_Request_setSelf(sreq, 1);
 
   /* ------------------------------------------ */
   /* attempt to find a matching receive request */
@@ -148,8 +148,8 @@ int MPIDI_Isend_self(const void    * buf,
       sreq->kind                  = MPID_REQUEST_SEND;
       MPIDI_Request_setMatch(sreq,match.tag, match.rank, match.context_id);
       MPIR_Comm_add_ref(comm);
-      MPIDI_Request_setSelf (rreq, 1); /* it's a self request */
-      MPIDI_Progress_signal();         /* Signal any waiter.  */
+      MPIDI_Request_setSelf(rreq, 1); /* it's a self request */
+      MPIDI_Progress_signal();        /* Signal any waiter.  */
       return MPI_SUCCESS;
     }
 }

@@ -30,7 +30,8 @@ MPIU_Object_alloc_t MPID_Request_mem =
  * \brief Create and initialize a new request
  */
 
-MPID_Request * MPID_Request_create()
+MPID_Request *
+MPID_Request_create()
 {
   MPID_Request * req;
 
@@ -38,7 +39,7 @@ MPID_Request * MPID_Request_create()
   if (req == NULL)
     MPID_Abort(NULL, MPI_ERR_NO_SPACE, -1, "Cannot allocate Request");
 
-  MPID_assert (HANDLE_GET_MPI_KIND(req->handle) == MPID_REQUEST);
+  MPID_assert(HANDLE_GET_MPI_KIND(req->handle) == MPID_REQUEST);
   MPIU_Object_set_ref(req, 1);
   req->cc                = 1;
   req->cc_ptr            = & req->cc;
@@ -74,7 +75,8 @@ MPID_Request * MPID_Request_create()
   return req;
 }
 
-static inline void MPIDI_Request_try_free(MPID_Request *req)
+static inline void
+MPIDI_Request_try_free(MPID_Request *req)
 {
   if ( (req->ref_count == 0) && (MPIDI_Request_get_cc(req) == 0) )
     {
@@ -89,7 +91,8 @@ static inline void MPIDI_Request_try_free(MPID_Request *req)
 /*           destroy a request                                             */
 /* *********************************************************************** */
 
-void MPID_Request_release (MPID_Request *req)
+void
+MPID_Request_release(MPID_Request *req)
 {
   int ref_count;
   MPID_assert(HANDLE_GET_MPI_KIND(req->handle) == MPID_REQUEST);
@@ -102,7 +105,8 @@ void MPID_Request_release (MPID_Request *req)
 /*            Dealing with completion counts                               */
 /* *********************************************************************** */
 
-void MPIDI_Request_complete (MPID_Request *req)
+void
+MPIDI_Request_complete(MPID_Request *req)
 {
   int cc;
   MPIDI_Request_decrement_cc(req, &cc);
@@ -114,7 +118,8 @@ void MPIDI_Request_complete (MPID_Request *req)
     }
 }
 
-void MPID_Request_set_completed (MPID_Request *req)
+void
+MPID_Request_set_completed(MPID_Request *req)
 {
   *(req)->cc_ptr = 0; /* force completion count to 0 */
   MPIDI_Request_try_free(req);

@@ -171,7 +171,7 @@ int MPIDI_Recvq_FU(int source, int tag, int context_id, MPI_Status * status)
  * \param [in]  context_id Find by Context ID (communicator)
  * \return      The matching UE request or NULL
  */
-MPID_Request * MPIDI_Recvq_FDUR (MPID_Request * req, int source, int tag, int context_id)
+MPID_Request * MPIDI_Recvq_FDUR(MPID_Request * req, int source, int tag, int context_id)
 {
   MPID_Request * prev_rreq          = NULL; /* previous request in queue */
   MPID_Request * cur_rreq           = NULL; /* current request in queue */
@@ -232,7 +232,7 @@ MPID_Request * MPIDI_Recvq_FDUR (MPID_Request * req, int source, int tag, int co
   MPIDI_Statistics_time(MPIDI_Statistics.recvq.unexpected_search, search_length);
 #endif
 
-  return (matching_cur_rreq);
+  return matching_cur_rreq;
 }
 
 
@@ -525,7 +525,7 @@ MPID_Request * MPIDI_Recvq_FDP_or_AEU(int source, int tag, int context_id, int *
 /**
  * \brief Dump the queues
  */
-void MPIDI_Recvq_DumpQueues (int verbose)
+void MPIDI_Recvq_DumpQueues(int verbose)
 {
   if(verbose == 0)
     return;
@@ -540,14 +540,14 @@ void MPIDI_Recvq_DumpQueues (int verbose)
   while (rreq != NULL)
     {
       if(verbose >= 2)
-        fprintf (stderr, "P %d: MPItag=%d MPIrank=%d ctxt=%d cc=%d count=%d\n",
-                 i++,
-                 MPIDI_Request_getMatchTag(rreq),
-                 MPIDI_Request_getMatchRank(rreq),
-                 MPIDI_Request_getMatchCtxt(rreq),
-                 rreq->cc,
-                 rreq->mpid.userbufcount
-                 );
+        fprintf(stderr, "P %d: MPItag=%d MPIrank=%d ctxt=%d cc=%d count=%d\n",
+                i++,
+                MPIDI_Request_getMatchTag(rreq),
+                MPIDI_Request_getMatchRank(rreq),
+                MPIDI_Request_getMatchCtxt(rreq),
+                rreq->cc,
+                rreq->mpid.userbufcount
+                );
       numposted++;
       postedbytes+=rreq->mpid.userbufcount;
       prev_rreq = rreq;
@@ -564,14 +564,14 @@ void MPIDI_Recvq_DumpQueues (int verbose)
   while (rreq != NULL)
     {
       if(verbose >= 2)
-        fprintf (stderr, "UE %d: MPItag=%d MPIrank=%d ctxt=%d cc=%d uebuf=%p uebuflen=%u\n",
-                 i++,
-                 MPIDI_Request_getMatchTag(rreq),
-                 MPIDI_Request_getMatchRank(rreq),
-                 MPIDI_Request_getMatchCtxt(rreq),
-                 *rreq->cc_ptr,
-                 rreq->mpid.uebuf,
-                 rreq->mpid.uebuflen);
+        fprintf(stderr, "UE %d: MPItag=%d MPIrank=%d ctxt=%d cc=%d uebuf=%p uebuflen=%u\n",
+                i++,
+                MPIDI_Request_getMatchTag(rreq),
+                MPIDI_Request_getMatchRank(rreq),
+                MPIDI_Request_getMatchCtxt(rreq),
+                *rreq->cc_ptr,
+                rreq->mpid.uebuf,
+                rreq->mpid.uebuflen);
       numue++;
       uebytes+=rreq->mpid.uebuflen;
       prev_rreq = rreq;

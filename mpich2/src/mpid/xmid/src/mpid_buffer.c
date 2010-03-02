@@ -46,8 +46,8 @@ void MPIDI_Buffer_copy(
     *rmpi_errno = MPI_SUCCESS;
 
 
-    //    printf ("bufcopy: src count=%d dt =%d\n", scount, sdt);
-    // printf ("bufcopy: dst count=%d dt=%d\n", rcount, rdt);
+    /* printf("bufcopy: src count=%d dt=%d\n", scount, sdt); */
+    /* printf("bufcopy: dst count=%d dt=%d\n", rcount, rdt); */
 
     MPIDI_Datatype_get_info(scount, sdt, sdt_contig, sdata_sz, sdt_ptr, sdt_true_lb);
     MPIDI_Datatype_get_info(rcount, rdt, rdt_contig, rdata_sz, rdt_ptr, rdt_true_lb);

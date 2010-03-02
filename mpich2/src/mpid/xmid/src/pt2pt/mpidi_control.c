@@ -62,7 +62,7 @@ void MPIDI_RecvRzvDoneCB(xmi_context_t   context,
                  MPIDI_Request_getPeerRank(rreq));
   MPIDI_Request_setType(rreq, original_value);
 
-  MPIDI_RecvDoneCB (context, rreq, XMI_SUCCESS);
+  MPIDI_RecvDoneCB(context, rreq, XMI_SUCCESS);
 }
 
 
