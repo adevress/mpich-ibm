@@ -28,7 +28,7 @@ MPID_Cancel_recv(MPID_Request * rreq)
  *
  * \return The same as MPIDI_CtrlSend()
  */
-static inline int
+static inline void
 MPIDI_postCancelReq(xmi_context_t context, MPID_Request * req)
 {
   MPID_assert(req != NULL);
@@ -49,14 +49,15 @@ MPIDI_postCancelReq(xmi_context_t context, MPID_Request * req)
   xmi_send_immediate_t params = {
   dispatch : MPIDI_Protocols.Send,
   dest     : dest,
+  header   : {
+    iov_base: &cancel,
+    iov_len: sizeof(MPIDI_MsgInfo),
+    },
   };
-  params.header.iov_base = &cancel;
-  params.header.iov_len  = sizeof(MPIDI_MsgInfo);
 
   xmi_result_t rc;
   rc = XMI_Send_immediate(context, &params);
   MPID_assert(rc == XMI_SUCCESS);
-  return (int)rc;
 }
 
 

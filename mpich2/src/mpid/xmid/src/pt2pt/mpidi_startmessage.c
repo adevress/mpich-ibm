@@ -10,32 +10,36 @@
 /* and the buffers have been allocated.                                    */
 /* ----------------------------------------------------------------------- */
 
-static inline int
+static inline void
 MPIDI_Send(MPID_Request  * sreq,
            char          * sndbuf,
            unsigned        sndlen)
 {
-  int rc = XMI_ERROR;
   MPIDI_MsgInfo * msginfo = &sreq->mpid.envelope.envelope.msginfo;
   xmi_endpoint_t dest     = XMI_Client_endpoint(MPIDI_Client, MPIDI_Request_getPeerRank(sreq), 0);
 
-    {
-      xmi_send_t parameters = { {0}, {0} };
-      parameters.send.dispatch        = MPIDI_Protocols.Send;
-      parameters.send.dest            = dest;
-      parameters.send.header.iov_base = msginfo;
-      parameters.send.header.iov_len  = sizeof(MPIDI_MsgInfo);
-      parameters.send.data.iov_base   = sndbuf;
-      parameters.send.data.iov_len    = sndlen;
-      parameters.events.cookie        = sreq;
-      parameters.events.local_fn      = MPIDI_SendDoneCB;
+  xmi_send_t params = {
+  send   : {
+    dispatch : MPIDI_Protocols.Send,
+    dest     : dest,
+    header   : {
+      iov_base : msginfo,
+      iov_len  : sizeof(MPIDI_MsgInfo),
+      },
+    data     : {
+      iov_base : sndbuf,
+      iov_len  : sndlen,
+    },
+  },
+  events : {
+    cookie   : sreq,
+    local_fn : MPIDI_SendDoneCB,
+  },
+  };
 
-      rc = XMI_Send(MPIDI_Context[0], &parameters);
-      MPID_assert(rc == XMI_SUCCESS);
-    }
-
+  xmi_result_t rc = XMI_ERROR;
+  rc = XMI_Send(MPIDI_Context[0], &params);
   MPID_assert(rc == XMI_SUCCESS);
-  return rc;
 }
 
 

@@ -14,7 +14,7 @@
  *
  * \return The same as DCMF_Control()
  */
-static inline int
+static inline void
 MPIDI_CtrlSend(xmi_context_t context,
                MPIDI_MsgInfo * control,
                size_t peerrank)
@@ -23,15 +23,15 @@ MPIDI_CtrlSend(xmi_context_t context,
   xmi_send_immediate_t params = {
   dispatch : MPIDI_Protocols.Control,
   dest     : dest,
-  /* header : { iov_base: control, iov_len: sizeof(MPIDI_MsgInfo) }, */
+  header   : {
+    iov_base: control,
+    iov_len: sizeof(MPIDI_MsgInfo),
+    },
   };
-  params.header.iov_base = control;
-  params.header.iov_len = sizeof(MPIDI_MsgInfo);
 
   xmi_result_t rc;
   rc = XMI_Send_immediate(context, &params);
   MPID_assert(rc == XMI_SUCCESS);
-  return rc;
 }
 
 
@@ -73,7 +73,7 @@ void MPIDI_RecvRzvDoneCB(xmi_context_t   context,
  *
  * \return The same as MPIDI_CtrlSend()
  */
-int
+void
 MPIDI_postSyncAck(xmi_context_t context, MPID_Request * req)
 {
   MPIDI_Request_setType(req, MPIDI_REQUEST_TYPE_SSEND_ACKNOWLEDGE);
@@ -81,7 +81,7 @@ MPIDI_postSyncAck(xmi_context_t context, MPID_Request * req)
   MPIDI_MsgInfo * info = &req->mpid.envelope.envelope.msginfo;
   unsigned        peer =  MPIDI_Request_getPeerRank(req);
 
-  return MPIDI_CtrlSend(context, info, peer);
+  MPIDI_CtrlSend(context, info, peer);
 }
 
 /**
