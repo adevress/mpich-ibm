@@ -265,9 +265,9 @@ typedef union
 {
   struct MPIDI_MsgEnvelope_t
   {
-    MPIDI_MsgInfo   msginfo;
-    xmi_memregion_t memregion;
-    size_t          length;
+    MPIDI_MsgInfo msginfo;
+    void        * data;
+    size_t        length;
   } envelope;
   /* DCQuad quad[DCQuad_sizeof(struct MPIDI_MsgEnvelope_t)]; */
 } MPIDI_MsgEnvelope;
@@ -290,8 +290,6 @@ struct MPIDI_Request
   int                 cancel_pending; /**< Cancel State               */
   MPIDI_REQUEST_STATE   state;        /**< The tranfser state         */
   MPIDI_CA              ca;           /**< Completion action          */
-
-  xmi_memregion_t       memregion;    /**< Rendezvous rcv memregion   */
 };
 /** \brief This defines the portion of MPID_Request that is specific to the Device */
 #define MPID_DEV_REQUEST_DECL struct MPIDI_Request mpid;
@@ -342,7 +340,6 @@ struct MPID_Win_coll_info
   int             disp_unit;  /**< Node's exposure window displacement units            */
   MPI_Win         win_handle; /**< Node's exposure window handle (local to target node) */
   int             rma_sends;  /**< Count of RMA operations that target node             */
-  xmi_memregion_t mem_region; /**< Memory region descriptor for each node               */
 };
 
 /* assert sizeof(struct MPID_Win_coll_info) == 16 */

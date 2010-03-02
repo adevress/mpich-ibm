@@ -90,35 +90,25 @@ MPIDI_RendezvousTransfer (xmi_context_t context,
   /* Get the data from the origin node.                               */
   /* ---------------------------------------------------------------- */
 
-  xmi_result_t rc;
-
-  rc = XMI_Memregion_register(context,
-                              rcvbuf,
-                              rcvlen,
-                              &rreq->mpid.memregion);
-  MPID_assert(rc == XMI_SUCCESS);
-
-  xmi_endpoint_t    dest   = XMI_Client_endpoint(MPIDI_Client, MPIDI_Request_getPeerRank(rreq), 0);
-  xmi_rget_simple_t params = {
+  xmi_endpoint_t    dest  = XMI_Client_endpoint(MPIDI_Client, MPIDI_Request_getPeerRank(rreq), 0);
+  xmi_get_simple_t params = {
   rma : {
-    dest  : dest,
-    hints : {
+    dest    : dest,
+    hints   : {
       use_rdma:       1,
       no_long_header: 1,
       },
-    local : rcvbuf,
-    remote : NULL, /**< \todo this isn't right, but the real value is redundant */
-    cookie : rreq,
+    local   : rcvbuf,
+    remote  : rreq->mpid.envelope.envelope.data,
+    cookie  : rreq,
     done_fn : MPIDI_RecvRzvDoneCB,
   },
-  rget: {
-    local_mr      : rreq->mpid.envelope.envelope.memregion,
-    local_offset  : 0,
-    remote_mr     : rreq->mpid.memregion,
-    remote_offset : 0,
+  get : {
+    bytes : rreq->mpid.envelope.envelope.length,
   },
   };
 
-  rc = XMI_Rget(context, &params);
+  xmi_result_t rc;
+  rc = XMI_Get(context, &params);
   MPID_assert(rc == XMI_SUCCESS);
 }

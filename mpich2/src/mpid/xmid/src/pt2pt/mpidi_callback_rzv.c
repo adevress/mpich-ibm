@@ -66,11 +66,9 @@ void MPIDI_RecvRzvCB(xmi_context_t   context,
   /* node calls a receive function and the data is         */
   /* retreived from the origin node.                       */
   /* ----------------------------------------------------- */
-  rreq->status.count = envelope->envelope.length;
+  rreq->status.count                  = envelope->envelope.length;
+  rreq->mpid.envelope.envelope.data   = envelope->envelope.data;
   rreq->mpid.envelope.envelope.length = envelope->envelope.length;
-  memcpy(&rreq->mpid.envelope.envelope.memregion,
-	 &envelope->envelope.memregion,
-	 sizeof(xmi_memregion_t));
 
   /* ----------------------------------------- */
   /* figure out target buffer for request data */

@@ -62,10 +62,6 @@ void MPIDI_RecvRzvDoneCB(xmi_context_t   context,
                  MPIDI_Request_getPeerRank(rreq));
   MPIDI_Request_setType(rreq, original_value);
 
-  xmi_result_t rc;
-#warning  rc = XMI_Memregion_deregister(context, rreq->mpid.memregion);
-  MPID_assert(rc == XMI_SUCCESS);
-
   MPIDI_RecvDoneCB (context, rreq, XMI_SUCCESS);
 }
 
@@ -218,9 +214,6 @@ static inline void MPIDI_procRzvAck(xmi_context_t context, const MPIDI_MsgInfo *
   MPID_Request  * req = ((MPID_Request *)info->msginfo.req);
   MPID_assert(req != NULL);
 
-  xmi_result_t rc;
-#warning  rc = XMI_Memregion_deregister(context, &req->mpid.envelope.envelope.memregion);
-  MPID_assert(rc == XMI_SUCCESS);
   MPIDI_SendDoneCB(context, req, XMI_SUCCESS);
 }
 
