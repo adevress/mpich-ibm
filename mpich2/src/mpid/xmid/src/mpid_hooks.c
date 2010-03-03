@@ -15,6 +15,13 @@ void MPIDI_Comm_destroy(MPID_Comm *comm)
 {
 }
 
+extern int MPIR_Dims_create( int nnodes, int ndims, int *dims );
+/** \brief Hook function for a torus-geometry optimized version of MPI_Dims_Create */
+int MPID_Dims_create( int nnodes, int ndims, int *dims )
+{
+  return MPIR_Dims_create( nnodes, ndims, dims );
+}
+
 
 
 int MPID_Dummy()

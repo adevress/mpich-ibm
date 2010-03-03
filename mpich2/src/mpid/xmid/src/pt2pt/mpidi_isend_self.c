@@ -105,15 +105,15 @@ int MPIDI_Isend_self(const void    * buf,
       /* ------------------------------------------ */
       MPIDI_msg_sz_t data_sz;
 
-      MPIDI_Buffer_copy(buf,                      /* source buffer */
-                            count,
-                            datatype,
-                            &sreq->status.MPI_ERROR,
-                            rreq->mpid.userbuf,         /* dest buffer */
-                            rreq->mpid.userbufcount,
-                            rreq->mpid.datatype,
-                            &data_sz,
-                            &rreq->status.MPI_ERROR);
+      MPIDI_Buffer_copy(buf,                     /* source buffer */
+                        count,
+                        datatype,
+                        &sreq->status.MPI_ERROR,
+                        rreq->mpid.userbuf,      /* dest buffer */
+                        rreq->mpid.userbufcount,
+                        rreq->mpid.datatype,
+                        &data_sz,
+                        &rreq->status.MPI_ERROR);
 
       rreq->status.count = data_sz;
       MPIDI_Request_complete(rreq);

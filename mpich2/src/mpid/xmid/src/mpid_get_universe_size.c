@@ -11,9 +11,6 @@
 
 #include "mpidimpl.h"
 
-/*
- * MPID_Get_universe_size()
- */
 int MPID_Get_universe_size(int  * universe_size)
 {
   int mpi_errno = MPI_SUCCESS;

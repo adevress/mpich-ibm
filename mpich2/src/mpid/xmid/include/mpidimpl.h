@@ -32,14 +32,14 @@ void MPIDI_Recvq_DumpQueues          (int verbose);
 /**\}*/
 
 void MPIDI_Buffer_copy(const void     * const sbuf,
-                            int                    scount,
-                            MPI_Datatype           sdt,
-                            int            *       smpi_errno,
-                            void           * const rbuf,
-                            int                    rcount,
-                            MPI_Datatype           rdt,
-                            MPIDI_msg_sz_t *       rsz,
-                            int            *       rmpi_errno);
+                       int                    scount,
+                       MPI_Datatype           sdt,
+                       int            *       smpi_errno,
+                       void           * const rbuf,
+                       int                    rcount,
+                       MPI_Datatype           rdt,
+                       MPIDI_msg_sz_t *       rsz,
+                       int            *       rmpi_errno);
 
 /**
  * \addtogroup MPID_PROGRESS

@@ -18,10 +18,6 @@ int MPID_Recv_init(void * buf,
                    MPID_Request ** request)
 {
   MPID_Request * rreq = MPID_Request_create();
-  if (rreq == NULL) {
-    *request = NULL;
-    return MPIR_ERR_MEMALLOCFAILED;
-  };
 
   rreq->kind = MPID_PREQUEST_RECV;
   rreq->comm = comm;

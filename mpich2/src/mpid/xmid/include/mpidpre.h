@@ -215,10 +215,10 @@ MPIDI_REQUEST_STATE;
 /** \brief Request completion actions */
 typedef enum
   {
-    MPIDI_CA_ERROR = 0,                         /* Should never see this        */
-    MPIDI_CA_COMPLETE = 1,                      /* The request is now complete  */
-    MPIDI_CA_UNPACK_UEBUF_AND_COMPLETE,         /* Unpack uebuf, then complete  */
-    MPIDI_CA_UNPACK_UEBUF_AND_COMPLETE_NOFREE,  /* Unpack uebuf, then complete. do not free uebuf  */
+    MPIDI_CA_ERROR = 0,                         /**< Should never see this        */
+    MPIDI_CA_COMPLETE = 1,                      /**< The request is now complete  */
+    MPIDI_CA_UNPACK_UEBUF_AND_COMPLETE,         /**< Unpack uebuf, then complete  */
+    MPIDI_CA_UNPACK_UEBUF_AND_COMPLETE_NOFREE,  /**< Unpack uebuf, then complete. do not free uebuf  */
   }
 MPIDI_CA;
 

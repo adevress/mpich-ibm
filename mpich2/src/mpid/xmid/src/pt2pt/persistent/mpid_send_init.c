@@ -24,16 +24,16 @@ MPID_PSendRequest(const void    * buf,
                   MPID_Request ** request)
 {
   (*request) = MPID_Request_create();
-  if ((*request) == NULL) return MPIR_ERR_MEMALLOCFAILED;
-  (*request)->kind                 = MPID_PREQUEST_SEND;
-  (*request)->comm                 = comm;
+
+  (*request)->kind              = MPID_PREQUEST_SEND;
+  (*request)->comm              = comm;
   MPIR_Comm_add_ref(comm);
   MPIDI_Request_setMatch((*request),tag,rank,comm->context_id + context_offset);
-  (*request)->mpid.userbuf          = (void *) buf;
-  (*request)->mpid.userbufcount     = count;
-  (*request)->mpid.datatype         = datatype;
-  (*request)->partner_request      = NULL;
-  (*request)->cc		    = 0;
+  (*request)->mpid.userbuf      = (void *) buf;
+  (*request)->mpid.userbufcount = count;
+  (*request)->mpid.datatype     = datatype;
+  (*request)->partner_request   = NULL;
+  (*request)->cc		= 0;
 
   if (HANDLE_GET_KIND(datatype) != HANDLE_KIND_BUILTIN)
     {

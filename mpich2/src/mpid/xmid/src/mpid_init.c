@@ -136,8 +136,8 @@ int MPID_Init(int * argc,
   /* ------------------------------------------------------ */
   MPIR_Process.attrs.tag_ub = INT_MAX;
   MPIR_Process.attrs.wtime_is_global = 1;
-  /* if (MPIDI_Process.optimized.topology) */
-  /*   MPIR_Process.dimsCreate = MPID_Dims_create; */
+  if (MPIDI_Process.optimized.topology)
+    MPIR_Process.dimsCreate = MPID_Dims_create;
 
 
   /* -------------------------------- */
@@ -153,17 +153,12 @@ int MPID_Init(int * argc,
   for (i=0; i<size; i++)
     comm->vcr[i] = i;
 
-  /* comm_create for MPI_COMM_WORLD needs this information to ensure no
-   * barriers are done in dual mode with multithreading
-   * We don't get the thread_provided updated until AFTER MPID_Init is
-   * finished so we need to know the requested thread level in comm_create
-   */
-  /* MPIDI_Comm_create(comm); */
+  MPIDI_Comm_create(comm);
+
 
   /* ------------------------------- */
   /* Initialize MPI_COMM_SELF object */
   /* ------------------------------- */
-
   comm = MPIR_Process.comm_self;
   comm->rank = 0;
   comm->remote_size = comm->local_size = 1;
@@ -173,14 +168,19 @@ int MPID_Init(int * argc,
   MPID_assert(rc == MPI_SUCCESS);
   comm->vcr[0] = rank;
 
+
   /* ------------------------------- */
   /* Initialize timer data           */
   /* ------------------------------- */
   MPID_Wtime_init();
 
+
+  /* ------------------------------- */
+  /* ???                             */
   /* ------------------------------- */
   *has_args = TRUE;
   *has_env  = TRUE;
+
 
   return MPI_SUCCESS;
 }
