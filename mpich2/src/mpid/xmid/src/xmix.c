@@ -4,20 +4,9 @@
 #include <mpid_config.h>
 #include <assert.h>
 #if ASSERT_LEVEL==0
-#define XMIX_abort()         assert(0)
 #define XMIX_assert(x)
-#define XMIX_assert_debug(x)
-#elif ASSERT_LEVEL==1
-#define XMIX_abort()         assert(0)
+#elif ASSERT_LEVEL>=1
 #define XMIX_assert(x)       assert(x)
-#define XMIX_assert_debug(x)
-#else /* ASSERT_LEVEL==2 */
-/** \brief Always exit--usually implies missing functionality */
-#define XMIX_abort()         assert(0)
-/** \brief Tests for likely problems--may not be active in performance code  */
-#define XMIX_assert(x)       assert(x)
-/** \brief Tests for rare problems--may not be active in production code */
-#define XMIX_assert_debug(x) assert(x)
 #endif
 
 
@@ -49,6 +38,19 @@ XMIX_Dispatch_set(xmi_context_t              context[],
                           fn,
                           (void*)i,
                           options);
+    XMIX_assert(rc == XMI_SUCCESS);
+  }
+}
+
+
+void
+XMIX_Context_destroy(xmi_context_t* contexts,
+                     size_t num_contexts)
+{
+  xmi_result_t rc;
+  size_t i;
+  for (i=0; i<num_contexts; ++i) {
+    rc = XMI_Context_destroy(contexts[i]);
     XMIX_assert(rc == XMI_SUCCESS);
   }
 }

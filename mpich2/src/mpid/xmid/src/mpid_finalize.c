@@ -23,7 +23,11 @@ int MPID_Finalize()
   /* ------------------------- */
   MPIDI_Recvq_finalize();
 
-  XMI_Client_finalize(MPIDI_Client);
+  XMIX_Context_destroy(MPIDI_Context, NUM_CONTEXTS);
+
+  xmi_result_t rc;
+  rc = XMI_Client_finalize(MPIDI_Client);
+  MPID_assert(rc == XMI_SUCCESS);
 
   return MPI_SUCCESS;
 }

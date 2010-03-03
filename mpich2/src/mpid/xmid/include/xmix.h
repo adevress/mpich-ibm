@@ -20,4 +20,7 @@ XMIX_Dispatch_set(xmi_context_t              context[],
                   size_t                     dispatch,
                   xmi_dispatch_callback_fn   fn,
                   xmi_send_hint_t            options);
+void
+XMIX_Context_destroy(xmi_context_t* contexts,
+                     size_t num_contexts);
 #endif
