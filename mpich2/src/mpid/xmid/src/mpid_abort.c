@@ -51,9 +51,6 @@ void MPIDI_Abort_core(MPID_Comm * comm, int mpi_errno, int exit_code, const char
   snprintf(error_str, sizeof(error_str), "Abort(%d)%s%s: %s%s\n", exit_code, world_str, comm_str, user_str, sys_str);
   MPIU_Error_printf("%s", error_str);
 
-  /* if (MPIDI_Process.verbose) */
-  /*   MPIX_Dump_stacks(); */
-
   fflush(stderr);  fflush(stdout);
 }
 
@@ -69,9 +66,9 @@ void MPIDI_Abort_core(MPID_Comm * comm, int mpi_errno, int exit_code, const char
  */
 int MPID_Abort(MPID_Comm * comm, int mpi_errno, int exit_code, const char *error_msg)
 {
-  char* env     = getenv("DCMF_COREONMPIDABORT");
-  if (!env) env = getenv("DCMF_COREONMPIABORT");
-  if (!env) env = getenv("DCMF_COREONABORT");
+  char* env     = getenv("XMI_COREONMPIDABORT");
+  if (!env) env = getenv("XMI_COREONMPIABORT");
+  if (!env) env = getenv("XMI_COREONABORT");
   MPIDI_Abort_core(comm, mpi_errno, exit_code, error_msg);
 
   if (env != NULL)

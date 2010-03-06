@@ -64,12 +64,12 @@ MPIDI_Send_rzv(MPID_Request  * sreq,
 
   /* Do not specify a callback function to be invoked when the RTS
    * message has been sent. The MPI_Send is completed only when the
-   * target/remote/receiver node has completed a DCMF_Get from the
+   * target/remote/receiver node has completed an XMI_Get from the
    * origin node and has then sent a rendezvous acknowledgement (ACK)
    * to the origin node to signify the end of the transfer.  When the
    * ACK message is received by the origin node the same callback
    * function is used to complete the MPI_Send as the non-rendezvous
-   * case below.
+   * case.
    */
   xmi_send_immediate_t params = {
   dispatch : MPIDI_Protocols.RTS,

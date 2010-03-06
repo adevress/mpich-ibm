@@ -15,10 +15,10 @@
 /**
  * \brief A counter to allow the detection of changes to message state.
  *
- * It is theoretically possible to miss an event : if exactly 2^32 (4
- * Billion) events complete in a singal call to
- * DCMF_Messager_advance(), the comparison would still be true.  We
- * assume that this will not happen.
+ * It is theoretically possible to miss an event: if exactly 2^32 (4
+ * billion) events complete in a single call to XMI_Context_advance(),
+ * the comparison would still be true.  We assume that this will not
+ * happen.
  */
 static volatile unsigned _requests;
 

@@ -11,8 +11,6 @@
  *
  * \param[in] control  The pointer to the msginfo structure
  * \param[in] peerrank The node to whom the control message is to be sent
- *
- * \return The same as DCMF_Control()
  */
 static inline void
 MPIDI_CtrlSend(xmi_context_t context,
@@ -224,10 +222,6 @@ static inline void MPIDI_procRzvAck(xmi_context_t context, const MPIDI_MsgInfo *
 
 /**
  * \brief This is the general PT2PT control message call-back
- *
- * \param[in] clientdata Opaque client data
- * \param[in] p    The contents of the control message as a DCMF_Control_t
- * \param[in] peer The rank of the node sending the data
  */
 void MPIDI_ControlCB(xmi_context_t   context,
                      void          * _contextid,
