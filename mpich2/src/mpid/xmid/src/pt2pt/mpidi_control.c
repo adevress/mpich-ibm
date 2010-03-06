@@ -24,9 +24,13 @@ MPIDI_CtrlSend(xmi_context_t context,
   dispatch : MPIDI_Protocols.Control,
   dest     : dest,
   header   : {
-    iov_base: control,
-    iov_len: sizeof(MPIDI_MsgInfo),
+    iov_base : control,
+    iov_len  : sizeof(MPIDI_MsgInfo),
     },
+  data     : {
+    iov_base : NULL,
+    iov_len  : 0,
+  },
   };
 
   xmi_result_t rc;
