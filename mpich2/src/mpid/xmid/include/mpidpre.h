@@ -78,7 +78,6 @@ typedef struct
   }
   optimized;
   unsigned eager_limit;
-  unsigned optrzv_limit;
   unsigned rma_pending;    /**< The max num outstanding requests during an RMA op    */
   unsigned verbose;        /**< The current level of verbosity for end-of-job stats. */
   unsigned statistics;     /**< The current level of stats collection.               */

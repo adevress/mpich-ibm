@@ -5,11 +5,13 @@
  */
 #include "mpidimpl.h"
 
-const size_t NUM_CONTEXTS = 1;
-xmi_client_t     MPIDI_Client;
-xmi_context_t    MPIDI_Context[1];
+const size_t  NUM_CONTEXTS = 1;
+xmi_client_t  MPIDI_Client;
+xmi_context_t MPIDI_Context[1];
 
-MPIDI_Process_t  MPIDI_Process;
+MPIDI_Process_t  MPIDI_Process = {
+ eager_limit: UINT_MAX,
+};
 
 struct protocol_t
 {

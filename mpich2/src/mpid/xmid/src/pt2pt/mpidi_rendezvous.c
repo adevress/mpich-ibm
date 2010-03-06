@@ -84,7 +84,7 @@ MPIDI_RendezvousTransfer(xmi_context_t context,
   /* Get the data from the origin node.                               */
   /* ---------------------------------------------------------------- */
 
-  xmi_endpoint_t    dest  = XMI_Client_endpoint(MPIDI_Client, MPIDI_Request_getPeerRank(rreq), 0);
+  xmi_endpoint_t   dest   = XMI_Client_endpoint(MPIDI_Client, MPIDI_Request_getPeerRank(rreq), 0);
   xmi_get_simple_t params = {
   rma : {
     dest    : dest,
@@ -104,5 +104,6 @@ MPIDI_RendezvousTransfer(xmi_context_t context,
 
   xmi_result_t rc;
   rc = XMI_Get(context, &params);
+  fprintf(stderr, "%s:%d  XMI_UNIMPL=%d  rc = %d\n", __FILE__, __LINE__, XMI_UNIMPL, rc);
   MPID_assert(rc == XMI_SUCCESS);
 }
