@@ -39,7 +39,7 @@ MPIDI_postCancelReq(xmi_context_t context, MPID_Request * req)
     MPItag   : MPIDI_Request_getMatchTag(req),
     MPIrank  : MPIDI_Request_getMatchRank(req),
     MPIctxt  : MPIDI_Request_getMatchCtxt(req),
-    peerrank : peerrank,
+    peerrank : MPIR_Process.comm_world->rank,
     type     : MPIDI_REQUEST_TYPE_CANCEL_REQUEST,
     req      : req,
     }

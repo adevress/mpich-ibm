@@ -17,6 +17,10 @@ MPIDI_CtrlSend(xmi_context_t context,
                MPIDI_MsgInfo * control,
                size_t peerrank)
 {
+  xmi_task_t old_peer = control->msginfo.peerrank;
+  control->msginfo.peerrank = MPIR_Process.comm_world->rank;
+
+
   xmi_endpoint_t       dest   = XMI_Client_endpoint(MPIDI_Client, peerrank, 0);
   xmi_send_immediate_t params = {
   dispatch : MPIDI_Protocols.Control,
@@ -34,6 +38,9 @@ MPIDI_CtrlSend(xmi_context_t context,
   xmi_result_t rc;
   rc = XMI_Send_immediate(context, &params);
   MPID_assert(rc == XMI_SUCCESS);
+
+
+  control->msginfo.peerrank = old_peer;
 }
 
 
@@ -137,7 +144,9 @@ MPIDI_procCancelReq(xmi_context_t context, const MPIDI_MsgInfo *info, size_t pee
       type = MPIDI_REQUEST_TYPE_CANCEL_ACKNOWLEDGE;
     }
   else
-    type = MPIDI_REQUEST_TYPE_CANCEL_NOT_ACKNOWLEDGE;
+    {
+      type = MPIDI_REQUEST_TYPE_CANCEL_NOT_ACKNOWLEDGE;
+    }
 
   ackinfo.msginfo.type = type;
   ackinfo.msginfo.req  = info->msginfo.req;

@@ -36,6 +36,15 @@ void MPIDI_RecvCB(xmi_context_t   context,
   int found;
   unsigned rcvlen = sndlen;
 
+  /* Handle cancel requests */
+  if (msginfo->msginfo.type == MPIDI_REQUEST_TYPE_CANCEL_REQUEST)
+    {
+      MPID_assert(sndlen == 0);
+      MPID_assert(recv   == NULL);
+      MPIDI_procCancelReq(context, msginfo, senderrank);
+      return;
+    }
+
   /* -------------------------- */
   /*      match request         */
   /* -------------------------- */
@@ -117,7 +126,7 @@ void MPIDI_RecvCB(xmi_context_t   context,
       if (dt_contig)
         {
 
-          rreq->mpid.uebuf = NULL;
+          rreq->mpid.uebuf    = NULL;
           rreq->mpid.uebuflen = 0;
           void* rcvbuf = (char*)rreq->mpid.userbuf + dt_true_lb;
 
@@ -143,10 +152,14 @@ void MPIDI_RecvCB(xmi_context_t   context,
         {
           MPIDI_Request_setCA(rreq, MPIDI_CA_UNPACK_UEBUF_AND_COMPLETE);
 
+          /* --------------------------------------------- */
+          /* buffer is non-contiguous. the data is already */
+          /* available, so we can just unpack it now.      */
+          /* --------------------------------------------- */
           if (!recv)
             {
-              rreq->mpid.uebuflen   = rcvlen;
-              rreq->mpid.uebuf      = sndbuf ;
+              rreq->mpid.uebuflen = rcvlen;
+              rreq->mpid.uebuf    = sndbuf ;
               MPIDI_RecvDoneCB(context, rreq, 0);
               return;
             }
@@ -158,30 +171,26 @@ void MPIDI_RecvCB(xmi_context_t   context,
   /* We must allocate enough space to hold the message temporarily */
   /* the temporary buffer will be unpacked later.                  */
   /* ------------------------------------------------------------- */
-  rreq->mpid.uebuflen   = rcvlen;
-  if ((rreq->mpid.uebuf = MPIU_Malloc(rcvlen)) == NULL)
+  rreq->mpid.uebuflen = rcvlen;
+  rreq->mpid.uebuf    = MPIU_Malloc(rcvlen);
+  MPID_assert(rreq->mpid.uebuf != NULL);
+
+  if (recv)
     {
-      /* ------------------------------------ */
-      /* creation of temporary buffer failed. */
-      /* we are in trouble and must bail out. */
-      /* ------------------------------------ */
-
-      int mpi_errno = MPIR_Err_create_code(MPI_SUCCESS,
-                                           MPIR_ERR_FATAL,
-                                           "mpid_recv",
-                                           __LINE__,
-                                           MPI_ERR_OTHER,
-                                           "**nomem", 0);
-      rreq->status.MPI_ERROR = mpi_errno;
-      rreq->status.count     = 0;
-      MPID_Abort(NULL, mpi_errno, -1, "Cannot allocate unexpected buffer");
+      /* ------------------------------------------------ */
+      /*  Let XMI know where to put the rest of the data  */
+      /* ------------------------------------------------ */
+      recv->data.simple.addr  = rreq->mpid.uebuf;
+      recv->data.simple.bytes = rcvlen;
     }
-
-  /* ------------------------------------------------ */
-  /*         set up outgoing variables                */
-  /* ------------------------------------------------ */
-  recv->data.simple.addr  = rreq->mpid.uebuf;
-  recv->data.simple.bytes = rcvlen;
+  else
+    {
+      /* ------------------------------------------------ */
+      /*  We have the data; copy it and complete the msg  */
+      /* ------------------------------------------------ */
+      memcpy(rreq->mpid.uebuf, sndbuf, rcvlen);
+      MPIDI_RecvDoneCB(context, rreq, 0);
+    }
 
   return;
 }
