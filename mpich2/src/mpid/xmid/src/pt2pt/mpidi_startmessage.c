@@ -97,6 +97,11 @@ MPIDI_Send(MPID_Request  * sreq,
 {
   xmi_endpoint_t dest = XMI_Client_endpoint(MPIDI_Client, MPIDI_Request_getPeerRank(sreq), 0);
 
+
+  xmi_task_t old_peer = MPIDI_Request_getPeerRank(sreq);
+  MPIDI_Request_setPeerRank(sreq, MPIR_Process.comm_world->rank);
+
+
   /* Always use the short protocol when sndlen is zero.
    * Use the short/eager protocol when sndlen is less than the eager limit.
    */
@@ -117,6 +122,9 @@ MPIDI_Send(MPID_Request  * sreq,
                      sndbuf,
                      sndlen);
     }
+
+
+  MPIDI_Request_setPeerRank(sreq, old_peer);
 }
 
 
