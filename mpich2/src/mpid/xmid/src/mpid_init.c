@@ -5,9 +5,10 @@
  */
 #include "mpidimpl.h"
 
-const size_t  NUM_CONTEXTS = 1;
+#define       MAX_CONTEXTS 2
+size_t        NUM_CONTEXTS;
 xmi_client_t  MPIDI_Client;
-xmi_context_t MPIDI_Context[1];
+xmi_context_t MPIDI_Context[MAX_CONTEXTS];
 
 MPIDI_Process_t  MPIDI_Process = {
  eager_limit: UINT_MAX,
@@ -79,20 +80,56 @@ MPIDI_Init(int* rank, int* size, int* threading)
 {
   xmi_result_t rc;
 
-  /* ----------------------------- */
-  /* Initialize messager           */
-  /* ----------------------------- */
+  /* ----------------------------------- */
+  /*  Initialize the MPICH2->XMI Client  */
+  /* ----------------------------------- */
   rc = XMI_Client_initialize("MPICH2", &MPIDI_Client);
   MPID_assert(rc == XMI_SUCCESS);
-  rc = XMI_Context_createv(MPIDI_Client, NULL, 0, MPIDI_Context, NUM_CONTEXTS);
+
+  /* ---------------------------------- */
+  /*  Get my rank and the process size  */
+  /* ---------------------------------- */
+  *rank        = XMIX_Configuration_query(MPIDI_Client, XMI_TASK_ID       ).value.intval;
+  *size        = XMIX_Configuration_query(MPIDI_Client, XMI_NUM_TASKS     ).value.intval;
+
+  /* ---------------------------------- */
+  /*  Figure out the context situation  */
+  /* ---------------------------------- */
+  unsigned same = XMIX_Configuration_query(MPIDI_Client, XMI_CONST_CONTEXTS).value.intval;
+  if (same)
+    NUM_CONTEXTS = XMIX_Configuration_query(MPIDI_Client, XMI_NUM_CONTEXTS  ).value.intval;
+  else
+    NUM_CONTEXTS = 1;
+
+  if (NUM_CONTEXTS == 1)
+      *threading = MPI_THREAD_SINGLE;
+  else if (NUM_CONTEXTS > MAX_CONTEXTS)
+    NUM_CONTEXTS = MAX_CONTEXTS;
+
+  /* ----------------------------------- */
+  /*  Create the communication contexts  */
+  /* ----------------------------------- */
+  xmi_configuration_t config ={
+  name  : XMI_CONST_CONTEXTS,
+  value : { intval : 1, },
+  };
+  rc = XMI_Context_createv(MPIDI_Client, &config, 1, MPIDI_Context, NUM_CONTEXTS);
   MPID_assert(rc == XMI_SUCCESS);
 
-  /* ---------------------------------------- */
-  /*  Get my rank and the process size        */
-  /* ---------------------------------------- */
-  *rank = XMIX_Configuration_query(MPIDI_Client, XMI_TASK_ID  ).value.intval;
-  *size = XMIX_Configuration_query(MPIDI_Client, XMI_NUM_TASKS).value.intval;
+  /* -------------------------------------------------------- */
+  /*  We didn't lock on the way in, but we will lock on the   */
+  /*  way out if we are threaded.  Lock now to make it even.  */
+  /* -------------------------------------------------------- */
+  if (NUM_CONTEXTS > 1)
+    {
+      /** \todo Add these in when #72 is fixed */
+      /* MPIR_ThreadInfo.isThreaded = 1; */
+      /* MPID_CS_ENTER(); */
+    }
 
+  /* ------------------------------------ */
+  /*  Set up the communication protocols  */
+  /* ------------------------------------ */
   MPIDI_Init_dispath(MPIDI_Protocols.Send,    &proto_list.Send);
   MPIDI_Init_dispath(MPIDI_Protocols.RTS,     &proto_list.RTS);
   MPIDI_Init_dispath(MPIDI_Protocols.Control, &proto_list.Control);

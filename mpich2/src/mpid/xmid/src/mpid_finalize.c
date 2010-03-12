@@ -13,6 +13,10 @@
 */
 int MPID_Finalize()
 {
+  /** \todo Remove this when #72 is fixed */
+  MPIR_ThreadInfo.isThreaded = 0;
+
+
   MPID_Comm * comm;
   MPID_Comm_get_ptr(MPI_COMM_WORLD, comm);
 

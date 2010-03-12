@@ -60,8 +60,8 @@
 #endif
 
 
-extern const size_t NUM_CONTEXTS;
-extern xmi_client_t MPIDI_Client;
+extern size_t        NUM_CONTEXTS;
+extern xmi_client_t  MPIDI_Client;
 extern xmi_context_t MPIDI_Context[];
 
 /**
