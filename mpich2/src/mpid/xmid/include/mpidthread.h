@@ -10,8 +10,8 @@
  */
 
 
-#ifndef MPICH_MPIDTHREAD_H_INCLUDED
-#define MPICH_MPIDTHREAD_H_INCLUDED
+#ifndef __include_mpidthread_h__
+#define __include_mpidthread_h__
 
 /**
  * ******************************************************************

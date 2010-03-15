@@ -1,6 +1,6 @@
 /*  (C)Copyright IBM Corp.  2007, 2008  */
 /**
- * \file src/misc/mpid_time.c
+ * \file src/mpid_time.c
  * \brief Devince interface between MPI_Wtime() and XMI_Wtime()
  */
 #include "mpidimpl.h"

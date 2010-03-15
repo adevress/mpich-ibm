@@ -1,6 +1,6 @@
 /*  (C)Copyright IBM Corp.  2007, 2008  */
 /**
- * \file src/impl/mpid_request.c
+ * \file src/mpid_request.c
  * \brief Accessors and actors for MPID Requests
  */
 #include "mpidimpl.h"

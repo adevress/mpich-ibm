@@ -1,5 +1,10 @@
-#include <xmi.h>
+/*  (C)Copyright IBM Corp.  2007, 2008  */
+/**
+ * \file src/xmix.c
+ * \brief ???
+ */
 
+#include <xmi.h>
 
 #include <mpid_config.h>
 #include <assert.h>

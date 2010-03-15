@@ -1,6 +1,6 @@
 /*  (C)Copyright IBM Corp.  2007, 2008  */
 /**
- * \file src/impl/mpid_buffer.c
+ * \file src/mpid_buffer.c
  * \brief MPID buffer copy
  */
 /* -*- Mode: C; c-basic-offset:4 ; -*- */

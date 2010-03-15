@@ -1,6 +1,6 @@
 /*  (C)Copyright IBM Corp.  2007, 2008  */
 /**
- * \file src/impl/mpid_recvq.c
+ * \file src/mpid_recvq.c
  * \brief Functions to manage the Receive Queues
  */
 /* -*- Mode: C; c-basic-offset:4 ; -*- */

@@ -1,6 +1,6 @@
 /*  (C)Copyright IBM Corp.  2007, 2008  */
 /**
- * \file src/misc/mpid_iprobe.c
+ * \file src/mpid_iprobe.c
  * \brief ???
  */
 #include "mpidimpl.h"

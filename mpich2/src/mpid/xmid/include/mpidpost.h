@@ -11,8 +11,8 @@
  *      See COPYRIGHT in top-level directory.
  */
 
-#ifndef MPICH_MPIDPOST_H_INCLUDED
-#define MPICH_MPIDPOST_H_INCLUDED
+#ifndef __include_mpidpost_h__
+#define __include_mpidpost_h__
 
 #include <mpid_datatype.h>
 

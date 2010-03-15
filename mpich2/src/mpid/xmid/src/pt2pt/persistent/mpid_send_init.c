@@ -1,6 +1,6 @@
 /*  (C)Copyright IBM Corp.  2007, 2008  */
 /**
- * \file src/persistent/mpid_send_init.c
+ * \file src/pt2pt/persistent/mpid_send_init.c
  * \brief ???
  */
 /* This creates and initializes a persistent send request */

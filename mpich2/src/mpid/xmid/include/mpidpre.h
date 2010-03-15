@@ -13,8 +13,8 @@
  */
 
 
-#ifndef MPICH_MPIDPRE_H_INCLUDED
-#define MPICH_MPIDPRE_H_INCLUDED
+#ifndef __include_mpidpre_h__
+#define __include_mpidpre_h__
 
 #include <mpid_config.h>
 #include <mpid_dataloop.h>

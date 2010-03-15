@@ -1,12 +1,12 @@
 /*  (C)Copyright IBM Corp.  2007, 2008  */
 /**
- * \file include/mpidpre.h
+ * \file include/xmix.h
  * \brief Extensions to XMI
  */
 
 
-#ifndef XMIX_H
-#define XMIX_H
+#ifndef __include_xmix_h__
+#define __include_xmix_h__
 
 #include <xmi.h>
 

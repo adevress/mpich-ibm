@@ -1,6 +1,6 @@
 /*  (C)Copyright IBM Corp.  2007, 2008  */
 /**
- * \file src/persistent/mpid_startall.c
+ * \file src/pt2pt/persistent/mpid_startall.c
  * \brief ???
  */
 #include "mpidimpl.h"

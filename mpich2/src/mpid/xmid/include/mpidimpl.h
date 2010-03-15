@@ -9,8 +9,8 @@
  *      See COPYRIGHT in top-level directory.
  */
 
-#ifndef MPICH_MPIDIMPL_H_INCLUDED
-#define MPICH_MPIDIMPL_H_INCLUDED
+#ifndef __include_mpidimpl_h__
+#define __include_mpidimpl_h__
 
 #include <xmix.h>
 #include <mpiimpl.h>

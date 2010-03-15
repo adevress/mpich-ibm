@@ -1,6 +1,6 @@
 /*  (C)Copyright IBM Corp.  2007, 2008  */
 /**
- * \file src/misc/mpid_vc.c
+ * \file src/mpid_vc.c
  * \brief Maintain the virtual connection reference table
  */
 /* -*- Mode: C; c-basic-offset:4 ; -*- */

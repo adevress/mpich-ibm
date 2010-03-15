@@ -1,6 +1,6 @@
 /*  (C)Copyright IBM Corp.  2007, 2008  */
 /**
- * \file src/misc/mpid_progress.c
+ * \file src/mpid_progress.c
  * \brief Maintain the state and rules of the MPI progress semantics
  */
 #include "mpidimpl.h"

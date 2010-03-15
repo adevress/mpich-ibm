@@ -9,8 +9,8 @@
  * optimizations to be made.
  */
 
-#ifndef MPIX_H
-#define MPIX_H
+#ifndef __include_mpix_h__
+#define __include_mpix_h__
 
 #if defined(__cplusplus)
 extern "C" {

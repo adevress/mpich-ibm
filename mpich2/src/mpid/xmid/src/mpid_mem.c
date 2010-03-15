@@ -1,6 +1,6 @@
 /*  (C)Copyright IBM Corp.  2007, 2008  */
 /**
- * \file src/misc/mpid_alloc_mem.c
+ * \file src/mpid_mem.c
  * \brief ???
  */
 /* -*- Mode: C; c-basic-offset:4 ; -*- */
