@@ -47,7 +47,7 @@ MPIDI_postCancelReq(xmi_context_t context, MPID_Request * req)
 
   xmi_endpoint_t       dest   = XMI_Client_endpoint(MPIDI_Client, peerrank, 0);
   xmi_send_immediate_t params = {
-  dispatch : MPIDI_Protocols.Send,
+  dispatch : MPIDI_Protocols.Cancel,
   dest     : dest,
   header   : {
     iov_base: &cancel,

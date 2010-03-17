@@ -89,6 +89,7 @@ typedef struct
 {
   unsigned Send;
   unsigned RTS;
+  unsigned Cancel;
   unsigned Control;
 }      MPIDI_Protocol_t;
 extern MPIDI_Protocol_t MPIDI_Protocols;

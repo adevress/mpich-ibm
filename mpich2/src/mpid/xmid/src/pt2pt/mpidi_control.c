@@ -253,6 +253,9 @@ void MPIDI_ControlCB(xmi_context_t   context,
     case MPIDI_REQUEST_TYPE_SSEND_ACKNOWLEDGE:
       MPIDI_procSyncAck(context, msginfo, peer);
       break;
+    case MPIDI_REQUEST_TYPE_CANCEL_REQUEST:
+      MPIDI_procCancelReq(context, msginfo, peer);
+      break;
     case MPIDI_REQUEST_TYPE_CANCEL_ACKNOWLEDGE:
     case MPIDI_REQUEST_TYPE_CANCEL_NOT_ACKNOWLEDGE:
       MPIDI_procCancelAck(context, msginfo, peer);

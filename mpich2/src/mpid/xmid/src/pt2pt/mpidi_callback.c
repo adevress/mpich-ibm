@@ -36,15 +36,6 @@ void MPIDI_RecvCB(xmi_context_t   context,
   int found;
   unsigned rcvlen = sndlen;
 
-  /* Handle cancel requests */
-  if (msginfo->msginfo.type == MPIDI_REQUEST_TYPE_CANCEL_REQUEST)
-    {
-      MPID_assert(sndlen == 0);
-      MPID_assert(recv   == NULL);
-      MPIDI_procCancelReq(context, msginfo, senderrank);
-      return;
-    }
-
   /* -------------------------- */
   /*      match request         */
   /* -------------------------- */

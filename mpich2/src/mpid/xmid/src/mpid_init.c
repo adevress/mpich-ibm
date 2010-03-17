@@ -24,8 +24,8 @@ static struct
 {
   struct protocol_t Send;
   struct protocol_t RTS;
+  struct protocol_t Cancel;
   struct protocol_t Control;
-  struct protocol_t Get;
 } proto_list =
 {
   Send: {
@@ -44,9 +44,17 @@ static struct
       no_rdma:        1,
       },
   },
-  Control: {
+  Cancel: {
     func: MPIDI_ControlCB,
     dispatch: 2,
+    options: {
+      consistency:    1,
+      no_long_header: 1,
+      },
+  },
+  Control: {
+    func: MPIDI_ControlCB,
+    dispatch: 3,
     options: {
       high_priority:  1,
       no_rdma:        1,
@@ -58,7 +66,8 @@ MPIDI_Protocol_t MPIDI_Protocols =
 {
   Send:    0,
   RTS:     1,
-  Control: 2,
+  Cancel : 2,
+  Control: 3,
 };
 
 
@@ -132,6 +141,7 @@ MPIDI_Init(int* rank, int* size, int* threading)
   /* ------------------------------------ */
   MPIDI_Init_dispath(MPIDI_Protocols.Send,    &proto_list.Send);
   MPIDI_Init_dispath(MPIDI_Protocols.RTS,     &proto_list.RTS);
+  MPIDI_Init_dispath(MPIDI_Protocols.Cancel,  &proto_list.Cancel);
   MPIDI_Init_dispath(MPIDI_Protocols.Control, &proto_list.Control);
 }
 
