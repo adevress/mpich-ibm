@@ -3,7 +3,6 @@
  * \file src/mpid_mem.c
  * \brief ???
  */
-/* -*- Mode: C; c-basic-offset:4 ; -*- */
 /*
  *
  *  (C) 2001 by Argonne National Laboratory.
