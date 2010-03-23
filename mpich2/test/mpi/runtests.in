@@ -508,6 +508,8 @@ sub RunList {
     my $InitForRun = "";
     my $listfileSource = $listfile;
 
+    our %program_list;
+
     print "Looking in $curdir/$listfile\n" if $debug;
     if (! -s "$listfile" && -s "$srcdir/$curdir/$listfile" ) {
         $listfileSource = "$srcdir/$curdir/$listfile";
@@ -582,6 +584,10 @@ sub RunList {
         if ($np_max > 0 && $np > $np_max) { $np = $np_max; }
         # skip empty lines
         if ($programname eq "") { next; }
+
+        next if defined $program_list{$programname}{$np};
+        $program_list{$programname}{$np} = 1;
+
         if (-d $programname) {
             $execpath=`pwd`;
             chop($execpath);
