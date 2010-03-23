@@ -194,6 +194,9 @@ if(defined($ENV{"BGLTMP"}) || defined($ENV{"STAGINGDIR"})) {
 if (defined($ENV{"MPITEST_TIMEOUT"})) {
     $defaultTimeLimit = $ENV{"MPITEST_TIMEOUT"};
 }
+if (defined($ENV{"NP_MAX"})) {
+    $np_max = $ENV{"NP_MAX"};
+}
 
 # Define this to leave the XML output file open to receive additional data
 if (defined($ENV{'NOXMLCLOSE'}) && $ENV{'NOXMLCLOSE'} eq 'YES') {
@@ -316,6 +319,9 @@ if($ciorunflag==0) {
 # now construct things
 if(defined($ENV{'MPI_RMA'})) {
    $rma = $ENV{'MPI_RMA'};
+}
+if(defined($ENV{'MPI_IO'})) {
+   $romio = $ENV{'MPI_IO'};
 }
 
 if($ciorunpathflag==1) {
