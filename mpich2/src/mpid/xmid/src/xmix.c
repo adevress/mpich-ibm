@@ -11,7 +11,7 @@
 #if ASSERT_LEVEL==0
 #define XMIX_assert(x)
 #elif ASSERT_LEVEL>=1
-#define XMIX_assert(x)       assert(x)
+#define XMIX_assert(x)  assert(x)
 #endif
 
 
