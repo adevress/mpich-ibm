@@ -30,6 +30,9 @@
 #define MPID_assert(x)  assert(x) /**< \brief Tests for likely problems--may not be active in performance code  */
 #endif
 
+/** \brief Creates a compile error if the condition is false. */
+#define MPID_assert_static(expr) ({ switch(0){case 0:case expr:;} })
+
 
 #include <mpidi_thread.h>
 #include <mpidi_datatypes.h>
