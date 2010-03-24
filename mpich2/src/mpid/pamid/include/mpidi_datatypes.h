@@ -151,7 +151,7 @@ MPIDI_Message_match;
 struct MPIDI_MsgInfo_t
   {
     void     * req;         /**< peer's request pointer */
-    xmi_task_t peerrank;    /**< other guy's rank       */
+    pami_task_t peerrank;    /**< other guy's rank       */
     unsigned   MPItag;      /**< match tag              */
     unsigned   MPIrank;     /**< match rank             */
     uint16_t   MPIctxt;     /**< match context          */
@@ -204,7 +204,7 @@ struct MPIDI_Request
 /** \brief This defines the portion of MPID_Comm that is specific to the Device */
 struct MPIDI_Comm
 {
-  xmi_geometry_t geometry; /**< Geometry component for collectives      */
+  pami_geometry_t geometry; /**< Geometry component for collectives      */
   unsigned *sndlen; /**< lazy alloc alltoall vars */
   unsigned *rcvlen;
   unsigned *sdispls;

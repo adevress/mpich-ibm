@@ -16,7 +16,7 @@
  * \brief A counter to allow the detection of changes to message state.
  *
  * It is theoretically possible to miss an event: if exactly 2^32 (4
- * billion) events complete in a single call to XMI_Context_advance(),
+ * billion) events complete in a single call to PAMI_Context_advance(),
  * the comparison would still be true.  We assume that this will not
  * happen.
  */
@@ -52,11 +52,11 @@ void MPID_Progress_end(MPID_Progress_state * state)
  */
 int MPID_Progress_wait(MPID_Progress_state * state)
 {
-  xmi_result_t rc;
+  pami_result_t rc;
   int x = _requests;
   while (x == _requests) {
-    rc = XMI_Context_advance(MPIDI_Context[0], 1);
-    MPID_assert(rc == XMI_SUCCESS);
+    rc = PAMI_Context_advance(MPIDI_Context[0], 1);
+    MPID_assert(rc == PAMI_SUCCESS);
   }
   return MPI_SUCCESS;
 }
@@ -69,9 +69,9 @@ int MPID_Progress_wait(MPID_Progress_state * state)
  */
 int MPID_Progress_poke()
 {
-  xmi_result_t rc;
-  rc = XMI_Context_advance(MPIDI_Context[0], 1);
-  MPID_assert(rc == XMI_SUCCESS);
+  pami_result_t rc;
+  rc = PAMI_Context_advance(MPIDI_Context[0], 1);
+  MPID_assert(rc == PAMI_SUCCESS);
   return MPI_SUCCESS;
 }
 

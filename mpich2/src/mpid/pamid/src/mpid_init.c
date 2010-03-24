@@ -7,8 +7,8 @@
 
 #define       MAX_CONTEXTS 2
 size_t        NUM_CONTEXTS;
-xmi_client_t  MPIDI_Client;
-xmi_context_t MPIDI_Context[MAX_CONTEXTS];
+pami_client_t  MPIDI_Client;
+pami_context_t MPIDI_Context[MAX_CONTEXTS];
 
 MPIDI_Process_t  MPIDI_Process = {
  eager_limit: UINT_MAX,
@@ -16,9 +16,9 @@ MPIDI_Process_t  MPIDI_Process = {
 
 struct protocol_t
 {
-  xmi_dispatch_p2p_fn func;
+  pami_dispatch_p2p_fn func;
   size_t              dispatch;
-  xmi_send_hint_t     options;
+  pami_send_hint_t     options;
 };
 static struct
 {
@@ -74,9 +74,9 @@ MPIDI_Protocol_t MPIDI_Protocols =
 static inline void
 MPIDI_Init_dispath(size_t dispatch, struct protocol_t* proto)
 {
-  xmi_dispatch_callback_fn Recv = {p2p:proto->func};
+  pami_dispatch_callback_fn Recv = {p2p:proto->func};
   MPID_assert(dispatch == proto->dispatch);
-  XMIX_Dispatch_set(MPIDI_Context,
+  PAMIX_Dispatch_set(MPIDI_Context,
                     NUM_CONTEXTS,
                     proto->dispatch,
                     Recv,
@@ -87,26 +87,26 @@ MPIDI_Init_dispath(size_t dispatch, struct protocol_t* proto)
 static inline void
 MPIDI_Init(int* rank, int* size, int* threading)
 {
-  xmi_result_t rc;
+  pami_result_t rc;
 
   /* ----------------------------------- */
-  /*  Initialize the MPICH2->XMI Client  */
+  /*  Initialize the MPICH2->PAMI Client  */
   /* ----------------------------------- */
-  rc = XMI_Client_initialize("MPICH2", &MPIDI_Client);
-  MPID_assert(rc == XMI_SUCCESS);
+  rc = PAMI_Client_initialize("MPICH2", &MPIDI_Client);
+  MPID_assert(rc == PAMI_SUCCESS);
 
   /* ---------------------------------- */
   /*  Get my rank and the process size  */
   /* ---------------------------------- */
-  *rank        = XMIX_Configuration_query(MPIDI_Client, XMI_TASK_ID       ).value.intval;
-  *size        = XMIX_Configuration_query(MPIDI_Client, XMI_NUM_TASKS     ).value.intval;
+  *rank        = PAMIX_Configuration_query(MPIDI_Client, PAMI_TASK_ID       ).value.intval;
+  *size        = PAMIX_Configuration_query(MPIDI_Client, PAMI_NUM_TASKS     ).value.intval;
 
   /* ---------------------------------- */
   /*  Figure out the context situation  */
   /* ---------------------------------- */
-  unsigned same = XMIX_Configuration_query(MPIDI_Client, XMI_CONST_CONTEXTS).value.intval;
+  unsigned same = PAMIX_Configuration_query(MPIDI_Client, PAMI_CONST_CONTEXTS).value.intval;
   if (same)
-    NUM_CONTEXTS = XMIX_Configuration_query(MPIDI_Client, XMI_NUM_CONTEXTS  ).value.intval;
+    NUM_CONTEXTS = PAMIX_Configuration_query(MPIDI_Client, PAMI_NUM_CONTEXTS  ).value.intval;
   else
     NUM_CONTEXTS = 1;
 
@@ -118,12 +118,12 @@ MPIDI_Init(int* rank, int* size, int* threading)
   /* ----------------------------------- */
   /*  Create the communication contexts  */
   /* ----------------------------------- */
-  xmi_configuration_t config ={
-  name  : XMI_CONST_CONTEXTS,
+  pami_configuration_t config ={
+  name  : PAMI_CONST_CONTEXTS,
   value : { intval : 1, },
   };
-  rc = XMI_Context_createv(MPIDI_Client, &config, 1, MPIDI_Context, NUM_CONTEXTS);
-  MPID_assert(rc == XMI_SUCCESS);
+  rc = PAMI_Context_createv(MPIDI_Client, &config, 1, MPIDI_Context, NUM_CONTEXTS);
+  MPID_assert(rc == PAMI_SUCCESS);
 
   /* -------------------------------------------------------- */
   /*  We didn't lock on the way in, but we will lock on the   */

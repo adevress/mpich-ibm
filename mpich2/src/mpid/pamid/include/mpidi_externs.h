@@ -14,8 +14,8 @@
 
 
 extern size_t        NUM_CONTEXTS;
-extern xmi_client_t  MPIDI_Client;
-extern xmi_context_t MPIDI_Context[];
+extern pami_client_t  MPIDI_Client;
+extern pami_context_t MPIDI_Context[];
 
 extern MPIDI_Process_t MPIDI_Process;
 extern MPIDI_Protocol_t MPIDI_Protocols;

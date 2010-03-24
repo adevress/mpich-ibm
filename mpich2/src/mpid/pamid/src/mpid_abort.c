@@ -66,9 +66,9 @@ void MPIDI_Abort_core(MPID_Comm * comm, int mpi_errno, int exit_code, const char
  */
 int MPID_Abort(MPID_Comm * comm, int mpi_errno, int exit_code, const char *error_msg)
 {
-  char* env     = getenv("XMI_COREONMPIDABORT");
-  if (!env) env = getenv("XMI_COREONMPIABORT");
-  if (!env) env = getenv("XMI_COREONABORT");
+  char* env     = getenv("PAMI_COREONMPIDABORT");
+  if (!env) env = getenv("PAMI_COREONMPIABORT");
+  if (!env) env = getenv("PAMI_COREONABORT");
   MPIDI_Abort_core(comm, mpi_errno, exit_code, error_msg);
 
   if (env != NULL)

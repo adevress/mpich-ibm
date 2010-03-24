@@ -12,7 +12,7 @@
 #ifndef __include_mpidimpl_h__
 #define __include_mpidimpl_h__
 
-#include <xmix.h>
+#include <pamix.h>
 #include <mpiimpl.h>
 #include <mpidpre.h>
 #include <mpidpost.h>

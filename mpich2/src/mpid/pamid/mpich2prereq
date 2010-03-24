@@ -1,6 +1,6 @@
 #! /bin/sh
 #
-# Provide information to the top level configure about the capabilities of the xmi device.
+# Provide information to the top level configure about the capabilities of the pami device.
 #
 # Currently, this is restricted to allowing the channels to assert
 # support for MPI_THREAD_MULTIPLE

@@ -99,45 +99,45 @@ int MPIDI_Irecv(void          * buf,
                 MPID_Request ** request,
                 char          * func);
 
-void MPIDI_SendDoneCB   (xmi_context_t   context,
+void MPIDI_SendDoneCB   (pami_context_t   context,
                          void          * clientdata,
-                         xmi_result_t    result);
+                         pami_result_t    result);
 
-void MPIDI_RecvCB       (xmi_context_t   context,
+void MPIDI_RecvCB       (pami_context_t   context,
                          void          * _contextid,
                          void          * _msginfo,
                          size_t          msginfo_size,
                          void          * sndbuf,
                          size_t          sndlen,
-                         xmi_recv_t    * recv);
-void MPIDI_RecvRzvCB    (xmi_context_t   context,
+                         pami_recv_t    * recv);
+void MPIDI_RecvRzvCB    (pami_context_t   context,
                          void          * _contextid,
                          void          * _msginfo,
                          size_t          msginfo_size,
                          void          * sndbuf,
                          size_t          sndlen,
-                         xmi_recv_t    * recv);
-void MPIDI_RecvDoneCB   (xmi_context_t   context,
+                         pami_recv_t    * recv);
+void MPIDI_RecvDoneCB   (pami_context_t   context,
                          void          * clientdata,
-                         xmi_result_t    result);
-void MPIDI_RecvRzvDoneCB(xmi_context_t   context,
+                         pami_result_t    result);
+void MPIDI_RecvRzvDoneCB(pami_context_t   context,
                          void          * cookie,
-                         xmi_result_t    result);
+                         pami_result_t    result);
 /** \} */
 
 
 /** \brief Acknowledge an MPI_Ssend() */
-void MPIDI_postSyncAck(xmi_context_t context, MPID_Request * req);
+void MPIDI_postSyncAck(pami_context_t context, MPID_Request * req);
 /** \brief Cancel an MPI_Send(). */
-void MPIDI_procCancelReq(xmi_context_t context, const MPIDI_MsgInfo *info, size_t peer);
+void MPIDI_procCancelReq(pami_context_t context, const MPIDI_MsgInfo *info, size_t peer);
 /** \brief This is the general PT2PT control message call-back */
-void MPIDI_ControlCB(xmi_context_t   context,
+void MPIDI_ControlCB(pami_context_t   context,
                      void          * _contextid,
                      void          * _msginfo,
                      size_t          msginfo_size,
                      void          * sndbuf,
                      size_t          sndlen,
-                     xmi_recv_t    * recv);
+                     pami_recv_t    * recv);
 
 
 /** \brief Helper function when sending to self  */
@@ -152,7 +152,7 @@ int MPIDI_Isend_self(const void    * buf,
                      MPID_Request ** request);
 
 /** \brief Helper function to complete a rendevous transfer */
-void MPIDI_RendezvousTransfer(xmi_context_t context,MPID_Request * rreq);
+void MPIDI_RendezvousTransfer(pami_context_t context,MPID_Request * rreq);
 
 
 void MPIDI_Comm_create      (MPID_Comm *comm);

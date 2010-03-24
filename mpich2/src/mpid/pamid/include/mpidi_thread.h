@@ -49,9 +49,9 @@
   /* Destroy thread local storage created during MPID_CS_INITIALIZE */  \
   MPID_Thread_tls_destroy(&MPIR_ThreadInfo.thread_storage, NULL);       \
 })
-#define MPID_CS_ENTER() ({ if (MPIR_ThreadInfo.isThreaded) { xmi_result_t rc; rc = XMI_Context_lock  (MPIDI_Context[0]); MPID_assert(rc == XMI_SUCCESS); } })
-#define MPID_CS_EXIT()  ({ if (MPIR_ThreadInfo.isThreaded) { xmi_result_t rc; rc = XMI_Context_unlock(MPIDI_Context[0]); MPID_assert(rc == XMI_SUCCESS); } })
-#define MPID_CS_CYCLE() ({ xmi_result_t rc; rc = XMI_Context_multiadvance(MPIDI_Context, NUM_CONTEXTS, 1); MPID_assert(rc == XMI_SUCCESS); })
+#define MPID_CS_ENTER() ({ if (MPIR_ThreadInfo.isThreaded) { pami_result_t rc; rc = PAMI_Context_lock  (MPIDI_Context[0]); MPID_assert(rc == PAMI_SUCCESS); } })
+#define MPID_CS_EXIT()  ({ if (MPIR_ThreadInfo.isThreaded) { pami_result_t rc; rc = PAMI_Context_unlock(MPIDI_Context[0]); MPID_assert(rc == PAMI_SUCCESS); } })
+#define MPID_CS_CYCLE() ({ pami_result_t rc; rc = PAMI_Context_multiadvance(MPIDI_Context, NUM_CONTEXTS, 1); MPID_assert(rc == PAMI_SUCCESS); })
 
 
 #define HAVE_RUNTIME_THREADCHECK

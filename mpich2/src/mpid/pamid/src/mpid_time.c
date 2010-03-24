@@ -1,12 +1,12 @@
 /*  (C)Copyright IBM Corp.  2007, 2008  */
 /**
  * \file src/mpid_time.c
- * \brief Devince interface between MPI_Wtime() and XMI_Wtime()
+ * \brief Devince interface between MPI_Wtime() and PAMI_Wtime()
  */
 #include "mpidimpl.h"
 
 #if MPICH_TIMER_KIND == USE_GETTIMEOFDAY
-#warning Compiling mpid/xmid/src/mpid_time.c when MPICH_TIMER_KIND == USE_GETTIMEOFDAY
+#warning Compiling mpid/pamid/src/mpid_time.c when MPICH_TIMER_KIND == USE_GETTIMEOFDAY
 #elif MPICH_TIMER_KIND != USE_DEVICE
 #error "Not using DEVICE TIMEBASE"
 #else
@@ -14,11 +14,11 @@
 
 void MPID_Wtime( MPID_Time_t *tval )
 {
-  *tval = XMI_Wtime();
+  *tval = PAMI_Wtime();
 }
 double MPID_Wtick()
 {
-  return XMIX_Configuration_query(MPIDI_Client, XMI_WTICK).value.doubleval;
+  return PAMIX_Configuration_query(MPIDI_Client, PAMI_WTICK).value.doubleval;
 }
 void MPID_Wtime_diff( MPID_Time_t *t1, MPID_Time_t *t2, double *diff )
 {

@@ -29,7 +29,7 @@ MPID_Cancel_recv(MPID_Request * rreq)
  * \return The same as MPIDI_CtrlSend()
  */
 static inline void
-MPIDI_postCancelReq(xmi_context_t context, MPID_Request * req)
+MPIDI_postCancelReq(pami_context_t context, MPID_Request * req)
 {
   MPID_assert(req != NULL);
   unsigned      peerrank  =  MPIDI_Request_getPeerRank(req);
@@ -45,8 +45,8 @@ MPIDI_postCancelReq(xmi_context_t context, MPID_Request * req)
     }
   };
 
-  xmi_endpoint_t       dest   = XMI_Client_endpoint(MPIDI_Client, peerrank, 0);
-  xmi_send_immediate_t params = {
+  pami_endpoint_t       dest   = PAMI_Client_endpoint(MPIDI_Client, peerrank, 0);
+  pami_send_immediate_t params = {
   dispatch : MPIDI_Protocols.Cancel,
   dest     : dest,
   header   : {
@@ -55,9 +55,9 @@ MPIDI_postCancelReq(xmi_context_t context, MPID_Request * req)
     },
   };
 
-  xmi_result_t rc;
-  rc = XMI_Send_immediate(context, &params);
-  MPID_assert(rc == XMI_SUCCESS);
+  pami_result_t rc;
+  rc = PAMI_Send_immediate(context, &params);
+  MPID_assert(rc == PAMI_SUCCESS);
 }
 
 

@@ -19,7 +19,7 @@ master_top_builddir="`pwd`"
 # Variables of interest...
 #
 # $master_top_srcdir - top-level source directory
-# $device_name - should be xmid
+# $device_name - should be pamid
 # $device_args - contains name of channel select plus an channel args
 # $with_device - device name and arguments
 # $ac_configure_args - all arguments passed to configure

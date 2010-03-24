@@ -12,13 +12,13 @@
 
 static inline void
 MPIDI_Send_eager(MPID_Request  * sreq,
-                 xmi_endpoint_t  dest,
+                 pami_endpoint_t  dest,
                  char          * sndbuf,
                  unsigned        sndlen)
 {
   MPIDI_MsgInfo * msginfo = &sreq->mpid.envelope.envelope.msginfo;
 
-  xmi_send_t params = {
+  pami_send_t params = {
   send   : {
     dispatch : MPIDI_Protocols.Send,
     dest     : dest,
@@ -37,15 +37,15 @@ MPIDI_Send_eager(MPID_Request  * sreq,
   },
   };
 
-  xmi_result_t rc = XMI_ERROR;
-  rc = XMI_Send(MPIDI_Context[0], &params);
-  MPID_assert(rc == XMI_SUCCESS);
+  pami_result_t rc = PAMI_ERROR;
+  rc = PAMI_Send(MPIDI_Context[0], &params);
+  MPID_assert(rc == PAMI_SUCCESS);
 }
 
 
 static inline void
 MPIDI_Send_rzv(MPID_Request  * sreq,
-               xmi_endpoint_t  dest,
+               pami_endpoint_t  dest,
                char          * sndbuf,
                unsigned        sndlen)
 {
@@ -64,14 +64,14 @@ MPIDI_Send_rzv(MPID_Request  * sreq,
 
   /* Do not specify a callback function to be invoked when the RTS
    * message has been sent. The MPI_Send is completed only when the
-   * target/remote/receiver node has completed an XMI_Get from the
+   * target/remote/receiver node has completed an PAMI_Get from the
    * origin node and has then sent a rendezvous acknowledgement (ACK)
    * to the origin node to signify the end of the transfer.  When the
    * ACK message is received by the origin node the same callback
    * function is used to complete the MPI_Send as the non-rendezvous
    * case.
    */
-  xmi_send_immediate_t params = {
+  pami_send_immediate_t params = {
   dispatch : MPIDI_Protocols.RTS,
   dest     : dest,
   header   : {
@@ -84,9 +84,9 @@ MPIDI_Send_rzv(MPID_Request  * sreq,
   },
   };
 
-  xmi_result_t rc = XMI_ERROR;
-  rc = XMI_Send_immediate(MPIDI_Context[0], &params);
-  MPID_assert(rc == XMI_SUCCESS);
+  pami_result_t rc = PAMI_ERROR;
+  rc = PAMI_Send_immediate(MPIDI_Context[0], &params);
+  MPID_assert(rc == PAMI_SUCCESS);
 }
 
 
@@ -95,10 +95,10 @@ MPIDI_Send(MPID_Request  * sreq,
            char          * sndbuf,
            unsigned        sndlen)
 {
-  xmi_endpoint_t dest = XMI_Client_endpoint(MPIDI_Client, MPIDI_Request_getPeerRank(sreq), 0);
+  pami_endpoint_t dest = PAMI_Client_endpoint(MPIDI_Client, MPIDI_Request_getPeerRank(sreq), 0);
 
 
-  xmi_task_t old_peer = MPIDI_Request_getPeerRank(sreq);
+  pami_task_t old_peer = MPIDI_Request_getPeerRank(sreq);
   MPIDI_Request_setPeerRank(sreq, MPIR_Process.comm_world->rank);
 
 

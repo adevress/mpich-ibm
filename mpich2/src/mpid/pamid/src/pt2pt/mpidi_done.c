@@ -12,9 +12,9 @@
  *
  * \param[in,out] sreq MPI receive request object
  */
-void MPIDI_SendDoneCB(xmi_context_t   context,
+void MPIDI_SendDoneCB(pami_context_t   context,
                       void          * clientdata,
-                      xmi_result_t    result)
+                      pami_result_t    result)
 {
   MPID_Request * sreq = (MPID_Request *)clientdata;
   MPID_assert(sreq != NULL);
@@ -49,9 +49,9 @@ void MPIDI_SendDoneCB(xmi_context_t   context,
  *
  * \param[in,out] rreq MPI receive request object
  */
-void MPIDI_RecvDoneCB(xmi_context_t   context,
+void MPIDI_RecvDoneCB(pami_context_t   context,
                       void          * clientdata,
-                      xmi_result_t    result)
+                      pami_result_t    result)
 {
   MPID_Request * rreq = (MPID_Request *)clientdata;
   MPID_assert(rreq != NULL);

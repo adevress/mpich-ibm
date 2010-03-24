@@ -6,7 +6,7 @@
 #include "mpidimpl.h"
 
 void
-MPIDI_RendezvousTransfer(xmi_context_t context,
+MPIDI_RendezvousTransfer(pami_context_t context,
                          MPID_Request * rreq)
 {
   char *rcvbuf;
@@ -84,8 +84,8 @@ MPIDI_RendezvousTransfer(xmi_context_t context,
   /* Get the data from the origin node.                               */
   /* ---------------------------------------------------------------- */
 
-  xmi_endpoint_t   dest   = XMI_Client_endpoint(MPIDI_Client, MPIDI_Request_getPeerRank(rreq), 0);
-  xmi_get_simple_t params = {
+  pami_endpoint_t   dest   = PAMI_Client_endpoint(MPIDI_Client, MPIDI_Request_getPeerRank(rreq), 0);
+  pami_get_simple_t params = {
   rma : {
     dest    : dest,
     hints   : {
@@ -102,8 +102,8 @@ MPIDI_RendezvousTransfer(xmi_context_t context,
   },
   };
 
-  xmi_result_t rc;
-  rc = XMI_Get(context, &params);
-  fprintf(stderr, "%s:%d  XMI_UNIMPL=%d  rc = %d\n", __FILE__, __LINE__, XMI_UNIMPL, rc);
-  MPID_assert(rc == XMI_SUCCESS);
+  pami_result_t rc;
+  rc = PAMI_Get(context, &params);
+  fprintf(stderr, "%s:%d  PAMI_UNIMPL=%d  rc = %d\n", __FILE__, __LINE__, PAMI_UNIMPL, rc);
+  MPID_assert(rc == PAMI_SUCCESS);
 }

@@ -15,13 +15,13 @@
  * \param[in]  sndlen       The length of the incoming data
  * \param[in]  sndbuf       Where the data is stored
  */
-void MPIDI_RecvRzvCB(xmi_context_t   context,
+void MPIDI_RecvRzvCB(pami_context_t   context,
                      void          * _contextid,
                      void          * _msginfo,
                      size_t          msginfo_size,
                      void          * sndbuf,
                      size_t          sndlen,
-                     xmi_recv_t    * recv)
+                     pami_recv_t    * recv)
 {
   MPID_assert(recv == NULL);
   MPID_assert(sndlen == 0);

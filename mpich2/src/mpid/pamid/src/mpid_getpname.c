@@ -16,10 +16,10 @@
  */
 int MPID_Get_processor_name(char * name, int namelen, int * resultlen)
 {
-  /* Get the name from XMI */
-  const char* xmi_name = XMIX_Configuration_query(MPIDI_Client, XMI_PROCESSOR_NAME).value.chararray;
+  /* Get the name from PAMI */
+  const char* pami_name = PAMIX_Configuration_query(MPIDI_Client, PAMI_PROCESSOR_NAME).value.chararray;
   /* Copy to the destination */
-  strncpy(name, xmi_name, namelen);
+  strncpy(name, pami_name, namelen);
   /* Ensure that there is a trailing NULL */
   if (namelen > 0)
     name[namelen - 1]= '\0';

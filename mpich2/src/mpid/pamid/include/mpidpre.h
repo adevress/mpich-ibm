@@ -19,7 +19,7 @@
 #include <mpid_config.h>
 #include <mpid_dataloop.h>
 #include <assert.h>
-#include <xmi.h>
+#include <pami.h>
 
 
 #define MPID_abort()    assert(0) /**< \brief Always exit--usually implies missing functionality */

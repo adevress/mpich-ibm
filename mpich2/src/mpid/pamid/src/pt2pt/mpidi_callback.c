@@ -15,13 +15,13 @@
  * \param[out] rcvlen     The amount we are willing to receive
  * \param[out] rcvbuf     Where we want to put the data
  */
-void MPIDI_RecvCB(xmi_context_t   context,
+void MPIDI_RecvCB(pami_context_t   context,
                   void          * _contextid,
                   void          * _msginfo,
                   size_t          msginfo_size,
                   void          * sndbuf,
                   size_t          sndlen,
-                  xmi_recv_t    * recv)
+                  pami_recv_t    * recv)
 {
   MPID_assert((sndbuf == NULL) ^ (recv == NULL));
 
@@ -68,7 +68,7 @@ void MPIDI_RecvCB(xmi_context_t   context,
       /* -------------------------------------------------------- */
       recv->local_fn = MPIDI_RecvDoneCB;
       recv->cookie   = (void *)rreq;
-      recv->kind     = XMI_AM_KIND_SIMPLE;
+      recv->kind     = PAMI_AM_KIND_SIMPLE;
     }
 
 
@@ -169,7 +169,7 @@ void MPIDI_RecvCB(xmi_context_t   context,
   if (recv)
     {
       /* ------------------------------------------------ */
-      /*  Let XMI know where to put the rest of the data  */
+      /*  Let PAMI know where to put the rest of the data  */
       /* ------------------------------------------------ */
       recv->data.simple.addr  = rreq->mpid.uebuf;
       recv->data.simple.bytes = rcvlen;
