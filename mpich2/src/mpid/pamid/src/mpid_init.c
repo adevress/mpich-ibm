@@ -5,8 +5,8 @@
  */
 #include "mpidimpl.h"
 
-#define       MAX_CONTEXTS 2
-size_t        NUM_CONTEXTS;
+#define        MAX_CONTEXTS 2
+size_t         NUM_CONTEXTS;
 pami_client_t  MPIDI_Client;
 pami_context_t MPIDI_Context[MAX_CONTEXTS];
 
@@ -17,7 +17,7 @@ MPIDI_Process_t  MPIDI_Process = {
 struct protocol_t
 {
   pami_dispatch_p2p_fn func;
-  size_t              dispatch;
+  size_t               dispatch;
   pami_send_hint_t     options;
 };
 static struct
@@ -27,7 +27,7 @@ static struct
   struct protocol_t Cancel;
   struct protocol_t Control;
 } proto_list =
-{
+  {
   Send: {
     func: MPIDI_RecvCB,
     dispatch: 0,
@@ -61,14 +61,14 @@ static struct
       no_long_header: 1,
       },
   },
-};
+  };
 MPIDI_Protocol_t MPIDI_Protocols =
-{
+  {
   Send:    0,
   RTS:     1,
   Cancel : 2,
   Control: 3,
-};
+  };
 
 
 static inline void
@@ -77,10 +77,10 @@ MPIDI_Init_dispath(size_t dispatch, struct protocol_t* proto)
   pami_dispatch_callback_fn Recv = {p2p:proto->func};
   MPID_assert(dispatch == proto->dispatch);
   PAMIX_Dispatch_set(MPIDI_Context,
-                    NUM_CONTEXTS,
-                    proto->dispatch,
-                    Recv,
-                    proto->options);
+                     NUM_CONTEXTS,
+                     proto->dispatch,
+                     Recv,
+                     proto->options);
 }
 
 
@@ -98,20 +98,20 @@ MPIDI_Init(int* rank, int* size, int* threading)
   /* ---------------------------------- */
   /*  Get my rank and the process size  */
   /* ---------------------------------- */
-  *rank        = PAMIX_Configuration_query(MPIDI_Client, PAMI_TASK_ID       ).value.intval;
-  *size        = PAMIX_Configuration_query(MPIDI_Client, PAMI_NUM_TASKS     ).value.intval;
+  *rank          = PAMIX_Configuration_query(MPIDI_Client, PAMI_TASK_ID       ).value.intval;
+  *size          = PAMIX_Configuration_query(MPIDI_Client, PAMI_NUM_TASKS     ).value.intval;
 
   /* ---------------------------------- */
   /*  Figure out the context situation  */
   /* ---------------------------------- */
-  unsigned same = PAMIX_Configuration_query(MPIDI_Client, PAMI_CONST_CONTEXTS).value.intval;
+  unsigned same  = PAMIX_Configuration_query(MPIDI_Client, PAMI_CONST_CONTEXTS).value.intval;
   if (same)
     NUM_CONTEXTS = PAMIX_Configuration_query(MPIDI_Client, PAMI_NUM_CONTEXTS  ).value.intval;
   else
     NUM_CONTEXTS = 1;
 
   if (NUM_CONTEXTS == 1)
-      *threading = MPI_THREAD_SINGLE;
+    *threading = MPI_THREAD_SINGLE;
   else if (NUM_CONTEXTS > MAX_CONTEXTS)
     NUM_CONTEXTS = MAX_CONTEXTS;
 
