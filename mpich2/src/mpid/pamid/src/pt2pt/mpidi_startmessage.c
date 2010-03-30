@@ -93,12 +93,12 @@ MPIDI_Send_rzv(pami_context_t   context,
 
 
 static inline void
-MPIDI_Send(MPID_Request  * sreq,
+MPIDI_Send(pami_context_t  context,
+           MPID_Request  * sreq,
            char          * sndbuf,
            unsigned        sndlen)
 {
   pami_endpoint_t dest    = MPIDI_Context_endpoint(sreq);
-  pami_context_t  context = MPIDI_Context_local(sreq);
 
   pami_task_t old_peer = MPIDI_Request_getPeerRank(sreq);
   MPIDI_Request_setPeerRank(sreq, MPIDI_Process.global.rank);
@@ -136,9 +136,13 @@ MPIDI_Send(MPID_Request  * sreq,
  * \brief Central function for all sends.
  * \param [in,out] sreq Structure containing all relevant info about the message.
  */
-void
-MPIDI_StartMsg(MPID_Request  * sreq)
+pami_result_t
+MPIDI_StartMsg_handoff(pami_context_t   context,
+                       void           * _sreq)
 {
+  MPID_Request * sreq = (MPID_Request *) _sreq;
+  MPID_assert(sreq != NULL);
+
   int data_sz, dt_contig;
   MPID_Datatype *dt_ptr;
   MPI_Aint dt_true_lb;
@@ -166,8 +170,8 @@ MPIDI_StartMsg(MPID_Request  * sreq)
   if (dt_contig)
     {
       MPID_assert(sreq->mpid.uebuf == NULL);
-      MPIDI_Send(sreq, (char *)sreq->mpid.userbuf + dt_true_lb, data_sz);
-      return;
+      MPIDI_Send(context, sreq, (char *)sreq->mpid.userbuf + dt_true_lb, data_sz);
+      return PAMI_SUCCESS;
     }
 
   /* ------------------------------------------- */
@@ -195,5 +199,6 @@ MPIDI_StartMsg(MPID_Request  * sreq)
       MPID_assert(last == data_sz);
     }
 
-  MPIDI_Send(sreq, sreq->mpid.uebuf, data_sz);
+  MPIDI_Send(context, sreq, sreq->mpid.uebuf, data_sz);
+  return PAMI_SUCCESS;
 }

@@ -28,9 +28,10 @@ MPID_Cancel_recv(MPID_Request * rreq)
  *
  * \return The same as MPIDI_CtrlSend()
  */
-static inline void
-MPIDI_postCancelReq(pami_context_t context, MPID_Request * req)
+static inline pami_result_t
+MPIDI_postCancelReq(pami_context_t context, void * _req)
 {
+  MPID_Request * req = (MPID_Request *) _req;
   MPID_assert(req != NULL);
 
   MPIDI_MsgInfo cancel = {
@@ -57,6 +58,8 @@ MPIDI_postCancelReq(pami_context_t context, MPID_Request * req)
   pami_result_t rc;
   rc = PAMI_Send_immediate(context, &params);
   MPID_assert(rc == PAMI_SUCCESS);
+
+  return PAMI_SUCCESS;
 }
 
 
@@ -98,7 +101,15 @@ MPID_Cancel_send(MPID_Request * sreq)
 
       MPIDI_Request_increment_cc(sreq);
 
-      MPIDI_postCancelReq(MPIDI_Context_local(sreq), sreq);
+      {
+        /* This leaks intentionally.  At this time, the amount of work
+         * required to avoid a leak here just isn't worth it.
+         * Hopefully people aren't cancelling sends too much.
+         */
+        pami_work_t  * work    = malloc(sizeof(pami_work_t));
+        pami_context_t context = MPIDI_Context_local(sreq);
+        PAMI_Context_post(context, work, MPIDI_postCancelReq, sreq);
+      }
 
       return MPI_SUCCESS;
     }

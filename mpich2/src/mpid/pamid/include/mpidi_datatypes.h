@@ -192,6 +192,8 @@ struct MPIDI_Request
   MPIDI_MsgEnvelope     envelope;
   struct MPID_Request  *next;         /**< Link to next req. in queue */
 
+  pami_work_t           post_request; /**<                            */
+
   char                 *userbuf;      /**< User buffer                */
   unsigned              userbufcount; /**< Userbuf data count         */
   char                 *uebuf;        /**< Unexpected buffer          */

@@ -87,7 +87,7 @@ void MPIDI_Progress_signal();
  * \addtogroup MPID_CALLBACKS
  * \{
  */
-void MPIDI_StartMsg(MPID_Request * sreq);
+pami_result_t MPIDI_StartMsg_handoff(pami_context_t context, void * sreq);
 int MPIDI_Irecv(void          * buf,
                 int             count,
                 MPI_Datatype    datatype,
