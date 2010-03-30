@@ -97,4 +97,28 @@ _dt_contig_out, _data_sz_out, _dt_ptr, _dt_true_lb)             \
 })
 
 
+static inline unsigned
+MPIDI_Context_hash(pami_task_t rank, unsigned ctxt)
+{
+  return (( rank + ctxt ) % NUM_CONTEXTS);
+}
+static inline pami_endpoint_t
+MPIDI_Context_endpoint(MPID_Request * req)
+{
+  pami_task_t remote = MPIDI_Request_getPeerRank(req);
+  pami_task_t local  = MPIDI_Process.global.rank;
+  unsigned    rctxt  = MPIDI_Context_hash(local, req->comm->context_id);
+  return PAMI_Client_endpoint(MPIDI_Client, remote, rctxt);
+}
+static inline pami_context_t
+MPIDI_Context_local(MPID_Request * req)
+{
+  pami_task_t remote = MPIDI_Request_getPeerRank(req);
+  /* pami_task_t local  = MPIDI_Process.global.rank; */
+  unsigned    lctxt = MPIDI_Context_hash(remote, req->comm->context_id);
+  MPID_assert(lctxt < NUM_CONTEXTS);
+  return MPIDI_Context[lctxt];
+}
+
+
 #endif

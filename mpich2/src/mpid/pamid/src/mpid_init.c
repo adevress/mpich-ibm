@@ -188,6 +188,8 @@ int MPID_Init(int * argc,
   if (MPIDI_Process.optimized.topology)
     MPIR_Process.dimsCreate = MPID_Dims_create;
 
+  MPIDI_Process.global.rank = rank;
+  MPIDI_Process.global.size = size;
 
   /* -------------------------------- */
   /* Initialize MPI_COMM_WORLD object */

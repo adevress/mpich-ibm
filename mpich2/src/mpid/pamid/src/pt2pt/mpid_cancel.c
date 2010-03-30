@@ -32,20 +32,19 @@ static inline void
 MPIDI_postCancelReq(pami_context_t context, MPID_Request * req)
 {
   MPID_assert(req != NULL);
-  unsigned      peerrank  =  MPIDI_Request_getPeerRank(req);
 
   MPIDI_MsgInfo cancel = {
   msginfo: {
     MPItag   : MPIDI_Request_getMatchTag(req),
     MPIrank  : MPIDI_Request_getMatchRank(req),
     MPIctxt  : MPIDI_Request_getMatchCtxt(req),
-    peerrank : MPIR_Process.comm_world->rank,
+    peerrank : MPIDI_Process.global.rank,
     type     : MPIDI_REQUEST_TYPE_CANCEL_REQUEST,
     req      : req,
     }
   };
 
-  pami_endpoint_t       dest   = PAMI_Client_endpoint(MPIDI_Client, peerrank, 0);
+  pami_endpoint_t       dest   = MPIDI_Context_endpoint(req);
   pami_send_immediate_t params = {
   dispatch : MPIDI_Protocols.Cancel,
   dest     : dest,
@@ -98,7 +97,8 @@ MPID_Cancel_send(MPID_Request * sreq)
         return MPI_SUCCESS;
 
       MPIDI_Request_increment_cc(sreq);
-      MPIDI_postCancelReq(MPIDI_Context[0], sreq);
+
+      MPIDI_postCancelReq(MPIDI_Context_local(sreq), sreq);
 
       return MPI_SUCCESS;
     }

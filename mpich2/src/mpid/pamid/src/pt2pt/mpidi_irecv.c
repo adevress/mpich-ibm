@@ -74,7 +74,7 @@ MPIDI_Irecv(void          * buf,
       if (MPIDI_Request_isSync(rreq))
         {
           MPID_assert(!MPIDI_Request_isSelf(rreq));
-          MPIDI_postSyncAck(MPIDI_Context[0], rreq);
+          MPIDI_postSyncAck(MPIDI_Context_local(rreq), rreq);
         }
 
       if (MPIDI_Request_isSelf(rreq))
@@ -113,7 +113,7 @@ MPIDI_Irecv(void          * buf,
               MPID_Datatype_add_ref(rreq->mpid.datatype_ptr);
             }
 
-          MPIDI_RendezvousTransfer(MPIDI_Context[0], rreq);
+          MPIDI_RendezvousTransfer(MPIDI_Context_local(rreq), rreq);
         }
       else if (*rreq->cc_ptr == 0)
         {

@@ -11,10 +11,11 @@
 /* ----------------------------------------------------------------------- */
 
 static inline void
-MPIDI_Send_eager(MPID_Request  * sreq,
+MPIDI_Send_eager(pami_context_t   context,
+                 MPID_Request   * sreq,
                  pami_endpoint_t  dest,
-                 char          * sndbuf,
-                 unsigned        sndlen)
+                 char           * sndbuf,
+                 unsigned         sndlen)
 {
   MPIDI_MsgInfo * msginfo = &sreq->mpid.envelope.envelope.msginfo;
 
@@ -38,16 +39,17 @@ MPIDI_Send_eager(MPID_Request  * sreq,
   };
 
   pami_result_t rc = PAMI_ERROR;
-  rc = PAMI_Send(MPIDI_Context[0], &params);
+  rc = PAMI_Send(context, &params);
   MPID_assert(rc == PAMI_SUCCESS);
 }
 
 
 static inline void
-MPIDI_Send_rzv(MPID_Request  * sreq,
+MPIDI_Send_rzv(pami_context_t   context,
+               MPID_Request   * sreq,
                pami_endpoint_t  dest,
-               char          * sndbuf,
-               unsigned        sndlen)
+               char           * sndbuf,
+               unsigned         sndlen)
 {
   /* Set the isRzv bit in the SEND request. This is important for
    * canceling requests.
@@ -85,7 +87,7 @@ MPIDI_Send_rzv(MPID_Request  * sreq,
   };
 
   pami_result_t rc = PAMI_ERROR;
-  rc = PAMI_Send_immediate(MPIDI_Context[0], &params);
+  rc = PAMI_Send_immediate(context, &params);
   MPID_assert(rc == PAMI_SUCCESS);
 }
 
@@ -95,19 +97,20 @@ MPIDI_Send(MPID_Request  * sreq,
            char          * sndbuf,
            unsigned        sndlen)
 {
-  pami_endpoint_t dest = PAMI_Client_endpoint(MPIDI_Client, MPIDI_Request_getPeerRank(sreq), 0);
-
+  pami_endpoint_t dest    = MPIDI_Context_endpoint(sreq);
+  pami_context_t  context = MPIDI_Context_local(sreq);
 
   pami_task_t old_peer = MPIDI_Request_getPeerRank(sreq);
-  MPIDI_Request_setPeerRank(sreq, MPIR_Process.comm_world->rank);
+  MPIDI_Request_setPeerRank(sreq, MPIDI_Process.global.rank);
 
 
   /* Always use the short protocol when sndlen is zero.
    * Use the short/eager protocol when sndlen is less than the eager limit.
    */
-  if (sndlen==0 || sndlen<MPIDI_Process.eager_limit)
+  if (likely(sndlen==0 || sndlen<MPIDI_Process.eager_limit))
     {
-      MPIDI_Send_eager(sreq,
+      MPIDI_Send_eager(context,
+                       sreq,
                        dest,
                        sndbuf,
                        sndlen);
@@ -117,7 +120,8 @@ MPIDI_Send(MPID_Request  * sreq,
    */
   else
     {
-      MPIDI_Send_rzv(sreq,
+      MPIDI_Send_rzv(context,
+                     sreq,
                      dest,
                      sndbuf,
                      sndlen);

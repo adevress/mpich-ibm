@@ -84,7 +84,8 @@ MPIDI_RendezvousTransfer(pami_context_t context,
   /* Get the data from the origin node.                               */
   /* ---------------------------------------------------------------- */
 
-  pami_endpoint_t   dest   = PAMI_Client_endpoint(MPIDI_Client, MPIDI_Request_getPeerRank(rreq), 0);
+
+  pami_endpoint_t   dest   = MPIDI_Context_endpoint(rreq);
   pami_get_simple_t params = {
   rma : {
     dest    : dest,

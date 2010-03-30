@@ -18,7 +18,7 @@ MPIDI_CtrlSend(pami_context_t context,
                size_t peerrank)
 {
   pami_task_t old_peer = control->msginfo.peerrank;
-  control->msginfo.peerrank = MPIR_Process.comm_world->rank;
+  control->msginfo.peerrank = MPIDI_Process.global.rank;
 
 
   pami_endpoint_t       dest   = PAMI_Client_endpoint(MPIDI_Client, peerrank, 0);

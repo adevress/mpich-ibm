@@ -30,7 +30,7 @@ void MPIDI_Abort_core(MPID_Comm * comm, int mpi_errno, int exit_code, const char
 
   if (MPIR_Process.comm_world)
     {
-      int rank = MPIR_Process.comm_world->rank;
+      int rank = MPIDI_Process.global.rank;
       snprintf(world_str, sizeof(world_str), " on node %d", rank);
     }
   if (comm)
