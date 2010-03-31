@@ -11,6 +11,32 @@
 /* ----------------------------------------------------------------------- */
 
 static inline void
+MPIDI_Send_zero(pami_context_t   context,
+                MPID_Request   * sreq,
+                pami_endpoint_t  dest)
+{
+  MPIDI_MsgInfo * msginfo = &sreq->mpid.envelope.envelope.msginfo;
+
+  pami_send_immediate_t params = {
+  dispatch : MPIDI_Protocols.Send,
+  dest     : dest,
+  header   : {
+    iov_base : msginfo,
+    iov_len  : sizeof(MPIDI_MsgInfo),
+    },
+  data     : {
+    iov_base : NULL,
+    iov_len  : 0,
+  },
+  };
+
+  pami_result_t rc = PAMI_ERROR;
+  rc = PAMI_Send_immediate(context, &params);
+  MPID_assert(rc == PAMI_SUCCESS);
+}
+
+
+static inline void
 MPIDI_Send_eager(pami_context_t   context,
                  MPID_Request   * sreq,
                  pami_endpoint_t  dest,
@@ -105,9 +131,16 @@ MPIDI_Send(pami_context_t  context,
 
 
   /* Always use the short protocol when sndlen is zero.
-   * Use the short/eager protocol when sndlen is less than the eager limit.
    */
-  if (likely(sndlen==0 || sndlen<MPIDI_Process.eager_limit))
+  if (likely(sndlen==0))
+    {
+      MPIDI_Send_zero(context,
+                       sreq,
+                       dest);
+    }
+  /* Use the eager protocol when sndlen is less than the eager limit.
+   */
+  else if (sndlen < MPIDI_Process.eager_limit)
     {
       MPIDI_Send_eager(context,
                        sreq,
@@ -115,8 +148,8 @@ MPIDI_Send(pami_context_t  context,
                        sndbuf,
                        sndlen);
     }
-  /* Otherwise, use the default rendezvous protocol (glue implementation
-   * that guarantees no unexpected data.
+  /* Use the default rendezvous protocol (glue implementation that
+   * guarantees no unexpected data).
    */
   else
     {
