@@ -33,6 +33,8 @@ MPIDI_Send_zero(pami_context_t   context,
   pami_result_t rc = PAMI_ERROR;
   rc = PAMI_Send_immediate(context, &params);
   MPID_assert(rc == PAMI_SUCCESS);
+
+  MPIDI_SendDoneCB(context, sreq, PAMI_SUCCESS);
 }
 
 
@@ -135,8 +137,8 @@ MPIDI_Send(pami_context_t  context,
   if (likely(sndlen==0))
     {
       MPIDI_Send_zero(context,
-                       sreq,
-                       dest);
+                      sreq,
+                      dest);
     }
   /* Use the eager protocol when sndlen is less than the eager limit.
    */
