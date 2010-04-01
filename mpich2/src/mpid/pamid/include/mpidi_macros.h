@@ -125,7 +125,10 @@ static inline void
 MPIDI_StartMsg(MPID_Request * sreq)
 {
   pami_context_t context = MPIDI_Context_local(sreq);
-  PAMI_Context_post(context, &sreq->mpid.post_request, MPIDI_StartMsg_handoff, sreq);
+
+  pami_result_t rc;
+  rc = PAMI_Context_post(context, &sreq->mpid.post_request, MPIDI_StartMsg_handoff, sreq);
+  MPID_assert(rc == PAMI_SUCCESS);
 }
 
 
