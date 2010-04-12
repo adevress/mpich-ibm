@@ -11,7 +11,16 @@ pami_client_t  MPIDI_Client;
 pami_context_t MPIDI_Context[MAX_CONTEXTS];
 
 MPIDI_Process_t  MPIDI_Process = {
- eager_limit: UINT_MAX,
+ verbose        : 0,
+ statistics     : 0,
+ eager_limit    : UINT_MAX,
+ use_interrupts : 0,
+ rma_pending    : 1000,
+
+ optimized : {
+  collectives : 0,
+  topology    : 0,
+  },
 };
 
 struct protocol_t
@@ -89,9 +98,14 @@ MPIDI_Init(int* rank, int* size, int* threading)
 {
   pami_result_t rc;
 
-  /* ----------------------------------- */
+  /* ------------------------------------ */
+  /*  Get new defaults from the Env Vars  */
+  /* ------------------------------------ */
+  MPIDI_Env_setup();
+
+  /* ------------------------------------ */
   /*  Initialize the MPICH2->PAMI Client  */
-  /* ----------------------------------- */
+  /* ------------------------------------ */
   rc = PAMI_Client_initialize("MPICH2", &MPIDI_Client);
   MPID_assert(rc == PAMI_SUCCESS);
 
