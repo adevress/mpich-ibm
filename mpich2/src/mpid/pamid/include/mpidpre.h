@@ -22,6 +22,9 @@
 #include <pami.h>
 
 
+#define USE_PAMI_RDMA 1
+
+
 #define MPID_abort()    assert(0) /**< \brief Always exit--usually implies missing functionality */
 
 #if ASSERT_LEVEL==0

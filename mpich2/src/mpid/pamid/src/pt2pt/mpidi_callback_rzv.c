@@ -67,7 +67,13 @@ void MPIDI_RecvRzvCB(pami_context_t   context,
   /* retreived from the origin node.                       */
   /* ----------------------------------------------------- */
   rreq->status.count                  = envelope->envelope.length;
+#ifdef USE_PAMI_RDMA
+  memcpy(&rreq->mpid.envelope.envelope.memregion,
+	 &envelope->envelope.memregion,
+	 sizeof(pami_memregion_t));
+#else
   rreq->mpid.envelope.envelope.data   = envelope->envelope.data;
+#endif
   rreq->mpid.envelope.envelope.length = envelope->envelope.length;
 
   /* ----------------------------------------- */

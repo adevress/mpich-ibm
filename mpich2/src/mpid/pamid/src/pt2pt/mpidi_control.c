@@ -71,6 +71,12 @@ void MPIDI_RecvRzvDoneCB(pami_context_t   context,
                  MPIDI_Request_getPeerRank(rreq));
   MPIDI_Request_setType(rreq, original_value);
 
+#ifdef USE_PAMI_RDMA
+  pami_result_t rc;
+  rc = PAMI_Memregion_destroy(context, &rreq->mpid.memregion);
+  MPID_assert(rc == PAMI_SUCCESS);
+#endif
+
   MPIDI_RecvDoneCB(context, rreq, PAMI_SUCCESS);
 }
 
@@ -224,6 +230,12 @@ static inline void MPIDI_procRzvAck(pami_context_t context, const MPIDI_MsgInfo 
   MPID_assert(info != NULL);
   MPID_Request *req = MPIDI_Msginfo_getPeerRequest(info);
   MPID_assert(req != NULL);
+
+#ifdef USE_PAMI_RDMA
+  pami_result_t rc;
+  rc = PAMI_Memregion_destroy(context, &req->mpid.envelope.envelope.memregion);
+  MPID_assert(rc == PAMI_SUCCESS);
+#endif
 
   MPIDI_SendDoneCB(context, req, PAMI_SUCCESS);
 }

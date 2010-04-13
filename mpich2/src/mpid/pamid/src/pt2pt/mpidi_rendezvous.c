@@ -84,27 +84,63 @@ MPIDI_RendezvousTransfer(pami_context_t context,
   /* Get the data from the origin node.                               */
   /* ---------------------------------------------------------------- */
 
-
+  pami_result_t rc;
   pami_endpoint_t   dest   = MPIDI_Context_endpoint(rreq);
-  pami_get_simple_t params = {
-  rma : {
+
+#ifdef USE_PAMI_RDMA
+  size_t rcvlen_out;
+  rc = PAMI_Memregion_create(context,
+                             rcvbuf,
+                             rcvlen,
+                             &rcvlen_out,
+                             &rreq->mpid.memregion);
+  MPID_assert(rc == PAMI_SUCCESS);
+  MPID_assert(rcvlen == rcvlen_out);
+
+  pami_rget_simple_t params = {
+  rma  : {
     dest    : dest,
     hints   : {
       use_rdma:       1,
       no_long_header: 1,
       },
-    local   : rcvbuf,
-    remote  : rreq->mpid.envelope.envelope.data,
+    bytes   : rreq->mpid.envelope.envelope.length,
     cookie  : rreq,
     done_fn : MPIDI_RecvRzvDoneCB,
   },
-  get : {
-    bytes : rreq->mpid.envelope.envelope.length,
+  rdma : {
+    local  : {
+      mr     : &rreq->mpid.memregion,
+      offset : 0,
+    },
+    remote : {
+      mr     : &rreq->mpid.envelope.envelope.memregion,
+      offset : 0,
+    },
   },
   };
 
-  pami_result_t rc;
-  rc = PAMI_Get(context, &params);
-  fprintf(stderr, "%s:%d  PAMI_UNIMPL=%d  rc = %d\n", __FILE__, __LINE__, PAMI_UNIMPL, rc);
+  rc = PAMI_Rget(context, &params);
   MPID_assert(rc == PAMI_SUCCESS);
+#else
+  pami_get_simple_t params = {
+  rma  : {
+    dest    : dest,
+    hints   : {
+      use_rdma:       1,
+      no_long_header: 1,
+      },
+    bytes   : rreq->mpid.envelope.envelope.length,
+    cookie  : rreq,
+    done_fn : MPIDI_RecvRzvDoneCB,
+  },
+  addr : {
+    local   : rcvbuf,
+    remote  : rreq->mpid.envelope.envelope.data,
+  },
+  };
+
+  rc = PAMI_Get(context, &params);
+  MPID_assert(rc == PAMI_SUCCESS);
+#endif
 }

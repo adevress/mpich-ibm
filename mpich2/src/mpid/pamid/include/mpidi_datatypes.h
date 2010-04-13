@@ -179,9 +179,13 @@ typedef union
 {
   struct MPIDI_MsgEnvelope_t
   {
-    MPIDI_MsgInfo msginfo;
-    void        * data;
-    size_t        length;
+    MPIDI_MsgInfo    msginfo;
+#ifdef USE_PAMI_RDMA
+    pami_memregion_t memregion;
+#else
+    void           * data;
+#endif
+    size_t           length;
   } envelope;
   /* DCQuad quad[DCQuad_sizeof(struct MPIDI_MsgEnvelope_t)]; */
 } MPIDI_MsgEnvelope;
@@ -206,6 +210,9 @@ struct MPIDI_Request
   int                 cancel_pending; /**< Cancel State               */
   MPIDI_REQUEST_STATE   state;        /**< The tranfser state         */
   MPIDI_CA              ca;           /**< Completion action          */
+#ifdef USE_PAMI_RDMA
+  pami_memregion_t      memregion;    /**< Rendezvous recv memregion  */
+#endif
 };
 
 
@@ -235,10 +242,11 @@ struct MPIDI_Comm
  */
 struct MPID_Win_coll_info
 {
-  void           *base_addr;  /**< Node's exposure window base address                  */
-  int             disp_unit;  /**< Node's exposure window displacement units            */
-  MPI_Win         win_handle; /**< Node's exposure window handle (local to target node) */
-  int             rma_sends;  /**< Count of RMA operations that target node             */
+  void            *base_addr;  /**< Node's exposure window base address                  */
+  int              disp_unit;  /**< Node's exposure window displacement units            */
+  MPI_Win          win_handle; /**< Node's exposure window handle (local to target node) */
+  int              rma_sends;  /**< Count of RMA operations that target node             */
+  pami_memregion_t mem_region; /**< Memory region descriptor for each node               */
 };
 
 

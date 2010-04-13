@@ -30,7 +30,7 @@ MPIDI_Send_zero(pami_context_t   context,
   },
   };
 
-  pami_result_t rc = PAMI_ERROR;
+  pami_result_t rc;
   rc = PAMI_Send_immediate(context, &params);
   MPID_assert(rc == PAMI_SUCCESS);
 
@@ -66,7 +66,7 @@ MPIDI_Send_eager(pami_context_t   context,
   },
   };
 
-  pami_result_t rc = PAMI_ERROR;
+  pami_result_t rc;
   rc = PAMI_Send(context, &params);
   MPID_assert(rc == PAMI_SUCCESS);
 }
@@ -79,6 +79,8 @@ MPIDI_Send_rzv(pami_context_t   context,
                char           * sndbuf,
                unsigned         sndlen)
 {
+  pami_result_t rc;
+
   /* Set the isRzv bit in the SEND request. This is important for
    * canceling requests.
    */
@@ -89,7 +91,18 @@ MPIDI_Send_rzv(pami_context_t   context,
    * to send, is sent as the payload of the request-to-send (RTS)
    * message.
    */
+#ifdef USE_PAMI_RDMA
+  size_t sndlen_out;
+  rc = PAMI_Memregion_create(context,
+                             sndbuf,
+                             sndlen,
+                             &sndlen_out,
+                             &sreq->mpid.envelope.envelope.memregion);
+  MPID_assert(rc == PAMI_SUCCESS);
+  MPID_assert(sndlen == sndlen_out);
+#else
   sreq->mpid.envelope.envelope.data   = sndbuf;
+#endif
   sreq->mpid.envelope.envelope.length = sndlen;
 
   /* Do not specify a callback function to be invoked when the RTS
@@ -114,7 +127,6 @@ MPIDI_Send_rzv(pami_context_t   context,
   },
   };
 
-  pami_result_t rc = PAMI_ERROR;
   rc = PAMI_Send_immediate(context, &params);
   MPID_assert(rc == PAMI_SUCCESS);
 }
