@@ -36,7 +36,6 @@ void    MPIDI_Request_complete(MPID_Request *req);
 #define MPIDI_Request_getCA(_req)                ({ (_req)->mpid.ca;                                                 })
 #define MPIDI_Request_isSelf(_req)               ({ (_req)->mpid.isSelf;                                             })
 #define MPIDI_Request_getPeerRank(_req)          ({ (_req)->mpid.envelope.envelope.msginfo.msginfo.peerrank;         })
-#define MPIDI_Request_getPeerRequest(_req)       ({ (_req)->mpid.envelope.envelope.msginfo.msginfo.req;              })
 #define MPIDI_Request_getType(_req)              ({ (_req)->mpid.envelope.envelope.msginfo.msginfo.type;             })
 #define MPIDI_Request_isSync(_req)               ({ (_req)->mpid.envelope.envelope.msginfo.msginfo.isSync;           })
 #define MPIDI_Request_isRzv(_req)                ({ (_req)->mpid.envelope.envelope.msginfo.msginfo.isRzv;            })
@@ -47,7 +46,6 @@ void    MPIDI_Request_complete(MPID_Request *req);
 #define MPIDI_Request_setCA(_req, _ca)           ({ (_req)->mpid.ca                                         = (_ca); })
 #define MPIDI_Request_setSelf(_req,_t)           ({ (_req)->mpid.isSelf                                     = (_t);  })
 #define MPIDI_Request_setPeerRank(_req,_r)       ({ (_req)->mpid.envelope.envelope.msginfo.msginfo.peerrank = (_r);  })
-#define MPIDI_Request_setPeerRequest(_req,_r)    ({ (_req)->mpid.envelope.envelope.msginfo.msginfo.req      = (_r);  })
 #define MPIDI_Request_setType(_req,_t)           ({ (_req)->mpid.envelope.envelope.msginfo.msginfo.type     = (_t);  })
 #define MPIDI_Request_setSync(_req,_t)           ({ (_req)->mpid.envelope.envelope.msginfo.msginfo.isSync   = (_t);  })
 #define MPIDI_Request_setRzv(_req,_t)            ({ (_req)->mpid.envelope.envelope.msginfo.msginfo.isRzv    = (_t);  })
@@ -57,6 +55,12 @@ void    MPIDI_Request_complete(MPID_Request *req);
   (_req)->mpid.envelope.envelope.msginfo.msginfo.MPIrank=(_rank);       \
   (_req)->mpid.envelope.envelope.msginfo.msginfo.MPIctxt=(_ctxtid);     \
 })
+
+#define MPIDI_Request_getPeerRequest(_req)      ({ (_req)->mpid.envelope.envelope.msginfo.msginfo.req;                     })
+#define MPIDI_Msginfo_getPeerRequest(_msg)      ({                                (_msg)->msginfo.req;                     })
+#define MPIDI_Request_setPeerRequest(_req,_r)   ({ (_req)->mpid.envelope.envelope.msginfo.msginfo.req = (_r); MPI_SUCCESS; })
+#define MPIDI_Msginfo_cpyPeerRequest(_dst,_src) ({ (_dst)->msginfo.req = (_src)->msginfo.req;                 MPI_SUCCESS; })
+#define MPIDI_Request_cpyPeerRequest(_dst,_src)   MPIDI_Msginfo_cpyPeerRequest(&(_dst)->mpid.envelope.envelope.msginfo,_src)
 /** \} */
 
 

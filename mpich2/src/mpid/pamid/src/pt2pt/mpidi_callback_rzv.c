@@ -57,7 +57,7 @@ void MPIDI_RecvRzvCB(pami_context_t   context,
   rreq->status.MPI_SOURCE = match.rank;
   rreq->status.MPI_TAG    = match.tag;
   MPIDI_Request_setPeerRank   (rreq, senderrank);
-  MPIDI_Request_setPeerRequest(rreq, msginfo->msginfo.req);
+  MPIDI_Request_cpyPeerRequest(rreq, msginfo);
   MPIDI_Request_setSync       (rreq, msginfo->msginfo.isSync);
   MPIDI_Request_setRzv        (rreq, 1);
 

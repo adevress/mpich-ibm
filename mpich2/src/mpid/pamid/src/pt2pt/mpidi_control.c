@@ -103,7 +103,7 @@ static inline void
 MPIDI_procSyncAck(pami_context_t context, const MPIDI_MsgInfo *info, unsigned peer)
 {
   MPID_assert(info != NULL);
-  MPID_Request *req = (MPID_Request *)info->msginfo.req;
+  MPID_Request *req = MPIDI_Msginfo_getPeerRequest(info);
   MPID_assert(req != NULL);
 
   if(req->mpid.state ==  MPIDI_SEND_COMPLETE)
@@ -127,9 +127,9 @@ MPIDI_procCancelReq(pami_context_t context, const MPIDI_MsgInfo *info, size_t pe
   MPID_Request      * sreq = NULL;
 
   MPID_assert(info != NULL);
-  MPID_assert(info->msginfo.req != NULL);
+  MPID_assert(MPIDI_Msginfo_getPeerRequest(info) != NULL);
 
-  sreq=MPIDI_Recvq_FDUR(info->msginfo.req,
+  sreq=MPIDI_Recvq_FDUR(MPIDI_Msginfo_getPeerRequest(info),
                         info->msginfo.MPIrank,
                         info->msginfo.MPItag,
                         info->msginfo.MPIctxt);
@@ -149,7 +149,7 @@ MPIDI_procCancelReq(pami_context_t context, const MPIDI_MsgInfo *info, size_t pe
     }
 
   ackinfo.msginfo.type = type;
-  ackinfo.msginfo.req  = info->msginfo.req;
+  MPIDI_Msginfo_cpyPeerRequest(&ackinfo, info);
   MPIDI_CtrlSend(context, &ackinfo, peer);
 }
 
@@ -164,7 +164,7 @@ static inline void
 MPIDI_procCancelAck(pami_context_t context, const MPIDI_MsgInfo *info, size_t peer)
 {
   MPID_assert(info != NULL);
-  MPID_Request *req = (MPID_Request *)info->msginfo.req;
+  MPID_Request *req = MPIDI_Msginfo_getPeerRequest(info);
   MPID_assert(req != NULL);
 
   if(info->msginfo.type == MPIDI_REQUEST_TYPE_CANCEL_NOT_ACKNOWLEDGE)
@@ -222,7 +222,7 @@ MPIDI_procCancelAck(pami_context_t context, const MPIDI_MsgInfo *info, size_t pe
 static inline void MPIDI_procRzvAck(pami_context_t context, const MPIDI_MsgInfo *info, size_t peer)
 {
   MPID_assert(info != NULL);
-  MPID_Request  * req = ((MPID_Request *)info->msginfo.req);
+  MPID_Request *req = MPIDI_Msginfo_getPeerRequest(info);
   MPID_assert(req != NULL);
 
   MPIDI_SendDoneCB(context, req, PAMI_SUCCESS);
