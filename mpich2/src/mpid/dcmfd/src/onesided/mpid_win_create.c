@@ -70,28 +70,6 @@ static void mpid_get_init(void) {
 }
 
 /**
- * \brief User defined function to handle summing of rma_sends
- *
- * \param[in] v1	Source data
- * \param[in] v2	Destination data
- * \param[in] i1	number of elements
- * \param[in] d1	datatype
- * \return	nothing
- */
-static void sum_coll_info(void *v1, void *v2, int *i1, MPI_Datatype *d1) {
-        struct MPID_Win_coll_info *in = v1, *out = v2;
-        int len = *i1;
-        int x;
-
-        MPID_assert_debug(*d1 == Coll_info_rma_dt);
-        for (x = 0; x < len; ++x) {
-                out->rma_sends += in->rma_sends;
-                ++out;
-                ++in;
-        }
-}
-
-/**
  * \brief One-time MPID one-sided initialization
  *
  * \return nothing
@@ -102,18 +80,6 @@ static void mpid_init(void) {
         mpid_ctl_init();
         mpid_get_init();
         mpid_put_init();
-        /*
-         * need typemap { (int,12), (int,28), ... }
-         *
-         * i.e. [0] => &(*win_ptr)->coll_info[0].rma_sends,
-         *	[1] => &(*win_ptr)->coll_info[1].rma_sends,
-         *	[2] => &(*win_ptr)->coll_info[2].rma_sends,
-         *	...
-         */
-        PMPI_Type_contiguous(sizeof(struct MPID_Win_coll_info) / sizeof(int),
-				MPI_INT, &Coll_info_rma_dt);
-        PMPI_Type_commit(&Coll_info_rma_dt);
-        PMPI_Op_create(sum_coll_info, 0, &Coll_info_rma_op);
 }
 
 /// \cond NOT_REAL_CODE
@@ -181,7 +147,6 @@ int MPID_Win_create(void *base, MPI_Aint size, int disp_unit,
         win->disp_unit = disp_unit;
 /* MPID_DEV_WIN_DECL ... */
         mpidu_init_lock(win);
-        win->_dev.epoch_type = MPID_EPOTYPE_NONE;
         win->_dev.my_cstcy = DCMF_MATCH_CONSISTENCY;
 
         mpi_errno = NMPI_Comm_dup(comm_ptr->handle, &win->comm);
@@ -194,13 +159,18 @@ int MPID_Win_create(void *base, MPI_Aint size, int disp_unit,
         /* allocate memory for the base addresses, disp_units, and
                 completion counters of all processes */
 
+        MPIDU_MALLOC(win->_dev.as_origin.rmas, int, comm_size * sizeof(int),
+		mpi_errno, "win->_dev.as_origin.rmas");
+        memset((void *)win->_dev.as_origin.rmas, 0, comm_size * sizeof(int));
+        MPIDU_MALLOC(win->_dev.as_target.rmas, int, comm_size * sizeof(int),
+		mpi_errno, "win->_dev.as_target.rmas");
+        memset((void *)win->_dev.as_target.rmas, 0, comm_size * sizeof(int));
         MPIDU_MALLOC(win->_dev.coll_info, struct MPID_Win_coll_info,
                 comm_size * sizeof(struct MPID_Win_coll_info),
                 mpi_errno, "win->_dev.coll_info");
         /* FIXME: This needs to be fixed for heterogeneous systems */
         win->_dev.coll_info[rank].disp_unit = disp_unit;
         win->_dev.coll_info[rank].win_handle = win->handle;
-        win->_dev.coll_info[rank].rma_sends = 0; /* Allgather zeros these */
 	// DCMF_assert_debug(sizeof(DCMF_Memregion_t) == sizeof(void *));
 	size_t mem_cfg_bytes = size;
 	void * mem_cfg_base = base;
@@ -257,8 +227,9 @@ int MPID_Win_free(MPID_Win **win_ptr)
         MPIU_THREADPRIV_GET;
         MPIR_Nest_incr();
 
-        MPID_assert(win->_dev.epoch_type == MPID_EPOTYPE_NONE ||
-        		win->_dev.epoch_type == MPID_EPOTYPE_REFENCE);
+        MPID_assert(win->_dev.as_origin.epoch_type == win->_dev.as_target.epoch_type &&
+        	(win->_dev.as_origin.epoch_type == MPID_EPOTYPE_NONE ||
+        		win->_dev.as_origin.epoch_type == MPID_EPOTYPE_REFENCE));
 
         mpi_errno = NMPI_Barrier(win->_dev.comm_ptr->handle);
         if (mpi_errno) { MPIU_ERR_POP(mpi_errno); }
@@ -271,6 +242,8 @@ int MPID_Win_free(MPID_Win **win_ptr)
 			&win->_dev.coll_info[rank].mem_region);
         NMPI_Comm_free(&win->comm);
         MPIDU_FREE(win->_dev.coll_info, mpi_errno, "win->_dev.coll_info");
+        MPIDU_FREE(win->_dev.as_origin.rmas, mpi_errno, "win->_dev.as_origin.rmas");
+        MPIDU_FREE(win->_dev.as_target.rmas, mpi_errno, "win->_dev.as_target.rmas");
         mpidu_free_lock(win);
         /** \todo check whether refcount needs to be decremented
          * here as in group_free */

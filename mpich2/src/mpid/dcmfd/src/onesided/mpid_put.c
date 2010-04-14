@@ -75,11 +75,13 @@ int MPID_Put(void *origin_addr, int origin_count,
         MPIU_THREADPRIV_GET;
         MPIR_Nest_incr();
 
-        if (win_ptr->_dev.epoch_type == MPID_EPOTYPE_REFENCE) {
-		win_ptr->_dev.epoch_type = MPID_EPOTYPE_FENCE;
+        if (win_ptr->_dev.as_origin.epoch_type == win_ptr->_dev.as_target.epoch_type &&
+	    win_ptr->_dev.as_origin.epoch_type == MPID_EPOTYPE_REFENCE) {
+		win_ptr->_dev.as_origin.epoch_type =
+			win_ptr->_dev.as_target.epoch_type = MPID_EPOTYPE_FENCE;
 	}
-        if (win_ptr->_dev.epoch_type == MPID_EPOTYPE_NONE ||
-                        win_ptr->_dev.epoch_type == MPID_EPOTYPE_POST ||
+        if (win_ptr->_dev.as_origin.epoch_type == MPID_EPOTYPE_NONE ||
+            win_ptr->_dev.as_origin.epoch_type == MPID_EPOTYPE_REFENCE ||
                         !MPIDU_VALID_RMA_TARGET(win_ptr, target_rank)) {
                 /* --BEGIN ERROR HANDLING-- */
                 MPIU_ERR_SETANDSTMT(mpi_errno, MPI_ERR_RMA_SYNC,
@@ -96,7 +98,7 @@ int MPID_Put(void *origin_addr, int origin_count,
 
         /* If the put is a local operation, do it here */
         if (target_rank == rank) {
-                if (win_ptr->_dev.epoch_type == MPID_EPOTYPE_LOCK &&
+                if (win_ptr->_dev.as_origin.epoch_type == MPID_EPOTYPE_LOCK &&
                                 MPIDU_is_lock_free(win_ptr)) {
                         /* --BEGIN ERROR HANDLING-- */
                         MPIU_ERR_SETANDSTMT(mpi_errno, MPI_ERR_RMA_SYNC,
@@ -227,7 +229,7 @@ int MPID_Put(void *origin_addr, int origin_count,
                                 info->info, MPIDU_1SINFO_NQUADS);
 #endif /* ! USE_DCMF_PUT */
                         if (mpi_errno) { MPIU_ERR_POP(mpi_errno); }
-                        ++win_ptr->_dev.coll_info[target_rank].rma_sends;
+                        ++win_ptr->_dev.as_origin.rmas[target_rank];
                 } else {
                         /* force map to get built but don't assume
                          * it was sent (use our lpid) */
@@ -278,7 +280,7 @@ int MPID_Put(void *origin_addr, int origin_count,
                                                 info->info, MPIDU_1SINFO_NQUADS);
 #endif /* ! USE_DCMF_PUT */
                                         if (mpi_errno) { MPIU_ERR_POP(mpi_errno); }
-                                        ++win_ptr->_dev.coll_info[target_rank].rma_sends;
+                                        ++win_ptr->_dev.as_origin.rmas[target_rank];
                                         s += dti.map[i].len;
                                 }
                                 b += dti.dtp->extent;

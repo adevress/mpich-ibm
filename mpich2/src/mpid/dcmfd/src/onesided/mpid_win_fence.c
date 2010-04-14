@@ -96,8 +96,16 @@ int MPID_Win_fence(int assert, MPID_Win *win_ptr)
 	 * there are none). We also must wait for outstanding RMAs, although
 	 * that should be NOOP if there were no RMAs performed (under the fence).
 	 */
+	if (win_ptr->_dev.as_origin.epoch_type != win_ptr->_dev.as_target.epoch_type) {
+fprintf(stderr, "as_origin.epoch_type=%d as_target.epoch_type=%d\n", win_ptr->_dev.as_origin.epoch_type, win_ptr->_dev.as_target.epoch_type);
+		/* --BEGIN ERROR HANDLING-- */
+		MPIU_ERR_SETANDSTMT(mpi_errno, MPI_ERR_RMA_SYNC,
+				goto fn_fail, "**rmasync");
+		/* --END ERROR HANDLING-- */
+		/* should be able to assert that no RMAs are pending... */
+	}
 	if ((assert & MPI_MODE_NOPRECEDE) &&
-			win_ptr->_dev.epoch_type != MPID_EPOTYPE_NONE) {
+			win_ptr->_dev.as_origin.epoch_type != MPID_EPOTYPE_NONE) {
 		/* --BEGIN ERROR HANDLING-- */
 		MPIU_ERR_SETANDSTMT(mpi_errno, MPI_ERR_RMA_SYNC,
 				goto fn_fail, "**rmasync");
@@ -105,19 +113,19 @@ int MPID_Win_fence(int assert, MPID_Win *win_ptr)
 		/* should be able to assert that no RMAs are pending... */
 	}
 	if (!(assert & MPI_MODE_NOPRECEDE) &&
-			win_ptr->_dev.epoch_type != MPID_EPOTYPE_FENCE &&
-			win_ptr->_dev.epoch_type != MPID_EPOTYPE_REFENCE &&
-			win_ptr->_dev.epoch_type != MPID_EPOTYPE_NONE) {
+			win_ptr->_dev.as_origin.epoch_type != MPID_EPOTYPE_FENCE &&
+			win_ptr->_dev.as_origin.epoch_type != MPID_EPOTYPE_REFENCE &&
+			win_ptr->_dev.as_origin.epoch_type != MPID_EPOTYPE_NONE) {
 		/* --BEGIN ERROR HANDLING-- */
 		MPIU_ERR_SETANDSTMT(mpi_errno, MPI_ERR_RMA_SYNC,
 				goto fn_fail, "**rmasync");
 		/* --END ERROR HANDLING-- */
 	}
 
-	mpi_errno = NMPI_Allreduce(MPI_IN_PLACE,
-				win_ptr->_dev.coll_info,
+	mpi_errno = NMPI_Allreduce((void *)win_ptr->_dev.as_origin.rmas,
+				(void *)win_ptr->_dev.as_target.rmas,
 				MPIDU_comm_size(win_ptr),
-				Coll_info_rma_dt, Coll_info_rma_op,
+				MPI_INT, MPI_SUM,
 				win_ptr->_dev.comm_ptr->handle);
 	if (mpi_errno) {
 		char buf[MPI_MAX_ERROR_STRING];
@@ -130,39 +138,43 @@ int MPID_Win_fence(int assert, MPID_Win *win_ptr)
 	MPIDU_Progress_spin(win_ptr->_dev.my_get_pends > 0 ||
 				win_ptr->_dev.my_rma_pends > 0 ||
 				win_ptr->_dev.my_rma_recvs <
-					win_ptr->_dev.coll_info[rank].rma_sends);
-	if ((win_ptr->_dev.epoch_assert & MPI_MODE_NOPUT) &&
+					win_ptr->_dev.as_target.rmas[rank]);
+	if ((win_ptr->_dev.as_origin.epoch_assert & MPI_MODE_NOPUT) &&
 				win_ptr->_dev.my_rma_recvs > 0) {
 		/* TBD: handled earlier? */
 	}
 	win_ptr->_dev.epoch_rma_ok = 0;
-	epoch_clear(win_ptr);
-	win_ptr->_dev.epoch_size = 0;
-	win_ptr->_dev.epoch_assert = 0;
+	epoch_clear(win_ptr, -1, 0);
+	epoch_clear(win_ptr, -1, 1);
 	epoch_end_cb(win_ptr); /* might start exposure epoch via LOCK... */
 
 	if (!(assert & MPI_MODE_NOSUCCEED)) {
-		/* there may be a new epoch following... */
+		/* this may imply a new epoch following... */
 
 		MPIDU_Spin_lock_free(win_ptr);
-		win_ptr->_dev.epoch_type = MPID_EPOTYPE_REFENCE;
-		win_ptr->_dev.epoch_size = MPIDU_comm_size(win_ptr);
-		win_ptr->_dev.epoch_assert = assert;
+		win_ptr->_dev.as_origin.epoch_type =
+			win_ptr->_dev.as_target.epoch_type = MPID_EPOTYPE_REFENCE;
+		win_ptr->_dev.as_origin.epoch_size =
+			win_ptr->_dev.as_target.epoch_size = MPIDU_comm_size(win_ptr);
+		win_ptr->_dev.as_origin.epoch_assert =
+			win_ptr->_dev.as_target.epoch_assert = assert;
+		win_ptr->_dev.as_origin.sync_count =
+			win_ptr->_dev.as_target.sync_count = 0;	// not used
 		win_ptr->_dev.epoch_rma_ok = 1;
 		win_ptr->_dev.my_rma_recvs = 0;
-		win_ptr->_dev.my_sync_done = 0;	// not used
-		// win_ptr->_dev.my_sync_begin = 0;	// not used
 		/* wait for everyone else to reach this point */
 		mpi_errno = NMPI_Barrier(win_ptr->_dev.comm_ptr->handle);
 		if (mpi_errno) { MPIU_ERR_POP(mpi_errno); }
-		if (win_ptr->_dev.epoch_assert & MPI_MODE_NOSTORE) {
+		if (win_ptr->_dev.as_origin.epoch_assert & MPI_MODE_NOSTORE) {
 			/* TBD: anything to optimize? */
 		}
-		if (win_ptr->_dev.epoch_assert & MPI_MODE_NOPUT) {
+		if (win_ptr->_dev.as_origin.epoch_assert & MPI_MODE_NOPUT) {
 			/* handled later */
 		}
 	} else {
-		win_ptr->_dev.epoch_type = MPID_EPOTYPE_NONE;
+		/* already done by epoch_clear()... */
+		win_ptr->_dev.as_origin.epoch_type =
+			win_ptr->_dev.as_target.epoch_type = MPID_EPOTYPE_NONE;
 	}
 
 fn_exit:

@@ -321,8 +321,15 @@ struct MPID_Win_coll_info {
   void *base_addr;      /**< Node's exposure window base address                  */
   int disp_unit;        /**< Node's exposure window displacement units            */
   MPI_Win win_handle;   /**< Node's exposure window handle (local to target node) */
-  int rma_sends;        /**< Count of RMA operations that target node             */
+  int _pad;             /**< unused             */
   DCMF_Memregion_t mem_region; /**< Memory region descriptor for each node */
+};
+struct MPID_Win_sync_info {
+  volatile int *rmas;       /**< per-rank RMAs sent (as_origin) or recv (as_target)   */
+  volatile int epoch_type;  /**< current epoch type                                   */
+  volatile int epoch_size;  /**< current epoch size                                   */
+  int epoch_assert;         /**< MPI_MODE_* bits asserted at epoch start              */
+  volatile int sync_count;  /**< counter of POST (as_origin) or COMPLETE (as_target)  */
 };
 
 /* assert sizeof(struct MPID_Win_coll_info) == 16 */
@@ -332,20 +339,17 @@ struct MPID_Win_coll_info {
  */
 struct MPID_Dev_win_decl {
   struct MPID_Win_coll_info *coll_info; /**< allocated array of collective info       */
+  struct MPID_Win_sync_info as_origin;  /**< sync info, as_origin                     */
+  struct MPID_Win_sync_info as_target;  /**< sync info, as_target                     */
   struct MPID_Comm *comm_ptr;     /**< saved pointer to window communicator           */
-  volatile int lock_granted;      /**< window lock                                    */
+  volatile int lock_granted;      /**< window lock (as_target)                        */
   unsigned long _lock_queue[4];   /**< opaque structure used for lock wait queue      */
   unsigned long _unlk_queue[4];   /**< opaque structure used for unlock wait queue    */
-  volatile int my_sync_begin;     /**< counter of POST messages received              */
-  volatile int my_sync_done;      /**< counter of COMPLETE messages received          */
-  volatile int my_rma_recvs;      /**< counter of RMA operations received             */
-  volatile int my_rma_pends;      /**< counter of RMA operations queued to send       */
-  volatile int my_get_pends;      /**< counter of GET operations queued               */
+  volatile int my_rma_recvs;      /**< counter of RMA operations received (as_target) */
   DCMF_Consistency my_cstcy;      /**< default consistency for window                 */
-  volatile int epoch_type;        /**< current epoch type                             */
-  volatile int epoch_size;        /**< current epoch size (or target for LOCK)        */
-  int epoch_assert;               /**< MPI_MODE_* bits asserted at epoch start        */
   int epoch_rma_ok;               /**< flag indicating an exposure epoch is in affect */
+  volatile int my_rma_pends;      /**< count of pending sends (and puts) (as_origin)  */
+  volatile int my_get_pends;      /**< count of pending gets (as_origin)              */
 };
 
 /**

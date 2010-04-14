@@ -99,17 +99,6 @@ void make_dt_map_vec(MPI_Datatype dt, mpid_dt_info *dti) {
         dti->dtp = dtp;
 }
 
-/**
- * \brief Datatype created to represent the rma_sends element
- * of the coll_info array of the window structure
- */
-MPI_Datatype Coll_info_rma_dt;
-/**
- * \brief User defined function created to process the rma_sends
- * elements of the coll_info array of the window structure
- */
-MPI_Op Coll_info_rma_op;
-
 /*
  * * * * * Generic resource pool management * * * * *
  */
@@ -1413,15 +1402,13 @@ int MPIDU_proto_send(MPID_Win *win, MPID_Group *grp, int type) {
                 }
                 ctl.mpid_ctl_w1 = win->_dev.coll_info[comm_rank].win_handle;
                 if (type == MPID_MSGTYPE_COMPLETE) {
-                        ctl.mpid_ctl_w3 = win->_dev.coll_info[comm_rank].rma_sends;
-                        win->_dev.coll_info[comm_rank].rma_sends = 0;
+			/* tell target how many RMAs we did */
+                        ctl.mpid_ctl_w3 = win->_dev.as_origin.rmas[comm_rank];
+                        win->_dev.as_origin.rmas[comm_rank] = 0;
                 }
 		if (lpid == mpid_my_lpid) {
-			if (type == MPID_MSGTYPE_POST) {
-				++win->_dev.my_sync_begin;
-			} else if (type == MPID_MSGTYPE_COMPLETE) {
-				++win->_dev.my_sync_done;
-			}
+			/* send to self, just process as if received */
+			recv_sm_cb(NULL, (const DCQuad *)&ctl, 1, lpid, NULL, 0);
 		} else {
                 	mpi_errno = DCMF_Control(&bg1s_ct_proto, consistency, lpid, &ctl.ctl);
                 	if (mpi_errno) { break; }
@@ -1486,15 +1473,15 @@ void recv_sm_cb(void *cd, const DCQuad *_mi, unsigned ct, size_t or,
                 MPID_assert_debug(sl == 0);
                 MPID_Win_get_ptr((MPI_Win)mc->mpid_ctl_w1, win);
                 MPID_assert_debug(win != NULL);
-                win->_dev.coll_info[win->_dev.comm_ptr->rank].rma_sends += mc->mpid_ctl_w3;
-                ++win->_dev.my_sync_done;
+                win->_dev.as_target.rmas[win->_dev.comm_ptr->rank] += mc->mpid_ctl_w3;
+                ++win->_dev.as_target.sync_count;
                 break;
         case MPID_MSGTYPE_POST:
                 MPID_assert_debug(ct == MPIDU_1SCTL_NQUADS);
                 MPID_assert_debug(sl == 0);
                 MPID_Win_get_ptr((MPI_Win)mc->mpid_ctl_w1, win);
                 MPID_assert_debug(win != NULL);
-                ++win->_dev.my_sync_begin;
+                ++win->_dev.as_origin.sync_count;
                 break;
         case MPID_MSGTYPE_LOCK:
                 MPID_assert_debug(ct == MPIDU_1SCTL_NQUADS);
@@ -1509,7 +1496,7 @@ void recv_sm_cb(void *cd, const DCQuad *_mi, unsigned ct, size_t or,
                 MPID_assert_debug(ct == MPIDU_1SCTL_NQUADS);
                 MPID_Win_get_ptr((MPI_Win)mc->mpid_ctl_w1, win);
                 MPID_assert_debug(win != NULL);
-                ++win->_dev.my_sync_done;
+                ++win->_dev.as_origin.sync_count;
                 break;
 
         /* The following all use msginfo as DCQuad[2] */
@@ -1517,8 +1504,9 @@ void recv_sm_cb(void *cd, const DCQuad *_mi, unsigned ct, size_t or,
                 MPID_assert_debug(ct == MPIDU_1SINFO_NQUADS);
                 MPID_Win_get_ptr((MPI_Win)mi->mpid_info_w1, win);
                 MPID_assert_debug(win != NULL);
+if (!(win)->_dev.epoch_rma_ok) { fprintf(stderr, "put without rma_ok from %d\n", or); }
                 MPIDU_assert_PUTOK(win);
-                if (win->_dev.epoch_assert & MPI_MODE_NOPUT) {
+                if (win->_dev.as_target.epoch_assert & MPI_MODE_NOPUT) {
                         /** \todo exact error handling */
                 }
 #ifdef USE_DCMF_PUT
@@ -1560,7 +1548,7 @@ void recv_sm_cb(void *cd, const DCQuad *_mi, unsigned ct, size_t or,
                 MPID_Win_get_ptr((MPI_Win)mi->mpid_info_w1, win);
                 MPID_assert_debug(win != NULL);
                 MPIDU_assert_PUTOK(win);
-                if (win->_dev.epoch_assert & MPI_MODE_NOPUT) {
+                if (win->_dev.as_target.epoch_assert & MPI_MODE_NOPUT) {
                         /** \todo exact error handling */
                 }
                 target_accumulate(mi, sb, or);
@@ -1632,7 +1620,7 @@ DCMF_Request_t *recv_cb(void *cd, const DCQuad *_mi, unsigned ct,
                 MPID_Win_get_ptr((MPI_Win)mi->mpid_info_w1, win);
                 MPID_assert_debug(win != NULL);
                 MPIDU_assert_PUTOK(win);
-                if (win->_dev.epoch_assert & MPI_MODE_NOPUT) {
+                if (win->_dev.as_target.epoch_assert & MPI_MODE_NOPUT) {
                         /** \todo exact error handling */
                 }
                 MPID_assert_debug(mi->mpid_info_w3 >=
@@ -1698,7 +1686,7 @@ DCMF_Request_t *recv_cb(void *cd, const DCQuad *_mi, unsigned ct,
                 MPID_Win_get_ptr((MPI_Win)mi->mpid_info_w1, win);
                 MPID_assert_debug(win != NULL);
                 MPIDU_assert_PUTOK(win);
-                if (win->_dev.epoch_assert & MPI_MODE_NOPUT) {
+                if (win->_dev.as_target.epoch_assert & MPI_MODE_NOPUT) {
                         /** \todo exact error handling */
                 }
                 /** \note These embedded DCQuads are not directly
@@ -1746,15 +1734,36 @@ DCMF_Request_t *recv_cb(void *cd, const DCQuad *_mi, unsigned ct,
  *
  * \param[in] win	Window whose epoch is finished
  */
-void epoch_clear(MPID_Win *win) {
-	int x;
-	int size = MPIDU_comm_size(win);
-	win->_dev.epoch_type = MPID_EPOTYPE_NONE;
-	win->_dev.my_rma_recvs = 0;
-	win->_dev.my_sync_done = 0;
-	// win->_dev.my_sync_begin = 0;
-	for (x = 0; x < size; ++x) {
-		win->_dev.coll_info[x].rma_sends = 0;
+void epoch_clear(MPID_Win *win, int rank, int as_target) {
+	struct MPID_Win_sync_info *ws;
+	int type = MPID_EPOTYPE_NONE;
+	if (as_target) {
+		ws = &win->_dev.as_target;
+		win->_dev.my_rma_recvs = 0;
+		/* passive-target (lock) must not damage re-fence chances */
+		if (ws->epoch_type == MPID_EPOTYPE_REFENCE) {
+			type = ws->epoch_type;
+		}
+	} else {
+		ws = &win->_dev.as_origin;
+		if (win->_dev.as_target.epoch_type == MPID_EPOTYPE_REFENCE) {
+			type = win->_dev.as_target.epoch_type;
+		}
+	}
+	ws->epoch_type = type;
+	ws->epoch_size = 0;
+	ws->epoch_assert = 0;
+	ws->sync_count = 0;
+	if (rank >= 0) {
+		/* lock/unlock - clear only target/origin */
+		ws->rmas[rank] = 0;
+	} else {
+		/* Fence/PSCW - clear everything */
+		int x;
+		int size = MPIDU_comm_size(win);
+		for (x = 0; x < size; ++x) {
+			ws->rmas[x] = 0;
+		}
 	}
 }
 
