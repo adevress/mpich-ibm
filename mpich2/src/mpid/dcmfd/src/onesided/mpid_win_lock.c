@@ -628,15 +628,9 @@ void unlk_cb(const MPIDU_Onesided_ctl_t *info, int lpid) {
         MPID_assert_debug(win != NULL);
         orig = info->mpid_ctl_w2;
         rmas = info->mpid_ctl_w3;
-#if 0
-        ret = ((rmas && win->_dev.coll_info[orig].rma_sends < rmas) ||
-                local_unlock(win, orig));
-        if (ret) {	/* lock was released */
-#else
         ret = (rmas && win->_dev.as_target.rmas[orig] < rmas);
         if (!ret) {
                 local_unlock(win, orig); // always returns 1?
-#endif
                 MPIDU_Onesided_ctl_t ack;
                 if (MPID_LOCK_IS_FREE(win)) {
 			win->_dev.epoch_rma_ok = 0;

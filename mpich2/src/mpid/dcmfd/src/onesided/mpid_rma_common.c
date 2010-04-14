@@ -1504,7 +1504,6 @@ void recv_sm_cb(void *cd, const DCQuad *_mi, unsigned ct, size_t or,
                 MPID_assert_debug(ct == MPIDU_1SINFO_NQUADS);
                 MPID_Win_get_ptr((MPI_Win)mi->mpid_info_w1, win);
                 MPID_assert_debug(win != NULL);
-if (!(win)->_dev.epoch_rma_ok) { fprintf(stderr, "put without rma_ok from %d\n", or); }
                 MPIDU_assert_PUTOK(win);
                 if (win->_dev.as_target.epoch_assert & MPI_MODE_NOPUT) {
                         /** \todo exact error handling */

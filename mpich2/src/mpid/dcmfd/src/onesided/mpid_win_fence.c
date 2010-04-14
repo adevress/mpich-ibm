@@ -97,7 +97,6 @@ int MPID_Win_fence(int assert, MPID_Win *win_ptr)
 	 * that should be NOOP if there were no RMAs performed (under the fence).
 	 */
 	if (win_ptr->_dev.as_origin.epoch_type != win_ptr->_dev.as_target.epoch_type) {
-fprintf(stderr, "as_origin.epoch_type=%d as_target.epoch_type=%d\n", win_ptr->_dev.as_origin.epoch_type, win_ptr->_dev.as_target.epoch_type);
 		/* --BEGIN ERROR HANDLING-- */
 		MPIU_ERR_SETANDSTMT(mpi_errno, MPI_ERR_RMA_SYNC,
 				goto fn_fail, "**rmasync");
