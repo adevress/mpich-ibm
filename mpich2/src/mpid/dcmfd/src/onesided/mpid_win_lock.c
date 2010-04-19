@@ -11,7 +11,7 @@
  *
  * Adds a local waiter to the lock wait queue, to ensure that
  * we will eventually get a chance. This special waiter (ack[0].w0 == 0)
- * will result in the \e my_sync_done flag getting set, breaking us
+ * will result in the \e my_lock_done flag getting set, breaking us
  * out of the loop. At this point, we will have acquired the lock
  * (possibly shared with others).
  *
@@ -24,9 +24,9 @@
  */
 #define MPIDU_Spin_lock_acquire(win, rank, type) {		\
         if (local_lock(win, rank, type) == 0) {			\
-                (win)->_dev.my_sync_done = 0;			\
+                (win)->_dev.as_target.sync_count = 0;		\
                 MPIDU_add_waiter(win, rank, type, NULL);	\
-                MPIDU_Progress_spin((win)->_dev.my_sync_done == 0);\
+                MPIDU_Progress_spin((win)->_dev.as_target.sync_count == 0);\
         }							\
 }
 
@@ -424,6 +424,7 @@ static int mpid_match_unlk(void *v1, void *v2, void *v3) {
  * \brief Locate the desired unlocker if it is waiting
  *
  * Does not return success unless the RMA ops counters match.
+ * Executed on the target to implement action upon receiving UNLOCK message.
  *
  * \param[in] win	Pointer to window
  * \param[in] rank	Origin rank (unlocker)
@@ -437,14 +438,15 @@ static struct mpid_unlk_entry *MPIDU_locate_unlk(MPID_Win *win, int rank, MPIDU_
         struct mpid_element *pp = NULL;
 
         el.rank = rank;
-        el.rmas = win->_dev.coll_info[rank].rma_sends;
+        el.rmas = win->_dev.as_target.rmas[rank]; // RMAs recved so far from 'rank'
+	// if == RMA count from UNLOCK msg, then we can unlock
         ep = MPIDU_find_element(MPIDU_WIN_UNLK_QUEUE(win), mpid_match_unlk, NULL, &el, &pp);
         if (ep) {
                 if (ctl) {
                         ctl->mpid_ctl_w0 = MPID_MSGTYPE_UNLOCK;
                         ctl->mpid_ctl_w1 = win->handle;
                         ctl->mpid_ctl_w2 = ep->rank;
-                        ctl->mpid_ctl_w3 = ep->rmas;
+                        ctl->mpid_ctl_w3 = ep->rmas; // RMA count from original UNLOCK msg
                 }
                 MPIDU_free_element(MPIDU_WIN_UNLK_QUEUE(win), ep, pp);
         }
@@ -469,7 +471,7 @@ static void MPIDU_add_unlk(MPID_Win *win, int rank, const MPIDU_Onesided_ctl_t *
         MPID_assert_debug(ctl != NULL);
         MPID_assert_debug(rank == ctl->mpid_ctl_w2);
         wp.rank = rank;
-        wp.rmas = ctl->mpid_ctl_w3;
+        wp.rmas = ctl->mpid_ctl_w3; // RMA count from UNLOCK msg
         (void)MPIDU_add_element(MPIDU_WIN_UNLK_QUEUE(win), &wp);
 }
 
@@ -500,7 +502,7 @@ void rma_recvs_cb(MPID_Win *win, int orig, int lpid, int count) {
                 struct mpid_unlk_entry *ep;
                 MPIDU_Onesided_ctl_t ctl;
 
-                win->_dev.coll_info[orig].rma_sends += count;
+                win->_dev.as_target.rmas[orig] += count;
                 ep = MPIDU_locate_unlk(win, orig, &ctl);
                 if (ep) {
                         unlk_cb(&ctl, lpid);
@@ -518,6 +520,7 @@ void rma_recvs_cb(MPID_Win *win, int orig, int lpid, int count) {
  *
  * Does not attempt to acquire lock (counted as failure)
  * if window is currently in some other epoch.
+ * Executed on target to implement action upon receiving LOCK message.
  *
  * \param[in] info	Pointer to msginfo from origin (locker)
  * \param[in] lpid	lpid of origin node (locker)
@@ -542,8 +545,8 @@ void lock_cb(const MPIDU_Onesided_ctl_t *info, int lpid)
         ack.mpid_ctl_w1 = win->_dev.coll_info[orig].win_handle;
         ack.mpid_ctl_w2 = lpid;
         ack.mpid_ctl_w3 = 0;
-        ret = ((win->_dev.epoch_type == MPID_EPOTYPE_NONE ||
-		win->_dev.epoch_type == MPID_EPOTYPE_REFENCE) &&
+        ret = ((win->_dev.as_target.epoch_type == MPID_EPOTYPE_NONE ||
+		win->_dev.as_target.epoch_type == MPID_EPOTYPE_REFENCE) &&
                                         local_lock(win, orig, type));
         if (!ret) {
                 MPIDU_add_waiter(win, orig, type, &ack);
@@ -589,7 +592,7 @@ void epoch_end_cb(MPID_Win *win) {
                 ret = local_lock(win, rank, type);
                 MPID_assert_debug(ret != 0);
                 if (info.mpid_ctl_w0 == 0) {	/* local request */
-                        ++win->_dev.my_sync_done;
+                        ++win->_dev.as_target.sync_count;
                 } else {
                         win->_dev.epoch_rma_ok = 1;
                         lpid = info.mpid_ctl_w2;
@@ -625,12 +628,13 @@ void unlk_cb(const MPIDU_Onesided_ctl_t *info, int lpid) {
         MPID_assert_debug(win != NULL);
         orig = info->mpid_ctl_w2;
         rmas = info->mpid_ctl_w3;
-        ret = ((rmas && win->_dev.coll_info[orig].rma_sends < rmas) ||
-                local_unlock(win, orig));
-        if (ret) {	/* lock was released */
+        ret = (rmas && win->_dev.as_target.rmas[orig] < rmas);
+        if (!ret) {
+                local_unlock(win, orig); // always returns 1?
                 MPIDU_Onesided_ctl_t ack;
                 if (MPID_LOCK_IS_FREE(win)) {
-			epoch_clear(win);
+			win->_dev.epoch_rma_ok = 0;
+			epoch_clear(win, orig, 1);
                 }
                 epoch_end_cb(win);
                 ack.mpid_ctl_w0 = MPID_MSGTYPE_UNLOCKACK;
@@ -667,7 +671,7 @@ void unlk_cb(const MPIDU_Onesided_ctl_t *info, int lpid) {
  * - Setup a msginfo structure with the msg type, target window
  * handle, our rank, and lock type, and call DCMF_Control to start
  * the message on its way to the target.
- * Spin waiting for both the message to send and the my_sync_done flag
+ * Spin waiting for both the message to send and the my_lock_done flag
  * to get set (by receive callback of MPID_MSGTYPE_LOCKACK message) indicating the lock
  * has been granted.
  *
@@ -689,7 +693,7 @@ void unlk_cb(const MPIDU_Onesided_ctl_t *info, int lpid) {
  * a specific MPID_* epoch-ending synchronization or target processing of MPI_Win_unlock():
  *  - As long as compatible waiters are found at the head of the lock wait queue,
  * an MPID_MSGTYPE_LOCKACK message is created from the waiter info and sent to the
- * (each) origin node, causing the origin's my_sync_done flag to get set, waking it up.
+ * (each) origin node, causing the origin's my_lock_done flag to get set, waking it up.
  *
  * <B>Origin wakes up after lock completion</B>
  *
@@ -712,7 +716,7 @@ void unlk_cb(const MPIDU_Onesided_ctl_t *info, int lpid) {
  * our rank, and the number of RMA operations that were initiated
  * to this target.
  *  - Call DCMF_Control, to send the message (unlock request).
- *  - Spin waiting for message to send and my_sync_done to get set.
+ *  - Spin waiting for message to send and my_lock_done to get set.
  *
  * <B>On the target node the unlock callback is invoked</B>
  *
@@ -727,7 +731,7 @@ void unlk_cb(const MPIDU_Onesided_ctl_t *info, int lpid) {
  *   - Call epoch_end_cb() which will
  * generate MPID_MSGTYPE_LOCKACK messages to all compatible lock waiters.
  *   - Send an MPID_MSGTYPE_UNLOCKACK message to the origin.  This message
- * causes the origin's my_sync_done flag to get set, waking it up.
+ * causes the origin's my_lock_done flag to get set, waking it up.
  *
  * <B>Origin wakes up after unlock completion</B>
  *
@@ -778,8 +782,8 @@ int MPID_Win_lock(int lock_type, int dest, int assert,
 
         if (dest == MPI_PROC_NULL) goto fn_exit;
 
-        if (win_ptr->_dev.epoch_type != MPID_EPOTYPE_NONE &&
-			win_ptr->_dev.epoch_type != MPID_EPOTYPE_REFENCE) {
+        if (win_ptr->_dev.as_origin.epoch_type != MPID_EPOTYPE_NONE &&
+			win_ptr->_dev.as_origin.epoch_type != MPID_EPOTYPE_REFENCE) {
                 /* --BEGIN ERROR HANDLING-- */
                 MPIU_ERR_SETANDSTMT(mpi_errno, MPI_ERR_RMA_SYNC,
                                         goto fn_fail, "**rmasync");
@@ -789,7 +793,7 @@ int MPID_Win_lock(int lock_type, int dest, int assert,
          * \todo Should we pass NOCHECK along with RMA ops,
          * so that target can confirm?
 `	 */
-        if (!(win_ptr->_dev.epoch_assert & MPI_MODE_NOCHECK)) {
+        if (!(assert & MPI_MODE_NOCHECK)) {
                 if (dest == win_ptr->_dev.comm_ptr->rank) {
                         MPIDU_Spin_lock_acquire(win_ptr, dest, lock_type);
                 } else {
@@ -798,16 +802,16 @@ int MPID_Win_lock(int lock_type, int dest, int assert,
                         info.mpid_ctl_w2 = win_ptr->_dev.comm_ptr->rank;
                         info.mpid_ctl_w3 = lock_type;
                         lpid = MPIDU_world_rank(win_ptr, dest);
-                        win_ptr->_dev.my_sync_done = 0;
+                        win_ptr->_dev.as_origin.sync_count = 0;
                         mpi_errno = DCMF_Control(&bg1s_ct_proto, win_ptr->_dev.my_cstcy, lpid, &info.ctl);
                         if (mpi_errno) { MPIU_ERR_POP(mpi_errno); }
-                        MPIDU_Progress_spin(win_ptr->_dev.my_sync_done == 0);
+                        MPIDU_Progress_spin(win_ptr->_dev.as_origin.sync_count == 0);
                 }
         }
 
-        win_ptr->_dev.epoch_type = MPID_EPOTYPE_LOCK;
-        win_ptr->_dev.epoch_size = dest;
-        win_ptr->_dev.epoch_assert = assert;
+        win_ptr->_dev.as_origin.epoch_type = MPID_EPOTYPE_LOCK;
+        win_ptr->_dev.as_origin.epoch_size = dest;
+        win_ptr->_dev.as_origin.epoch_assert = assert;
 
 fn_exit:
         MPIR_Nest_decr();
@@ -855,13 +859,13 @@ int MPID_Win_unlock(int dest, MPID_Win *win_ptr)
 
         if (dest == MPI_PROC_NULL) goto fn_exit;
 
-        if (win_ptr->_dev.epoch_type != MPID_EPOTYPE_LOCK) {
+        if (win_ptr->_dev.as_origin.epoch_type != MPID_EPOTYPE_LOCK) {
                 /* --BEGIN ERROR HANDLING-- */
                 MPIU_ERR_SETANDSTMT(mpi_errno, MPI_ERR_RMA_SYNC,
                                         goto fn_fail, "**rmasync");
                 /* --END ERROR HANDLING-- */
         }
-        MPID_assert(dest == win_ptr->_dev.epoch_size);
+        MPID_assert(dest == win_ptr->_dev.as_origin.epoch_size);
 
         /*
          * We wait for all RMA sends to drain here, just for neatness.
@@ -871,16 +875,18 @@ int MPID_Win_unlock(int dest, MPID_Win *win_ptr)
         MPIDU_Progress_spin(win_ptr->_dev.my_rma_pends > 0 ||
 				win_ptr->_dev.my_get_pends > 0);
 
-        if (!(win_ptr->_dev.epoch_assert & MPI_MODE_NOCHECK)) {
+        if (!(win_ptr->_dev.as_origin.epoch_assert & MPI_MODE_NOCHECK)) {
                 if (dest == win_ptr->_dev.comm_ptr->rank) {
                         (void)local_unlock(win_ptr, dest);
                         /* our (subsequent) call to epoch_end_cb() will
                          * handle any lock waiters... */
                 } else {
+			/* let all pending sends go out before sending unlock */
+                        MPIDU_Progress_spin(win_ptr->_dev.my_rma_pends > 0);
                         info.mpid_ctl_w0 = MPID_MSGTYPE_UNLOCK;
                         info.mpid_ctl_w1 = win_ptr->_dev.coll_info[dest].win_handle;
                         info.mpid_ctl_w2 = win_ptr->_dev.comm_ptr->rank;
-                        info.mpid_ctl_w3 = win_ptr->_dev.coll_info[dest].rma_sends;
+                        info.mpid_ctl_w3 = win_ptr->_dev.as_origin.rmas[dest];
                         /*
                          * Win_unlock should not return until all RMA ops are
                          * complete at the target. So, we loop here until the
@@ -893,17 +899,16 @@ int MPID_Win_unlock(int dest, MPID_Win *win_ptr)
                          * will update its counter.
                          */
                         lpid = MPIDU_world_rank(win_ptr, dest);
-                        win_ptr->_dev.my_sync_done = 0;
+                        win_ptr->_dev.as_origin.sync_count = 0;
                         mpi_errno = DCMF_Control(&bg1s_ct_proto, win_ptr->_dev.my_cstcy, lpid, &info.ctl);
                         if (mpi_errno) { MPIU_ERR_POP(mpi_errno); }
                         MPIDU_Progress_spin(win_ptr->_dev.my_rma_pends > 0 ||
 					win_ptr->_dev.my_get_pends > 0 ||
-                                        win_ptr->_dev.my_sync_done == 0);
+                                        win_ptr->_dev.as_origin.sync_count == 0);
                 }
         }
-	epoch_clear(win_ptr);
-        win_ptr->_dev.epoch_size = 0;
-        win_ptr->_dev.epoch_assert = 0;
+	/* do not clear epoch_rma_ok, we unlocked remote side not local */
+	epoch_clear(win_ptr, dest, 0);
         epoch_end_cb(win_ptr);
 
 fn_exit:

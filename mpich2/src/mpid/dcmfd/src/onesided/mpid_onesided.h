@@ -180,17 +180,6 @@ void make_dt_map_vec(MPI_Datatype dt, mpid_dt_info *dti);
 #define INT_MSB	(1UL << (sizeof(int) * 8 - 1))
 
 /**
- * \brief Datatype created to represent the rma_sends element
- * of the coll_info array of the window structure
- */
-extern MPI_Datatype Coll_info_rma_dt;
-/**
- * \brief User defined function created to process the rma_sends
- * elements of the coll_info array of the window structure
- */
-extern MPI_Op Coll_info_rma_op;
-
-/**
  * \brief Progress (advance) wait - how to spin and make progress
  *
  * 'expr' is true if must wait, i.e.
@@ -915,10 +904,6 @@ void free_rqc_cb(void *v, DCMF_Error_t *);
  * for specific origin node, and check whether this RMA op
  * completes the epoch and an unlock is waiting to be processed.
  *
- * We use \e rma_sends to count received RMA ops because we
- * know we won't be using that to count sent RMA ops since
- * we cannot be in an access epoch while in a LOCK exposure epoch.
- *
  * Called from both the "long message" completion callbacks and
  * the "short message" receive callback, in case of PUT or
  * ACCUMULATE only.
@@ -1173,7 +1158,7 @@ int MPIDU_valid_group_rank(int lpid, MPID_Group *grp);
  * \return	TRUE if PUT/ACCUMULATE ops are allowed
  */
 #define MPIDU_assert_PUTOK(w)	MPID_assert((w)->_dev.epoch_rma_ok && \
-                                !((w)->_dev.epoch_assert & MPI_MODE_NOPUT))
+                                !((w)->_dev.as_target.epoch_assert & MPI_MODE_NOPUT))
 
 /**
  * \brief validate that an RMA target is legitimate for the epoch type
@@ -1194,11 +1179,10 @@ int MPIDU_valid_group_rank(int lpid, MPID_Group *grp);
  * \return TRUE if rank is valid for current epoch
  */
 #define MPIDU_VALID_RMA_TARGET(w, r)	\
-        (((w)->_dev.epoch_type == MPID_EPOTYPE_LOCK && \
-                (w)->_dev.epoch_size == (r)) || \
-        (w)->_dev.epoch_type == MPID_EPOTYPE_FENCE || \
-        (((w)->_dev.epoch_type == MPID_EPOTYPE_START || \
-          (w)->_dev.epoch_type == MPID_EPOTYPE_POSTSTART) && \
+        (((w)->_dev.as_origin.epoch_type == MPID_EPOTYPE_LOCK && \
+                (w)->_dev.as_origin.epoch_size == (r)) || \
+        (w)->_dev.as_origin.epoch_type == MPID_EPOTYPE_FENCE || \
+        ((w)->_dev.as_origin.epoch_type == MPID_EPOTYPE_START && \
                 MPIDU_valid_group_rank(MPIDU_world_rank(w, r), \
                                         (w)->start_group_ptr)))
 
@@ -1315,8 +1299,9 @@ void lock_cb(const MPIDU_Onesided_ctl_t *info, int lpid);
  * Sets epoch type to "NONE". 
  *
  * \param[in] win       Window whose epoch is finished
+ * \param[in] rank      Rank (unlock) or -1 for all in win comm
  */
-void epoch_clear(MPID_Win *win);
+void epoch_clear(MPID_Win *win, int rank, int as_target);
 
 /**
  * \brief Epoch End callback.

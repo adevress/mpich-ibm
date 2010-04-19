@@ -24,14 +24,13 @@ static int mpid_check_post_done(MPID_Win *win) {
         int rank = win->_dev.comm_ptr->rank;
 
         (void)MPID_Progress_test();
-        if (!(win->_dev.epoch_assert & MPI_MODE_NOCHECK) &&
-            (win->_dev.my_sync_done < win->_dev.epoch_size ||
-                        win->_dev.my_rma_recvs < win->_dev.coll_info[rank].rma_sends)) {
+        if (!(win->_dev.as_target.epoch_assert & MPI_MODE_NOCHECK) &&
+            (win->_dev.as_target.sync_count < win->_dev.as_target.epoch_size ||
+                        win->_dev.my_rma_recvs < win->_dev.as_target.rmas[rank])) {
                 return 0;
         }
-	epoch_clear(win);
-        win->_dev.epoch_assert = 0;
-        win->_dev.epoch_size = 0;
+	win->_dev.epoch_rma_ok = 0;
+	epoch_clear(win, -1, 1);
         /*
          * Any RMA ops we initiated would be handled in a
          * Win_start/Win_complete epoch and that would have
@@ -71,15 +70,14 @@ int MPID_Win_complete(MPID_Win *win_ptr)
         MPIU_THREADPRIV_GET;
         MPIR_Nest_incr();
 
-        if (win_ptr->_dev.epoch_type != MPID_EPOTYPE_START &&
-                        win_ptr->_dev.epoch_type != MPID_EPOTYPE_POSTSTART) {
+        if (win_ptr->_dev.as_origin.epoch_type != MPID_EPOTYPE_START) {
                 /* --BEGIN ERROR HANDLING-- */
                 MPIU_ERR_SETANDSTMT(mpi_errno, MPI_ERR_RMA_SYNC,
                                         goto fn_fail, "**rmasync");
                 /* --END ERROR HANDLING-- */
         }
 
-        if (!(win_ptr->_dev.epoch_assert & MPI_MODE_NOCHECK)) {
+        if (!(win_ptr->_dev.as_origin.epoch_assert & MPI_MODE_NOCHECK)) {
                 /* This zeroes the respective rma_sends counts...  */
                 mpi_errno = MPIDU_proto_send(win_ptr, win_ptr->start_group_ptr,
                         MPID_MSGTYPE_COMPLETE);
@@ -97,13 +95,8 @@ int MPID_Win_complete(MPID_Win *win_ptr)
         win_ptr->start_assert = 0;
         MPIU_Object_release_ref(win_ptr->start_group_ptr, &pending);
         win_ptr->start_group_ptr = NULL;
-        if (win_ptr->_dev.epoch_type == MPID_EPOTYPE_POSTSTART) {
-                win_ptr->_dev.epoch_type = MPID_EPOTYPE_POST;
-        } else {
-                epoch_clear(win_ptr);
-                win_ptr->_dev.epoch_size = 0;
-                epoch_end_cb(win_ptr);
-        }
+        epoch_clear(win_ptr, -1, 0);
+        epoch_end_cb(win_ptr);
 
 fn_exit:
         MPIR_Nest_decr();
@@ -230,13 +223,11 @@ int MPID_Win_start(MPID_Group *group_ptr, int assert, MPID_Win *win_ptr)
         MPID_MPI_FUNC_ENTER(MPID_STATE_MPID_WIN_START);
         MPIU_THREADPRIV_GET;
         MPIR_Nest_incr();
-        if (win_ptr->_dev.epoch_type == MPID_EPOTYPE_NONE ||
-			win_ptr->_dev.epoch_type == MPID_EPOTYPE_REFENCE) {
+        if (win_ptr->_dev.as_origin.epoch_type == MPID_EPOTYPE_NONE ||
+			win_ptr->_dev.as_origin.epoch_type == MPID_EPOTYPE_REFENCE) {
                 MPIDU_Spin_lock_free(win_ptr);
-                win_ptr->_dev.epoch_type = MPID_EPOTYPE_START;
-                win_ptr->_dev.epoch_size = group_ptr->size;
-        } else if (win_ptr->_dev.epoch_type == MPID_EPOTYPE_POST) {
-                win_ptr->_dev.epoch_type = MPID_EPOTYPE_POSTSTART;
+                win_ptr->_dev.as_origin.epoch_type = MPID_EPOTYPE_START;
+                win_ptr->_dev.as_origin.epoch_size = group_ptr->size;
         } else {
                 /* --BEGIN ERROR HANDLING-- */
                 MPIU_ERR_SETANDSTMT(mpi_errno, MPI_ERR_RMA_SYNC,
@@ -254,8 +245,8 @@ int MPID_Win_start(MPID_Group *group_ptr, int assert, MPID_Win *win_ptr)
          * reasonable failure.
          */
         if (!(assert & MPI_MODE_NOCHECK)) {
-                MPIDU_Progress_spin(win_ptr->_dev.my_sync_begin < group_ptr->size);
-                win_ptr->_dev.my_sync_begin = 0;
+                MPIDU_Progress_spin(win_ptr->_dev.as_origin.sync_count < group_ptr->size);
+                win_ptr->_dev.as_origin.sync_count = 0;
         }
 
 fn_exit:
@@ -299,8 +290,8 @@ int MPID_Win_post(MPID_Group *group_ptr, int assert, MPID_Win *win_ptr)
         MPID_MPI_FUNC_ENTER(MPID_STATE_MPID_WIN_POST);
         MPIU_THREADPRIV_GET;
         MPIR_Nest_incr();
-        if (win_ptr->_dev.epoch_type != MPID_EPOTYPE_NONE &&
-			win_ptr->_dev.epoch_type != MPID_EPOTYPE_REFENCE) {
+        if (win_ptr->_dev.as_target.epoch_type != MPID_EPOTYPE_NONE &&
+			win_ptr->_dev.as_target.epoch_type != MPID_EPOTYPE_REFENCE) {
                 /* --BEGIN ERROR HANDLING-- */
                 MPIU_ERR_SETANDSTMT(mpi_errno, MPI_ERR_RMA_SYNC,
                                         goto fn_fail, "**rmasync");
@@ -309,9 +300,9 @@ int MPID_Win_post(MPID_Group *group_ptr, int assert, MPID_Win *win_ptr)
         MPIDU_Spin_lock_free(win_ptr);
         MPID_assert_debug(win_ptr->_dev.my_rma_pends == 0 &&
 			win_ptr->_dev.my_get_pends == 0);
-        win_ptr->_dev.epoch_size = group_ptr->size;
-        win_ptr->_dev.epoch_type = MPID_EPOTYPE_POST;
-        win_ptr->_dev.epoch_assert = assert;
+        win_ptr->_dev.as_target.epoch_size = group_ptr->size;
+        win_ptr->_dev.as_target.epoch_type = MPID_EPOTYPE_POST;
+        win_ptr->_dev.as_target.epoch_assert = assert;
         win_ptr->_dev.epoch_rma_ok = 1;
         if (assert & MPI_MODE_NOSTORE) {
                 /* TBD: anything to optimize? */
@@ -395,13 +386,13 @@ int MPID_Win_test (MPID_Win *win_ptr, int *flag)
         MPIU_THREADPRIV_GET;
         MPIR_Nest_incr();
 
-        if (win_ptr->_dev.epoch_type != MPID_EPOTYPE_POST) {
+        if (win_ptr->_dev.as_target.epoch_type != MPID_EPOTYPE_POST) {
                 /* --BEGIN ERROR HANDLING-- */
                 MPIU_ERR_SETANDSTMT(mpi_errno, MPI_ERR_RMA_SYNC,
                                         goto fn_fail, "**rmasync");
                 /* --END ERROR HANDLING-- */
         }
-        if ((win_ptr->_dev.epoch_assert & MPI_MODE_NOPUT) &&
+        if ((win_ptr->_dev.as_target.epoch_assert & MPI_MODE_NOPUT) &&
                                 win_ptr->_dev.my_rma_recvs > 0) {
                 /* TBD: handled earlier? */
         }
@@ -445,13 +436,13 @@ int MPID_Win_wait(MPID_Win *win_ptr)
         MPIU_THREADPRIV_GET;
         MPIR_Nest_incr();
 
-        if (win_ptr->_dev.epoch_type != MPID_EPOTYPE_POST) {
+        if (win_ptr->_dev.as_target.epoch_type != MPID_EPOTYPE_POST) {
                 /* --BEGIN ERROR HANDLING-- */
                 MPIU_ERR_SETANDSTMT(mpi_errno, MPI_ERR_RMA_SYNC,
                                         goto fn_fail, "**rmasync");
                 /* --END ERROR HANDLING-- */
         }
-        if ((win_ptr->_dev.epoch_assert & MPI_MODE_NOPUT) &&
+        if ((win_ptr->_dev.as_target.epoch_assert & MPI_MODE_NOPUT) &&
                                 win_ptr->_dev.my_rma_recvs > 0) {
                 /* TBD: handled earlier? */
         }
