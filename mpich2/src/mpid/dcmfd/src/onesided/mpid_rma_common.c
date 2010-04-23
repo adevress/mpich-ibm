@@ -1499,9 +1499,8 @@ void recv_sm_cb(void *cd, const DCQuad *_mi, unsigned ct, size_t or,
                 ++win->_dev.as_origin.sync_count;
                 break;
 
-        /* The following all use msginfo as DCQuad[2] */
         case MPID_MSGTYPE_PUT:
-                MPID_assert_debug(ct == MPIDU_1SINFO_NQUADS);
+                MPID_assert_debug(ct == MPIDU_1SCTL_NQUADS);
                 MPID_Win_get_ptr((MPI_Win)mi->mpid_info_w1, win);
                 MPID_assert_debug(win != NULL);
                 MPIDU_assert_PUTOK(win);
@@ -1517,6 +1516,7 @@ void recv_sm_cb(void *cd, const DCQuad *_mi, unsigned ct, size_t or,
                 rma_recvs_cb(win, mi->mpid_info_w2, or, 1);
 #endif /* ! USE_DCMF_PUT */
                 break;
+        /* The following all use msginfo as DCQuad[2] */
         case MPID_MSGTYPE_DT_MAP:
                 MPID_assert_debug(ct == MPIDU_1SINFO_NQUADS);
                 rb = MPID_Prepare_rem_dt(mi);
