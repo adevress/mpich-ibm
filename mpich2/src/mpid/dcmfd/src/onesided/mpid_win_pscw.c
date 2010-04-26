@@ -76,13 +76,6 @@ int MPID_Win_complete(MPID_Win *win_ptr)
                                         goto fn_fail, "**rmasync");
                 /* --END ERROR HANDLING-- */
         }
-
-        if (!(win_ptr->_dev.as_origin.epoch_assert & MPI_MODE_NOCHECK)) {
-                /* This zeroes the respective rma_sends counts...  */
-                mpi_errno = MPIDU_proto_send(win_ptr, win_ptr->start_group_ptr,
-                        MPID_MSGTYPE_COMPLETE);
-                if (mpi_errno) { MPIU_ERR_POP(mpi_errno); }
-        }
         /*
          * MPICH2 says that we cannot return until all RMA ops
          * have completed at the origin (i.e. been sent).
@@ -92,10 +85,17 @@ int MPID_Win_complete(MPID_Win *win_ptr)
          */
         MPIDU_Progress_spin(win_ptr->_dev.my_rma_pends > 0 ||
 			win_ptr->_dev.my_get_pends > 0);
+        epoch_clear(win_ptr, -1, 0);
+
+        if (!(win_ptr->_dev.as_origin.epoch_assert & MPI_MODE_NOCHECK)) {
+                /* This zeroes the respective rma_sends counts...  */
+                mpi_errno = MPIDU_proto_send(win_ptr, win_ptr->start_group_ptr,
+                        MPID_MSGTYPE_COMPLETE);
+                if (mpi_errno) { MPIU_ERR_POP(mpi_errno); }
+        }
         win_ptr->start_assert = 0;
         MPIU_Object_release_ref(win_ptr->start_group_ptr, &pending);
         win_ptr->start_group_ptr = NULL;
-        epoch_clear(win_ptr, -1, 0);
         epoch_end_cb(win_ptr);
 
 fn_exit:

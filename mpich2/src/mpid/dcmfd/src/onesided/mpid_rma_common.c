@@ -1736,6 +1736,7 @@ DCMF_Request_t *recv_cb(void *cd, const DCQuad *_mi, unsigned ct,
 void epoch_clear(MPID_Win *win, int rank, int as_target) {
 	struct MPID_Win_sync_info *ws;
 	int type = MPID_EPOTYPE_NONE;
+	int oldtype;
 	if (as_target) {
 		ws = &win->_dev.as_target;
 		win->_dev.my_rma_recvs = 0;
@@ -1749,6 +1750,7 @@ void epoch_clear(MPID_Win *win, int rank, int as_target) {
 			type = win->_dev.as_target.epoch_type;
 		}
 	}
+	oldtype = ws->epoch_type;
 	ws->epoch_type = type;
 	ws->epoch_size = 0;
 	ws->epoch_assert = 0;
@@ -1756,13 +1758,14 @@ void epoch_clear(MPID_Win *win, int rank, int as_target) {
 	if (rank >= 0) {
 		/* lock/unlock - clear only target/origin */
 		ws->rmas[rank] = 0;
-	} else {
-		/* Fence/PSCW - clear everything */
+	} else if (oldtype == MPID_EPOTYPE_FENCE || as_target) {
+		/* Fence - clear everything, Allreduce already sent it all */
 		int x;
 		int size = MPIDU_comm_size(win);
 		for (x = 0; x < size; ++x) {
 			ws->rmas[x] = 0;
 		}
+	/* } else { PSCW - rmas[] will be cleared in MPIDU_proto_send() */
 	}
 }
 
