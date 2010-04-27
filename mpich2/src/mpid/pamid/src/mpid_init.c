@@ -106,7 +106,7 @@ MPIDI_Init(int* rank, int* size, int* threading)
   /* ------------------------------------ */
   /*  Initialize the MPICH2->PAMI Client  */
   /* ------------------------------------ */
-  rc = PAMI_Client_initialize("MPICH2", &MPIDI_Client);
+  rc = PAMI_Client_create("MPICH2", &MPIDI_Client);
   MPID_assert(rc == PAMI_SUCCESS);
 
   /* ---------------------------------- */

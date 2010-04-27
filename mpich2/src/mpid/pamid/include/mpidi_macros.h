@@ -112,7 +112,7 @@ MPIDI_Context_endpoint(MPID_Request * req)
   pami_task_t remote = MPIDI_Request_getPeerRank(req);
   pami_task_t local  = MPIDI_Process.global.rank;
   unsigned    rctxt  = MPIDI_Context_hash(local, req->comm->context_id);
-  return PAMI_Client_endpoint(MPIDI_Client, remote, rctxt);
+  return PAMI_Endpoint_create(MPIDI_Client, remote, rctxt);
 }
 static inline pami_context_t
 MPIDI_Context_local(MPID_Request * req)

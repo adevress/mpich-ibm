@@ -30,7 +30,7 @@ int MPID_Finalize()
   PAMIX_Context_destroy(MPIDI_Context, NUM_CONTEXTS);
 
   pami_result_t rc;
-  rc = PAMI_Client_finalize(MPIDI_Client);
+  rc = PAMI_Client_destroy(MPIDI_Client);
   MPID_assert(rc == PAMI_SUCCESS);
 
   return MPI_SUCCESS;
