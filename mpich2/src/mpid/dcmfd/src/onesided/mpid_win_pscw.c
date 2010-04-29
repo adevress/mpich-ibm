@@ -7,6 +7,96 @@
 #include "mpid_onesided.h"
 
 /**
+ * \brief convert a group rank to comm rank
+ *
+ * \param[in] win	MPID_Win object
+ * \param[in] vc	virtual channel table
+ * \param[in] grp	MPID_Group object
+ * \param[in] grank	Rank within grp to convert
+ * \param[out] lpidp	Optional return of lpid
+ * \return	Rank within Window communicator
+ */
+static int mpidu_group_to_comm(MPID_Win *win, MPID_VCR *vc, MPID_Group *grp, int grank, int *lpidp) {
+	int z;
+
+	int comm_size = MPIDU_comm_size(win);
+	int lpid = grp->lrank_to_lpid[grank].lpid;
+	/* convert group rank to comm rank */
+	for (z = 0; z < comm_size && lpid != vc[z]; ++z);
+	MPID_assert_debug(z < comm_size);
+	if (lpidp) *lpidp = lpid;
+	return z;
+}
+
+/**
+ * \brief Send (spray) a protocol message to a group of nodes.
+ *
+ * Send a protocol message to all members of a group (or the
+ * window-comm if no group).
+ *
+ * Currently, this routine will only be called once per group
+ * (i.e. once during an exposure or access epoch). If it ends
+ * up being called more than once, it might make sense to build
+ * a translation table between the group rank and the window
+ * communicator rank.  Or if we can determine that the same
+ * group is being used in multiple, successive, epochs. In practice,
+ * it takes more work to build a translation table than to lookup
+ * ranks ad-hoc.
+ *
+ * \param[in] win	Pointer to MPID_Win object
+ * \param[in] grp	Optional pointer to MPID_Group object
+ * \param[in] type	Type of message (MPID_MSGTYPE_*)
+ * \return MPI_SUCCESS or error returned from DCMF_Send.
+ *
+ * \ref msginfo_usage
+ */
+static int mpidu_proto_send(MPID_Win *win, MPID_Group *grp, int type) {
+        int lpid, x;
+        MPIDU_Onesided_ctl_t ctl;
+        int size, comm_rank;
+        int mpi_errno = MPI_SUCCESS;
+        MPID_VCR *vc;
+        DCMF_Consistency consistency = win->_dev.my_cstcy;
+	MPID_assert_debug(grp != NULL);
+
+        /*
+         * \todo Confirm this:
+         * For inter-comms, we only talk to the remote nodes. For
+         * intra-comms there are no remote or local nodes.
+         * So, we always use win->_dev.comm_ptr->vcr (?)
+         * However, we have to choose remote_size, in the case of
+         * inter-comms, vs. local_size. This decision also
+         * affects MPIDU_world_rank_c().
+         */
+        vc = MPIDU_world_vcr(win);
+        MPID_assert_debug(vc != NULL);
+        size = grp->size;
+        /** \todo is it OK to lower consistency here? */
+        consistency = DCMF_RELAXED_CONSISTENCY;
+
+        ctl.mpid_ctl_w0 = type;
+        ctl.mpid_ctl_w2 = win->_dev.comm_ptr->rank;
+        for (x = 0; x < size; ++x) {
+		comm_rank = mpidu_group_to_comm(win, vc, grp, x, &lpid);
+                ctl.mpid_ctl_w1 = win->_dev.coll_info[comm_rank].win_handle;
+                if (type == MPID_MSGTYPE_COMPLETE) {
+			/* tell target how many RMAs we did */
+                        ctl.mpid_ctl_w3 = win->_dev.as_origin.rmas[comm_rank];
+                        win->_dev.as_origin.rmas[comm_rank] = 0;
+                        win->_dev.post_counts[comm_rank] = 0;
+                }
+		if (lpid == mpid_my_lpid) {
+			/* send to self, just process as if received */
+			recv_sm_cb(NULL, (const DCQuad *)&ctl, 1, lpid, NULL, 0);
+		} else {
+                	mpi_errno = DCMF_Control(&bg1s_ct_proto, consistency, lpid, &ctl.ctl);
+                	if (mpi_errno) { break; }
+		}
+        }
+        return mpi_errno;
+}
+
+/**
  * \brief Test if MPI_Win_post exposure epoch has ended
  *
  * Must call advance at least once per call. Tests if all
@@ -40,6 +130,26 @@ static int mpid_check_post_done(MPID_Win *win) {
         return 1;
 }
 
+/**
+ * \brief Determine if all necessary group members have sent us a POST message
+ *
+ * \param[in] win	Window object
+ * \return	1 if all POSTs received, 0 if not
+ */
+static int mpid_total_posts_recv(MPID_Win *win) {
+	int x, z;
+	MPID_VCR *vc = MPIDU_world_vcr(win);
+	MPID_Group *grp = win->start_group_ptr;
+	for (x = 0; x < grp->size; ++x) {
+		z = mpidu_group_to_comm(win, vc, grp, x, NULL);
+		if (win->_dev.post_counts[z] == 0) {
+			return 0;
+		}
+	}
+	/* post_counts[] are cleared during COMPLETE sends */
+	return 1;
+}
+
 /// \cond NOT_REAL_CODE
 #undef FUNCNAME
 #define FUNCNAME MPID_Win_complete
@@ -55,7 +165,7 @@ static int mpid_check_post_done(MPID_Win *win) {
  *
  * \param[in] win_ptr		Window
  * \return MPI_SUCCESS, MPI_ERR_RMA_SYNC, or error returned from
- *	MPIDU_proto_send.
+ *	mpidu_proto_send.
  *
  * \ref post_design
  */
@@ -80,7 +190,7 @@ int MPID_Win_complete(MPID_Win *win_ptr)
          * MPICH2 says that we cannot return until all RMA ops
          * have completed at the origin (i.e. been sent).
 	 *
-	 * Since MPIDU_proto_send() uses DCMF_Control(), there
+	 * Since mpidu_proto_send() uses DCMF_Control(), there
 	 * are no pending sends to wait for.
          */
         MPIDU_Progress_spin(win_ptr->_dev.my_rma_pends > 0 ||
@@ -89,7 +199,7 @@ int MPID_Win_complete(MPID_Win *win_ptr)
 
         if (!(win_ptr->_dev.as_origin.epoch_assert & MPI_MODE_NOCHECK)) {
                 /* This zeroes the respective rma_sends counts...  */
-                mpi_errno = MPIDU_proto_send(win_ptr, win_ptr->start_group_ptr,
+                mpi_errno = mpidu_proto_send(win_ptr, win_ptr->start_group_ptr,
                         MPID_MSGTYPE_COMPLETE);
                 if (mpi_errno) { MPIU_ERR_POP(mpi_errno); }
         }
@@ -245,8 +355,7 @@ int MPID_Win_start(MPID_Group *group_ptr, int assert, MPID_Win *win_ptr)
          * reasonable failure.
          */
         if (!(assert & MPI_MODE_NOCHECK)) {
-                MPIDU_Progress_spin(win_ptr->_dev.as_origin.sync_count < group_ptr->size);
-                win_ptr->_dev.as_origin.sync_count = 0;
+                MPIDU_Progress_spin(!mpid_total_posts_recv(win_ptr));
         }
 
 fn_exit:
@@ -276,7 +385,7 @@ fn_fail:
  * \param[in] assert	Synchronization hints
  * \param[in] win_ptr	Window
  * \return MPI_SUCCESS, MPI_ERR_RMA_SYNC, or error returned from
- *	MPIDU_proto_send.
+ *	mpidu_proto_send.
  *
  * \ref post_design
  */
@@ -321,7 +430,7 @@ int MPID_Win_post(MPID_Group *group_ptr, int assert, MPID_Win *win_ptr)
          * when _start nodes call RMA ops.
          */
         if (!(assert & MPI_MODE_NOCHECK)) {
-                mpi_errno = MPIDU_proto_send(win_ptr, group_ptr,
+                mpi_errno = mpidu_proto_send(win_ptr, group_ptr,
                                 MPID_MSGTYPE_POST);
                 if (mpi_errno) { MPIU_ERR_POP(mpi_errno); }
                 /**

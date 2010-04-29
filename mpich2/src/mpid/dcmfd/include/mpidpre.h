@@ -341,6 +341,7 @@ struct MPID_Dev_win_decl {
   struct MPID_Win_coll_info *coll_info; /**< allocated array of collective info       */
   struct MPID_Win_sync_info as_origin;  /**< sync info, as_origin                     */
   struct MPID_Win_sync_info as_target;  /**< sync info, as_target                     */
+  volatile int *post_counts;       /**< per-rank counters for recv'd POST messages    */
   struct MPID_Comm *comm_ptr;     /**< saved pointer to window communicator           */
   volatile int lock_granted;      /**< window lock (as_target)                        */
   unsigned long _lock_queue[4];   /**< opaque structure used for lock wait queue      */
