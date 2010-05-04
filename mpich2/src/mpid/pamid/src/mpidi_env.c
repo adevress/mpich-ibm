@@ -538,4 +538,9 @@ MPIDI_Env_setup()
     char* names[] = {"PAMI_RMA_PENDING", NULL};
     ENV_Unsigned(names, &MPIDI_Process.rma_pending);
   }
+  
+   {
+      char *names[] = {"PAMI_MAXCONTEXTS", NULL};
+      ENV_Unsigned(names, &MPIDI_Process.avail_contexts);
+   }
 }

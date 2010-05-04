@@ -5,10 +5,16 @@
  */
 #include "mpidimpl.h"
 
-#define        MAX_CONTEXTS 2
-size_t         NUM_CONTEXTS;
+#ifdef TRACE_ERR
+#undef TRACE_ERR
+#endif
+#define TRACE_ERR(x) fprintf x
+//#define        MAX_CONTEXTS 1
+size_t         _CONTEXTS;
 pami_client_t  MPIDI_Client;
-pami_context_t MPIDI_Context[MAX_CONTEXTS];
+pami_context_t *MPIDI_Context;
+
+
 
 MPIDI_Process_t  MPIDI_Process = {
  verbose        : 0,
@@ -16,6 +22,7 @@ MPIDI_Process_t  MPIDI_Process = {
  eager_limit    : UINT_MAX,
  use_interrupts : 0,
  rma_pending    : 1000,
+ avail_contexts : 2, /* default to 2 contexts */
 
  optimized : {
   collectives : 0,
@@ -86,7 +93,7 @@ MPIDI_Init_dispath(size_t dispatch, struct protocol_t* proto)
   pami_dispatch_callback_fn Recv = {p2p:proto->func};
   MPID_assert(dispatch == proto->dispatch);
   PAMIX_Dispatch_set(MPIDI_Context,
-                     NUM_CONTEXTS,
+                     MPIDI_Process.avail_contexts,
                      proto->dispatch,
                      Recv,
                      proto->options);
@@ -119,16 +126,32 @@ MPIDI_Init(int* rank, int* size, int* threading)
   /*  Figure out the context situation  */
   /* ---------------------------------- */
   unsigned same  = PAMIX_Configuration_query(MPIDI_Client, PAMI_CONST_CONTEXTS).value.intval;
-  if (same)
-    NUM_CONTEXTS = PAMIX_Configuration_query(MPIDI_Client, PAMI_NUM_CONTEXTS  ).value.intval;
-  else
-    NUM_CONTEXTS = 1;
+   if(!same)
+   {
+      MPIDI_Process.avail_contexts = 1; /* all bets are off for now */
+   }
+   else
+   {
+      unsigned possible_contexts = PAMIX_Configuration_query(MPIDI_Client, PAMI_NUM_CONTEXTS).value.intval;
+      if(MPIDI_Process.avail_contexts > possible_contexts)
+      {
+         MPIDI_Process.avail_contexts = possible_contexts;
+      }
+   }
+   if(MPIDI_Process.avail_contexts == 1)
+   {
+      *threading = MPI_THREAD_SINGLE;
+   }
+   if(MPIDI_Process.avail_contexts > 1)
+   {
+      TRACE_ERR((stderr,"Num contexts :%d (>1), can't use shmem collectives\n", MPIDI_Process.avail_contexts));
+      MPIDI_Process.optimized.collectives = 0;
+   }
 
-  if (NUM_CONTEXTS == 1)
-    *threading = MPI_THREAD_SINGLE;
-  else if (NUM_CONTEXTS > MAX_CONTEXTS)
-    NUM_CONTEXTS = MAX_CONTEXTS;
+   MPIDI_Context = (pami_context_t *)malloc(sizeof(pami_context_t) * MPIDI_Process.avail_contexts);
 
+   TRACE_ERR((stderr,"Creating %d contexts\n", (int)MPIDI_Process.avail_contexts));
+         
   /* ----------------------------------- */
   /*  Create the communication contexts  */
   /* ----------------------------------- */
@@ -136,14 +159,15 @@ MPIDI_Init(int* rank, int* size, int* threading)
   name  : PAMI_CONST_CONTEXTS,
   value : { intval : 1, },
   };
-  rc = PAMI_Context_createv(MPIDI_Client, &config, 1, MPIDI_Context, NUM_CONTEXTS);
+  rc = PAMI_Context_createv(MPIDI_Client, &config, 1, MPIDI_Context, MPIDI_Process.avail_contexts);
   MPID_assert(rc == PAMI_SUCCESS);
+
 
   /* -------------------------------------------------------- */
   /*  We didn't lock on the way in, but we will lock on the   */
   /*  way out if we are threaded.  Lock now to make it even.  */
   /* -------------------------------------------------------- */
-  if (NUM_CONTEXTS > 1)
+  if (MPIDI_Process.avail_contexts > 1)
     {
       /** \todo Add these in when #72 is fixed */
       /* MPIR_ThreadInfo.isThreaded = 1; */
@@ -157,6 +181,12 @@ MPIDI_Init(int* rank, int* size, int* threading)
   MPIDI_Init_dispath(MPIDI_Protocols.RTS,     &proto_list.RTS);
   MPIDI_Init_dispath(MPIDI_Protocols.Cancel,  &proto_list.Cancel);
   MPIDI_Init_dispath(MPIDI_Protocols.Control, &proto_list.Control);
+
+  /* Fill in the world geometry */
+  TRACE_ERR((stderr, "creating world geometry\n"));
+  rc = PAMI_Geometry_world(MPIDI_Client, &MPIDI_Process.world_geometry);
+  MPID_assert(rc == PAMI_SUCCESS);
+
 }
 
 
@@ -209,6 +239,7 @@ int MPID_Init(int * argc,
   /* Initialize MPI_COMM_WORLD object */
   /* -------------------------------- */
   comm = MPIR_Process.comm_world;
+  comm->mpid.geometry = MPIDI_Process.world_geometry;
   comm->rank = rank;
   comm->remote_size = comm->local_size = size;
   rc = MPID_VCRT_Create(comm->remote_size, &comm->vcrt);
@@ -218,7 +249,10 @@ int MPID_Init(int * argc,
   for (i=0; i<size; i++)
     comm->vcr[i] = i;
 
+   /* basically a noop for now */
   MPIDI_Comm_create(comm);
+  
+  MPIDI_Comm_world_setup();
 
 
   /* ------------------------------- */
