@@ -13,9 +13,8 @@
 #define __include_mpid_externs_h__
 
 
-extern size_t        NUM_CONTEXTS;
 extern pami_client_t  MPIDI_Client;
-extern pami_context_t MPIDI_Context[];
+extern pami_context_t *MPIDI_Context;
 
 extern MPIDI_Process_t MPIDI_Process;
 extern MPIDI_Protocol_t MPIDI_Protocols;

@@ -156,7 +156,10 @@ void MPIDI_RendezvousTransfer(pami_context_t context,MPID_Request * rreq);
 
 void MPIDI_Comm_create      (MPID_Comm *comm);
 void MPIDI_Comm_destroy     (MPID_Comm *comm);
+void MPIDI_Coll_comm_create (MPID_Comm *comm);
+void MPIDI_Coll_comm_destroy (MPID_Comm *comm);
 void MPIDI_Env_setup        ();
+void MPIDI_Comm_world_setup ();
 
 void MPIDI_Topo_Comm_create (MPID_Comm *comm);
 void MPIDI_Topo_Comm_destroy(MPID_Comm *comm);
@@ -166,5 +169,8 @@ void MPIDI_Coll_Comm_create (MPID_Comm *comm);
 void MPIDI_Coll_Comm_destroy(MPID_Comm *comm);
 void MPIDI_Coll_register    (void);
 
+int MPIDO_Bcast(void *buffer, int count, MPI_Datatype dt, int root, MPID_Comm *comm_ptr);
+int MPIDO_Barrier(MPID_Comm *comm_ptr);
+int MPIDO_Allreduce(void *sbuffer, void *rbuffer, int count, MPI_Datatype datatype, MPI_Op op, MPID_Comm *comm_ptr);
 
 #endif

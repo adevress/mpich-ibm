@@ -37,6 +37,8 @@ typedef struct
   unsigned verbose;        /**< The current level of verbosity for end-of-job stats. */
   unsigned statistics;     /**< The current level of stats collection.               */
   unsigned use_interrupts; /**< Should interrupts be turned on.                      */
+  pami_geometry_t world_geometry;
+  unsigned avail_contexts;
 } MPIDI_Process_t;
 
 typedef struct
@@ -230,13 +232,15 @@ struct MPIDI_Request
 struct MPIDI_Comm
 {
   pami_geometry_t geometry; /**< Geometry component for collectives      */
-  unsigned *sndlen; /**< lazy alloc alltoall vars */
-  unsigned *rcvlen;
-  unsigned *sdispls;
-  unsigned *rdispls;
-  unsigned *sndcounters;
-  unsigned *rcvcounters;
-  unsigned  last_algorithm;
+  /* It is unlikely these should stay in here, but more thought needs put in
+   * to this after 5/1
+   */
+  pami_algorithm_t *bcasts;
+  pami_algorithm_t *barriers;
+  pami_algorithm_t *allreduces;
+  pami_metadata_t *bcast_metas; /* is there one per algorithm? */
+  pami_metadata_t *barrier_metas;
+  pami_metadata_t *allreduce_metas;
 };
 
 
