@@ -138,7 +138,8 @@ MPIDI_Send(pami_context_t  context,
            char          * sndbuf,
            unsigned        sndlen)
 {
-  pami_endpoint_t dest    = MPIDI_Context_endpoint(sreq);
+  pami_endpoint_t dest;
+  MPIDI_Context_endpoint(sreq, &dest);
 
   pami_task_t old_peer = MPIDI_Request_getPeerRank(sreq);
   MPIDI_Request_setPeerRank(sreq, MPIDI_Process.global.rank);

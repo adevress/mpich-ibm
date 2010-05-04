@@ -106,13 +106,17 @@ MPIDI_Context_hash(pami_task_t rank, unsigned ctxt)
 {
   return (( rank + ctxt ) % NUM_CONTEXTS);
 }
-static inline pami_endpoint_t
-MPIDI_Context_endpoint(MPID_Request * req)
+static inline void
+MPIDI_Context_endpoint(MPID_Request * req, pami_endpoint_t * e)
 {
+
   pami_task_t remote = MPIDI_Request_getPeerRank(req);
   pami_task_t local  = MPIDI_Process.global.rank;
   unsigned    rctxt  = MPIDI_Context_hash(local, req->comm->context_id);
-  return PAMI_Endpoint_create(MPIDI_Client, remote, rctxt);
+
+  pami_result_t rc;
+  rc = PAMI_Endpoint_create(MPIDI_Client, remote, rctxt, e);
+  MPID_assert(rc == PAMI_SUCCESS);
 }
 static inline pami_context_t
 MPIDI_Context_local(MPID_Request * req)

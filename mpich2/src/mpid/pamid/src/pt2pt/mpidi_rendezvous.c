@@ -85,7 +85,8 @@ MPIDI_RendezvousTransfer(pami_context_t context,
   /* ---------------------------------------------------------------- */
 
   pami_result_t rc;
-  pami_endpoint_t   dest   = MPIDI_Context_endpoint(rreq);
+  pami_endpoint_t dest;
+  MPIDI_Context_endpoint(rreq, &dest);
 
 #ifdef USE_PAMI_RDMA
   size_t rcvlen_out;

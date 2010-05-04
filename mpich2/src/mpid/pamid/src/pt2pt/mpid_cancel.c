@@ -45,7 +45,9 @@ MPIDI_postCancelReq(pami_context_t context, void * _req)
     }
   };
 
-  pami_endpoint_t       dest   = MPIDI_Context_endpoint(req);
+  pami_endpoint_t dest;
+  MPIDI_Context_endpoint(req, &dest);
+
   pami_send_immediate_t params = {
   dispatch : MPIDI_Protocols.Cancel,
   dest     : dest,

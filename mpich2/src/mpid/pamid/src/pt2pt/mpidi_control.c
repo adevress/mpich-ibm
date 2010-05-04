@@ -21,7 +21,9 @@ MPIDI_CtrlSend(pami_context_t context,
   control->msginfo.peerrank = MPIDI_Process.global.rank;
 
 
-  pami_endpoint_t       dest   = PAMI_Endpoint_create(MPIDI_Client, peerrank, 0);
+  pami_endpoint_t dest;
+  PAMI_Endpoint_create(MPIDI_Client, peerrank, 0, &dest);
+
   pami_send_immediate_t params = {
   dispatch : MPIDI_Protocols.Control,
   dest     : dest,
