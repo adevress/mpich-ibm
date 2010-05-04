@@ -47,33 +47,33 @@ static struct
     func: MPIDI_RecvCB,
     dispatch: 0,
     options: {
-      consistency:    1,
-      no_long_header: 1,
+      consistency:    PAMI_HINT2_ON,
+      no_long_header: PAMI_HINT2_ON,
       },
   },
   RTS: {
     func: MPIDI_RecvRzvCB,
     dispatch: 1,
     options: {
-      consistency:    1,
-      no_rdma:        1,
+      consistency:    PAMI_HINT2_ON,
+      use_rdma:       PAMI_HINT3_FORCE_OFF,
       },
   },
   Cancel: {
     func: MPIDI_ControlCB,
     dispatch: 2,
     options: {
-      consistency:    1,
-      no_long_header: 1,
+      consistency:    PAMI_HINT2_ON,
+      no_long_header: PAMI_HINT2_ON,
       },
   },
   Control: {
     func: MPIDI_ControlCB,
     dispatch: 3,
     options: {
-      high_priority:  1,
-      no_rdma:        1,
-      no_long_header: 1,
+      high_priority:  PAMI_HINT2_ON,
+      use_rdma:       PAMI_HINT3_FORCE_OFF,
+      no_long_header: PAMI_HINT2_ON,
       },
   },
   };
