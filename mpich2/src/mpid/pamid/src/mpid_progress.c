@@ -55,7 +55,7 @@ int MPID_Progress_wait(MPID_Progress_state * state)
   pami_result_t rc;
   int x = _requests;
   while (x == _requests) {
-    rc = PAMI_Context_advancev(MPIDI_Context, NUM_CONTEXTS, 1);
+    rc = PAMI_Context_advancev(MPIDI_Context, MPIDI_Process.avail_contexts, 1);
     MPID_assert(rc == PAMI_SUCCESS);
   }
   return MPI_SUCCESS;
@@ -70,7 +70,7 @@ int MPID_Progress_wait(MPID_Progress_state * state)
 int MPID_Progress_poke()
 {
   pami_result_t rc;
-  rc = PAMI_Context_advancev(MPIDI_Context, NUM_CONTEXTS, 1);
+  rc = PAMI_Context_advancev(MPIDI_Context, MPIDI_Process.avail_contexts, 1);
   MPID_assert(rc == PAMI_SUCCESS);
   return MPI_SUCCESS;
 }
