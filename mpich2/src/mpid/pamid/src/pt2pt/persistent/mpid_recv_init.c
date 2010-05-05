@@ -29,7 +29,7 @@ int MPID_Recv_init(void * buf,
   rreq->partner_request = NULL;
   rreq->cc = 0;
 
-  MPIDI_Request_setType(rreq, MPIDI_REQUEST_TYPE_RECV);
+  MPIDI_Request_setPType(rreq, MPIDI_REQUEST_PTYPE_RECV);
   if (HANDLE_GET_KIND(datatype) != HANDLE_KIND_BUILTIN)
     {
       MPID_Datatype_get_ptr(datatype, rreq->mpid.datatype_ptr);

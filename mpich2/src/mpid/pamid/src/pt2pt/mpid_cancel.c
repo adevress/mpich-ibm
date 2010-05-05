@@ -40,7 +40,7 @@ MPIDI_postCancelReq(pami_context_t context, void * _req)
     MPIrank  : MPIDI_Request_getMatchRank(req),
     MPIctxt  : MPIDI_Request_getMatchCtxt(req),
     peerrank : MPIDI_Process.global.rank,
-    type     : MPIDI_REQUEST_TYPE_CANCEL_REQUEST,
+    control  : MPIDI_CONTROL_CANCEL_REQUEST,
     req      : req,
     }
   };

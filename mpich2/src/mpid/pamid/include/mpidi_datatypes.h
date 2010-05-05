@@ -103,18 +103,23 @@ MPIDI_RMA_dtype_info;
  */
 typedef enum
   {
-    /** this must be 0, since new requests are memset to 0 */
-    MPIDI_REQUEST_TYPE_RECV=0,
-    MPIDI_REQUEST_TYPE_SEND,
-    MPIDI_REQUEST_TYPE_BSEND,
-    MPIDI_REQUEST_TYPE_SSEND,
-    MPIDI_REQUEST_TYPE_SSEND_ACKNOWLEDGE,
-    MPIDI_REQUEST_TYPE_CANCEL_REQUEST,
-    MPIDI_REQUEST_TYPE_CANCEL_ACKNOWLEDGE,
-    MPIDI_REQUEST_TYPE_CANCEL_NOT_ACKNOWLEDGE,
-    MPIDI_REQUEST_TYPE_RENDEZVOUS_ACKNOWLEDGE,
+    MPIDI_REQUEST_PTYPE_RECV,
+    MPIDI_REQUEST_PTYPE_SEND,
+    MPIDI_REQUEST_PTYPE_BSEND,
+    MPIDI_REQUEST_PTYPE_SSEND,
   }
-MPIDI_REQUEST_TYPE;
+MPIDI_REQUEST_PTYPE;
+
+
+typedef enum
+  {
+    MPIDI_CONTROL_SSEND_ACKNOWLEDGE,
+    MPIDI_CONTROL_CANCEL_REQUEST,
+    MPIDI_CONTROL_CANCEL_ACKNOWLEDGE,
+    MPIDI_CONTROL_CANCEL_NOT_ACKNOWLEDGE,
+    MPIDI_CONTROL_RENDEZVOUS_ACKNOWLEDGE,
+  }
+MPIDI_CONTROL;
 
 
 typedef enum
@@ -165,7 +170,7 @@ struct MPIDI_MsgInfo_t
     unsigned   MPIrank;     /**< match rank             */
     uint16_t   MPIctxt;     /**< match context          */
 
-    uint16_t   type:4;      /**< message type           */
+    uint16_t   control:3;   /**< message type for control protocols */
     uint16_t   isSync:1;    /**< set for sync sends     */
     uint16_t   isRzv :1;    /**< use pt2pt rendezvous   */
 };
@@ -211,6 +216,7 @@ struct MPIDI_Request
 
   int                   isSelf;       /**< message sent to self       */
   int                 cancel_pending; /**< Cancel State               */
+  MPIDI_REQUEST_PTYPE   ptype;        /**< The persistent msg type    */
   MPIDI_REQUEST_STATE   state;        /**< The tranfser state         */
   MPIDI_CA              ca;           /**< Completion action          */
 #ifdef USE_PAMI_RDMA

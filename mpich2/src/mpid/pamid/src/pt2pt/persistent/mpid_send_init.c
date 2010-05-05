@@ -69,7 +69,7 @@ int MPID_Send_init(const void * buf,
                                     request);
   if (mpi_errno != MPI_SUCCESS)
     return mpi_errno;
-  MPIDI_Request_setType((*request), MPIDI_REQUEST_TYPE_SEND);
+  MPIDI_Request_setPType((*request), MPIDI_REQUEST_PTYPE_SEND);
   return MPI_SUCCESS;
 }
 
@@ -98,7 +98,7 @@ int MPID_Ssend_init(const void * buf,
                                     request);
   if (mpi_errno != MPI_SUCCESS)
     return mpi_errno;
-  MPIDI_Request_setType((*request), MPIDI_REQUEST_TYPE_SSEND);
+  MPIDI_Request_setPType((*request), MPIDI_REQUEST_PTYPE_SSEND);
   return MPI_SUCCESS;
 }
 
@@ -127,6 +127,6 @@ int MPID_Bsend_init(const void * buf,
                                     request);
   if (mpi_errno != MPI_SUCCESS)
     return mpi_errno;
-  MPIDI_Request_setType((*request), MPIDI_REQUEST_TYPE_BSEND);
+  MPIDI_Request_setPType((*request), MPIDI_REQUEST_PTYPE_BSEND);
   return MPI_SUCCESS;
 }

@@ -66,12 +66,12 @@ void MPIDI_RecvRzvDoneCB(pami_context_t   context,
   MPID_assert(rreq != NULL);
 
   /* Is it neccesary to save the original value of the 'type' field ?? */
-  unsigned original_value = MPIDI_Request_getType(rreq);
-  MPIDI_Request_setType(rreq, MPIDI_REQUEST_TYPE_RENDEZVOUS_ACKNOWLEDGE);
+  unsigned original_value = MPIDI_Request_getControl(rreq);
+  MPIDI_Request_setControl(rreq, MPIDI_CONTROL_RENDEZVOUS_ACKNOWLEDGE);
   MPIDI_CtrlSend(context,
                  &rreq->mpid.envelope.envelope.msginfo,
                  MPIDI_Request_getPeerRank(rreq));
-  MPIDI_Request_setType(rreq, original_value);
+  MPIDI_Request_setControl(rreq, original_value);
 
 #ifdef USE_PAMI_RDMA
   pami_result_t rc;
@@ -93,7 +93,7 @@ void MPIDI_RecvRzvDoneCB(pami_context_t   context,
 void
 MPIDI_postSyncAck(pami_context_t context, MPID_Request * req)
 {
-  MPIDI_Request_setType(req, MPIDI_REQUEST_TYPE_SSEND_ACKNOWLEDGE);
+  MPIDI_Request_setControl(req, MPIDI_CONTROL_SSEND_ACKNOWLEDGE);
 
   MPIDI_MsgInfo * info = &req->mpid.envelope.envelope.msginfo;
   unsigned        peer =  MPIDI_Request_getPeerRank(req);
@@ -130,9 +130,9 @@ MPIDI_procSyncAck(pami_context_t context, const MPIDI_MsgInfo *info, unsigned pe
 void
 MPIDI_procCancelReq(pami_context_t context, const MPIDI_MsgInfo *info, size_t peer)
 {
-  MPIDI_REQUEST_TYPE  type;
-  MPIDI_MsgInfo       ackinfo;
-  MPID_Request      * sreq = NULL;
+  MPIDI_CONTROL   type;
+  MPIDI_MsgInfo   ackinfo;
+  MPID_Request  * sreq;
 
   MPID_assert(info != NULL);
   MPID_assert(MPIDI_Msginfo_getPeerRequest(info) != NULL);
@@ -149,14 +149,14 @@ MPIDI_procCancelReq(pami_context_t context, const MPIDI_MsgInfo *info, size_t pe
           sreq->mpid.uebuf = NULL;
         }
       MPID_Request_release(sreq);
-      type = MPIDI_REQUEST_TYPE_CANCEL_ACKNOWLEDGE;
+      type = MPIDI_CONTROL_CANCEL_ACKNOWLEDGE;
     }
   else
     {
-      type = MPIDI_REQUEST_TYPE_CANCEL_NOT_ACKNOWLEDGE;
+      type = MPIDI_CONTROL_CANCEL_NOT_ACKNOWLEDGE;
     }
 
-  ackinfo.msginfo.type = type;
+  ackinfo.msginfo.control = type;
   MPIDI_Msginfo_cpyPeerRequest(&ackinfo, info);
   MPIDI_CtrlSend(context, &ackinfo, peer);
 }
@@ -175,14 +175,14 @@ MPIDI_procCancelAck(pami_context_t context, const MPIDI_MsgInfo *info, size_t pe
   MPID_Request *req = MPIDI_Msginfo_getPeerRequest(info);
   MPID_assert(req != NULL);
 
-  if(info->msginfo.type == MPIDI_REQUEST_TYPE_CANCEL_NOT_ACKNOWLEDGE)
+  if(info->msginfo.control == MPIDI_CONTROL_CANCEL_NOT_ACKNOWLEDGE)
     {
       req->mpid.cancel_pending = FALSE;
       MPIDI_Request_complete(req);
       return;
     }
 
-  MPID_assert(info->msginfo.type == MPIDI_REQUEST_TYPE_CANCEL_ACKNOWLEDGE);
+  MPID_assert(info->msginfo.control == MPIDI_CONTROL_CANCEL_ACKNOWLEDGE);
   MPID_assert(req->mpid.cancel_pending == TRUE);
 
   req->status.cancelled = TRUE;
@@ -262,25 +262,25 @@ void MPIDI_ControlCB(pami_context_t   context,
   size_t peer = msginfo->msginfo.peerrank;
   /* size_t               contextid = (size_t)_contextid; */
 
-  switch (msginfo->msginfo.type)
+  switch (msginfo->msginfo.control)
     {
-    case MPIDI_REQUEST_TYPE_SSEND_ACKNOWLEDGE:
+    case MPIDI_CONTROL_SSEND_ACKNOWLEDGE:
       MPIDI_procSyncAck(context, msginfo, peer);
       break;
-    case MPIDI_REQUEST_TYPE_CANCEL_REQUEST:
+    case MPIDI_CONTROL_CANCEL_REQUEST:
       MPIDI_procCancelReq(context, msginfo, peer);
       break;
-    case MPIDI_REQUEST_TYPE_CANCEL_ACKNOWLEDGE:
-    case MPIDI_REQUEST_TYPE_CANCEL_NOT_ACKNOWLEDGE:
+    case MPIDI_CONTROL_CANCEL_ACKNOWLEDGE:
+    case MPIDI_CONTROL_CANCEL_NOT_ACKNOWLEDGE:
       MPIDI_procCancelAck(context, msginfo, peer);
       break;
-    case MPIDI_REQUEST_TYPE_RENDEZVOUS_ACKNOWLEDGE:
+    case MPIDI_CONTROL_RENDEZVOUS_ACKNOWLEDGE:
       MPIDI_procRzvAck(context, msginfo, peer);
       break;
     default:
       fprintf(stderr, "Bad msginfo type: 0x%08x  %d\n",
-              msginfo->msginfo.type,
-              msginfo->msginfo.type);
+              msginfo->msginfo.control,
+              msginfo->msginfo.control);
       MPID_abort();
     }
   MPIDI_Progress_signal();
