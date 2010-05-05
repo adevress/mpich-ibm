@@ -42,7 +42,7 @@ MPID_Request_create()
   MPID_assert(HANDLE_GET_MPI_KIND(req->handle) == MPID_REQUEST);
   MPIU_Object_set_ref(req, 1);
   req->cc                = 1;
-  req->cc_ptr            = & req->cc;
+  req->cc_ptr            = &req->cc;
   req->status.MPI_SOURCE = MPI_UNDEFINED;
   req->status.MPI_TAG    = MPI_UNDEFINED;
   req->status.MPI_ERROR  = MPI_SUCCESS;
@@ -51,6 +51,8 @@ MPID_Request_create()
   req->comm              = NULL;
 
   struct MPIDI_Request* mpid = &req->mpid;
+#ifdef ZERO_OUT_EACH_FIELD
+#error Don't actually do this.
   /* if (DCQuad_sizeof(MPIDI_MsgInfo) == 1) */
   /*   { */
   /*     DCQuad* q = mpid->envelope.envelope.msginfo.quad; */
@@ -63,14 +65,28 @@ MPID_Request_create()
     memset(&mpid->envelope.envelope.msginfo, 0x00, sizeof(MPIDI_MsgInfo));
 
   mpid->envelope.envelope.length = 0;
+#ifndef USE_PAMI_RDMA
+  mpid->envelope.envelope.data   = NULL;
+#endif
+  mpid->next                     = NULL;
   mpid->userbuf                  = NULL;
   mpid->uebuf                    = NULL;
   mpid->datatype_ptr             = NULL;
   mpid->cancel_pending           = FALSE;
   mpid->state                    = MPIDI_INITIALIZED;
-  MPIDI_Request_setCA  (req, MPIDI_CA_COMPLETE);
   MPIDI_Request_setSelf(req, 0);
+  MPIDI_Request_setCA  (req, MPIDI_CA_COMPLETE);
   MPIDI_Request_setType(req, MPIDI_REQUEST_TYPE_RECV);
+#else
+  memset(mpid, 0x00, sizeof(struct MPIDI_Request));
+#if 0
+  /* These three commands are not needed as long as the constants are 0.
+     I have left comments to that effect in their definitions. */
+  mpid->state = MPIDI_INITIALIZED;
+  MPIDI_Request_setCA  (req, MPIDI_CA_COMPLETE);
+  MPIDI_Request_setType(req, MPIDI_REQUEST_TYPE_RECV);
+#endif
+#endif
 
   return req;
 }

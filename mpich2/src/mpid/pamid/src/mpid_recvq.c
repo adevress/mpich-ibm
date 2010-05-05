@@ -353,10 +353,8 @@ MPID_Request * MPIDI_Recvq_FDU_or_AEP(int source, int tag, int context_id, int *
            so we need to allocate a new request and add it to the
            posted queue */
         rreq = MPID_Request_create();
-
         rreq->kind = MPID_REQUEST_RECV;
         MPIDI_Request_setMatch(rreq, tag, source, context_id);
-        rreq->mpid.next = NULL;
 
         if (recvq.posted_tail != NULL)
         {
@@ -492,10 +490,8 @@ MPID_Request * MPIDI_Recvq_FDP_or_AEU(int source, int tag, int context_id, int *
            need to allocate a new request and add it to the unexpected
            queue */
         rreq = MPID_Request_create();
-
         rreq->kind = MPID_REQUEST_RECV;
         MPIDI_Request_setMatch(rreq, tag, source, context_id);
-        rreq->mpid.next = NULL;
 
         if (recvq.unexpected_tail != NULL)
         {

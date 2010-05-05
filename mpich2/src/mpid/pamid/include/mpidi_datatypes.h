@@ -103,6 +103,7 @@ MPIDI_RMA_dtype_info;
  */
 typedef enum
   {
+    /** this must be 0, since new requests are memset to 0 */
     MPIDI_REQUEST_TYPE_RECV=0,
     MPIDI_REQUEST_TYPE_SEND,
     MPIDI_REQUEST_TYPE_BSEND,
@@ -118,6 +119,7 @@ MPIDI_REQUEST_TYPE;
 
 typedef enum
   {
+    /** This must be 0, since new requests are memset to 0. */
     MPIDI_INITIALIZED=0,
     MPIDI_SEND_COMPLETE,
     MPIDI_ACKNOWLEGED,
@@ -129,10 +131,11 @@ MPIDI_REQUEST_STATE;
 /** \brief Request completion actions */
 typedef enum
   {
-    MPIDI_CA_ERROR = 0,                         /**< Should never see this        */
-    MPIDI_CA_COMPLETE = 1,                      /**< The request is now complete  */
-    MPIDI_CA_UNPACK_UEBUF_AND_COMPLETE,         /**< Unpack uebuf, then complete  */
-    MPIDI_CA_UNPACK_UEBUF_AND_COMPLETE_NOFREE,  /**< Unpack uebuf, then complete. do not free uebuf  */
+    /** Just complete the request (this must be 0, since new requests
+        are memset to 0). */
+    MPIDI_CA_COMPLETE = 0,
+    MPIDI_CA_UNPACK_UEBUF_AND_COMPLETE,         /**< Unpack uebuf, then complete. */
+    MPIDI_CA_UNPACK_UEBUF_AND_COMPLETE_NOFREE,  /**< Unpack uebuf (do not free), then complete. */
   }
 MPIDI_CA;
 
