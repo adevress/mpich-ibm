@@ -15,7 +15,6 @@
  * \param[in]  tag            The message tag
  * \param[in]  comm           Pointer to the communicator
  * \param[in]  context_offset Offset from the communicator context ID
- * \param[in]  type           The type of send requested
  * \param[out] request        Return a pointer to the new request object
  *
  * \returns An MPI Error code
@@ -27,7 +26,6 @@ int MPIDI_Isend_self(const void    * buf,
                      int             tag,
                      MPID_Comm     * comm,
                      int             context_offset,
-                     int             type,
                      MPID_Request ** request)
 {
   MPIDI_Message_match match;
@@ -50,7 +48,6 @@ int MPIDI_Isend_self(const void    * buf,
                                            "**nomem", 0);
       return mpi_errno;
     }
-  MPIDI_Request_setType(sreq, type);
   sreq->mpid.userbuf      = (char *)buf;
   sreq->mpid.userbufcount = count;
   sreq->mpid.datatype     = datatype;

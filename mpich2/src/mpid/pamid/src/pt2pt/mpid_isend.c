@@ -48,7 +48,6 @@ int MPID_Isend(const void    * buf,
                                        tag,
                                        comm,
                                        context_offset,
-                                       MPIDI_REQUEST_TYPE_SEND,
                                        request);
       return mpi_errno;
     }
@@ -85,7 +84,6 @@ int MPID_Isend(const void    * buf,
 
   /* message type info */
   sreq->kind = MPID_REQUEST_SEND;
-  MPIDI_Request_setType(sreq, MPIDI_REQUEST_TYPE_SEND);
 
 
   /* ------------------------------ */

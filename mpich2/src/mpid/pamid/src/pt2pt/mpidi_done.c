@@ -23,9 +23,9 @@ void MPIDI_SendDoneCB(pami_context_t   context,
     MPIU_Free(sreq->mpid.uebuf);
   sreq->mpid.uebuf = NULL;
 
-  if(sreq->status.cancelled == FALSE)
+  if(likely(sreq->status.cancelled == FALSE))
     {
-      if(MPIDI_Request_getType(sreq) != MPIDI_REQUEST_TYPE_SSEND)
+      if(likely(!MPIDI_Request_isSync(sreq)))
         {
           sreq->mpid.state = MPIDI_ACKNOWLEGED;
           MPIDI_Request_complete(sreq);

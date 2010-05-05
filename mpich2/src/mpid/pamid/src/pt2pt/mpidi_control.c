@@ -202,8 +202,8 @@ MPIDI_procCancelAck(pami_context_t context, const MPIDI_MsgInfo *info, size_t pe
    * called MPIDI_Request_complete() to decrement the CC.  Therefore,
    * we call it now to simulate an ACKed message.
    */
-  if ( (MPIDI_Request_getType(req) == MPIDI_REQUEST_TYPE_SSEND) &&
-       (req->mpid.state            == MPIDI_SEND_COMPLETE) )
+  if (MPIDI_Request_isSync(req) &&
+      (req->mpid.state == MPIDI_SEND_COMPLETE) )
     MPIDI_Request_complete(req);
 
   /*

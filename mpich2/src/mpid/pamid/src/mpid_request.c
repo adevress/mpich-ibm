@@ -76,15 +76,13 @@ MPID_Request_create()
   mpid->state                    = MPIDI_INITIALIZED;
   MPIDI_Request_setSelf(req, 0);
   MPIDI_Request_setCA  (req, MPIDI_CA_COMPLETE);
-  MPIDI_Request_setType(req, MPIDI_REQUEST_TYPE_RECV);
 #else
   memset(mpid, 0x00, sizeof(struct MPIDI_Request));
 #if 0
-  /* These three commands are not needed as long as the constants are 0.
+  /* These two commands are not needed as long as the constants are 0.
      I have left comments to that effect in their definitions. */
   mpid->state = MPIDI_INITIALIZED;
   MPIDI_Request_setCA  (req, MPIDI_CA_COMPLETE);
-  MPIDI_Request_setType(req, MPIDI_REQUEST_TYPE_RECV);
 #endif
 #endif
 

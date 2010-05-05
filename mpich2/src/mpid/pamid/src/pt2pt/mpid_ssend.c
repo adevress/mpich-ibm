@@ -54,7 +54,6 @@ int MPID_Ssend(const void    * buf,
                                        tag,
                                        comm,
                                        context_offset,
-                                       MPIDI_REQUEST_TYPE_SEND,
                                        &sreq);
       if (MPIR_ThreadInfo.thread_provided <= MPI_THREAD_FUNNELED && sreq != NULL && sreq->cc != 0)
         {
@@ -102,7 +101,6 @@ int MPID_Ssend(const void    * buf,
 
   /* message type info */
   sreq->kind = MPID_REQUEST_SEND;
-  MPIDI_Request_setType(sreq, MPIDI_REQUEST_TYPE_SSEND);
   MPIDI_Request_setSync(sreq, 1);
 
   /* ----------------------------------------- */

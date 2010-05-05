@@ -148,7 +148,6 @@ int MPIDI_Isend_self(const void    * buf,
                      int             tag,
                      MPID_Comm     * comm,
                      int             context_offset,
-                     int             type,
                      MPID_Request ** request);
 
 /** \brief Helper function to complete a rendevous transfer */
