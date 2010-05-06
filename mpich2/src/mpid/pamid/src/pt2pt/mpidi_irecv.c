@@ -32,7 +32,6 @@ MPIDI_Irecv(void          * buf,
             MPID_Request ** request,
             char          * func)
 {
-  int mpi_errno = MPI_SUCCESS;
   int found;
   MPID_Request * rreq;
 
@@ -97,9 +96,6 @@ MPIDI_Irecv(void          * buf,
           /* no other thread can possibly be waiting on rreq,
              so it is safe to reset ref_count and cc */
           rreq->cc = 0;
-          if (status != MPI_STATUS_IGNORE)
-            *status = rreq->status;
-          mpi_errno = rreq->status.MPI_ERROR;
         }
       else if (MPIDI_Request_isRzv(rreq))
         {
@@ -125,18 +121,14 @@ MPIDI_Irecv(void          * buf,
             MPIDI_Buffer_copy(rreq->mpid.uebuf,
                               rreq->mpid.uebuflen,
                               MPI_CHAR,
-                              &mpi_errno,
+                              &rreq->status.MPI_ERROR,
                               buf,
                               count,
                               datatype,
                               (MPIDI_msg_sz_t*)&rreq->status.count,
                               &rreq->status.MPI_ERROR);
-          mpi_errno = rreq->status.MPI_ERROR;
           MPIU_Free(rreq->mpid.uebuf);
           rreq->mpid.uebuf = NULL;
-
-          if (status != MPI_STATUS_IGNORE)
-            *status = rreq->status;
         }
 
       else
@@ -169,5 +161,8 @@ MPIDI_Irecv(void          * buf,
     }
 
   *request = rreq;
-  return mpi_errno;
+  if (status != MPI_STATUS_IGNORE)
+    *status = rreq->status;
+
+  return rreq->status.MPI_ERROR;
 }
