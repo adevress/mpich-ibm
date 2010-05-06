@@ -3,7 +3,7 @@
 #ifdef TRACE_ERR
 #undef TRACE_ERR
 #endif
-#define TRACE_ERR(x) //fprintf x
+#define TRACE_ERR(x) fprintf x
 
 static void cb_bcast(void *ctxt, void *clientdata, pami_result_t err)
 {
@@ -64,7 +64,7 @@ int MPIDO_Bcast(void *buffer,
    bcast.cmd.xfer_broadcast.type = PAMI_BYTE;
    bcast.cmd.xfer_broadcast.typecount = count;
 
-   TRACE_ERR((stderr,"posting bcast, context: %d\n",0));
+   TRACE_ERR((stderr,"posting bcast, context: %d, algoname: %s\n",0, comm_ptr->mpid.bcast_metas[0].name));
    rc = PAMI_Collective(MPIDI_Context[0], (pami_xfer_t *)&bcast);
    TRACE_ERR((stderr,"bcast posted, rc: %d\n", rc));
 
