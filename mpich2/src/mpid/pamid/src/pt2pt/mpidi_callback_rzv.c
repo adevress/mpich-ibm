@@ -21,15 +21,15 @@ void MPIDI_RecvRzvCB(pami_context_t   context,
                      size_t          msginfo_size,
                      void          * sndbuf,
                      size_t          sndlen,
-                     pami_recv_t    * recv)
+                     pami_recv_t   * recv)
 {
   MPID_assert(recv == NULL);
   MPID_assert(sndlen == 0);
   MPID_assert(_msginfo != NULL);
   MPID_assert(msginfo_size == sizeof(MPIDI_MsgEnvelope));
   const MPIDI_MsgEnvelope * envelope = (const MPIDI_MsgEnvelope *)_msginfo;
-  MPIDI_MsgInfo * msginfo = (MPIDI_MsgInfo *)&envelope->envelope.msginfo;
-  size_t senderrank = msginfo->msginfo.peerrank;
+  const MPIDI_MsgInfo * msginfo = (const MPIDI_MsgInfo *)&envelope->envelope.msginfo;
+  pami_task_t senderrank = msginfo->msginfo.sender;
   /* size_t               contextid = (size_t)_contextid; */
 
   MPID_Request * rreq = NULL;

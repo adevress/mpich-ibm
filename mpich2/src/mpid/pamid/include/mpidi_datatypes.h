@@ -165,7 +165,7 @@ MPIDI_Message_match;
 struct MPIDI_MsgInfo_t
   {
     void     * req;         /**< peer's request pointer */
-    pami_task_t peerrank;    /**< other guy's rank       */
+    pami_task_t sender;     /**< rank of the task sending this msginfo */
     unsigned   MPItag;      /**< match tag              */
     unsigned   MPIrank;     /**< match rank             */
     uint16_t   MPIctxt;     /**< match context          */
@@ -205,6 +205,7 @@ struct MPIDI_Request
   struct MPID_Request  *next;         /**< Link to next req. in queue */
 
   pami_work_t           post_request; /**<                            */
+  pami_task_t           peerrank;     /**< The other guy's rank       */
 
   char                 *userbuf;      /**< User buffer                */
   unsigned              userbufcount; /**< Userbuf data count         */

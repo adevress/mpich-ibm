@@ -140,10 +140,7 @@ MPIDI_Send(pami_context_t  context,
 {
   pami_endpoint_t dest;
   MPIDI_Context_endpoint(sreq, &dest);
-
-  pami_task_t old_peer = MPIDI_Request_getPeerRank(sreq);
-  MPIDI_Request_setPeerRank(sreq, MPIDI_Process.global.rank);
-
+  sreq->mpid.envelope.envelope.msginfo.msginfo.sender = MPIDI_Process.global.rank;
 
   /* Always use the short protocol when sndlen is zero.
    */
@@ -174,9 +171,6 @@ MPIDI_Send(pami_context_t  context,
                      sndbuf,
                      sndlen);
     }
-
-
-  MPIDI_Request_setPeerRank(sreq, old_peer);
 }
 
 

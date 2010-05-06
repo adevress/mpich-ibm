@@ -21,7 +21,7 @@ void MPIDI_RecvCB(pami_context_t   context,
                   size_t          msginfo_size,
                   void          * sndbuf,
                   size_t          sndlen,
-                  pami_recv_t    * recv)
+                  pami_recv_t   * recv)
 {
   MPID_assert((sndbuf == NULL) ^ (recv == NULL));
 
@@ -29,7 +29,7 @@ void MPIDI_RecvCB(pami_context_t   context,
   MPID_assert(msginfo_size == sizeof(MPIDI_MsgInfo));
 
   const MPIDI_MsgInfo *msginfo = (const MPIDI_MsgInfo *)_msginfo;
-  size_t senderrank = msginfo->msginfo.peerrank;
+  pami_task_t senderrank = msginfo->msginfo.sender;
   /* size_t               contextid = (size_t)_contextid; */
 
   MPID_Request * rreq = NULL;

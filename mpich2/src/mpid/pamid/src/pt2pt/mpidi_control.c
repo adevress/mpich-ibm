@@ -13,16 +13,13 @@
  * \param[in] peerrank The node to whom the control message is to be sent
  */
 static inline void
-MPIDI_CtrlSend(pami_context_t context,
+MPIDI_CtrlSend(pami_context_t  context,
                MPIDI_MsgInfo * control,
-               size_t peerrank)
+               pami_task_t     peerrank)
 {
-  pami_task_t old_peer = control->msginfo.peerrank;
-  control->msginfo.peerrank = MPIDI_Process.global.rank;
-
-
   pami_endpoint_t dest;
   PAMI_Endpoint_create(MPIDI_Client, peerrank, 0, &dest);
+  control->msginfo.sender = MPIDI_Process.global.rank;
 
   pami_send_immediate_t params = {
   dispatch : MPIDI_Protocols.Control,
@@ -40,9 +37,6 @@ MPIDI_CtrlSend(pami_context_t context,
   pami_result_t rc;
   rc = PAMI_Send_immediate(context, &params);
   MPID_assert(rc == PAMI_SUCCESS);
-
-
-  control->msginfo.peerrank = old_peer;
 }
 
 
@@ -58,9 +52,10 @@ MPIDI_CtrlSend(pami_context_t context,
  *
  * \param[in,out] rreq MPI receive request object
  */
-void MPIDI_RecvRzvDoneCB(pami_context_t   context,
-                         void          * cookie,
-                         pami_result_t    result)
+void
+MPIDI_RecvRzvDoneCB(pami_context_t  context,
+                    void          * cookie,
+                    pami_result_t   result)
 {
   MPID_Request * rreq = (MPID_Request *)cookie;
   MPID_assert(rreq != NULL);
@@ -91,7 +86,8 @@ void MPIDI_RecvRzvDoneCB(pami_context_t   context,
  * \return The same as MPIDI_CtrlSend()
  */
 void
-MPIDI_postSyncAck(pami_context_t context, MPID_Request * req)
+MPIDI_postSyncAck(pami_context_t   context,
+                  MPID_Request   * req)
 {
   MPIDI_Request_setControl(req, MPIDI_CONTROL_SSEND_ACKNOWLEDGE);
 
@@ -108,7 +104,9 @@ MPIDI_postSyncAck(pami_context_t context, MPID_Request * req)
  * \param[in] peer The rank of the node sending the data
  */
 static inline void
-MPIDI_procSyncAck(pami_context_t context, const MPIDI_MsgInfo *info, unsigned peer)
+MPIDI_procSyncAck(pami_context_t        context,
+                  const MPIDI_MsgInfo * info,
+                  unsigned              peer)
 {
   MPID_assert(info != NULL);
   MPID_Request *req = MPIDI_Msginfo_getPeerRequest(info);
@@ -128,7 +126,9 @@ MPIDI_procSyncAck(pami_context_t context, const MPIDI_MsgInfo *info, unsigned pe
  * \param[in] peer The rank of the node sending the data
  */
 void
-MPIDI_procCancelReq(pami_context_t context, const MPIDI_MsgInfo *info, size_t peer)
+MPIDI_procCancelReq(pami_context_t        context,
+                    const MPIDI_MsgInfo * info,
+                    pami_task_t           peer)
 {
   MPIDI_CONTROL   type;
   MPIDI_MsgInfo   ackinfo;
@@ -169,7 +169,9 @@ MPIDI_procCancelReq(pami_context_t context, const MPIDI_MsgInfo *info, size_t pe
  * \param[in] peer The rank of the node sending the data
  */
 static inline void
-MPIDI_procCancelAck(pami_context_t context, const MPIDI_MsgInfo *info, size_t peer)
+MPIDI_procCancelAck(pami_context_t        context,
+                    const MPIDI_MsgInfo * info,
+                    pami_task_t           peer)
 {
   MPID_assert(info != NULL);
   MPID_Request *req = MPIDI_Msginfo_getPeerRequest(info);
@@ -227,7 +229,10 @@ MPIDI_procCancelAck(pami_context_t context, const MPIDI_MsgInfo *info, size_t pe
  * \param[in] info The contents of the control message as a MPIDI_MsgInfo struct
  * \param[in] peer The rank of the node sending the data
  */
-static inline void MPIDI_procRzvAck(pami_context_t context, const MPIDI_MsgInfo *info, size_t peer)
+static inline void
+MPIDI_procRzvAck(pami_context_t        context,
+                 const MPIDI_MsgInfo * info,
+                 pami_task_t           peer)
 {
   MPID_assert(info != NULL);
   MPID_Request *req = MPIDI_Msginfo_getPeerRequest(info);
@@ -246,20 +251,21 @@ static inline void MPIDI_procRzvAck(pami_context_t context, const MPIDI_MsgInfo 
 /**
  * \brief This is the general PT2PT control message call-back
  */
-void MPIDI_ControlCB(pami_context_t   context,
-                     void          * _contextid,
-                     void          * _msginfo,
-                     size_t          msginfo_size,
-                     void          * sndbuf,
-                     size_t          sndlen,
-                     pami_recv_t    * recv)
+void
+MPIDI_ControlCB(pami_context_t  context,
+                void          * _contextid,
+                void          * _msginfo,
+                size_t          msginfo_size,
+                void          * sndbuf,
+                size_t          sndlen,
+                pami_recv_t   * recv)
 {
   MPID_assert(recv == NULL); /**< Uncomment when ticket #50 is fixed */
   MPID_assert(sndlen == 0);
   MPID_assert(_msginfo != NULL);
   MPID_assert(msginfo_size == sizeof(MPIDI_MsgInfo));
   const MPIDI_MsgInfo *msginfo = (const MPIDI_MsgInfo *)_msginfo;
-  size_t peer = msginfo->msginfo.peerrank;
+  pami_task_t peer = msginfo->msginfo.sender;
   /* size_t               contextid = (size_t)_contextid; */
 
   switch (msginfo->msginfo.control)
