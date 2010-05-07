@@ -75,7 +75,14 @@ int MPID_Startall(int count, MPID_Request * requests[])
 
         default:
           {
-            rc = MPIR_Err_create_code(MPI_SUCCESS, MPIR_ERR_FATAL, "MPID_Startall", __LINE__, MPI_ERR_INTERN,"**ch3|badreqtype","**ch3|badreqtype %d",MPIDI_Request_getPType(preq));
+            rc = MPIR_Err_create_code(MPI_SUCCESS,
+                                      MPIR_ERR_FATAL,
+                                      __FUNCTION__,
+                                      __LINE__,
+                                      MPI_ERR_INTERN,
+                                      "**ch3|badreqtype",
+                                      "**ch3|badreqtype %d",
+                                      MPIDI_Request_getPType(preq));
           }
 
         } /* switch should end here, bug fixed. */

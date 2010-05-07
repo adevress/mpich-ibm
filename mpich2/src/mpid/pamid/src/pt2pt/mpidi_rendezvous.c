@@ -68,7 +68,7 @@ MPIDI_RendezvousTransfer(pami_context_t context,
 
           int mpi_errno = MPIR_Err_create_code(MPI_SUCCESS,
                                                MPIR_ERR_FATAL,
-                                               "mpid_recv",
+                                               __FUNCTION__,
                                                __LINE__,
                                                MPI_ERR_OTHER,
                                                "**nomem", 0);

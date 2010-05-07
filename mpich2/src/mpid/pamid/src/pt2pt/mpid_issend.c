@@ -61,7 +61,7 @@ int MPID_Issend(const void    * buf,
       *request = NULL;
       int mpi_errno = MPIR_Err_create_code(MPI_SUCCESS,
                                            MPIR_ERR_FATAL,
-                                           "mpid_send",
+                                           __FUNCTION__,
                                            __LINE__,
                                            MPI_ERR_OTHER,
                                            "**nomem", 0);

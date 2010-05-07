@@ -60,7 +60,7 @@ int MPID_Ssend(const void    * buf,
           *request = NULL;
           mpi_errno = MPIR_Err_create_code(MPI_SUCCESS,
                                            MPIR_ERR_FATAL,
-                                           __PRETTY_FUNCTION__,
+                                           __FUNCTION__,
                                            __LINE__,
                                            MPI_ERR_OTHER,
                                            "**dev|selfsenddeadlock", 0);
@@ -79,7 +79,7 @@ int MPID_Ssend(const void    * buf,
       *request = NULL;
       int mpi_errno = MPIR_Err_create_code(MPI_SUCCESS,
                                            MPIR_ERR_FATAL,
-                                           "mpid_send",
+                                           __FUNCTION__,
                                            __LINE__,
                                            MPI_ERR_OTHER,
                                            "**nomem", 0);
