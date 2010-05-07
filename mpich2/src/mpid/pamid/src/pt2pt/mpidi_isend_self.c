@@ -143,7 +143,7 @@ int MPIDI_Isend_self(const void    * buf,
       *request                    = sreq;
       sreq->comm                  = comm;
       sreq->kind                  = MPID_REQUEST_SEND;
-      MPIDI_Request_setMatch(sreq,match.tag, match.rank, match.context_id);
+      MPIDI_Request_setMatch(sreq, match.tag, match.rank, match.context_id);
       MPIR_Comm_add_ref(comm);
       MPIDI_Request_setSelf(rreq, 1); /* it's a self request */
       MPIDI_Progress_signal();        /* Signal any waiter.  */

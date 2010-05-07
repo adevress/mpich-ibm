@@ -28,7 +28,7 @@ MPID_PSendRequest(const void    * buf,
   (*request)->kind              = MPID_PREQUEST_SEND;
   (*request)->comm              = comm;
   MPIR_Comm_add_ref(comm);
-  MPIDI_Request_setMatch((*request),tag,rank,comm->context_id + context_offset);
+  MPIDI_Request_setMatch((*request), tag, rank, comm->context_id+context_offset);
   (*request)->mpid.userbuf      = (void *) buf;
   (*request)->mpid.userbufcount = count;
   (*request)->mpid.datatype     = datatype;

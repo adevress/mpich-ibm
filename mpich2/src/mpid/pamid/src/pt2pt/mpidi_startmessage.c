@@ -236,7 +236,8 @@ MPIDI_StartMsg_handoff(pami_context_t   context,
       MPID_Segment_init(sreq->mpid.userbuf,
                         sreq->mpid.userbufcount,
                         sreq->mpid.datatype,
-                        &segment,0);
+                        &segment,
+                        0);
       MPID_Segment_pack(&segment, 0, &last, sreq->mpid.uebuf);
       MPID_assert(last == data_sz);
     }

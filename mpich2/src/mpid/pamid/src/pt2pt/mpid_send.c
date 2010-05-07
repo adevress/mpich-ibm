@@ -76,7 +76,7 @@ int MPID_Send(const void    * buf,
     }
 
   /* match info */
-  MPIDI_Request_setMatch(sreq, tag,comm->rank,comm->context_id+context_offset);
+  MPIDI_Request_setMatch(sreq, tag, comm->rank, comm->context_id+context_offset);
 
   /* data buffer info */
   sreq->mpid.userbuf          = (char *)buf;
