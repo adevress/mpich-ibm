@@ -30,21 +30,11 @@ int MPID_Ssend(const void    * buf,
 {
   MPID_Request * sreq = NULL;
 
-  /* ------------------------------ */
-  /* special case: NULL destination */
-  /* ------------------------------ */
-
-  if (rank == MPI_PROC_NULL)
-    {
-      *request = NULL;
-      return MPI_SUCCESS;
-    }
-
   /* --------------------------- */
   /* special case: send-to-self  */
   /* --------------------------- */
 
-  else if (rank == comm->rank && comm->comm_kind != MPID_INTERCOMM)
+  if (rank == comm->rank && comm->comm_kind != MPID_INTERCOMM)
     {
       /* I'm sending to myself! */
       int mpi_errno = MPIDI_Isend_self(buf,
@@ -54,7 +44,7 @@ int MPID_Ssend(const void    * buf,
                                        tag,
                                        comm,
                                        context_offset,
-                                       &sreq);
+                                       request);
       if (MPIR_ThreadInfo.thread_provided <= MPI_THREAD_FUNNELED && sreq != NULL && sreq->cc != 0)
         {
           *request = NULL;
@@ -66,7 +56,6 @@ int MPID_Ssend(const void    * buf,
                                            "**dev|selfsenddeadlock", 0);
           return mpi_errno;
         }
-      *request = sreq;
       return mpi_errno;
     }
 
@@ -96,12 +85,23 @@ int MPID_Ssend(const void    * buf,
 
   /* communicator & destination info */
   sreq->comm                 = comm;  MPIR_Comm_add_ref(comm);
-  MPIDI_Request_setPeerRank(sreq, comm->vcr[rank]);
+  if (rank != MPI_PROC_NULL)
+    MPIDI_Request_setPeerRank(sreq, comm->vcr[rank]);
   MPIDI_Request_setPeerRequest(sreq, sreq);
 
   /* message type info */
   sreq->kind = MPID_REQUEST_SEND;
   MPIDI_Request_setSync(sreq, 1);
+
+  /* ------------------------------ */
+  /* special case: NULL destination */
+  /* ------------------------------ */
+
+  if (rank == MPI_PROC_NULL)
+    {
+      *request = NULL;
+      return MPI_SUCCESS;
+    }
 
   /* ----------------------------------------- */
   /*      start the message                    */
