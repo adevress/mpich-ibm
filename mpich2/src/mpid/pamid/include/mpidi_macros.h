@@ -1,6 +1,6 @@
 /*  (C)Copyright IBM Corp.  2007, 2008  */
 /**
- * \file include/mpid_macros.h
+ * \file include/mpidi_macros.h
  * \brief ???
  */
 /*
@@ -9,8 +9,8 @@
  */
 
 
-#ifndef __include_mpid_macros_h__
-#define __include_mpid_macros_h__
+#ifndef __include_mpidi_macros_h__
+#define __include_mpidi_macros_h__
 
 
 /* Best results are achieved when your expression evaluates to 1 or 0. */

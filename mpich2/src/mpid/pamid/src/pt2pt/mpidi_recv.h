@@ -1,12 +1,12 @@
 /*  (C)Copyright IBM Corp.  2007, 2008  */
 /**
- * \file src/pt2pt/mpid_irecv.c
+ * \file src/pt2pt/mpidi_recv.h
  * \brief ADI level implemenation of MPI_Irecv()
  */
 #include "mpidimpl.h"
 
-#ifndef __mpidi_irecv_h__
-#define __mpidi_irecv_h__
+#ifndef __src_pt2pt_mpidi_recv_h__
+#define __src_pt2pt_mpidi_recv_h__
 
 /**
  * \brief ADI level implemenation of MPI_Irecv()

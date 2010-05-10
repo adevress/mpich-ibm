@@ -1,6 +1,6 @@
 /*  (C)Copyright IBM Corp.  2007, 2008  */
 /**
- * \file include/mpid_prototypes.h
+ * \file include/mpidi_prototypes.h
  * \brief ???
  */
 /*
@@ -9,8 +9,8 @@
  */
 
 
-#ifndef __include_mpid_prototypes_h__
-#define __include_mpid_prototypes_h__
+#ifndef __include_mpidi_prototypes_h__
+#define __include_mpidi_prototypes_h__
 
 
 /**

@@ -1,6 +1,6 @@
 /*  (C)Copyright IBM Corp.  2007, 2008  */
 /**
- * \file include/mpidthread.h
+ * \file include/mpidi_thread.h
  * \brief ???
  *
  */
@@ -10,8 +10,8 @@
  */
 
 
-#ifndef __include_mpidthread_h__
-#define __include_mpidthread_h__
+#ifndef __include_mpidi_thread_h__
+#define __include_mpidi_thread_h__
 
 /**
  * ******************************************************************

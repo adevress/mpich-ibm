@@ -1,6 +1,6 @@
 /*  (C)Copyright IBM Corp.  2007, 2008  */
 /**
- * \file include/mpid_externs.h
+ * \file include/mpidi_externs.h
  * \brief ???
  */
 /*
@@ -9,8 +9,8 @@
  */
 
 
-#ifndef __include_mpid_externs_h__
-#define __include_mpid_externs_h__
+#ifndef __include_mpidi_externs_h__
+#define __include_mpidi_externs_h__
 
 
 extern pami_client_t  MPIDI_Client;

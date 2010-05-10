@@ -1,6 +1,6 @@
 /*  (C)Copyright IBM Corp.  2007, 2008  */
 /**
- * \file include/mpid_constants.h
+ * \file include/mpidi_constants.h
  * \brief ???
  */
 /*
@@ -9,8 +9,8 @@
  */
 
 
-#ifndef __include_mpid_constants_h__
-#define __include_mpid_constants_h__
+#ifndef __include_mpidi_constants_h__
+#define __include_mpidi_constants_h__
 
 
 /**

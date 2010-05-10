@@ -24,4 +24,3 @@ int MPIDO_Allreduce(void *sendbuf,
    TRACE_ERR((stderr,"in mpido_allreduce\n"));
    return MPIR_Allreduce(sendbuf, recvbuf, count, datatype, op, comm_ptr);
 }
-

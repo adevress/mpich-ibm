@@ -9,8 +9,8 @@
  */
 #include "mpidimpl.h"
 
-#ifndef __mpidi_isend_h__
-#define __mpidi_isend_h__
+#ifndef __src_pt2pt_mpidi_send_h__
+#define __src_pt2pt_mpidi_send_h__
 
 /**
  * \brief This is a generic inline verion of the various send functions.

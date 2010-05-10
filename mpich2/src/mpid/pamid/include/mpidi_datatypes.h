@@ -1,6 +1,6 @@
 /*  (C)Copyright IBM Corp.  2007, 2008  */
 /**
- * \file include/mpid_datatypes.h
+ * \file include/mpidi_datatypes.h
  * \brief ???
  */
 /*
@@ -9,8 +9,8 @@
  */
 
 
-#ifndef __include_mpid_datatypes_h__
-#define __include_mpid_datatypes_h__
+#ifndef __include_mpidi_datatypes_h__
+#define __include_mpidi_datatypes_h__
 
 
 /**

@@ -12,7 +12,7 @@ static void cb_bcast(void *ctxt, void *clientdata, pami_result_t err)
    (*active)--;
 }
 
-int MPIDO_Bcast(void *buffer, 
+int MPIDO_Bcast(void *buffer,
                 int count,
                 MPI_Datatype datatype,
                 int root,
@@ -28,7 +28,7 @@ int MPIDO_Bcast(void *buffer,
    if(count == 0)
       return MPI_SUCCESS;
 
-   MPIDI_Datatype_get_info(count, datatype, 
+   MPIDI_Datatype_get_info(count, datatype,
                data_contig, data_size, data_ptr, data_true_lb);
 
    data_buffer = buffer + data_true_lb;
@@ -79,7 +79,7 @@ int MPIDO_Bcast(void *buffer,
       spin++;
    }
    TRACE_ERR((stderr,"bcast done\n"));
-   
+
    if(!data_contig)
    {
       TRACE_ERR((stderr,"cleaning up noncontig\n"));
@@ -97,4 +97,3 @@ int MPIDO_Bcast(void *buffer,
    TRACE_ERR((stderr,"leaving bcast\n"));
    return rc;
 }
-

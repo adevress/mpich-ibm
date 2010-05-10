@@ -1,6 +1,6 @@
 /*  (C)Copyright IBM Corp.  2007, 2008  */
 /**
- * \file src/pt2pt/mpidi_irecv.c
+ * \file src/pt2pt/mpidi_recvmsg.c
  * \brief ADI level implemenation of common recv code.
  */
 #include "mpidimpl.h"

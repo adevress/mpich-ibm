@@ -36,4 +36,3 @@ int MPIDO_Barrier(MPID_Comm *comm_ptr)
    TRACE_ERR((stderr,"exiting mpido_barrier\n"));
    return rc;
 }
-

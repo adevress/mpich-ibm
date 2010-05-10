@@ -1,6 +1,6 @@
 /*  (C)Copyright IBM Corp.  2007, 2008  */
 /**
- * \file src/pt2pt/mpidi_startmessage.c
+ * \file src/pt2pt/mpidi_sendmsg.c
  * \brief Funnel point for starting all MPI messages
  */
 #include "mpidimpl.h"

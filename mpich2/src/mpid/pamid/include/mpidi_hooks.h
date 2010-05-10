@@ -1,6 +1,6 @@
 /*  (C)Copyright IBM Corp.  2007, 2008  */
 /**
- * \file include/mpid_hooks.h
+ * \file include/mpidi_hooks.h
  * \brief ???
  */
 /*
@@ -9,8 +9,8 @@
  */
 
 
-#ifndef __include_mpid_hooks_h__
-#define __include_mpid_hooks_h__
+#ifndef __include_mpidi_hooks_h__
+#define __include_mpidi_hooks_h__
 
 
 typedef int                 MPID_VCR;
