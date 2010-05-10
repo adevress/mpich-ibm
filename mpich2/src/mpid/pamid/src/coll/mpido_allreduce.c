@@ -3,7 +3,7 @@
 #ifdef TRACE_ERR
 #undef TRACE_ERR
 #endif
-#define TRACE_ERR(x) fprintf x
+#define TRACE_ERR(x) //fprintf x
 
 #if 0
 static void cb_allreduce(void *ctxt, void *clientdata, pami_result_t err)

@@ -3,7 +3,7 @@
 #ifdef TRACE_ERR
 #undef TRACE_ERR
 #endif
-#define TRACE_ERR(x) fprintf x
+#define TRACE_ERR(x) //fprintf x
 
 static void cb_bcast(void *ctxt, void *clientdata, pami_result_t err)
 {
