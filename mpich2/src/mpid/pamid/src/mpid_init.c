@@ -8,10 +8,8 @@
 #ifdef TRACE_ERR
 #undef TRACE_ERR
 #endif
-#define TRACE_ERR(x) fprintf x
-//#define        MAX_CONTEXTS 1
-size_t         _CONTEXTS;
-pami_client_t  MPIDI_Client;
+#define TRACE_ERR(x) // fprintf x
+pami_client_t   MPIDI_Client;
 pami_context_t *MPIDI_Context;
 
 
@@ -126,32 +124,28 @@ MPIDI_Init(int* rank, int* size, int* threading)
   /*  Figure out the context situation  */
   /* ---------------------------------- */
   unsigned same  = PAMIX_Configuration_query(MPIDI_Client, PAMI_CONST_CONTEXTS).value.intval;
-   if(!same)
-   {
-      MPIDI_Process.avail_contexts = 1; /* all bets are off for now */
-   }
-   else
-   {
+  if(same)
+    {
       unsigned possible_contexts = PAMIX_Configuration_query(MPIDI_Client, PAMI_NUM_CONTEXTS).value.intval;
       if(MPIDI_Process.avail_contexts > possible_contexts)
-      {
-         MPIDI_Process.avail_contexts = possible_contexts;
-      }
-   }
-   if(MPIDI_Process.avail_contexts == 1)
-   {
+        MPIDI_Process.avail_contexts = possible_contexts;
+    }
+  else
+    {
+      MPIDI_Process.avail_contexts = 1; /* all bets are off for now */
+    }
+
+  if(MPIDI_Process.avail_contexts == 1)
+    {
       *threading = MPI_THREAD_SINGLE;
-   }
-   if(MPIDI_Process.avail_contexts > 1)
-   {
+    }
+
+  if(MPIDI_Process.avail_contexts > 1)
+    {
       TRACE_ERR((stderr,"Num contexts :%d (>1), can't use shmem collectives\n", MPIDI_Process.avail_contexts));
       MPIDI_Process.optimized.collectives = 0;
-   }
+    }
 
-   MPIDI_Context = (pami_context_t *)malloc(sizeof(pami_context_t) * MPIDI_Process.avail_contexts);
-
-   TRACE_ERR((stderr,"Creating %d contexts\n", (int)MPIDI_Process.avail_contexts));
-         
   /* ----------------------------------- */
   /*  Create the communication contexts  */
   /* ----------------------------------- */
@@ -159,6 +153,8 @@ MPIDI_Init(int* rank, int* size, int* threading)
   name  : PAMI_CONST_CONTEXTS,
   value : { intval : 1, },
   };
+  MPIDI_Context = (pami_context_t *)MPIU_Malloc(sizeof(pami_context_t) * MPIDI_Process.avail_contexts);
+  TRACE_ERR((stderr,"Creating %d contexts\n", MPIDI_Process.avail_contexts));
   rc = PAMI_Context_createv(MPIDI_Client, &config, 1, MPIDI_Context, MPIDI_Process.avail_contexts);
   MPID_assert(rc == PAMI_SUCCESS);
 
@@ -251,7 +247,7 @@ int MPID_Init(int * argc,
 
    /* basically a noop for now */
   MPIDI_Comm_create(comm);
-  
+
   MPIDI_Comm_world_setup();
 
 

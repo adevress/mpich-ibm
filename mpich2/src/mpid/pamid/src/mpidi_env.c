@@ -192,7 +192,7 @@
  *   - SRECT - Use the short rectangle protocol. If you set this and do not
  *             have a rectangular (sub)communicator, you'll get the MPIDO
  *             option. This is the default selection for rectangular subcomms.
- *   - SBINOM - Use the short binomial protocol. This is the default for 
+ *   - SBINOM - Use the short binomial protocol. This is the default for
  *             irregular subcomms.
  *   - ARING - Use the async rectangular ring protocol
  *   - ARECT - Use the async rectangle protocol
@@ -354,14 +354,14 @@
  *       with up to 208 bytes. It is very fast for short messages however.
  *   - SB - Use the short async binomial protocol. This protocol only works
  *       with up to 208 bytes. It is very fast for short messages on irregular
- *       subcommunicators. However, this protocol can produce slightly 
- *       different results on different nodes because of floating point 
+ *       subcommunicators. However, this protocol can produce slightly
+ *       different results on different nodes because of floating point
  *       addition being nonassociative. This is still useable on integers
  *       and floating point operations beyond MPI_SUM and MPI_PROD. To get this
  *       protocol for MPI_SUM and MPI_PROD, use the PAMI_ALLREDUCE_ND=1 option.
  *   - DPUT - Use the rectangular direct put protocol. This is the default for
  *       large messages on rectangular subcomms and MPI_COMM_WORLD
- *   - TDPUT - Use the tree plus direct put protocol. Only usable on 
+ *   - TDPUT - Use the tree plus direct put protocol. Only usable on
  *       MPI_COMM_WORLD.
  *   - GLOBAL - Use the global tree protocol. Only usable on MPI_COMM_WORLD.
  *   - Default varies based on the communicator and message size and if the
@@ -538,9 +538,9 @@ MPIDI_Env_setup()
     char* names[] = {"PAMI_RMA_PENDING", NULL};
     ENV_Unsigned(names, &MPIDI_Process.rma_pending);
   }
-  
-   {
-      char *names[] = {"PAMI_MAXCONTEXTS", NULL};
-      ENV_Unsigned(names, &MPIDI_Process.avail_contexts);
-   }
+
+  {
+    char *names[] = {"PAMI_MAXCONTEXTS", NULL};
+    ENV_Unsigned(names, &MPIDI_Process.avail_contexts);
+  }
 }

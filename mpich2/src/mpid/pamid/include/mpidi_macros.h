@@ -142,4 +142,13 @@ MPIDI_StartMsg(MPID_Request * sreq)
 }
 
 
+static inline void
+MPIU_TestFree(void ** p)
+{
+  if(*p)
+    MPIU_Free(*p);
+  *p = NULL;
+}
+
+
 #endif
