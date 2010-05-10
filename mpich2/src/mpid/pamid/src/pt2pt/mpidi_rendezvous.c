@@ -9,7 +9,7 @@ void
 MPIDI_RendezvousTransfer(pami_context_t context,
                          MPID_Request * rreq)
 {
-  char *rcvbuf;
+  void *rcvbuf;
   unsigned rcvlen;
 
   /* -------------------------------------- */
@@ -48,7 +48,7 @@ MPIDI_RendezvousTransfer(pami_context_t context,
       MPIDI_Request_setCA(rreq, MPIDI_CA_COMPLETE);
       rreq->mpid.uebuf = NULL;
       rreq->mpid.uebuflen = 0;
-      rcvbuf = (char *)rreq->mpid.userbuf + dt_true_lb;
+      rcvbuf = rreq->mpid.userbuf + dt_true_lb;
     }
 
   /* --------------------------------------------- */

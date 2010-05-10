@@ -119,7 +119,7 @@ void MPIDI_RecvCB(pami_context_t   context,
 
           rreq->mpid.uebuf    = NULL;
           rreq->mpid.uebuflen = 0;
-          void* rcvbuf = (char*)rreq->mpid.userbuf + dt_true_lb;
+          void* rcvbuf = rreq->mpid.userbuf + dt_true_lb;
 
           if (recv)
             {

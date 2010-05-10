@@ -67,8 +67,7 @@ int MPID_Irecv(void          * buf,
                           comm,
                           context_offset,
                           MPI_STATUS_IGNORE,
-                          request,
-                          (char*)__FUNCTION__);
+                          request);
 
    return mpi_errno;
 }

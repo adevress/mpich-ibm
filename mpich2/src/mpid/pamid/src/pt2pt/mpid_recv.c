@@ -50,8 +50,7 @@ int MPID_Recv(void          * buf,
                           comm,
                           context_offset,
                           status,
-                          request,
-                          (char*)__FUNCTION__);
+                          request);
 
   if (*((*request)->cc_ptr) == 0)
     {

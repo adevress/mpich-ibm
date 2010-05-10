@@ -23,7 +23,7 @@ int MPID_Recv_init(void * buf,
   rreq->comm = comm;
   MPIR_Comm_add_ref(comm);
   MPIDI_Request_setMatch(rreq, tag, rank, comm->recvcontext_id+context_offset);
-  rreq->mpid.userbuf = (char *) buf;
+  rreq->mpid.userbuf = buf;
   rreq->mpid.userbufcount = count;
   rreq->mpid.datatype = datatype;
   rreq->partner_request = NULL;

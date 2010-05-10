@@ -48,7 +48,7 @@ int MPIDI_Isend_self(const void    * buf,
                                            "**nomem", 0);
       return mpi_errno;
     }
-  sreq->mpid.userbuf      = (char *)buf;
+  sreq->mpid.userbuf      = (void*)buf;
   sreq->mpid.userbufcount = count;
   sreq->mpid.datatype     = datatype;
   sreq->status.count      = count;

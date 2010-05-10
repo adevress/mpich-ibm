@@ -62,10 +62,10 @@ void MPIDI_Recvq_finalize()
 
 /**
  * \brief Find a request in the unexpected queue
- * \param [in]  source     Find by Sender
- * \param [in]  tag        Find by Tag
- * \param [in]  context_id Find by Context ID (communicator)
- * \return      The matching UE request or NULL
+ * \param[in]  source     Find by Sender
+ * \param[in]  tag        Find by Tag
+ * \param[in]  context_id Find by Context ID (communicator)
+ * \return     The matching UE request or NULL
  */
 int MPIDI_Recvq_FU(int source, int tag, int context_id, MPI_Status * status)
 {
@@ -164,11 +164,11 @@ int MPIDI_Recvq_FU(int source, int tag, int context_id, MPI_Status * status)
 
 /**
  * \brief Find a request in the unexpected queue and dequeue it
- * \param [in]  req        Find by address of request object on sender
- * \param [in]  source     Find by Sender
- * \param [in]  tag        Find by Tag
- * \param [in]  context_id Find by Context ID (communicator)
- * \return      The matching UE request or NULL
+ * \param[in]  req        Find by address of request object on sender
+ * \param[in]  source     Find by Sender
+ * \param[in]  tag        Find by Tag
+ * \param[in]  context_id Find by Context ID (communicator)
+ * \return     The matching UE request or NULL
  */
 MPID_Request * MPIDI_Recvq_FDUR(MPID_Request * req, int source, int tag, int context_id)
 {
@@ -237,11 +237,11 @@ MPID_Request * MPIDI_Recvq_FDUR(MPID_Request * req, int source, int tag, int con
 
 /**
  * \brief Find a request in the unexpected queue and dequeue it, or allocate a new request and enqueue it in the posted queue
- * \param [in]  source     Find by Sender
- * \param [in]  tag        Find by Tag
- * \param [in]  context_id Find by Context ID (communicator)
- * \param [out] foundp    TRUE iff the request was found
- * \return      The matching UE request or the new posted request
+ * \param[in]  source     Find by Sender
+ * \param[in]  tag        Find by Tag
+ * \param[in]  context_id Find by Context ID (communicator)
+ * \param[out] foundp    TRUE iff the request was found
+ * \return     The matching UE request or the new posted request
  */
 MPID_Request * MPIDI_Recvq_FDU_or_AEP(int source, int tag, int context_id, int * foundp)
 {
@@ -382,8 +382,8 @@ MPID_Request * MPIDI_Recvq_FDU_or_AEP(int source, int tag, int context_id, int *
 
 /**
  * \brief Find a request in the posted queue and dequeue it
- * \param [in]  req        Find by address of request object on sender
- * \return      The matching posted request or NULL
+ * \param[in]  req        Find by address of request object on sender
+ * \return     The matching posted request or NULL
  */
 int MPIDI_Recvq_FDPR(MPID_Request * req)
 {
@@ -437,11 +437,11 @@ int MPIDI_Recvq_FDPR(MPID_Request * req)
 
 /**
  * \brief Find a request in the posted queue and dequeue it, or allocate a new request and enqueue it in the unexpected queue
- * \param [in]  source     Find by Sender
- * \param [in]  tag        Find by Tag
- * \param [in]  context_id Find by Context ID (communicator)
- * \param [out] foundp    TRUE iff the request was found
- * \return      The matching posted request or the new UE request
+ * \param[in]  source     Find by Sender
+ * \param[in]  tag        Find by Tag
+ * \param[in]  context_id Find by Context ID (communicator)
+ * \param[out] foundp    TRUE iff the request was found
+ * \return     The matching posted request or the new UE request
  */
 MPID_Request * MPIDI_Recvq_FDP_or_AEU(int source, int tag, int context_id, int * foundp)
 {

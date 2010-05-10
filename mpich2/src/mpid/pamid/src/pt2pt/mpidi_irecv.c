@@ -29,8 +29,7 @@ MPIDI_Irecv(void          * buf,
             MPID_Comm     * comm,
             int             context_offset,
             MPI_Status    * status,
-            MPID_Request ** request,
-            char          * func)
+            MPID_Request ** request)
 {
   int found;
   MPID_Request * rreq;
