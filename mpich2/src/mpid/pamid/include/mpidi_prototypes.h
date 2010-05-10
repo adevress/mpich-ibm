@@ -88,15 +88,15 @@ void MPIDI_Progress_signal();
  * \{
  */
 pami_result_t MPIDI_SendMsg_handoff(pami_context_t context, void * sreq);
-int MPIDI_Irecv(void          * buf,
-                int             count,
-                MPI_Datatype    datatype,
-                int             rank,
-                int             tag,
-                MPID_Comm     * comm,
-                int             context_offset,
-                MPI_Status    * status,
-                MPID_Request ** request);
+int MPIDI_RecvMsg(void          * buf,
+                  int             count,
+                  MPI_Datatype    datatype,
+                  int             rank,
+                  int             tag,
+                  MPID_Comm     * comm,
+                  int             context_offset,
+                  MPI_Status    * status,
+                  MPID_Request ** request);
 
 void MPIDI_SendDoneCB   (pami_context_t   context,
                          void          * clientdata,

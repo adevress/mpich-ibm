@@ -4,6 +4,7 @@
  * \brief ADI level implemenation of MPI_Recv()
  */
 #include "mpidimpl.h"
+#include "mpidi_recv.h"
 
 /**
  * \brief ADI level implemenation of MPI_Recv()
@@ -30,33 +31,14 @@ int MPID_Recv(void          * buf,
               MPI_Status    * status,
               MPID_Request ** request)
 {
-  int mpi_errno;
-
-  /* ---------------------------------------- */
-  /* NULL rank means nothing to do.           */
-  /* ---------------------------------------- */
-  if (rank == MPI_PROC_NULL)
-    {
-      MPIR_Status_set_procnull(status);
-      *request = NULL;
-      return MPI_SUCCESS;
-    }
-
-  mpi_errno = MPIDI_Irecv(buf,
-                          count,
-                          datatype,
-                          rank,
-                          tag,
-                          comm,
-                          context_offset,
-                          status,
-                          request);
-
-  if (*((*request)->cc_ptr) == 0)
-    {
-      MPID_Request_release(*request);
-      *request = NULL;
-    }
-
-   return mpi_errno;
+  return MPIDI_Recv(buf,
+                    count,
+                    datatype,
+                    rank,
+                    tag,
+                    comm,
+                    context_offset,
+                    0,
+                    status,
+                    request);
 }

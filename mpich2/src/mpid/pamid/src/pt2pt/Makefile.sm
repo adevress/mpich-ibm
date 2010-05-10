@@ -12,7 +12,7 @@ lib${MPILIBNAME}_a_SOURCES =			\
         mpidi_callback_rzv.c			\
         mpidi_control.c				\
         mpidi_done.c				\
-        mpidi_irecv.c				\
         mpidi_isend_self.c			\
+        mpidi_recvmsg.c				\
         mpidi_rendezvous.c			\
         mpidi_sendmsg.c

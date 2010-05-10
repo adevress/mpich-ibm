@@ -21,15 +21,15 @@
  * \returns An MPI Error code
  */
 int
-MPIDI_Irecv(void          * buf,
-            int             count,
-            MPI_Datatype    datatype,
-            int             rank,
-            int             tag,
-            MPID_Comm     * comm,
-            int             context_offset,
-            MPI_Status    * status,
-            MPID_Request ** request)
+MPIDI_RecvMsg(void          * buf,
+              int             count,
+              MPI_Datatype    datatype,
+              int             rank,
+              int             tag,
+              MPID_Comm     * comm,
+              int             context_offset,
+              MPI_Status    * status,
+              MPID_Request ** request)
 {
   int found;
   MPID_Request * rreq;
