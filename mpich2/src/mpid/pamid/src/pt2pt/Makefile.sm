@@ -15,4 +15,4 @@ lib${MPILIBNAME}_a_SOURCES =			\
         mpidi_irecv.c				\
         mpidi_isend_self.c			\
         mpidi_rendezvous.c			\
-        mpidi_startmessage.c
+        mpidi_sendmsg.c

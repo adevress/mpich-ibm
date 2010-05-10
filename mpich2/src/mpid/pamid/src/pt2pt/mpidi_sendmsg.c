@@ -5,15 +5,11 @@
  */
 #include "mpidimpl.h"
 
-/* ----------------------------------------------------------------------- */
-/*          Helper function: gets the message underway once the request    */
-/* and the buffers have been allocated.                                    */
-/* ----------------------------------------------------------------------- */
 
 static inline void
-MPIDI_Send_zero(pami_context_t   context,
-                MPID_Request   * sreq,
-                pami_endpoint_t  dest)
+MPIDI_SendMsg_zero(pami_context_t   context,
+                   MPID_Request   * sreq,
+                   pami_endpoint_t  dest)
 {
   MPIDI_MsgInfo * msginfo = &sreq->mpid.envelope.envelope.msginfo;
 
@@ -39,11 +35,11 @@ MPIDI_Send_zero(pami_context_t   context,
 
 
 static inline void
-MPIDI_Send_eager(pami_context_t   context,
-                 MPID_Request   * sreq,
-                 pami_endpoint_t  dest,
-                 char           * sndbuf,
-                 unsigned         sndlen)
+MPIDI_SendMsg_eager(pami_context_t   context,
+                    MPID_Request   * sreq,
+                    pami_endpoint_t  dest,
+                    void           * sndbuf,
+                    unsigned         sndlen)
 {
   MPIDI_MsgInfo * msginfo = &sreq->mpid.envelope.envelope.msginfo;
 
@@ -73,11 +69,11 @@ MPIDI_Send_eager(pami_context_t   context,
 
 
 static inline void
-MPIDI_Send_rzv(pami_context_t   context,
-               MPID_Request   * sreq,
-               pami_endpoint_t  dest,
-               char           * sndbuf,
-               unsigned         sndlen)
+MPIDI_SendMsg_rzv(pami_context_t   context,
+                  MPID_Request   * sreq,
+                  pami_endpoint_t  dest,
+                  void           * sndbuf,
+                  unsigned         sndlen)
 {
   pami_result_t rc;
 
@@ -132,73 +128,44 @@ MPIDI_Send_rzv(pami_context_t   context,
 }
 
 
-static inline void
-MPIDI_Send(pami_context_t  context,
-           MPID_Request  * sreq,
-           char          * sndbuf,
-           unsigned        sndlen)
-{
-  pami_endpoint_t dest;
-  MPIDI_Context_endpoint(sreq, &dest);
-  sreq->mpid.envelope.envelope.msginfo.msginfo.sender = MPIDI_Process.global.rank;
-
-  /* Always use the short protocol when sndlen is zero.
-   */
-  if (likely(sndlen==0))
-    {
-      MPIDI_Send_zero(context,
-                      sreq,
-                      dest);
-    }
-  /* Use the eager protocol when sndlen is less than the eager limit.
-   */
-  else if (sndlen < MPIDI_Process.eager_limit)
-    {
-      MPIDI_Send_eager(context,
-                       sreq,
-                       dest,
-                       sndbuf,
-                       sndlen);
-    }
-  /* Use the default rendezvous protocol (glue implementation that
-   * guarantees no unexpected data).
-   */
-  else
-    {
-      MPIDI_Send_rzv(context,
-                     sreq,
-                     dest,
-                     sndbuf,
-                     sndlen);
-    }
-}
-
-
 /*
- * \brief Central function for all sends.
- * \param [in,out] sreq Structure containing all relevant info about the message.
+ * \brief Central function for all low-level sends.
+ *
+ * This is assumed to have been posted to a context, and is now being
+ * called from inside advance.  This has (unspecified) locking
+ * implications.
+ *
+ * Prerequisites:
+ *    + Not sending to a NULL rank
+ *    + Request already allocated
+ *    + Not sending to self
+ *
+ * \param[in]     context The PAMI context on which to do the send operation
+ * \param[in,out] sreq    Structure containing all relevant info about the message.
  */
 pami_result_t
-MPIDI_StartMsg_handoff(pami_context_t   context,
-                       void           * _sreq)
+MPIDI_SendMsg_handoff(pami_context_t   context,
+                      void           * _sreq)
 {
   MPID_Request * sreq = (MPID_Request *) _sreq;
   MPID_assert(sreq != NULL);
 
-  int data_sz, dt_contig;
-  MPID_Datatype *dt_ptr;
-  MPI_Aint dt_true_lb;
+  int             data_sz;
+  int             dt_contig;
+  MPI_Aint        dt_true_lb;
+  MPID_Datatype * dt_ptr;
+  void          * sndbuf;
 
-  /* ----------------------------------------- */
-  /* prerequisites: not sending to a NULL rank */
-  /* request already allocated                 */
-  /* not sending to self                       */
-  /* ----------------------------------------- */
-  MPID_assert(sreq != NULL);
+  /*
+   * Create the destination endpoint
+   */
+  pami_endpoint_t dest;
+  MPIDI_Context_endpoint(sreq, &dest);
+  sreq->mpid.envelope.envelope.msginfo.msginfo.sender = MPIDI_Process.global.rank;
 
-  /* ----------------------------------------- */
-  /*   get the datatype info                   */
-  /* ----------------------------------------- */
+  /*
+   * Get the datatype info
+   */
   MPIDI_Datatype_get_info(sreq->mpid.userbufcount,
                           sreq->mpid.datatype,
                           dt_contig,
@@ -206,25 +173,27 @@ MPIDI_StartMsg_handoff(pami_context_t   context,
                           dt_ptr,
                           dt_true_lb);
 
-  /* ----------------------------------------- */
-  /* contiguous data type                      */
-  /* ----------------------------------------- */
-  if (dt_contig)
+  /** /todo Remove this assert.  It shouldn't be required */
+  MPID_assert(sreq->mpid.uebuf == NULL);
+
+  /*
+   * Contiguous data type
+   */
+  if (likely(dt_contig))
     {
-      MPID_assert(sreq->mpid.uebuf == NULL);
-      MPIDI_Send(context, sreq, (char *)sreq->mpid.userbuf + dt_true_lb, data_sz);
-      return PAMI_SUCCESS;
+      sndbuf = sreq->mpid.userbuf + dt_true_lb;
     }
 
-  /* ------------------------------------------- */
-  /* allocate and populate temporary send buffer */
-  /* ------------------------------------------- */
-  if (sreq->mpid.uebuf == NULL)
+  /*
+   * Non-ontiguous data type; allocate and populate temporary send
+   * buffer
+   */
+  else
     {
-      MPID_Segment              segment;
+      MPID_Segment segment;
 
-      sreq->mpid.uebuf = MPIU_Malloc(data_sz);
-      if (sreq->mpid.uebuf == NULL)
+      sreq->mpid.uebuf = sndbuf = MPIU_Malloc(data_sz);
+      if (unlikely(sndbuf == NULL))
         {
           sreq->status.MPI_ERROR = MPI_ERR_NO_SPACE;
           sreq->status.count = 0;
@@ -238,10 +207,43 @@ MPIDI_StartMsg_handoff(pami_context_t   context,
                         sreq->mpid.datatype,
                         &segment,
                         0);
-      MPID_Segment_pack(&segment, 0, &last, sreq->mpid.uebuf);
+      MPID_Segment_pack(&segment, 0, &last, sndbuf);
       MPID_assert(last == data_sz);
     }
 
-  MPIDI_Send(context, sreq, sreq->mpid.uebuf, data_sz);
+
+  /*
+   * Always use the short protocol when data_sz is zero.
+   */
+  if (likely(data_sz==0))
+    {
+      MPIDI_SendMsg_zero(context,
+                         sreq,
+                         dest);
+    }
+  /*
+   * Use the eager protocol when data_sz is less than the eager limit.
+   */
+  else if (data_sz < MPIDI_Process.eager_limit)
+    {
+      MPIDI_SendMsg_eager(context,
+                          sreq,
+                          dest,
+                          sndbuf,
+                          data_sz);
+    }
+  /*
+   * Use the default rendezvous protocol (glue implementation that
+   * guarantees no unexpected data).
+   */
+  else
+    {
+      MPIDI_SendMsg_rzv(context,
+                        sreq,
+                        dest,
+                        sndbuf,
+                        data_sz);
+    }
+
   return PAMI_SUCCESS;
 }

@@ -4,6 +4,7 @@
  * \brief ADI level implemenation of MPI_Issend()
  */
 #include "mpidimpl.h"
+#include "mpidi_send.h"
 
 /**
  * \brief ADI level implemenation of MPI_Issend()
@@ -32,75 +33,14 @@ int MPID_Issend(const void    * buf,
                 int             context_offset,
                 MPID_Request ** request)
 {
-  MPID_Request * sreq = NULL;
-
-  /* --------------------------- */
-  /* special case: send-to-self  */
-  /* --------------------------- */
-
-  if (rank == comm->rank && comm->comm_kind != MPID_INTERCOMM)
-    {
-      /* I'm sending to myself! */
-      int mpi_errno = MPIDI_Isend_self(buf,
-                                       count,
-                                       datatype,
-                                       rank,
-                                       tag,
-                                       comm,
-                                       context_offset,
-                                       request);
-      return mpi_errno;
-    }
-
-  /* --------------------- */
-  /* create a send request */
-  /* --------------------- */
-
-  if (!(sreq = MPID_Request_create()))
-    {
-      *request = NULL;
-      int mpi_errno = MPIR_Err_create_code(MPI_SUCCESS,
-                                           MPIR_ERR_FATAL,
-                                           __FUNCTION__,
-                                           __LINE__,
-                                           MPI_ERR_OTHER,
-                                           "**nomem", 0);
-      return mpi_errno;
-    }
-
-  /* match info */
-  MPIDI_Request_setMatch(sreq, tag, comm->rank, comm->context_id+context_offset);
-
-  /* data buffer info */
-  sreq->mpid.userbuf          = (char *)buf;
-  sreq->mpid.userbufcount     = count;
-  sreq->mpid.datatype         = datatype;
-
-  /* communicator & destination info */
-  sreq->comm                 = comm;  MPIR_Comm_add_ref(comm);
-  if (rank != MPI_PROC_NULL)
-    MPIDI_Request_setPeerRank(sreq, comm->vcr[rank]);
-  MPIDI_Request_setPeerRequest(sreq, sreq);
-
-  /* message type info */
-  sreq->kind = MPID_REQUEST_SEND;
-  MPIDI_Request_setSync(sreq, 1);
-
-  /* ------------------------------ */
-  /* special case: NULL destination */
-  /* ------------------------------ */
-  if (rank == MPI_PROC_NULL)
-    {
-      sreq->cc = 0;
-      *request = sreq;
-      return MPI_SUCCESS;
-    }
-
-  /* ----------------------------------------- */
-  /*      start the message                    */
-  /* ----------------------------------------- */
-
-  MPIDI_StartMsg(sreq);
-  *request = sreq;
-  return MPI_SUCCESS;
+  return MPIDI_Send(buf,
+                    count,
+                    datatype,
+                    rank,
+                    tag,
+                    comm,
+                    context_offset,
+                    0,
+                    1,
+                    request);
 }

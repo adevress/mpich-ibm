@@ -209,9 +209,9 @@ struct MPIDI_Request
   pami_work_t           post_request; /**<                            */
   pami_task_t           peerrank;     /**< The other guy's rank       */
 
-  char                 *userbuf;      /**< User buffer                */
+  void                 *userbuf;      /**< User buffer                */
   unsigned              userbufcount; /**< Userbuf data count         */
-  char                 *uebuf;        /**< Unexpected buffer          */
+  void                 *uebuf;        /**< Unexpected buffer          */
   unsigned              uebuflen;     /**< Length (bytes) of uebuf    */
 
   MPI_Datatype          datatype;     /**< Data type of message       */
