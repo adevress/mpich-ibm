@@ -74,7 +74,8 @@ void MPIDI_RecvDoneCB(pami_context_t   context,
                           (MPIDI_msg_sz_t*)&rreq->status.count,
                           &rreq->status.MPI_ERROR);
         /* free the unexpected data buffer */
-        MPIU_Free(rreq->mpid.uebuf); rreq->mpid.uebuf = NULL;
+        MPIU_Free(rreq->mpid.uebuf);
+        rreq->mpid.uebuf = NULL;
         MPIDI_Request_complete(rreq);
         break;
       }

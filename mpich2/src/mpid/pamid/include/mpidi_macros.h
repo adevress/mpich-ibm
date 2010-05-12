@@ -111,7 +111,6 @@ MPIDI_Context_hash(pami_task_t rank, unsigned ctxt)
 static inline void
 MPIDI_Context_endpoint(MPID_Request * req, pami_endpoint_t * e)
 {
-
   pami_task_t remote = MPIDI_Request_getPeerRank(req);
   pami_task_t local  = MPIDI_Process.global.rank;
   unsigned    rctxt  = MPIDI_Context_hash(local, req->comm->context_id);

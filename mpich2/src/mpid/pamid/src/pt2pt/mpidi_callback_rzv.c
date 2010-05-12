@@ -8,20 +8,21 @@
 /**
  * \brief The callback for a new RZV RTS
  * \note  Because this is a short message, the data is already received
- * \param[in]  clientdata   Unused
- * \param[in]  envelope     The 16-byte msginfo struct
- * \param[in]  count        The number of msginfo quads (1)
- * \param[in]  senderrank   The sender's rank
- * \param[in]  sndlen       The length of the incoming data
- * \param[in]  sndbuf       Where the data is stored
+ * \param[in]   context     The context on which the message is being received.
+ * \param[in]  _contextid   The numerical index of the context
+ * \param[in]  _msginfo     The extended header information
+ * \param[in]  msginfo_size The size of the extended header information
+ * \param[in]  sndbuf       Unused
+ * \param[in]  sndlen       Unused
+ * \param[out] recv         Unused
  */
-void MPIDI_RecvRzvCB(pami_context_t   context,
-                     void          * _contextid,
-                     void          * _msginfo,
-                     size_t          msginfo_size,
-                     void          * sndbuf,
-                     size_t          sndlen,
-                     pami_recv_t   * recv)
+void MPIDI_RecvRzvCB(pami_context_t    context,
+                     void           * _contextid,
+                     void           * _msginfo,
+                     size_t           msginfo_size,
+                     void           * sndbuf,
+                     size_t           sndlen,
+                     pami_recv_t    * recv)
 {
   MPID_assert(recv == NULL);
   MPID_assert(sndlen == 0);
@@ -36,26 +37,27 @@ void MPIDI_RecvRzvCB(pami_context_t   context,
   int found;
 
 
-  /* -------------------------- */
-  /*      match request         */
-  /* -------------------------- */
+  /* -------------------- */
+  /*  Match the request.  */
+  /* -------------------- */
   MPIDI_Message_match match;
-  match.rank              = msginfo->msginfo.MPIrank;
-  match.tag               = msginfo->msginfo.MPItag;
-  match.context_id        = msginfo->msginfo.MPIctxt;
+  match.rank       = msginfo->msginfo.MPIrank;
+  match.tag        = msginfo->msginfo.MPItag;
+  match.context_id = msginfo->msginfo.MPIctxt;
 
   rreq = MPIDI_Recvq_FDP_or_AEU(match.rank, match.tag, match.context_id, &found);
 
-  /* -------------------------------------- */
-  /* Signal that the recv has been started. */
-  /* -------------------------------------- */
+  /* ---------------------------------------- */
+  /*  Signal that the recv has been started.  */
+  /* ---------------------------------------- */
   MPIDI_Progress_signal();
 
-  /* ------------------------ */
-  /* copy in information      */
-  /* ------------------------ */
+  /* ---------------------- */
+  /*  Copy in information.  */
+  /* ---------------------- */
   rreq->status.MPI_SOURCE = match.rank;
   rreq->status.MPI_TAG    = match.tag;
+  rreq->status.count      = envelope->envelope.length;
   MPIDI_Request_setPeerRank   (rreq, senderrank);
   MPIDI_Request_cpyPeerRequest(rreq, msginfo);
   MPIDI_Request_setSync       (rreq, msginfo->msginfo.isSync);
@@ -66,7 +68,6 @@ void MPIDI_RecvRzvCB(pami_context_t   context,
   /* node calls a receive function and the data is         */
   /* retreived from the origin node.                       */
   /* ----------------------------------------------------- */
-  rreq->status.count                  = envelope->envelope.length;
 #ifdef USE_PAMI_RDMA
   memcpy(&rreq->mpid.envelope.envelope.memregion,
 	 &envelope->envelope.memregion,
@@ -95,7 +96,13 @@ void MPIDI_RecvRzvCB(pami_context_t   context,
   /* ------------------------------------------------------------- */
   else
     {
-      rreq->mpid.uebuf = NULL;
-      rreq->mpid.uebuflen = 0;
+      /*
+       * This is to test that the fields don't need to be
+       * initialized.  Remove after this doesn't fail for a while.
+       */
+      MPID_assert(rreq->mpid.uebuf    == NULL);
+      MPID_assert(rreq->mpid.uebuflen == 0);
+      /* rreq->mpid.uebuf = NULL; */
+      /* rreq->mpid.uebuflen = 0; */
     }
 }

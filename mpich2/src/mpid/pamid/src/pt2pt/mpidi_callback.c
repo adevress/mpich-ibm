@@ -7,21 +7,21 @@
 
 /**
  * \brief The standard callback for a new message
- * \param[in]  clientdata Unused
- * \param[in]  msginfo    The 16-byte msginfo struct
- * \param[in]  count      The number of msginfo quads (1)
- * \param[in]  senderrank The sender's rank
- * \param[in]  sndlen     The length of the incoming data
- * \param[out] rcvlen     The amount we are willing to receive
- * \param[out] rcvbuf     Where we want to put the data
+ * \param[in]   context     The context on which the message is being received.
+ * \param[in]  _contextid   The numerical index of the context
+ * \param[in]  _msginfo     The header information
+ * \param[in]  msginfo_size The size of the header information
+ * \param[in]  sndbuf       If the message is short, this is the data
+ * \param[in]  sndlen       The size of the incoming data
+ * \param[out] recv         If the message is long, this tells the message layer how to handle the data.
  */
-void MPIDI_RecvCB(pami_context_t   context,
-                  void          * _contextid,
-                  void          * _msginfo,
-                  size_t          msginfo_size,
-                  void          * sndbuf,
-                  size_t          sndlen,
-                  pami_recv_t   * recv)
+void MPIDI_RecvCB(pami_context_t    context,
+                  void           * _contextid,
+                  void           * _msginfo,
+                  size_t           msginfo_size,
+                  void           * sndbuf,
+                  size_t           sndlen,
+                  pami_recv_t    * recv)
 {
   MPID_assert((sndbuf == NULL) ^ (recv == NULL));
 
@@ -34,63 +34,60 @@ void MPIDI_RecvCB(pami_context_t   context,
 
   MPID_Request * rreq = NULL;
   int found;
-  unsigned rcvlen = sndlen;
 
-  /* -------------------------- */
-  /*      match request         */
-  /* -------------------------- */
+  /* -------------------- */
+  /*  Match the request.  */
+  /* -------------------- */
   MPIDI_Message_match match;
-  match.rank              = msginfo->msginfo.MPIrank;
-  match.tag               = msginfo->msginfo.MPItag;
-  match.context_id        = msginfo->msginfo.MPIctxt;
+  match.rank       = msginfo->msginfo.MPIrank;
+  match.tag        = msginfo->msginfo.MPItag;
+  match.context_id = msginfo->msginfo.MPIctxt;
 
   rreq = MPIDI_Recvq_FDP_or_AEU(match.rank, match.tag, match.context_id, &found);
 
-  /* -------------------------------------- */
-  /* Signal that the recv has been started. */
-  /* -------------------------------------- */
+  /* ---------------------------------------- */
+  /*  Signal that the recv has been started.  */
+  /* ---------------------------------------- */
   MPIDI_Progress_signal();
 
-  /* ------------------------ */
-  /* copy in information      */
-  /* ------------------------ */
+  /* ---------------------- */
+  /*  Copy in information.  */
+  /* ---------------------- */
   rreq->status.MPI_SOURCE = match.rank;
   rreq->status.MPI_TAG    = match.tag;
+  rreq->status.count      = sndlen;
+  MPIDI_Request_setCA         (rreq, MPIDI_CA_COMPLETE);
   MPIDI_Request_setPeerRank   (rreq, senderrank);
   MPIDI_Request_cpyPeerRequest(rreq, msginfo);
   MPIDI_Request_setSync       (rreq, msginfo->msginfo.isSync);
   MPIDI_Request_setRzv        (rreq, 0);
 
-  if (recv)
+  /* --------------------------------------- */
+  /*  We have to fill in the callback info.  */
+  /* --------------------------------------- */
+  if (unlikely(recv != NULL))
     {
-      /* -------------------------------------------------------- */
-      /* we have enough information to fill in the callback info. */
-      /* -------------------------------------------------------- */
+      /* recv->hints    = {}; */
       recv->local_fn = MPIDI_RecvDoneCB;
-      recv->cookie   = (void *)rreq;
-      recv->kind     = PAMI_AM_KIND_SIMPLE;
+      recv->cookie   = (void*)rreq;
     }
 
 
-
-  /* ----------------------------------------- */
-  /* figure out target buffer for request data */
-  /* ----------------------------------------- */
-  MPIDI_Request_setCA(rreq, MPIDI_CA_COMPLETE);
-  rreq->status.count = rcvlen;
+  /* -------------------------------------------- */
+  /*  Figure out target buffer for request data.  */
+  /* -------------------------------------------- */
   if (found)
     {
-      /* --------------------------- */
-      /* request was already posted. */
-      /* if synchronized, post ack.  */
-      /* --------------------------- */
-      if (msginfo->msginfo.isSync)
+      /* ----------------------------- */
+      /*  Request was already posted.  */
+      /* ----------------------------- */
+
+      if (unlikely(msginfo->msginfo.isSync))
         MPIDI_postSyncAck(context, rreq);
 
-      /* -------------------------------------- */
-      /* calculate message length for reception */
-      /* calculate receive message "count"      */
-      /* -------------------------------------- */
+      /* ----------------------------------------- */
+      /*  Calculate message length for reception.  */
+      /* ----------------------------------------- */
       unsigned dt_contig, dt_size;
       MPID_Datatype *dt_ptr;
       MPI_Aint dt_true_lb;
@@ -101,87 +98,114 @@ void MPIDI_RecvCB(pami_context_t   context,
                               dt_ptr,
                               dt_true_lb);
 
-      /* -------------------------------------- */
-      /* test for truncated message.            */
-      /* -------------------------------------- */
-      if (rcvlen > dt_size)
+      /* ----------------------------- */
+      /*  Test for truncated message.  */
+      /* ----------------------------- */
+      if (unlikely(sndlen > dt_size))
         {
-          rcvlen = dt_size;
           rreq->status.MPI_ERROR = MPI_ERR_TRUNCATE;
-          rreq->status.count = rcvlen;
-        }
 
-      /* -------------------------------------- */
-      /* if buffer is contiguous, we are done.  */
-      /* -------------------------------------- */
-      if (dt_contig)
-        {
-
-          rreq->mpid.uebuf    = NULL;
-          rreq->mpid.uebuflen = 0;
-          void* rcvbuf = rreq->mpid.userbuf + dt_true_lb;
-
+          /* -------------------------------------------------------------- */
+          /*  The data is already available, so we can just unpack it now.  */
+          /* -------------------------------------------------------------- */
           if (recv)
             {
-              recv->data.simple.addr  = rcvbuf;
-              recv->data.simple.bytes = rcvlen;
+              MPIDI_Request_setCA(rreq, MPIDI_CA_UNPACK_UEBUF_AND_COMPLETE);
+              rreq->mpid.uebuflen = sndlen;
+              rreq->mpid.uebuf    = MPIU_Malloc(sndlen);
+              MPID_assert(rreq->mpid.uebuf != NULL);
+
+              recv->type = PAMI_BYTE;
+              recv->addr = rreq->mpid.uebuf;
             }
           else
             {
-              memcpy(rcvbuf, sndbuf, rcvlen);
-              MPIDI_RecvDoneCB(context, rreq, 0);
+              MPIDI_Request_setCA(rreq, MPIDI_CA_UNPACK_UEBUF_AND_COMPLETE_NOFREE);
+              rreq->mpid.uebuflen = sndlen;
+              rreq->mpid.uebuf    = sndbuf ;
+              MPIDI_RecvDoneCB(context, rreq, PAMI_SUCCESS);
             }
-
           return;
         }
 
-      /* --------------------------------------------- */
-      /* buffer is non-contiguous. we need to allocate */
-      /* a temporary buffer, and unpack later.         */
-      /* --------------------------------------------- */
+      /* --------------------------------------- */
+      /*  If buffer is contiguous, we are done.  */
+      /* --------------------------------------- */
+      if (likely(dt_contig))
+        {
+          /*
+           * This is to test that the fields don't need to be
+           * initialized.  Remove after this doesn't fail for a while.
+           */
+          MPID_assert(rreq->mpid.uebuf    == NULL);
+          MPID_assert(rreq->mpid.uebuflen == 0);
+          /* rreq->mpid.uebuf    = NULL; */
+          /* rreq->mpid.uebuflen = 0; */
+          void* rcvbuf = rreq->mpid.userbuf + dt_true_lb;
+
+          if (unlikely(recv != NULL))
+            {
+              recv->type = PAMI_BYTE;
+              recv->addr = rcvbuf;
+            }
+          else
+            {
+              memcpy(rcvbuf, sndbuf, sndlen);
+              MPIDI_RecvDoneCB(context, rreq, PAMI_SUCCESS);
+            }
+          return;
+        }
+
+      /* ----------------------------------------------- */
+      /*  Buffer is non-contiguous. we need to allocate  */
+      /*  a temporary buffer, and unpack later.          */
+      /* ----------------------------------------------- */
       else
         {
-          MPIDI_Request_setCA(rreq, MPIDI_CA_UNPACK_UEBUF_AND_COMPLETE);
-
-          /* --------------------------------------------- */
-          /* buffer is non-contiguous. the data is already */
-          /* available, so we can just unpack it now.      */
-          /* --------------------------------------------- */
-          if (!recv)
+          /* ----------------------------------------------- */
+          /*  Buffer is non-contiguous. the data is already  */
+          /*  available, so we can just unpack it now.       */
+          /* ----------------------------------------------- */
+          if (unlikely(recv != NULL))
             {
-              rreq->mpid.uebuflen = rcvlen;
+              MPIDI_Request_setCA(rreq, MPIDI_CA_UNPACK_UEBUF_AND_COMPLETE);
+            }
+          else
+            {
+              MPIDI_Request_setCA(rreq, MPIDI_CA_UNPACK_UEBUF_AND_COMPLETE_NOFREE);
+              rreq->mpid.uebuflen = sndlen;
               rreq->mpid.uebuf    = sndbuf ;
-              MPIDI_RecvDoneCB(context, rreq, 0);
+              MPIDI_RecvDoneCB(context, rreq, PAMI_SUCCESS);
               return;
             }
         }
     }
 
-  /* ------------------------------------------------------------- */
-  /* fallback position: request was not posted or not contiguous   */
-  /* We must allocate enough space to hold the message temporarily */
-  /* the temporary buffer will be unpacked later.                  */
-  /* ------------------------------------------------------------- */
-  rreq->mpid.uebuflen = rcvlen;
-  rreq->mpid.uebuf    = MPIU_Malloc(rcvlen);
+  /* ---------------------------------------------------- */
+  /*  Fallback position:                                  */
+  /*     + Request was not posted, or                     */
+  /*     + Request was long & not contiguous.             */
+  /*  We must allocate enough space to hold the message.  */
+  /*  The temporary buffer will be unpacked later.        */
+  /* ---------------------------------------------------- */
+  rreq->mpid.uebuflen = sndlen;
+  rreq->mpid.uebuf    = MPIU_Malloc(sndlen);
   MPID_assert(rreq->mpid.uebuf != NULL);
 
-  if (recv)
+  if (unlikely(recv != NULL))
     {
-      /* ------------------------------------------------ */
-      /*  Let PAMI know where to put the rest of the data  */
-      /* ------------------------------------------------ */
-      recv->data.simple.addr  = rreq->mpid.uebuf;
-      recv->data.simple.bytes = rcvlen;
+      /* -------------------------------------------------- */
+      /*  Let PAMI know where to put the rest of the data.  */
+      /* -------------------------------------------------- */
+      recv->type = PAMI_BYTE;
+      recv->addr = rreq->mpid.uebuf;
     }
   else
     {
-      /* ------------------------------------------------ */
-      /*  We have the data; copy it and complete the msg  */
-      /* ------------------------------------------------ */
-      memcpy(rreq->mpid.uebuf, sndbuf, rcvlen);
-      MPIDI_RecvDoneCB(context, rreq, 0);
+      /* ------------------------------------------------- */
+      /*  We have the data; copy it and complete the msg.  */
+      /* ------------------------------------------------- */
+      memcpy(rreq->mpid.uebuf, sndbuf, sndlen);
+      MPIDI_RecvDoneCB(context, rreq, PAMI_SUCCESS);
     }
-
-  return;
 }
