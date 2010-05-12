@@ -7,9 +7,11 @@
 
 
 static inline void
-MPIDI_SendMsg_zero(pami_context_t   context,
-                   MPID_Request   * sreq,
-                   pami_endpoint_t  dest)
+MPIDI_SendMsg_short(pami_context_t    context,
+                    MPID_Request    * sreq,
+                    pami_endpoint_t   dest,
+                    void            * sndbuf,
+                    unsigned          sndlen)
 {
   MPIDI_MsgInfo * msginfo = &sreq->mpid.envelope.envelope.msginfo;
 
@@ -21,8 +23,8 @@ MPIDI_SendMsg_zero(pami_context_t   context,
     iov_len  : sizeof(MPIDI_MsgInfo),
     },
   data     : {
-    iov_base : NULL,
-    iov_len  : 0,
+    iov_base : sndbuf,
+    iov_len  : sndlen,
   },
   };
 
@@ -35,11 +37,11 @@ MPIDI_SendMsg_zero(pami_context_t   context,
 
 
 static inline void
-MPIDI_SendMsg_eager(pami_context_t   context,
-                    MPID_Request   * sreq,
-                    pami_endpoint_t  dest,
-                    void           * sndbuf,
-                    unsigned         sndlen)
+MPIDI_SendMsg_eager(pami_context_t    context,
+                    MPID_Request    * sreq,
+                    pami_endpoint_t   dest,
+                    void            * sndbuf,
+                    unsigned          sndlen)
 {
   MPIDI_MsgInfo * msginfo = &sreq->mpid.envelope.envelope.msginfo;
 
@@ -69,11 +71,11 @@ MPIDI_SendMsg_eager(pami_context_t   context,
 
 
 static inline void
-MPIDI_SendMsg_rzv(pami_context_t   context,
-                  MPID_Request   * sreq,
-                  pami_endpoint_t  dest,
-                  void           * sndbuf,
-                  unsigned         sndlen)
+MPIDI_SendMsg_rzv(pami_context_t    context,
+                  MPID_Request    * sreq,
+                  pami_endpoint_t   dest,
+                  void            * sndbuf,
+                  unsigned          sndlen)
 {
   pami_result_t rc;
 
@@ -185,7 +187,7 @@ MPIDI_SendMsg_handoff(pami_context_t   context,
     }
 
   /*
-   * Non-ontiguous data type; allocate and populate temporary send
+   * Non-contiguous data type; allocate and populate temporary send
    * buffer
    */
   else
@@ -213,13 +215,15 @@ MPIDI_SendMsg_handoff(pami_context_t   context,
 
 
   /*
-   * Always use the short protocol when data_sz is zero.
+   * Always use the short protocol when data_sz is small.
    */
-  if (likely(data_sz==0))
+  if (likely(data_sz <= MPIDI_Process.short_limit))
     {
-      MPIDI_SendMsg_zero(context,
-                         sreq,
-                         dest);
+      MPIDI_SendMsg_short(context,
+                          sreq,
+                          dest,
+                          sndbuf,
+                          data_sz);
     }
   /*
    * Use the eager protocol when data_sz is less than the eager limit.

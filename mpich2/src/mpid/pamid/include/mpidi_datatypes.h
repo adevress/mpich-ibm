@@ -32,6 +32,7 @@ typedef struct
     unsigned size;
   }
   global;
+  unsigned short_limit;
   unsigned eager_limit;
   unsigned rma_pending;    /**< The max num outstanding requests during an RMA op    */
   unsigned verbose;        /**< The current level of verbosity for end-of-job stats. */

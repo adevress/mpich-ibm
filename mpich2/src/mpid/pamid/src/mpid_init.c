@@ -17,6 +17,7 @@ pami_context_t *MPIDI_Context;
 MPIDI_Process_t  MPIDI_Process = {
  verbose        : 0,
  statistics     : 0,
+ short_limit    : 123,
  eager_limit    : UINT_MAX,
  use_interrupts : 0,
  rma_pending    : 1000,
@@ -145,6 +146,10 @@ MPIDI_Init(int* rank, int* size, int* threading)
       TRACE_ERR((stderr,"Num contexts :%d (>1), can't use shmem collectives\n", MPIDI_Process.avail_contexts));
       MPIDI_Process.optimized.collectives = 0;
     }
+
+  /** \todo Trac 94: Uncomment when these are implemented. */
+  /* MPIDI_Process.short_max = MIN(PAMIX_Configuration_query(MPIDI_Client, PAMI_SEND_IMMEDIATE_MAX).value.intval, */
+  /*                               PAMIX_Configuration_query(MPIDI_Client, PAMI_RECV_IMMEDIATE_MAX).value.intval); */
 
   /* ----------------------------------- */
   /*  Create the communication contexts  */
