@@ -20,7 +20,8 @@ int MPIDO_Bcast(void *buffer,
 {
    TRACE_ERR((stderr,"in mpido_bcast\n"));
    int data_size, data_contig, rc;
-   char *data_buffer, *noncontig_buff;
+   void *data_buffer    = NULL,
+        *noncontig_buff = NULL;
    volatile unsigned active = 1;
    MPI_Aint data_true_lb = 0;
    MPID_Datatype *data_ptr;
