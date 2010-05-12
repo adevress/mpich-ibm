@@ -69,7 +69,7 @@ MPIDI_RecvMsg(void          * buf,
       /* request is complete              */
       /* if sync request, need to ack it. */
       /* -------------------------------- */
-      if (MPIDI_Request_isSync(rreq))
+      if (unlikely(MPIDI_Request_isSync(rreq)))
         {
           MPID_assert(!MPIDI_Request_isSelf(rreq));
           MPIDI_postSyncAck(MPIDI_Context_local(rreq), rreq);
