@@ -42,56 +42,13 @@ typedef struct
   unsigned RTS;
   unsigned Cancel;
   unsigned Control;
+  unsigned WinCtrl;
 }      MPIDI_Protocol_t;
 
 typedef struct
 {
 }      MPIDI_CollectiveProtocol_t;
 
-
-
-/**
- * ******************************************************************
- * \brief MPI Onesided operation device declarations (!!! not used)
- * Is here only because mpiimpl.h needs it.
- * ******************************************************************
- */
-typedef struct MPIDI_RMA_ops {
-    struct MPIDI_RMA_ops *next;  /* pointer to next element in list */
-    int type;  /* MPIDI_RMA_PUT, MPID_REQUEST_GET,
-                  MPIDI_RMA_ACCUMULATE, MPIDI_RMA_LOCK */
-    void *origin_addr;
-    int origin_count;
-    MPI_Datatype origin_datatype;
-    int target_rank;
-    MPI_Aint target_disp;
-    int target_count;
-    MPI_Datatype target_datatype;
-    MPI_Op op;  /* for accumulate */
-    int lock_type;  /* for win_lock */
-} MPIDI_RMA_ops;
-
-/* to send derived datatype across in RMA ops */
-typedef struct MPIDI_RMA_dtype_info
-{
-  int      is_contig;
-  int      n_contig_blocks;
-  int      size;
-  MPI_Aint extent;
-  int      dataloop_size;
-  void    *dataloop;
-  int      dataloop_depth;
-  int      eltype;
-  MPI_Aint ub;
-  MPI_Aint lb;
-  MPI_Aint true_ub;
-  MPI_Aint true_lb;
-  int      has_sticky_ub;
-  int      has_sticky_lb;
-  int      unused0;
-  int      unused1;
-}
-MPIDI_RMA_dtype_info;
 
 
 /**
@@ -244,6 +201,26 @@ struct MPIDI_Comm
 };
 
 
+
+/** \brief Forward declaration of the MPID_Comm structure */
+struct MPID_Comm;
+/** \brief Forward declaration of the MPID_Win structure */
+struct MPID_Win;
+/** \brief Forward declaration of the MPID_Group structure */
+struct MPID_Group;
+
+
+struct MPIDI_Win_lock
+{
+  struct MPIDI_Win_lock *next;
+  unsigned               rank;
+  int                    type;
+};
+struct MPIDI_Win_queue
+{
+  struct MPIDI_Win_lock *head;
+  struct MPIDI_Win_lock *tail;
+};
 /**
  * \brief Collective information related to a window
  *
@@ -254,36 +231,50 @@ struct MPIDI_Comm
  * The structure is allocated as an array sized for the window communicator.
  * Each entry in the array corresponds directly to the node of the same rank.
  */
-struct MPID_Win_coll_info
+struct MPIDI_Win_info
 {
-  void            *base_addr;  /**< Node's exposure window base address                  */
-  int              disp_unit;  /**< Node's exposure window displacement units            */
-  MPI_Win          win_handle; /**< Node's exposure window handle (local to target node) */
-  int              rma_sends;  /**< Count of RMA operations that target node             */
-  pami_memregion_t mem_region; /**< Memory region descriptor for each node               */
+  void             *base_addr;     /**< Node's exposure window base address                  */
+  struct MPID_Win  *win_ptr;
+  uint32_t          disp_unit;     /**< Node's exposure window displacement units            */
+  pami_memregion_t  memregion;     /**< Memory region descriptor for each node               */
 };
-
-
-struct MPID_Comm;
 /**
- * \brief Structure of BG extensions to MPID_Win structure
+ * \brief Structure of PAMI extensions to MPID_Win structure
  */
-struct MPID_Dev_win_decl
+struct MPIDI_Win
 {
-  struct MPID_Win_coll_info *coll_info; /**< allocated array of collective info             */
-  struct MPID_Comm *comm_ptr;           /**< saved pointer to window communicator           */
-  volatile int      lock_granted;       /**< window lock                                    */
-  unsigned long     _lock_queue[4];     /**< opaque structure used for lock wait queue      */
-  unsigned long     _unlk_queue[4];     /**< opaque structure used for unlock wait queue    */
-  volatile int      my_sync_begin;      /**< counter of POST messages received              */
-  volatile int      my_sync_done;       /**< counter of COMPLETE messages received          */
-  volatile int      my_rma_recvs;       /**< counter of RMA operations received             */
-  volatile int      my_rma_pends;       /**< counter of RMA operations queued to send       */
-  volatile int      my_get_pends;       /**< counter of GET operations queued               */
-  volatile int      epoch_type;         /**< current epoch type                             */
-  volatile int      epoch_size;         /**< current epoch size (or target for LOCK)        */
-  int               epoch_assert;       /**< MPI_MODE_* bits asserted at epoch start        */
-  int               epoch_rma_ok;       /**< flag indicating an exposure epoch is in affect */
+  struct MPID_Comm       *comm_ptr;      /**< saved pointer to window communicator           */
+  struct MPIDI_Win_info  *info;          /**< allocated array of collective info             */
+  struct MPIDI_Win_sync
+  {
+    uint32_t  type;   /**< current epoch type                                   */
+    uint32_t  assert; /**< MPI_MODE_* bits asserted at epoch start              */
+
+    uint32_t started;
+    uint32_t complete;
+
+    struct MPIDI_Win_sync_fence
+    {
+    } fence;
+    struct MPIDI_Win_sync_pscw
+    {
+      struct MPID_Group *group;
+      unsigned           count;
+    } sc, pw;
+    struct MPIDI_Win_sync_lock
+    {
+      struct
+      {
+        unsigned locked;
+      } remote;
+      struct
+      {
+        struct MPIDI_Win_queue requested;
+        int                    type;
+        unsigned               count;
+      } local;
+    } lock;
+  } sync;
 };
 
 

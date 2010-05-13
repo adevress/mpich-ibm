@@ -55,9 +55,9 @@ typedef unsigned MPIDI_msg_sz_t;
 #define MPID_Dev_comm_destroy_hook(a) ({ void MPIDI_Comm_destroy(MPID_Comm *comm); MPIDI_Comm_destroy(a); })
 
 /**
- * \brief Code-snippet macro to add BG extensions to MPID_Win object structure
+ * \brief Code-snippet macro to add PAMI extensions to MPID_Win object structure
  */
-#define MPID_DEV_WIN_DECL struct MPID_Dev_win_decl _dev;
+#define MPID_DEV_WIN_DECL struct MPIDI_Win mpid;
 
 
 #endif

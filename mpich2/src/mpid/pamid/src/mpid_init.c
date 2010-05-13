@@ -41,6 +41,7 @@ static struct
   struct protocol_t RTS;
   struct protocol_t Cancel;
   struct protocol_t Control;
+  struct protocol_t WinCtrl;
 } proto_list =
   {
   Send: {
@@ -76,6 +77,15 @@ static struct
       no_long_header: PAMI_HINT2_ON,
       },
   },
+  WinCtrl: {
+    func: MPIDI_WinControlCB,
+    dispatch: 4,
+    options: {
+      high_priority:  PAMI_HINT2_ON,
+      use_rdma:       PAMI_HINT3_FORCE_OFF,
+      no_long_header: PAMI_HINT2_ON,
+      },
+  },
   };
 MPIDI_Protocol_t MPIDI_Protocols =
   {
@@ -83,6 +93,7 @@ MPIDI_Protocol_t MPIDI_Protocols =
   RTS:     1,
   Cancel : 2,
   Control: 3,
+  WinCtrl: 4,
   };
 
 
@@ -182,6 +193,8 @@ MPIDI_Init(int* rank, int* size, int* threading)
   MPIDI_Init_dispath(MPIDI_Protocols.RTS,     &proto_list.RTS);
   MPIDI_Init_dispath(MPIDI_Protocols.Cancel,  &proto_list.Cancel);
   MPIDI_Init_dispath(MPIDI_Protocols.Control, &proto_list.Control);
+  MPIDI_Init_dispath(MPIDI_Protocols.WinCtrl, &proto_list.WinCtrl);
+
 
   /* Fill in the world geometry */
   TRACE_ERR((stderr, "creating world geometry\n"));

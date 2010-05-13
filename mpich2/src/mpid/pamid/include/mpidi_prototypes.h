@@ -137,6 +137,15 @@ void MPIDI_ControlCB(pami_context_t    context,
                      size_t            sndlen,
                      pami_endpoint_t   sender,
                      pami_recv_t     * recv);
+void
+MPIDI_WinControlCB(pami_context_t    context,
+                   void            * _contextid,
+                   const void      * _control,
+                   size_t            size,
+                   const void      * sndbuf,
+                   size_t            sndlen,
+                   pami_endpoint_t   sender,
+                   pami_recv_t     * recv);
 
 
 /** \brief Helper function when sending to self  */
