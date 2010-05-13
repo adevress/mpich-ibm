@@ -16,5 +16,6 @@ lib${MPILIBNAME}_a_SOURCES =			\
         mpid_request.c				\
         mpid_time.c				\
         mpid_vc.c				\
+        mpid_unimpl.c				\
         mpidi_env.c				\
         pamix.c
