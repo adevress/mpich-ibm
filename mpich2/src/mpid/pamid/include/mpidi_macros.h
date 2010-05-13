@@ -141,13 +141,12 @@ MPIDI_SendMsg(MPID_Request * sreq)
 }
 
 
-static inline void
-MPIU_TestFree(void ** p)
-{
-  if(*p)
-    MPIU_Free(*p);
-  *p = NULL;
-}
+#define MPIU_TestFree(p)                        \
+({                                              \
+  if(*(p))                                      \
+    MPIU_Free(*(p));                            \
+  *(p) = NULL;                                  \
+})
 
 
 #endif
