@@ -15,13 +15,3 @@ int MPID_Dims_create( int nnodes, int ndims, int *dims )
 {
   return MPIR_Dims_create( nnodes, ndims, dims );
 }
-
-
-
-int MPID_Dummy()
-{
-  assert(0);
-  return 1;
-}
-int MPID_Win_create()  __attribute__((alias("MPID_Dummy")));
-int MPID_Win_free()    __attribute__((alias("MPID_Dummy")));

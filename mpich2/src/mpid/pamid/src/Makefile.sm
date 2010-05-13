@@ -1,4 +1,4 @@
-SUBDIRS= . pt2pt comm coll
+SUBDIRS= . coll comm onesided pt2pt
 INCLUDES = -I${master_top_srcdir}/src/include -I${top_builddir}/src/include
 lib${MPILIBNAME}_a_SOURCES =			\
         mpid_abort.c				\
