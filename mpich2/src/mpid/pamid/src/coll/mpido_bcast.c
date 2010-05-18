@@ -63,7 +63,8 @@ int MPIDO_Bcast(void *buffer,
    bcast.cmd.xfer_broadcast.root = comm_ptr->vcr[root];
    bcast.cmd.xfer_broadcast.buf = data_buffer;
    bcast.cmd.xfer_broadcast.type = PAMI_BYTE;
-   bcast.cmd.xfer_broadcast.typecount = count;
+   /* Needs to be sizeof(type)*count since we are using bytes as * the generic type */
+   bcast.cmd.xfer_broadcast.typecount = data_size; 
 
    TRACE_ERR((stderr,"posting bcast, context: %d, algoname: %s\n",0, comm_ptr->mpid.bcast_metas[0].name));
    rc = PAMI_Collective(MPIDI_Context[0], (pami_xfer_t *)&bcast);
