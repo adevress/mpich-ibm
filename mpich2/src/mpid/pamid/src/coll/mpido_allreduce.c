@@ -177,7 +177,7 @@ int MPIDO_Allreduce(void *sendbuf,
    volatile unsigned active = 1;
    pami_xfer_t allred;
    MPIopString(op, op_str);
-   MPI_Type_get_name(dt, dt_str, &len);
+   PMPI_Type_get_name(dt, dt_str, &len);
    rc = MPItoPAMI(dt, &pdt, op, &pop, &mu);
    if(rc == MPI_SUCCESS && mu == 1)
    {
