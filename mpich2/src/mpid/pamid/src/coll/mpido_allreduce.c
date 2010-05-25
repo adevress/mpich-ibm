@@ -60,7 +60,7 @@ static void cb_allreduce(void *ctxt, void *clientdata, pami_result_t err)
                               (x) == MPI_C_DOUBLE_COMPLEX)
 
 /* known missing types: MPI_C_LONG_DOUBLE_COMPLEX */
- 
+
 #define YES 1
 #define NO 0
 
@@ -90,7 +90,7 @@ int MPItoPAMI(MPI_Datatype dt, pami_dt *pdt, MPI_Op op, pami_op *pop, int *musup
    *musupport = YES;
    *pdt = PAMI_UNDEFINED_DT;
    *pop = PAMI_UNDEFINED_OP;
-   if(isS_INT(dt)) 
+   if(isS_INT(dt))
    {
       *pdt = PAMI_SIGNED_INT;
       /* For some reason, signed int+B* ops doesn't work */
@@ -154,9 +154,9 @@ int MPItoPAMI(MPI_Datatype dt, pami_dt *pdt, MPI_Op op, pami_op *pop, int *musup
 
    return MPI_SUCCESS;
 }
-         
 
-         
+
+
 
 
 int MPIDO_Allreduce(void *sendbuf,
