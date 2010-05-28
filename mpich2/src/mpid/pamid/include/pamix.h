@@ -20,7 +20,4 @@ PAMIX_Dispatch_set(pami_context_t              context[],
                   size_t                     dispatch,
                   pami_dispatch_callback_fn   fn,
                   pami_send_hint_t            options);
-void
-PAMIX_Context_destroy(pami_context_t* contexts,
-                     size_t num_contexts);
 #endif

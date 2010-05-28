@@ -46,16 +46,3 @@ PAMIX_Dispatch_set(pami_context_t              context[],
     PAMIX_assert(rc == PAMI_SUCCESS);
   }
 }
-
-
-void
-PAMIX_Context_destroy(pami_context_t* contexts,
-                     size_t num_contexts)
-{
-  pami_result_t rc;
-  size_t i;
-  for (i=0; i<num_contexts; ++i) {
-    rc = PAMI_Context_destroy(contexts[i]);
-    PAMIX_assert(rc == PAMI_SUCCESS);
-  }
-}
