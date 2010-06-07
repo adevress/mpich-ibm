@@ -254,9 +254,9 @@ MPIDI_procRzvAck(pami_context_t        context,
 void
 MPIDI_ControlCB(pami_context_t  context,
                 void          * _contextid,
-                void          * _msginfo,
+                const void    * _msginfo,
                 size_t          msginfo_size,
-                void          * sndbuf,
+                const void    * sndbuf,
                 size_t          sndlen,
                 pami_recv_t   * recv)
 {

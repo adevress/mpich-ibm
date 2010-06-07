@@ -15,11 +15,11 @@
  * \param[in]  sndlen       The size of the incoming data
  * \param[out] recv         If the message is long, this tells the message layer how to handle the data.
  */
-void MPIDI_RecvCB(pami_context_t    context,
+void MPIDI_RecvCB(pami_context_t   context,
                   void           * _contextid,
-                  void           * _msginfo,
+                  const void     * _msginfo,
                   size_t           msginfo_size,
-                  void           * sndbuf,
+                  const void     * sndbuf,
                   size_t           sndlen,
                   pami_recv_t    * recv)
 {
@@ -122,7 +122,7 @@ void MPIDI_RecvCB(pami_context_t    context,
             {
               MPIDI_Request_setCA(rreq, MPIDI_CA_UNPACK_UEBUF_AND_COMPLETE_NOFREE);
               rreq->mpid.uebuflen = sndlen;
-              rreq->mpid.uebuf    = sndbuf ;
+              rreq->mpid.uebuf    = (void*)sndbuf;
               MPIDI_RecvDoneCB(context, rreq, PAMI_SUCCESS);
             }
           return;
@@ -174,7 +174,7 @@ void MPIDI_RecvCB(pami_context_t    context,
             {
               MPIDI_Request_setCA(rreq, MPIDI_CA_UNPACK_UEBUF_AND_COMPLETE_NOFREE);
               rreq->mpid.uebuflen = sndlen;
-              rreq->mpid.uebuf    = sndbuf ;
+              rreq->mpid.uebuf    = (void*)sndbuf;
               MPIDI_RecvDoneCB(context, rreq, PAMI_SUCCESS);
               return;
             }

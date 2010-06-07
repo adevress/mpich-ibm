@@ -16,11 +16,11 @@
  * \param[in]  sndlen       Unused
  * \param[out] recv         Unused
  */
-void MPIDI_RecvRzvCB(pami_context_t    context,
+void MPIDI_RecvRzvCB(pami_context_t   context,
                      void           * _contextid,
-                     void           * _msginfo,
+                     const void     * _msginfo,
                      size_t           msginfo_size,
-                     void           * sndbuf,
+                     const void     * sndbuf,
                      size_t           sndlen,
                      pami_recv_t    * recv)
 {

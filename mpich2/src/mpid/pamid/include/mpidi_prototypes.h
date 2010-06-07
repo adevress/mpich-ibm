@@ -99,28 +99,28 @@ int MPIDI_RecvMsg(void          * buf,
                   MPID_Request ** request);
 
 void MPIDI_SendDoneCB   (pami_context_t   context,
-                         void          * clientdata,
+                         void           * clientdata,
                          pami_result_t    result);
 
 void MPIDI_RecvCB       (pami_context_t   context,
-                         void          * _contextid,
-                         void          * _msginfo,
-                         size_t          msginfo_size,
-                         void          * sndbuf,
-                         size_t          sndlen,
+                         void           * _contextid,
+                         const void     * _msginfo,
+                         size_t           msginfo_size,
+                         const void     * sndbuf,
+                         size_t           sndlen,
                          pami_recv_t    * recv);
 void MPIDI_RecvRzvCB    (pami_context_t   context,
-                         void          * _contextid,
-                         void          * _msginfo,
-                         size_t          msginfo_size,
-                         void          * sndbuf,
-                         size_t          sndlen,
+                         void           * _contextid,
+                         const void     * _msginfo,
+                         size_t           msginfo_size,
+                         const void     * sndbuf,
+                         size_t           sndlen,
                          pami_recv_t    * recv);
 void MPIDI_RecvDoneCB   (pami_context_t   context,
-                         void          * clientdata,
+                         void           * clientdata,
                          pami_result_t    result);
 void MPIDI_RecvRzvDoneCB(pami_context_t   context,
-                         void          * cookie,
+                         void           * cookie,
                          pami_result_t    result);
 /** \} */
 
@@ -131,11 +131,11 @@ void MPIDI_postSyncAck(pami_context_t context, MPID_Request * req);
 void MPIDI_procCancelReq(pami_context_t context, const MPIDI_MsgInfo *info, pami_task_t peer);
 /** \brief This is the general PT2PT control message call-back */
 void MPIDI_ControlCB(pami_context_t   context,
-                     void          * _contextid,
-                     void          * _msginfo,
-                     size_t          msginfo_size,
-                     void          * sndbuf,
-                     size_t          sndlen,
+                     void           * _contextid,
+                     const void     * _msginfo,
+                     size_t           msginfo_size,
+                     const void     * sndbuf,
+                     size_t           sndlen,
                      pami_recv_t    * recv);
 
 
