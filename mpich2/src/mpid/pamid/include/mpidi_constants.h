@@ -48,5 +48,16 @@
 #define MPID_MSGTYPE_UNLOCKACK  15      /**< unlock acknowledge, with status */
 /** \} */
 
+/**
+ * \defgroup Allgather(v) optimization datatype info
+ * \{
+ */
+#define MPID_SEND_CONTIG        0 /**< Contiguous send buffer */
+#define MPID_RECV_CONTIG        1 /**< Contiguous recv buffer */
+#define MPID_RECV_CONTINUOUS    2 /**< Continuous recv buffer */
+#define MPID_LARGECOUNT         3 /**< Total send count is "large" */
+#define MPID_MEDIUMCOUNT        4 /**< Total send count is "medium" */
+#define MPID_ALIGNEDBUFFER      5 /**< Buffers are 16b aligned */
+/** \} */
 
 #endif
