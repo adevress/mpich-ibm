@@ -5,15 +5,7 @@
 #endif
 #define TRACE_ERR(x) //fprintf x
 
-int MPItoPAMI(MPI_Datatype dt, pami_dt *pdt, MPI_Op op, pami_op *pop, int *musupport);
 void MPIopString(MPI_Op op, char *string);
-
-static void cb_allreduce(void *ctxt, void *clientdata, pami_result_t err)
-{
-   int *active = (int *) clientdata;
-   TRACE_ERR((stderr,"callback enter, active: %d\n", (*active)));
-   (*active)--;
-}
 
 /* some useful macros to make the comparisons less icky, esp given the */
 /* explosion of datatypes in MPI2.2                                    */
@@ -61,9 +53,11 @@ static void cb_allreduce(void *ctxt, void *clientdata, pami_result_t err)
 
 /* known missing types: MPI_C_LONG_DOUBLE_COMPLEX */
 
-#define YES 1
-#define NO 0
+ 
+#define MUSUPPORTED 1
+#define MUUNSUPPORTED 0
 
+/* for easier debug */
 void MPIopString(MPI_Op op, char *string)
 {
    switch(op)
@@ -87,12 +81,13 @@ void MPIopString(MPI_Op op, char *string)
 
 int MPItoPAMI(MPI_Datatype dt, pami_dt *pdt, MPI_Op op, pami_op *pop, int *musupport)
 {
-   *musupport = YES;
+   *musupport = MUSUPPORTED;
    *pdt = PAMI_UNDEFINED_DT;
    *pop = PAMI_UNDEFINED_OP;
    if(isS_INT(dt))
    {
       *pdt = PAMI_SIGNED_INT;
+      /* #warning FIXME : signed int + Band/bor/bxor doesn't work at the lower level */
       /* For some reason, signed int+B* ops doesn't work */
       if(op == MPI_BOR || op == MPI_BAND || op == MPI_BXOR)
          return -1;
@@ -102,7 +97,7 @@ int MPItoPAMI(MPI_Datatype dt, pami_dt *pdt, MPI_Op op, pami_op *pop, int *musup
    else if(isDOUBLE(dt)) *pdt = PAMI_DOUBLE;
    else
    {
-      *musupport = NO;
+      *musupport = MUUNSUPPORTED;
       if(isS_CHAR(dt)) *pdt = PAMI_SIGNED_CHAR;
       else if(isUS_CHAR(dt)) *pdt = PAMI_UNSIGNED_CHAR;
       else if(isS_SHORT(dt)) *pdt = PAMI_SIGNED_SHORT;
@@ -153,66 +148,4 @@ int MPItoPAMI(MPI_Datatype dt, pami_dt *pdt, MPI_Op op, pami_op *pop, int *musup
    if(*pop == PAMI_UNDEFINED_OP) return -1;
 
    return MPI_SUCCESS;
-}
-
-
-
-
-
-int MPIDO_Allreduce(void *sendbuf,
-                    void *recvbuf,
-                    int count,
-                    MPI_Datatype dt,
-                    MPI_Op op,
-                    MPID_Comm *comm_ptr)
-{
-   TRACE_ERR((stderr,"in mpido_allreduce\n"));
-   pami_dt pdt;
-   pami_op pop;
-   int mu;
-   int rc;
-   int len;
-   char op_str[255];
-   char dt_str[255];
-   volatile unsigned active = 1;
-   pami_xfer_t allred;
-   MPIopString(op, op_str);
-   PMPI_Type_get_name(dt, dt_str, &len);
-   rc = MPItoPAMI(dt, &pdt, op, &pop, &mu);
-   if(rc == MPI_SUCCESS && mu == 1)
-   {
-      MPI_Aint data_true_lb;
-      MPID_Datatype *data_ptr;
-      int data_size, data_contig;
-      MPIDI_Datatype_get_info(count, dt, data_contig, data_size, data_ptr, data_true_lb);
-      allred.cb_done = cb_allreduce;
-      allred.cookie = (void *)&active;
-      allred.algorithm = comm_ptr->mpid.allreduces[0];
-      allred.cmd.xfer_allreduce.sndbuf = sendbuf;
-      allred.cmd.xfer_allreduce.stype = PAMI_BYTE;
-      allred.cmd.xfer_allreduce.rcvbuf = recvbuf;
-      allred.cmd.xfer_allreduce.rtype = PAMI_BYTE;
-      allred.cmd.xfer_allreduce.stypecount = data_size; // datasize is sizeof()*count
-      allred.cmd.xfer_allreduce.rtypecount = data_size;
-      allred.cmd.xfer_allreduce.dt = pdt;
-      allred.cmd.xfer_allreduce.op = pop;
-      TRACE_ERR((stderr,"posting allreduce, context: %d, algoname: %s, dt: %s, op: %s, count: %d\n", 0,
-               comm_ptr->mpid.allreduce_metas[0].name, dt_str, op_str, count));
-      rc = PAMI_Collective(MPIDI_Context[0], (pami_xfer_t *)&allred);
-      TRACE_ERR((stderr,"allreduce posted, rc: %d\n", rc));
-
-      assert(rc == PAMI_SUCCESS);
-      while(active)
-      {
-         static int spin = 0;
-         if(spin %1000 == 0)
-            TRACE_ERR((stderr,"spinning: %d\n", spin));
-         rc = PAMI_Context_advance(MPIDI_Context[0], 1);
-         spin ++;
-      }
-      TRACE_ERR((stderr,"allreduce done\n"));
-      return MPI_SUCCESS;
-   }
-   else
-      return MPIR_Allreduce(sendbuf, recvbuf, count, dt, op, comm_ptr);
 }

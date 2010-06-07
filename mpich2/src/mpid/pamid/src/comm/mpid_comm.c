@@ -3,7 +3,7 @@
 #ifdef TRACE_ERR
 #undef TRACE_ERR
 #endif
-#define TRACE_ERR(x) // fprintf x
+#define TRACE_ERR(x)  fprintf x
 
 void MPIDI_Comm_create (MPID_Comm *comm)
 {
@@ -52,11 +52,82 @@ void MPIDI_Comm_world_setup()
   int useshmembarrier = 1;
   int useshmembcast = 1;
   int useshmemallreduce = 1;
+  int useglueallgather = 1;
+  int i;
   MPID_Comm *world = MPIR_Process.comm_world;
+
+   for(i=0;i<4;i++) world->mpid.allgathervs[i] = 0; /* turn them all off for now */
+   envopts = getenv("PAMI_ALLGATHERV");
+   if(envopts != NULL)
+   {
+      TRACE_ERR((stderr,"allgatherv: %s\n", envopts));
+      if(strncasecmp(envopts, "ALLT", 4) == 0) /*alltoall based */
+      {
+         world->mpid.allgathervs[0] = 1;
+      }
+      else if(strncasecmp(envopts, "ALLR", 4) == 0) /* allreduce */
+      {
+         world->mpid.allgathervs[1] = 1;
+      }
+      else if(strncasecmp(envopts, "B", 1) == 0) /* bcast */
+      {
+         world->mpid.allgathervs[2] = 1;
+      }
+      else if(strncasecmp(envopts, "M", 1) == 0) /* mpich */
+      {
+         for(i=0;i<4;i++) world->mpid.allgathervs[i] = 1;
+      }
+   }
+
+   for(i=0;i<4;i++) world->mpid.allgathers[i] = 0; /* turn them all off for now */
+   envopts = getenv("PAMI_ALLGATHER");
+   if(envopts != NULL)
+   {
+      TRACE_ERR((stderr,"allgather: %s\n", envopts));
+      if(strncasecmp(envopts, "ALLT", 4) == 0) /*alltoall based */
+      {
+         world->mpid.allgathers[0] = 1;
+      }
+      else if(strncasecmp(envopts, "ALLR", 4) == 0) /* allreduce */
+      {
+         world->mpid.allgathers[1] = 1;
+      }
+      else if(strncasecmp(envopts, "B", 1) == 0) /* bcast */
+      {
+         world->mpid.allgathers[2] = 1;
+      }
+      else if(strncasecmp(envopts, "M", 1) == 0) /* mpich */
+      {
+         for(i=0;i<4;i++) world->mpid.allgathers[i] = 1;
+      }
+   }
+
+   envopts = getenv("PAMI_SCATTERV");
+   if(envopts != NULL)
+   {
+      TRACE_ERR((stderr,"scatterv: %s\n", envopts));
+      world->mpid.scattervs[0] = world->mpid.scattervs[1] = 0; /* turn them all off for now */
+      if(strncasecmp(envopts, "B", 1) == 0)
+         world->mpid.scattervs[0] = 1;
+      else if(strncasecmp(envopts, "A", 1) == 0)
+         world->mpid.scattervs[1] = 1;
+      else
+         world->mpid.scattervs[0] = world->mpid.scattervs[1] = 0;
+   }
+   envopts = getenv("PAMI_SCATTER");
+   if(envopts != NULL)
+   {
+      TRACE_ERR((stderr,"scatter: %s\n", envopts));
+      if(strncasecmp(envopts, "B", 1) == 0)
+         world->mpid.optscatter = 1;
+      else
+         world->mpid.optscatter = 0;
+   }
 
   envopts = getenv("PAMI_BARRIER");
   if(envopts != NULL)
     {
+      TRACE_ERR((stderr,"barrier: %s\n", envopts));
       if(strncasecmp(envopts, "S", 1) == 0) /* shmem */
         {
           useshmembarrier = 1;
@@ -71,6 +142,7 @@ void MPIDI_Comm_world_setup()
   envopts = getenv("PAMI_BCAST");
   if(envopts != NULL)
     {
+      TRACE_ERR((stderr,"bcast: %s\n", envopts));
       if(strncasecmp(envopts, "S", 1) == 0) /* shmem */
         {
           useshmembcast = 1;
@@ -85,6 +157,7 @@ void MPIDI_Comm_world_setup()
   envopts = getenv("PAMI_ALLREDUCE");
   if(envopts != NULL)
     {
+      TRACE_ERR((stderr,"allreduce: %s\n", envopts));
       if(strncasecmp(envopts, "S", 1) == 0) /* shmem */
         {
           useshmemallreduce = 1;
@@ -103,6 +176,7 @@ void MPIDI_Comm_world_setup()
   world->mpid.bcast_metas = NULL;
   world->mpid.barrier_metas = NULL;
   world->mpid.allreduce_metas = NULL;
+  world->mpid.allgathers[0] = 1; /* guaranteed to work */
   int num_algorithms[2] = {0};
 
   /* Don't even bother registering if we are using mpich only */

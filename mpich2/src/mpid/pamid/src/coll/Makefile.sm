@@ -1,3 +1,3 @@
-SUBDIRS= . 
+SUBDIRS= barrier bcast allreduce allgather allgatherv scatterv scatter .
 INCLUDES = -I${master_top_srcdir}/src/include -I${top_builddir}/src/include
-lib${MPILIBNAME}_a_SOURCES =	mpido_bcast.c mpido_barrier.c mpido_allreduce.c
+lib${MPILIBNAME}_a_SOURCES =	coll_utils.c

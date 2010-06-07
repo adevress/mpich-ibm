@@ -232,9 +232,14 @@ struct MPIDI_Comm
   pami_algorithm_t *bcasts;
   pami_algorithm_t *barriers;
   pami_algorithm_t *allreduces;
-  pami_metadata_t  *bcast_metas; /* Is there one per algorithm? */
-  pami_metadata_t  *barrier_metas;
-  pami_metadata_t  *allreduce_metas;
+  pami_metadata_t *bcast_metas; /* is there one per algorithm? */
+  pami_metadata_t *barrier_metas;
+  pami_metadata_t *allreduce_metas;
+  char allgathers[4]; /* temporary */
+  char allgathervs[4];
+  char scattervs[2];
+  char optscatter;
+  char last_algorithm[100];
 };
 
 
