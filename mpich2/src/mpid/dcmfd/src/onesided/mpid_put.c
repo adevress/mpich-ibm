@@ -126,7 +126,6 @@ int MPID_Put(void *origin_addr, int origin_count,
                 int i, j, sent = 0;
 		DLOOP_Offset last;
                 char *b, *s, *buf;
-                MPIDU_Onesided_info_t *info;
                 int lpid;
                 MPIDU_Onesided_xtra_t xtra = {0};
 		struct mpid_put_cb_data *put;
@@ -290,23 +289,15 @@ int MPID_Put(void *origin_addr, int origin_count,
 		if (sent) {
 			/*
 			 * inform target how many messages we sent.
-			 * this serves as a completion notification
-			 * since the consistency is MATCH.
+			 * this must be sent as a control message so
+			 * that subsequent synch messages to do overtake.
 			 */
-                        xtra.mpid_xtra_w1 = 0;
-                        xtra.mpid_xtra_w2 = 0;
-			reqp = MPIDU_get_req(&xtra, &info);
-                	info->mpid_info_w0 = MPID_MSGTYPE_PUT;
-                	info->mpid_info_w1 = win_ptr->_dev.coll_info[target_rank].win_handle;
-                	info->mpid_info_w2 = rank;
-                	info->mpid_info_w3 = sent;
-			cb_send.function = done_rqc_cb;
-			cb_send.clientdata = reqp;
-			++win_ptr->_dev.my_rma_pends;
-                        mpi_errno = DCMF_Send(&bg1s_sn_proto, reqp,
-                                cb_send, win_ptr->_dev.my_cstcy, lpid,
-                                0, NULL,
-                                info->info, MPIDU_1SINFO_NQUADS);
+			MPIDU_Onesided_ctl_t info;
+			info.mpid_ctl_w0 = MPID_MSGTYPE_PUT;
+			info.mpid_ctl_w1 = win_ptr->_dev.coll_info[target_rank].win_handle;
+			info.mpid_ctl_w2 = rank;
+			info.mpid_ctl_w3 = sent;
+			(void) DCMF_Control(&bg1s_ct_proto, win_ptr->_dev.my_cstcy, lpid, &info.ctl);
 		}
 #endif /* USE_DCMF_PUT */
                 if (sent == 0 && xtra.mpid_xtra_w2) {

@@ -159,12 +159,15 @@ int MPID_Win_create(void *base, MPI_Aint size, int disp_unit,
         /* allocate memory for the base addresses, disp_units, and
                 completion counters of all processes */
 
-        MPIDU_MALLOC(win->_dev.as_origin.rmas, int, comm_size * sizeof(int),
-		mpi_errno, "win->_dev.as_origin.rmas");
-        memset((void *)win->_dev.as_origin.rmas, 0, comm_size * sizeof(int));
-        MPIDU_MALLOC(win->_dev.as_target.rmas, int, comm_size * sizeof(int),
-		mpi_errno, "win->_dev.as_target.rmas");
-        memset((void *)win->_dev.as_target.rmas, 0, comm_size * sizeof(int));
+	int *ints;
+	MPIDU_MALLOC(ints, int, 3 * comm_size * sizeof(int), mpi_errno, "win counters");
+        memset((void *)ints, 0, 3 * comm_size * sizeof(int));
+	win->_dev.as_origin.rmas = ints; /* Win_free depends on this being first */
+	ints += comm_size;
+	win->_dev.post_counts = ints;
+	ints += comm_size;
+	win->_dev.as_target.rmas = ints;
+
         MPIDU_MALLOC(win->_dev.coll_info, struct MPID_Win_coll_info,
                 comm_size * sizeof(struct MPID_Win_coll_info),
                 mpi_errno, "win->_dev.coll_info");
@@ -242,8 +245,7 @@ int MPID_Win_free(MPID_Win **win_ptr)
 			&win->_dev.coll_info[rank].mem_region);
         NMPI_Comm_free(&win->comm);
         MPIDU_FREE(win->_dev.coll_info, mpi_errno, "win->_dev.coll_info");
-        MPIDU_FREE(win->_dev.as_origin.rmas, mpi_errno, "win->_dev.as_origin.rmas");
-        MPIDU_FREE(win->_dev.as_target.rmas, mpi_errno, "win->_dev.as_target.rmas");
+        MPIDU_FREE(win->_dev.as_origin.rmas, mpi_errno, "win counters");
         mpidu_free_lock(win);
         /** \todo check whether refcount needs to be decremented
          * here as in group_free */

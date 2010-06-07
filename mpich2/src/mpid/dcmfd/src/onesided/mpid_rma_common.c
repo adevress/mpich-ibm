@@ -1336,92 +1336,6 @@ static void dtc2_rqc_cb(void *v, DCMF_Error_t *e) {
  */
 
 /**
- * \brief Send (spray) a protocol message to a group of nodes.
- *
- * Send a protocol message to all members of a group (or the
- * window-comm if no group).
- *
- * Currently, this routine will only be called once per group
- * (i.e. once during an exposure or access epoch). If it ends
- * up being called more than once, it might make sense to build
- * a translation table between the group rank and the window
- * communicator rank.  Or if we can determine that the same
- * group is being used in multiple, successive, epochs. In practice,
- * it takes more work to build a translation table than to lookup
- * ranks ad-hoc.
- *
- * \param[in] win	Pointer to MPID_Win object
- * \param[in] grp	Optional pointer to MPID_Group object
- * \param[in] type	Type of message (MPID_MSGTYPE_*)
- * \return MPI_SUCCESS or error returned from DCMF_Send.
- *
- * \ref msginfo_usage
- */
-int MPIDU_proto_send(MPID_Win *win, MPID_Group *grp, int type) {
-        int lpid, x;
-        MPIDU_Onesided_ctl_t ctl;
-        int size, comm_size = 0, comm_rank;
-        int mpi_errno = MPI_SUCCESS;
-        MPID_VCR *vc;
-        DCMF_Consistency consistency = win->_dev.my_cstcy;
-
-        /*
-         * \todo Confirm this:
-         * For inter-comms, we only talk to the remote nodes. For
-         * intra-comms there are no remote or local nodes.
-         * So, we always use win->_dev.comm_ptr->vcr (?)
-         * However, we have to choose remote_size, in the case of
-         * inter-comms, vs. local_size. This decision also
-         * affects MPIDU_world_rank_c().
-         */
-        size = MPIDU_comm_size(win);
-        vc = MPIDU_world_vcr(win);
-        MPID_assert_debug(vc != NULL && size > 0);
-        if (grp) {
-                comm_size = size;
-                size = grp->size;
-        }
-        /** \todo is it OK to lower consistency here? */
-        consistency = DCMF_RELAXED_CONSISTENCY;
-
-        ctl.mpid_ctl_w0 = type;
-        ctl.mpid_ctl_w2 = win->_dev.comm_ptr->rank;
-        for (x = 0; x < size; ++x) {
-                if (grp) {
-                        int z;
-
-                        lpid = grp->lrank_to_lpid[x].lpid;
-                        /* convert group rank to comm rank */
-                        for (z = 0; z < comm_size &&
-                                lpid != vc[z]; ++z);
-                        MPID_assert_debug(z < comm_size);
-                        comm_rank = z;
-                } else {
-                        lpid = vc[x];
-                        comm_rank = x;
-                }
-                ctl.mpid_ctl_w1 = win->_dev.coll_info[comm_rank].win_handle;
-                if (type == MPID_MSGTYPE_COMPLETE) {
-			/* tell target how many RMAs we did */
-                        ctl.mpid_ctl_w3 = win->_dev.as_origin.rmas[comm_rank];
-                        win->_dev.as_origin.rmas[comm_rank] = 0;
-                }
-		if (lpid == mpid_my_lpid) {
-			/* send to self, just process as if received */
-			recv_sm_cb(NULL, (const DCQuad *)&ctl, 1, lpid, NULL, 0);
-		} else {
-                	mpi_errno = DCMF_Control(&bg1s_ct_proto, consistency, lpid, &ctl.ctl);
-                	if (mpi_errno) { break; }
-		}
-        }
-        return mpi_errno;
-}
-
-/*
- * * * * * * * * * * * * * * * * * * * * * *
- */
-
-/**
  * \brief validate whether a lpid is in a given group
  *
  * Searches the group lpid list for a match.
@@ -1481,7 +1395,11 @@ void recv_sm_cb(void *cd, const DCQuad *_mi, unsigned ct, size_t or,
                 MPID_assert_debug(sl == 0);
                 MPID_Win_get_ptr((MPI_Win)mc->mpid_ctl_w1, win);
                 MPID_assert_debug(win != NULL);
-                ++win->_dev.as_origin.sync_count;
+                {
+		int n;
+		n = ++win->_dev.post_counts[mc->mpid_ctl_w2];
+                MPID_assert_debug(n <= 1);
+		}
                 break;
         case MPID_MSGTYPE_LOCK:
                 MPID_assert_debug(ct == MPIDU_1SCTL_NQUADS);
@@ -1499,9 +1417,8 @@ void recv_sm_cb(void *cd, const DCQuad *_mi, unsigned ct, size_t or,
                 ++win->_dev.as_origin.sync_count;
                 break;
 
-        /* The following all use msginfo as DCQuad[2] */
         case MPID_MSGTYPE_PUT:
-                MPID_assert_debug(ct == MPIDU_1SINFO_NQUADS);
+                MPID_assert_debug(ct == MPIDU_1SCTL_NQUADS);
                 MPID_Win_get_ptr((MPI_Win)mi->mpid_info_w1, win);
                 MPID_assert_debug(win != NULL);
                 MPIDU_assert_PUTOK(win);
@@ -1517,6 +1434,7 @@ void recv_sm_cb(void *cd, const DCQuad *_mi, unsigned ct, size_t or,
                 rma_recvs_cb(win, mi->mpid_info_w2, or, 1);
 #endif /* ! USE_DCMF_PUT */
                 break;
+        /* The following all use msginfo as DCQuad[2] */
         case MPID_MSGTYPE_DT_MAP:
                 MPID_assert_debug(ct == MPIDU_1SINFO_NQUADS);
                 rb = MPID_Prepare_rem_dt(mi);
@@ -1736,6 +1654,7 @@ DCMF_Request_t *recv_cb(void *cd, const DCQuad *_mi, unsigned ct,
 void epoch_clear(MPID_Win *win, int rank, int as_target) {
 	struct MPID_Win_sync_info *ws;
 	int type = MPID_EPOTYPE_NONE;
+	int oldtype;
 	if (as_target) {
 		ws = &win->_dev.as_target;
 		win->_dev.my_rma_recvs = 0;
@@ -1749,6 +1668,7 @@ void epoch_clear(MPID_Win *win, int rank, int as_target) {
 			type = win->_dev.as_target.epoch_type;
 		}
 	}
+	oldtype = ws->epoch_type;
 	ws->epoch_type = type;
 	ws->epoch_size = 0;
 	ws->epoch_assert = 0;
@@ -1756,12 +1676,17 @@ void epoch_clear(MPID_Win *win, int rank, int as_target) {
 	if (rank >= 0) {
 		/* lock/unlock - clear only target/origin */
 		ws->rmas[rank] = 0;
-	} else {
-		/* Fence/PSCW - clear everything */
+	} else if (oldtype == MPID_EPOTYPE_FENCE) {
+		/* Fence - clear everything, Allreduce already sent it all */
 		int x;
 		int size = MPIDU_comm_size(win);
 		for (x = 0; x < size; ++x) {
 			ws->rmas[x] = 0;
+		}
+	} else {
+		/* PSCW - as_origin.rmas[target] will be cleared in MPIDU_proto_send() */
+		if (as_target) {
+			ws->rmas[win->_dev.comm_ptr->rank] = 0;
 		}
 	}
 }

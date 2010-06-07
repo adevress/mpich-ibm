@@ -1075,30 +1075,6 @@ static inline int MPIDU_comm_size_c(MPID_Comm *c) {
 #define MPIDU_comm_size(w)	MPIDU_comm_size_c((w)->_dev.comm_ptr)
 
 /**
- * \brief Send (spray) a protocol message to a group of nodes.
- *
- * Send a protocol message to all members of a group (or the
- * window-comm if no group).
- *
- * Currently, this routine will only be called once per group
- * (i.e. once during an exposure or access epoch). If it ends
- * up being called more than once, it might make sense to build
- * a translation table between the group rank and the window
- * communicator rank.  Or if we can determine that the same
- * group is being used in multiple, successive, epochs. In practice,
- * it takes more work to build a translation table than to lookup
- * ranks ad-hoc.
- *
- * \param[in] win	Pointer to MPID_Win object
- * \param[in] grp	Optional pointer to MPID_Group object
- * \param[in] type	Type of message (MPID_MSGTYPE_*)
- * \return MPI_SUCCESS or error returned from DCMF_Send.
- *
- * \ref msginfo_usage
- */
-int MPIDU_proto_send(MPID_Win *win, MPID_Group *grp, int type);
-
-/**
  * \brief Utility routine to provide accumulate function on target.
  *
  * Utility routine to provide accumulate function on target.
