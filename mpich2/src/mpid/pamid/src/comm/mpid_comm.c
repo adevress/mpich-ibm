@@ -125,15 +125,15 @@ void MPIDI_Comm_world_setup()
             MPIU_Malloc(sizeof(pami_metadata_t) * num_algorithms[0]);
           /* Despite the bad name, this looks at algorithms associated with
            * the geometry, NOT inherent physical properties of the geometry*/
-          rc = PAMI_Geometry_query(MPIDI_Context[0],
-                                   world->mpid.geometry,
-                                   PAMI_XFER_BARRIER,
-                                   world->mpid.barriers,
-                                   world->mpid.barrier_metas,
-                                   num_algorithms[0],
-                                   NULL,
-                                   NULL,
-                                   0);
+          rc = PAMI_Geometry_algorithms_query(MPIDI_Context[0],
+                                              world->mpid.geometry,
+                                              PAMI_XFER_BARRIER,
+                                              world->mpid.barriers,
+                                              world->mpid.barrier_metas,
+                                              num_algorithms[0],
+                                              NULL,
+                                              NULL,
+                                              0);
           assert(rc == PAMI_SUCCESS);
         }
       TRACE_ERR((stderr,"barriers registered, assigning\n"));
@@ -156,15 +156,15 @@ void MPIDI_Comm_world_setup()
             MPIU_Malloc(sizeof(pami_algorithm_t) * num_algorithms[0]);
           world->mpid.allreduce_metas = (pami_metadata_t *)
             MPIU_Malloc(sizeof(pami_metadata_t) * num_algorithms[0]);
-          rc = PAMI_Geometry_query(MPIDI_Context[0],
-                                   world->mpid.geometry,
-                                   PAMI_XFER_ALLREDUCE,
-                                   world->mpid.allreduces,
-                                   world->mpid.allreduce_metas,
-                                   num_algorithms[0],
-                                   NULL,
-                                   NULL,
-                                   0);
+          rc = PAMI_Geometry_algorithms_query(MPIDI_Context[0],
+                                              world->mpid.geometry,
+                                              PAMI_XFER_ALLREDUCE,
+                                              world->mpid.allreduces,
+                                              world->mpid.allreduce_metas,
+                                              num_algorithms[0],
+                                              NULL,
+                                              NULL,
+                                              0);
           assert(rc == PAMI_SUCCESS);
         }
       TRACE_ERR((stderr,"allreduce registered, assigning\n"));
@@ -192,15 +192,15 @@ void MPIDI_Comm_world_setup()
           world->mpid.bcast_metas = (pami_metadata_t *)MPIU_Malloc(sizeof(pami_metadata_t) *
                                                                    num_algorithms[0]);
 
-          rc = PAMI_Geometry_query(MPIDI_Context[0],
-                                   world->mpid.geometry,
-                                   PAMI_XFER_BROADCAST,
-                                   world->mpid.bcasts,
-                                   world->mpid.bcast_metas,
-                                   num_algorithms[0],
-                                   NULL,
-                                   NULL,
-                                   0);
+          rc = PAMI_Geometry_algorithms_query(MPIDI_Context[0],
+                                              world->mpid.geometry,
+                                              PAMI_XFER_BROADCAST,
+                                              world->mpid.bcasts,
+                                              world->mpid.bcast_metas,
+                                              num_algorithms[0],
+                                              NULL,
+                                              NULL,
+                                              0);
           assert(rc == PAMI_SUCCESS);
         }
       TRACE_ERR((stderr,"assigning bcast fns\n"));
