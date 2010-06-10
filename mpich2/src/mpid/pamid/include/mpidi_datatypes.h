@@ -232,15 +232,15 @@ struct MPIDI_Request
 struct MPIDI_Comm
 {
   pami_geometry_t geometry; /**< Geometry component for collectives      */
-  /* It is unlikely these should stay in here, but more thought needs put in
-   * to this after 5/1
+  /** \todo It is unlikely these should stay in here, but more thought
+   *        needs put in to this after 5/1
    */
   pami_algorithm_t *bcasts;
   pami_algorithm_t *barriers;
   pami_algorithm_t *allreduces;
-  pami_metadata_t *bcast_metas; /* is there one per algorithm? */
-  pami_metadata_t *barrier_metas;
-  pami_metadata_t *allreduce_metas;
+  pami_metadata_t  *bcast_metas; /* Is there one per algorithm? */
+  pami_metadata_t  *barrier_metas;
+  pami_metadata_t  *allreduce_metas;
 };
 
 
