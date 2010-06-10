@@ -15,9 +15,8 @@
  */
 struct MPIDI_VCRT
 {
-  int handle;             /**< This element is not used, but exists so that we may use the MPIU_Object routines for reference counting */
-  volatile int ref_count; /**< Number of references to this table */
-  int size;               /**< Number of entries in the table */
+  MPIU_OBJECT_HEADER;
+  unsigned size;          /**< Number of entries in the table */
   MPID_VCR vcr_table[0];  /**< Array of virtual connection references */
 };
 
