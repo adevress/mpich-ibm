@@ -163,7 +163,6 @@ MPIDI_SendMsg_handoff(pami_context_t   context,
    */
   pami_endpoint_t dest;
   MPIDI_Context_endpoint(sreq, &dest);
-  sreq->mpid.envelope.envelope.msginfo.msginfo.sender = MPIDI_Process.global.rank;
 
   /*
    * Get the datatype info

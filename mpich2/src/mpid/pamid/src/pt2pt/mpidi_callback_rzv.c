@@ -16,13 +16,14 @@
  * \param[in]  sndlen       Unused
  * \param[out] recv         Unused
  */
-void MPIDI_RecvRzvCB(pami_context_t   context,
-                     void           * _contextid,
-                     const void     * _msginfo,
-                     size_t           msginfo_size,
-                     const void     * sndbuf,
-                     size_t           sndlen,
-                     pami_recv_t    * recv)
+void MPIDI_RecvRzvCB(pami_context_t    context,
+                     void            * _contextid,
+                     const void      * _msginfo,
+                     size_t            msginfo_size,
+                     const void      * sndbuf,
+                     size_t            sndlen,
+                     pami_endpoint_t   sender,
+                     pami_recv_t     * recv)
 {
   MPID_assert(recv == NULL);
   MPID_assert(sndlen == 0);
@@ -30,7 +31,8 @@ void MPIDI_RecvRzvCB(pami_context_t   context,
   MPID_assert(msginfo_size == sizeof(MPIDI_MsgEnvelope));
   const MPIDI_MsgEnvelope * envelope = (const MPIDI_MsgEnvelope *)_msginfo;
   const MPIDI_MsgInfo * msginfo = (const MPIDI_MsgInfo *)&envelope->envelope.msginfo;
-  pami_task_t senderrank = msginfo->msginfo.sender;
+  pami_task_t senderrank, sendercontext;
+  PAMI_Endpoint_query(sender, &senderrank, &sendercontext);
   /* size_t               contextid = (size_t)_contextid; */
 
   MPID_Request * rreq = NULL;

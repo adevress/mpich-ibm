@@ -15,13 +15,14 @@
  * \param[in]  sndlen       The size of the incoming data
  * \param[out] recv         If the message is long, this tells the message layer how to handle the data.
  */
-void MPIDI_RecvCB(pami_context_t   context,
-                  void           * _contextid,
-                  const void     * _msginfo,
-                  size_t           msginfo_size,
-                  const void     * sndbuf,
-                  size_t           sndlen,
-                  pami_recv_t    * recv)
+void MPIDI_RecvCB(pami_context_t    context,
+                  void            * _contextid,
+                  const void      * _msginfo,
+                  size_t            msginfo_size,
+                  const void      * sndbuf,
+                  size_t            sndlen,
+                  pami_endpoint_t   sender,
+                  pami_recv_t     * recv)
 {
   MPID_assert((sndbuf == NULL) ^ (recv == NULL));
 
@@ -29,7 +30,8 @@ void MPIDI_RecvCB(pami_context_t   context,
   MPID_assert(msginfo_size == sizeof(MPIDI_MsgInfo));
 
   const MPIDI_MsgInfo *msginfo = (const MPIDI_MsgInfo *)_msginfo;
-  pami_task_t senderrank = msginfo->msginfo.sender;
+  pami_task_t senderrank, sendercontext;
+  PAMI_Endpoint_query(sender, &senderrank, &sendercontext);
   /* size_t               contextid = (size_t)_contextid; */
 
   MPID_Request * rreq = NULL;

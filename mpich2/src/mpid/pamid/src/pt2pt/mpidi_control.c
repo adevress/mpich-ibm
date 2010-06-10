@@ -19,7 +19,6 @@ MPIDI_CtrlSend(pami_context_t  context,
 {
   pami_endpoint_t dest;
   PAMI_Endpoint_create(MPIDI_Client, peerrank, 0, &dest);
-  control->msginfo.sender = MPIDI_Process.global.rank;
 
   pami_send_immediate_t params = {
   dispatch : MPIDI_Protocols.Control,
@@ -252,36 +251,38 @@ MPIDI_procRzvAck(pami_context_t        context,
  * \brief This is the general PT2PT control message call-back
  */
 void
-MPIDI_ControlCB(pami_context_t  context,
-                void          * _contextid,
-                const void    * _msginfo,
-                size_t          msginfo_size,
-                const void    * sndbuf,
-                size_t          sndlen,
-                pami_recv_t   * recv)
+MPIDI_ControlCB(pami_context_t    context,
+                void            * _contextid,
+                const void      * _msginfo,
+                size_t            msginfo_size,
+                const void      * sndbuf,
+                size_t            sndlen,
+                pami_endpoint_t   sender,
+                pami_recv_t     * recv)
 {
   MPID_assert(recv == NULL); /**< Uncomment when ticket #50 is fixed */
   MPID_assert(sndlen == 0);
   MPID_assert(_msginfo != NULL);
   MPID_assert(msginfo_size == sizeof(MPIDI_MsgInfo));
   const MPIDI_MsgInfo *msginfo = (const MPIDI_MsgInfo *)_msginfo;
-  pami_task_t peer = msginfo->msginfo.sender;
+  pami_task_t senderrank, sendercontext;
+  PAMI_Endpoint_query(sender, &senderrank, &sendercontext);
   /* size_t               contextid = (size_t)_contextid; */
 
   switch (msginfo->msginfo.control)
     {
     case MPIDI_CONTROL_SSEND_ACKNOWLEDGE:
-      MPIDI_procSyncAck(context, msginfo, peer);
+      MPIDI_procSyncAck(context, msginfo, senderrank);
       break;
     case MPIDI_CONTROL_CANCEL_REQUEST:
-      MPIDI_procCancelReq(context, msginfo, peer);
+      MPIDI_procCancelReq(context, msginfo, senderrank);
       break;
     case MPIDI_CONTROL_CANCEL_ACKNOWLEDGE:
     case MPIDI_CONTROL_CANCEL_NOT_ACKNOWLEDGE:
-      MPIDI_procCancelAck(context, msginfo, peer);
+      MPIDI_procCancelAck(context, msginfo, senderrank);
       break;
     case MPIDI_CONTROL_RENDEZVOUS_ACKNOWLEDGE:
-      MPIDI_procRzvAck(context, msginfo, peer);
+      MPIDI_procRzvAck(context, msginfo, senderrank);
       break;
     default:
       fprintf(stderr, "Bad msginfo type: 0x%08x  %d\n",

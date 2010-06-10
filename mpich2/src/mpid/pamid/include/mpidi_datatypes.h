@@ -168,7 +168,6 @@ MPIDI_Message_match;
 struct MPIDI_MsgInfo_t
   {
     void     * req;         /**< peer's request pointer */
-    pami_task_t sender;     /**< rank of the task sending this msginfo */
     unsigned   MPItag;      /**< match tag              */
     unsigned   MPIrank;     /**< match rank             */
     uint16_t   MPIctxt;     /**< match context          */
