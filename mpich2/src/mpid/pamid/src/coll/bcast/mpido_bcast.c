@@ -27,7 +27,10 @@ int MPIDO_Bcast(void *buffer,
    MPID_Datatype *data_ptr;
    MPID_Segment segment;
    if(count == 0)
+   {
+      MPIDI_Update_last_algorithm(comm_ptr,"BCAST_NONE");
       return MPI_SUCCESS;
+   }
 
    MPIDI_Datatype_get_info(count, datatype,
                data_contig, data_size, data_ptr, data_true_lb);
@@ -67,6 +70,7 @@ int MPIDO_Bcast(void *buffer,
    bcast.cmd.xfer_broadcast.typecount = data_size;
 
    TRACE_ERR((stderr,"posting bcast, context: %d, algoname: %s\n",0, comm_ptr->mpid.bcast_metas[0].name));
+   MPIDI_Update_last_algorithm(comm_ptr, comm_ptr->mpid.bcast_metas[0].name);
    rc = PAMI_Collective(MPIDI_Context[0], (pami_xfer_t *)&bcast);
    TRACE_ERR((stderr,"bcast posted, rc: %d\n", rc));
 

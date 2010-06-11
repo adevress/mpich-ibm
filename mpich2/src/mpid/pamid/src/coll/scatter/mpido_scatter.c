@@ -138,7 +138,7 @@ int MPIDO_Scatter(void *sendbuf,
    sbuf = sendbuf+true_lb;
    rbuf = recvbuf+true_lb;
   
-   MPIDI_Update_last_algorithm(comm_ptr, "SCATTER_BCAST");
+   MPIDI_Update_last_algorithm(comm_ptr, "SCATTER_OPT_BCAST");
    return MPIDO_Scatter_bcast(sbuf, sendcount, sendtype,
                                  rbuf, recvcount, recvtype,
                                  root, comm_ptr);

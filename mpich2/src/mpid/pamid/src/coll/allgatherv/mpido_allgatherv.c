@@ -307,7 +307,7 @@ MPIDO_Allgatherv(void *sendbuf,
              recvbuf, recvcounts, buffer_sum, displs, recvtype,
              send_true_lb, recv_true_lb, send_size, recv_size,
              comm_ptr);
-     MPIDI_Update_last_algorithm(comm_ptr, "ALLGATHERV_TREE_REDUCE");
+     MPIDI_Update_last_algorithm(comm_ptr, "ALLGATHERV_OPT_ALLREDUCE");
      return rc;
    }
    if(use_bcast)
@@ -316,7 +316,7 @@ MPIDO_Allgatherv(void *sendbuf,
              recvbuf, recvcounts, buffer_sum, displs, recvtype,
              send_true_lb, recv_true_lb, send_size, recv_size,
              comm_ptr);
-     MPIDI_Update_last_algorithm(comm_ptr, "ALLGATHERV_BCAST");
+     MPIDI_Update_last_algorithm(comm_ptr, "ALLGATHERV_OPT_BCAST");
      return rc;
    }
    if(use_alltoall)
@@ -325,7 +325,7 @@ MPIDO_Allgatherv(void *sendbuf,
              recvbuf, recvcounts, buffer_sum, displs, recvtype,
              send_true_lb, recv_true_lb, send_size, recv_size,
              comm_ptr);
-     MPIDI_Update_last_algorithm(comm_ptr, "ALLGATHERV_ALLTOALL");
+     MPIDI_Update_last_algorithm(comm_ptr, "ALLGATHERV_OPT_ALLTOALL");
      return rc;
    }
       

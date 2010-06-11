@@ -23,6 +23,7 @@ int MPIDO_Barrier(MPID_Comm *comm_ptr)
    barrier.algorithm = comm_ptr->mpid.barriers[0];
 
    TRACE_ERR((stderr,"posting barrier\n"));
+   MPIDI_Update_last_algorithm(comm_ptr, comm_ptr->mpid.barrier_metas[0].name);
    rc = PAMI_Collective(MPIDI_Context[0], (pami_xfer_t *)&barrier);
    TRACE_ERR((stderr,"barrier posted rc: %d\n", rc));
    assert(rc == PAMI_SUCCESS);

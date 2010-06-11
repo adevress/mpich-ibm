@@ -3,7 +3,7 @@
 #ifdef TRACE_ERR
 #undef TRACE_ERR
 #endif
-#define TRACE_ERR(x)  fprintf x
+#define TRACE_ERR(x)  //fprintf x
 
 void MPIDI_Comm_create (MPID_Comm *comm)
 {

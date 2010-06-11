@@ -302,6 +302,7 @@ MPIDO_Allgather(void *sendbuf,
 
    if(use_tree_reduce)
    {
+      MPIDI_Update_last_algorithm(comm_ptr, "ALLGATHER_OPT_ALLREDUCE");
      rc = MPIDO_Allgather_allreduce(sendbuf, sendcount, sendtype,
                                recvbuf, recvcount, recvtype,
                                send_true_lb, recv_true_lb, send_size, recv_size, comm_ptr);
@@ -310,6 +311,7 @@ MPIDO_Allgather(void *sendbuf,
    }
    if(use_alltoall)
    {
+      MPIDI_Update_last_algorithm(comm_ptr, "ALLGATHER_OPT_ALLTOALL");
      rc = MPIDO_Allgather_alltoall(sendbuf, sendcount, sendtype,
                                recvbuf, recvcount, recvtype,
                                send_true_lb, recv_true_lb, send_size, recv_size, comm_ptr);
@@ -318,12 +320,14 @@ MPIDO_Allgather(void *sendbuf,
    }
    if(use_bcast)
    {
+      MPIDI_Update_last_algorithm(comm_ptr, "ALLGATHER_OPT_BCAST");
      rc = MPIDO_Allgather_bcast(sendbuf, sendcount, sendtype,
                                recvbuf, recvcount, recvtype,
                                send_true_lb, recv_true_lb, send_size, recv_size, comm_ptr);
    return rc;
 //     comm_ptr->dcmf.last_algorithm = MPIDO_USE_BCAST_ALLGATHER;
    }
+      MPIDI_Update_last_algorithm(comm_ptr, "ALLGATHER_MPICH");
          
       return MPIR_Allgather(sendbuf, sendcount, sendtype,
                             recvbuf, recvcount, recvtype,

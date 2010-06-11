@@ -306,7 +306,7 @@ int MPIDO_Scatterv(void *sendbuf,
       }
       if(!optscatterv[0])
       {
-         MPIDI_Update_last_algorithm(comm_ptr, "SCATTERV_ALLTOALL");
+         MPIDI_Update_last_algorithm(comm_ptr, "SCATTERV_OPT_ALLTOALL");
         return MPIDO_Scatterv_alltoallv(newsendbuf,
                                         sendcounts,
                                         displs,
@@ -320,7 +320,7 @@ int MPIDO_Scatterv(void *sendbuf,
       }
       else
       {
-         MPIDI_Update_last_algorithm(comm_ptr, "SCATTERV_BCAST");
+         MPIDI_Update_last_algorithm(comm_ptr, "SCATTERV_OPT_BCAST");
         return MPIDO_Scatterv_bcast(newsendbuf,
                                     sendcounts,
                                     displs,
