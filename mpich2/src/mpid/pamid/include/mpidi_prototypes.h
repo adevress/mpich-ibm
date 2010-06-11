@@ -177,4 +177,5 @@ int MPIDO_Allgather(void *sendbuf, int sendcount, MPI_Datatype sendtype,
                     MPID_Comm *comm_ptr);
 
 int MPItoPAMI(MPI_Datatype dt, pami_dt *pdt, MPI_Op op, pami_op *pop, int *musupport);
+void MPIopString(MPI_Op op, char *string);
 #endif

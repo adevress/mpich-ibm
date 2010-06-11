@@ -6,6 +6,7 @@
 #define TRACE_ERR(x) //fprintf x
 
 void MPIopString(MPI_Op op, char *string);
+int MPItoPAMI(MPI_Datatype dt, pami_dt *pdt, MPI_Op op, pami_op *pop, int *musupport);
 
 /* some useful macros to make the comparisons less icky, esp given the */
 /* explosion of datatypes in MPI2.2                                    */
