@@ -239,6 +239,7 @@ struct MPIDI_Comm
   char allgathervs[4];
   char scattervs[2];
   char optscatter;
+  char optgather;
   char last_algorithm[100];
 };
 
