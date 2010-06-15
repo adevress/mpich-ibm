@@ -112,7 +112,7 @@ static inline void
 MPIDI_Context_endpoint(MPID_Request * req, pami_endpoint_t * e)
 {
   pami_task_t remote = MPIDI_Request_getPeerRank(req);
-  pami_task_t local  = MPIDI_Process.global.rank;
+  pami_task_t local  = MPIR_Process.comm_world->rank;
   unsigned    rctxt  = MPIDI_Context_hash(local, req->comm->context_id);
 
   pami_result_t rc;
@@ -123,8 +123,7 @@ static inline pami_context_t
 MPIDI_Context_local(MPID_Request * req)
 {
   pami_task_t remote = MPIDI_Request_getPeerRank(req);
-  /* pami_task_t local  = MPIDI_Process.global.rank; */
-  unsigned    lctxt = MPIDI_Context_hash(remote, req->comm->context_id);
+  unsigned    lctxt  = MPIDI_Context_hash(remote, req->comm->context_id);
   MPID_assert(lctxt < MPIDI_Process.avail_contexts);
   return MPIDI_Context[lctxt];
 }

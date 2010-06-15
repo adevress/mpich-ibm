@@ -26,12 +26,6 @@ typedef struct
     unsigned collectives;  /**< Enable optimized collective functions. */
   }
   optimized;
-  struct
-  {
-    unsigned rank;
-    unsigned size;
-  }
-  global;
   unsigned short_limit;
   unsigned eager_limit;
   unsigned rma_pending;    /**< The max num outstanding requests during an RMA op    */
