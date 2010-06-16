@@ -143,11 +143,30 @@ MPIDI_SendMsg(MPID_Request * sreq)
 }
 
 
+/**
+ * \brief Macro for allocating memory
+ *
+ * \param[in] count Number of elements to allocate
+ * \param[in] type  The type of the memory, excluding "*"
+ * \return Address or NULL
+ */
+#define MPIU_Calloc0(count, type)               \
+({                                              \
+  size_t __size = (count) * sizeof(type);       \
+  type* __p = MPIU_Malloc(__size);              \
+  MPID_assert(__p != NULL);                     \
+  if (__p != NULL)                              \
+    memset(__p, 0, __size);                     \
+  __p;                                          \
+})
+
 #define MPIU_TestFree(p)                        \
 ({                                              \
   if(*(p))                                      \
-    MPIU_Free(*(p));                            \
-  *(p) = NULL;                                  \
+    {                                           \
+      MPIU_Free(*(p));                          \
+      *(p) = NULL;                              \
+    }                                           \
 })
 
 
