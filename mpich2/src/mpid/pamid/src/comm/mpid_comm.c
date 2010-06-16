@@ -28,9 +28,8 @@ void MPIDI_Coll_comm_create(MPID_Comm *comm)
   if (!MPIDI_Process.optimized.collectives)
     return;
 
-  comm->coll_fns = (MPID_Collops *)MPIU_Malloc(sizeof(MPID_Collops));
+  comm->coll_fns = MPIU_Calloc0(1, MPID_Collops);
   MPID_assert(comm->coll_fns != NULL);
-  memset(comm->coll_fns, 0, sizeof(MPID_Collops));
 
   if(comm->comm_kind != MPID_INTRACOMM) return;
 
@@ -59,7 +58,7 @@ void MPIDI_Comm_world_setup()
   int useshmembarrier = 1;
   int useshmembcast = 1;
   int useshmemallreduce = 1;
-  int useglueallgather = 1;
+  /* int useglueallgather = 1; */
   int i;
   MPID_Comm *world = MPIR_Process.comm_world;
 
