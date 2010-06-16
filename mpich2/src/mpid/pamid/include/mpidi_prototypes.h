@@ -129,8 +129,6 @@ void MPIDI_RecvRzvDoneCB(pami_context_t    context,
 
 /** \brief Acknowledge an MPI_Ssend() */
 void MPIDI_postSyncAck(pami_context_t context, MPID_Request * req);
-/** \brief Cancel an MPI_Send(). */
-void MPIDI_procCancelReq(pami_context_t context, const MPIDI_MsgInfo *info, pami_task_t peer);
 /** \brief This is the general PT2PT control message call-back */
 void MPIDI_ControlCB(pami_context_t    context,
                      void            * _contextid,

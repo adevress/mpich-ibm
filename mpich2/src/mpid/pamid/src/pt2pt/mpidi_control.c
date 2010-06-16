@@ -14,7 +14,7 @@
  */
 static inline void
 MPIDI_CtrlSend(pami_context_t  context,
-               MPIDI_MsgInfo * control,
+               MPIDI_MsgInfo * msginfo,
                pami_task_t     peerrank)
 {
   pami_endpoint_t dest;
@@ -24,7 +24,7 @@ MPIDI_CtrlSend(pami_context_t  context,
   dispatch : MPIDI_Protocols.Control,
   dest     : dest,
   header   : {
-    iov_base : control,
+    iov_base : msginfo,
     iov_len  : sizeof(MPIDI_MsgInfo),
     },
   data     : {
@@ -124,7 +124,7 @@ MPIDI_procSyncAck(pami_context_t        context,
  * \param[in] info The contents of the control message as a MPIDI_MsgInfo struct
  * \param[in] peer The rank of the node sending the data
  */
-void
+static inline void
 MPIDI_procCancelReq(pami_context_t        context,
                     const MPIDI_MsgInfo * info,
                     pami_task_t           peer)
@@ -254,16 +254,16 @@ void
 MPIDI_ControlCB(pami_context_t    context,
                 void            * _contextid,
                 const void      * _msginfo,
-                size_t            msginfo_size,
+                size_t            size,
                 const void      * sndbuf,
                 size_t            sndlen,
                 pami_endpoint_t   sender,
                 pami_recv_t     * recv)
 {
-  MPID_assert(recv == NULL); /**< Uncomment when ticket #50 is fixed */
+  MPID_assert(recv == NULL);
   MPID_assert(sndlen == 0);
   MPID_assert(_msginfo != NULL);
-  MPID_assert(msginfo_size == sizeof(MPIDI_MsgInfo));
+  MPID_assert(size == sizeof(MPIDI_MsgInfo));
   const MPIDI_MsgInfo *msginfo = (const MPIDI_MsgInfo *)_msginfo;
   pami_task_t senderrank, sendercontext;
   PAMI_Endpoint_query(sender, &senderrank, &sendercontext);
