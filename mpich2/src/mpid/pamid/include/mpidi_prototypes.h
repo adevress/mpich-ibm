@@ -68,12 +68,11 @@ void MPIDI_Progress_signal();
 ({                                              \
    if (COND)                                    \
      {                                          \
-       MPID_Progress_state dummy;               \
-                                                \
-       MPID_Progress_start(&dummy);             \
+       MPID_Progress_state __state;             \
+       MPID_Progress_start(&__state);           \
        while (COND)                             \
-         MPID_Progress_wait(&dummy);            \
-       MPID_Progress_end(&dummy);               \
+         MPID_Progress_wait(&__state);          \
+       MPID_Progress_end(&__state);             \
      }                                          \
     MPI_SUCCESS;                                \
 })
