@@ -22,13 +22,13 @@ int MPIDO_Gather_reduce(void * sendbuf,
   int rc, sbytes, rbytes, contig;
   char *tempbuf = NULL;
   char *inplacetemp = NULL;
-  
+
   MPIDI_Datatype_get_info(sendcount, sendtype, contig,
 			  sbytes, data_ptr, true_lb);
 
   MPIDI_Datatype_get_info(recvcount, recvtype, contig,
 			  rbytes, data_ptr, true_lb);
-  
+
   if(rank == root)
   {
     tempbuf = recvbuf;
@@ -49,36 +49,36 @@ int MPIDO_Gather_reduce(void * sendbuf,
       MPIU_Free(inplacetemp);
     }
   }
-  /* everyone might need to speciifcally allocate a tempbuf, or 
+  /* everyone might need to speciifcally allocate a tempbuf, or
    * we might need to make sure we don't end up at mpich in the
    * mpido_() functions - seems to be a problem?
    */
-   
-  /* If we aren't root, malloc tempbuf and zero it, 
+
+  /* If we aren't root, malloc tempbuf and zero it,
    * then copy our contribution to the right spot in the big buffer */
   else
   {
     tempbuf = MPIU_Malloc(sbytes * size * sizeof(char));
     if(!tempbuf)
-      return MPIR_Err_create_code(MPI_SUCCESS, MPIR_ERR_RECOVERABLE, 
+      return MPIR_Err_create_code(MPI_SUCCESS, MPIR_ERR_RECOVERABLE,
                                   "MPI_Gather", __LINE__, MPI_ERR_OTHER,
                                   "**nomem", 0);
-     
+
     memset(tempbuf, 0, sbytes * size * sizeof(char));
     memcpy(tempbuf+(rank*sbytes), sendbuf, sbytes);
   }
-  /* #warning need an optimal reduce */ 
-  rc = MPIR_Reduce(MPI_IN_PLACE, 
-                    tempbuf, 
-                    (sbytes * size)/4, 
-                    MPI_INT, 
-                    MPI_BOR, 
-                    root, 
+  /* #warning need an optimal reduce */
+  rc = MPIR_Reduce(MPI_IN_PLACE,
+                    tempbuf,
+                    (sbytes * size)/4,
+                    MPI_INT,
+                    MPI_BOR,
+                    root,
                     comm_ptr);
-   
+
   if(rank != root)
     MPIU_Free(tempbuf);
-   
+
   return rc;
 }
 
@@ -120,7 +120,7 @@ int MPIDO_Gather(void *sendbuf,
     else
       success = 0;
   }
-  
+
   MPIDI_Update_last_algorithm(comm_ptr, "GATHER_MPICH");
   if(!comm_ptr->mpid.optgather)
   {
@@ -139,10 +139,9 @@ int MPIDO_Gather(void *sendbuf,
 
   sbuf = sendbuf + true_lb;
   rbuf = recvbuf + true_lb;
-  
+
   MPIDI_Update_last_algorithm(comm_ptr, "GATHER_OPT_REDUCE");
    return MPIDO_Gather_reduce(sbuf, sendcount, sendtype,
                               rbuf, recvcount, recvtype,
                               root, comm_ptr);
 }
-

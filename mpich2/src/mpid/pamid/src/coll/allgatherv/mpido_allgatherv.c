@@ -21,7 +21,7 @@ int MPIDO_Allgatherv_allreduce(void *sendbuf,
 			       MPI_Datatype sendtype,
 			       void *recvbuf,
 			       int *recvcounts,
-			       int buffer_sum, 
+			       int buffer_sum,
 			       int *displs,
 			       MPI_Datatype recvtype,
 			       MPI_Aint send_true_lb,
@@ -34,26 +34,26 @@ int MPIDO_Allgatherv_allreduce(void *sendbuf,
   int length;
   char *startbuf = NULL;
   char *destbuf = NULL;
-  
+
   startbuf = (char *) recvbuf + recv_true_lb;
   destbuf = startbuf + displs[comm_ptr->rank] * recv_size;
-  
+
   start = 0;
   length = displs[comm_ptr->rank] * recv_size;
   memset(startbuf + start, 0, length);
-  
-  start  = (displs[comm_ptr->rank] + 
+
+  start  = (displs[comm_ptr->rank] +
 	    recvcounts[comm_ptr->rank]) * recv_size;
-  length = buffer_sum - (displs[comm_ptr->rank] + 
+  length = buffer_sum - (displs[comm_ptr->rank] +
 			 recvcounts[comm_ptr->rank]) * recv_size;
   memset(startbuf + start, 0, length);
-  
+
   if (sendbuf != MPI_IN_PLACE)
   {
     char *outputbuf = (char *) sendbuf + send_true_lb;
     memcpy(destbuf, outputbuf, send_size);
   }
-  
+
   //if (0==comm_ptr->rank) puts("allreduce allgatherv");
 
   rc = MPIDO_Allreduce(MPI_IN_PLACE,
@@ -62,7 +62,7 @@ int MPIDO_Allgatherv_allreduce(void *sendbuf,
 		       MPI_INT,
 		       MPI_BOR,
 		       comm_ptr);
-  
+
   return rc;
 }
 
@@ -81,7 +81,7 @@ int MPIDO_Allgatherv_bcast(void *sendbuf,
 			   MPI_Datatype sendtype,
 			   void *recvbuf,
 			   int *recvcounts,
-			   int buffer_sum, 
+			   int buffer_sum,
 			   int *displs,
 			   MPI_Datatype recvtype,
 			   MPI_Aint send_true_lb,
@@ -104,7 +104,7 @@ int MPIDO_Allgatherv_bcast(void *sendbuf,
                    recvcounts[comm_ptr->rank],
                    recvtype);
   }
-  
+
   for (i = 0; i < comm_ptr->local_size; i++)
   {
     void *destbuffer = recvbuf + displs[i] * extent;
@@ -134,7 +134,7 @@ int MPIDO_Allgatherv_alltoall(void *sendbuf,
 			      MPI_Datatype sendtype,
 			      void *recvbuf,
 			      int *recvcounts,
-			      int buffer_sum, 
+			      int buffer_sum,
 			      int *displs,
 			      MPI_Datatype recvtype,
 			      MPI_Aint send_true_lb,
@@ -151,7 +151,7 @@ int MPIDO_Allgatherv_alltoall(void *sendbuf,
   void *a2a_sendbuf = NULL;
   int a2a_sendcounts[comm_ptr->local_size];
   int a2a_senddispls[comm_ptr->local_size];
-  
+
   total_send_size = recvcounts[comm_ptr->rank] * recv_size;
   for (i = 0; i < comm_ptr->local_size; ++i)
   {
@@ -171,7 +171,7 @@ int MPIDO_Allgatherv_alltoall(void *sendbuf,
     my_recvcounts = recvcounts[comm_ptr->rank];
     recvcounts[comm_ptr->rank] = 0;
   }
-  
+
   //if (0==comm_ptr->rank) puts("all2all allgatherv");
   rc = MPIR_Alltoallv(a2a_sendbuf,
 		       a2a_sendcounts,
@@ -214,7 +214,7 @@ MPIDO_Allgatherv(void *sendbuf,
   size_t   recv_size     = 0;
   int config[6];
   double msize;
-  
+
   int i, rc, buffer_sum = 0, np = comm_ptr->local_size;
   char use_tree_reduce, use_alltoall, use_bcast;
   char *sbuf, *rbuf;
@@ -253,8 +253,8 @@ MPIDO_Allgatherv(void *sendbuf,
 			  recv_size,
 			  dt_null,
 			  recv_true_lb);
-  
-  
+
+
   if (sendbuf != MPI_IN_PLACE)
   {
     MPIDI_Datatype_get_info(sendcount,
@@ -265,10 +265,10 @@ MPIDO_Allgatherv(void *sendbuf,
                             send_true_lb);
     sbuf = (char *)sendbuf+send_true_lb;
   }
-  
+
   if (displs[0])
     config[MPID_RECV_CONTINUOUS] = 0;
-  
+
   for (i = 1; i < np; i++)
   {
     buffer_sum += recvcounts[i - 1];
@@ -278,16 +278,16 @@ MPIDO_Allgatherv(void *sendbuf,
       break;
     }
   }
-  
+
   buffer_sum += recvcounts[np - 1];
-  
+
   buffer_sum *= recv_size;
-  msize = (double)buffer_sum / (double)np; 
-  
+  msize = (double)buffer_sum / (double)np;
+
    rbuf = (char *)recvbuf+recv_true_lb;
-  
+
    /* disable with "safe allgatherv" env var */
-      {      
+      {
          rc = PAMI_Collective(MPIDI_Context[0], (pami_xfer_t *)&allred);
          MPID_PROGRESS_WAIT_WHILE(allred_active);
       }
@@ -296,7 +296,7 @@ MPIDO_Allgatherv(void *sendbuf,
       config[MPID_RECV_CONTIG] && config[MPID_SEND_CONTIG] &&
       config[MPID_RECV_CONTINUOUS] && buffer_sum % sizeof(int) == 0;
 
-   use_alltoall = comm_ptr->mpid.allgathervs[0] && 
+   use_alltoall = comm_ptr->mpid.allgathervs[0] &&
       config[MPID_RECV_CONTIG] && config[MPID_SEND_CONTIG];
 
    use_bcast = comm_ptr->mpid.allgathervs[2];
@@ -328,10 +328,9 @@ MPIDO_Allgatherv(void *sendbuf,
      MPIDI_Update_last_algorithm(comm_ptr, "ALLGATHERV_OPT_ALLTOALL");
      return rc;
    }
-      
+
    MPIDI_Update_last_algorithm(comm_ptr, "ALLGATHERV_MPICH");
    return MPIR_Allgatherv(sendbuf, sendcount, sendtype,
                           recvbuf, recvcounts, displs, recvtype,
                           comm_ptr);
 }
- 

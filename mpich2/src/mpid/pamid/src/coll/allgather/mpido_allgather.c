@@ -33,7 +33,7 @@ int MPIDO_Allgather_allreduce(void *sendbuf,
 			      size_t send_size,
 			      size_t recv_size,
 			      MPID_Comm * comm_ptr)
-  
+
 {
   int rc, rank;
   char *startbuf = NULL;
@@ -89,7 +89,7 @@ int MPIDO_Allgather_bcast(void *sendbuf,
   np = comm_ptr ->local_size;
   MPID_Datatype_get_extent_macro(recvtype, extent);
 
-  MPID_Ensure_Aint_fits_in_pointer ((MPI_VOID_PTR_CAST_TO_MPI_AINT recvbuf + 
+  MPID_Ensure_Aint_fits_in_pointer ((MPI_VOID_PTR_CAST_TO_MPI_AINT recvbuf +
 				     np * recvcount * extent));
   if (sendbuf != MPI_IN_PLACE)
   {
@@ -102,7 +102,7 @@ int MPIDO_Allgather_bcast(void *sendbuf,
                    recvtype);
   }
 
-/* this code should either abort on first error or somehow aggregate 
+/* this code should either abort on first error or somehow aggregate
  * error codes, esp since it calls internal routines */
   for (i = 0; i < np; i++)
   {
@@ -216,7 +216,7 @@ MPIDO_Allgather(void *sendbuf,
    volatile unsigned allred_active = 1;
    pami_xfer_t allred;
    for (i=0;i<6;i++) config[i] = 1;
-   
+
    allred.cb_done = allred_cb_done;
    allred.cookie = (void *)&allred_active;
    allred.algorithm = comm_ptr->mpid.allreduces[0]; // guaranteed to work.
@@ -244,7 +244,7 @@ MPIDO_Allgather(void *sendbuf,
    }
   if ((sendcount < 1 && sendbuf != MPI_IN_PLACE) || recvcount < 1)
     return MPI_SUCCESS;
-   
+
   MPIDI_Datatype_get_info(recvcount,
 			  recvtype,
         config[MPID_RECV_CONTIG],
@@ -255,7 +255,7 @@ MPIDO_Allgather(void *sendbuf,
   recv_size *= comm_size;
   rbuf = (char *)recvbuf+recv_true_lb;
 
-  
+
   if (sendbuf != MPI_IN_PLACE)
   {
     MPIDI_Datatype_get_info(sendcount,
@@ -269,7 +269,7 @@ MPIDO_Allgather(void *sendbuf,
 
   /* verify everyone's datatype contiguity */
   /* Check buffer alignment now, since we're pre-allreducing anyway */
-  config[MPID_ALIGNEDBUFFER] = 
+  config[MPID_ALIGNEDBUFFER] =
             !((long)sendbuf & 0x0F) && !((long)recvbuf & 0x0F);
 
    /* #warning need to determine best allreduce for short messages */
@@ -290,11 +290,11 @@ MPIDO_Allgather(void *sendbuf,
    use_bcast = comm_ptr->mpid.allgathers[2];
 
   /* Here is the Default code path or if coming from within another coll */
-    use_alltoall = comm_ptr->mpid.allgathers[0] && 
+    use_alltoall = comm_ptr->mpid.allgathers[0] &&
          config[MPID_RECV_CONTIG] && config[MPID_SEND_CONTIG];;
 
     use_tree_reduce = comm_ptr->mpid.allgathers[1] &&
-      config[MPID_RECV_CONTIG] && config[MPID_SEND_CONTIG] && 
+      config[MPID_RECV_CONTIG] && config[MPID_SEND_CONTIG] &&
       config[MPID_RECV_CONTINUOUS] && (recv_size % sizeof(int) == 0);
 
     use_bcast = comm_ptr->mpid.allgathers[2];
@@ -328,9 +328,8 @@ MPIDO_Allgather(void *sendbuf,
 //     comm_ptr->dcmf.last_algorithm = MPIDO_USE_BCAST_ALLGATHER;
    }
       MPIDI_Update_last_algorithm(comm_ptr, "ALLGATHER_MPICH");
-         
+
       return MPIR_Allgather(sendbuf, sendcount, sendtype,
                             recvbuf, recvcount, recvtype,
                             comm_ptr);
 }
-

@@ -1,3 +1,10 @@
+/*  (C)Copyright IBM Corp.  2007, 2010  */
+/**
+ * \file src/coll/coll_utils.c
+ * \brief ???
+ */
+
+
 #include "mpidimpl.h"
 
 #ifdef TRACE_ERR
@@ -54,7 +61,7 @@ int MPItoPAMI(MPI_Datatype dt, pami_dt *pdt, MPI_Op op, pami_op *pop, int *musup
 
 /* known missing types: MPI_C_LONG_DOUBLE_COMPLEX */
 
- 
+
 #define MUSUPPORTED 1
 #define MUUNSUPPORTED 0
 

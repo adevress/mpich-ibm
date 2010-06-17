@@ -1,3 +1,10 @@
+/*  (C)Copyright IBM Corp.  2007, 2010  */
+/**
+ * \file src/coll/allreduce/mpido_allreduce.c
+ * \brief ???
+ */
+
+
 #include "mpidimpl.h"
 
 #ifdef TRACE_ERR

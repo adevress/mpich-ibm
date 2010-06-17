@@ -1,6 +1,6 @@
 /*  (C)Copyright IBM Corp.  2007, 2008  */
 /**
- * \file src/coll/scatter/scatter_algorithms.c
+ * \file src/coll/scatter/mpido_scatter.c
  * \brief ???
  */
 
@@ -23,8 +23,8 @@ int MPIDO_Scatter_bcast(void * sendbuf,
   char *tempbuf = NULL;
 
   MPID_Datatype * dt_ptr;
-  MPI_Aint true_lb = 0; 
-  
+  MPI_Aint true_lb = 0;
+
   if(rank == root)
   {
     MPIDI_Datatype_get_info(sendcount,
@@ -53,14 +53,14 @@ int MPIDO_Scatter_bcast(void * sendbuf,
                                   __LINE__, MPI_ERR_OTHER, "**nomem", 0);
     }
   }
-  
+
   rc = MPIDO_Bcast(tempbuf, nbytes*size, MPI_CHAR, root, comm_ptr);
-  
+
   if(rank == root && recvbuf == MPI_IN_PLACE)
     return rc;
   else
     memcpy(recvbuf, tempbuf+(rank*nbytes), nbytes);
-  
+
   if (rank!=root)
     MPIU_Free(tempbuf);
 
@@ -119,7 +119,7 @@ int MPIDO_Scatter(void *sendbuf,
       success = 0;
   }
 
-  MPIDI_Update_last_algorithm(comm_ptr, "SCATTER_MPICH"); 
+  MPIDI_Update_last_algorithm(comm_ptr, "SCATTER_MPICH");
   if(!comm_ptr->mpid.optscatter)
   {
     return MPIR_Scatter(sendbuf, sendcount, sendtype,
@@ -137,10 +137,9 @@ int MPIDO_Scatter(void *sendbuf,
 
    sbuf = sendbuf+true_lb;
    rbuf = recvbuf+true_lb;
-  
+
    MPIDI_Update_last_algorithm(comm_ptr, "SCATTER_OPT_BCAST");
    return MPIDO_Scatter_bcast(sbuf, sendcount, sendtype,
                                  rbuf, recvcount, recvtype,
                                  root, comm_ptr);
 }
-

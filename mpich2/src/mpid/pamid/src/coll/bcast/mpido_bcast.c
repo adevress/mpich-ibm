@@ -1,3 +1,10 @@
+/*  (C)Copyright IBM Corp.  2007, 2010  */
+/**
+ * \file src/coll/bcast/mpido_bcast.c
+ * \brief ???
+ */
+
+
 #include "mpidimpl.h"
 
 #ifdef TRACE_ERR

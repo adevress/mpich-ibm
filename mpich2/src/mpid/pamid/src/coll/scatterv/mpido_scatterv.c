@@ -25,18 +25,18 @@ int MPIDO_Scatterv_bcast(void *sendbuf,
   int i, sum = 0, dtsize, rc=0, contig;
   MPID_Datatype *dt_ptr;
   MPI_Aint dt_lb;
-  
+
   for (i = 0; i < np; i++)
     if (sendcounts > 0)
       sum += sendcounts[i];
-  
+
   MPIDI_Datatype_get_info(1,
 			  recvtype,
 			  contig,
 			  dtsize,
 			  dt_ptr,
 			  dt_lb);
-  
+
   if (rank != root)
   {
     tempbuf = MPIU_Malloc(sizeof(char) * sum);
@@ -47,7 +47,7 @@ int MPIDO_Scatterv_bcast(void *sendbuf,
   }
   else
     tempbuf = sendbuf;
-  
+
   rc = MPIDO_Bcast(tempbuf, sum, sendtype, root, comm_ptr);
 
   if(rank == root && recvbuf == MPI_IN_PLACE)
@@ -57,7 +57,7 @@ int MPIDO_Scatterv_bcast(void *sendbuf,
 
   if (rank != root)
     MPIU_Free(tempbuf);
-  
+
   return rc;
 }
 
@@ -225,19 +225,19 @@ int MPIDO_Scatterv(void *sendbuf,
   {
    MPIDI_Update_last_algorithm(comm_ptr, "SCATTERV_MPICH");
     return MPIR_Scatterv(sendbuf, sendcounts, displs, sendtype,
-                         recvbuf, recvcount, recvtype, 
+                         recvbuf, recvcount, recvtype,
                          root, comm_ptr);
   }
 
-    
+
   /* we can't call scatterv-via-bcast unless we know all nodes have
    * valid sendcount arrays. so the user must explicitly ask for it.
    */
 
-   /* optscatterv[0] == optscatterv bcast? 
-    * optscatterv[1] == optscatterv alltoall? 
+   /* optscatterv[0] == optscatterv bcast?
+    * optscatterv[1] == optscatterv alltoall?
     *  (having both allows cutoff agreement)
-    * optscatterv[2] == sum of sendcounts 
+    * optscatterv[2] == sum of sendcounts
     */
 
    optscatterv[0] = !comm_ptr->mpid.scattervs[0];
@@ -255,7 +255,7 @@ int MPIDO_Scatterv(void *sendbuf,
          }
          optscatterv[2] = sum;
       }
-  
+
       MPIDI_Datatype_get_info(1,
                             sendtype,
                             contig,
@@ -316,7 +316,7 @@ int MPIDO_Scatterv(void *sendbuf,
                                         recvtype,
                                         root,
                                         comm_ptr);
-        
+
       }
       else
       {
@@ -340,4 +340,3 @@ int MPIDO_Scatterv(void *sendbuf,
                            root, comm_ptr);
    }
 }
-
