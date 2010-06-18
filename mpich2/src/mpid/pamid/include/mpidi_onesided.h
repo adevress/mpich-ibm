@@ -36,6 +36,14 @@ typedef enum
 #endif
   } MPIDI_Win_msgtype_t;
 
+typedef enum
+  {
+    MPIDI_WIN_REQUEST_ACCUMULATE,
+    MPIDI_WIN_REQUEST_GET,
+    MPIDI_WIN_REQUEST_PUT,
+  } MPIDI_Win_requesttype_t;
+
+
 typedef struct
 {
   MPIDI_Win_msgtype_t type;
@@ -48,6 +56,45 @@ typedef struct
     } lock;
   } data;
 } MPIDI_Win_control_t;
+
+
+typedef struct
+{
+  MPI_Datatype    type;
+  MPID_Datatype * pointer;
+  int             contig;
+  MPI_Aint        true_lb;
+  MPIDI_msg_sz_t  size;
+} MPIDI_Datatype;
+
+
+/** \todo make sure that the extra fields are removed */
+typedef struct
+{
+  MPID_Win *win;
+  MPIDI_Win_requesttype_t type;
+  pami_endpoint_t dest;
+
+  struct
+  {
+    void * addr;
+    int    count;
+    MPI_Datatype datatype;
+  } origin;
+
+  pami_memregion_t memregion;
+  /* uint32_t         memregion_used; */
+
+  uint32_t ops_started;
+  uint32_t ops_complete;
+
+  MPIDI_Datatype origin_dt;
+  MPIDI_Datatype target_dt;
+
+  void * pack_buffer;
+  /* size_t pack_length; */
+  uint32_t pack_free;
+} MPIDI_Win_request;
 
 
 
@@ -78,6 +125,11 @@ void
 MPIDI_WinPost_proc(pami_context_t              context,
                    const MPIDI_Win_control_t * info,
                    unsigned                    peer);
+
+void
+MPIDI_DoneCB(pami_context_t  context,
+             void          * cookie,
+             pami_result_t   result);
 
 
 #endif

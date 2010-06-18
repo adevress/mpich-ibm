@@ -25,7 +25,6 @@ MPIDI_WinPost_proc(pami_context_t              context,
                    unsigned                    peer)
 {
   ++info->win->mpid.sync.pw.count;
-  MPID_assert(info->win->mpid.sync.pw.count <= info->win->mpid.sync.pw.group->size);
 }
 
 
@@ -48,7 +47,6 @@ MPIDI_WinComplete_proc(pami_context_t              context,
                        unsigned                    peer)
 {
   ++info->win->mpid.sync.sc.count;
-  MPID_assert(info->win->mpid.sync.sc.count <= info->win->mpid.sync.sc.group->size);
 }
 
 
@@ -58,11 +56,13 @@ MPID_Win_start(MPID_Group *group,
                MPID_Win   *win)
 {
   int mpi_errno = MPI_SUCCESS;
+  MPIR_Group_add_ref(group);
 
   struct MPIDI_Win_sync* sync = &win->mpid.sync;
   MPID_PROGRESS_WAIT_WHILE(group->size != sync->pw.count);
   sync->pw.count = 0;
 
+  MPID_assert(win->mpid.sync.sc.group == NULL);
   win->mpid.sync.sc.group = group;
 
   return mpi_errno;
@@ -81,11 +81,13 @@ MPID_Win_complete(MPID_Win *win)
 
   unsigned rank, index;
   MPID_Group *group = sync->sc.group;
+  sync->sc.group = NULL;
   for (index=0; index < group->size; ++index) {
     rank = group->lrank_to_lpid[index].lpid;
     MPIDI_WinComplete_post(MPIDI_Context[0], rank, win);
   }
 
+  MPIR_Group_release(group);
   return mpi_errno;
 }
 
@@ -96,7 +98,9 @@ MPID_Win_post(MPID_Group *group,
               MPID_Win   *win)
 {
   int mpi_errno = MPI_SUCCESS;
+  MPIR_Group_add_ref(group);
 
+  MPID_assert(win->mpid.sync.pw.group == NULL);
   win->mpid.sync.pw.group = group;
 
   unsigned rank, index;
@@ -118,7 +122,9 @@ MPID_Win_wait(MPID_Win *win)
   MPID_Group *group = sync->pw.group;
   MPID_PROGRESS_WAIT_WHILE(group->size != sync->sc.count);
   sync->sc.count = 0;
+  sync->pw.group = NULL;
 
+  MPIR_Group_release(group);
   return mpi_errno;
 }
 
@@ -134,7 +140,9 @@ MPID_Win_test (MPID_Win *win,
   if (group->size == sync->sc.count)
     {
       sync->sc.count = 0;
+      sync->pw.group = NULL;
       *flag = 1;
+      MPIR_Group_release(group);
     }
 
   return mpi_errno;

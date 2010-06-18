@@ -17,6 +17,6 @@ MPID_Win_fence(int       assert,
   sync->started  = 0;
   sync->complete = 0;
 
-  mpi_errno = PMPI_Barrier(win->mpid.comm_ptr->handle);
+  mpi_errno = PMPI_Barrier(win->mpid.comm->handle);
   return mpi_errno;
 }

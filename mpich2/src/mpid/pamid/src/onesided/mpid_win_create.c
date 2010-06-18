@@ -42,44 +42,48 @@ MPID_Win_create(void       * base,
   /*  Setup the common sections of the window  */
   /* ----------------------------------------- */
   MPID_Win *win = (MPID_Win*)MPIU_Handle_obj_alloc(&MPID_Win_mem);
-  if (unlikely(win == NULL))
+  if (win == NULL)
     return mpi_errno;
   *win_ptr = win;
 
+  MPID_Comm *comm = NULL;
   mpi_errno = PMPI_Comm_dup(comm_ptr->handle, &win->comm);
-  if (unlikely(mpi_errno != MPI_SUCCESS))
+  if (mpi_errno != MPI_SUCCESS)
     return mpi_errno;
   MPID_assert(win->comm != MPI_COMM_NULL);
-  MPID_Comm_get_ptr(win->comm, comm_ptr);
-  MPID_assert(comm_ptr != NULL);
+  MPID_Comm_get_ptr(win->comm, comm);
+  MPID_assert(comm != NULL);
   win->base = base;
   win->size = length;
   win->disp_unit = disp_unit;
-
 
   /* --------------------------------------- */
   /*  Setup the PAMI sections of the window  */
   /* --------------------------------------- */
   memset(&win->mpid, 0, sizeof(struct MPIDI_Win));
 
-  win->mpid.comm_ptr = comm_ptr;
+  win->mpid.comm = comm;
 
-  size_t size = comm_ptr->local_size;
-  size_t rank = comm_ptr->rank;
+  size_t size = comm->local_size;
+  size_t rank = comm->rank;
 
   win->mpid.info = MPIU_Calloc0(size, struct MPIDI_Win_info);
 
   struct MPIDI_Win_info *winfo = &win->mpid.info[rank];
-  size_t length_out = 0;
 
-  pami_result_t rc;
-  rc = PAMI_Memregion_create(MPIDI_Context[0], base, length, &length_out, &winfo->memregion);
-  MPID_assert(rc == PAMI_SUCCESS);
+  MPID_assert((base != NULL) || (length == 0));
+  if (length != 0)
+    {
+      size_t length_out = 0;
+      pami_result_t rc;
+      rc = PAMI_Memregion_create(MPIDI_Context[0], base, length, &length_out, &winfo->memregion);
+      MPID_assert(rc == PAMI_SUCCESS);
+      MPID_assert(length == length_out);
+    }
 
-  MPID_assert(length == length_out);
   winfo->base_addr  = base;
   /* winfo->win_handle = win->handle; */
-  winfo->win_ptr    = win;
+  winfo->win        = win;
   winfo->disp_unit  = disp_unit;
 
   mpi_errno = PMPI_Allgather(MPI_IN_PLACE,
@@ -88,12 +92,12 @@ MPID_Win_create(void       * base,
                              win->mpid.info,
                              sizeof(struct MPIDI_Win_info),
                              MPI_BYTE,
-                             comm_ptr->handle);
-  if (unlikely(mpi_errno != MPI_SUCCESS))
+                             comm->handle);
+  if (mpi_errno != MPI_SUCCESS)
     return mpi_errno;
 
-  mpi_errno = PMPI_Barrier(comm_ptr->handle);
-  if (unlikely(mpi_errno != MPI_SUCCESS))
+  mpi_errno = PMPI_Barrier(comm->handle);
+  if (mpi_errno != MPI_SUCCESS)
     return mpi_errno;
 
   return mpi_errno;

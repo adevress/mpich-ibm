@@ -234,7 +234,7 @@ struct MPIDI_Win_queue
 struct MPIDI_Win_info
 {
   void             *base_addr;     /**< Node's exposure window base address                  */
-  struct MPID_Win  *win_ptr;
+  struct MPID_Win  *win;
   uint32_t          disp_unit;     /**< Node's exposure window displacement units            */
   pami_memregion_t  memregion;     /**< Memory region descriptor for each node               */
 };
@@ -243,8 +243,8 @@ struct MPIDI_Win_info
  */
 struct MPIDI_Win
 {
-  struct MPID_Comm       *comm_ptr;      /**< saved pointer to window communicator           */
-  struct MPIDI_Win_info  *info;          /**< allocated array of collective info             */
+  struct MPID_Comm       *comm;    /**< saved pointer to window communicator           */
+  struct MPIDI_Win_info  *info;    /**< allocated array of collective info             */
   struct MPIDI_Win_sync
   {
     uint32_t  type;   /**< current epoch type                                   */

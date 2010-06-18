@@ -14,23 +14,23 @@
  *
  * According to the MPI Specification:
  *
- *	Each datatype argument must be a predefined datatype or
- *	a derived datatype, where all basic components are of the
- *	same predefined datatype. Both datatype arguments must be
- *	constructed from the same predefined datatype.
+ *        Each datatype argument must be a predefined datatype or
+ *        a derived datatype, where all basic components are of the
+ *        same predefined datatype. Both datatype arguments must be
+ *        constructed from the same predefined datatype.
  *
- * \param[in] origin_addr	Source buffer
- * \param[in] origin_count	Number of datatype elements
- * \param[in] origin_datatype	Source datatype
- * \param[in] target_rank	Destination rank (target)
- * \param[in] target_disp	Displacement factor in target buffer
- * \param[in] target_count	Number of target datatype elements
- * \param[in] target_datatype	Destination datatype
- * \param[in] op		Operand to perform
- * \param[in] win_ptr		Window
+ * \param[in] origin_addr      Source buffer
+ * \param[in] origin_count     Number of datatype elements
+ * \param[in] origin_datatype  Source datatype
+ * \param[in] target_rank      Destination rank (target)
+ * \param[in] target_disp      Displacement factor in target buffer
+ * \param[in] target_count     Number of target datatype elements
+ * \param[in] target_datatype  Destination datatype
+ * \param[in] op               Operand to perform
+ * \param[in] win              Window
  * \return MPI_SUCCESS, MPI_ERR_RMA_SYNC, MPI_ERR_OP,
- *	or error returned from MPIR_Localcopy, MPID_Segment_init,
- *	mpid_queue_datatype, or PAMI_Raccumulate.
+ *         or error returned from MPIR_Localcopy, MPID_Segment_init,
+ *         mpid_queue_datatype, or PAMI_Raccumulate.
  *
  * \ref msginfo_usage\n
  * \ref accum_design
@@ -44,7 +44,7 @@ MPID_Accumulate(void         *origin_addr,
                 int           target_count,
                 MPI_Datatype  target_datatype,
                 MPI_Op        op,
-                MPID_Win     *win_ptr)
+                MPID_Win     *win)
 {
   return 1;
 }

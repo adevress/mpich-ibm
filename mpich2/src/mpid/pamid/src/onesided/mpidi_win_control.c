@@ -12,7 +12,7 @@ MPIDI_WinCtrlSend(pami_context_t       context,
                   pami_task_t          peer,
                   MPID_Win            *win)
 {
-  control->win = win->mpid.info[peer].win_ptr;
+  control->win = win->mpid.info[peer].win;
 
   pami_endpoint_t dest;
   pami_result_t rc;
