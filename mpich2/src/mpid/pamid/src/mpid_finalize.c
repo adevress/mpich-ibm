@@ -27,7 +27,7 @@ int MPID_Finalize()
   MPIU_Free(MPIDI_Context);
 
   pami_result_t rc;
-  rc = PAMI_Client_destroy(MPIDI_Client);
+  rc = PAMI_Client_destroy(&MPIDI_Client);
   MPID_assert(rc == PAMI_SUCCESS);
 
   return MPI_SUCCESS;
