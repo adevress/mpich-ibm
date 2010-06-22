@@ -85,7 +85,7 @@ void MPIDI_RecvCB(pami_context_t    context,
       /* ----------------------------- */
 
       if (unlikely(msginfo->msginfo.isSync))
-        MPIDI_postSyncAck(context, rreq);
+        MPIDI_SyncAck_post(context, rreq);
 
       /* ----------------------------------------- */
       /*  Calculate message length for reception.  */

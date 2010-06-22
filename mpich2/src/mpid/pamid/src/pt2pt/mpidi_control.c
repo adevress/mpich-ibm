@@ -85,8 +85,8 @@ MPIDI_RecvRzvDoneCB(pami_context_t  context,
  * \return The same as MPIDI_CtrlSend()
  */
 void
-MPIDI_postSyncAck(pami_context_t   context,
-                  MPID_Request   * req)
+MPIDI_SyncAck_post(pami_context_t   context,
+                   MPID_Request   * req)
 {
   MPIDI_Request_setControl(req, MPIDI_CONTROL_SSEND_ACKNOWLEDGE);
 
@@ -103,9 +103,9 @@ MPIDI_postSyncAck(pami_context_t   context,
  * \param[in] peer The rank of the node sending the data
  */
 static inline void
-MPIDI_procSyncAck(pami_context_t        context,
-                  const MPIDI_MsgInfo * info,
-                  unsigned              peer)
+MPIDI_SyncAck_proc(pami_context_t        context,
+                   const MPIDI_MsgInfo * info,
+                   unsigned              peer)
 {
   MPID_assert(info != NULL);
   MPID_Request *req = MPIDI_Msginfo_getPeerRequest(info);
@@ -125,9 +125,9 @@ MPIDI_procSyncAck(pami_context_t        context,
  * \param[in] peer The rank of the node sending the data
  */
 static inline void
-MPIDI_procCancelReq(pami_context_t        context,
-                    const MPIDI_MsgInfo * info,
-                    pami_task_t           peer)
+MPIDI_CancelReq_proc(pami_context_t        context,
+                     const MPIDI_MsgInfo * info,
+                     pami_task_t           peer)
 {
   MPIDI_CONTROL   type;
   MPIDI_MsgInfo   ackinfo;
@@ -168,9 +168,9 @@ MPIDI_procCancelReq(pami_context_t        context,
  * \param[in] peer The rank of the node sending the data
  */
 static inline void
-MPIDI_procCancelAck(pami_context_t        context,
-                    const MPIDI_MsgInfo * info,
-                    pami_task_t           peer)
+MPIDI_CancelAck_proc(pami_context_t        context,
+                     const MPIDI_MsgInfo * info,
+                     pami_task_t           peer)
 {
   MPID_assert(info != NULL);
   MPID_Request *req = MPIDI_Msginfo_getPeerRequest(info);
@@ -229,9 +229,9 @@ MPIDI_procCancelAck(pami_context_t        context,
  * \param[in] peer The rank of the node sending the data
  */
 static inline void
-MPIDI_procRzvAck(pami_context_t        context,
-                 const MPIDI_MsgInfo * info,
-                 pami_task_t           peer)
+MPIDI_RzvAck_proc(pami_context_t        context,
+                  const MPIDI_MsgInfo * info,
+                  pami_task_t           peer)
 {
   MPID_assert(info != NULL);
   MPID_Request *req = MPIDI_Msginfo_getPeerRequest(info);
@@ -272,17 +272,17 @@ MPIDI_ControlCB(pami_context_t    context,
   switch (msginfo->msginfo.control)
     {
     case MPIDI_CONTROL_SSEND_ACKNOWLEDGE:
-      MPIDI_procSyncAck(context, msginfo, senderrank);
+      MPIDI_SyncAck_proc(context, msginfo, senderrank);
       break;
     case MPIDI_CONTROL_CANCEL_REQUEST:
-      MPIDI_procCancelReq(context, msginfo, senderrank);
+      MPIDI_CancelReq_proc(context, msginfo, senderrank);
       break;
     case MPIDI_CONTROL_CANCEL_ACKNOWLEDGE:
     case MPIDI_CONTROL_CANCEL_NOT_ACKNOWLEDGE:
-      MPIDI_procCancelAck(context, msginfo, senderrank);
+      MPIDI_CancelAck_proc(context, msginfo, senderrank);
       break;
     case MPIDI_CONTROL_RENDEZVOUS_ACKNOWLEDGE:
-      MPIDI_procRzvAck(context, msginfo, senderrank);
+      MPIDI_RzvAck_proc(context, msginfo, senderrank);
       break;
     default:
       fprintf(stderr, "Bad msginfo type: 0x%08x  %d\n",

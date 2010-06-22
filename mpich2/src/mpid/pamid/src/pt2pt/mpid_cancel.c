@@ -29,7 +29,7 @@ MPID_Cancel_recv(MPID_Request * rreq)
  * \return The same as MPIDI_CtrlSend()
  */
 static inline pami_result_t
-MPIDI_postCancelReq(pami_context_t context, void * _req)
+MPIDI_CancelReq_post(pami_context_t context, void * _req)
 {
   MPID_Request * req = (MPID_Request *) _req;
   MPID_assert(req != NULL);
@@ -109,7 +109,7 @@ MPID_Cancel_send(MPID_Request * sreq)
          */
         pami_work_t  * work    = malloc(sizeof(pami_work_t));
         pami_context_t context = MPIDI_Context_local(sreq);
-        PAMI_Context_post(context, work, MPIDI_postCancelReq, sreq);
+        PAMI_Context_post(context, work, MPIDI_CancelReq_post, sreq);
       }
 
       return MPI_SUCCESS;

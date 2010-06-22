@@ -72,7 +72,7 @@ MPIDI_RecvMsg(void          * buf,
       if (unlikely(MPIDI_Request_isSync(rreq)))
         {
           MPID_assert(!MPIDI_Request_isSelf(rreq));
-          MPIDI_postSyncAck(MPIDI_Context_local(rreq), rreq);
+          MPIDI_SyncAck_post(MPIDI_Context_local(rreq), rreq);
         }
 
       if (MPIDI_Request_isSelf(rreq))

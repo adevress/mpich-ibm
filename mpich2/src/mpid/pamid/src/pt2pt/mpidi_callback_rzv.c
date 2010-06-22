@@ -88,7 +88,7 @@ void MPIDI_RecvRzvCB(pami_context_t    context,
       /* if synchronized, post ack.  */
       /* --------------------------- */
       if (unlikely(MPIDI_Request_isSync(rreq)))
-        MPIDI_postSyncAck(context, rreq);
+        MPIDI_SyncAck_post(context, rreq);
 
       MPIDI_RendezvousTransfer(context, rreq);
     }

@@ -127,7 +127,7 @@ void MPIDI_RecvRzvDoneCB(pami_context_t    context,
 
 
 /** \brief Acknowledge an MPI_Ssend() */
-void MPIDI_postSyncAck(pami_context_t context, MPID_Request * req);
+void MPIDI_SyncAck_post(pami_context_t context, MPID_Request * req);
 /** \brief This is the general PT2PT control message call-back */
 void MPIDI_ControlCB(pami_context_t    context,
                      void            * _contextid,
