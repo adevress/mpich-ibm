@@ -65,6 +65,10 @@ typedef struct
   int             contig;
   MPI_Aint        true_lb;
   MPIDI_msg_sz_t  size;
+
+  int             num_contig;
+  DLOOP_VECTOR  * map;
+  DLOOP_VECTOR    __map;
 } MPIDI_Datatype;
 
 
@@ -97,6 +101,15 @@ typedef struct
 } MPIDI_Win_request;
 
 
+
+void
+MPIDI_Win_datatype_basic(int              count,
+                         MPI_Datatype     datatype,
+                         MPIDI_Datatype * dt);
+void
+MPIDI_Win_datatype_map  (MPIDI_Datatype * dt);
+void
+MPIDI_Win_datatype_unmap(MPIDI_Datatype * dt);
 
 void
 MPIDI_WinCtrlSend(pami_context_t       context,

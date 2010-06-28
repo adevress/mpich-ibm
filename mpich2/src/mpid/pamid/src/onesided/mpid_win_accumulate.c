@@ -46,5 +46,10 @@ MPID_Accumulate(void         *origin_addr,
                 MPI_Op        op,
                 MPID_Win     *win)
 {
-  return 1;
+  int mpi_errno = MPI_SUCCESS;
+
+  puts("UNHANDLED: ACCUMULATE");
+  exit(1);
+
+  return mpi_errno;
 }

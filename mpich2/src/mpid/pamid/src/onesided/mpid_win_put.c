@@ -45,18 +45,13 @@ MPID_Put(void         *origin_addr,
 
   size_t offset = target_disp * win->mpid.info[target_rank].disp_unit;
 
-  MPIDI_Datatype_get_info(origin_count,
-                          req->origin_dt.type = origin_datatype,
-                          req->origin_dt.contig,
-                          req->origin_dt.size,
-                          req->origin_dt.pointer,
-                          req->origin_dt.true_lb);
-  MPIDI_Datatype_get_info(target_count,
-                          req->target_dt.type = target_datatype,
-                          req->target_dt.contig,
-                          req->target_dt.size,
-                          req->target_dt.pointer,
-                          req->target_dt.true_lb);
+  MPIDI_Win_datatype_basic(origin_count,
+                           origin_datatype,
+                           &req->origin_dt);
+  MPIDI_Win_datatype_basic(target_count,
+                           target_datatype,
+                           &req->target_dt);
+  MPID_assert(req->origin_dt.size == req->target_dt.size);
 
   if ( (req->origin_dt.size == 0) ||
        (target_rank == MPI_PROC_NULL))
@@ -123,41 +118,49 @@ MPID_Put(void         *origin_addr,
   MPID_assert(req->origin_dt.size == length_out);
 
 
-  if (req->target_dt.contig)
-    {
-      pami_rput_simple_t params = {
-      rma  : {
-        dest    : req->dest,
-        hints   : {
-          no_long_header: PAMI_HINT2_ON,
-          },
-        bytes   : req->origin_dt.size,
-        cookie  : req,
-        done_fn : NULL,
-      },
-      rdma : {
-        local  : {
-          mr     : &req->memregion,
-          offset : 0,
-        },
-        remote : {
-          mr     : &win->mpid.info[target_rank].memregion,
-          offset : offset,
-        },
-      },
-      put : {
-        rdone_fn : MPIDI_DoneCB,
-      },
-      };
+  MPIDI_Win_datatype_map(&req->target_dt);
+  req->ops_started = req->target_dt.num_contig;
 
-      rc = PAMI_Rput(MPIDI_Context[0], &params);
-      MPID_assert(rc == PAMI_SUCCESS);
-    }
-  else
-    {
-      ++win->mpid.sync.complete;
-      return 1;
-    }
+  pami_rput_simple_t params = {
+  rma  : {
+    dest    : req->dest,
+    hints   : {
+      no_long_header: PAMI_HINT2_ON,
+      },
+    bytes   : 0,
+    cookie  : req,
+    done_fn : NULL,
+  },
+  rdma : {
+    local  : {
+      mr     : &req->memregion,
+      offset : 0,
+    },
+    remote : {
+      mr     : &win->mpid.info[target_rank].memregion,
+      offset : offset,
+    },
+  },
+  put : {
+    rdone_fn : MPIDI_DoneCB,
+  },
+  };
+
+  int index;
+  for (index=0; index < req->ops_started; ++index) {
+    MPID_PROGRESS_WAIT_WHILE(index > req->ops_complete + MPIDI_Process.rma_pending);
+
+    params.rma.bytes          = req->target_dt.map[index].DLOOP_VECTOR_LEN;
+    params.rdma.remote.offset = offset + (size_t)req->target_dt.map[index].DLOOP_VECTOR_BUF;
+
+    rc = PAMI_Rput(MPIDI_Context[0], &params);
+    MPID_assert(rc == PAMI_SUCCESS);
+
+    params.rdma.local.offset += params.rma.bytes;
+  }
+
+  MPIDI_Win_datatype_unmap(&req->target_dt);
+
 
   return mpi_errno;
 }
