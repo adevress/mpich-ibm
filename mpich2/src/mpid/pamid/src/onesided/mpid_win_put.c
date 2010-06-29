@@ -43,6 +43,7 @@ MPID_Put(void         *origin_addr,
   req->ops_complete = 0;
   req->ops_started  = 1;
 
+  size_t offset = target_disp * win->mpid.info[target_rank].disp_unit;
 
   MPIDI_Datatype_get_info(origin_count,
                           req->origin_dt.type = origin_datatype,
@@ -71,7 +72,7 @@ MPID_Put(void         *origin_addr,
       return MPIR_Localcopy(origin_addr,
                             origin_count,
                             origin_datatype,
-                            win->base + win->disp_unit*target_disp,
+                            win->base + offset,
                             target_count,
                             target_datatype);
     }
@@ -144,7 +145,7 @@ MPID_Put(void         *origin_addr,
         },
         remote : {
           mr     : &win->mpid.info[target_rank].memregion,
-          offset : target_disp * win->disp_unit,
+          offset : offset,
         },
       },
       put : {

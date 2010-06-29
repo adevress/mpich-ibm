@@ -43,6 +43,7 @@ MPID_Get(void         *origin_addr,
   req->ops_complete = 0;
   req->ops_started  = 1;
 
+  size_t offset = target_disp * win->mpid.info[target_rank].disp_unit;
 
   MPIDI_Datatype_get_info(origin_count,
                           req->origin_dt.type = origin_datatype,
@@ -68,7 +69,7 @@ MPID_Get(void         *origin_addr,
   if (target_rank == win->mpid.comm->rank)
     {
       MPIU_Free(req);
-      return MPIR_Localcopy(win->base + win->disp_unit*target_disp,
+      return MPIR_Localcopy(win->base + offset,
                             target_count,
                             target_datatype,
                             origin_addr,
@@ -132,7 +133,7 @@ MPID_Get(void         *origin_addr,
         },
         remote : {
           mr     : &win->mpid.info[target_rank].memregion,
-          offset : target_disp * win->disp_unit,
+          offset : offset,
         },
       },
       };
