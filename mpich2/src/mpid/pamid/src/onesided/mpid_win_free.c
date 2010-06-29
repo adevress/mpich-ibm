@@ -22,6 +22,10 @@ MPID_Win_free(MPID_Win **win_ptr)
   MPID_Win *win = *win_ptr;
   size_t rank = win->mpid.comm->rank;
 
+  mpi_errno = PMPI_Barrier(win->mpid.comm->handle);
+  if (mpi_errno != MPI_SUCCESS)
+    return mpi_errno;
+
   struct MPIDI_Win_info *winfo = &win->mpid.info[rank];
   if (win->size != 0)
     {
