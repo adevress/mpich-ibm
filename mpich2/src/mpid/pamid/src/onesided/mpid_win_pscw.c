@@ -144,6 +144,10 @@ MPID_Win_test (MPID_Win *win,
       *flag = 1;
       MPIR_Group_release(group);
     }
+  else
+    {
+      MPID_Progress_poke();
+    }
 
   return mpi_errno;
 }
