@@ -114,16 +114,13 @@ MPID_Put(void         *origin_addr,
 
 
   size_t length_out;
-  /** \todo This memregion_create does not correctly reflect the size
-      of the origin buffer.  This is (probably) fine on BGQ, but not
-      other platforms. */
   rc = PAMI_Memregion_create(MPIDI_Context[0],
                              req->pack_buffer,
-                             1,
+                             req->origin_dt.size,
                              &length_out,
                              &req->memregion);
   MPID_assert(rc == PAMI_SUCCESS);
-  MPID_assert(1  == length_out);
+  MPID_assert(req->origin_dt.size == length_out);
 
 
   if (req->target_dt.contig)
