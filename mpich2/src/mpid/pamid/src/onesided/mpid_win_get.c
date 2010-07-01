@@ -91,13 +91,14 @@ MPID_Get(void         *origin_addr,
     }
   else
     {
+      req->pack_free = 1;
+      req->pack_buffer = MPIU_Malloc(req->origin_dt.size);
+      MPID_assert(req->pack_buffer != NULL);
+
       MPID_Datatype_add_ref(req->origin_dt.pointer);
       req->origin.addr  = origin_addr;
       req->origin.count = origin_count;
       req->origin.datatype = origin_datatype;
-      req->pack_free = 1;
-      req->pack_buffer = MPIU_Malloc(req->origin_dt.size);
-      MPID_assert(req->pack_buffer != NULL);
     }
 
 

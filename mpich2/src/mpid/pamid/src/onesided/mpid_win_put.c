@@ -22,7 +22,7 @@
  * \param[in] target_datatype  Destination datatype
  * \param[in] win              Window
  * \return MPI_SUCCESS, MPI_ERR_RMA_SYNC, or error returned from
- *        MPIR_Localcopy, MPID_Segment_init, or PAMI_Rput.
+ *         MPIR_Localcopy, MPID_Segment_init, or PAMI_Rput.
  */
 int
 MPID_Put(void         *origin_addr,
@@ -91,12 +91,12 @@ MPID_Put(void         *origin_addr,
     }
   else
     {
-      int origin_errno,  buf_errno;
-      MPIDI_msg_sz_t count;
-
       req->pack_free = 1;
       req->pack_buffer = MPIU_Malloc(req->origin_dt.size);
       MPID_assert(req->pack_buffer != NULL);
+
+      int origin_errno,  buf_errno;
+      MPIDI_msg_sz_t count;
 
       MPIDI_Buffer_copy(origin_addr,
                         origin_count,
