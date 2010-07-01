@@ -19,7 +19,7 @@ LIBS   =
 # pmandel requires a separate set of socket calls (its a long story)
 # and may not build on most platforms
 EXTRA_PROGRAMS = pmandel pmandel_spawn pmandel_service pmandel_spaserv \
-	         pmandel_fence hellow icpi parent child srtest srvec sr \
+	         pmandel_fence icpi parent child srtest srvec sr \
 		 spawn_merge_parent spawn_merge_child1 spawn_merge_child2
 
 # LIBS includes -lmpich and other libraries (e.g., -lpmpich if
@@ -47,4 +47,4 @@ spawn_merge_child1_SOURCES = spawn_merge_child1.c
 spawn_merge_child2_SOURCES = spawn_merge_child2.c
 
 # Use make all-programs to test building all example programs
-all-programs: cpi $(EXTRA_PROGRAMS) 
+all-programs: cpi hellow $(EXTRA_PROGRAMS) 
