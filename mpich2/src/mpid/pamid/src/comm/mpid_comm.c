@@ -183,7 +183,7 @@ void MPIDI_Comm_world_setup()
   world->mpid.barrier_metas = NULL;
   world->mpid.allreduce_metas = NULL;
   world->mpid.allgathers[0] = 1; /* guaranteed to work */
-  int num_algorithms[2] = {0};
+  size_t num_algorithms[2] = {0};
 
   /* Don't even bother registering if we are using mpich only */
   if(useshmembarrier)
