@@ -67,7 +67,7 @@ void MPIDI_Buffer_copy(
 
     if (sdt_contig && rdt_contig)
     {
-        memcpy((char *)rbuf + rdt_true_lb, (const char *)sbuf + sdt_true_lb, sdata_sz);
+        memcpy((char*)rbuf + rdt_true_lb, (const char *)sbuf + sdt_true_lb, sdata_sz);
         *rsz = sdata_sz;
     }
     else if (sdt_contig)

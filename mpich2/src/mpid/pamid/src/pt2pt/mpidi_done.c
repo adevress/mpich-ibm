@@ -16,7 +16,7 @@ void MPIDI_SendDoneCB(pami_context_t   context,
                       void          * clientdata,
                       pami_result_t    result)
 {
-  MPID_Request * sreq = (MPID_Request *)clientdata;
+  MPID_Request * sreq = (MPID_Request*)clientdata;
   MPID_assert(sreq != NULL);
 
   if (sreq->mpid.uebuf)
@@ -51,6 +51,7 @@ MPIDI_RecvDoneCB_copy(MPID_Request * rreq)
   // It is unsafe to check the user buffer against NULL.
   // Believe it or not, an IRECV can legally be posted with a NULL buffer.
   // MPID_assert(rreq->mpid.userbuf != NULL);
+  MPIDI_msg_sz_t _count=0;
   MPIDI_Buffer_copy(rreq->mpid.uebuf,        /* source buffer */
                     rreq->mpid.uebuflen,
                     MPI_CHAR,
@@ -58,8 +59,9 @@ MPIDI_RecvDoneCB_copy(MPID_Request * rreq)
                     rreq->mpid.userbuf,      /* dest buffer */
                     rreq->mpid.userbufcount, /* dest count */
                     rreq->mpid.datatype,     /* dest type */
-                    (MPIDI_msg_sz_t*)&rreq->status.count,
+                    &_count,
                     &rreq->status.MPI_ERROR);
+  rreq->status.count = _count;
 }
 
 
@@ -73,7 +75,7 @@ void MPIDI_RecvDoneCB(pami_context_t   context,
                       void          * clientdata,
                       pami_result_t    result)
 {
-  MPID_Request * rreq = (MPID_Request *)clientdata;
+  MPID_Request * rreq = (MPID_Request*)clientdata;
   MPID_assert(rreq != NULL);
   switch (MPIDI_Request_getCA(rreq))
     {

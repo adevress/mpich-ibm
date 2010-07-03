@@ -149,7 +149,7 @@ pami_result_t
 MPIDI_SendMsg_handoff(pami_context_t   context,
                       void           * _sreq)
 {
-  MPID_Request * sreq = (MPID_Request *) _sreq;
+  MPID_Request * sreq = (MPID_Request*)_sreq;
   MPID_assert(sreq != NULL);
 
   int             data_sz;

@@ -56,7 +56,7 @@ MPIDI_RecvRzvDoneCB(pami_context_t  context,
                     void          * cookie,
                     pami_result_t   result)
 {
-  MPID_Request * rreq = (MPID_Request *)cookie;
+  MPID_Request * rreq = (MPID_Request*)cookie;
   MPID_assert(rreq != NULL);
 
   /* Is it neccesary to save the original value of the 'type' field ?? */

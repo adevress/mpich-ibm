@@ -82,6 +82,7 @@ MPIDI_RecvMsg(void          * buf,
           /* ---------------------- */
           MPID_Request * const sreq = rreq->partner_request;
           MPID_assert(sreq != NULL);
+          MPIDI_msg_sz_t _count=0;
           MPIDI_Buffer_copy(sreq->mpid.userbuf,
                             sreq->mpid.userbufcount,
                             sreq->mpid.datatype,
@@ -89,8 +90,9 @@ MPIDI_RecvMsg(void          * buf,
                             buf,
                             count,
                             datatype,
-                            (MPIDI_msg_sz_t*)&rreq->status.count,
+                            &_count,
                             &rreq->status.MPI_ERROR);
+          rreq->status.count = _count;
           MPIDI_Request_complete(sreq);
           /* no other thread can possibly be waiting on rreq,
              so it is safe to reset ref_count and cc */
@@ -117,15 +119,19 @@ MPIDI_RecvMsg(void          * buf,
           /* -------------------------------- */
           MPID_assert(rreq->mpid.uebuf != NULL);
           if(rreq->status.cancelled == FALSE)
-            MPIDI_Buffer_copy(rreq->mpid.uebuf,
-                              rreq->mpid.uebuflen,
-                              MPI_CHAR,
-                              &rreq->status.MPI_ERROR,
-                              buf,
-                              count,
-                              datatype,
-                              (MPIDI_msg_sz_t*)&rreq->status.count,
-                              &rreq->status.MPI_ERROR);
+            {
+              MPIDI_msg_sz_t _count=0;
+              MPIDI_Buffer_copy(rreq->mpid.uebuf,
+                                rreq->mpid.uebuflen,
+                                MPI_CHAR,
+                                &rreq->status.MPI_ERROR,
+                                buf,
+                                count,
+                                datatype,
+                                &_count,
+                                &rreq->status.MPI_ERROR);
+              rreq->status.count = _count;
+            }
           MPIU_Free(rreq->mpid.uebuf);
           rreq->mpid.uebuf = NULL;
         }

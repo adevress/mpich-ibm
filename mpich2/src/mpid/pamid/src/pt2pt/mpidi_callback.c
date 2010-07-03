@@ -71,7 +71,7 @@ void MPIDI_RecvCB(pami_context_t    context,
     {
       /* recv->hints    = {}; */
       recv->local_fn = MPIDI_RecvDoneCB;
-      recv->cookie   = (void*)rreq;
+      recv->cookie   = rreq;
     }
 
 

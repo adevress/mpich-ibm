@@ -15,7 +15,7 @@
 
 typedef int                 MPID_VCR;
 typedef struct MPIDI_VCRT * MPID_VCRT;
-typedef unsigned MPIDI_msg_sz_t;
+typedef size_t MPIDI_msg_sz_t;
 
 
 #define MPID_Irsend     MPID_Isend
@@ -31,7 +31,7 @@ typedef unsigned MPIDI_msg_sz_t;
  */
 #define MPID_Dev_datatype_create_hook(a)
 #define MPID_Dev_datatype_destroy_hook(a) {             \
-        extern void MPIDU_dtc_free(MPID_Datatype *);    \
+        extern void MPIDU_dtc_free(MPID_Datatype*);     \
         MPIDU_dtc_free(a);                              \
 }
 

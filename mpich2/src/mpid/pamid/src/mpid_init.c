@@ -169,7 +169,7 @@ MPIDI_Init(int* rank, int* size, int* threading)
   name  : PAMI_CONST_CONTEXTS,
   value : { intval : 1, },
   };
-  MPIDI_Context = (pami_context_t *)MPIU_Malloc(sizeof(pami_context_t) * MPIDI_Process.avail_contexts);
+  MPIDI_Context = MPIU_Calloc0(MPIDI_Process.avail_contexts, pami_context_t);
   TRACE_ERR((stderr,"Creating %d contexts\n", MPIDI_Process.avail_contexts));
   rc = PAMI_Context_createv(MPIDI_Client, &config, 1, MPIDI_Context, MPIDI_Process.avail_contexts);
   MPID_assert(rc == PAMI_SUCCESS);

@@ -31,7 +31,7 @@ MPID_Cancel_recv(MPID_Request * rreq)
 static inline pami_result_t
 MPIDI_CancelReq_post(pami_context_t context, void * _req)
 {
-  MPID_Request * req = (MPID_Request *) _req;
+  MPID_Request * req = (MPID_Request*)_req;
   MPID_assert(req != NULL);
 
   MPIDI_MsgInfo cancel = {
