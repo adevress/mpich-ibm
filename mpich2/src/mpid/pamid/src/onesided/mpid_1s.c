@@ -22,22 +22,15 @@ MPIDI_DoneCB(pami_context_t  context,
         {
           if (req->type == MPIDI_WIN_REQUEST_GET)
             {
-              int origin_errno,  buf_errno;
-              MPIDI_msg_sz_t count;
-
-              MPIDI_Buffer_copy(req->pack_buffer,
-                                req->origin_dt.size,
-                                MPI_CHAR,
-                                &buf_errno,
-                                req->origin.addr,
-                                req->origin.count,
-                                req->origin.datatype,
-                                &count,
-                                &origin_errno);
+              int mpi_errno =
+              MPIR_Localcopy(req->pack_buffer,
+                             req->origin_dt.size,
+                             MPI_CHAR,
+                             req->origin.addr,
+                             req->origin.count,
+                             req->origin.datatype);
+              MPID_assert(mpi_errno == MPI_SUCCESS);
               MPID_Datatype_release(req->origin_dt.pointer);
-              MPID_assert(origin_errno == MPI_SUCCESS);
-              MPID_assert(buf_errno    == MPI_SUCCESS);
-              MPID_assert(req->origin_dt.size == count);
             }
           MPIU_Free(req->pack_buffer);
         }

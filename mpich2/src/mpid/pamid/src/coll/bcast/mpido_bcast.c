@@ -97,13 +97,8 @@ int MPIDO_Bcast(void *buffer,
    {
       TRACE_ERR((stderr,"cleaning up noncontig\n"));
       if(comm_ptr->rank != root)
-      {
-         int smpi_errno, rmpi_errno;
-         MPIDI_msg_sz_t rcount;
-         MPIDI_Buffer_copy(noncontig_buff, data_size, MPI_CHAR,
-                                &smpi_errno, buffer, count, datatype,
-                                &rcount, &rmpi_errno);
-      }
+         MPIR_Localcopy(noncontig_buff, data_size, MPI_CHAR,
+                        buffer,         count,     datatype);
       MPIU_Free(noncontig_buff);
    }
 
