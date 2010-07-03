@@ -265,7 +265,8 @@ MPIDI_ControlCB(pami_context_t    context,
   MPID_assert(_msginfo != NULL);
   MPID_assert(size == sizeof(MPIDI_MsgInfo));
   const MPIDI_MsgInfo *msginfo = (const MPIDI_MsgInfo *)_msginfo;
-  pami_task_t senderrank, sendercontext;
+  pami_task_t senderrank;
+  size_t      sendercontext;
   PAMI_Endpoint_query(sender, &senderrank, &sendercontext);
   /* size_t               contextid = (size_t)_contextid; */
 

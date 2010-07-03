@@ -52,7 +52,7 @@ MPID_Request_create()
 
   struct MPIDI_Request* mpid = &req->mpid;
 #ifdef ZERO_OUT_EACH_FIELD
-#error Don't actually do this.
+#error Do not actually do this.
   /* if (DCQuad_sizeof(MPIDI_MsgInfo) == 1) */
   /*   { */
   /*     DCQuad* q = mpid->envelope.envelope.msginfo.quad; */

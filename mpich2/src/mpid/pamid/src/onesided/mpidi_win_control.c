@@ -52,7 +52,8 @@ MPIDI_WinControlCB(pami_context_t    context,
   MPID_assert(_control != NULL);
   MPID_assert(size == sizeof(MPIDI_Win_control_t));
   const MPIDI_Win_control_t *control = (const MPIDI_Win_control_t *)_control;
-  pami_task_t senderrank, sendercontext;
+  pami_task_t senderrank;
+  size_t      sendercontext;
   pami_result_t rc;
   rc = PAMI_Endpoint_query(sender, &senderrank, &sendercontext);
   MPID_assert(rc == PAMI_SUCCESS);
