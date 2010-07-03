@@ -54,7 +54,7 @@ void MPIDI_Buffer_copy(
     /* --BEGIN ERROR HANDLING-- */
     if (sdata_sz > rdata_sz)
     {
-        *rmpi_errno = MPIR_Err_create_code(MPI_SUCCESS, MPIR_ERR_RECOVERABLE, "MPIDI_Buffer_copy", __LINE__, MPI_ERR_TRUNCATE, "**truncate", "**truncate %d %d", sdata_sz, rdata_sz );
+        *rmpi_errno = MPIR_Err_create_code(MPI_SUCCESS, MPIR_ERR_RECOVERABLE, __FUNCTION__, __LINE__, MPI_ERR_TRUNCATE, "**truncate", "**truncate %d %d", sdata_sz, rdata_sz );
         sdata_sz = rdata_sz;
     }
     /* --END ERROR HANDLING-- */
@@ -81,7 +81,7 @@ void MPIDI_Buffer_copy(
         /* --BEGIN ERROR HANDLING-- */
         if (last != sdata_sz)
         {
-            *rmpi_errno = MPIR_Err_create_code(MPI_SUCCESS, MPIR_ERR_RECOVERABLE, "MPIDI_Buffer_copy", __LINE__, MPI_ERR_TYPE, "**dtypemismatch", 0);
+            *rmpi_errno = MPIR_Err_create_code(MPI_SUCCESS, MPIR_ERR_RECOVERABLE, __FUNCTION__, __LINE__, MPI_ERR_TYPE, "**dtypemismatch", 0);
         }
         /* --END ERROR HANDLING-- */
 
@@ -98,7 +98,7 @@ void MPIDI_Buffer_copy(
         /* --BEGIN ERROR HANDLING-- */
         if (last != sdata_sz)
         {
-            *rmpi_errno = MPIR_Err_create_code(MPI_SUCCESS, MPIR_ERR_RECOVERABLE, "MPIDI_Buffer_copy", __LINE__, MPI_ERR_TYPE, "**dtypemismatch", 0);
+            *rmpi_errno = MPIR_Err_create_code(MPI_SUCCESS, MPIR_ERR_RECOVERABLE, __FUNCTION__, __LINE__, MPI_ERR_TYPE, "**dtypemismatch", 0);
         }
         /* --END ERROR HANDLING-- */
 
@@ -117,7 +117,7 @@ void MPIDI_Buffer_copy(
         /* --BEGIN ERROR HANDLING-- */
         if (buf == NULL)
         {
-            *smpi_errno = MPIR_Err_create_code(MPI_SUCCESS, MPIR_ERR_FATAL, "MPIDI_Buffer_copy", __LINE__, MPI_ERR_OTHER, "**nomem", 0);
+            *smpi_errno = MPIR_Err_create_code(MPI_SUCCESS, MPIR_ERR_FATAL, __FUNCTION__, __LINE__, MPI_ERR_OTHER, "**nomem", 0);
             *rmpi_errno = *smpi_errno;
             *rsz = 0;
             goto fn_exit;
@@ -170,7 +170,7 @@ void MPIDI_Buffer_copy(
             if (sfirst == sdata_sz)
             {
                 /* datatype mismatch -- remaining bytes could not be unpacked */
-                *rmpi_errno = MPIR_Err_create_code(MPI_SUCCESS, MPIR_ERR_RECOVERABLE, "MPIDI_Buffer_copy", __LINE__, MPI_ERR_TYPE, "**dtypemismatch", 0);
+                *rmpi_errno = MPIR_Err_create_code(MPI_SUCCESS, MPIR_ERR_RECOVERABLE, __FUNCTION__, __LINE__, MPI_ERR_TYPE, "**dtypemismatch", 0);
                 break;
             }
             /* --END ERROR HANDLING-- */
