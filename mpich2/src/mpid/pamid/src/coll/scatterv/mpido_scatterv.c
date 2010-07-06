@@ -41,8 +41,11 @@ int MPIDO_Scatterv_bcast(void *sendbuf,
   {
     tempbuf = MPIU_Malloc(sizeof(char) * sum);
     if (!tempbuf)
-      return MPIR_Err_create_code(MPI_SUCCESS, MPIR_ERR_RECOVERABLE,
-                                  "MPI_Scatterv", __LINE__, MPI_ERR_OTHER,
+      return MPIR_Err_create_code(MPI_SUCCESS,
+                                  MPIR_ERR_RECOVERABLE,
+                                  __FUNCTION__,
+                                  __LINE__,
+                                  MPI_ERR_OTHER,
                                   "**nomem", 0);
   }
   else
@@ -100,8 +103,10 @@ int MPIDO_Scatterv_alltoallv(void * sendbuf,
   {
     return MPIR_Err_create_code(MPI_SUCCESS,
                                 MPIR_ERR_RECOVERABLE,
-                                "MPI_Scatterv",
-                                __LINE__, MPI_ERR_OTHER, "**nomem", 0);
+                                __FUNCTION__,
+                                __LINE__,
+                                MPI_ERR_OTHER,
+                                "**nomem", 0);
   }
   //   memset(rbuf, 0, rbytes * size * sizeof(char));
 
@@ -124,8 +129,10 @@ int MPIDO_Scatterv_alltoallv(void * sendbuf,
         MPIU_Free(scounts);
       return MPIR_Err_create_code(MPI_SUCCESS,
                                   MPIR_ERR_RECOVERABLE,
-                                  "MPI_Scatterv",
-                                  __LINE__, MPI_ERR_OTHER, "**nomem", 0);
+                                  __FUNCTION__,
+                                  __LINE__,
+                                  MPI_ERR_OTHER,
+                                  "**nomem", 0);
     }
     memset(sdispls, 0, size*sizeof(int));
     memset(scounts, 0, size*sizeof(int));
@@ -140,8 +147,10 @@ int MPIDO_Scatterv_alltoallv(void * sendbuf,
       MPIU_Free(rdispls);
     return MPIR_Err_create_code(MPI_SUCCESS,
                                 MPIR_ERR_RECOVERABLE,
-                                "MPI_Scatterv",
-                                __LINE__, MPI_ERR_OTHER, "**nomem", 0);
+                                __FUNCTION__,
+                                __LINE__,
+                                MPI_ERR_OTHER,
+                                "**nomem", 0);
   }
 
   memset(rdispls, 0, size*sizeof(unsigned));

@@ -49,8 +49,10 @@ int MPIDO_Scatter_bcast(void * sendbuf,
     {
       return MPIR_Err_create_code(MPI_SUCCESS,
                                   MPIR_ERR_RECOVERABLE,
-                                  "MPI_Scatter",
-                                  __LINE__, MPI_ERR_OTHER, "**nomem", 0);
+                                  __FUNCTION__,
+                                  __LINE__,
+                                  MPI_ERR_OTHER,
+                                  "**nomem", 0);
     }
   }
 

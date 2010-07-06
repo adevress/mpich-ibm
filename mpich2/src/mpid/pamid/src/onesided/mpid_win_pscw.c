@@ -1,6 +1,6 @@
 /*  (C)Copyright IBM Corp.  2007, 2010  */
 /**
- * \file src/onesided/mpid_win_post.c
+ * \file src/onesided/mpid_win_pscw.c
  * \brief ???
  */
 #include "mpidi_onesided.h"

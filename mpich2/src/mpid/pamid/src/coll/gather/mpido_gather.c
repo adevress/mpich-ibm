@@ -60,8 +60,11 @@ int MPIDO_Gather_reduce(void * sendbuf,
   {
     tempbuf = MPIU_Malloc(sbytes * size * sizeof(char));
     if(!tempbuf)
-      return MPIR_Err_create_code(MPI_SUCCESS, MPIR_ERR_RECOVERABLE,
-                                  "MPI_Gather", __LINE__, MPI_ERR_OTHER,
+      return MPIR_Err_create_code(MPI_SUCCESS,
+                                  MPIR_ERR_RECOVERABLE,
+                                  __FUNCTION__,
+                                  __LINE__,
+                                  MPI_ERR_OTHER,
                                   "**nomem", 0);
 
     memset(tempbuf, 0, sbytes * size * sizeof(char));
