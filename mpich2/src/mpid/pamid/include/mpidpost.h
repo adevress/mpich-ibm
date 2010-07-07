@@ -15,5 +15,7 @@
 #define __include_mpidpost_h__
 
 #include <mpid_datatype.h>
+#include <mpidi_prototypes.h>
+#include <mpidi_macros.h>
 
 #endif

@@ -30,7 +30,7 @@ typedef size_t              MPIDI_msg_sz_t;
 }
 
 /** \brief Our progress engine does not require state */
-#define MPID_PROGRESS_STATE_DECL
+#define MPID_PROGRESS_STATE_DECL unsigned val;
 
 /** \brief This defines the portion of MPID_Request that is specific to the Device */
 #define MPID_DEV_REQUEST_DECL    struct MPIDI_Request mpid;

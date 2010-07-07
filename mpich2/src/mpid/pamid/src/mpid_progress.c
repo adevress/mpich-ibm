@@ -20,28 +20,11 @@
  * the comparison would still be true.  We assume that this will not
  * happen.
  */
-static volatile unsigned _requests;
-
-/**
- * \brief Unused, provided since MPI calls it.
- * \param[in] state Unused
- */
-void MPID_Progress_start(MPID_Progress_state * state)
-{
-}
-
-
-/**
- * \brief Unused, provided since MPI calls it.
- * \param[in] state Unused
- */
-void MPID_Progress_end(MPID_Progress_state * state)
-{
-}
+unsigned MPIDI_Progress_requests;
 
 /**
  * \brief This function blocks until a request completes
- * \param[in] state Unused
+ * \param[in] state The previously seen state of advance
  *
  * It does not check what has completed, only that the counter
  * changes.  That happens whenever there is a call to
@@ -53,11 +36,12 @@ void MPID_Progress_end(MPID_Progress_state * state)
 int MPID_Progress_wait(MPID_Progress_state * state)
 {
   pami_result_t rc;
-  int x = _requests;
-  while (x == _requests) {
+  while (state->val == MPIDI_Progress_requests) {
     rc = PAMI_Context_advancev(MPIDI_Context, MPIDI_Process.avail_contexts, 1);
     MPID_assert(rc == PAMI_SUCCESS);
   }
+
+  state->val = MPIDI_Progress_requests;
   return MPI_SUCCESS;
 }
 
@@ -79,15 +63,3 @@ int MPID_Progress_poke()
  * \brief The same as MPID_Progress_poke()
  */
 int MPID_Progress_test() __attribute__((alias("MPID_Progress_poke")));
-
-/**
- * \brief Signal MPID_Progress_wait() that something is done/changed
- *
- * It is therefore important that the ADI layer include a call to
- * MPIDI_Progress_signal() whenever something occurs that a node might
- * be waiting on.
- */
-void MPIDI_Progress_signal()
-{
-  _requests++;
-}

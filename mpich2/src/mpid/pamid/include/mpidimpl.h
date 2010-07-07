@@ -14,12 +14,5 @@
 
 #include <pamix.h>
 #include <mpiimpl.h>
-#include <mpidpre.h>
-#include <mpidpost.h>
-
-
-#include <mpidi_prototypes.h>
-#include <mpidi_macros.h>
-
 
 #endif

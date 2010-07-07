@@ -178,4 +178,26 @@ MPIDI_SendMsg(MPID_Request * sreq)
 })
 
 
+/**
+ * \brief Unused, provided since MPI calls it.
+ * \param[in] state The previously seen state of advance
+ */
+#define MPID_Progress_start(state) ({ (*(state)).val = MPIDI_Progress_requests; })
+
+/**
+ * \brief Unused, provided since MPI calls it.
+ * \param[in] state The previously seen state of advance
+ */
+#define MPID_Progress_end(state)
+
+/**
+ * \brief Signal MPID_Progress_wait() that something is done/changed
+ *
+ * It is therefore important that the ADI layer include a call to
+ * MPIDI_Progress_signal() whenever something occurs that a node might
+ * be waiting on.
+ */
+#define MPIDI_Progress_signal() ({ ++MPIDI_Progress_requests; })
+
+
 #endif
