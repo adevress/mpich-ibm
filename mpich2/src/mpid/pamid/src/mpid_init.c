@@ -6,8 +6,8 @@
 #include "mpidimpl.h"
 
 pami_client_t   MPIDI_Client;
-pami_context_t *MPIDI_Context;
-
+#define MAX_CONTEXTS 2 /**< Default to 2 contexts */
+pami_context_t MPIDI_Context[MAX_CONTEXTS];
 
 
 MPIDI_Process_t  MPIDI_Process = {
@@ -17,7 +17,7 @@ MPIDI_Process_t  MPIDI_Process = {
  eager_limit    : UINT_MAX,
  use_interrupts : 0,
  rma_pending    : 1000,
- avail_contexts : 2, /* default to 2 contexts */
+ avail_contexts : MAX_CONTEXTS,
 
  optimized : {
   collectives : 0,
@@ -148,6 +148,7 @@ MPIDI_Init(int* rank, int* size, int* threading)
       *threading = MPI_THREAD_SINGLE;
     }
 
+  /** \todo remove this check since the collectives should work eventually */
   if(MPIDI_Process.avail_contexts > 1)
     {
       TRACE_ERR("Num contexts :%d (>1), can't use shmem collectives\n", MPIDI_Process.avail_contexts);
@@ -155,8 +156,8 @@ MPIDI_Init(int* rank, int* size, int* threading)
     }
 
   /** \todo Trac 94: Uncomment when these are implemented. */
-  /* MPIDI_Process.short_max = MIN(PAMIX_Configuration_query(MPIDI_Client, PAMI_SEND_IMMEDIATE_MAX).value.intval, */
-  /*                               PAMIX_Configuration_query(MPIDI_Client, PAMI_RECV_IMMEDIATE_MAX).value.intval); */
+  /* MPIDI_Process.short_limit = MIN(PAMIX_Configuration_query(MPIDI_Client, PAMI_SEND_IMMEDIATE_MAX).value.intval, */
+  /*                                 PAMIX_Configuration_query(MPIDI_Client, PAMI_RECV_IMMEDIATE_MAX).value.intval); */
 
   /* ----------------------------------- */
   /*  Create the communication contexts  */
@@ -165,7 +166,6 @@ MPIDI_Init(int* rank, int* size, int* threading)
   name  : PAMI_CONST_CONTEXTS,
   value : { intval : 1, },
   };
-  MPIDI_Context = MPIU_Calloc0(MPIDI_Process.avail_contexts, pami_context_t);
   TRACE_ERR("Creating %d contexts\n", MPIDI_Process.avail_contexts);
   rc = PAMI_Context_createv(MPIDI_Client, &config, 1, MPIDI_Context, MPIDI_Process.avail_contexts);
   MPID_assert(rc == PAMI_SUCCESS);
