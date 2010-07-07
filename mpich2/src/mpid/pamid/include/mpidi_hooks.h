@@ -23,18 +23,6 @@ typedef size_t              MPIDI_msg_sz_t;
 #define MPID_Rsend_init MPID_Send_init
 
 
-/**
- * \brief Declare hook(s) for Datatype create/destroy
- *
- * multiple hooks could be defined, for example:
- * #define ...hook(a)   { func1(a); func2(a); ... }
- */
-#define MPID_Dev_datatype_create_hook(a)
-#define MPID_Dev_datatype_destroy_hook(a) {             \
-        extern void MPIDU_dtc_free(MPID_Datatype*);     \
-        MPIDU_dtc_free(a);                              \
-}
-
 #define MPID_GPID_Get(comm_ptr, rank, gpid)     \
 {                                               \
   gpid[0] = 0;                                  \
