@@ -198,8 +198,11 @@ void MPIDI_RecvCB(pami_context_t    context,
   /*  The temporary buffer will be unpacked later.        */
   /* ---------------------------------------------------- */
   rreq->mpid.uebuflen = sndlen;
-  rreq->mpid.uebuf    = MPIU_Malloc(sndlen);
-  MPID_assert(rreq->mpid.uebuf != NULL);
+  if (sndlen)
+    {
+      rreq->mpid.uebuf    = MPIU_Malloc(sndlen);
+      MPID_assert(rreq->mpid.uebuf != NULL);
+    }
 
   if (unlikely(recv != NULL))
     {

@@ -19,9 +19,11 @@ void MPIDI_SendDoneCB(pami_context_t   context,
   MPID_Request * sreq = (MPID_Request*)clientdata;
   MPID_assert(sreq != NULL);
 
-  if (sreq->mpid.uebuf)
-    MPIU_Free(sreq->mpid.uebuf);
-  sreq->mpid.uebuf = NULL;
+  if (sreq->mpid.uebuf != NULL)
+    {
+      MPIU_Free(sreq->mpid.uebuf);
+      sreq->mpid.uebuf = NULL;
+    }
 
   if(likely(sreq->status.cancelled == FALSE))
     {
