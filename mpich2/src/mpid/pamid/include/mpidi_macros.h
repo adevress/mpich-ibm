@@ -178,6 +178,17 @@ MPIDI_SendMsg(MPID_Request * sreq)
 })
 
 
+#define MPID_VCR_GET_LPID(vcr, index)           \
+({                                              \
+  vcr[index];                                   \
+})
+#define MPID_GPID_Get(comm_ptr, rank, gpid)             \
+{                                                       \
+  gpid[0] = 0;                                          \
+  gpid[1] = MPID_VCR_GET_LPID(comm_ptr->vcr, rank);     \
+}
+
+
 /**
  * \brief Unused, provided since MPI calls it.
  * \param[in] state The previously seen state of advance

@@ -13,7 +13,7 @@
 #define __include_mpidi_hooks_h__
 
 
-typedef int                 MPID_VCR;
+typedef pami_task_t         MPID_VCR;
 typedef struct MPIDI_VCRT * MPID_VCRT;
 
 typedef size_t              MPIDI_msg_sz_t;
@@ -22,12 +22,6 @@ typedef size_t              MPIDI_msg_sz_t;
 #define MPID_Rsend      MPID_Send
 #define MPID_Rsend_init MPID_Send_init
 
-
-#define MPID_GPID_Get(comm_ptr, rank, gpid)     \
-{                                               \
-  gpid[0] = 0;                                  \
-  gpid[1] = comm_ptr->vcr[rank];                \
-}
 
 /** \brief Our progress engine does not require state */
 #define MPID_PROGRESS_STATE_DECL unsigned val;

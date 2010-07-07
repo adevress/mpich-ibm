@@ -29,7 +29,7 @@ int MPID_VCR_Dup(MPID_VCR orig_vcr, MPID_VCR * new_vcr)
 
 int MPID_VCR_Get_lpid(MPID_VCR vcr, int * lpid_ptr)
 {
-    *lpid_ptr = vcr;
+    *lpid_ptr = (int)vcr;
     return MPI_SUCCESS;
 }
 

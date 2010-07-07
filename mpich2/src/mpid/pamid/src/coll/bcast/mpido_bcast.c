@@ -66,7 +66,7 @@ int MPIDO_Bcast(void *buffer,
    bcast.cb_done = cb_bcast;
    bcast.cookie = (void *)&active;
    bcast.algorithm = comm_ptr->mpid.bcasts[0];
-   bcast.cmd.xfer_broadcast.root = comm_ptr->vcr[root];
+   bcast.cmd.xfer_broadcast.root = MPID_VCR_GET_LPID(comm_ptr->vcr, root);
    bcast.cmd.xfer_broadcast.buf = data_buffer;
    bcast.cmd.xfer_broadcast.type = PAMI_BYTE;
    /* Needs to be sizeof(type)*count since we are using bytes as * the generic type */
