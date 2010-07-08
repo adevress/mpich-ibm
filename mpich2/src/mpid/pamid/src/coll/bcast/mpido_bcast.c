@@ -7,15 +7,10 @@
 
 #include "mpidimpl.h"
 
-#ifdef TRACE_ERR
-#undef TRACE_ERR
-#endif
-#define TRACE_ERR(x) //fprintf x
-
 static void cb_bcast(void *ctxt, void *clientdata, pami_result_t err)
 {
    int *active = (int *) clientdata;
-   TRACE_ERR((stderr,"callback enter, active: %d\n", (*active)));
+   TRACE_ERR("callback enter, active: %d\n", (*active));
    (*active)--;
 }
 
@@ -25,7 +20,7 @@ int MPIDO_Bcast(void *buffer,
                 int root,
                 MPID_Comm *comm_ptr)
 {
-   TRACE_ERR((stderr,"in mpido_bcast\n"));
+   TRACE_ERR("in mpido_bcast\n");
    int data_size, data_contig, rc;
    void *data_buffer    = NULL,
         *noncontig_buff = NULL;
@@ -47,7 +42,7 @@ int MPIDO_Bcast(void *buffer,
    if(!data_contig)
    {
       if(comm_ptr->rank == root)
-         TRACE_ERR((stderr,"noncontig data\n"));
+         TRACE_ERR("noncontig data\n");
       noncontig_buff = MPIU_Malloc(data_size);
       data_buffer = noncontig_buff;
       if(noncontig_buff == NULL)
@@ -76,10 +71,10 @@ int MPIDO_Bcast(void *buffer,
    /* Needs to be sizeof(type)*count since we are using bytes as * the generic type */
    bcast.cmd.xfer_broadcast.typecount = data_size;
 
-   TRACE_ERR((stderr,"posting bcast, context: %d, algoname: %s\n",0, comm_ptr->mpid.bcast_metas[0].name));
+   TRACE_ERR("posting bcast, context: %d, algoname: %s\n",0, comm_ptr->mpid.bcast_metas[0].name);
    MPIDI_Update_last_algorithm(comm_ptr, comm_ptr->mpid.bcast_metas[0].name);
    rc = PAMI_Collective(MPIDI_Context[0], (pami_xfer_t *)&bcast);
-   TRACE_ERR((stderr,"bcast posted, rc: %d\n", rc));
+   TRACE_ERR("bcast posted, rc: %d\n", rc);
 
    assert(rc == PAMI_SUCCESS);
 
@@ -87,21 +82,21 @@ int MPIDO_Bcast(void *buffer,
    {
       static int spin = 0;
       if(spin %1000 == 0)
-         TRACE_ERR((stderr,"spinning, %d\n", spin));
+         TRACE_ERR("spinning, %d\n", spin);
       rc = PAMI_Context_advance(MPIDI_Context[0], 1);
       spin++;
    }
-   TRACE_ERR((stderr,"bcast done\n"));
+   TRACE_ERR("bcast done\n");
 
    if(!data_contig)
    {
-      TRACE_ERR((stderr,"cleaning up noncontig\n"));
+      TRACE_ERR("cleaning up noncontig\n");
       if(comm_ptr->rank != root)
          MPIR_Localcopy(noncontig_buff, data_size, MPI_CHAR,
                         buffer,         count,     datatype);
       MPIU_Free(noncontig_buff);
    }
 
-   TRACE_ERR((stderr,"leaving bcast\n"));
+   TRACE_ERR("leaving bcast\n");
    return rc;
 }

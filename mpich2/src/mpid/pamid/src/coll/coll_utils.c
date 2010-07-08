@@ -7,11 +7,6 @@
 
 #include "mpidimpl.h"
 
-#ifdef TRACE_ERR
-#undef TRACE_ERR
-#endif
-#define TRACE_ERR(x) //fprintf x
-
 void MPIopString(MPI_Op op, char *string);
 int MPItoPAMI(MPI_Datatype dt, pami_dt *pdt, MPI_Op op, pami_op *pop, int *musupport);
 

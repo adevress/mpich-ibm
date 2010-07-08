@@ -17,6 +17,20 @@
 #define   likely(x) __builtin_expect(x,1)
 #define unlikely(x) __builtin_expect(x,0)
 
+#ifdef TRACE_ON
+#ifdef __GNUC__
+#define TRACE_ALL(fd, format, ...) fprintf(fd, "%s:%u (%d) " format, __FILE__, __LINE__, MPIR_Process.comm_world->rank, ##__VA_ARGS__)
+#define TRACE_OUT(format, ...) TRACE_ALL(stdout, format, ##__VA_ARGS__)
+#define TRACE_ERR(format, ...) TRACE_ALL(stderr, format, ##__VA_ARGS__)
+#else
+#define TRACE_OUT(format...) fprintf(stdout, format)
+#define TRACE_ERR(format...) fprintf(stderr, format)
+#endif
+#else
+#define TRACE_OUT(format...)
+#define TRACE_ERR(format...)
+#endif
+
 
 /**
  * \addtogroup MPID_REQUEST

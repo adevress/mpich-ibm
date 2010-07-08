@@ -7,15 +7,10 @@
 
 #include "mpidimpl.h"
 
-#ifdef TRACE_ERR
-#undef TRACE_ERR
-#endif
-#define TRACE_ERR(x) //fprintf x
-
 static void cb_allreduce(void *ctxt, void *clientdata, pami_result_t err)
 {
    int *active = (int *) clientdata;
-   TRACE_ERR((stderr,"callback enter, active: %d\n", (*active)));
+   TRACE_ERR("callback enter, active: %d\n", (*active));
    (*active)--;
 }
 
@@ -26,7 +21,7 @@ int MPIDO_Allreduce(void *sendbuf,
                     MPI_Op op,
                     MPID_Comm *comm_ptr)
 {
-   TRACE_ERR((stderr,"in mpido_allreduce\n"));
+   TRACE_ERR("in mpido_allreduce\n");
    pami_dt pdt;
    pami_op pop;
    int mu;
@@ -56,22 +51,22 @@ int MPIDO_Allreduce(void *sendbuf,
       allred.cmd.xfer_allreduce.rtypecount = data_size;
       allred.cmd.xfer_allreduce.dt = pdt;
       allred.cmd.xfer_allreduce.op = pop;
-      TRACE_ERR((stderr,"posting allreduce, context: %d, algoname: %s, dt: %s, op: %s, count: %d\n", 0,
-               comm_ptr->mpid.allreduce_metas[0].name, dt_str, op_str, count));
+      TRACE_ERR("posting allreduce, context: %d, algoname: %s, dt: %s, op: %s, count: %d\n", 0,
+                comm_ptr->mpid.allreduce_metas[0].name, dt_str, op_str, count);
       MPIDI_Update_last_algorithm(comm_ptr, comm_ptr->mpid.allreduce_metas[0].name);
       rc = PAMI_Collective(MPIDI_Context[0], (pami_xfer_t *)&allred);
-      TRACE_ERR((stderr,"allreduce posted, rc: %d\n", rc));
+      TRACE_ERR("allreduce posted, rc: %d\n", rc);
 
       assert(rc == PAMI_SUCCESS);
       while(active)
       {
          static int spin = 0;
          if(spin %1000 == 0)
-            TRACE_ERR((stderr,"spinning: %d\n", spin));
+            TRACE_ERR("spinning: %d\n", spin);
          rc = PAMI_Context_advance(MPIDI_Context[0], 1);
          spin ++;
       }
-      TRACE_ERR((stderr,"allreduce done\n"));
+      TRACE_ERR("allreduce done\n");
       return MPI_SUCCESS;
    }
    else

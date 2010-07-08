@@ -6,12 +6,6 @@
 
 #include "mpidimpl.h"
 
-#ifdef TRACE_ERR
-#undef TRACE_ERR
-#endif
-#define TRACE_ERR(x) //fprintf x
-
-
 /* ****************************************************************** */
 /**
  * \brief Use (tree) MPIDO_Allreduce() to do a fast Allgather operation

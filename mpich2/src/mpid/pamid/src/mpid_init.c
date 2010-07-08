@@ -5,10 +5,6 @@
  */
 #include "mpidimpl.h"
 
-#ifdef TRACE_ERR
-#undef TRACE_ERR
-#endif
-#define TRACE_ERR(x) // fprintf x
 pami_client_t   MPIDI_Client;
 pami_context_t *MPIDI_Context;
 
@@ -154,7 +150,7 @@ MPIDI_Init(int* rank, int* size, int* threading)
 
   if(MPIDI_Process.avail_contexts > 1)
     {
-      TRACE_ERR((stderr,"Num contexts :%d (>1), can't use shmem collectives\n", MPIDI_Process.avail_contexts));
+      TRACE_ERR("Num contexts :%d (>1), can't use shmem collectives\n", MPIDI_Process.avail_contexts);
       MPIDI_Process.optimized.collectives = 0;
     }
 
@@ -170,7 +166,7 @@ MPIDI_Init(int* rank, int* size, int* threading)
   value : { intval : 1, },
   };
   MPIDI_Context = MPIU_Calloc0(MPIDI_Process.avail_contexts, pami_context_t);
-  TRACE_ERR((stderr,"Creating %d contexts\n", MPIDI_Process.avail_contexts));
+  TRACE_ERR("Creating %d contexts\n", MPIDI_Process.avail_contexts);
   rc = PAMI_Context_createv(MPIDI_Client, &config, 1, MPIDI_Context, MPIDI_Process.avail_contexts);
   MPID_assert(rc == PAMI_SUCCESS);
 
@@ -197,7 +193,7 @@ MPIDI_Init(int* rank, int* size, int* threading)
 
 
   /* Fill in the world geometry */
-  TRACE_ERR((stderr, "creating world geometry\n"));
+  TRACE_ERR("creating world geometry\n");
   rc = PAMI_Geometry_world(MPIDI_Client, &MPIDI_Process.world_geometry);
   MPID_assert(rc == PAMI_SUCCESS);
 
