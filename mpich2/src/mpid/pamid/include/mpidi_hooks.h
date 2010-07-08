@@ -15,8 +15,8 @@
 
 typedef int                 MPID_VCR;
 typedef struct MPIDI_VCRT * MPID_VCRT;
-typedef size_t MPIDI_msg_sz_t;
 
+typedef size_t              MPIDI_msg_sz_t;
 
 #define MPID_Irsend     MPID_Isend
 #define MPID_Rsend      MPID_Send
@@ -45,19 +45,17 @@ typedef size_t MPIDI_msg_sz_t;
 #define MPID_PROGRESS_STATE_DECL
 
 /** \brief This defines the portion of MPID_Request that is specific to the Device */
-#define MPID_DEV_REQUEST_DECL struct MPIDI_Request mpid;
+#define MPID_DEV_REQUEST_DECL    struct MPIDI_Request mpid;
 
 /** \brief This defines the portion of MPID_Comm that is specific to the Device */
-#define MPID_DEV_COMM_DECL struct MPIDI_Comm mpid;
+#define MPID_DEV_COMM_DECL       struct MPIDI_Comm    mpid;
+
+/** \brief This defines the portion of MPID_Win that is specific to the Device */
+#define MPID_DEV_WIN_DECL        struct MPIDI_Win     mpid;
 
 #define HAVE_DEV_COMM_HOOK
 #define MPID_Dev_comm_create_hook(a)  ({ void MPIDI_Comm_create (MPID_Comm *comm); MPIDI_Comm_create (a); })
 #define MPID_Dev_comm_destroy_hook(a) ({ void MPIDI_Comm_destroy(MPID_Comm *comm); MPIDI_Comm_destroy(a); })
-
-/**
- * \brief Code-snippet macro to add PAMI extensions to MPID_Win object structure
- */
-#define MPID_DEV_WIN_DECL struct MPIDI_Win mpid;
 
 
 #endif
