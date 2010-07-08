@@ -140,12 +140,19 @@ MPID_Put(void         *origin_addr,
   };
 
   int index;
+  TRACE_ERR("Start       num=%d  l-addr=%p  r-base=%p  r-offset=%zu\n",
+            req->ops_started, req->pack_buffer, win->mpid.info[target_rank].base_addr, offset);
   for (index=0; index < req->ops_started; ++index) {
     MPID_PROGRESS_WAIT_WHILE(index > req->ops_complete + MPIDI_Process.rma_pending);
 
     params.rma.bytes          = req->target_dt.map[index].DLOOP_VECTOR_LEN;
     params.rdma.remote.offset = offset + (size_t)req->target_dt.map[index].DLOOP_VECTOR_BUF;
 
+#ifdef TRACE_ON
+    unsigned* buf = (unsigned*)(req->pack_buffer + params.rdma.local.offset);
+#endif
+    TRACE_ERR("  Sub     index=%d  bytes=%zu  l-offset=%zu  r-offset=%zu  buf=%p  *(int*)buf=0x%08x\n",
+              index, params.rma.bytes, params.rdma.local.offset, params.rdma.remote.offset, buf, *buf);
     rc = PAMI_Rput(MPIDI_Context[0], &params);
     MPID_assert(rc == PAMI_SUCCESS);
 
