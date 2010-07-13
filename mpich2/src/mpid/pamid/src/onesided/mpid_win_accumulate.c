@@ -28,9 +28,7 @@
  * \param[in] target_datatype  Destination datatype
  * \param[in] op               Operand to perform
  * \param[in] win              Window
- * \return MPI_SUCCESS, MPI_ERR_RMA_SYNC, MPI_ERR_OP,
- *         or error returned from MPIR_Localcopy, MPID_Segment_init,
- *         mpid_queue_datatype, or PAMI_Raccumulate.
+ * \return MPI_SUCCES
  *
  * \ref msginfo_usage\n
  * \ref accum_design

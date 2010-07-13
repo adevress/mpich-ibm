@@ -21,8 +21,7 @@
  * \param[in] target_count     Number of target datatype elements
  * \param[in] target_datatype  Destination datatype
  * \param[in] win              Window
- * \return MPI_SUCCESS, MPI_ERR_RMA_SYNC, or error returned from
- *         MPIR_Localcopy, MPID_Segment_init, or PAMI_Rput.
+ * \return MPI_SUCCESS or error returned from MPIR_Localcopy
  */
 int
 MPID_Put(void         *origin_addr,
