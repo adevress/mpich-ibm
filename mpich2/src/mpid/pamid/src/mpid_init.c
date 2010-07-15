@@ -14,7 +14,11 @@ MPIDI_Process_t  MPIDI_Process = {
  verbose        : 0,
  statistics     : 0,
  short_limit    : 123,
+#ifdef __BGQ__
+ eager_limit    : 1234,
+#else
  eager_limit    : UINT_MAX,
+#endif
  use_interrupts : 0,
  rma_pending    : 1000,
  avail_contexts : MAX_CONTEXTS,
