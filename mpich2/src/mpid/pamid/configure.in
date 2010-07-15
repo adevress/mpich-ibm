@@ -63,14 +63,14 @@ builtin(include,../common/thread/mpid_thread.m4)
 
 PAC_PROG_MAKE
 
-# if echo $CFLAGS | grep -q -- -Wall
-# then
-#     CFLAGS="$CFLAGS -Werror"
-# fi
-# if echo $CFLAGS | grep -q -- -qflag
-# then
-#     CFLAGS="$CFLAGS -qhalt=w"
-# fi
+if echo $CFLAGS | grep -q -- -Wall
+then
+    CFLAGS="$CFLAGS -Werror"
+fi
+if echo $CFLAGS | grep -q -- -qflag
+then
+    CFLAGS="$CFLAGS -qhalt=w"
+fi
 
 AC_SUBST(AR)
 AC_SUBST(RANLIB)
