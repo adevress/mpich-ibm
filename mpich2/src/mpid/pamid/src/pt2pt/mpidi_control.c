@@ -69,7 +69,7 @@ MPIDI_RecvRzvDoneCB(pami_context_t  context,
   unsigned original_value = MPIDI_Request_getControl(rreq);
   MPIDI_Request_setControl(rreq, MPIDI_CONTROL_RENDEZVOUS_ACKNOWLEDGE);
   MPIDI_CtrlSend(context,
-                 &rreq->mpid.envelope.envelope.msginfo,
+                 &rreq->mpid.envelope.msginfo,
                  MPIDI_Request_getPeerRank(rreq));
   MPIDI_Request_setControl(rreq, original_value);
 
@@ -96,7 +96,7 @@ MPIDI_SyncAck_post(pami_context_t   context,
 {
   MPIDI_Request_setControl(req, MPIDI_CONTROL_SSEND_ACKNOWLEDGE);
 
-  MPIDI_MsgInfo * info = &req->mpid.envelope.envelope.msginfo;
+  MPIDI_MsgInfo * info = &req->mpid.envelope.msginfo;
   unsigned        peer =  MPIDI_Request_getPeerRank(req);
 
   MPIDI_CtrlSend(context, info, peer);
@@ -143,9 +143,9 @@ MPIDI_CancelReq_proc(pami_context_t        context,
   MPID_assert(MPIDI_Msginfo_getPeerRequest(info) != NULL);
 
   sreq=MPIDI_Recvq_FDUR(MPIDI_Msginfo_getPeerRequest(info),
-                        info->msginfo.MPIrank,
-                        info->msginfo.MPItag,
-                        info->msginfo.MPIctxt);
+                        info->MPIrank,
+                        info->MPItag,
+                        info->MPIctxt);
   if(sreq)
     {
       if (sreq->mpid.uebuf)
@@ -161,7 +161,7 @@ MPIDI_CancelReq_proc(pami_context_t        context,
       type = MPIDI_CONTROL_CANCEL_NOT_ACKNOWLEDGE;
     }
 
-  ackinfo.msginfo.control = type;
+  ackinfo.control = type;
   MPIDI_Msginfo_cpyPeerRequest(&ackinfo, info);
   MPIDI_CtrlSend(context, &ackinfo, peer);
 }
@@ -182,14 +182,14 @@ MPIDI_CancelAck_proc(pami_context_t        context,
   MPID_Request *req = MPIDI_Msginfo_getPeerRequest(info);
   MPID_assert(req != NULL);
 
-  if(info->msginfo.control == MPIDI_CONTROL_CANCEL_NOT_ACKNOWLEDGE)
+  if(info->control == MPIDI_CONTROL_CANCEL_NOT_ACKNOWLEDGE)
     {
       req->mpid.cancel_pending = FALSE;
       MPIDI_Request_complete(req);
       return;
     }
 
-  MPID_assert(info->msginfo.control == MPIDI_CONTROL_CANCEL_ACKNOWLEDGE);
+  MPID_assert(info->control == MPIDI_CONTROL_CANCEL_ACKNOWLEDGE);
   MPID_assert(req->mpid.cancel_pending == TRUE);
 
   req->status.cancelled = TRUE;
@@ -245,7 +245,7 @@ MPIDI_RzvAck_proc(pami_context_t        context,
 
 #ifdef USE_PAMI_RDMA
   pami_result_t rc;
-  rc = PAMI_Memregion_destroy(context, &req->mpid.envelope.envelope.memregion);
+  rc = PAMI_Memregion_destroy(context, &req->mpid.envelope.memregion);
   MPID_assert(rc == PAMI_SUCCESS);
 #endif
 
@@ -276,7 +276,7 @@ MPIDI_ControlCB(pami_context_t    context,
   PAMI_Endpoint_query(sender, &senderrank, &sendercontext);
   /* size_t               contextid = (size_t)_contextid; */
 
-  switch (msginfo->msginfo.control)
+  switch (msginfo->control)
     {
     case MPIDI_CONTROL_SSEND_ACKNOWLEDGE:
       MPIDI_SyncAck_proc(context, msginfo, senderrank);
@@ -293,8 +293,8 @@ MPIDI_ControlCB(pami_context_t    context,
       break;
     default:
       fprintf(stderr, "Bad msginfo type: 0x%08x  %d\n",
-              msginfo->msginfo.control,
-              msginfo->msginfo.control);
+              msginfo->control,
+              msginfo->control);
       MPID_abort();
     }
   MPIDI_Progress_signal();

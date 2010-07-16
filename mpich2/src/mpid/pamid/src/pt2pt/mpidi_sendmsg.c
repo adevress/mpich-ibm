@@ -13,7 +13,7 @@ MPIDI_SendMsg_short(pami_context_t    context,
                     void            * sndbuf,
                     unsigned          sndlen)
 {
-  MPIDI_MsgInfo * msginfo = &sreq->mpid.envelope.envelope.msginfo;
+  MPIDI_MsgInfo * msginfo = &sreq->mpid.envelope.msginfo;
 
   pami_send_immediate_t params = {
   dispatch : MPIDI_Protocols.Send,
@@ -51,7 +51,7 @@ MPIDI_SendMsg_eager(pami_context_t    context,
                     void            * sndbuf,
                     unsigned          sndlen)
 {
-  MPIDI_MsgInfo * msginfo = &sreq->mpid.envelope.envelope.msginfo;
+  MPIDI_MsgInfo * msginfo = &sreq->mpid.envelope.msginfo;
 
   pami_send_t params = {
   send   : {
@@ -105,19 +105,19 @@ MPIDI_SendMsg_rzv(pami_context_t    context,
                              sndbuf,
                              sndlen,
                              &sndlen_out,
-                             &sreq->mpid.envelope.envelope.memregion);
+                             &sreq->mpid.envelope.memregion);
   MPID_assert(rc == PAMI_SUCCESS);
   MPID_assert(sndlen == sndlen_out);
   TRACE_ERR("RZV send for mr=%#llx addr=%p *addr[0]=%#016llx *addr[1]=%#016llx bytes=%u\n",
-            *(unsigned long long*)&sreq->mpid.envelope.envelope.memregion,
+            *(unsigned long long*)&sreq->mpid.envelope.memregion,
             sndbuf,
             *(((unsigned long long*)sndbuf)+0),
             *(((unsigned long long*)sndbuf)+1),
             sndlen);
 #else
-  sreq->mpid.envelope.envelope.data   = sndbuf;
+  sreq->mpid.envelope.data   = sndbuf;
 #endif
-  sreq->mpid.envelope.envelope.length = sndlen;
+  sreq->mpid.envelope.length = sndlen;
 
   /* Do not specify a callback function to be invoked when the RTS
    * message has been sent. The MPI_Send is completed only when the

@@ -46,9 +46,9 @@ void MPIDI_RecvCB(pami_context_t    context,
   /*  Match the request.  */
   /* -------------------- */
   MPIDI_Message_match match;
-  match.rank       = msginfo->msginfo.MPIrank;
-  match.tag        = msginfo->msginfo.MPItag;
-  match.context_id = msginfo->msginfo.MPIctxt;
+  match.rank       = msginfo->MPIrank;
+  match.tag        = msginfo->MPItag;
+  match.context_id = msginfo->MPIctxt;
 
   MPIU_THREAD_CS_ENTER(RECVQ,0);
   rreq = MPIDI_Recvq_FDP_or_AEU(match.rank, match.tag, match.context_id, &found);
@@ -67,7 +67,7 @@ void MPIDI_RecvCB(pami_context_t    context,
   MPIDI_Request_setCA         (rreq, MPIDI_CA_COMPLETE);
   MPIDI_Request_setPeerRank   (rreq, senderrank);
   MPIDI_Request_cpyPeerRequest(rreq, msginfo);
-  MPIDI_Request_setSync       (rreq, msginfo->msginfo.isSync);
+  MPIDI_Request_setSync       (rreq, msginfo->isSync);
   MPIDI_Request_setRzv        (rreq, 0);
 
   /* --------------------------------------- */
@@ -90,7 +90,7 @@ void MPIDI_RecvCB(pami_context_t    context,
       /*  Request was already posted.  */
       /* ----------------------------- */
 
-      if (unlikely(msginfo->msginfo.isSync))
+      if (unlikely(msginfo->isSync))
         MPIDI_SyncAck_post(context, rreq);
 
       /* ----------------------------------------- */

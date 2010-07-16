@@ -30,7 +30,7 @@ void MPIDI_RecvRzvCB(pami_context_t    context,
   MPID_assert(_msginfo != NULL);
   MPID_assert(msginfo_size == sizeof(MPIDI_MsgEnvelope));
   const MPIDI_MsgEnvelope * envelope = (const MPIDI_MsgEnvelope *)_msginfo;
-  const MPIDI_MsgInfo * msginfo = (const MPIDI_MsgInfo *)&envelope->envelope.msginfo;
+  const MPIDI_MsgInfo * msginfo = (const MPIDI_MsgInfo *)&envelope->msginfo;
   pami_task_t senderrank;
   size_t      sendercontext;
   PAMI_Endpoint_query(sender, &senderrank, &sendercontext);
@@ -43,9 +43,9 @@ void MPIDI_RecvRzvCB(pami_context_t    context,
   /*  Match the request.  */
   /* -------------------- */
   MPIDI_Message_match match;
-  match.rank       = msginfo->msginfo.MPIrank;
-  match.tag        = msginfo->msginfo.MPItag;
-  match.context_id = msginfo->msginfo.MPIctxt;
+  match.rank       = msginfo->MPIrank;
+  match.tag        = msginfo->MPItag;
+  match.context_id = msginfo->MPIctxt;
 
   MPIU_THREAD_CS_ENTER(RECVQ,0);
   rreq = MPIDI_Recvq_FDP_or_AEU(match.rank, match.tag, match.context_id, &found);
@@ -65,10 +65,10 @@ void MPIDI_RecvRzvCB(pami_context_t    context,
   /* ---------------------- */
   rreq->status.MPI_SOURCE = match.rank;
   rreq->status.MPI_TAG    = match.tag;
-  rreq->status.count      = envelope->envelope.length;
+  rreq->status.count      = envelope->length;
   MPIDI_Request_setPeerRank   (rreq, senderrank);
   MPIDI_Request_cpyPeerRequest(rreq, msginfo);
-  MPIDI_Request_setSync       (rreq, msginfo->msginfo.isSync);
+  MPIDI_Request_setSync       (rreq, msginfo->isSync);
   MPIDI_Request_setRzv        (rreq, 1);
 
   /* ----------------------------------------------------- */
@@ -77,13 +77,13 @@ void MPIDI_RecvRzvCB(pami_context_t    context,
   /* retreived from the origin node.                       */
   /* ----------------------------------------------------- */
 #ifdef USE_PAMI_RDMA
-  memcpy(&rreq->mpid.envelope.envelope.memregion,
-	 &envelope->envelope.memregion,
+  memcpy(&rreq->mpid.envelope.memregion,
+	 &envelope->memregion,
 	 sizeof(pami_memregion_t));
 #else
-  rreq->mpid.envelope.envelope.data   = envelope->envelope.data;
+  rreq->mpid.envelope.data   = envelope->data;
 #endif
-  rreq->mpid.envelope.envelope.length = envelope->envelope.length;
+  rreq->mpid.envelope.length = envelope->length;
 
   /* ----------------------------------------- */
   /* figure out target buffer for request data */

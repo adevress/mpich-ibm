@@ -117,7 +117,7 @@ MPIDI_Message_match;
  * \brief Message Info (has to be exactly 128 bits long) and associated data types
  * \note sizeof(MPIDI_MsgInfo) == 16
  */
-struct MPIDI_MsgInfo_t
+typedef struct
   {
     void     * req;         /**< peer's request pointer */
     unsigned   MPItag;      /**< match tag              */
@@ -127,29 +127,18 @@ struct MPIDI_MsgInfo_t
     uint16_t   control:3;   /**< message type for control protocols */
     uint16_t   isSync:1;    /**< set for sync sends     */
     uint16_t   isRzv :1;    /**< use pt2pt rendezvous   */
-};
-
-typedef union MPIDI_MsgInfo
-{
-  struct MPIDI_MsgInfo_t msginfo;
-  /* DCQuad quad[DCQuad_sizeof(struct MPIDI_MsgInfo_t)]; */
-}
-MPIDI_MsgInfo;
+} MPIDI_MsgInfo;
 
 /** \brief Full Rendezvous msg info to be set as two quads of unexpected data. */
-typedef union
+typedef struct
 {
-  struct MPIDI_MsgEnvelope_t
-  {
-    MPIDI_MsgInfo    msginfo;
+  MPIDI_MsgInfo    msginfo;
 #ifdef USE_PAMI_RDMA
-    pami_memregion_t memregion;
+  pami_memregion_t memregion;
 #else
-    void           * data;
+  void           * data;
 #endif
-    size_t           length;
-  } envelope;
-  /* DCQuad quad[DCQuad_sizeof(struct MPIDI_MsgEnvelope_t)]; */
+  size_t           length;
 } MPIDI_MsgEnvelope;
 
 /** \brief This defines the portion of MPID_Request that is specific to the Device */

@@ -29,7 +29,7 @@ MPIDI_RendezvousTransfer(pami_context_t context,
   /* -------------------------------------- */
   /* test for truncated message.            */
   /* -------------------------------------- */
-  if (rreq->mpid.envelope.envelope.length > dt_size)
+  if (rreq->mpid.envelope.length > dt_size)
     {
       rcvlen = dt_size;
       rreq->status.MPI_ERROR = MPI_ERR_TRUNCATE;
@@ -37,7 +37,7 @@ MPIDI_RendezvousTransfer(pami_context_t context,
     }
   else
     {
-      rcvlen = rreq->mpid.envelope.envelope.length;
+      rcvlen = rreq->mpid.envelope.length;
     }
 
   /* -------------------------------------- */
@@ -111,7 +111,7 @@ MPIDI_RendezvousTransfer(pami_context_t context,
       use_rdma:       1,
       no_long_header: 1,
       },
-    bytes   : rreq->mpid.envelope.envelope.length,
+    bytes   : rreq->mpid.envelope.length,
     cookie  : rreq,
     done_fn : MPIDI_RecvRzvDoneCB,
   },
@@ -121,7 +121,7 @@ MPIDI_RendezvousTransfer(pami_context_t context,
       offset : 0,
     },
     remote : {
-      mr     : &rreq->mpid.envelope.envelope.memregion,
+      mr     : &rreq->mpid.envelope.memregion,
       offset : 0,
     },
   },
@@ -139,13 +139,13 @@ MPIDI_RendezvousTransfer(pami_context_t context,
       use_rdma:       1,
       no_long_header: 1,
       },
-    bytes   : rreq->mpid.envelope.envelope.length,
+    bytes   : rreq->mpid.envelope.length,
     cookie  : rreq,
     done_fn : MPIDI_RecvRzvDoneCB,
   },
   addr : {
     local   : rcvbuf,
-    remote  : rreq->mpid.envelope.envelope.data,
+    remote  : rreq->mpid.envelope.data,
   },
   };
 
