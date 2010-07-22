@@ -119,22 +119,22 @@ MPIDI_Init(int* rank, int* size, int* threading)
   /* ------------------------------------ */
   /*  Initialize the MPICH2->PAMI Client  */
   /* ------------------------------------ */
-  rc = PAMI_Client_create("MPICH2", &MPIDI_Client);
+  rc = PAMI_Client_create("MPICH2", &MPIDI_Client, NULL, 0);
   MPID_assert(rc == PAMI_SUCCESS);
 
   /* ---------------------------------- */
   /*  Get my rank and the process size  */
   /* ---------------------------------- */
-  *rank          = PAMIX_Configuration_query(MPIDI_Client, PAMI_TASK_ID       ).value.intval;
-  *size          = PAMIX_Configuration_query(MPIDI_Client, PAMI_NUM_TASKS     ).value.intval;
+  *rank          = PAMIX_Client_query(MPIDI_Client, PAMI_CLIENT_TASK_ID  ).value.intval;
+  *size          = PAMIX_Client_query(MPIDI_Client, PAMI_CLIENT_NUM_TASKS).value.intval;
 
   /* ---------------------------------- */
   /*  Figure out the context situation  */
   /* ---------------------------------- */
-  unsigned same  = PAMIX_Configuration_query(MPIDI_Client, PAMI_CONST_CONTEXTS).value.intval;
+  unsigned same  = PAMIX_Client_query(MPIDI_Client, PAMI_CLIENT_CONST_CONTEXTS).value.intval;
   if(same)
     {
-      unsigned possible_contexts = PAMIX_Configuration_query(MPIDI_Client, PAMI_NUM_CONTEXTS).value.intval;
+      unsigned possible_contexts = PAMIX_Client_query(MPIDI_Client, PAMI_CLIENT_NUM_CONTEXTS).value.intval;
       if(MPIDI_Process.avail_contexts > possible_contexts)
         MPIDI_Process.avail_contexts = possible_contexts;
     }
@@ -156,14 +156,14 @@ MPIDI_Init(int* rank, int* size, int* threading)
     }
 
   /** \todo Trac 94: Uncomment when these are implemented. */
-  /* MPIDI_Process.short_limit = MIN(PAMIX_Configuration_query(MPIDI_Client, PAMI_SEND_IMMEDIATE_MAX).value.intval, */
-  /*                                 PAMIX_Configuration_query(MPIDI_Client, PAMI_RECV_IMMEDIATE_MAX).value.intval); */
+  /* MPIDI_Process.short_limit = MIN(PAMIX_Client_query(MPIDI_Client, PAMI_SEND_IMMEDIATE_MAX).value.intval, */
+  /*                                 PAMIX_Client_query(MPIDI_Client, PAMI_RECV_IMMEDIATE_MAX).value.intval); */
 
   /* ----------------------------------- */
   /*  Create the communication contexts  */
   /* ----------------------------------- */
   pami_configuration_t config ={
-  name  : PAMI_CONST_CONTEXTS,
+  name  : PAMI_CLIENT_CONST_CONTEXTS,
   value : { intval : 1, },
   };
   TRACE_ERR("Creating %d contexts\n", MPIDI_Process.avail_contexts);

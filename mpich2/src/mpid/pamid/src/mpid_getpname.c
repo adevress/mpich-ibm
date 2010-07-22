@@ -17,7 +17,7 @@
 int MPID_Get_processor_name(char * name, int namelen, int * resultlen)
 {
   /* Get the name from PAMI */
-  const char* pami_name = PAMIX_Configuration_query(MPIDI_Client, PAMI_PROCESSOR_NAME).value.chararray;
+  const char* pami_name = PAMIX_Client_query(MPIDI_Client, PAMI_CLIENT_PROCESSOR_NAME).value.chararray;
   /* Copy to the destination */
   strncpy(name, pami_name, namelen);
   /* Ensure that there is a trailing NULL */

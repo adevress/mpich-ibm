@@ -18,7 +18,7 @@ void MPID_Wtime( MPID_Time_t *tval )
 }
 double MPID_Wtick()
 {
-  return PAMIX_Configuration_query(MPIDI_Client, PAMI_WTICK).value.doubleval;
+  return PAMIX_Client_query(MPIDI_Client, PAMI_CLIENT_WTICK).value.doubleval;
 }
 void MPID_Wtime_diff( MPID_Time_t *t1, MPID_Time_t *t2, double *diff )
 {
