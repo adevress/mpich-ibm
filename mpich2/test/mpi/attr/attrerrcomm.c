@@ -89,13 +89,13 @@ int test_communicators( void )
     if ((err=MPI_Comm_create_keyval( copybomb_fn, deletebomb_fn, &key_1, &value )))
 	abort_msg( "Keyval_create", err );
 
-    err = MPI_Comm_set_attr( dup_comm_world, key_1, (void *) world_rank );
+    err = MPI_Comm_set_attr( dup_comm_world, key_1, (void *)(size_t)world_rank );
     if (err) {
 	errs++;
 	printf( "Error with first put\n" );
     }
 
-    err = MPI_Comm_set_attr( dup_comm_world, key_1, (void *) (2*world_rank) );
+    err = MPI_Comm_set_attr( dup_comm_world, key_1, (void *)(size_t)(2*world_rank) );
     if (err == MPI_SUCCESS) {
 	errs++;
 	printf( "delete function return code was MPI_SUCCESS in put\n" );

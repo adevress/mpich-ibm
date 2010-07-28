@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include "mpitest.h"
 #include <stdlib.h>
+#include <string.h>
 
 /* Test sent in by Avery Ching to report a bug in MPICH2. 
    Adding it as a regression test. */

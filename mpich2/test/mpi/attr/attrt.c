@@ -52,7 +52,7 @@ int delete_fn( MPI_Comm comm, int keyval, void *attribute_val,
 {
     int world_rank;
     MPI_Comm_rank( MPI_COMM_WORLD, &world_rank );
-    if (attribute_val != (void *)world_rank) {
+    if (attribute_val != (void *)(size_t)world_rank) {
 	printf( "incorrect attribute value %ld\n", (long)attribute_val );
 	MPI_Abort(MPI_COMM_WORLD, 1005 );
     }
@@ -185,7 +185,7 @@ int test_communicators( void )
 	   a (void *) and cast to int. Note that this may generate warning
 	   messages from the compiler.  */
 	MPI_Attr_get(dup_comm, key_1, (void **)&vvalue, &flag );
-	value = (int)vvalue;
+	value = (int)(size_t)vvalue;
 	
 	if (! flag) {
 	    errs++;
@@ -203,7 +203,7 @@ int test_communicators( void )
 	}
 
 	MPI_Attr_get(dup_comm, key_3, (void **)&vvalue, &flag );
-	value = (int)vvalue;
+	value = (int)(size_t)vvalue;
 	if (flag) {
 	    errs++;
 	    printf( "dup_comm key_3 found!\n" );

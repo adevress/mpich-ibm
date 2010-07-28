@@ -193,7 +193,7 @@ int test_communicators( void )
 	   a (void *) and cast to int. Note that this may generate warning
 	   messages from the compiler.  */
 	flag = dup_comm.Get_attr( key_1, (void **)&vvalue );
-	value = (int)vvalue;
+	value = (int)(size_t)vvalue;
 	
 	if (! flag) {
 	    errs++;
