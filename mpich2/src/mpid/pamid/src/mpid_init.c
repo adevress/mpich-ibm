@@ -13,7 +13,8 @@ pami_context_t MPIDI_Context[MAX_CONTEXTS];
 MPIDI_Process_t  MPIDI_Process = {
  verbose        : 0,
  statistics     : 0,
- short_limit    : 123,
+ /** \todo remove this when trac #94 is fixed */
+ short_limit    : 127-sizeof(MPIDI_MsgInfo),
 #ifdef __BGQ__
  eager_limit    : 1234,
 #else
