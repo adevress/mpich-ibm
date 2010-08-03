@@ -4,6 +4,7 @@
  * \brief Normal job startup code
  */
 #include "mpidimpl.h"
+#include "mpidi_onesided.h"
 
 pami_client_t   MPIDI_Client;
 #define MAX_CONTEXTS 2 /**< Default to 2 contexts */
@@ -13,8 +14,7 @@ pami_context_t MPIDI_Context[MAX_CONTEXTS];
 MPIDI_Process_t  MPIDI_Process = {
  verbose        : 0,
  statistics     : 0,
- /** \todo remove this when trac #94 is fixed */
- short_limit    : 127-sizeof(MPIDI_MsgInfo),
+ short_limit    : 0,
 #ifdef __BGQ__
  eager_limit    : 1234,
 #else
@@ -34,6 +34,7 @@ struct protocol_t
 {
   pami_dispatch_p2p_fn func;
   size_t               dispatch;
+  size_t               immediate_min;
   pami_send_hint_t     options;
 };
 static struct
@@ -52,6 +53,7 @@ static struct
       consistency:    PAMI_HINT2_ON,
       no_long_header: PAMI_HINT2_ON,
       },
+    immediate_min : sizeof(MPIDI_MsgInfo),
   },
   RTS: {
     func: MPIDI_RecvRzvCB,
@@ -60,6 +62,7 @@ static struct
       consistency:    PAMI_HINT2_ON,
       use_rdma:       PAMI_HINT3_FORCE_OFF,
       },
+    immediate_min : sizeof(MPIDI_MsgEnvelope),
   },
   Cancel: {
     func: MPIDI_ControlCB,
@@ -68,6 +71,7 @@ static struct
       consistency:    PAMI_HINT2_ON,
       no_long_header: PAMI_HINT2_ON,
       },
+    immediate_min : sizeof(MPIDI_MsgInfo),
   },
   Control: {
     func: MPIDI_ControlCB,
@@ -77,6 +81,7 @@ static struct
       use_rdma:       PAMI_HINT3_FORCE_OFF,
       no_long_header: PAMI_HINT2_ON,
       },
+    immediate_min : sizeof(MPIDI_MsgInfo),
   },
   WinCtrl: {
     func: MPIDI_WinControlCB,
@@ -86,6 +91,7 @@ static struct
       use_rdma:       PAMI_HINT3_FORCE_OFF,
       no_long_header: PAMI_HINT2_ON,
       },
+    immediate_min : sizeof(MPIDI_Win_control_t),
   },
   };
 MPIDI_Protocol_t MPIDI_Protocols =
@@ -99,15 +105,23 @@ MPIDI_Protocol_t MPIDI_Protocols =
 
 
 static inline void
-MPIDI_Init_dispath(size_t dispatch, struct protocol_t* proto)
+MPIDI_Init_dispath(size_t              dispatch,
+                   struct protocol_t * proto,
+                   unsigned          * immediate_max)
 {
+  size_t im_max = 0;
   pami_dispatch_callback_fn Recv = {p2p:proto->func};
   MPID_assert(dispatch == proto->dispatch);
   PAMIX_Dispatch_set(MPIDI_Context,
                      MPIDI_Process.avail_contexts,
                      proto->dispatch,
                      Recv,
-                     proto->options);
+                     proto->options,
+                     &im_max);
+  TRACE_ERR("Immediate-max query:  dispatch=%zu  got=%zu  required=%zu\n", dispatch, im_max, proto->immediate_min);
+  MPID_assert(proto->immediate_min <= im_max);
+  if (immediate_max != NULL)
+    *immediate_max = im_max;
 }
 
 
@@ -130,8 +144,8 @@ MPIDI_Init(int* rank, int* size, int* threading)
   /* ---------------------------------- */
   /*  Get my rank and the process size  */
   /* ---------------------------------- */
-  *rank          = PAMIX_Client_query(MPIDI_Client, PAMI_CLIENT_TASK_ID  ).value.intval;
-  *size          = PAMIX_Client_query(MPIDI_Client, PAMI_CLIENT_NUM_TASKS).value.intval;
+  *rank = PAMIX_Client_query(MPIDI_Client, PAMI_CLIENT_TASK_ID  ).value.intval;
+  *size = PAMIX_Client_query(MPIDI_Client, PAMI_CLIENT_NUM_TASKS).value.intval;
 
   /* ---------------------------------- */
   /*  Figure out the context situation  */
@@ -160,10 +174,6 @@ MPIDI_Init(int* rank, int* size, int* threading)
       MPIDI_Process.optimized.collectives = 0;
     }
 
-  /** \todo Trac 94: Uncomment when these are implemented. */
-  /* MPIDI_Process.short_limit = MIN(PAMIX_Client_query(MPIDI_Client, PAMI_SEND_IMMEDIATE_MAX).value.intval, */
-  /*                                 PAMIX_Client_query(MPIDI_Client, PAMI_RECV_IMMEDIATE_MAX).value.intval); */
-
   /* ----------------------------------- */
   /*  Create the communication contexts  */
   /* ----------------------------------- */
@@ -190,11 +200,13 @@ MPIDI_Init(int* rank, int* size, int* threading)
   /* ------------------------------------ */
   /*  Set up the communication protocols  */
   /* ------------------------------------ */
-  MPIDI_Init_dispath(MPIDI_Protocols.Send,    &proto_list.Send);
-  MPIDI_Init_dispath(MPIDI_Protocols.RTS,     &proto_list.RTS);
-  MPIDI_Init_dispath(MPIDI_Protocols.Cancel,  &proto_list.Cancel);
-  MPIDI_Init_dispath(MPIDI_Protocols.Control, &proto_list.Control);
-  MPIDI_Init_dispath(MPIDI_Protocols.WinCtrl, &proto_list.WinCtrl);
+  MPIDI_Init_dispath(MPIDI_Protocols.Send,    &proto_list.Send, &MPIDI_Process.short_limit);
+  MPIDI_Process.short_limit -= sizeof(MPIDI_MsgInfo);
+  TRACE_ERR("short_limit = %u\n", MPIDI_Process.short_limit);
+  MPIDI_Init_dispath(MPIDI_Protocols.RTS,     &proto_list.RTS, NULL);
+  MPIDI_Init_dispath(MPIDI_Protocols.Cancel,  &proto_list.Cancel, NULL);
+  MPIDI_Init_dispath(MPIDI_Protocols.Control, &proto_list.Control, NULL);
+  MPIDI_Init_dispath(MPIDI_Protocols.WinCtrl, &proto_list.WinCtrl, NULL);
 
 
   /* Fill in the world geometry */

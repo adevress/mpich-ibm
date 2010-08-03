@@ -30,6 +30,12 @@ MPIDI_SendMsg_short(pami_context_t    context,
 
   pami_result_t rc;
   rc = PAMI_Send_immediate(context, &params);
+#ifdef TRACE_ON
+  if (rc)
+    {
+      TRACE_ERR("msginfo=%zu data=%zu\n", sizeof(MPIDI_MsgInfo), sndlen);
+    }
+#endif
   MPID_assert(rc == PAMI_SUCCESS);
 
   MPIDI_SendDoneCB(context, sreq, PAMI_SUCCESS);
