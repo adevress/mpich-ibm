@@ -51,39 +51,12 @@ MPID_Request_create()
   req->comm              = NULL;
 
   struct MPIDI_Request* mpid = &req->mpid;
-#ifdef ZERO_OUT_EACH_FIELD
-#error Do not actually do this.
-  /* if (DCQuad_sizeof(MPIDI_MsgInfo) == 1) */
-  /*   { */
-  /*     DCQuad* q = mpid->envelope.envelope.msginfo.quad; */
-  /*     q->w0 = 0; */
-  /*     q->w1 = 0; */
-  /*     q->w2 = 0; */
-  /*     q->w3 = 0; */
-  /*   } */
-  /* else */
-    memset(&mpid->envelope.envelope.msginfo, 0x00, sizeof(MPIDI_MsgInfo));
-
-  mpid->envelope.envelope.length = 0;
-#ifndef USE_PAMI_RDMA
-  mpid->envelope.envelope.data   = NULL;
-#endif
-  mpid->next                     = NULL;
-  mpid->userbuf                  = NULL;
-  mpid->uebuf                    = NULL;
-  mpid->datatype_ptr             = NULL;
-  mpid->cancel_pending           = FALSE;
-  mpid->state                    = MPIDI_INITIALIZED;
-  MPIDI_Request_setSelf(req, 0);
-  MPIDI_Request_setCA  (req, MPIDI_CA_COMPLETE);
-#else
   memset(mpid, 0x00, sizeof(struct MPIDI_Request));
 #if 0
   /* These two commands are not needed as long as the constants are 0.
-     I have left comments to that effect in their definitions. */
+     There are comments to that effect in their definitions. */
   mpid->state = MPIDI_INITIALIZED;
-  MPIDI_Request_setCA  (req, MPIDI_CA_COMPLETE);
-#endif
+  MPIDI_Request_setCA(req, MPIDI_CA_COMPLETE);
 #endif
 
   return req;
