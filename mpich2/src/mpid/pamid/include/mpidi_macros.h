@@ -37,12 +37,6 @@
  * \{
  */
 void    MPIDI_Request_complete(MPID_Request *req);
-#define MPIDI_Request_add_ref(_req)                                     \
-({                                                                      \
-  MPID_assert(HANDLE_GET_MPI_KIND((_req)->handle) == MPID_REQUEST);     \
-  MPIU_Object_add_ref(_req);                                            \
-})
-
 #define MPIDI_Request_decrement_cc(_req, _inuse) ({ *(_inuse) = --(*(_req)->cc_ptr);                                 })
 #define MPIDI_Request_increment_cc(_req)         ({             ++(*(_req)->cc_ptr);                                 })
 #define MPIDI_Request_get_cc(_req)               ({                *(_req)->cc_ptr;                                  })
