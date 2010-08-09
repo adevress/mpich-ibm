@@ -900,7 +900,11 @@ int MPID_Win_unlock(int dest, MPID_Win *win_ptr)
                          */
                         lpid = MPIDU_world_rank(win_ptr, dest);
                         win_ptr->_dev.as_origin.sync_count = 0;
-                        mpi_errno = DCMF_Control(&bg1s_ct_proto, win_ptr->_dev.my_cstcy, lpid, &info.ctl);
+			DCMF_Request_t req;
+			++win_ptr->_dev.my_rma_pends;
+                        mpi_errno = DCMF_Send(&bg1s_sn_proto, &req,
+				(DCMF_Callback_t){done_cb, (void *)&win_ptr->_dev.my_rma_pends},
+				win_ptr->_dev.my_cstcy, lpid, 0, NULL, (DCQuad *)&info.ctl, 1);
                         if (mpi_errno) { MPIU_ERR_POP(mpi_errno); }
                         MPIDU_Progress_spin(win_ptr->_dev.my_rma_pends > 0 ||
 					win_ptr->_dev.my_get_pends > 0 ||

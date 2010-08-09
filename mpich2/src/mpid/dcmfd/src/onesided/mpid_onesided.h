@@ -958,7 +958,6 @@ void rma_rqc_cb(void *v, DCMF_Error_t *);
  */
 void none_rqc_cb(void *v, DCMF_Error_t *);
 
-#ifdef NOT_USED
 /**
  * \brief Generic send done callback
  *
@@ -971,7 +970,6 @@ void none_rqc_cb(void *v, DCMF_Error_t *);
  * \return nothing
  */
 void done_cb(void *v, DCMF_Error_t *);
-#endif /* NOT_USED */
 
 /**
  *  \brief receive callback for datatype cache messages (map and iov)
