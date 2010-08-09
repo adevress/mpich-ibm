@@ -145,6 +145,7 @@ MPIDI_Init(int* rank, int* size, int* threading)
   /*  Get my rank and the process size  */
   /* ---------------------------------- */
   *rank = PAMIX_Client_query(MPIDI_Client, PAMI_CLIENT_TASK_ID  ).value.intval;
+  MPIR_Process.comm_world->rank = *rank; /* Set the rank early to make tracing better */
   *size = PAMIX_Client_query(MPIDI_Client, PAMI_CLIENT_NUM_TASKS).value.intval;
 
   /* ---------------------------------- */
@@ -154,6 +155,7 @@ MPIDI_Init(int* rank, int* size, int* threading)
   if(same)
     {
       unsigned possible_contexts = PAMIX_Client_query(MPIDI_Client, PAMI_CLIENT_NUM_CONTEXTS).value.intval;
+      TRACE_ERR("PAMI allows up to %u contexts; MPICH2 allows up to %u\n", possible_contexts, MPIDI_Process.avail_contexts);
       if(MPIDI_Process.avail_contexts > possible_contexts)
         MPIDI_Process.avail_contexts = possible_contexts;
     }

@@ -191,7 +191,7 @@ void MPIDI_Comm_world_setup()
       assert(rc == PAMI_SUCCESS);
       if(num_algorithms[0])
         {
-          TRACE_ERR("world geometry has %d barriers[0] and %d barriers[1]\n",
+          TRACE_ERR("world geometry has %zu barriers[0] and %zu barriers[1]\n",
                     num_algorithms[0], num_algorithms[1]);
 
           world->mpid.barriers = (pami_algorithm_t *)
@@ -224,7 +224,7 @@ void MPIDI_Comm_world_setup()
       assert(rc == PAMI_SUCCESS);
       if(num_algorithms[0])
         {
-          TRACE_ERR("world geometry has %d allred[0] and %d allred[1]\n",
+          TRACE_ERR("world geometry has %zu allred[0] and %zu allred[1]\n",
                     num_algorithms[0], num_algorithms[1]);
 
           world->mpid.allreduces = (pami_algorithm_t *)
@@ -259,7 +259,7 @@ void MPIDI_Comm_world_setup()
 
       if(num_algorithms[0])
         {
-          TRACE_ERR("world geometry has %d bcasts[0] and %d bcasts[1]\n",
+          TRACE_ERR("world geometry has %zu bcasts[0] and %zu bcasts[1]\n",
                     num_algorithms[0], num_algorithms[1]);
 
           world->mpid.bcasts = (pami_algorithm_t *)MPIU_Malloc(sizeof(pami_algorithm_t) *

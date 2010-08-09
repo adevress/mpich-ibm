@@ -532,6 +532,7 @@ MPIDI_Env_setup()
   {
     char* names[] = {"PAMI_COLLECTIVE", "PAMI_COLLECTIVES", NULL};
     ENV_Unsigned(names, &MPIDI_Process.optimized.collectives);
+    TRACE_ERR("MPIDI_Process.optimized.collectives=%u\n", MPIDI_Process.optimized.collectives);
   }
 
   {
@@ -542,5 +543,6 @@ MPIDI_Env_setup()
   {
     char *names[] = {"PAMI_MAXCONTEXTS", NULL};
     ENV_Unsigned(names, &MPIDI_Process.avail_contexts);
+    TRACE_ERR("MPIDI_Process.avail_contexts=%u\n", MPIDI_Process.avail_contexts);
   }
 }
