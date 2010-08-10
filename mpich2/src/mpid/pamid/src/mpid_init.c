@@ -7,7 +7,7 @@
 #include "mpidi_onesided.h"
 
 pami_client_t   MPIDI_Client;
-#define MAX_CONTEXTS 2 /**< Default to 2 contexts */
+#define MAX_CONTEXTS 4 /**< Default to only a few contexts */
 pami_context_t MPIDI_Context[MAX_CONTEXTS];
 
 
@@ -170,7 +170,7 @@ MPIDI_Init(int* rank, int* size, int* threading)
   /** \todo remove this check since the collectives should work eventually */
   if(MPIDI_Process.avail_contexts > 1)
     {
-      TRACE_ERR("Num contexts :%d (>1), can't use shmem collectives\n", MPIDI_Process.avail_contexts);
+      TRACE_ERR("Warning: num contexts=%u, but collectives only work with 1 context (see trac #237)\n", MPIDI_Process.avail_contexts);
       MPIDI_Process.optimized.collectives = 0;
     }
 
