@@ -108,7 +108,7 @@
 				Optimization="2"
 				InlineFunctionExpansion="1"
 				OmitFramePointers="true"
-				AdditionalIncludeDirectories="..\..\include;..\..\include\win32;..\..\mpid\ch3\include;..\..\mpid\common\datatype;..\..\mpid\ch3\channels\sock\include"
+				AdditionalIncludeDirectories="..\..\include;..\..\include\win32;..\..\mpl\include;..\..\mpid\ch3\include;..\..\mpid\common\datatype;..\..\mpid\ch3\channels\sock\include"
 				PreprocessorDefinitions="WIN32;NDEBUG;_LIB;USE_WINCONF_H"
 				StringPooling="true"
 				RuntimeLibrary="0"
@@ -238,8 +238,8 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="..\..\include,..\..\include\win32,..\..\mpid\ch3\include,..\..\mpid\ch3\channels\sock\include,..\..\mpid\common\datatype,..\..\mpid\common\sock,..\..\mpid\common\sock\iocp"
-				PreprocessorDefinitions="WIN32;_DEBUG;_LIB;USE_WINCONF_H;MPICH_DBG_OUTPUT"
+				AdditionalIncludeDirectories="..\..\include;..\..\include\win32;..\..\mpid\ch3\include;..\..\mpid\ch3\channels\sock\include;..\..\mpid\common\datatype;..\..\mpid\common\sock;..\..\mpid\common\sock\iocp;..\..\mpl\include"
+				PreprocessorDefinitions="WIN32;_DEBUG;_LIB;USE_WINCONF_H;MPICH_DBG_OUTPUT;USE_DBG_LOGGING"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="1"
@@ -370,7 +370,7 @@
 				Optimization="2"
 				InlineFunctionExpansion="1"
 				OmitFramePointers="true"
-				AdditionalIncludeDirectories="..\..\include,..\..\include\win32,..\..\mpid\ch3\include,..\..\mpid\ch3\channels\ssm\include,..\..\mpid\common\datatype,..\..\mpid\common\sock,..\..\mpid\common\sock\iocp"
+				AdditionalIncludeDirectories="..\..\include;..\..\include\win32;..\..\mpl\include;..\..\mpid\ch3\include;..\..\mpid\ch3\channels\ssm\include;..\..\mpid\common\datatype;..\..\mpid\common\sock;..\..\mpid\common\sock\iocp"
 				PreprocessorDefinitions="WIN32;NDEBUG;_LIB;USE_WINCONF_H"
 				StringPooling="true"
 				RuntimeLibrary="0"
@@ -439,7 +439,7 @@
 				Optimization="2"
 				InlineFunctionExpansion="1"
 				OmitFramePointers="true"
-				AdditionalIncludeDirectories="..\..\include,..\..\include\win32,..\..\mpid\ch3\include,..\..\mpid\ch3\channels\sock\include,..\..\mpid\common\datatype,..\..\mpid\common\sock,..\..\mpid\common\sock\iocp"
+				AdditionalIncludeDirectories="..\..\include;..\..\include\win32;..\..\mpl\include;..\..\mpid\ch3\include;..\..\mpid\ch3\channels\sock\include;..\..\mpid\common\datatype;..\..\mpid\common\sock;..\..\mpid\common\sock\iocp"
 				PreprocessorDefinitions="WIN32;NDEBUG;_LIB;USE_WINCONF_H"
 				StringPooling="true"
 				RuntimeLibrary="0"
@@ -508,7 +508,7 @@
 				Optimization="2"
 				InlineFunctionExpansion="1"
 				OmitFramePointers="true"
-				AdditionalIncludeDirectories="..\..\include,..\..\include\win32,..\..\mpid\ch3\include,..\..\mpid\ch3\channels\shm\include,..\..\mpid\common\datatype,..\..\mpid\common\locks"
+				AdditionalIncludeDirectories="..\..\include;..\..\include\win32;..\..\mpl\include;..\..\mpid\ch3\include;..\..\mpid\ch3\channels\shm\include;..\..\mpid\common\datatype;..\..\mpid\common\locks"
 				PreprocessorDefinitions="WIN32;NDEBUG;_LIB;USE_WINCONF_H"
 				StringPooling="true"
 				RuntimeLibrary="0"
@@ -1038,7 +1038,7 @@
 				Optimization="2"
 				InlineFunctionExpansion="1"
 				OmitFramePointers="true"
-				AdditionalIncludeDirectories="..\..\include,..\..\include\win32,..\..\mpid\ch3\include,..\..\mpid\ch3\channels\sock\include,..\..\mpid\common\datatype,..\..\mpid\common\sock,..\..\mpid\common\sock\iocp"
+				AdditionalIncludeDirectories="..\..\include;..\..\include\win32;..\..\mpl\include;..\..\mpid\ch3\include;..\..\mpid\ch3\channels\sock\include;..\..\mpid\common\datatype;..\..\mpid\common\sock;..\..\mpid\common\sock\iocp"
 				PreprocessorDefinitions="WIN32;NDEBUG;_LIB;USE_WINCONF_H,MPICH_MULTITHREADED"
 				StringPooling="true"
 				RuntimeLibrary="0"
@@ -1107,7 +1107,7 @@
 				Optimization="2"
 				InlineFunctionExpansion="1"
 				OmitFramePointers="true"
-				AdditionalIncludeDirectories="..\..\include,..\..\include\win32,..\..\mpid\ch3\include,..\..\mpid\ch3\channels\sock\include,..\..\mpid\common\datatype,..\..\mpid\common\sock,..\..\mpid\common\sock\iocp"
+				AdditionalIncludeDirectories="..\..\include;..\..\include\win32;..\..\mpl\include;..\..\mpid\ch3\include;..\..\mpid\ch3\channels\sock\include;..\..\mpid\common\datatype;..\..\mpid\common\sock;..\..\mpid\common\sock\iocp"
 				PreprocessorDefinitions="WIN32;NDEBUG;_LIB;USE_WINCONF_H,HAVE_TIMING=MPID_TIMING_KIND_LOG_DETAILED,USE_LOGGING=MPID_LOGGING_RLOG,MPICH_MULTITHREADED"
 				StringPooling="true"
 				RuntimeLibrary="0"
@@ -1802,6 +1802,73 @@
 				Name="VCPostBuildEventTool"
 			/>
 		</Configuration>
+		<Configuration
+			Name="fortPRelease|Win32"
+			OutputDirectory="$(ConfigurationName)"
+			IntermediateDirectory="$(ConfigurationName)"
+			ConfigurationType="4"
+			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC71.vsprops"
+			CharacterSet="2"
+			>
+			<Tool
+				Name="VCPreBuildEventTool"
+			/>
+			<Tool
+				Name="VCCustomBuildTool"
+			/>
+			<Tool
+				Name="VCXMLDataGeneratorTool"
+			/>
+			<Tool
+				Name="VCWebServiceProxyGeneratorTool"
+			/>
+			<Tool
+				Name="VCMIDLTool"
+			/>
+			<Tool
+				Name="VCCLCompilerTool"
+				Optimization="2"
+				InlineFunctionExpansion="1"
+				OmitFramePointers="true"
+				AdditionalIncludeDirectories="..\..\include;..\..\include\win32;..\..\mpl\include;..\..\mpid\ch3\include;..\..\mpid\common\datatype;..\..\mpid\ch3\channels\sock\include"
+				PreprocessorDefinitions="WIN32;NDEBUG;_LIB;USE_WINCONF_H"
+				StringPooling="true"
+				RuntimeLibrary="0"
+				EnableFunctionLevelLinking="true"
+				UsePrecompiledHeader="0"
+				WarningLevel="3"
+				Detect64BitPortabilityProblems="true"
+				DebugInformationFormat="3"
+			/>
+			<Tool
+				Name="VCManagedResourceCompilerTool"
+			/>
+			<Tool
+				Name="VCResourceCompilerTool"
+			/>
+			<Tool
+				Name="VCPreLinkEventTool"
+			/>
+			<Tool
+				Name="VCLibrarianTool"
+				OutputFile="..\..\..\lib\dbg.lib"
+			/>
+			<Tool
+				Name="VCALinkTool"
+			/>
+			<Tool
+				Name="VCXDCMakeTool"
+			/>
+			<Tool
+				Name="VCBscMakeTool"
+			/>
+			<Tool
+				Name="VCFxCopTool"
+			/>
+			<Tool
+				Name="VCPostBuildEventTool"
+			/>
+		</Configuration>
 	</Configurations>
 	<References>
 	</References>
@@ -1831,11 +1898,15 @@
 				>
 			</File>
 			<File
-				RelativePath="..\param\param.c"
+				RelativePath="..\param\param_vals.c"
 				>
 			</File>
 			<File
 				RelativePath="..\mem\safestr.c"
+				>
+			</File>
+			<File
+				RelativePath="..\mem\strerror.c"
 				>
 			</File>
 		</Filter>

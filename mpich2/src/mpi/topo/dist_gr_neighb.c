@@ -59,7 +59,6 @@ int MPI_Dist_graph_neighbors(MPI_Comm comm,
     int mpi_errno = MPI_SUCCESS;
     MPID_Comm *comm_ptr = NULL;
     MPIR_Topology *topo_ptr = NULL;
-    MPIU_THREADPRIV_DECL;
     MPID_MPI_STATE_DECL(MPID_STATE_MPI_DIST_GRAPH_NEIGHBORS);
 
     MPIR_ERRTEST_INITIALIZED_ORDIE();
@@ -122,10 +121,12 @@ int MPI_Dist_graph_neighbors(MPI_Comm comm,
 
   fn_fail:
     /* --BEGIN ERROR HANDLING-- */
+#ifdef HAVE_ERROR_CHECKING
     mpi_errno = MPIR_Err_create_code(
         mpi_errno, MPIR_ERR_RECOVERABLE, FCNAME, __LINE__, MPI_ERR_OTHER,
         "**mpi_dist_graph_neighbors", "**mpi_dist_graph_neighbors %C %d %p %p %d %p %p",
         comm, maxindegree, sources, sourceweights, maxoutdegree, destinations, destweights);
+#endif
     mpi_errno = MPIR_Err_return_comm(comm_ptr, FCNAME, mpi_errno);
     goto fn_exit;
     /* --END ERROR HANDLING-- */

@@ -1,6 +1,6 @@
 dnl Nesting safe macros for saving variables
-dnl Usage: PAC_PUSH_VAR(CFLAGS)
-AC_DEFUN([PAC_PUSH_VAR],[
+dnl Usage: PAC_PUSH_FLAG(CFLAGS)
+AC_DEFUN([PAC_PUSH_FLAG],[
 	if test -z "${pac_save_$1_nesting}" ; then
 	   pac_save_$1_nesting=0
 	fi
@@ -8,35 +8,58 @@ AC_DEFUN([PAC_PUSH_VAR],[
 	pac_save_$1_nesting=`expr ${pac_save_$1_nesting} + 1`
 ])
 
-dnl Usage: PAC_POP_VAR(CFLAGS)
-AC_DEFUN([PAC_POP_VAR],[
+dnl Usage: PAC_POP_FLAG(CFLAGS)
+AC_DEFUN([PAC_POP_FLAG],[
 	pac_save_$1_nesting=`expr ${pac_save_$1_nesting} - 1`
 	eval $1="\$pac_save_$1_${pac_save_$1_nesting}"
 	eval pac_save_$1_${pac_save_$1_nesting}=""
 ])
 
-dnl Usage: PAC_SAVE_FLAGS
-AC_DEFUN([PAC_SAVE_FLAGS],[
-	PAC_PUSH_VAR(CFLAGS)
-	PAC_PUSH_VAR(CXXFLAGS)
-	PAC_PUSH_VAR(FFLAGS)
-	PAC_PUSH_VAR(F90FLAGS)
-	PAC_PUSH_VAR(LDFLAGS)
-	PAC_PUSH_VAR(LIBS)
+dnl Usage: PAC_PUSH_ALL_FLAGS
+AC_DEFUN([PAC_PUSH_ALL_FLAGS],[
+	PAC_PUSH_FLAG(CFLAGS)
+	PAC_PUSH_FLAG(CPPFLAGS)
+	PAC_PUSH_FLAG(CXXFLAGS)
+	PAC_PUSH_FLAG(FFLAGS)
+	PAC_PUSH_FLAG(FCFLAGS)
+	PAC_PUSH_FLAG(LDFLAGS)
+	PAC_PUSH_FLAG(LIBS)
 ])
 
-dnl Usage: PAC_RESTORE_FLAGS
-AC_DEFUN([PAC_RESTORE_FLAGS],[
-	PAC_POP_VAR(CFLAGS)
-	PAC_POP_VAR(CXXFLAGS)
-	PAC_POP_VAR(FFLAGS)
-	PAC_POP_VAR(F90FLAGS)
-	PAC_POP_VAR(LDFLAGS)
-	PAC_POP_VAR(LIBS)
+dnl Usage: PAC_POP_ALL_FLAGS
+AC_DEFUN([PAC_POP_ALL_FLAGS],[
+	PAC_POP_FLAG(CFLAGS)
+	PAC_POP_FLAG(CPPFLAGS)
+	PAC_POP_FLAG(CXXFLAGS)
+	PAC_POP_FLAG(FFLAGS)
+	PAC_POP_FLAG(FCFLAGS)
+	PAC_POP_FLAG(LDFLAGS)
+	PAC_POP_FLAG(LIBS)
 ])
 
-dnl Usage: PAC_APPEND_FLAG([-02], [$CFLAGS])
-dnl need a clearer explanation and definition of how this is called
+dnl PAC_PREFIX_FLAG - Save flag with a prefix
+dnl Usage: PAC_PREFIX_FLAG(PREFIX, FLAG)
+AC_DEFUN([PAC_PREFIX_FLAG],[
+	$1_$2=$$2
+	export $1_$2
+	AC_SUBST($1_$2)
+])
+
+dnl PAC_PREFIX_ALL_FLAGS - Save flags with a prefix
+dnl Usage: PAC_PREFIX_ALL_FLAGS(PREFIX)
+AC_DEFUN([PAC_PREFIX_ALL_FLAGS],[
+	PAC_PREFIX_FLAG($1, CFLAGS)
+	PAC_PREFIX_FLAG($1, CPPFLAGS)
+	PAC_PREFIX_FLAG($1, CXXFLAGS)
+	PAC_PREFIX_FLAG($1, FFLAGS)
+	PAC_PREFIX_FLAG($1, FCFLAGS)
+	PAC_PREFIX_FLAG($1, LDFLAGS)
+	PAC_PREFIX_FLAG($1, LIBS)
+])
+
+dnl Usage: PAC_APPEND_FLAG([-02], [CFLAGS])
+dnl appends the given argument to the specified shell variable unless the
+dnl argument is already present in the variable
 AC_DEFUN([PAC_APPEND_FLAG],[
 	AC_REQUIRE([AC_PROG_FGREP])
 	AS_IF(
@@ -46,6 +69,23 @@ AC_DEFUN([PAC_APPEND_FLAG],[
 		$2="$$2 $1"]
 	)
 ])
+
+dnl Usage: PAC_PREPEND_FLAG([-lpthread], [LIBS])
+dnl Prepends the given argument to the specified shell variable unless the
+dnl argument is already present in the variable.
+dnl
+dnl This is typically used for LIBS and similar variables because libraries
+dnl should be added in reverse order.
+AC_DEFUN([PAC_PREPEND_FLAG],[
+        AC_REQUIRE([AC_PROG_FGREP])
+        AS_IF(
+                [echo "$$2" | $FGREP -e '$1' >/dev/null 2>&1],
+                [echo "$2(='$$2') contains '$1', not prepending" >&AS_MESSAGE_LOG_FD],
+                [echo "$2(='$$2') does not contain '$1', prepending" >&AS_MESSAGE_LOG_FD
+                $2="$1 $$2"]
+        )
+])
+
 
 dnl PAC_MKDIRS(path)
 dnl Create any missing directories in the path

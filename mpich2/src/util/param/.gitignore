@@ -12,3 +12,4 @@
 /.libs
 /.libstamp*
 /.state-cache
+/param_vals.c

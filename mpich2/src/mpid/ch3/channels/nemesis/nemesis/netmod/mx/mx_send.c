@@ -172,7 +172,7 @@ int MPID_nem_mx_SendNoncontig(MPIDI_VC_t *vc, MPID_Request *sreq, void *header, 
 	    MPIU_Assert(sreq->dev.segment_ptr == NULL);
 	    sreq->dev.segment_ptr = MPID_Segment_alloc( );
 	    MPIU_ERR_CHKANDJUMP1((sreq->dev.segment_ptr == NULL), mpi_errno, MPI_ERR_OTHER, "**nomem", "**nomem %s", "MPID_Segment_alloc");
-	    NMPI_Pack_size(sreq->dev.user_count, sreq->dev.datatype, sreq->comm->handle, &packsize);
+	    MPIR_Pack_size_impl(sreq->dev.user_count, sreq->dev.datatype, &packsize);
 	    sreq->dev.tmpbuf = MPIU_Malloc((size_t) packsize);
 	    MPIU_Assert(sreq->dev.tmpbuf);	
 	    MPID_Segment_init(sreq->dev.user_buf, sreq->dev.user_count, sreq->dev.datatype, sreq->dev.segment_ptr, 0);
@@ -267,7 +267,7 @@ int  MPID_nem_mx_directSend(MPIDI_VC_t *vc, const void * buf, int count, MPI_Dat
 		MPI_Aint last;
 		sreq->dev.segment_ptr = MPID_Segment_alloc( );
 		MPIU_ERR_CHKANDJUMP1((sreq->dev.segment_ptr == NULL), mpi_errno, MPI_ERR_OTHER, "**nomem", "**nomem %s", "MPID_Segment_alloc");
-		NMPI_Pack_size(count, datatype, comm->handle, &packsize);
+		MPIR_Pack_size_impl(count, datatype, &packsize);
 		sreq->dev.tmpbuf = MPIU_Malloc((size_t) packsize);
 		MPIU_Assert(sreq->dev.tmpbuf);	
 		MPID_Segment_init(buf, count, datatype, sreq->dev.segment_ptr, 0);
@@ -355,7 +355,7 @@ int  MPID_nem_mx_directSsend(MPIDI_VC_t *vc, const void * buf, int count, MPI_Da
 		MPI_Aint last;
 		sreq->dev.segment_ptr = MPID_Segment_alloc( );
 		MPIU_ERR_CHKANDJUMP1((sreq->dev.segment_ptr == NULL), mpi_errno, MPI_ERR_OTHER, "**nomem", "**nomem %s", "MPID_Segment_alloc");
-		NMPI_Pack_size(count, datatype, comm->handle, &packsize);
+		MPIR_Pack_size_impl(count, datatype, &packsize);
 		sreq->dev.tmpbuf = MPIU_Malloc((size_t) packsize);
 		MPIU_Assert(sreq->dev.tmpbuf);	
 		MPID_Segment_init(buf, count, datatype, sreq->dev.segment_ptr, 0);
@@ -396,8 +396,7 @@ int MPID_nem_mx_process_sdtype(MPID_Request **sreq_p,  MPI_Datatype datatype,  M
     MPID_IOV  *iov;
     MPIDI_msg_sz_t last;
     int num_entries = MX_MAX_SEGMENTS - first_free_slot;
-    int iov_num_ub  = count * dt_ptr->max_contig_blocks;
-    int n_iov       = iov_num_ub;
+    int n_iov       = 0;
     int mpi_errno   = MPI_SUCCESS;
     int index;
 
@@ -410,17 +409,11 @@ int MPID_nem_mx_process_sdtype(MPID_Request **sreq_p,  MPI_Datatype datatype,  M
     sreq->dev.segment_first = 0;
     sreq->dev.segment_size = data_sz;
     last = sreq->dev.segment_size;
-   
-    /*
-    MPID_Segment_count_contig_blocks(sreq->dev.segment_ptr ,first,&last,&n_iov);
+    
+    MPID_Segment_count_contig_blocks(sreq->dev.segment_ptr,sreq->dev.segment_first,&last,&n_iov);
     MPIU_Assert(n_iov > 0);
-    */
-
-    if(n_iov <= 0)
-    {	
-       n_iov = count * dt_ptr->n_elements;
-    }   
     iov = MPIU_Malloc(n_iov*sizeof(MPID_IOV));    
+    
     MPID_Segment_pack_vector(sreq->dev.segment_ptr, sreq->dev.segment_first, &last, iov, &n_iov);
     MPIU_Assert(last == sreq->dev.segment_size);    
     
@@ -543,14 +536,4 @@ MPID_nem_mx_send_conn_info (MPIDI_VC_t *vc)
    goto fn_exit;
 }
 
-#undef FUNCNAME
-#define FUNCNAME MPID_nem_mx_send
-#undef FCNAME
-#define FCNAME MPIDI_QUOTE(FUNCNAME)
-int 
-MPID_nem_mx_send (MPIDI_VC_t *vc, MPID_nem_cell_ptr_t cell, int datalen)
-{
-   int mpi_errno = MPI_SUCCESS;
-   return mpi_errno;
-}
 

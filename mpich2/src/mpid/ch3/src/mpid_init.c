@@ -65,7 +65,7 @@ int MPID_Init(int *argc, char ***argv, int requested, int *provided,
 #else
     {
         int ret, val;
-        ret = MPIU_GetEnvBool("MPICH_USE_PMI2_API", &val);
+        ret = MPL_env2bool("MPICH_USE_PMI2_API", &val);
         if (ret == 1 && val)
             MPIDI_Use_pmi2_api = TRUE;
     }
@@ -249,7 +249,7 @@ int MPID_Init(int *argc, char ***argv, int requested, int *provided,
 	char * parent_port;
 
 	/* FIXME: To allow just the "root" process to 
-	   request the port and then use MPIR_Bcast to 
+	   request the port and then use MPIR_Bcast_intra to 
 	   distribute it to the rest of the processes,
 	   we need to perform the Bcast after MPI is
 	   otherwise initialized.  We could do this

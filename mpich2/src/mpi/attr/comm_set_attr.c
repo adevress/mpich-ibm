@@ -34,7 +34,6 @@ int MPIR_CommSetAttr( MPI_Comm comm, int comm_keyval, void *attribute_val,
     MPID_Comm *comm_ptr = NULL;
     MPID_Keyval *keyval_ptr = NULL;
     MPID_Attribute *p, **old_p;
-    MPIU_THREADPRIV_DECL;
     MPID_MPI_STATE_DECL(MPID_STATE_MPIR_COMM_SET_ATTR);
 
     MPIR_ERRTEST_INITIALIZED_ORDIE();
@@ -95,7 +94,7 @@ int MPIR_CommSetAttr( MPI_Comm comm, int comm_keyval, void *attribute_val,
 		goto fn_fail;
 	    }
 	    p->attrType = attrType;
-	    p->value    = (MPID_AttrVal_t)attribute_val;
+	    p->value    = (MPID_AttrVal_t)(MPIR_Pint)attribute_val;
 	    /* printf( "Updating attr at %x\n", &p->value ); */
 	    /* Does not change the reference count on the keyval */
 	    break;
@@ -111,7 +110,7 @@ int MPIR_CommSetAttr( MPI_Comm comm, int comm_keyval, void *attribute_val,
 	new_p->keyval	     = keyval_ptr;
 	new_p->attrType      = attrType;
 	new_p->pre_sentinal  = 0;
-	new_p->value	     = (MPID_AttrVal_t)attribute_val;
+	new_p->value	     = (MPID_AttrVal_t)(MPIR_Pint)attribute_val;
 	new_p->post_sentinal = 0;
 	new_p->next	     = comm_ptr->attributes;
 	MPIR_Keyval_add_ref( keyval_ptr );

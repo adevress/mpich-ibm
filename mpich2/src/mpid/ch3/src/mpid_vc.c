@@ -537,6 +537,7 @@ int MPID_PG_ForwardPGInfo( MPID_Comm *peer_ptr, MPID_Comm *comm_ptr,
 			   int nPGids, const int gpids[], 
 			   int root )
 {
+    int mpi_errno = MPI_SUCCESS;
     int i, allfound = 1, pgid, pgidWorld;
     MPIDI_PG_t *pg = 0;
     MPIDI_PG_iterator iter;
@@ -567,8 +568,8 @@ int MPID_PG_ForwardPGInfo( MPID_Comm *peer_ptr, MPID_Comm *comm_ptr,
     }
 
     /* See if everyone is happy */
-    NMPI_Allreduce( MPI_IN_PLACE, &allfound, 1, MPI_INT, MPI_LAND, 
-		    comm_ptr->handle );
+    mpi_errno = MPIR_Allreduce_impl( MPI_IN_PLACE, &allfound, 1, MPI_INT, MPI_LAND, comm_ptr );
+    if (mpi_errno) MPIU_ERR_POP(mpi_errno);
 
     if (allfound) return MPI_SUCCESS;
 
@@ -584,7 +585,10 @@ int MPID_PG_ForwardPGInfo( MPID_Comm *peer_ptr, MPID_Comm *comm_ptr,
        from ch3u_port.c */
     MPID_PG_BCast( peer_ptr, comm_ptr, root );
 #endif
+ fn_exit:
     return MPI_SUCCESS;
+ fn_fail:
+    goto fn_exit;
 }
 
 #undef FUNCNAME
@@ -720,7 +724,7 @@ int MPIDI_VC_Init( MPIDI_VC_t *vc, MPIDI_PG_t *pg, int rank )
     /* FIXME: We need a better abstraction for initializing the thread state 
        for an object */
 #if MPIU_THREAD_GRANULARITY == MPIU_THREAD_GRANULARITY_PER_OBJECT
-    MPID_Thread_mutex_create(&vc->pobj_mutex,NULL)
+    MPID_Thread_mutex_create(&vc->pobj_mutex,NULL);
 #endif /* MPIU_THREAD_GRANULARITY */
     MPIU_CALL(MPIDI_CH3,VC_Init( vc ));
     MPIU_DBG_PrintVCState(vc);
@@ -773,7 +777,7 @@ static int publish_node_id(MPIDI_PG_t *pg, int our_pg_rank)
 
     /* set MPIU_hostname */
     ret = gethostname(MPIU_hostname, MAX_HOSTNAME_LEN);
-    MPIU_ERR_CHKANDJUMP2(ret == -1, mpi_errno, MPI_ERR_OTHER, "**sock_gethost", "**sock_gethost %s %d", strerror(errno), errno);
+    MPIU_ERR_CHKANDJUMP2(ret == -1, mpi_errno, MPI_ERR_OTHER, "**sock_gethost", "**sock_gethost %s %d", MPIU_Strerror(errno), errno);
     MPIU_hostname[MAX_HOSTNAME_LEN-1] = '\0';
 
     /* Allocate space for pmi key */
@@ -1089,8 +1093,8 @@ int MPIDI_Populate_vc_node_ids(MPIDI_PG_t *pg, int our_pg_rank)
     MPIU_CHKLMEM_DECL(4);
 
     /* See if the user wants to override our default values */
-    MPIU_GetEnvInt("PMI_VERSION", &pmi_version);
-    MPIU_GetEnvInt("PMI_SUBVERSION", &pmi_subversion);
+    MPL_env2int("PMI_VERSION", &pmi_version);
+    MPL_env2int("PMI_SUBVERSION", &pmi_subversion);
 
     if (pg->size == 1) {
         pg->vct[0].node_id = g_num_nodes++;
@@ -1101,9 +1105,7 @@ int MPIDI_Populate_vc_node_ids(MPIDI_PG_t *pg, int our_pg_rank)
 #ifdef ENABLED_NO_LOCAL
     no_local = 1;
 #else
-    ret = MPIU_GetEnvBool("MPICH_NO_LOCAL", &val);
-    if (ret == 1 && val)
-        no_local = 1;
+    no_local = MPIR_PARAM_NOLOCAL;
 #endif
 
     /* Used for debugging on a single machine: Odd procs on a node are
@@ -1112,7 +1114,7 @@ int MPIDI_Populate_vc_node_ids(MPIDI_PG_t *pg, int our_pg_rank)
 #ifdef ENABLED_ODD_EVEN_CLIQUES
     odd_even_cliques = 1;
 #else
-    ret = MPIU_GetEnvBool("MPICH_ODD_EVEN_CLIQUES", &val);
+    ret = MPL_env2bool("MPICH_ODD_EVEN_CLIQUES", &val);
     if (ret == 1 && val)
         odd_even_cliques = 1;
 #endif

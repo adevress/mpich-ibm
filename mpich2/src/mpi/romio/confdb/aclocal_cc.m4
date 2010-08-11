@@ -23,7 +23,6 @@ dnl D*/
 dnl 2.52 doesn't have AC_PROG_CC_GNU
 ifdef([AC_PROG_CC_GNU],,[AC_DEFUN([AC_PROG_CC_GNU],)])
 AC_DEFUN([PAC_PROG_CC],[
-AC_PROVIDE([AC_PROG_CC])
 AC_CHECK_PROGS(CC, cc xlC xlc pgcc icc pathcc gcc )
 test -z "$CC" && AC_MSG_ERROR([no acceptable cc found in \$PATH])
 PAC_PROG_CC_WORKS
@@ -357,10 +356,15 @@ AC_TRY_COMPILE([int foo(int) __attribute__ ((weak));],[int a;],
 pac_cv_attr_weak=yes,pac_cv_attr_weak=no)])
 # Note that being able to compile with weak_import doesn't mean that 
 # it works.
-AC_CACHE_CHECK([whether __attribute ((weak_import)) allowed],
+AC_CACHE_CHECK([whether __attribute__ ((weak_import)) allowed],
 pac_cv_attr_weak_import,[
 AC_TRY_COMPILE([int foo(int) __attribute__ ((weak_import));],[int a;],
 pac_cv_attr_weak_import=yes,pac_cv_attr_weak_import=no)])
+# Check if the alias option for weak attributes is allowed 
+AC_CACHE_CHECK([whether __attribute__((weak,alias(...))) allowed],
+pac_cv_attr_weak_alias,[
+AC_TRY_COMPILE([int foo(int) __attribute__((weak,alias("__foo")));],[int a;],
+pac_cv_attr_weak_alias=yes,pac_cv_attr_weak_alias=no)])
 ])
 
 #
@@ -520,7 +524,6 @@ if test "$enable_strict_done" != "yes" ; then
         -Winvalid-pch
         -Wno-pointer-sign
         -Wvariadic-macros
-        -std=c89
         -Wno-format-zero-length
 	-Wno-type-limits
     "
@@ -529,18 +532,28 @@ if test "$enable_strict_done" != "yes" ; then
         yes|all|posix)
 		enable_strict_done="yes"
 		pac_cc_strict_flags="-O2 $pac_common_strict_flags -D_POSIX_C_SOURCE=199506L"
+                PAC_APPEND_FLAG([-std=c89],[pac_cc_strict_flags])
+        ;;
+
+        # sometimes we want to assume c99 but still want strict warnings/errors
+        c99)
+                enable_strict_done="yes"
+                pac_cc_strict_flags="-O2 $pac_common_strict_flags -D_POSIX_C_SOURCE=199506L"
+                PAC_APPEND_FLAG([-std=c99],[pac_cc_strict_flags])
         ;;
 
         noposix)
 		enable_strict_done="yes"
 		pac_cc_strict_flags="-O2 $pac_common_strict_flags"
+                PAC_APPEND_FLAG([-std=c89],[pac_cc_strict_flags])
         ;;
 
 	noopt)
 		enable_strict_done="yes"
 		pac_cc_strict_flags="$pac_common_strict_flags -D_POSIX_C_SOURCE=199506L"
+                PAC_APPEND_FLAG([-std=c89],[pac_cc_strict_flags])
 	;;
-        
+
         no)
 		# Accept and ignore this value
 		:
@@ -557,13 +570,10 @@ if test "$enable_strict_done" != "yes" ; then
     # See if the above options work with the compiler
     accepted_flags=""
     for flag in $pac_cc_strict_flags ; do
-        # the save_CFLAGS variable must be namespaced, otherwise they
-        # may not actually be saved if an invoked macro also uses
-        # save_CFLAGS
-        pcs_save_CFLAGS=$CFLAGS
+        PAC_PUSH_FLAG([CFLAGS])
 	CFLAGS="$CFLAGS $accepted_flags"
-	PAC_C_CHECK_COMPILER_OPTION($flag,accepted_flags="$accepted_flags $flag",)
-        CFLAGS=$pcs_save_CFLAGS
+        PAC_C_CHECK_COMPILER_OPTION([$flag],[accepted_flags="$accepted_flags $flag"],)
+        PAC_POP_FLAG([CFLAGS])
     done
     pac_cc_strict_flags=$accepted_flags
 fi
@@ -1553,3 +1563,19 @@ AC_DEFUN([PAC_STRUCT_ALIGNMENT],[
 	   pac_cv_struct_alignment="eight"
 	fi
 ])
+dnl
+dnl PAC_C_MACRO_VA_ARGS
+dnl
+dnl will AC_DEFINE([HAVE_MACRO_VA_ARGS]) if the compiler supports C99 variable
+dnl length argument lists in macros (#define foo(...) bar(__VA_ARGS__))
+AC_DEFUN([PAC_C_MACRO_VA_ARGS],[
+    AC_MSG_CHECKING([for variable argument list macro functionality])
+    AC_LINK_IFELSE([AC_LANG_PROGRAM([
+        #include <stdio.h>
+        #define conftest_va_arg_macro(...) printf(__VA_ARGS__)
+    ],
+    [conftest_va_arg_macro("a test %d", 3);])],
+    [AC_DEFINE([HAVE_MACRO_VA_ARGS],[1],[Define if C99-style variable argument list macro functionality])
+     AC_MSG_RESULT([yes])],
+    [AC_MSG_RESULT([no])])
+])dnl

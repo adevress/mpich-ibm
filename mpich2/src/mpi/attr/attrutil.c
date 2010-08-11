@@ -87,12 +87,23 @@ int MPIR_Call_attr_delete( int handle, MPID_Attribute *attr_p )
                 handle,
                 attr_p->keyval->handle,
                 attr_p->attrType,
-                (void *)attr_p->value,
+                (void *)(MPIR_Pint)attr_p->value,
                 attr_p->keyval->extra_state
                 );
     /* --BEGIN ERROR HANDLING-- */
     if(rc != 0){
+#if MPICH_ERROR_MSG_LEVEL < MPICH_ERROR_MSG_ALL
+	/* If rc is a valid error class, then return that.  
+	   Note that it may be a dynamic error class */
+	/* AMBIGUOUS: This is an ambiguity in the MPI standard: What is the
+	   error value returned from the user-provided routine?  Particularly
+	   with the MPI-2 feature of user-defined error codes, the 
+	   user expectation is probably that the user-provided error code
+	   is returned. */
+	mpi_errno = rc;
+#else
         mpi_errno = MPIR_Err_create_code(MPI_SUCCESS, MPIR_ERR_RECOVERABLE, FCNAME, __LINE__, MPI_ERR_OTHER, "**user", "**userdel %d", rc);
+#endif
         goto fn_fail;
     }
     /* --END ERROR HANDLING-- */
@@ -141,14 +152,18 @@ int MPIR_Call_attr_copy( int handle, MPID_Attribute *attr_p, void** value_copy, 
                 attr_p->keyval->handle,
                 attr_p->keyval->extra_state,
                 attr_p->attrType,
-                (void *)attr_p->value,
+                (void *)(MPIR_Pint)attr_p->value,
                 value_copy,
                 flag
                 );
 
     /* --BEGIN ERROR HANDLING-- */
     if(rc != 0){
+#if MPICH_ERROR_MSG_LEVEL < MPICH_ERROR_MSG_ALL
+	mpi_errno = rc;
+#else
         mpi_errno = MPIR_Err_create_code(MPI_SUCCESS, MPIR_ERR_RECOVERABLE, FCNAME, __LINE__, MPI_ERR_OTHER, "**user", "**usercopy %d", rc);
+#endif
         goto fn_fail;
     }
     /* --END ERROR HANDLING-- */
@@ -210,7 +225,7 @@ int MPIR_Attr_dup_list( int handle, MPID_Attribute *old_attrs,
 
         new_p->attrType         = p->attrType;
         new_p->pre_sentinal     = 0;
-        new_p->value            = (MPID_AttrVal_t)new_value;
+        new_p->value            = (MPID_AttrVal_t)(MPIR_Pint)new_value;
         new_p->post_sentinal    = 0;
         new_p->next             = 0;
 

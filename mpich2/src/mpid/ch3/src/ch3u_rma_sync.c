@@ -19,6 +19,8 @@
  * 
  */
 
+#define SYNC_POST_TAG 100
+
 static int MPIDI_CH3I_Send_rma_msg(MPIDI_RMA_ops * rma_op, MPID_Win * win_ptr, 
 				   MPI_Win source_win_handle, 
 				   MPI_Win target_win_handle, 
@@ -46,7 +48,7 @@ static int create_datatype(const MPIDI_RMA_dtype_info *dtype_info,
 int MPIDI_Win_fence(int assert, MPID_Win *win_ptr)
 {
     int mpi_errno = MPI_SUCCESS;
-    int comm_size, done, *recvcnts;
+    int comm_size, done;
     int *rma_target_proc, *nops_to_proc, i, total_op_count, *curr_ops_cnt;
     MPIDI_RMA_ops *curr_ptr, *next_ptr;
     MPID_Comm *comm_ptr;
@@ -55,7 +57,7 @@ int MPIDI_Win_fence(int assert, MPID_Win *win_ptr)
     MPIDI_RMA_dtype_info *dtype_infos=NULL;
     void **dataloops=NULL;    /* to store dataloops for each datatype */
     MPID_Progress_state progress_state;
-    MPIU_CHKLMEM_DECL(7);
+    MPIU_CHKLMEM_DECL(6);
     MPIU_THREADPRIV_DECL;
     MPIDI_STATE_DECL(MPID_STATE_MPIDI_WIN_FENCE);
 
@@ -158,24 +160,16 @@ int MPIDI_Win_fence(int assert, MPID_Win *win_ptr)
 	    for (i=0; i<total_op_count; i++) dataloops[i] = NULL;
 	}
 	
-	/* do a reduce_scatter (with MPI_SUM) on rma_target_proc. As a result,
+	/* do a reduce_scatter_block (with MPI_SUM) on rma_target_proc. As a result,
 	   each process knows how many other processes will be doing
 	   RMA ops on its window */  
             
 	/* first initialize the completion counter. */
 	win_ptr->my_counter = comm_size;
             
-	/* set up the recvcnts array for reduce scatter */
-	MPIU_CHKLMEM_MALLOC(recvcnts, int *, comm_size*sizeof(int),
-			    mpi_errno, "recvcnts");
-	for (i=0; i<comm_size; i++) recvcnts[i] = 1;
-            
-	MPIR_Nest_incr();
-	mpi_errno = NMPI_Reduce_scatter(MPI_IN_PLACE, rma_target_proc, 
-					recvcnts,
-					MPI_INT, MPI_SUM, win_ptr->comm);
+	mpi_errno = MPIR_Reduce_scatter_block_impl(MPI_IN_PLACE, rma_target_proc, 1,
+                                                   MPI_INT, MPI_SUM, comm_ptr);
 	/* result is stored in rma_target_proc[0] */
-	MPIR_Nest_decr();
 	if (mpi_errno) { MPIU_ERR_POP(mpi_errno); }
 
 	/* Set the completion counter */
@@ -236,7 +230,7 @@ int MPIDI_Win_fence(int assert, MPID_Win *win_ptr)
 		{
 		    if (requests[i] != NULL)
 		    {
-			if (*(requests[i]->cc_ptr) != 0)
+			if (!MPID_Request_is_complete(requests[i]))
 			{
 			    done = 0;
 			    break;
@@ -529,7 +523,7 @@ static int MPIDI_CH3I_Send_rma_msg(MPIDI_RMA_ops *rma_op, MPID_Win *win_ptr,
 	MPIDI_FUNC_EXIT(MPID_STATE_MEMCPY);
         /* the dataloop can have undefined padding sections, so we need to let
          * valgrind know that it is OK to pass this data to writev later on */
-        MPIU_VG_MAKE_MEM_DEFINED(*dataloop, target_dtp->dataloop_size);
+        MPL_VG_MAKE_MEM_DEFINED(*dataloop, target_dtp->dataloop_size);
 
         if (rma_op->type == MPIDI_RMA_PUT)
 	{
@@ -757,7 +751,7 @@ static int MPIDI_CH3I_Recv_rma_msg(MPIDI_RMA_ops *rma_op, MPID_Win *win_ptr,
 
         /* the dataloop can have undefined padding sections, so we need to let
          * valgrind know that it is OK to pass this data to writev later on */
-        MPIU_VG_MAKE_MEM_DEFINED(*dataloop, dtp->dataloop_size);
+        MPL_VG_MAKE_MEM_DEFINED(*dataloop, dtp->dataloop_size);
 
         get_pkt->dataloop_size = dtp->dataloop_size;
 
@@ -804,13 +798,14 @@ static int MPIDI_CH3I_Recv_rma_msg(MPIDI_RMA_ops *rma_op, MPID_Win *win_ptr,
 #define FUNCNAME MPIDI_Win_post
 #undef FCNAME
 #define FCNAME MPIDI_QUOTE(FUNCNAME)
-int MPIDI_Win_post(MPID_Group *group_ptr, int assert, MPID_Win *win_ptr)
+int MPIDI_Win_post(MPID_Group *post_grp_ptr, int assert, MPID_Win *win_ptr)
 {
     int nest_level_inc = FALSE;
     int mpi_errno=MPI_SUCCESS;
-    MPI_Group win_grp, post_grp;
+    MPID_Group *win_grp_ptr;
     int i, post_grp_size, *ranks_in_post_grp, *ranks_in_win_grp, dst, rank;
-    MPIU_CHKLMEM_DECL(2);
+    MPID_Comm *win_comm_ptr;
+    MPIU_CHKLMEM_DECL(4);
     MPIU_THREADPRIV_DECL;
     MPIDI_STATE_DECL(MPID_STATE_MPIDI_WIN_POST);
 
@@ -853,13 +848,16 @@ int MPIDI_Win_post(MPID_Group *group_ptr, int assert, MPID_Win *win_ptr)
 	MPID_Progress_end(&progress_state);
     }
         
-    post_grp_size = group_ptr->size;
+    post_grp_size = post_grp_ptr->size;
         
     /* initialize the completion counter */
     win_ptr->my_counter = post_grp_size;
         
     if ((assert & MPI_MODE_NOCHECK) == 0)
     {
+        MPI_Request *req;
+        MPI_Status *status;
+ 
 	/* NOCHECK not specified. We need to notify the source
 	   processes that Post has been called. */  
 	
@@ -879,35 +877,51 @@ int MPIDI_Win_post(MPID_Group *group_ptr, int assert, MPID_Win *win_ptr)
 	    ranks_in_post_grp[i] = i;
 	}
         
-	nest_level_inc = TRUE;
-	MPIR_Nest_incr();
+        MPID_Comm_get_ptr( win_ptr->comm, win_comm_ptr );
+
+        mpi_errno = MPIR_Comm_group_impl(win_comm_ptr, &win_grp_ptr);
+	if (mpi_errno) MPIU_ERR_POP(mpi_errno);
 	
-	mpi_errno = NMPI_Comm_group(win_ptr->comm, &win_grp);
-	if (mpi_errno) { MPIU_ERR_POP(mpi_errno); }
+
+	MPIR_Group_translate_ranks_impl(post_grp_ptr, post_grp_size, ranks_in_post_grp,
+                                        win_grp_ptr, ranks_in_win_grp);
 	
-	post_grp = group_ptr->handle;
+        rank = MPIR_Comm_rank(win_comm_ptr);
 	
-	mpi_errno = NMPI_Group_translate_ranks(post_grp, post_grp_size,
-					       ranks_in_post_grp, win_grp, 
-					       ranks_in_win_grp);
-	if (mpi_errno) { MPIU_ERR_POP(mpi_errno); }
-	
-	NMPI_Comm_rank(win_ptr->comm, &rank);
-	
+	MPIU_CHKLMEM_MALLOC(req, MPI_Request *, post_grp_size * sizeof(MPI_Request), mpi_errno, "req");
+        MPIU_CHKLMEM_MALLOC(status, MPI_Status *, post_grp_size*sizeof(MPI_Status), mpi_errno, "status");
+
 	/* Send a 0-byte message to the source processes */
-	for (i=0; i<post_grp_size; i++)
-	{
+	for (i = 0; i < post_grp_size; i++) {
 	    dst = ranks_in_win_grp[i];
 	    
 	    if (dst != rank) {
-		mpi_errno = NMPI_Send(&i, 0, MPI_INT, dst, 100, win_ptr->comm);
-		if (mpi_errno) { MPIU_ERR_POP(mpi_errno); }
-	    }
+                MPID_Request *req_ptr;
+		mpi_errno = MPID_Isend(&i, 0, MPI_INT, dst, SYNC_POST_TAG, win_comm_ptr,
+                                       MPID_CONTEXT_INTRA_PT2PT, &req_ptr);
+		if (mpi_errno) MPIU_ERR_POP(mpi_errno);
+                req[i] = req_ptr->handle;
+	    } else {
+                req[i] = MPI_REQUEST_NULL;
+            }
 	}
-	
-	mpi_errno = NMPI_Group_free(&win_grp);
-	if (mpi_errno) { MPIU_ERR_POP(mpi_errno); }
-    }    
+        mpi_errno = MPIR_Waitall_impl(post_grp_size, req, status);
+        if (mpi_errno && mpi_errno != MPI_ERR_IN_STATUS) MPIU_ERR_POP(mpi_errno);
+
+        /* --BEGIN ERROR HANDLING-- */
+        if (mpi_errno == MPI_ERR_IN_STATUS) {
+            for (i = 0; i < post_grp_size; i++) {
+                if (status[i].MPI_ERROR != MPI_SUCCESS) {
+                    mpi_errno = status[i].MPI_ERROR;
+                    MPIU_ERR_POP(mpi_errno);
+                }
+            }
+        }
+        /* --END ERROR HANDLING-- */
+
+        mpi_errno = MPIR_Group_free_impl(win_grp_ptr);
+	if (mpi_errno) MPIU_ERR_POP(mpi_errno);
+    }
 
  fn_exit:
     MPIU_CHKLMEM_FREEALL();
@@ -997,9 +1011,9 @@ int MPIDI_Win_complete(MPID_Win *win_ptr)
     MPI_Win source_win_handle, target_win_handle;
     MPIDI_RMA_dtype_info *dtype_infos=NULL;
     void **dataloops=NULL;    /* to store dataloops for each datatype */
-    MPI_Group win_grp, start_grp;
+    MPID_Group *win_grp_ptr;
     int start_grp_size, *ranks_in_start_grp, *ranks_in_win_grp, rank;
-    MPIU_CHKLMEM_DECL(7);
+    MPIU_CHKLMEM_DECL(9);
     MPIU_THREADPRIV_DECL;
     MPIDI_STATE_DECL(MPID_STATE_MPIDI_WIN_COMPLETE);
 
@@ -1025,35 +1039,54 @@ int MPIDI_Win_complete(MPID_Win *win_ptr)
 	ranks_in_start_grp[i] = i;
     }
         
+    mpi_errno = MPIR_Comm_group_impl(comm_ptr, &win_grp_ptr);
+    if (mpi_errno) { MPIU_ERR_POP(mpi_errno); }
+
+    MPIR_Group_translate_ranks_impl(win_ptr->start_group_ptr, start_grp_size, ranks_in_start_grp,
+                                    win_grp_ptr, ranks_in_win_grp);
+        
+    rank = MPIR_Comm_rank(comm_ptr);
+
     nest_level_inc = TRUE;
     MPIR_Nest_incr();
     
-    mpi_errno = NMPI_Comm_group(win_ptr->comm, &win_grp);
-    if (mpi_errno) { MPIU_ERR_POP(mpi_errno); }
-
-    start_grp = win_ptr->start_group_ptr->handle;
-
-    mpi_errno = NMPI_Group_translate_ranks(start_grp, start_grp_size,
-					   ranks_in_start_grp, win_grp, 
-					   ranks_in_win_grp);
-    if (mpi_errno) { MPIU_ERR_POP(mpi_errno); }
-        
-        
-    NMPI_Comm_rank(win_ptr->comm, &rank);
     /* If MPI_MODE_NOCHECK was not specified, we need to check if
        Win_post was called on the target processes. Wait for a 0-byte sync
        message from each target process */
     if ((win_ptr->start_assert & MPI_MODE_NOCHECK) == 0)
     {
-	for (i=0; i<start_grp_size; i++)
-	{
+        MPI_Request *req;
+        MPI_Status *status;
+        
+        MPIU_CHKLMEM_MALLOC(req, MPI_Request *, start_grp_size*sizeof(MPI_Request), mpi_errno, "req");
+        MPIU_CHKLMEM_MALLOC(status, MPI_Status *, start_grp_size*sizeof(MPI_Status), mpi_errno, "status");
+
+	for (i = 0; i < start_grp_size; i++) {
 	    src = ranks_in_win_grp[i];
 	    if (src != rank) {
-		mpi_errno = NMPI_Recv(NULL, 0, MPI_INT, src, 100,
-				      win_ptr->comm, MPI_STATUS_IGNORE);
-		if (mpi_errno) { MPIU_ERR_POP(mpi_errno); }
-	    }
+                MPID_Request *req_ptr;
+                mpi_errno = MPID_Irecv(NULL, 0, MPI_INT, src, SYNC_POST_TAG,
+                                       comm_ptr, MPID_CONTEXT_INTRA_PT2PT, &req_ptr);
+		if (mpi_errno) MPIU_ERR_POP(mpi_errno);
+                req[i] = req_ptr->handle;
+	    } else {
+                req[i] = MPI_REQUEST_NULL;
+            }
+
 	}
+        mpi_errno = MPIR_Waitall_impl(start_grp_size, req, status);
+        if (mpi_errno && mpi_errno != MPI_ERR_IN_STATUS) MPIU_ERR_POP(mpi_errno);
+
+        /* --BEGIN ERROR HANDLING-- */
+        if (mpi_errno == MPI_ERR_IN_STATUS) {
+            for (i = 0; i < start_grp_size; i++) {
+                if (status[i].MPI_ERROR != MPI_SUCCESS) {
+                    mpi_errno = status[i].MPI_ERROR;
+                    MPIU_ERR_POP(mpi_errno);
+                }
+            }
+        }
+        /* --END ERROR HANDLING-- */
     }
         
     /* keep track of no. of ops to each proc. Needed for knowing
@@ -1190,7 +1223,7 @@ int MPIDI_Win_complete(MPID_Win *win_ptr)
 	    {
 		if (requests[i] != NULL)
 		{
-		    if (*(requests[i]->cc_ptr) != 0)
+		    if (!MPID_Request_is_complete(requests[i]))
 		    {
 			done = 0;
 			break;
@@ -1243,8 +1276,8 @@ int MPIDI_Win_complete(MPID_Win *win_ptr)
     }
     win_ptr->rma_ops_list = NULL;
     
-    mpi_errno = NMPI_Group_free(&win_grp);
-    if (mpi_errno) { MPIU_ERR_POP(mpi_errno); }
+    mpi_errno = MPIR_Group_free_impl(win_grp_ptr);
+    if (mpi_errno) MPIU_ERR_POP(mpi_errno);
 
     /* free the group stored in window */
     MPIR_Group_release(win_ptr->start_group_ptr);
@@ -1729,7 +1762,7 @@ static int MPIDI_CH3I_Do_passive_target_rma(MPID_Win *win_ptr,
 	    {
 		if (requests[i] != NULL)
 		{
-		    if (*(requests[i]->cc_ptr) != 0)
+		    if (!MPID_Request_is_complete(requests[i]))
 		    {
 			done = 0;
 			break;
@@ -1940,12 +1973,12 @@ static int MPIDI_CH3I_Send_lock_put_or_acc(MPID_Win *win_ptr)
     }
 
     if (request != NULL) {
-	if (*(request->cc_ptr) != 0)
+	if (!MPID_Request_is_complete(request))
         {
 	    MPID_Progress_state progress_state;
 	    
             MPID_Progress_start(&progress_state);
-	    while (*(request->cc_ptr) != 0)
+	    while (!MPID_Request_is_complete(request))
             {
                 mpi_errno = MPID_Progress_wait(&progress_state);
                 /* --BEGIN ERROR HANDLING-- */
@@ -2058,12 +2091,12 @@ static int MPIDI_CH3I_Send_lock_get(MPID_Win *win_ptr)
     }
 
     /* now wait for the data to arrive */
-    if (*(rreq->cc_ptr) != 0)
+    if (!MPID_Request_is_complete(rreq))
     {
 	MPID_Progress_state progress_state;
 	
 	MPID_Progress_start(&progress_state);
-	while (*(rreq->cc_ptr) != 0)
+	while (!MPID_Request_is_complete(rreq))
         {
             mpi_errno = MPID_Progress_wait(&progress_state);
             /* --BEGIN ERROR HANDLING-- */
@@ -2469,19 +2502,10 @@ int MPIDI_CH3_PktHandler_Accumulate( MPIDI_VC_t *vc, MPIDI_CH3_Pkt_t *pkt,
     MPIDI_CH3I_DATATYPE_IS_PREDEFINED(accum_pkt->datatype, predefined);
     if (predefined)
     {
-	MPIU_THREADPRIV_DECL;
-	MPIU_THREADPRIV_GET;
 	MPIDI_Request_set_type(req, MPIDI_REQUEST_TYPE_ACCUM_RESP);
 	req->dev.datatype = accum_pkt->datatype;
 
-	MPIR_Nest_incr();
-	mpi_errno = NMPI_Type_get_true_extent(accum_pkt->datatype, 
-					      &true_lb, &true_extent);
-	MPIR_Nest_decr();
-	if (mpi_errno) {
-	    MPIU_ERR_POP(mpi_errno);
-	}
-
+	MPIR_Type_get_true_extent_impl(accum_pkt->datatype, &true_lb, &true_extent);
 	MPID_Datatype_get_extent_macro(accum_pkt->datatype, extent); 
 	tmp_buf = MPIU_Malloc(accum_pkt->count * 
 			      (MPIR_MAX(extent,true_extent)));

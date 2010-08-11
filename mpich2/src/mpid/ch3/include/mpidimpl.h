@@ -30,15 +30,9 @@
 /* Add the ch3 packet definitions */
 #include "mpidpkt.h"
 
-/* We need to match the size of MPI_Aint to the relevant Format control
+/* We need to match the size of MPIR_Pint to the relevant Format control
  */
-#ifdef MPI_AINT_IS_LONG_INT
-#define MPIDI_MSG_SZ_FMT "%ld"
-#elif defined(MPI_AINT_IS_LONG_LONG_INT)
-#define MPIDI_MSG_SZ_FMT "%lld"
-#else
-#define MPIDI_MSG_SZ_FMT "%d"
-#endif
+#define MPIDI_MSG_SZ_FMT MPIR_PINT_FMT_DEC_SPEC
 
 #if !defined(MPIDI_IOV_DENSITY_MIN)
 #   define MPIDI_IOV_DENSITY_MIN (16 * 1024)
@@ -155,7 +149,7 @@ extern MPIDI_Process_t MPIDI_Process;
 	(dt_ptr_) = NULL;						\
 	(dt_contig_out_) = TRUE;					\
         (dt_true_lb_)    = 0;                                           \
-	(data_sz_out_) = (count_) * MPID_Datatype_get_basic_size(datatype_);\
+	(data_sz_out_) = (MPIDI_msg_sz_t) (count_) * MPID_Datatype_get_basic_size(datatype_); \
 	MPIDI_DBG_PRINTF((15, FCNAME, "basic datatype: dt_contig=%d, dt_sz=%d, data_sz=" MPIDI_MSG_SZ_FMT,\
 			  (dt_contig_out_), MPID_Datatype_get_basic_size(datatype_), (data_sz_out_)));\
     }									\
@@ -163,7 +157,7 @@ extern MPIDI_Process_t MPIDI_Process;
     {									\
 	MPID_Datatype_get_ptr((datatype_), (dt_ptr_));			\
 	(dt_contig_out_) = (dt_ptr_)->is_contig;			\
-	(data_sz_out_) = (count_) * (dt_ptr_)->size;			\
+	(data_sz_out_) = (MPIDI_msg_sz_t) (count_) * (dt_ptr_)->size;	\
         (dt_true_lb_)    = (dt_ptr_)->true_lb;                          \
 	MPIDI_DBG_PRINTF((15, FCNAME, "user defined datatype: dt_contig=%d, dt_sz=%d, data_sz=" MPIDI_MSG_SZ_FMT,\
 			  (dt_contig_out_), (dt_ptr_)->size, (data_sz_out_)));\
@@ -271,7 +265,6 @@ extern MPIDI_Process_t MPIDI_Process;
 #  error MPIU_HANDLE_ALLOCATION_METHOD not defined
 #endif
 
-/* FIXME: This must be used within an MPIDCOMM critical section.  */
 #define MPIDI_CH3U_Request_complete(req_)			\
 {								\
     int incomplete__;						\
@@ -319,7 +312,7 @@ extern MPIDI_Process_t MPIDI_Process;
     MPIU_Object_set_ref((sreq_), 2);				\
     (sreq_)->kind = MPID_REQUEST_SEND;				\
     (sreq_)->comm = comm;					\
-    (sreq_)->cc			   = 1;                         \
+    MPID_cc_set(&(sreq_)->cc, 1);                               \
     (sreq_)->cc_ptr		   = &(sreq_)->cc;              \
     (sreq_)->partner_request   = NULL;                          \
     MPIR_Comm_add_ref(comm);					\
@@ -357,7 +350,7 @@ extern MPIDI_Process_t MPIDI_Process;
     MPIU_Object_set_ref((rreq_), 2);				\
     (rreq_)->kind = MPID_REQUEST_RECV;				\
     (rreq_)->comm = NULL;					\
-    (rreq_)->cc			   = 1;                         \
+    MPID_cc_set(&(rreq_)->cc, 1);                               \
     (rreq_)->cc_ptr		   = &(rreq_)->cc;              \
     (rreq_)->status.MPI_ERROR	   = MPI_SUCCESS;               \
     (rreq_)->status.cancelled	   = FALSE;                     \
@@ -749,18 +742,14 @@ typedef struct MPIDI_VC
     MPIDI_Comm_ops_t *comm_ops;    
 #endif
 
-#ifdef MPICH_IS_THREADED    
-#if MPIU_THREAD_GRANULARITY == MPIU_THREAD_GRANULARITY_PER_OBJECT
-    MPID_Thread_mutex_t pobj_mutex;
-#endif
-#endif
     /* Rather than have each channel define its own fields for the 
        channel-specific data, we provide a fixed-sized scratchpad.  Currently,
        this has a very generous size, though this may shrink later (a channel
        can always allocate storage and hang it off of the end).  This 
        is necessary to allow dynamic loading of channels at MPI_Init time. */
-    /* The ssm channel needs a *huge* space for the VC.  We need to fix that. 
-       Note also that for dynamically-loaded channels, the VCs must all be the
+    /* The ssm channel needed a *huge* space for the VC.  But now that it's
+       gone, we need to determine the appropriate smaller size to use instead. */
+    /* Note also that for dynamically-loaded channels, the VCs must all be the
        same size, so MPIDI_CH3_VC_SIZE should not be overridden when building
        multiple channels that will be used together */
 #ifndef MPIDI_CH3_VC_SIZE
@@ -1197,12 +1186,15 @@ int MPIDI_CH3I_Progress_finalize(void);
 #ifndef MPIDI_CH3I_INCR_PROGRESS_COMPLETION_COUNT
 #define MPIDI_CH3I_INCR_PROGRESS_COMPLETION_COUNT                                \
     do {                                                                         \
+        MPIU_THREAD_CS_ENTER(COMPLETION,);                                       \
         ++MPIDI_CH3I_progress_completion_count;                                  \
         MPIU_DBG_MSG_D(CH3_PROGRESS,VERBOSE,                                     \
                      "just incremented MPIDI_CH3I_progress_completion_count=%d", \
                      MPIDI_CH3I_progress_completion_count);                      \
+        MPIU_THREAD_CS_EXIT(COMPLETION,);                                        \
     } while (0)
 #endif
+
 
 /* The following is part of an implementation of a control of a 
    resource shared among threads - it needs to be managed more 
@@ -1213,19 +1205,30 @@ int MPIDI_CH3I_Progress_finalize(void);
        MPIDI_CH3I_INCR_PROGRESS_COMPLETION_COUNT;		\
     }
 #else
+    /* TODO these decls should probably move into each channel as appropriate */
     extern volatile int MPIDI_CH3I_progress_blocked;
     extern volatile int MPIDI_CH3I_progress_wakeup_signalled;
 
+/* This allows the channel to hook the MPIDI_CH3_Progress_signal_completion
+ * macro when it is necessary to wake up some part of the progress engine from a
+ * blocking operation.  Currently ch3:sock uses it, ch3:nemesis does not. */
+/* MT alternative implementations of this macro are responsible for providing any
+ * synchronization (acquiring MPIDCOMM, etc) */
+#ifndef MPIDI_CH3I_PROGRESS_WAKEUP
+# define MPIDI_CH3I_PROGRESS_WAKEUP do {/*do nothing*/} while(0)
+#endif
+
     void MPIDI_CH3I_Progress_wakeup(void);
+    /* MT TODO profiling is needed here.  We currently protect the completion
+     * counter with the COMPLETION critical section, which could be a source of
+     * contention.  It should be possible to peform these updates atomically via
+     * OPA instead, but the additional complexity should be justified by
+     * profiling evidence.  [goodell@ 2010-06-29] */
 #   define MPIDI_CH3_Progress_signal_completion()			\
-    {									\
+    do {                                                                \
         MPIDI_CH3I_INCR_PROGRESS_COMPLETION_COUNT;                      \
-	if (MPIDI_CH3I_progress_blocked == TRUE && MPIDI_CH3I_progress_wakeup_signalled == FALSE)\
-	{								\
-	    MPIDI_CH3I_progress_wakeup_signalled = TRUE;		\
-	    MPIDI_CH3I_Progress_wakeup();				\
-	}								\
-    }
+        MPIDI_CH3I_PROGRESS_WAKEUP;                                     \
+    } while (0)
 #endif
 
 /* Function that may be used to provide business card info */
@@ -1259,13 +1262,6 @@ int MPIDI_CH3I_VC_post_sockconnect(MPIDI_VC_t * );
 /* Used internally to broadcast process groups belonging to peercomm to
  all processes in comm*/
 int MPID_PG_BCast( MPID_Comm *peercomm_p, MPID_Comm *comm_p, int root );
-
-/* from util/shm */
-int MPIDI_CH3I_Connect_to_root_sshm(const char *, MPIDI_VC_t **);
-int MPIDI_VC_InitShm( MPIDI_VC_t *vc );
-
-/* from util/shmbase */
-void MPIDI_Generate_shm_string(char *, int);
 
 /* Channel defintitions */
 /*@
@@ -1503,25 +1499,14 @@ int MPIDI_CH3_Abort(int exit_code, char * error_msg);
    executed by two or more channels */
 int MPIDI_CH3U_Init_sock(int has_parent, MPIDI_PG_t * pg_p, int pg_rank,
                          char **bc_val_p, int *val_max_sz_p);
-int MPIDI_CH3U_Init_sshm(int has_parent, MPIDI_PG_t * pg_p, int pg_rank,
-                         char **bc_val_p, int *val_max_sz_p);
-
-int MPIDI_SHM_InitRWProc( pid_t, int * );
-int MPIDI_SHM_AttachProc( pid_t );
-int MPIDI_SHM_DetachProc( pid_t );
-int MPIDI_SHM_ReadProcessMemory( int, int, const char *, char *, size_t );
 
 /* added by brad.  business card related global and functions */
 /* FIXME: Make these part of the channel support headers */
 #define MAX_HOST_DESCRIPTION_LEN 256
 int MPIDI_CH3U_Get_business_card_sock(int myRank, 
 				      char **bc_val_p, int *val_max_sz_p);
-int MPIDI_CH3U_Get_business_card_sshm(char **bc_val_p, int *val_max_sz_p);
 
 int MPIDI_CH3_Get_business_card(int myRank, char *value, int length);
-
-/* added by brad.  finalization related upcalls */
-int MPIDI_CH3U_Finalize_sshm(void);
 
 /*
  * Channel upcall prototypes
@@ -1820,83 +1805,48 @@ int MPIDI_CH3_ReqHandler_GetSendRespComplete( MPIDI_VC_t *, MPID_Request *,
 #ifdef MPICH_IS_THREADED
 #if MPIU_THREAD_GRANULARITY == MPIU_THREAD_GRANULARITY_GLOBAL
 /* There is a single, global lock, held for the duration of an MPI call */
-#define MPIU_THREAD_CS_ENTER_CH3COMM(_context)
-#define MPIU_THREAD_CS_EXIT_CH3COMM(_context)
+#define MPIU_THREAD_CS_ENTER_CH3COMM(context_)
+#define MPIU_THREAD_CS_EXIT_CH3COMM(context_)
 
-/* FIXME: Currently forcing the PER_OBJECT case to do a global
- * lock. We need a better way of fixing this. */
-#elif MPIU_THREAD_GRANULARITY == MPIU_THREAD_GRANULARITY_BRIEF_GLOBAL
-/* There is a single, global lock, held only when needed */
-#define MPIU_THREAD_CS_ENTER_CH3COMM(_context) \
-   MPIU_THREAD_CHECK_BEGIN MPIU_THREAD_CS_ENTER_LOCKNAME(global_mutex) MPIU_THREAD_CHECK_END
-#define MPIU_THREAD_CS_EXIT_CH3COMM(_context) \
-   MPIU_THREAD_CHECK_BEGIN MPIU_THREAD_CS_EXIT_LOCKNAME(global_mutex) MPIU_THREAD_CHECK_END
+#define MPIU_THREAD_CS_ENTER_LMT(_context)
+#define MPIU_THREAD_CS_EXIT_LMT(_context)
 
 #elif MPIU_THREAD_GRANULARITY == MPIU_THREAD_GRANULARITY_PER_OBJECT
-#if 1
+
+#define MPIU_THREAD_CS_ENTER_POBJ_MUTEX(mutex_p_)                                                           \
+    do {                                                                                                    \
+        MPIU_DBG_MSG_P(THREAD,VERBOSE,"attempting to ENTER per-object CS, mutex=%s", MPIU_QUOTE(mutex_p_)); \
+        /* FIXME do we need nest checking here? the existing macros won't work unmodified...*/              \
+        MPID_Thread_mutex_lock(mutex_p_);                                                                   \
+    } while (0)
+#define MPIU_THREAD_CS_EXIT_POBJ_MUTEX(mutex_p_)                                                            \
+    do {                                                                                                    \
+        MPIU_DBG_MSG_P(THREAD,VERBOSE,"attempting to EXIT per-object CS, mutex=%s", MPIU_QUOTE(mutex_p_));  \
+        /* FIXME do we need nest checking here? the existing macros won't work unmodified...*/              \
+        MPID_Thread_mutex_unlock(mutex_p_);                                                                 \
+    } while (0)
+
 /* There is a per object lock */
-#define MPIU_THREAD_CS_ENTER_CH3COMM(_context) {\
-   MPIU_THREAD_CHECK_BEGIN MPIU_THREAD_CS_ENTER_POBJ_LOCKNAME(_context->pobj_mutex) MPIU_THREAD_CHECK_END \
-}
-#define MPIU_THREAD_CS_EXIT_CH3COMM(_context) \
-   MPIU_THREAD_CHECK_BEGIN MPIU_THREAD_CS_EXIT_POBJ_LOCKNAME(_context->pobj_mutex) MPIU_THREAD_CHECK_END
+#define MPIU_THREAD_CS_ENTER_CH3COMM(context_)                      \
+    do {                                                            \
+        if (MPIU_ISTHREADED)                                        \
+            MPIU_THREAD_CS_ENTER_POBJ_MUTEX(&context_->pobj_mutex); \
+    } while (0)
+#define MPIU_THREAD_CS_EXIT_CH3COMM(context_)                       \
+    do {                                                            \
+        if (MPIU_ISTHREADED)                                        \
+            MPIU_THREAD_CS_EXIT_POBJ_MUTEX(&context_->pobj_mutex);  \
+    } while (0)
 
-#if 1
-static void foofunc() { }
-#define MPIU_THREAD_CS_TRYLOCK(_context) {\
-   MPIU_THREAD_CHECK_BEGIN \
-   int ret; \
-   ret = pthread_mutex_trylock(&_context->pobj_mutex); \
-   if (!ret) { \
-       printf("Trylock successful for pobj mutex\n"); \
-       pthread_mutex_unlock(&_context->pobj_mutex); \
-   } \
-   else if (ret != EBUSY) { \
-       printf("Error in pobj_mutex: %d\n", ret); \
-   } \
-   ret = pthread_mutex_trylock(&MPIR_ThreadInfo.global_mutex); \
-   if (ret) { \
-       foofunc(); \
-       printf("Trylock not successful for global mutex\n"); \
-   } \
-   else if (!ret) { \
-       pthread_mutex_unlock(&MPIR_ThreadInfo.global_mutex); \
-   } \
-   else if (ret != EBUSY) { \
-       printf("Error in global mutex: %d\n", ret); \
-   } \
-   ret = pthread_mutex_trylock(&MPIR_ThreadInfo.handle_mutex); \
-   if (ret) { \
-       printf("Trylock not successful for handle mutex\n"); \
-       pthread_mutex_unlock(&MPIR_ThreadInfo.handle_mutex); \
-   } \
-   else if (!ret) { \
-       pthread_mutex_unlock(&MPIR_ThreadInfo.handle_mutex); \
-   } \
-   else if (ret != EBUSY) { \
-       printf("Error in global mutex: %d\n", ret); \
-   } \
-   MPIU_THREAD_CHECK_END \
-}
-#else
-#define MPIU_THREAD_CS_TRYLOCK(_context)
-#endif
-
-#else
-/* There is a single, global lock, held only when needed */
-#define MPIU_THREAD_CS_ENTER_CH3COMM(_context) \
-   MPIU_THREAD_CHECK_BEGIN MPIU_THREAD_CS_ENTER_LOCKNAME(global_mutex) MPIU_THREAD_CHECK_END
-#define MPIU_THREAD_CS_EXIT_CH3COMM(_context) \
-   MPIU_THREAD_CHECK_BEGIN MPIU_THREAD_CS_EXIT_LOCKNAME(global_mutex) MPIU_THREAD_CHECK_END
-#endif
-
-#elif MPIU_THREAD_GRANULARITY == MPIU_THREAD_GRANULARITY_LOCK_FREE
-/* Updates to shared data and access to shared services is handled without 
-   locks where ever possible. */
-#error lock-free not yet implemented
+/* MT FIXME making LMT into MPIDCOMM for now because of overwhelming deadlock
+ * issues */
+#define MPIU_THREAD_CS_ENTER_LMT(context_) MPIU_THREAD_CS_ENTER_MPIDCOMM(context_)
+#define MPIU_THREAD_CS_EXIT_LMT(context_)  MPIU_THREAD_CS_EXIT_MPIDCOMM(context_)
 
 #elif MPIU_THREAD_GRANULARITY == MPIU_THREAD_GRANULARITY_SINGLE
 /* No thread support, make all operations a no-op */
+/* FIXME incomplete? or already handled by the upper level? */
+/* FIXME does it make sense to have (MPICH_IS_THREADED && _GRANULARITY==_SINGLE) ? */
 
 #else
 #error Unrecognized thread granularity

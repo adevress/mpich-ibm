@@ -1,26 +1,37 @@
 ===============================================================================
-                               Changes in 1.2.1p1
+                               Changes in 1.3
 ===============================================================================
 
- # OVERALL: Fixes for several minor issues on PowerPC.
+ # OVERALL: Initial support for fine-grained threading in
+   ch3:nemesis:tcp.
 
- # OVERALL: Fix for a bug where the knem LMT backend would attempt to use an
-   I/OAT device even if one was not present in the system
+ # OVERALL: Support for Asynchronous Communication Progress.
 
- # BUILD SYSTEM: Fix for a compile error when C++ complex types are not present.
+ # OVERALL: The ssm and shm channels have been removed.
 
- # BUILD SYSTEM: Fix bash-ism in configure scripts that broke builds on Solaris.
+ # OVERALL: Checkpoint/restart support using BLCR.
 
- # PM/PMI: Fix for a hang in mpdboot.
+ # PM/PMI: Hydra is now the default process management framework
+   replacing MPD.
+
+ # PM/PMI: Added dynamic process support for Hydra.
+
+ # PM/PMI: Added support for LSF, SGE and POE in Hydra.
+
+ # DEBUGGER: Improved support and bug fixes in the Totalview support.
+
+ # Build system: Replaced F90/F90FLAGS by FC/FCFLAGS. F90/F90FLAGS are
+   not longer supported in the configure.
 
  # Several other minor bug fixes, memory leak fixes, and code cleanup.
    A full list of changes is available using:
 
-     svn log -r 5824:HEAD https://svn.mcs.anl.gov/repos/mpi/mpich2/tags/release/mpich2-1.2.1p1
+     svn log -r5762:HEAD https://svn.mcs.anl.gov/repos/mpi/mpich2/tags/release/mpich2-1.3b1
 
      ... or at the following link:
 
-     https://trac.mcs.anl.gov/projects/mpich2/log/mpich2/tags/release/mpich2-1.2.1p1?action=follow_copy&rev=HEAD&stop_rev=5824&mode=follow_copy
+     https://trac.mcs.anl.gov/projects/mpich2/log/mpich2/tags/release/mpich2-1.3b1?action=follow_copy&rev=HEAD&stop_rev=5762&mode=follow_copy
+
 
 ===============================================================================
                                Changes in 1.2.1
