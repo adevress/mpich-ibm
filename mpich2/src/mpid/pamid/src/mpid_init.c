@@ -7,7 +7,12 @@
 #include "mpidi_onesided.h"
 
 pami_client_t   MPIDI_Client;
-#define MAX_CONTEXTS 4 /**< Default to only a few contexts */
+#ifdef __BGP__
+/** \todo remove this when trac #238 is fixed */
+#define MAX_CONTEXTS 2
+#else
+#define MAX_CONTEXTS 16
+#endif
 pami_context_t MPIDI_Context[MAX_CONTEXTS];
 
 
@@ -161,15 +166,30 @@ MPIDI_Init(int* rank, int* size, int* threading)
     }
   else
     {
-      MPIDI_Process.avail_contexts = 1; /* all bets are off for now */
+      MPIDI_Process.avail_contexts = 1; /* If PAMI didn't give all nodes the same number of contexts, all bets are off for now */
     }
 
-  if(MPIDI_Process.avail_contexts == 1)
+  /* -------------------------------------------------------- */
+  /*  We didn't lock on the way in, but we will lock on the   */
+  /*  way out if we are threaded.  Lock now to make it even.  */
+  /* -------------------------------------------------------- */
+  /** \todo Add these in when trac #118 is fixed */
+#if 0
+  if (PAMIX_Client_query(MPIDI_Client, PAMI_CLIENT_HWTHREADS_AVAILABLE).value.intval > 1)
+    {
+      /** \todo Add these in when trac #72 is fixed */
+#if 0
+      MPIR_ThreadInfo.isThreaded = 1;
+      MPID_CS_ENTER();
+#endif
+    }
+  else
     {
       *threading = MPI_THREAD_SINGLE;
     }
+#endif
 
-  /** \todo remove this check since the collectives should work eventually */
+  /** \todo remove this check when trac #237 is fixed */
   if(MPIDI_Process.avail_contexts > 1)
     {
       TRACE_ERR("Warning: num contexts=%u, but collectives only work with 1 context (see trac #237)\n", MPIDI_Process.avail_contexts);
@@ -187,17 +207,6 @@ MPIDI_Init(int* rank, int* size, int* threading)
   rc = PAMI_Context_createv(MPIDI_Client, &config, 1, MPIDI_Context, MPIDI_Process.avail_contexts);
   MPID_assert(rc == PAMI_SUCCESS);
 
-
-  /* -------------------------------------------------------- */
-  /*  We didn't lock on the way in, but we will lock on the   */
-  /*  way out if we are threaded.  Lock now to make it even.  */
-  /* -------------------------------------------------------- */
-  if (MPIDI_Process.avail_contexts > 1)
-    {
-      /** \todo Add these in when #72 is fixed */
-      /* MPIR_ThreadInfo.isThreaded = 1; */
-      /* MPID_CS_ENTER(); */
-    }
 
   /* ------------------------------------ */
   /*  Set up the communication protocols  */
