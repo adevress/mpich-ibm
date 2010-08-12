@@ -13,10 +13,7 @@
 */
 int MPID_Finalize()
 {
-  /** \todo Remove this when #72 is fixed */
-  MPIR_ThreadInfo.isThreaded = 0;
-
-  PMPI_Barrier(MPI_COMM_WORLD);
+  MPIR_Barrier_impl(MPIR_Process.comm_world);
 
   /* ------------------------- */
   /* shutdown request queues   */
