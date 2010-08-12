@@ -61,9 +61,9 @@ MPIDO_Allgather(void *sendbuf,
   if (MPIDO_INFO_ISSET(comm_prop, MPIDO_USE_MPICH_ALLGATHER))
   {
     comm->dcmf.last_algorithm = MPIDO_USE_MPICH_ALLGATHER;
-    return MPIR_Allgather(sendbuf, sendcount, sendtype,
-			  recvbuf, recvcount, recvtype,
-			  comm);
+    return MPIR_Allgather_intra(sendbuf, sendcount, sendtype,
+                                recvbuf, recvcount, recvtype,
+                                comm);
   }
   if ((sendcount < 1 && sendbuf != MPI_IN_PLACE) || recvcount < 1)
     return MPI_SUCCESS;
@@ -241,9 +241,9 @@ MPIDO_Allgather(void *sendbuf,
     if (!func)
     {
       comm->dcmf.last_algorithm = MPIDO_USE_MPICH_ALLGATHER;
-      return MPIR_Allgather(sendbuf, sendcount, sendtype,
-                            recvbuf, recvcount, recvtype,
-                            comm);
+      return MPIR_Allgather_intra(sendbuf, sendcount, sendtype,
+                                  recvbuf, recvcount, recvtype,
+                                  comm);
     }
     /* If we're using allreduce, we might have verified the buffer
        alignment. If so, tell allreduce that it's "safe".
@@ -308,9 +308,9 @@ MPIDO_Allgather(void *sendbuf,
     STAR_info.internal_control_flow = 0;
       
     if (rc == STAR_FAILURE)
-      rc = MPIR_Allgather(sendbuf, sendcount, sendtype,
-                          recvbuf, recvcount, recvtype,
-                          comm);
+      rc = MPIR_Allgather_intra(sendbuf, sendcount, sendtype,
+                                recvbuf, recvcount, recvtype,
+                                comm);
     MPIU_Free(tb_ptr);
   }
   

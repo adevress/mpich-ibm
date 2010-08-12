@@ -23,8 +23,11 @@
 /*.gcno
 /.libs
 /.state-cache
+/.libstamp0
+/.libstamp2
 /mpifnoext.h
 /configure
 /config.status
+/config.system
 /config.log
 /autom4te.cache

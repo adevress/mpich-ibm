@@ -30,6 +30,8 @@ REM      1) build the release
 REM      mpich2 must be the current directory and it must have been configured
 REM		 (Use the "--with-curdir" option if you downloaded the MPICH2 source
 REM		  from the MPICH2 downloads webpage)
+REM    makewindist [%1] --win64
+REM     Builds x86_64 windows binaries/installer
 REM
 REM
 REM Prerequisites:
@@ -49,6 +51,7 @@ PAUSE
 if %errorlevel% NEQ 0 goto END
 REM
 :AFTERWARNING
+IF "%1" == "--win64" GOTO HELP
 IF "%1" == "--with-checkout" GOTO CHECKOUT
 GOTO AFTERCHECKOUT
 :CHECKOUT
@@ -97,6 +100,7 @@ REM
 GOTO HELP
 :BUILD
 :BUILD_DEBUG
+IF "%2" == "--win64" GOTO BUILD_WIN64
 IF "%2" == "" GOTO BUILD_RELEASE
 REM Building the Debug targets
 devenv.com mpich2.sln /build ch3sockDebug
@@ -111,21 +115,12 @@ devenv.com mpich2.sln /build gfortDebug
 if %errorlevel% NEQ 0 goto BUILDERROR
 devenv.com mpich2.sln /build sfortDebug
 if %errorlevel% NEQ 0 goto BUILDERROR
-devenv.com mpich2.sln /build ch3shmDebug
-REM if %errorlevel% NEQ 0 goto BUILDERROR
-REM devenv.com mpich2.sln /build ch3sshmDebug
-if %errorlevel% NEQ 0 goto BUILDERROR
-devenv.com mpich2.sln /build ch3ssmDebug
-REM if %errorlevel% NEQ 0 goto BUILDERROR
-REM devenv.com mpich2.sln /build ch3ibIbalDebug
-REM if %errorlevel% NEQ 0 goto BUILDERROR
-REM devenv.com mpich2.sln /build ch3essmDebug
-REM if %errorlevel% NEQ 0 goto BUILDERROR
 devenv.com mpich2.sln /build ch3sockmtDebug
 if %errorlevel% NEQ 0 goto BUILDERROR
 devenv.com examples\examples.sln /project cpi /build Debug
 if %errorlevel% NEQ 0 goto BUILDERROR
 :BUILD_RELEASE
+IF "%2" == "--win64" GOTO BUILD_WIN64
 echo Building MPICH2 Release version on windows
 echo ===========================================
 echo  Please refer to the MPICH2 Visual Studio sln file, mpich2.sln, for
@@ -152,6 +147,8 @@ devenv.com mpich2.sln /build Release >> make.log
 if %errorlevel% NEQ 0 goto BUILDERROR
 echo .....................................................SUCCESS
 echo Building FORTRAN interface ...
+devenv.com mpich2.sln /build fortPRelease >> make.log
+if %errorlevel% NEQ 0 goto BUILDERROR
 devenv.com mpich2.sln /build fortRelease >> make.log
 if %errorlevel% NEQ 0 goto BUILDERROR
 devenv.com mpich2.sln /build gfortRelease >> make.log
@@ -159,26 +156,6 @@ if %errorlevel% NEQ 0 goto BUILDERROR
 devenv.com mpich2.sln /build sfortRelease >> make.log
 if %errorlevel% NEQ 0 goto BUILDERROR
 echo .....................................................SUCCESS
-echo Building CH3+SHM channel ...
-devenv.com mpich2.sln /build ch3shmRelease >> make.log
-if %errorlevel% NEQ 0 goto BUILDERROR
-echo .....................................................SUCCESS
-echo Building CH3+SHM channel (profiled version) ...
-devenv.com mpich2.sln /build ch3shmPRelease >> make.log
-if %errorlevel% NEQ 0 goto BUILDERROR
-echo .....................................................SUCCESS
-echo Building CH3+SSM channel ...
-devenv.com mpich2.sln /build ch3ssmRelease >> make.log
-if %errorlevel% NEQ 0 goto BUILDERROR
-echo .....................................................SUCCESS
-echo Building CH3+SSM channel (profiled version)...
-devenv.com mpich2.sln /build ch3ssmPRelease >> make.log
-if %errorlevel% NEQ 0 goto BUILDERROR
-echo .....................................................SUCCESS
-REM devenv.com mpich2.sln /build ch3ibIbalRelease
-REM if %errorlevel% NEQ 0 goto BUILDERROR
-REM devenv.com mpich2.sln /build ch3ibIbalPRelease
-REM if %errorlevel% NEQ 0 goto BUILDERROR
 echo Building CH3+SOCK channel(multithreaded)...
 devenv.com mpich2.sln /build ch3sockmtRelease >> make.log
 if %errorlevel% NEQ 0 goto BUILDERROR
@@ -213,6 +190,28 @@ devenv.com mpich2.sln /build Installer >> make.log
 if %errorlevel% NEQ 0 goto BUILDERROR
 echo .....................................................SUCCESS
 echo MPICH2 build completed successfully.... - See make.log for the compiler output
+GOTO END
+:BUILD_WIN64
+if "%CPU%" == "X64" goto AFTER_WIN64_SANITY_CHECK
+if "%CPU%" == "AMD64" goto AFTER_WIN64_SANITY_CHECK
+echo ERROR: WIN64 Build environment not setup correctly ...
+GOTO END
+:AFTER_WIN64_SANITY_CHECK
+echo Building MPICH2 x64 ...
+cd winbuild
+CALL build.bat > ..\make_x64.log
+if %errorlevel% NEQ 0 goto BUILDERROR
+echo .....................................................SUCCESS
+cd ..
+echo Building MPICH2 examples ...
+devenv.com examples\examples.sln /project cpi /build "Release|x64" >> make_x64.log
+if %errorlevel% NEQ 0 goto BUILDERROR
+echo .....................................................SUCCESS
+echo Building MPICH2 x64 installer ...
+devenv.com mpich2.sln /build "Installerx64|x64" >> make_x64.log
+if %errorlevel% NEQ 0 goto BUILDERROR
+echo .....................................................SUCCESS
+echo MPICH2 x64 build completed successfully.... - See make_x64.log for the compiler output
 GOTO END
 :BUILDERROR
 echo ERROR : BUILD FAILED ! - See make.log for details

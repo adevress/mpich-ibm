@@ -94,13 +94,11 @@ static int MPIR_Bcast_binomial(
      * heterogeneous systems. We want to use MPI_Type_size() wherever
      * possible, and MPI_Pack_size() in other places.
      */
-    if (is_homogeneous) {
+    if (is_homogeneous)
         MPID_Datatype_get_size_macro(datatype, type_size);
-    }
-    else {
-        mpi_errno = NMPI_Pack_size(1, datatype, comm, &type_size);
-        if (mpi_errno) MPIU_ERR_POP(mpi_errno);
-    }
+    else
+        MPIR_Pack_size_impl(1, datatype, &type_size);
+
     nbytes = type_size * count;
 
     if (!is_contig || !is_homogeneous)
@@ -109,9 +107,11 @@ static int MPIR_Bcast_binomial(
 
         /* TODO: Pipeline the packing and communication */
         position = 0;
-        if (rank == root)
-            NMPI_Pack(buffer, count, datatype, tmp_buf, nbytes,
-                      &position, comm);
+        if (rank == root) {
+            mpi_errno = MPIR_Pack_impl(buffer, count, datatype, tmp_buf, nbytes,
+                                       &position);
+            if (mpi_errno) MPIU_ERR_POP(mpi_errno);
+        }
     }
 
     relative_rank = (rank >= root) ? rank - root : rank - root + comm_size;
@@ -194,8 +194,10 @@ static int MPIR_Bcast_binomial(
         if (rank != root)
         {
             position = 0;
-            NMPI_Unpack(tmp_buf, nbytes, &position, buffer, count,
-                        datatype, comm);
+            mpi_errno = MPIR_Unpack_impl(tmp_buf, nbytes, &position, buffer,
+                                         count, datatype);
+            if (mpi_errno) MPIU_ERR_POP(mpi_errno);
+            
         }
     }
 
@@ -207,8 +209,8 @@ fn_fail:
 }
 
 /* FIXME it would be nice if we could refactor things to minimize
-   duplication between this and MPIR_Scatter and friends.  We can't use
-   MPIR_Scatter as is without inducing an extra copy in the noncontig case. */
+   duplication between this and MPIR_Scatter_intra and friends.  We can't use
+   MPIR_Scatter_intra as is without inducing an extra copy in the noncontig case. */
 /* There are additional arguments included here that are unused because we
    always assume that the noncontig case has been packed into a contig case by
    the caller for now.  Once we start handling noncontig data at the upper level
@@ -284,7 +286,7 @@ static int scatter_for_bcast(
                 if (mpi_errno) MPIU_ERR_POP(mpi_errno);
 
                 /* query actual size of data received */
-                NMPI_Get_count(&status, MPI_BYTE, &curr_size);
+                MPIR_Get_count_impl(&status, MPI_BYTE, &curr_size);
             }
             break;
         }
@@ -399,21 +401,17 @@ static int MPIR_Bcast_scatter_doubling_allgather(
      * heterogeneous systems. We want to use MPI_Type_size() wherever
      * possible, and MPI_Pack_size() in other places.
      */
-    if (is_homogeneous) {
+    if (is_homogeneous)
         MPID_Datatype_get_size_macro(datatype, type_size);
-    }
-    else {
-        mpi_errno = NMPI_Pack_size(1, datatype, comm, &type_size);
-        if (mpi_errno) MPIU_ERR_POP(mpi_errno);
-    }
+    else
+        MPIR_Pack_size_impl(1, datatype, &type_size);
+
     nbytes = type_size * count;
 
     if (is_contig && is_homogeneous)
     {
         /* contiguous and homogeneous. no need to pack. */
-        mpi_errno = NMPI_Type_get_true_extent(datatype, &true_lb,
-                                              &true_extent);
-        if (mpi_errno) MPIU_ERR_POP(mpi_errno);
+        MPIR_Type_get_true_extent_impl(datatype, &true_lb, &true_extent);
 
         tmp_buf = (char *) buffer + true_lb;
     }
@@ -423,9 +421,11 @@ static int MPIR_Bcast_scatter_doubling_allgather(
 
         /* TODO: Pipeline the packing and communication */
         position = 0;
-        if (rank == root)
-            NMPI_Pack(buffer, count, datatype, tmp_buf, nbytes,
-                      &position, comm);
+        if (rank == root) {
+            mpi_errno = MPIR_Pack_impl(buffer, count, datatype, tmp_buf, nbytes,
+                                       &position);
+            if (mpi_errno) MPIU_ERR_POP(mpi_errno);
+        }
     }
 
 
@@ -472,7 +472,7 @@ static int MPIR_Bcast_scatter_doubling_allgather(
                                       MPI_BYTE, dst, MPIR_BCAST_TAG, comm, &status);
             if (mpi_errno) MPIU_ERR_POP(mpi_errno);
 
-            NMPI_Get_count(&status, MPI_BYTE, &recv_size);
+            MPIR_Get_count_impl(&status, MPI_BYTE, &recv_size);
             curr_size += recv_size;
         }
 
@@ -558,7 +558,7 @@ static int MPIR_Bcast_scatter_doubling_allgather(
                        whose data we don't have */
                     if (mpi_errno) MPIU_ERR_POP(mpi_errno);
 
-                    NMPI_Get_count(&status, MPI_BYTE, &recv_size);
+                    MPIR_Get_count_impl(&status, MPI_BYTE, &recv_size);
                     curr_size += recv_size;
                     /* printf("Rank %d, recv from %d, offset %d, size %d\n", rank, dst, offset, recv_size);
                        fflush(stdout);*/
@@ -578,8 +578,9 @@ static int MPIR_Bcast_scatter_doubling_allgather(
         if (rank != root)
         {
             position = 0;
-            NMPI_Unpack(tmp_buf, nbytes, &position, buffer, count,
-                        datatype, comm);
+            mpi_errno = MPIR_Unpack_impl(tmp_buf, nbytes, &position, buffer,
+                                         count, datatype);
+            if (mpi_errno) MPIU_ERR_POP(mpi_errno);
         }
     }
 
@@ -658,21 +659,17 @@ static int MPIR_Bcast_scatter_ring_allgather(
      * heterogeneous systems. We want to use MPI_Type_size() wherever
      * possible, and MPI_Pack_size() in other places.
      */
-    if (is_homogeneous) {
+    if (is_homogeneous)
         MPID_Datatype_get_size_macro(datatype, type_size);
-    }
-    else {
-        mpi_errno = NMPI_Pack_size(1, datatype, comm, &type_size);
-        if (mpi_errno) MPIU_ERR_POP(mpi_errno);
-    }
+    else
+        MPIR_Pack_size_impl(1, datatype, &type_size);
+
     nbytes = type_size * count;
 
     if (is_contig && is_homogeneous)
     {
         /* contiguous and homogeneous. no need to pack. */
-        mpi_errno = NMPI_Type_get_true_extent(datatype, &true_lb,
-                                              &true_extent);
-        if (mpi_errno) MPIU_ERR_POP(mpi_errno);
+        MPIR_Type_get_true_extent_impl(datatype, &true_lb, &true_extent);
 
         tmp_buf = (char *) buffer + true_lb;
     }
@@ -682,9 +679,11 @@ static int MPIR_Bcast_scatter_ring_allgather(
 
         /* TODO: Pipeline the packing and communication */
         position = 0;
-        if (rank == root)
-            NMPI_Pack(buffer, count, datatype, tmp_buf, nbytes,
-                      &position, comm);
+        if (rank == root) {
+            mpi_errno = MPIR_Pack_impl(buffer, count, datatype, tmp_buf, nbytes,
+                                       &position);
+            if (mpi_errno) MPIU_ERR_POP(mpi_errno);
+        }
     }
 
     scatter_size = (nbytes + comm_size - 1)/comm_size; /* ceiling division */
@@ -739,8 +738,9 @@ static int MPIR_Bcast_scatter_ring_allgather(
         if (rank != root)
         {
             position = 0;
-            NMPI_Unpack(tmp_buf, nbytes, &position, buffer, count,
-                        datatype, comm);
+            mpi_errno = MPIR_Unpack_impl(tmp_buf, nbytes, &position, buffer,
+                                         count, datatype);
+            if (mpi_errno) MPIU_ERR_POP(mpi_errno);
         }
     }
 
@@ -807,13 +807,11 @@ static int MPIR_SMP_Bcast(
      * heterogeneous systems. We want to use MPI_Type_size() wherever
      * possible, and MPI_Pack_size() in other places.
      */
-    if (is_homogeneous) {
+    if (is_homogeneous)
         MPID_Datatype_get_size_macro(datatype, type_size);
-    }
-    else {
-        mpi_errno = NMPI_Pack_size(1, datatype, comm_ptr->handle, &type_size);
-        if (mpi_errno) MPIU_ERR_POP(mpi_errno);
-    }
+    else
+        MPIR_Pack_size_impl(1, datatype, &type_size);
+
     nbytes = type_size * count;
 
     if ((nbytes < MPIR_BCAST_SHORT_MSG) || (comm_ptr->local_size < MPIR_BCAST_MIN_PROCS))
@@ -961,11 +959,11 @@ fn_fail:
 */
 
 #undef FUNCNAME
-#define FUNCNAME MPIR_Bcast
+#define FUNCNAME MPIR_Bcast_intra
 #undef FCNAME
 #define FCNAME MPIU_QUOTE(FUNCNAME)
 /* not declared static because it is called in intercomm. allgatherv */
-int MPIR_Bcast ( 
+int MPIR_Bcast_intra ( 
         void *buffer, 
         int count, 
         MPI_Datatype datatype, 
@@ -1016,13 +1014,11 @@ int MPIR_Bcast (
      * heterogeneous systems. We want to use MPI_Type_size() wherever
      * possible, and MPI_Pack_size() in other places.
      */
-    if (is_homogeneous) {
+    if (is_homogeneous)
         MPID_Datatype_get_size_macro(datatype, type_size);
-    }
-    else {
-        mpi_errno = NMPI_Pack_size(1, datatype, comm, &type_size);
-        if (mpi_errno) MPIU_ERR_POP(mpi_errno);
-    }
+    else
+        MPIR_Pack_size_impl(1, datatype, &type_size);
+
     nbytes = type_size * count;
 
     if ((nbytes < MPIR_BCAST_SHORT_MSG) || (comm_size < MPIR_BCAST_MIN_PROCS))
@@ -1060,43 +1056,6 @@ fn_fail:
     goto fn_exit;
 }
 
-/* A simple utility function to that calls the comm_ptr->coll_fns->Bcast
-   override if it exists or else it calls MPIR_Bcast with the same arguments.
-   This function just makes the high-level broadcast logic easier to read while
-   still accomodating coll_fns-style overrides.  It also reduces future errors
-   by eliminating the duplication of Bcast arguments. 
-
-   This routine is used in other files as well (barrier.c, allreduce.c)
-
-   TODO This function should be deprecated in favor of a direct call to
-   MPIR_Bcast now that we handle SMP-awareness inside of MPIR_Bcast instead
-   of MPI_Bcast.
-*/
-#undef FUNCNAME
-#define FUNCNAME MPIR_Bcast_or_coll_fn
-#undef FCNAME
-#define FCNAME MPIU_QUOTE(FUNCNAME)
-int MPIR_Bcast_or_coll_fn(void *buffer, 
-			  int count, 
-			  MPI_Datatype datatype, 
-			  int root, 
-			  MPID_Comm *comm_ptr)
-{
-    int mpi_errno = MPI_SUCCESS;
-
-    if (comm_ptr->coll_fns != NULL && comm_ptr->coll_fns->Bcast != NULL)
-    {
-        /* --BEGIN USEREXTENSION-- */
-        mpi_errno = comm_ptr->node_roots_comm->coll_fns->Bcast(buffer, count,
-                                                               datatype, root, comm_ptr);
-        /* --END USEREXTENSION-- */
-    }
-    else {
-        mpi_errno = MPIR_Bcast(buffer, count, datatype, root, comm_ptr);
-    }
-
-    return mpi_errno;
-}
 
 #undef FUNCNAME
 #define FUNCNAME MPIR_Bcast_inter
@@ -1160,7 +1119,7 @@ int MPIR_Bcast_inter (
 
         /* now do the usual broadcast on this intracommunicator
            with rank 0 as root. */
-        mpi_errno = MPIR_Bcast(buffer, count, datatype, 0, newcomm_ptr);
+        mpi_errno = MPIR_Bcast_intra(buffer, count, datatype, 0, newcomm_ptr);
         if (mpi_errno) MPIU_ERR_POP(mpi_errno);
     }
 
@@ -1169,6 +1128,80 @@ fn_fail:
     return mpi_errno;
 }
 /* end:nested */
+
+/* MPIR_Bcast_impl should be called by any internal component that
+   would otherwise call MPI_Bcast.  This differs from MPIR_Bcast in
+   that this will call the coll_fns version if it exists and will use
+   the SMP-aware bcast algorithm. */
+#undef FUNCNAME
+#define FUNCNAME MPIR_Bcast_impl
+#undef FCNAME
+#define FCNAME MPIU_QUOTE(FUNCNAME)
+int MPIR_Bcast_impl(void *buffer, int count, MPI_Datatype datatype, int root, MPID_Comm *comm_ptr)
+{
+    int mpi_errno = MPI_SUCCESS;
+
+    if (comm_ptr->coll_fns != NULL && comm_ptr->coll_fns->Bcast != NULL)
+    {
+	/* --BEGIN USEREXTENSION-- */
+	mpi_errno = comm_ptr->coll_fns->Bcast(buffer, count,
+                                              datatype, root, comm_ptr);
+        if (mpi_errno) MPIU_ERR_POP(mpi_errno);
+	/* --END USEREXTENSION-- */
+    }
+    else
+    {
+        if (comm_ptr->comm_kind == MPID_INTRACOMM)
+	{
+            /* intracommunicator */
+            mpi_errno = MPIR_Bcast_intra( buffer, count, datatype, root, comm_ptr );
+            if (mpi_errno) MPIU_ERR_POP(mpi_errno);
+            
+	}
+        else
+	{
+            /* intercommunicator */
+            mpi_errno = MPIR_Bcast_inter( buffer, count, datatype, root, comm_ptr );
+            if (mpi_errno) MPIU_ERR_POP(mpi_errno);
+        }
+    }
+
+
+ fn_exit:
+    return mpi_errno;
+ fn_fail:
+    goto fn_exit;
+}
+
+/* MPIR_Bcast performs an broadcast using point-to-point messages.
+   This is intended to be used by device-specific implementations of
+   broadcast.  In all other cases MPIR_Bcast_impl should be used. */
+#undef FUNCNAME
+#define FUNCNAME MPIR_Bcast
+#undef FCNAME
+#define FCNAME MPIU_QUOTE(FUNCNAME)
+int MPIR_Bcast(void *buffer, int count, MPI_Datatype datatype, int root, MPID_Comm *comm_ptr)
+{
+    int mpi_errno = MPI_SUCCESS;
+
+    if (comm_ptr->comm_kind == MPID_INTRACOMM) {
+        /* intracommunicator */
+        mpi_errno = MPIR_Bcast_intra( buffer, count, datatype, root, comm_ptr );
+        if (mpi_errno) MPIU_ERR_POP(mpi_errno);
+        
+    } else {
+        /* intercommunicator */
+        mpi_errno = MPIR_Bcast_inter( buffer, count, datatype, root, comm_ptr );
+        if (mpi_errno) MPIU_ERR_POP(mpi_errno);
+    }
+
+ fn_exit:
+    return mpi_errno;
+ fn_fail:
+    goto fn_exit;
+}
+
+
 #endif /* MPICH_MPI_FROM_PMPI */
 
 #undef FUNCNAME
@@ -1206,7 +1239,6 @@ int MPI_Bcast( void *buffer, int count, MPI_Datatype datatype, int root,
 {
     int mpi_errno = MPI_SUCCESS;
     MPID_Comm *comm_ptr = NULL;
-    MPIU_THREADPRIV_DECL;
     MPID_MPI_STATE_DECL(MPID_STATE_MPI_BCAST);
 
     MPIR_ERRTEST_INITIALIZED_ORDIE();
@@ -1263,29 +1295,9 @@ int MPI_Bcast( void *buffer, int count, MPI_Datatype datatype, int root,
 #   endif /* HAVE_ERROR_CHECKING */
 
     /* ... body of routine ...  */
-
-    if (comm_ptr->coll_fns != NULL && comm_ptr->coll_fns->Bcast != NULL)
-    {
-	/* --BEGIN USEREXTENSION-- */
-	mpi_errno = comm_ptr->coll_fns->Bcast(buffer, count,
-                                              datatype, root, comm_ptr);
-	/* --END USEREXTENSION-- */
-    }
-    else
-    {
-        if (comm_ptr->comm_kind == MPID_INTRACOMM)
-	{
-            /* intracommunicator */
-            mpi_errno = MPIR_Bcast( buffer, count, datatype, root, comm_ptr );
-	}
-        else
-	{
-            /* intercommunicator */
-            mpi_errno = MPIR_Bcast_inter( buffer, count, datatype, root, comm_ptr );
-        }
-    }
-
-    if (mpi_errno != MPI_SUCCESS) goto fn_fail;
+    
+    mpi_errno = MPIR_Bcast_impl( buffer, count, datatype, root, comm_ptr );
+    if (mpi_errno) goto fn_fail;
 
     /* ... end of body of routine ... */
     

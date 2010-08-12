@@ -202,7 +202,7 @@ $quiet = 0;
 	      'cxx:o' => '$(CXX_COMPILE) -c $<',
 	      'cpp:o' => '$(CXX_COMPILE) -c $<',
 	      's:o' => '$(AS_COMPILE) $<',
-	      'f90:o' => '$(F90_COMPILE) -c $<',
+	      'f90:o' => '$(FC_COMPILE) -c $<',
 # Assembler *output* definitions
 	      'c:s' => '$(C_COMPILE) -S $<',
 	      'f:s' => '$(F77_COMPILE) -S $<',
@@ -214,7 +214,7 @@ $quiet = 0;
 # Program from source rules
 	      'c:' => '$(C_COMPILE) -o $* $< $(LDFLAGS) $(LIBS)',
 	      'f:' => '$(F77_COMPILE) -o $* $< $(LDFLAGS) $(LIBS)',
-	      'f90:' => '$(F90_COMPILE) -o $* $< $(LDFLAGS) $(LIBS)',
+	      'f90:' => '$(FC_COMPILE) -o $* $< $(LDFLAGS) $(LIBS)',
               'cxx:' => '$(CXX_COMPILE) -o $* $< $(LDFLAGS) $(LIBS)',
 # LaTeX definitions
 	      'tex:dvi' => 'latex $<',
@@ -232,7 +232,7 @@ $quiet = 0;
 	@mv -f _s$*.o $*.lo',
 	      'cpp:lo' => '$(CXX_COMPILE_SHL) -c $< -o _s$*.o
 	@mv -f _s$*.o $*.lo',
-	      'f90:lo' => '$(F90_COMPILE_SHL) -c $< -o _s$*.o
+	      'f90:lo' => '$(FC_COMPILE_SHL) -c $< -o _s$*.o
 	@mv -f _s$*.o $*.lo',
 ## This has an MPICH-specific definition that we should eventually generalize
 ## We use -o on the compile line to keep from overwriting the .o file;
@@ -252,9 +252,9 @@ $quiet = 0;
 %extdef = ( 'c:o'   => 'CC              = @CC@
 CFLAGS          = @CFLAGS@ $(MPICH2_MAKE_CFLAGS)
 C_COMPILE       = $(CC) $(DEFS) $(INCLUDES) $(CFLAGS) $(CPPFLAGS)',
-	    'f:o'   => 'FC              = @FC@
+	    'f:o'   => 'F77             = @F77@
 FFLAGS          = @FFLAGS@
-F77_COMPILE     = $(FC) $(FFLAGS) $(F77INCLUDES)',
+F77_COMPILE     = $(F77) $(FFLAGS) $(F77INCLUDES)',
 	    'cxx:o' => 'CXX             = @CXX@
 CXXFLAGS        = @CXXFLAGS@
 CXX_COMPILE     = $(CXX) $(DEFS) $(INCLUDES) $(CXXFLAGS) $(CPPFLAGS)',
@@ -266,16 +266,16 @@ CSFLAGS         = @CSFLAGS@
 CSHARP_COMPILE  = $(CSHARP) $(DEFS) $(INCLUDES) $(CSFLAGS) $(CPPFLAGS)',
 	    's:o'   => 'AS              = @AS@
 AS_COMPILE      = $(AS)',
-	    'f90:o'   => 'F90              = @F90@
-F90FLAGS        = @F90FLAGS@
-F90_COMPILE     = $(F90) $(F90FLAGS) $(F90INCLUDES)',
+	    'f90:o'   => 'FC               = @FC@
+FCFLAGS         = @FCFLAGS@
+FC_COMPILE      = $(FC) $(FCFLAGS) $(FCINCLUDES)',
 # Similarly, but for shared-library versions
 	    'c:lo'   => 'CC_SHL          = @CC_SHL@
 C_COMPILE_SHL   = $(CC_SHL) $(DEFS) $(INCLUDES) $(CFLAGS) $(CPPFLAGS)',
-	    'f:lo'   => 'FC_SHL          = @FC_SHL@
-F77_COMPILE_SHL = $(FC_SHL) $(FFLAGS) $(F77INCLUDES)',
-	    'f90:lo'   => 'F90_SHL          = @F90_SHL@
-F90_COMPILE_SHL = $(F90_SHL) $(F90FLAGS) $(F90INCLUDES)',
+	    'f:lo'   => 'F77_SHL         = @F77_SHL@
+F77_COMPILE_SHL = $(F77_SHL) $(FFLAGS) $(F77INCLUDES)',
+	    'f90:lo'   => 'FC_SHL          = @FC_SHL@
+FC_COMPILE_SHL = $(FC_SHL) $(FCFLAGS) $(FCINCLUDES)',
 	    'cxx:lo' => 'CXX_SHL         = @CXX_SHL@
 CXX_COMPILE_SHL = $(CXX_SHL) $(DEFS) $(INCLUDES) $(CXXFLAGS) $(CPPFLAGS)',
 	    'cpp:lo' => 'CXX_SHL         = @CXX_SHL@
@@ -284,15 +284,15 @@ CXX_COMPILE_SHL = $(CXX_SHL) $(DEFS) $(INCLUDES) $(CXXFLAGS) $(CPPFLAGS)',
 
 %extstring = ( 'c:o'    => '  CC              $<',
 	       'c:'     => '  CC              $<',
-	       'f:o'    => '  FC              $<',
+	       'f:o'    => '  F77             $<',
 	       'cxx:o'  => '  CXX             $<',
 	       'cpp:o'  => '  CXX             $<',
 	       'cs:o'   => '  CS              $<',
 	       's:o'    => '  AS              $<',
-	       'f90:o'  => '  F90             $<',
+	       'f90:o'  => '  FC              $<',
 	       'c:lo'   => '  CC              $<',
-	       'f:lo'   => '  FC              $<',
-	       'f90:lo' => '  F90             $<',
+	       'f:lo'   => '  F77             $<',
+	       'f90:lo' => '  FC              $<',
 	       'cxx:lo' => '  CXX             $<',
 	       'cpp:lo' => '  CPP             $<',
     );
@@ -307,14 +307,14 @@ CXX_COMPILE_SHL = $(CXX_SHL) $(DEFS) $(INCLUDES) $(CXXFLAGS) $(CPPFLAGS)',
 	       'cpp' => '$(CXX_LINK) $(CXXFLAGS) $(LDFLAGS)',
 	       'cs'  => '$(CSHARP_LINK) $(LDFLAGS)',
 	       'f'   => '$(F77_LINK) $(FFLAGS) $(LDFLAGS)',
-	       'f90' => '$(F90_LINK) $(F90FLAGS) $(LDFLAGS)',
+	       'f90' => '$(FC_LINK) $(FCFLAGS) $(LDFLAGS)',
 	      );
 %progdefs = ( 'c' =>   'C_LINK         = $(CC)',
 	      'cxx' => 'CXX_LINK       = $(CXX)',
 	      'cpp' => 'CXX_LINK       = $(CXX)',
 	      'cs'  => 'CSHARP_LINK    = $(CSHARP)',
-	      'f'   => 'F77_LINK       = $(FC)',
-	      'f90' => 'F90_LINK       = $(F90)',
+	      'f'   => 'F77_LINK       = $(F77)',
+	      'f90' => 'FC_LINK        = $(FC)',
 	     );
 
 # Rules to build shared libraries (these are like programs
@@ -324,13 +324,13 @@ CXX_COMPILE_SHL = $(CXX_SHL) $(DEFS) $(INCLUDES) $(CXXFLAGS) $(CPPFLAGS)',
 	       'cxx' => 'CXX_LINK_SHL    = @CXX_LINK_SHL@',
 	       'cpp' => 'CXX_LINK_SHL    = @CXX_LINK_SHL@',
 	       'f'   => 'F77_LINK_SHL    = @F77_LINK_SHL@',
-	       'f90' => 'F90_LINK_SHL    = @F90_LINK_SHL@',
+	       'f90' => 'FC_LINK_SHL     = @FC_LINK_SHL@',
 	     );
 #%shlibrules = ( 'c' => '$(C_LINK_SHL) $(LDFLAGS)',
 #	       'cxx' => '$(CXX_LINK_SHL) $(LDFLAGS)',
 #	       'cpp' => '$(CXX_LINK_SHL) $(LDFLAGS)',
 #	       'f'   => '$(F77_LINK_SHL) $(LDFLAGS)',
-#	       'f90' => '$(F90_LINK_SHL) $(LDFLAGS)',
+#	       'f90' => '$(FC_LINK_SHL) $(LDFLAGS)',
 #	      );
 
 #
@@ -410,6 +410,8 @@ $top_builddir_name =         "top_builddir    = \@master_top_builddir\@";
 # whether install works with or without -p.
 #
 # CREATESHLIB is a special script for shared libraries
+# Question: should the install target include the link options, in case
+# the install operation must relink the library?  Is this possible?
 %install_methods = ( 'LIB'     => '$(INSTALL_DATA)',
 		     'BIN'     => '$(INSTALL_PROGRAM) $(INSTALL_STRIP_FLAG)',
 		     'SCRIPT'  => '$(INSTALL_SCRIPT)',
@@ -1274,6 +1276,7 @@ sub DefaultVariables {
     if (scalar(%libraries)) {
 	# Add ar, ranlib definitions if there are any library targets.
 	printMakeVariable( FD, "AR", "\@AR\@" );
+	printMakeVariable( FD, "AR_FLAGS", "\@AR_FLAGS\@" );
 	printMakeVariable( FD, "RANLIB", "\@RANLIB\@" );
     }
     if ($do_sharedlibs) {
@@ -3008,7 +3011,7 @@ sub LibraryBuild {
 	    &print_make_line( FD, "${libloc}lib$libname.$libext($obj): $obj" );
 	    &print_make_endline( FD );
 	    # COMMAND PRINTING
-	    &PrintVerboseOptionCommand( "\${AR} cr ${libloc}lib$libname.$libext \$?", "  AR" );
+	    &PrintVerboseOptionCommand( "\${AR} \${AR_FLAGS} ${libloc}lib$libname.$libext \$?", "  AR" );
 	}
 	else {
 	    if ($ext ne "h") {
@@ -3019,7 +3022,7 @@ sub LibraryBuild {
     &SMInvokeAction( "OutputLibDependencies", $lib, $libloc, $memext );
     if (!$dolib_member) {
         &print_make_endline( FD );
-	&PrintVerboseOptionCommand( "\${AR} cr ${libloc}lib$libname.$libext \$?",
+	&PrintVerboseOptionCommand( "\${AR} \${AR_FLAGS} ${libloc}lib$libname.$libext \$?",
 				    "  AR" );
     }
 }
@@ -3406,7 +3409,7 @@ library, or new library name)\n" if $debug;
     if (!defined($usertargets{"$libdir/$newlibname"})) {
 	print FD "# Build the shared library from the shared object files\n";
 	print FD "$libdir/$newlibname: $libdir/$libname
-\t(cd $libdir && \$(CREATESHLIB) --mode=link -version-info \"\@ABIVERSION\@\" -o $libname $exports -rpath \$(libdir) $otherlibs -ldflags \"\$(LDFLAGS)\" \$(LIBS))\n";
+\t(cd $libdir && \$(CREATESHLIB) --mode=link -version-info \"\$(ABIVERSION)\" -o $libname $exports -rpath \$(libdir) $otherlibs -ldflags \"\$(LDFLAGS)\" \$(LIBS))\n";
     }
     # If there is a profiling library, we need to build it
     # now, as part of this target, to handle the case where the
@@ -3442,7 +3445,7 @@ library, or new library name)\n" if $debug;
 	    $otherlibs = $shared_libraries_libs{$libbasename};
 	}
 
-	print FD "\t(cd $libdir && \$(CREATESHLIB) --mode=link -version-info \"\@ABIVERSION\@\" -o $libname $exports -rpath \$(libdir) $otherlibs);\\\n";
+	print FD "\t(cd $libdir && \$(CREATESHLIB) --mode=link -version-info \"\$(ABIVERSION)\" -o $libname $exports -rpath \$(libdir) $otherlibs);\\\n";
 
 	print FD "\tfi\n";
     }
@@ -4333,7 +4336,7 @@ sub TargetDependenciesDynamic {
 	    $notDirs .= "$key ";
 	}
     }
-    &RecursiveOp( "dependencies", "", "", $otherDirs, $notDirs );
+    &RecursiveOp( "dependencies", "", 1, $otherDirs, $notDirs );
 
     # First, generate the targets to maintain the individual files.
     # This makes it easy to update the dependency contents without
@@ -4362,6 +4365,14 @@ sub TargetDependenciesDynamic {
 		$ext =~ s/^.*\.//g;
 		$sourcebasename = $sourcefile;
 		$sourcebasename =~ s/\.\w*$//;
+
+		# The file name for the dependencies output is derived
+		# from the source file.  In some cases, the source file
+		# may be drawn from a different directory; in that case,
+		# we need to remove directory specs from the name
+		$depfilename = $sourcebasename;
+		$depfilename =~ s/.*\///;
+
 		$objfiles = "_$sourcebasename.o $sourcebasename.o";
 		if ($do_sharedlibs || $found_sharedlib) {
 		    $objfiles .= " $sourcebasename.lo _$sourcebasename.lo";
@@ -4382,8 +4393,8 @@ simplemake is assuming that this file will be created by the configure step\
 in the build directory\n";
 			$srcdirloc = '';
 		    }
-		    print FD "\$(DEPS_DIR)/$sourcebasename.d: $srcdirloc$sourcefile$newline";
-		    &PrintVerboseOptionCommand( "\$(MAKE_DEPEND_C) $targetOpts $srcdirloc$sourcefile >\$(DEPS_DIR)/$sourcebasename.d", "-", "MAKE_DEPEND_C $sourcefile > \$(DEPS_DIR)/$sourcebasename.d" );
+		    print FD "\$(DEPS_DIR)/$depfilename.d: $srcdirloc$sourcefile$newline";
+		    &PrintVerboseOptionCommand( "\$(MAKE_DEPEND_C) $targetOpts $srcdirloc$sourcefile >\$(DEPS_DIR)/$depfilename.d", "-", "MAKE_DEPEND_C $sourcefile > \$(DEPS_DIR)/$depfilename.d" );
 		}
 	    }
 	}
@@ -4419,6 +4430,8 @@ in the build directory\n";
 		$ext =~ s/^.*\.//g;
 		$sourcebasename = $sourcefile;
 		$sourcebasename =~ s/\.\w*$//;
+		$depfilename = $sourcebasename;
+		$depfilename =~ s/.*\///;
 		if ($ext eq "c") {
 		    if (! -s $sourcefile) {
 			$srcdirloc = '';
@@ -4431,8 +4444,8 @@ in the build directory\n";
 		    if (!$found_profilelib) {
 			$targetOpts = "";
 		    }
-		    &PrintVerboseOptionCommand( "\$(MAKE_DEPEND_C) $targetOpts $srcdirloc$sourcefile >\$(DEPS_DIR)/$sourcebasename.d", "-", "MAKE_DEPEND_C $sourcefile > \$(DEPS_DIR)/$sourcebasename.d" );
-		    print FD "\techo \"$makeInclude \$(DEPS_DIR)/$sourcebasename.d\" >>\$(DEPS_DIR)/newalldeps$newline";
+		    &PrintVerboseOptionCommand( "\$(MAKE_DEPEND_C) $targetOpts $srcdirloc$sourcefile >\$(DEPS_DIR)/$depfilename.d", "-", "MAKE_DEPEND_C $sourcefile > \$(DEPS_DIR)/$depfilename.d" );
+		    print FD "\techo \"$makeInclude \$(DEPS_DIR)/$depfilename.d\" >>\$(DEPS_DIR)/newalldeps$newline";
 		}
 	    }
 	}
@@ -4448,6 +4461,8 @@ in the build directory\n";
 		$ext =~ s/^.*\.//g;
 		$sourcebasename = $sourcefile;
 		$sourcebasename =~ s/\.\w*$//;
+		$depfilename = $sourcebasename;
+		$depfilename =~ s/.*\///;
 		if ($ext eq "c") {
 		    if (! -s $sourcefile) {
 			$srcdirloc = '';
@@ -4460,8 +4475,8 @@ in the build directory\n";
 		    if (!$found_profilelib) {
 			$targetOpts = "";
 		    }
-		    &PrintVerboseOptionCommand( "\$(MAKE_DEPEND_C) $targetOpts $srcdirloc$sourcefile >\$(DEPS_DIR)/$sourcebasename.d", "-", "MAKE_DEPEND_C $sourcefile > \$(DEPS_DIR)/$sourcebasename.d" );
-		    print FD "\techo \"$makeInclude \$(DEPS_DIR)/$sourcebasename.d\" >>\$(DEPS_DIR)/newalldeps$newline";
+		    &PrintVerboseOptionCommand( "\$(MAKE_DEPEND_C) $targetOpts $srcdirloc$sourcefile >\$(DEPS_DIR)/$depfilename.d", "-", "MAKE_DEPEND_C $sourcefile > \$(DEPS_DIR)/$depfilename.d" );
+		    print FD "\techo \"$makeInclude \$(DEPS_DIR)/$depfilename.d\" >>\$(DEPS_DIR)/newalldeps$newline";
 		}
 	    }
 	}

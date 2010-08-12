@@ -39,46 +39,12 @@
 #   error "No shared memory mechanism specified"
 #endif
 
-#include "mpi.h"
-#include "mpibase.h"
-#include "mpierror.h"
-#include "mpierrs.h"
-#include "mpimem.h"
-#include "mpiimplthread.h"
-#include "mpiutil.h"
-#include "mpidbg.h"
+#include "mpiu_os_wrappers_pre.h"
 #include "mpiu_util_wrappers.h"
 
-#define MPIU_SHMW_FLAG_CLR              0x0
-#define MPIU_SHMW_FLAG_SHM_CREATE       0x1
-#define MPIU_SHMW_FLAG_SHM_ATTACH       0x10
-#define MPIU_SHMW_FLAG_GHND_STATIC      0x100
-
-#ifdef USE_SYSV_SHM
-typedef int MPIU_SHMW_Lhnd_t;
-#elif defined USE_MMAP_SHM
-typedef int MPIU_SHMW_Lhnd_t;
-#elif defined USE_NT_SHM
-typedef HANDLE MPIU_SHMW_Lhnd_t;
+#if !(defined(MPISHARED_H_INCLUDED) || defined(MPIIMPL_H_INCLUDED))
+#error "this header must be included after mpiimpl.h or mpishared.h"
 #endif
-
-typedef char * MPIU_SHMW_Ghnd_t;
-/* The local handle, lhnd, is valid only for the current process,
- * The global handle, ghnd, is valid across multiple processes
- * The handle flag, flag, is used to set various attributes of the 
- *  handle.
- */
-typedef struct{
-    MPIU_SHMW_Lhnd_t lhnd;
-    MPIU_SHMW_Ghnd_t ghnd;
-    int flag;
-} MPIU_SHMW_LGhnd_t;
-
-typedef MPIU_SHMW_LGhnd_t * MPIU_SHMW_Hnd_t;
-
-#define MPIU_SHMW_HND_INVALID     NULL
-#define MPIU_SHMW_GHND_INVALID    NULL
-#define MPIU_SHMW_GHND_INIT_VAL    '\0'
 
 /* FIXME: Reduce the conditional checks for wrapper-internal
  * utility funcs/macros.
@@ -535,7 +501,7 @@ static inline int MPIU_SHMW_Seg_create_attach_templ(
 
         *shm_addr_ptr = shmat(MPIU_SHMW_Lhnd_get(hnd), NULL, 0x0);
 
-        MPIU_ERR_CHKANDJUMP2(!(*shm_addr_ptr), mpi_errno, MPI_ERR_OTHER,
+        MPIU_ERR_CHKANDJUMP2((*shm_addr_ptr == (void*)(-1)), mpi_errno, MPI_ERR_OTHER,
             "**attach_shar_mem", "**attach_shar_mem %s %s",
             "shmat", MPIU_OSW_Strerror(MPIU_OSW_Get_errno()));
     }

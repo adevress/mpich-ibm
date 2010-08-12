@@ -5,7 +5,6 @@
  */
 
 #include "mpiimpl.h"
-#include "mpidimpl.h"
 /* These are pointers to the static variables in src/mpid/ch3/src/ch3u_recvq.c
    that contains the *addresses* of the posted and unexpected queue head 
    pointers */
@@ -15,12 +14,19 @@ extern MPID_Request ** const MPID_Recvq_posted_head_ptr,
 #include "mpi_interface.h"
 
 /* This is from dbginit.c; it is not exported to other files */
+typedef struct MPIR_Sendq {
+    MPID_Request *sreq;
+    int tag, rank, context_id;
+    struct MPIR_Sendq *next;
+} MPIR_Sendq;
+extern MPIR_Sendq *MPIR_Sendq_head;
+/* This is from dbginit.c; it is not exported to other files */
 typedef struct MPIR_Comm_list {
-	int sequence_number;   
-	MPID_Comm *head;
+    int sequence_number;   /* Used to detect changes in the list */
+    MPID_Comm *head;       /* Head of the list */
 } MPIR_Comm_list;
+
 extern MPIR_Comm_list MPIR_All_communicators;
-extern MPID_Request *MPIR_Sendq_head;
 
 /* 
    This file contains emulation routines for the methods and functions normally
@@ -36,10 +42,11 @@ extern MPID_Request *MPIR_Sendq_head;
 enum { TYPE_UNKNOWN = 0, 
        TYPE_MPID_COMM = 1, 
        TYPE_MPIR_COMM_LIST = 2, 
-       TYPE_MPIDI_REQUEST = 3, 		// NOT USED
-       TYPE_MPIDI_MESSAGE_MATCH = 4,	// NOT USED
+       TYPE_MPIDI_REQUEST = 3, 
+       TYPE_MPIDI_MESSAGE_MATCH = 4,
        TYPE_MPID_REQUEST = 5, 
-       TYPE_MPIR_SENDQ = 6,		// NOT USED
+       TYPE_MPIR_SENDQ = 6,
+       TYPE_MPIDI_MESSAGE_MATCH_PARTS = 7,
 } KnownTypes;
 
 /* The dll_mpich2.c has a few places where it doesn't always use the most 
@@ -49,7 +56,8 @@ enum { TYPE_UNKNOWN = 0,
 static int knownTypesArray[] = { TYPE_UNKNOWN, TYPE_MPID_COMM, 
 				 TYPE_MPIR_COMM_LIST, TYPE_MPIDI_REQUEST, 
 				 TYPE_MPIDI_MESSAGE_MATCH, TYPE_MPID_REQUEST, 
-				 TYPE_MPIR_SENDQ };
+				 TYPE_MPIR_SENDQ, 
+				 TYPE_MPIDI_MESSAGE_MATCH_PARTS };
 
 mqs_type * dbgrI_find_type(mqs_image *image, char *name, 
 			   mqs_lang_code lang)
@@ -62,16 +70,27 @@ mqs_type * dbgrI_find_type(mqs_image *image, char *name,
     else if (strcmp( name, "MPIR_Comm_list" ) == 0) {
 	curType = TYPE_MPIR_COMM_LIST;
     }
+    else if (strcmp( name, "MPIDI_Request" ) == 0) {
+	curType = TYPE_MPIDI_REQUEST;
+    }
+    else if (strcmp( name, "MPIDI_Message_match" ) == 0) {
+	curType = TYPE_MPIDI_MESSAGE_MATCH;
+    }
+    else if (strcmp( name, "MPIDI_Message_match_parts_t" ) == 0) {
+	curType = TYPE_MPIDI_MESSAGE_MATCH_PARTS;
+    }
     else if (strcmp( name, "MPID_Request" ) == 0) {
 	curType = TYPE_MPID_REQUEST;
+    }
+    else if (strcmp( name, "MPIR_Sendq" ) == 0) {
+	curType = TYPE_MPIR_SENDQ;
     }
     else {
 	curType = TYPE_UNKNOWN;
     }
     return (mqs_type *)&knownTypesArray[curType];
 }
-#define OFFSET_OF(type,field)		((unsigned)&((type *)0)->field)
-#define OFFSET_OF_MACRO(type,macro)	((unsigned)&macro((type *)0))
+
 int dbgrI_field_offset(mqs_type *type, char *name)
 {
     int off = -1;
@@ -83,16 +102,21 @@ int dbgrI_field_offset(mqs_type *type, char *name)
     switch (curType) {
     case TYPE_MPID_COMM:
 	{
+	    MPID_Comm c;
 	    if (strcmp( name, "name" ) == 0) {
-		off = OFFSET_OF(MPID_Comm, name);
-	    } else if (strcmp( name, "comm_next" ) == 0) {
-		off = OFFSET_OF(MPID_Comm, comm_next);
-	    } else if (strcmp( name, "remote_size" ) == 0) {
-		off = OFFSET_OF(MPID_Comm, remote_size);
-	    } else if (strcmp( name, "rank" ) == 0) {
-		off = OFFSET_OF(MPID_Comm, rank);
-	    } else if (strcmp( name, "context_id" ) == 0) {
-		off = OFFSET_OF(MPID_Comm, context_id);
+		off = ((char*)&(c.name[0]) - (char*)&c.handle);
+	    }
+	    else if (strcmp( name, "comm_next" ) == 0) {
+		off = ((char*)&c.comm_next - (char*)&c.handle);
+	    }
+	    else if (strcmp( name, "remote_size" ) == 0) {
+		off = ((char*)&c.remote_size - (char*)&c.handle);
+	    }
+	    else if (strcmp( name, "rank" ) == 0) {
+		off = ((char*)&c.rank - (char*)&c.handle);
+	    }
+	    else if (strcmp( name, "context_id" ) == 0) {
+		off = ((char*)&c.context_id - (char*)&c.handle);
 	    }
 	    else if (strcmp( name, "recvcontext_id" ) == 0) {
 		off = ((char*)&c.recvcontext_id - (char*)&c.handle);
@@ -104,30 +128,105 @@ int dbgrI_field_offset(mqs_type *type, char *name)
 	break;
     case TYPE_MPIR_COMM_LIST:
 	{
+	    MPIR_Comm_list c;
 	    if (strcmp( name, "sequence_number" ) == 0) {
-		off = OFFSET_OF(MPIR_Comm_list, sequence_number);
-	    } else if (strcmp( name, "head" ) == 0) {
-		off = OFFSET_OF(MPIR_Comm_list, head);
+		off = ((char*)&c.sequence_number - (char*)&c);
+	    }
+	    else if (strcmp( name, "head" ) == 0) {
+		off = ((char*)&c.head - (char*)&c);
 	    }
 	    else {
-		printf( "Panic! Unrecognized message match field %s\n", name );
+		printf( "Panic! Unrecognized Comm List field %s\n", name );
+	    }
+	}
+	break;
+    case TYPE_MPIDI_REQUEST:
+	{
+	    struct MPIDI_Request c;
+	    if (strcmp( name, "next" ) == 0) {
+		off = ((char *)&c.next - (char *)&c);
+	    }
+	    else if (strcmp( name, "match" ) == 0) {
+		off = ((char *)&c.match - (char *)&c);
+	    }
+	    else if (strcmp( name, "user_buf" ) == 0) {
+		off = ((char *)&c.user_buf - (char *)&c);
+	    }
+	    else if (strcmp( name, "user_count" ) == 0) {
+		off = ((char *)&c.user_count - (char *)&c);
+	    }
+	    else if (strcmp( name, "datatype" ) == 0) {
+		off = ((char *)&c.datatype - (char *)&c);
+	    }
+	    else {
+		printf( "Panic! Unrecognized mpidi request field %s\n", name );
+	    }
+	}
+	break;
+    case TYPE_MPIDI_MESSAGE_MATCH:
+	{
+	    if (strcmp( name, "parts" ) == 0) {
+		off = 0;
+	    }
+	    else {
+		printf( "Panic: Unrecognized mpidi_match fields %s\n", name );
+	    }
+	}
+	break;
+    case TYPE_MPIDI_MESSAGE_MATCH_PARTS:
+	{
+	    MPIDI_Message_match c;
+	    if (strcmp( name, "tag" ) == 0) {
+		off = ((char *)&c.parts.tag - (char *)&c);
+	    }
+	    else if (strcmp( name, "rank" ) == 0) {
+		off = ((char *)&c.parts.rank - (char *)&c);
+	    }
+	    else if (strcmp( name, "context_id" ) == 0) {
+		off = ((char *)&c.parts.context_id - (char *)&c);
+	    }
+	    else {
+		printf( "Panic! Unrecognized message match parts field %s\n", name );
 	    }
 	}
 	break;
     case TYPE_MPID_REQUEST:
 	{
-	    if (strcmp( name, "status" ) == 0) {
-		off = OFFSET_OF(MPID_Request, status);
-	    } else if (strcmp( name, "cc" ) == 0) {
-		off = OFFSET_OF(MPID_Request, cc);
-	    } else if (strcmp( name, "next" ) == 0) {
-		off = OFFSET_OF(MPID_Request, dcmf.next);
-	    } else if (strcmp( name, "tag" ) == 0) {
-		off = OFFSET_OF_MACRO(MPID_Request, MPID_Request_getMatchTag);
-	    } else if (strcmp( name, "rank" ) == 0) {
-		off = OFFSET_OF_MACRO(MPID_Request, MPID_Request_getMatchRank);
-	    } else if (strcmp( name, "context_id" ) == 0) {
-		off = OFFSET_OF_MACRO(MPID_Request, MPID_Request_getMatchCtxt);
+	    MPID_Request c;
+	    if (strcmp( name, "dev" ) == 0) {
+		off = ((char *)&c.dev - (char *)&c);
+	    }
+	    else if (strcmp( name, "status" ) == 0) {
+		off = ((char *)&c.status - (char *)&c);
+	    }
+	    else if (strcmp( name, "cc" ) == 0) {
+		off = ((char *)&c.cc - (char *)&c);
+	    }
+	    /* else if (strcmp( name, "next" ) == 0) {
+		off = ((char *)&c.next - (char *)&c);
+		} */
+	    else {
+		printf( "Panic! Unrecognized request field %s\n", name );
+	    }
+	}
+	break;
+    case TYPE_MPIR_SENDQ:
+	{
+	    struct MPIR_Sendq c;
+	    if (strcmp( name, "next" ) == 0) {
+		off = ((char *)&c.next - (char *)&c);
+	    }
+	    else if (strcmp( name, "tag" ) == 0) {
+		off = ((char *)&c.tag - (char *)&c);
+	    }
+	    else if (strcmp( name, "rank" ) == 0) {
+		off = ((char *)&c.rank - (char *)&c);
+	    }
+	    else if (strcmp( name, "context_id" ) == 0) {
+		off = ((char *)&c.context_id - (char *)&c);
+	    }
+	    else if (strcmp( name, "sreq" ) == 0) {
+		off = ((char *)&c.sreq - (char *)&c);
 	    }
 	    else {
 		printf( "Panic! Unrecognized Sendq field %s\n", name );

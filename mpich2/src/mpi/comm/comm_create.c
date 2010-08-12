@@ -60,7 +60,7 @@ PMPI_LOCAL int MPIR_Comm_create_calculate_mapping(MPID_Group  *group_ptr,
     int subsetOfWorld = 0;
     int i, j;
     int n;
-    int *mapping;
+    int *mapping=0;
     int vcr_size;
     MPID_VCR *vcr;
     MPIU_CHKPMEM_DECL(1);
@@ -169,8 +169,8 @@ PMPI_LOCAL int MPIR_Comm_create_calculate_mapping(MPID_Group  *group_ptr,
     MPIU_Assert(mapping != NULL);
     *mapping_vcr_out = vcr;
     *mapping_out     = mapping;
-    MPIU_VG_CHECK_MEM_IS_DEFINED(*mapping_vcr_out, vcr_size * sizeof(**mapping_vcr_out));
-    MPIU_VG_CHECK_MEM_IS_DEFINED(*mapping_out, n * sizeof(**mapping_out));
+    MPL_VG_CHECK_MEM_IS_DEFINED(*mapping_vcr_out, vcr_size * sizeof(**mapping_vcr_out));
+    MPL_VG_CHECK_MEM_IS_DEFINED(*mapping_out, n * sizeof(**mapping_out));
 
     MPIU_CHKPMEM_COMMIT();
 fn_exit:
@@ -245,6 +245,7 @@ PMPI_LOCAL int MPIR_Comm_create_intra(MPID_Comm *comm_ptr, MPID_Group *group_ptr
        member of the group */
     /* In the multi-threaded case, MPIR_Get_contextid assumes that the
        calling routine already holds the single criticial section */
+    /* TODO should be converted to use MPIR_Get_contextid_sparse instead */
     mpi_errno = MPIR_Get_contextid( comm_ptr, &new_context_id );
     if (mpi_errno) MPIU_ERR_POP(mpi_errno);
     MPIU_Assert(new_context_id != 0);
@@ -252,7 +253,8 @@ PMPI_LOCAL int MPIR_Comm_create_intra(MPID_Comm *comm_ptr, MPID_Group *group_ptr
     if (group_ptr->rank != MPI_UNDEFINED) {
         MPID_VCR *mapping_vcr = NULL;
 
-        mpi_errno = MPIR_Comm_create_calculate_mapping(group_ptr, comm_ptr, &mapping_vcr, &mapping);
+        mpi_errno = MPIR_Comm_create_calculate_mapping(group_ptr, comm_ptr, 
+						       &mapping_vcr, &mapping);
         if (mpi_errno) MPIU_ERR_POP(mpi_errno);
 
         /* Get the new communicator structure and context id */
@@ -288,7 +290,7 @@ PMPI_LOCAL int MPIR_Comm_create_intra(MPID_Comm *comm_ptr, MPID_Group *group_ptr
         mpi_errno = MPIR_Comm_commit(newcomm_ptr);
         if (mpi_errno) MPIU_ERR_POP(mpi_errno);
 
-        *newcomm = newcomm_ptr->handle;
+        MPIU_OBJ_PUBLISH_HANDLE(*newcomm, newcomm_ptr->handle);
     }
     else {
         /* This process is not in the group */
@@ -333,12 +335,10 @@ PMPI_LOCAL int MPIR_Comm_create_inter(MPID_Comm *comm_ptr, MPID_Group *group_ptr
     MPID_VCR *mapping_vcr = NULL;
     MPID_VCR *remote_mapping_vcr = NULL;
 
-    MPIU_THREADPRIV_DECL;
     MPIU_CHKLMEM_DECL(1);
     MPID_MPI_STATE_DECL(MPID_STATE_MPIR_COMM_CREATE_INTER);
 
     MPID_MPI_FUNC_ENTER(MPID_STATE_MPIR_COMM_CREATE_INTER);
-    MPIU_THREADPRIV_GET;
 
     MPIU_Assert(comm_ptr->comm_kind == MPID_INTERCOMM);
 
@@ -361,7 +361,8 @@ PMPI_LOCAL int MPIR_Comm_create_inter(MPID_Comm *comm_ptr, MPID_Group *group_ptr
 
     remote_mapping_vcr = comm_ptr->vcr;
 
-    mpi_errno = MPIR_Comm_create_calculate_mapping(group_ptr, comm_ptr, &mapping_vcr, &mapping);
+    mpi_errno = MPIR_Comm_create_calculate_mapping(group_ptr, comm_ptr, 
+						   &mapping_vcr, &mapping);
     if (mpi_errno) MPIU_ERR_POP(mpi_errno);
 
     if (group_ptr->rank != MPI_UNDEFINED) {
@@ -389,8 +390,8 @@ PMPI_LOCAL int MPIR_Comm_create_inter(MPID_Comm *comm_ptr, MPID_Group *group_ptr
        so that the remote process can construct the appropriate VCRT
        First we exchange group sizes and context ids.  Then the
        ranks in the remote group, from which the remote VCRT can
-       be constructed.  We can't use NMPI_Sendrecv since we need to
-       use the "collective" context in the original intercommunicator */
+       be constructed.  We need to use the "collective" context in the
+       original intercommunicator */
     if (comm_ptr->rank == 0) {
         int info[2];
         info[0] = new_context_id;
@@ -416,19 +417,20 @@ PMPI_LOCAL int MPIR_Comm_create_inter(MPID_Comm *comm_ptr, MPID_Group *group_ptr
         if (mpi_errno) { MPIU_ERR_POP( mpi_errno ); }
 
         /* Broadcast to the other members of the local group */
-        MPIR_Nest_incr();
-        NMPI_Bcast( rinfo, 2, MPI_INT, 0,
-                    comm_ptr->local_comm->handle );
-        NMPI_Bcast( remote_mapping, remote_size, MPI_INT, 0,
-                    comm_ptr->local_comm->handle );
-        MPIR_Nest_decr();
+        mpi_errno = MPIR_Bcast_impl( rinfo, 2, MPI_INT, 0,
+                                     comm_ptr->local_comm);
+        if (mpi_errno) MPIU_ERR_POP(mpi_errno);
+        mpi_errno = MPIR_Bcast_impl( remote_mapping, remote_size, MPI_INT, 0,
+                                     comm_ptr->local_comm);
+        if (mpi_errno) MPIU_ERR_POP(mpi_errno);
+        
     }
     else {
         /* The other processes */
         /* Broadcast to the other members of the local group */
-        MPIR_Nest_incr();
-        NMPI_Bcast( rinfo, 2, MPI_INT, 0,
-                    comm_ptr->local_comm->handle );
+        mpi_errno = MPIR_Bcast_impl( rinfo, 2, MPI_INT, 0,
+                                     comm_ptr->local_comm);
+        if (mpi_errno) MPIU_ERR_POP(mpi_errno);
         if (newcomm_ptr != NULL) {
             newcomm_ptr->context_id = rinfo[0];
         }
@@ -436,9 +438,9 @@ PMPI_LOCAL int MPIR_Comm_create_inter(MPID_Comm *comm_ptr, MPID_Group *group_ptr
         MPIU_CHKLMEM_MALLOC(remote_mapping,int*,
                             remote_size*sizeof(int),
                             mpi_errno,"remote_mapping");
-        NMPI_Bcast( remote_mapping, remote_size, MPI_INT, 0,
-                    comm_ptr->local_comm->handle );
-        MPIR_Nest_decr();
+        mpi_errno = MPIR_Bcast_impl( remote_mapping, remote_size, MPI_INT, 0,
+                                     comm_ptr->local_comm);
+        if (mpi_errno) MPIU_ERR_POP(mpi_errno);
     }
 
     if (group_ptr->rank != MPI_UNDEFINED) {
@@ -517,7 +519,6 @@ int MPI_Comm_create(MPI_Comm comm, MPI_Group group, MPI_Comm *newcomm)
     int mpi_errno = MPI_SUCCESS;
     MPID_Comm *comm_ptr = NULL;
     MPID_Group *group_ptr;
-    MPIU_THREADPRIV_DECL;
     MPID_MPI_STATE_DECL(MPID_STATE_MPI_COMM_CREATE);
 
     MPIR_ERRTEST_INITIALIZED_ORDIE();

@@ -646,6 +646,7 @@ void MPIDI_Coll_Comm_create (MPID_Comm *comm)
   comm->coll_fns->Reduce_scatter = MPIDO_Reduce_scatter;
   comm->coll_fns->Scan           = MPIDO_Scan;
   comm->coll_fns->Exscan         = MPIDO_Exscan;
+  comm->coll_fns->Reduce_scatter_block = MPIDO_Reduce_scatter_block;
 
   /* set geometric properties of the communicator */
   if (mpid_hw.tSize != 1)
@@ -663,7 +664,7 @@ void MPIDI_Coll_Comm_create (MPID_Comm *comm)
   if (global)
     MPIDO_INFO_SET(comm_prop, MPIDO_GLOBAL_CONTEXT);
 
-  MPIR_Barrier(comm);
+  MPIR_Barrier_intra(comm);
 
 
   MPIX_rank2torus(comm_world->rank,
@@ -677,7 +678,7 @@ void MPIDI_Coll_Comm_create (MPID_Comm *comm)
   coords[6] = ~(coords[2]);
   coords[7] = ~(coords[3]);
 
-  MPIR_Allreduce(coords, min_max_coords, 8, MPI_UNSIGNED, MPI_MAX, comm);
+  MPIR_Allreduce_intra(coords, min_max_coords, 8, MPI_UNSIGNED, MPI_MAX, comm);
 
   /* find if the communicator is a rectangle */
   t_size = (unsigned) (min_max_coords[3] - ~min_max_coords[7] + 1);
@@ -871,6 +872,7 @@ void MPIDI_Coll_Comm_create (MPID_Comm *comm)
   comm->coll_fns->Reduce_scatter = NULL;
   comm->coll_fns->Scan           = NULL;
   comm->coll_fns->Exscan         = NULL;
+  comm->coll_fns->Reduce_scatter_block = NULL;
 
 #endif /* !USE_CCMI_COLL */
 
@@ -892,7 +894,7 @@ void MPIDI_Coll_Comm_create (MPID_Comm *comm)
     comm -> dcmf.rcvcounters = MPIU_Malloc(type_sz * comm->local_size);
   }
 
-  MPIR_Barrier(comm);
+  MPIR_Barrier_intra(comm);
 }
 
 

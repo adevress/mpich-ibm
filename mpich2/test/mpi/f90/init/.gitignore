@@ -2,6 +2,7 @@
 /Makefile.in
 /Makefile
 /testlist
+/checksizes.c
 /*.o
 /baseenvf90.f90
 /*.gcda

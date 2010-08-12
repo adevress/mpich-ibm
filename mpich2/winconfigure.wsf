@@ -103,14 +103,14 @@
 <!--
 		<named
 			name = "channel"
-			helpstring = "specify the channel for --genbuildfiles (sock,shm,sshm,ssm,essm,ib)"
+			helpstring = "specify the channel for --genbuildfiles (sock,nemesis)"
 			type = "string"
 			require = "false"
 		/>
 -->
 		<named
 			name = "channel"
-			helpstring = "specify the channel for --genbuildfiles (sock,shm,sshm,ssm)"
+			helpstring = "specify the channel for --genbuildfiles (sock,nemesis)"
 			type = "string"
 			require = "false"
 		/>
@@ -228,6 +228,7 @@ unhandled_definitions_instances = 0
 unhandled_ats = ""
 unhandled_ats_count = 0
 unhandled_ats_instances = 0
+Set customDefDict = Nothing
 ' variables for creating the nmake file
 Dim bfile
 Dim mfile
@@ -247,14 +248,19 @@ buildfiles_channel = "sock"
 MPI_MAX_PROCESSOR_NAME = "128"
 MPI_AINT64               = "__int64"
 MPI_AINT64_FMT_DEC_SPEC  = "%I64d"
+MPIR_PINT64_FMT_DEC_SPEC  = """%I64d"""
+MPIR_UPINT64_FMT_DEC_SPEC  = """%I64u"""
 MPI_AINT64_FMT_HEX_SPEC  = "%I64x"
 BSEND_OVERHEAD64         = "95"
 MPI_AINT32               = "int"
 MPI_AINT32_FMT_DEC_SPEC  = "%d"
+MPIR_PINT32_FMT_DEC_SPEC  = """%d"""
+MPIR_UPINT32_FMT_DEC_SPEC  = """%u"""
 MPI_AINT32_FMT_HEX_SPEC  = "%x"
 BSEND_OVERHEAD32         = "59"
 MPI_FINT               = "int"
 'MPI_OFFSET             = "long long"
+
 MPI_OFFSET             = "__int64"
 'MPI_OFFSET_TYPEDEF     = "typedef __int64 MPI_Offset;"
 'MPI_OFFSET_TYPEDEF     = "typedef long long MPI_Offset;"
@@ -402,16 +408,15 @@ Next
   len_two_int         = "08"
   len_long_double_int = "10"
 ' Fortran datatype sizes
-  len_integer64         = "08"
   len_integer32         = "04"
   len_doublecplx      = "10"
   len_2dc             = "20"
 
-' Special C++ Datatypes to support Fortran datatypes within C++ 
+' Special C++ Datatypes
   len_bool			= "01"
   len_complex			= "08"
   len_double_complex		= "10"
-  len_long_double_complex	= "20"
+  len_long_double_complex	= "10"
 
 ' C99 types - These types are not supported by VS, however
 ' C++ pgms use the same types. So we use the C++ type sizes here
@@ -479,11 +484,7 @@ Function CreateDtypeDictionary(byref types, str, b64)
 				Case "${len_long_double}"
 					dtype_val_str = Replace(dtype_val_str, size_str, len_long_double)
 				Case "${len_integer}"
-					if b64 then
-						dtype_val_str = Replace(dtype_val_str, size_str, len_integer64)
-					else
-						dtype_val_str = Replace(dtype_val_str, size_str, len_integer32)
-					end if
+					dtype_val_str = Replace(dtype_val_str, size_str, len_integer32)
 				Case "${len_wchar_t}"
 					dtype_val_str = Replace(dtype_val_str, size_str, len_wchar_t)
 				Case "${len_wchar}"
@@ -538,7 +539,7 @@ fin.Close()
 set dtypes = WScript.CreateObject("Scripting.Dictionary")
 CreateDtypeDictionary dtypes, contents, false
 set dtypes64 = WScript.CreateObject("Scripting.Dictionary")
-CreateDtypeDictionary dtypes64, contents, false
+CreateDtypeDictionary dtypes64, contents, true
 
 'mpi_datatype_prefix = "4c00"
 
@@ -1536,10 +1537,14 @@ Function RegExpFind(pattern, str)
    regEx.IgnoreCase = True             ' Set case insensitivity.
    regEx.Global = True                 ' Set global applicability.
    Set Matches = regEx.Execute(str)    ' Execute search.
-   For Each Match in Matches           ' Return the first match
-      RegExpFind = Match.Value
-      Exit For
-   Next
+   If Matches.Count <> 0 Then
+       For Each Match in Matches           ' Return the first match
+           RegExpFind = Match.Value
+       Exit For
+       Next
+   Else
+       RegExpFind = Null
+   End If
 End Function
 
 ' Append appendString to origString only if appendString is not
@@ -1985,45 +1990,48 @@ Function ReplaceAts( str, use_f77, b64 )
 					str = Replace(str, "@F77_MPI_OFFSET@", "INTEGER (KIND=8)")
 				End If
 			' FIXME: The size of int,... could depend on compiler options
-                        ' These defns, *F90*, are specific to the Intel Fortran Compiler on Windows.
+                        ' These defns, *FC*, are specific to the Intel Fortran Compiler on Windows.
                         ' These values may not work for say gfortran
                         ' We should have a way to override these values
-			Case "@SIZEOF_F90_INTEGER@"
+			Case "@SIZEOF_FC_INTEGER@"
 				If b64 then
-					str = Replace(str, "@SIZEOF_F90_INTEGER@", "4")
+					str = Replace(str, "@SIZEOF_FC_INTEGER@", "4")
 				Else
-					str = Replace(str, "@SIZEOF_F90_INTEGER@", "4")
+					str = Replace(str, "@SIZEOF_FC_INTEGER@", "4")
 				End If
-			Case "@SIZEOF_F90_REAL@"
+			Case "@SIZEOF_FC_REAL@"
 				If b64 then
-					str = Replace(str, "@SIZEOF_F90_REAL@", "4")
+					str = Replace(str, "@SIZEOF_FC_REAL@", "4")
 				Else
-					str = Replace(str, "@SIZEOF_F90_REAL@", "4")
+					str = Replace(str, "@SIZEOF_FC_REAL@", "4")
 				End If
-			Case "@SIZEOF_F90_CHARACTER@"
+			Case "@SIZEOF_FC_CHARACTER@"
 				If b64 then
-					str = Replace(str, "@SIZEOF_F90_CHARACTER@", "1")
+					str = Replace(str, "@SIZEOF_FC_CHARACTER@", "1")
 				Else
-					str = Replace(str, "@SIZEOF_F90_CHARACTER@", "1")
+					str = Replace(str, "@SIZEOF_FC_CHARACTER@", "1")
 				End If
-			Case "@SIZEOF_F90_DOUBLE_PRECISION@"
+			Case "@SIZEOF_FC_DOUBLE_PRECISION@"
 				If b64 then
-					str = Replace(str, "@SIZEOF_F90_DOUBLE_PRECISION@", "8")
+					str = Replace(str, "@SIZEOF_FC_DOUBLE_PRECISION@", "8")
 				Else
-					str = Replace(str, "@SIZEOF_F90_DOUBLE_PRECISION@", "8")
+					str = Replace(str, "@SIZEOF_FC_DOUBLE_PRECISION@", "8")
 				End If
                         ' Fortran real model in "precision, range" format
-                        Case "@F90_REAL_MODEL@"
-                            str = Replace(str, "@F90_REAL_MODEL@", "6 , 37")
+                        Case "@FC_REAL_MODEL@"
+                            str = Replace(str, "@FC_REAL_MODEL@", "6 , 37")
                         ' Fortran double model in "precision, range" format
-                        Case "@F90_DOUBLE_MODEL@"
-                            str = Replace(str, "@F90_DOUBLE_MODEL@", "15 , 307")
+                        Case "@FC_DOUBLE_MODEL@"
+                            str = Replace(str, "@FC_DOUBLE_MODEL@", "15 , 307")
+                        ' Fortran integer range
+                        Case "@FC_INTEGER_MODEL@"
+                            str = Replace(str, "@FC_INTEGER_MODEL@", "9")
                         ' Fortran integer model in "range1, kind1, range2, kind2, ..." format
-                        Case "@F90_INTEGER_MODEL@"
-                            str = Replace(str, "@F90_INTEGER_MODEL@", "2 , 1 , 4 , 2 , 9 , 4 , 18 , 8 ,")
+                        Case "@FC_ALL_INTEGER_MODELS@"
+                            str = Replace(str, "@FC_ALL_INTEGER_MODELS@", "2 , 1 , 4 , 2 , 9 , 4 , 18 , 8 ,")
                         ' Fortran integer model map in "{range1, kind1, size1}, {range2, kind2, size2}..." format
-                        Case "@F90_INTEGER_MODEL_MAP@"
-                            str = Replace(str, "@F90_INTEGER_MODEL_MAP@", "{ 2 , 1 , 1 }, { 4 , 2 , 2 }, { 9 , 4 , 4 }, { 18 , 8 , 8 },")
+                        Case "@FC_INTEGER_MODEL_MAP@"
+                            str = Replace(str, "@FC_INTEGER_MODEL_MAP@", "{ 2 , 1 , 1 }, { 4 , 2 , 2 }, { 9 , 4 , 4 }, { 18 , 8 , 8 },")
 			' REQD = (Real EQuals Double precision) ? "!" : ""
 			Case "@REQD@"
 				str = Replace(str, "@REQD@", "")
@@ -2041,7 +2049,7 @@ Function ReplaceAts( str, use_f77, b64 )
 			Case "@configure_input@"
 				'str = Replace(str, "@configure_input@", "")
 			Case "@DLLIMPORT@"
-				str = Replace(str, "@DLLIMPORT@", "CDEC$ ATTRIBUTES DLLIMPORT::/MPIPRIV1/" & vbNewLine & "CDEC$ ATTRIBUTES DLLIMPORT::/MPIPRIV2/" & vbNewLine & "CDEC$ ATTRIBUTES DLLIMPORT::/MPIPRIVC/")
+				str = Replace(str, "@DLLIMPORT@", "CDEC$ ATTRIBUTES DLLIMPORT::/MPIFCMB1/" & vbNewLine & "CDEC$ ATTRIBUTES DLLIMPORT::/MPIFCMB2/" & vbNewLine & "CDEC$ ATTRIBUTES DLLIMPORT::/MPIFCMB3/" & vbNewLine & "CDEC$ ATTRIBUTES DLLIMPORT::/MPIFCMB4/" & vbNewLine & "CDEC$ ATTRIBUTES DLLIMPORT::/MPIFCMB5/" & vbNewLine & "CDEC$ ATTRIBUTES DLLIMPORT::/MPIFCMB7/" & vbNewLine & "CDEC$ ATTRIBUTES DLLIMPORT::/MPIFCMB8/")
 			Case "@MPID_THREAD_TYPEDEFS@"
 				str = Replace(str, "@MPID_THREAD_TYPEDEFS@", mpid_thread_typedefs)
 			Case "@MPID_THREAD_FUNCS@"
@@ -2128,25 +2136,25 @@ Function ReplaceAts( str, use_f77, b64 )
 			Case "@FFLAGS@"
 				' FIXME: Not the complete list of FFLAGS --- only some listed
 				str = Replace(str, "@FFLAGS@", "/names:lowercase /iface:cref /assume:underscore")
-			Case "@F90@"
-				str = Replace(str, "@F90@", "ifort.exe")
-			Case "@F90FLAGS@"
-				' FIXME: Not the complete list of F90FLAGS --- only some listed
-				str = Replace(str, "@F90FLAGS@", "/names:lowercase /iface:cref /assume:underscore")
+			Case "@FC@"
+				str = Replace(str, "@FC@", "ifort.exe")
+			Case "@FCFLAGS@"
+				' FIXME: Not the complete list of FCFLAGS --- only some listed
+				str = Replace(str, "@FCFLAGS@", "/names:lowercase /iface:cref /assume:underscore")
 			Case "@MPICH2_VERSION@"
 				str = Replace(str, "@MPICH2_VERSION@", mpich2Version)
 			Case "@MPICH2_NUMVERSION@"
 				str = Replace(str, "@MPICH2_NUMVERSION@", mpich2NumVersion)
 			Case "@nemesis_nets_macro_defs@"
-				str = Replace(str, "@nemesis_nets_macro_defs@", "#define MPIDI_NEM_NEWTCP_MODULE 0")
+				str = Replace(str, "@nemesis_nets_macro_defs@", "#define MPIDI_NEM_NEWTCP_MODULE 0" + vbCrLf + "#define MPIDI_NEM_ND_MODULE 1")
 			Case "@nemesis_nets_func_decl@"
-				str = Replace(str, "@nemesis_nets_func_decl@", "MPIDI_nem_newtcp_module_funcs")
+				str = Replace(str, "@nemesis_nets_func_decl@", "MPIDI_nem_newtcp_module_funcs, MPIDI_Nem_nd_funcs")
 			Case "@nemesis_nets_array_sz@"
-				str = Replace(str, "@nemesis_nets_array_sz@", "1")
+				str = Replace(str, "@nemesis_nets_array_sz@", "2")
 			Case "@nemesis_nets_func_array@"
-				str = Replace(str, "@nemesis_nets_func_array@", "&MPIDI_nem_newtcp_module_funcs")
+				str = Replace(str, "@nemesis_nets_func_array@", "&MPIDI_nem_newtcp_module_funcs, &MPIDI_Nem_nd_funcs")
 			Case "@nemesis_nets_strings@"
-				str = Replace(str, "@nemesis_nets_strings@", """newtcp""")
+				str = Replace(str, "@nemesis_nets_strings@", """newtcp"",""nd""")
 			Case Else
 			'	unhandled_ats = unhandled_ats & Match & vbNewLine
 			'	unhandled_ats_count = unhandled_ats_count + 1
@@ -2234,6 +2242,8 @@ Sub AddOPADefinitions( fout, filename, b64 )
                 fout.WriteLine("#define OPA_HAVE_SYS_TYPES_H 1")
             Case "HAVE_UNISTD_H"
                 fout.WriteLine("/* #undef HAVE_UNISTD_H */")
+            Case "HAVE_STDDEF_H"
+                fout.WriteLine("#define HAVE_STDDEF_H 1")
             Case "LIMIT_THREADS"
                 fout.WriteLine("/* #undef LIMIT_THREADS */")
             ' Just using the default value in the unix build for max nthreads
@@ -2272,8 +2282,12 @@ Sub AddOPADefinitions( fout, filename, b64 )
                 fout.WriteLine("#define inline __inline")
             Case "restrict"
                 fout.WriteLine("#define restrict")
+            Case "const"
+                fout.WriteLine("/* #undef const */")
             Case "USE_LOCK_BASED_PRIMITIVES"
                 fout.WriteLine("/* #undef USE_LOCK_BASED_PRIMITIVES */")
+            Case "EXPLICIT_EMULATION"
+                fout.WriteLine("/* #undef EXPLICIT_EMULATION */")
             Case Else
                 'MsgBox("Unhandled definition <" & define & ">")
                 If appendUniqueString(unhandled_definitions, macroname) Then
@@ -2286,6 +2300,76 @@ Sub AddOPADefinitions( fout, filename, b64 )
         Next
     End If
 End Sub
+
+Function CreateMPLDefDict()
+    Set customDefDict = Nothing
+    Set customDefDict = CreateObject("Scripting.Dictionary")
+    customDefDict.Add "PACKAGE", "MPL"
+    customDefDict.Add "VERSION", "0.1"
+    CreateMPLDefDict = True
+End Function
+
+Function FreeMPLDefDict()
+    Set customDefDict = Nothing
+    FreeMPLDefDict = True
+End Function
+
+Function IsLowerCaseChar(c)
+    Set regEx = New RegExp
+    regEx.Pattern = "[a-z]"
+    regEx.IgnoreCase = False
+    regEx.Global = True
+    If regEx.Test(c) Then
+        IsLowerCaseChar = True
+    Else
+        IsLowerCaseChar = False
+    End If
+End Function
+
+Function AddPrefixToDefinitions(filename, prefix_str)
+    temp_filename = filename & "_temp"
+    If f.FileExists(temp_filename) Then
+        f.DeleteFile temp_filename, "True"
+    End If
+    f.MoveFile filename, temp_filename
+
+    Set prefix_file = f.CreateTextFile(filename, true)
+    Set temp_file = f.OpenTextFile(temp_filename)
+    
+    Do While temp_file.AtEndOfStream <> True
+        Dim str, define, macroname_val
+        str = temp_file.ReadLine()
+
+        define = RegExpFind("(#define|#ifndef)(\b).+[\r\n]*", str)
+        Select Case Left(define, 7)
+            Case "#define"
+                macroname_val = RegExpFind("(\s).+", define)
+                str = RegExpFind("(\S).+", macroname_val)
+                If IsLowerCaseChar(Left(str, 1)) Then
+                    str = "#define " & "_" & LCase(prefix_str) & str
+                Else
+                    str = "#define " & UCase(prefix_str) & str
+                End If
+    
+            Case "#ifndef"
+                macroname_val = RegExpFind("(\s).+", define)
+                str = RegExpFind("(\S).+", macroname_val)
+                If IsLowerCaseChar(Left(str, 1)) Then
+                    str = "#ifndef " & LCase(prefix_str) & str
+                Else
+                    str = "#ifndef " & UCase(prefix_str) & str
+                End If
+            Case Else
+                ' Just print the line as it is
+        End Select        
+        prefix_file.WriteLine(str)
+    Loop
+    
+    temp_file.Close()
+    prefix_file.Close()
+    f.DeleteFile temp_filename, "True"
+    AddPrefixToDefinitions = True
+End Function
 
 Sub AddDefinitions( fout, filename, b64 )
 	If f.FileExists( filename ) Then
@@ -2305,21 +2389,21 @@ Sub AddDefinitions( fout, filename, b64 )
 			fout.WriteLine(comment)
 			Select Case macroname
 				Case "HAVE_INT8_T"
-					fout.WriteLine("/* #undef HAVE_INT8_T */")
+					fout.WriteLine("#define HAVE_INT8_T 1")
 				Case "HAVE_INT16_T"
-					fout.WriteLine("/* #undef HAVE_INT16_T */")
+					fout.WriteLine("#define HAVE_INT16_T 1")
 				Case "HAVE_INT32_T"
-					fout.WriteLine("/* #undef HAVE_INT32_T */")
+					fout.WriteLine("#define HAVE_INT32_T 1")
 				Case "HAVE_INT64_T"
-					fout.WriteLine("/* #undef HAVE_INT64_T */")
+					fout.WriteLine("#define HAVE_INT64_T 1")
 				Case "HAVE_UINT8_T"
-					fout.WriteLine("/* #undef HAVE_INT8_T */")
+					fout.WriteLine("#define HAVE_UINT8_T 1")
 				Case "HAVE_UINT16_T"
-					fout.WriteLine("/* #undef HAVE_INT16_T */")
+					fout.WriteLine("#define HAVE_UINT16_T 1")
 				Case "HAVE_UINT32_T"
-					fout.WriteLine("/* #undef HAVE_INT32_T */")
+					fout.WriteLine("#define HAVE_UINT32_T 1")
 				Case "HAVE_UINT64_T"
-					fout.WriteLine("/* #undef HAVE_INT64_T */")
+					fout.WriteLine("#define HAVE_UINT64_T 1")
                                 Case "HAVE__BOOL"
                                         fout.WriteLine("/* #undef HAVE__BOOL */")
                                 Case "HAVE__COMPLEX"
@@ -2475,6 +2559,10 @@ Sub AddDefinitions( fout, filename, b64 )
 					fout.WriteLine("#define HAVE_SOCKET 1")
 				Case "HAVE_STRDUP"
 					fout.WriteLine("#define HAVE_STRDUP 1")
+                                Case "HAVE_STRNCMP"
+                                        fout.WriteLine("#define HAVE_STRNCMP 1")
+                                Case "NEEDS_STRNCMP_DECL"
+                                        fout.WriteLine("/* #undef NEEDS_STRNCMP_DECL */")
 				Case "HAVE_STRNCASECMP"
 					fout.WriteLine("/* #undef HAVE_STRNCASECMP */")
 				Case "HAVE_ERRNO_H"
@@ -2488,8 +2576,15 @@ Sub AddDefinitions( fout, filename, b64 )
 				Case "HAVE_STDIO_H"
 					fout.WriteLine("#define HAVE_STDIO_H")
 				Case "HAVE_ERROR_CHECKING"
-					fout.WriteLine("#define HAVE_ERROR_CHECKING MPID_ERROR_LEVEL_ALL")
-					fout.WriteLine("/*#undef HAVE_ERROR_CHECKING*/")
+                                    ' FIXME: Ideally we should enable the error checking level
+                                    ' for 32-bit builds in vsprojs
+                                    If b64 Then
+                                        ' On the 64-bit builds the level of error checking is
+                                        ' controlled from the makefile
+                                        fout.WriteLine("/* #undef HAVE_ERROR_CHECKING */")
+                                    Else
+                                        fout.WriteLine("#define HAVE_ERROR_CHECKING MPID_ERROR_LEVEL_ALL")
+                                    End If
 				Case "HAVE_TIMING MPID_TIMING_KIND_LOG"
 					fout.WriteLine("/*#define HAVE_TIMING MPID_TIMING_KIND_LOG*/")
 				Case "HAVE_TIMING MPID_TIMING_KIND_ALL"
@@ -2646,6 +2741,10 @@ Sub AddDefinitions( fout, filename, b64 )
 					fout.WriteLine("#define HAVE_LONG_DOUBLE 1")
 				Case "HAVE_LONG_LONG_INT"
 					fout.WriteLine("#define HAVE_LONG_LONG_INT 1")
+				Case "HAVE_C_ATTR_ALIGNED"
+					fout.WriteLine("/* #undef HAVE_C_ATTR_ALIGNED */")
+				Case "HAVE_C_MULTI_ATTR_ALIAS"
+					fout.WriteLine("/* #undef HAVE_C_MULTI_ATTR_ALIAS */")
 				Case "HAVE_MAX_STRUCT_ALIGNMENT"
 					'fout.WriteLine("/* #undef HAVE_MAX_STRUCT_ALIGNMENT */")
 					'If bWin64 Then
@@ -2905,6 +3004,14 @@ Sub AddDefinitions( fout, filename, b64 )
 					fout.WriteLine("#ifndef HAVE_STRERROR")
 					fout.WriteLine("#define HAVE_STRERROR 1")
 					fout.WriteLine("#endif")
+                                Case "HAVE_STRERROR_R"
+                                        fout.WriteLine("/* #undef HAVE_STRERROR_R */")
+                                Case "STRERROR_R_CHAR_P"
+                                        fout.WriteLine("/* #undef STRERROR_R_CHAR_P */")
+                                Case "NEEDS_STRERROR_R_DECL"
+                                        fout.WriteLine("/* #undef NEEDS_STRERROR_R_DECL */")
+                                Case "HAVE_DECL_STRERROR_R"
+                                        fout.WriteLine("/* #undef HAVE_DECL_STRERROR_R */")
 				Case "HAVE_ASM_AND_X86_LFENCE"
 					fout.WriteLine("/* #undef HAVE_ASM_AND_X86_LFENCE */")
 				Case "HAVE_ASM_AND_X86_MFENCE"
@@ -2944,9 +3051,9 @@ Sub AddDefinitions( fout, filename, b64 )
 				Case "HAVE_CSHARP_BINDING"
 					fout.WriteLine("/* #undef HAVE_CSHARP_BINDING */")
 				Case "MPIR_REAL4_CTYPE"
-					fout.WriteLine("/* #undef MPIR_REAL4_CTYPE */")
+					fout.WriteLine("#define MPIR_REAL4_CTYPE float")
 				Case "MPIR_REAL8_CTYPE"
-					fout.WriteLine("/* #undef MPIR_REAL8_CTYPE */")
+					fout.WriteLine("#define MPIR_REAL8_CTYPE double")
 				Case "MPIR_REAL16_CTYPE"
 					fout.WriteLine("/* #undef MPIR_REAL16_CTYPE */")
 				Case "MPIR_INTEGER1_CTYPE"
@@ -2965,6 +3072,18 @@ Sub AddDefinitions( fout, filename, b64 )
 					fout.WriteLIne("#define MPIR_CXX_DOUBLE_COMPLEX_VALUE "+ MPIR_CXX_DOUBLE_COMPLEX)
 				Case "MPIR_CXX_LONG_DOUBLE_COMPLEX_VALUE"
 					fout.WriteLIne("#define MPIR_CXX_LONG_DOUBLE_COMPLEX_VALUE "+ MPIR_CXX_LONG_DOUBLE_COMPLEX)
+                                Case "MPIR_PINT_FMT_DEC_SPEC"
+                                        If b64 Then
+                                            fout.WriteLine("#define MPIR_PINT_FMT_DEC_SPEC "+ MPIR_PINT64_FMT_DEC_SPEC)
+                                        Else
+                                            fout.WriteLine("#define MPIR_PINT_FMT_DEC_SPEC "+ MPIR_PINT32_FMT_DEC_SPEC)
+                                        End If
+                                Case "MPIR_UPINT_FMT_DEC_SPEC"
+                                        If b64 Then
+                                            fout.WriteLine("#define MPIR_UPINT_FMT_DEC_SPEC "+ MPIR_UPINT64_FMT_DEC_SPEC)
+                                        Else
+                                            fout.WriteLine("#define MPIR_UPINT_FMT_DEC_SPEC "+ MPIR_UPINT32_FMT_DEC_SPEC)
+                                        End If
 				Case "HAVE___VA_COPY"
 					fout.WriteLine("/* #undef HAVE___VA_COPY */")
 				Case "HAVE_IOSTREAM"
@@ -3007,6 +3126,8 @@ Sub AddDefinitions( fout, filename, b64 )
                                         ' Currently we only build MPICH2 with global lock 
                                         ' -Introduce this option when building lock-free version
                                         fout.WriteLine("/* #undef MPIU_THREAD_SUPPRESS_PREDEFINED_REFCOUNTS */")
+                                Case "MPIU_TLS_SPECIFIER"
+                                        fout.WriteLine("/* #undef MPIU_TLS_SPECIFIER */")
 				Case "MPIU_HANDLE_ALLOCATION_METHOD"
 					fout.WriteLine("#define MPIU_HANDLE_ALLOCATION_METHOD MPIU_HANDLE_ALLOCATION_MUTEX")
 				Case "MPIU_MUTEX_WAIT_TIME"
@@ -3197,6 +3318,8 @@ Sub AddDefinitions( fout, filename, b64 )
 					fout.WriteLine("/* #undef MPISGI */")
 				Case "MPI_OFFSET_IS_INT"
 					fout.WriteLine("/* #undef MPI_OFFSET_IS_INT */")
+				Case "SIZEOF_MPI_OFFSET"
+					fout.WriteLine("/* #undef SIZEOF_MPI_OFFSET */")
 				Case "NEEDS_FSYNC_DECL"
 					fout.WriteLine("/* #undef NEEDS_FSYNC_DECL */")
 				Case "NEEDS_FTRUNCATE_DECL"
@@ -3326,10 +3449,6 @@ Sub AddDefinitions( fout, filename, b64 )
 					fout.WriteLine("#undef HAVE_UTIL_SHM")
 				Case "HAVE_UTIL_SOCK"
 					fout.WriteLine("#undef HAVE_UTIL_SOCK")
-				Case "MPI_AINT_IS_LONG_INT"
-					fout.WriteLine("#define MPI_AINT_IS_LONG_INT 1")
-				Case "MPI_AINT_IS_LONG_LONG_INT"
-					fout.WriteLine("#define MPI_AINT_IS_LONG_LONG_INT 0")
 				Case "pid_t"
 					fout.WriteLine("#define pid_t int")
 				Case "CLOG_IMPL"
@@ -3369,8 +3488,8 @@ Sub AddDefinitions( fout, filename, b64 )
 				Case "HAVE_SYS_SYSCTL_H"
 					fout.WriteLine("#undef HAVE_SYS_SYSCTL_H")
 				' Define to enable nemesis checkpointing
-				Case "ENABLED_CHECKPOINTING"
-					fout.WriteLine("/* #undef ENABLED_CHECKPOINTING */")
+				Case "ENABLE_CHECKPOINTING"
+					fout.WriteLine("/* #undef ENABLE_CHECKPOINTING */")
 				' Define to disable shm communicn in nemesis 
 				' - for debugging
 				Case "ENABLED_NO_LOCAL"
@@ -3444,6 +3563,8 @@ Sub AddDefinitions( fout, filename, b64 )
 					fout.WriteLine("/* #undef HAVE_LIBSCTP */")
 				Case "HAVE_LIBNMAD"
 					fout.WriteLine("/* #undef HAVE_LIBNMAD */")
+				Case "HAVE_LIBCR"
+					fout.WriteLine("/* #undef HAVE_LIBCR */")
 				Case "HAVE_MUNMAP"
 					fout.WriteLine("/* #undef HAVE_MUNMAP */")
 				Case "HAVE_RAND"
@@ -3481,8 +3602,8 @@ Sub AddDefinitions( fout, filename, b64 )
 				Case "HAVE_DOUBLE_ALIGNMENT_EXCEPTION"
 					' FIXME: Doesn't windows 64-bit have alignment exception ? 
 					fout.WriteLine("#undef HAVE_DOUBLE_ALIGNMENT_EXCEPTION")
-				Case "HAVE_F90_TYPE_ROUTINES"
-					fout.WriteLine("#define HAVE_F90_TYPE_ROUTINES")
+				Case "HAVE_FC_TYPE_ROUTINES"
+					fout.WriteLine("#define HAVE_FC_TYPE_ROUTINES")
 				Case "HAVE_GETPID"
 					fout.WriteLine("#undef HAVE_GETPID")
 				Case "HAVE_MPICHCONF"
@@ -3573,10 +3694,20 @@ Sub AddDefinitions( fout, filename, b64 )
 					fout.WriteLine("/* #undef HAVE_MEMCHECK_H */")
                                 Case "HAVE_VALGRIND_MEMCHECK_H"
                                         fout.WriteLine("/* #undef HAVE_VALGRIND_MEMCHECK_H */")
+                                Case "HAVE_HELGRIND_H"
+                                        fout.WriteLine("/* #undef HAVE_HELGRIND_H */")
 				Case "HAVE_VALGRIND_H"
 					fout.WriteLine("/* #undef HAVE_VALGRIND_H */")
+				Case "HAVE_BROKEN_VALGRIND"
+					fout.WriteLine("/* #undef HAVE_BROKEN_VALGRIND */")
                                 Case "HAVE_VALGRIND_VALGRIND_H"
                                         fout.WriteLine("/* #undef HAVE_VALGRIND_VALGRIND_H */")
+                                Case "HAVE_VALGRIND_HELGRIND_H"
+                                        fout.WriteLine("/* #undef HAVE_VALGRIND_HELGRIND_H */")
+                                Case "HAVE_DRD_H"
+                                        fout.WriteLine("/* #undef HAVE_DRD_H */")
+                                Case "HAVE_VALGRIND_DRD_H"
+                                        fout.WriteLine("/* #undef HAVE_VALGRIND_DRD_H */")
 				Case "USE_SMP_COLLECTIVES"
 					fout.WriteLine("#define USE_SMP_COLLECTIVES 1")
 				Case "CH3_RANK_BITS"
@@ -3595,6 +3726,8 @@ Sub AddDefinitions( fout, filename, b64 )
                                         fout.WriteLine("/* #undef USE_SYSV_SHM */")
                                 Case "HAVE_MPI_2DOUBLE_COMPLEX"
                                         fout.WriteLine("#define HAVE_MPI_2DOUBLE_COMPLEX 1")
+                                Case "HAVE_MPI_2COMPLEX"
+                                        fout.WriteLine("#define HAVE_MPI_2COMPLEX 1")
                                 Case "HAVE_MPI_INTEGER16"
                                         fout.WriteLine("#define HAVE_MPI_INTEGER16 1")
                                 Case "MPIO_USES_MPI_REQUEST"
@@ -3639,19 +3772,41 @@ Sub AddDefinitions( fout, filename, b64 )
                                         End if
                                 Case "USE_ASYNC_PROGRESS"
                                         fout.WriteLine("/* #undef USE_ASYNC_PROGRESS */")
+                                ' Windows builds don't rely on libtool - so no need to define
+                                ' LT_OBJDIR
+                                Case "LT_OBJDIR"
+                                        fout.WriteLine("/* #undef LT_OBJDIR */")
 				Case Else
+                                    Dim useCustomDefDict
+                                    useCustomDefDict = False
+                                    If Not (customDefDict Is Nothing) Then
+                                        If customDefDict.Exists(macroname) Then
+                                            useCustomDefDict = True
+                                        End If
+                                    End If
+                                    If useCustomDefDict Then
+                                        fout.WriteLine("#define " & macroname & " " & customDefDict.Item(macroname))
+                                    Else
 					'MsgBox("Unhandled definition <" & define & ">")
 					If appendUniqueString(unhandled_definitions, macroname) Then
 						unhandled_definitions_count = unhandled_definitions_count + 1
 					End If
 					unhandled_definitions_instances = unhandled_definitions_instances + 1
 					fout.WriteLine("/* unknown definition: " & macroname & " */")
+                                    End If
 			End Select
 			fout.WriteLine("")
 		Next
 	End If
 End Sub
 
+printMsg "STATUS", "Checking MPICH2 dependencies..."
+if not f.FolderExists("C:\Program Files\Microsoft HPC Pack 2008 SDK") then
+    printMsg "ERROR", "Unable to find Microsoft HPC SDK"
+    WScript.Quit
+else
+    printMsg "VERBOSE", "Found MS HPC SDK "
+end if
 printMsg "STATUS", "Creating MPICH2 header files..."
 printMsg "STATUS", "Creating generic header files..."
 
@@ -4445,6 +4600,22 @@ Function BuildIFaces()
 			printMsg "VERBOSE", "Skipping file: src\binding\f77\setbotf.f"
 		End If
 
+                '
+                ' Generate setbot.c
+                '
+                If f.FileExists("src\binding\f77\setbot.c.in") Then
+                    set fin = f.OpenTextFile("src\binding\f77\setbot.c.in")
+                    printMsg "VERBOSE", "Creating src\binding\f77\setbot.c"
+                    set fout = f.CreateTextFile("src\binding\f77\setbot.c")
+                    contents = fin.ReadAll()
+                    contents = ReplaceAts(contents, true, false)
+                    fout.Write(contents)
+                    fin.Close()
+                    fout.Close()
+                Else
+                    printMsg "VERBOSE", "Skipping file: src\binding\f77\setbot.c"
+                End If
+
 		'
 		' Generate F90 module files
 		'
@@ -4850,6 +5021,9 @@ fout.WriteLine("#define HAVE_NT_INTRINSICS")
 fout.WriteLine("#define HAVE_NT_SHARED_MEM")
 fout.WriteLine("#define USE_NT_SHM	1")
 fout.WriteLine("#define USE_NT_SOCK 1")
+fout.WriteLine("#define HAVE_EXECUTIVE_PE 1")
+fout.WriteLine("#define HAVE__MKTEMP_S 1")
+fout.WriteLine("#define HAVE_FOPEN_S 1")
 ' Disable warnings for unsecure versions, eg: snprintf instead of snprintf_s, of funcs
 fout.WriteLine("#pragma warning( disable : 4996 )") 
 ' Define so that we can test whether the mpichconf.h file has been included 
@@ -4922,6 +5096,9 @@ fout.WriteLine("#define HAVE_NT_INTRINSICS")
 fout.WriteLine("#define HAVE_NT_SHARED_MEM")
 fout.WriteLine("#define USE_NT_SHM	1")
 fout.WriteLine("#define USE_NT_SOCK 1")
+fout.WriteLine("#define HAVE_EXECUTIVE_PE 1")
+fout.WriteLine("#define HAVE__MKTEMP_S 1")
+fout.WriteLine("#define HAVE_FOPEN_S 1")
 ' Disable warnings for unsecure versions, eg: snprintf instead of snprintf_s, of funcs
 fout.WriteLine("#pragma warning( disable : 4996 )") 
 ' Define so that we can test whether the mpichconf.h file has been included 
@@ -5372,6 +5549,25 @@ Else
 	cEcho "Skipping file: smpdconf.h"
 End If
 
+printMsg "STATUS", "Creating header files for MPL..."
+If f.FileExists("src\mpl\include\config.h.in") Then
+	printMsg "VERBOSE", "Creating src\mpl\include\mplconfig.h"
+	Set fout = f.CreateTextFile("src\mpl\include\mplconfig.h")
+	Call WriteHeader(fout, "mplconfig_")
+        CreateMPLDefDict()
+	Call AddDefinitions(fout, "src\mpl\include\config.h.in", false)
+        FreeMPLDefDict()
+	fout.Close()
+        Call AddPrefixToDefinitions("src\mpl\include\mplconfig.h", "MPL_")
+        Set fout = f.OpenTextFile("src\mpl\include\mplconfig.h", 8)
+        fout.WriteLine("#define snprintf _snprintf")
+        fout.WriteLine("#define inline __inline")
+	Call WriteFooter(fout)
+        fout.Close()
+Else
+	printMsg "VERBOSE", "Skipping file: src\mpl\include\config.h.in"
+End If
+
 printMsg "STATUS", "Creating config.h header files for OpenPA..."
 if not f.FolderExists("src\openpa\src\win32") then
         printMsg "VERBOSE", "Creating src\openpa\src\win32 directory"
@@ -5392,7 +5588,7 @@ If f.FileExists("src\openpa\src\config.h.in") Then
 	printMsg "VERBOSE", "Creating src\openpa\src\win64\opa_config.h"
 	Set fout = f.CreateTextFile("src\openpa\src\win64\opa_config.h")
 	Call WriteHeader(fout, "opa_config_")
-	Call AddOPADefinitions(fout, "src\openpa\src\config.h.in", false)
+	Call AddOPADefinitions(fout, "src\openpa\src\config.h.in", true)
 	Call WriteFooter(fout)
 	fout.Close()
 Else
@@ -5413,7 +5609,7 @@ If f.FolderExists("src\mpe2") Then
 		fout.WriteLine("#define HAVE_IO_H 1")
 		fout.WriteLine("#define HAVE_WINDOWS_H 1")
 		fout.WriteLine("#define read _read")
-		fout.WriteLine("#define write _write")
+		fout.WriteLine("/* #define write _write */")
 		fout.WriteLine("#define open _open")
 		fout.WriteLine("#define close _close")
 		fout.WriteLine("#define mktemp _mktemp")
@@ -5433,7 +5629,7 @@ If f.FolderExists("src\mpe2") Then
 		fout.WriteLine("#define HAVE_IO_H 1")
 		fout.WriteLine("#define HAVE_WINDOWS_H 1")
 		fout.WriteLine("#define read _read")
-		fout.WriteLine("#define write _write")
+		fout.WriteLine("/* #define write _write */")
 		fout.WriteLine("#define open _open")
 		fout.WriteLine("#define close _close")
 		fout.WriteLine("#define mktemp _mktemp")
@@ -5489,7 +5685,7 @@ If f.FolderExists("src\mpe2") Then
 		fout.WriteLine("#define HAVE_IO_H 1")
 		fout.WriteLine("#define HAVE_WINDOWS_H 1")
 		fout.WriteLine("#define read _read")
-		fout.WriteLine("#define write _write")
+		fout.WriteLine("/* #define write _write */")
 		fout.WriteLine("#define open _open")
 		fout.WriteLine("#define close _close")
 		fout.WriteLine("#define mktemp _mktemp")
@@ -5505,7 +5701,7 @@ If f.FolderExists("src\mpe2") Then
 		fout.WriteLine("#define HAVE_IO_H 1")
 		fout.WriteLine("#define HAVE_WINDOWS_H 1")
 		fout.WriteLine("#define read _read")
-		fout.WriteLine("#define write _write")
+		fout.WriteLine("/* #define write _write */")
 		fout.WriteLine("#define open _open")
 		fout.WriteLine("#define close _close")
 		fout.WriteLine("#define mktemp _mktemp")
@@ -5590,6 +5786,30 @@ Function ConfigureTestDir
 			fout.Close()
 		Else
 			printMsg "VERBOSE", "Skipping file: attraints.h"
+		End If
+		'
+		' attr1aints.h
+		'
+		If f.FileExists("test\mpi\f77\pt2pt\attr1aints.h.in") Then
+			printMsg "VERBOSE", "Creating src\include\win32\attr1aints.h"
+			Set fout = f.CreateTextFile("src\include\win32\attr1aints.h")
+			Set fin = f.OpenTextFile("test\mpi\f77\pt2pt\attr1aints.h.in")
+			contents = fin.ReadAll()
+			contents = ReplaceAts(contents, false, false)
+			fout.Write(contents)
+			fin.Close()
+			fout.Close()
+
+			printMsg "VERBOSE", "Creating src\include\win64\attr1aints.h"
+			Set fout = f.CreateTextFile("src\include\win64\attr1aints.h")
+			Set fin = f.OpenTextFile("test\mpi\f77\pt2pt\attr1aints.h.in")
+			contents = fin.ReadAll()
+			contents = ReplaceAts(contents, false, true)
+			fout.Write(contents)
+			fin.Close()
+			fout.Close()
+		Else
+			printMsg "VERBOSE", "Skipping file: attr1aints.h"
 		End If
 
 		'
@@ -5911,15 +6131,6 @@ Function CompileFile(fname)
 	If fname = "${socksources}" Then
 		CompileFile = false
 	End If
-	If fname = "${ssmsources}" Then
-		CompileFile = false
-	End If
-	If fname = "${shmsources}" Then
-		CompileFile = false
-	End If
-	If fname = "${sshmsources}" Then
-		CompileFile = false
-	End If
 	If fname = "timelimit.c" Then
 		CompileFile = false
 	End If
@@ -5957,6 +6168,10 @@ Sub OutputLine(path, line)
 		line = Right(line, Len(line) - 28)
 		do_output = true
 	End If
+	If Left(line, 18) = "libmpl_a_SOURCES =" Then
+		line = Right(line, Len(line) - 18)
+		do_output = true
+	End If
 	If Left(line, 29) = "lib${MPIFLIBNAME}_a_SOURCES =" Then
 		line = Right(line, Len(line) - 29)
 		do_output = true
@@ -5966,18 +6181,6 @@ Sub OutputLine(path, line)
 		do_output = true
 	End If
 	If Left(line, 14) = "socksources = " Then
-		line = Right(line, Len(line) - 14)
-		do_output = true
-	End If
-	If Left(line, 13) = "ssmsources = " Then
-		line = Right(line, Len(line) - 13)
-		do_output = true
-	End If
-	If Left(line, 13) = "shmsources = " Then
-		line = Right(line, Len(line) - 13)
-		do_output = true
-	End If
-	If Left(line, 14) = "sshmsources = " Then
 		line = Right(line, Len(line) - 14)
 		do_output = true
 	End If
@@ -6024,6 +6227,32 @@ Function IsInBuildExclusionList(name)
     End If
 End Function
 
+compile_flags=""
+Sub SetCompileFlags(flags)
+    If compile_flags <> "" Then
+        printMsg "ERROR", "Setting compile flags before resetting the prev saved state is not supported"
+    Else
+        compile_flags = flags
+    End If
+End Sub
+Function IsSetCompileFlags()
+    If compile_flags <> "" Then
+        IsSetCompileFlags = True
+    Else
+        IsSetCompileFlags = False
+    End If
+End Function
+Function GetCompileFlags()
+    GetCompileFlags = compile_flags
+End Function
+
+Sub ResetCompileFlags()
+    If compile_flags = "" Then
+        printMsg "ERROR", "Dup reset of compile flags"
+    End If
+    compile_flags = ""
+End Sub
+
 Sub FindSimpleMakeFiles(folder, trimpath)
 	For Each sub_folder in folder.SubFolders
                 If Not IsInBuildExclusionList(sub_folder) Then
@@ -6063,7 +6292,14 @@ Sub FindSimpleMakeFiles(folder, trimpath)
 			fin.Close
 			If creating_rules And files_found Then
 				mfile.WriteLine("{..\" & Right(file.ParentFolder, Len(file.ParentFolder) - trimpath) & "}.c{$(" & outdir & ")}.obj:")
-				mfile.Write("    $(cc) $(cflags) ")
+				mfile.Write("    $(cc) ")
+                                If IsSetCompileFlags() Then
+                                    ' Get the compiler flags and use it
+                                    mfile.Write(GetCompileFlags() & " ")
+                                Else
+                                    ' Use default cflags
+                                    mfile.Write(" $(cflags) ")
+                                End If
 				If extra_flags <> "" Then
 					mfile.Write(extra_flags & " ")
 				End If
@@ -6118,10 +6354,6 @@ Function GenBuild()
 	bfile.WriteLine("nmake %SILENT% /NOLOGO CHANNEL=sock RLOG=1")
 	bfile.WriteLine("nmake %SILENT% /NOLOGO CHANNEL=mt")
 	bfile.WriteLine("nmake %SILENT% /NOLOGO CHANNEL=mt RLOG=1")
-	bfile.WriteLine("nmake %SILENT% /NOLOGO CHANNEL=ssm")
-	bfile.WriteLine("nmake %SILENT% /NOLOGO CHANNEL=ssm RLOG=1")
-	bfile.WriteLine("nmake %SILENT% /NOLOGO CHANNEL=shm")
-	bfile.WriteLine("nmake %SILENT% /NOLOGO CHANNEL=shm RLOG=1")
 	bfile.WriteLine("nmake %SILENT% /NOLOGO CHANNEL=nemesis")
 	bfile.WriteLine("nmake %SILENT% /NOLOGO CHANNEL=nemesis RLOG=1")
 '	bfile.WriteLine("REM nmake %SILENT% /NOLOGO CHANNEL=sshm")
@@ -6179,6 +6411,10 @@ Function GenBuild()
 	mfile.WriteLine("fc = ifort")
 	mfile.WriteLine("!ENDIF")
 	mfile.WriteLine
+	mfile.WriteLine("!IFDEF MPICH2_CFLAGS")
+	mfile.WriteLine("common_cflags = $(common_cflags) $(MPICH2_CFLAGS)")
+	mfile.WriteLine("!ENDIF")
+	mfile.WriteLine
 	mfile.WriteLine("!IF ""$(CPU)"" == ""x86""")
 	mfile.WriteLine("common_cflags = $(common_cflags) -D_X86_=1 -DWIN32 -D_WIN32 -W3")
 	mfile.WriteLine("!ELSEIF ""$(CPU)"" == ""x64""")
@@ -6197,27 +6433,51 @@ Function GenBuild()
 	mfile.WriteLine("NMAKE_WINVER = 0x0501")
 	mfile.WriteLine("!ELSEIF ""$(APPVER)"" == ""5.02""")
 	mfile.WriteLine("NMAKE_WINVER = 0x0502")
+	mfile.WriteLine("!ELSEIF ""$(APPVER)"" == ""6.0""")
+	mfile.WriteLine("NMAKE_WINVER = 0x0600")
 	mfile.WriteLine("!ENDIF")
-	mfile.WriteLine("common_cflags = $(common_cflags) -Oi -DMPI_EXPORTS -D_WINNT -D_WIN32_WINNT=$(NMAKE_WINVER)")
+	mfile.WriteLine("common_cflags = $(common_cflags) -Oi -D_WINNT -D_WIN32_WINNT=$(NMAKE_WINVER)")
 	mfile.WriteLine
         mfile.WriteLine("# Set USE_MTDLL_RUNLIB env variable to 1 if you need to use")
         mfile.WriteLine("# Multithreaded dynamic link runtime library to build MPICH2")
         mfile.WriteLine("# Default is multithreaded static run lib")
+                        ' IF (NODEBUG)
 	mfile.WriteLine("!IFDEF NODEBUG")
-	mfile.WriteLine("!IFDEF USE_MTDLL_RUNLIB")
-	mfile.WriteLine("common_cflags = $(common_cflags) -Ox -DNDEBUG -D_MT -D_DLL -MD")
+	mfile.WriteLine("common_cflags = $(common_cflags) -DNDEBUG -D_MT")
+	mfile.WriteLine("!IFDEF ENABLE_FAST")
+	mfile.WriteLine("common_cflags = $(common_cflags) -Ox -Ob2 -Ot -GS- -GR-")
 	mfile.WriteLine("!ELSE")
-	mfile.WriteLine("common_cflags = $(common_cflags) -Ox -DNDEBUG -D_MT -MT")
+	mfile.WriteLine("common_cflags = $(common_cflags) -O2 -DHAVE_ERROR_CHECKING=MPID_ERROR_LEVEL_ALL")
 	mfile.WriteLine("!ENDIF")
-	mfile.WriteLine("!ELSE")
 	mfile.WriteLine("!IFDEF USE_MTDLL_RUNLIB")
-	mfile.WriteLine("common_cflags = $(common_cflags) -Zi -Od -DDEBUG -D_MT -D_DLL -MDd")
+	mfile.WriteLine("common_cflags = $(common_cflags) -D_DLL -MD")
 	mfile.WriteLine("!ELSE")
-	mfile.WriteLine("common_cflags = $(common_cflags) -Zi -Od -DDEBUG -D_MT -MTd")
+	mfile.WriteLine("common_cflags = $(common_cflags) -MT")
+	mfile.WriteLine("!ENDIF")
+                        ' ELSE (NODEBUG)
+	mfile.WriteLine("!ELSE")
+	mfile.WriteLine("common_cflags = $(common_cflags) -DHAVE_ERROR_CHECKING=MPID_ERROR_LEVEL_ALL -DUSE_DBG_LOGGING -DDEBUG -Zi -Od -D_MT")
+	mfile.WriteLine("!IFDEF USE_MTDLL_RUNLIB")
+	mfile.WriteLine("common_cflags = $(common_cflags) -D_DLL -MDd")
+	mfile.WriteLine("!ELSE")
+	mfile.WriteLine("common_cflags = $(common_cflags) -MTd")
 	mfile.WriteLine("!ENDIF")
 	mfile.WriteLine("!ENDIF")
 	mfile.WriteLine
-	mfile.WriteLine("lflags  = $(lflags) /OPT:REF /INCREMENTAL:NO /NOLOGO /MANIFEST")
+        ' FIXME: We should try to use CCP_SDK env instead of hardcoding the HPC SDK path
+        ' WARNING: This HPC SDK include path contains its own mpi.h - So include it with caution
+        mfile.WriteLine("MS_HPC_SDK_INC_PATH = ""C:\Program Files\Microsoft HPC Pack 2008 SDK\Include""")
+	mfile.WriteLine
+        mfile.WriteLine("MS_HPC_SDK_ND_INC_PATH = ""C:\Program Files\Microsoft HPC Pack 2008 SDK\NetworkDirect\Include""")
+	mfile.WriteLine
+        ' The HPC SDK lib path contains the type libraries required for interfacing with the HPC job manager
+	mfile.WriteLine("!IF ""$(CPU)"" == ""x86""")
+	mfile.WriteLine("MS_HPC_SDK_LIB_PATH = ""C:\Program Files\Microsoft HPC Pack 2008 SDK\Lib\i386""")
+	mfile.WriteLine("!ELSEIF ""$(CPU)"" == ""x64""")
+	mfile.WriteLine("MS_HPC_SDK_LIB_PATH = ""C:\Program Files\Microsoft HPC Pack 2008 SDK\Lib\amd64""")
+	mfile.WriteLine("!ENDIF")
+	mfile.WriteLine
+	mfile.WriteLine("lflags  = $(lflags) /LIBPATH:$(MS_HPC_SDK_LIB_PATH) /OPT:REF /INCREMENTAL:NO /NOLOGO /MANIFEST")
 	mfile.WriteLine("!IFDEF NODEBUG")
 	mfile.WriteLine("lflags = $(lflags) /RELEASE")
 	mfile.WriteLine("!ELSE")
@@ -6258,9 +6518,12 @@ Function GenBuild()
 	mfile.WriteLine("!ENDIF")
 	mfile.WriteLine
 	mfile.WriteLine("common_cflags = $(common_cflags) \")
+        mfile.WriteLine(" /I$(MS_HPC_SDK_LIB_PATH) \")
+        mfile.WriteLine(" /I$(MS_HPC_SDK_ND_INC_PATH) \")
 	mfile.WriteLine(" /I..\src\include \")
 	mfile.WriteLine(" /I..\src\util\wrappers \")
 	mfile.WriteLine(" /I..\src\openpa\src \")
+	mfile.WriteLine(" /I..\src\mpl\include \")
 	mfile.WriteLine(" /I..\src\mpid\ch3\include \")
 	mfile.WriteLine(" /I..\src\mpid\ch3\channels\$(CHANNEL)\include \")
 	mfile.WriteLine(" /I..\src\mpid\ch3\channels\$(CHANNEL)\src \")
@@ -6285,28 +6548,25 @@ Function GenBuild()
 	mfile.WriteLine("common_cflags = $(common_cflags) /I..\src\include\win64 /I..\src\binding\f90\win64 /I..\src\openpa\src\win64")
 	mfile.WriteLine("!ENDIF")
 	mfile.WriteLine
-	mfile.WriteLine("cxxflags = $(common_cflags)")
-	mfile.WriteLine("cflags = $(cflags) $(common_cflags) /DMPICH_SKIP_MPICXX")
-	mfile.WriteLine("fcflags = \")
+	mfile.WriteLine("cxxflags = $(common_cflags) /DMPI_EXPORTS")
+	mfile.WriteLine("cflags = $(cflags) $(common_cflags) /DMPI_EXPORTS /DMPICH_SKIP_MPICXX")
+	mfile.WriteLine("fcflags = $(common_cflags) /DMPICH_SKIP_MPICXX \")
 	mfile.WriteLine(" /DUSE_FORT_CDECL \")
 	mfile.WriteLine(" /DUSE_MSC_DLLSPEC \")
 	mfile.WriteLine(" /DFORTRAN_EXPORTS \")
-	mfile.WriteLine(" /UMPI_EXPORTS \")
 	mfile.WriteLine(" /DF77_NAME_UPPER \")
 	mfile.WriteLine(" /DHAVE_C_API")
-	mfile.WriteLine("gfcflags = \")
+	mfile.WriteLine("gfcflags = $(common_cflags) /DMPICH_SKIP_MPICXX \")
 	mfile.WriteLine(" /DUSE_FORT_CDECL \")
 	mfile.WriteLine(" /DUSE_MSC_DLLSPEC \")
 	mfile.WriteLine(" /DFORTRAN_EXPORTS \")
-	mfile.WriteLine(" /UMPI_EXPORTS \")
 	mfile.WriteLine(" /DFORTRANDOUBLEUNDERSCORE \")
 	mfile.WriteLine(" /DF77_NAME_LOWER_2USCORE \")
 	mfile.WriteLine(" /DHAVE_C_API")
-	mfile.WriteLine("sfcflags = \")
+	mfile.WriteLine("sfcflags = $(common_cflags) /DMPICH_SKIP_MPICXX \")
 	mfile.WriteLine(" /DUSE_FORT_STDCALL \")
 	mfile.WriteLine(" /DUSE_MSC_DLLSPEC \")
 	mfile.WriteLine(" /DFORTRAN_EXPORTS \")
-	mfile.WriteLine(" /UMPI_EXPORTS \")
 	mfile.WriteLine(" /DF77_NAME_UPPER \")
 	mfile.WriteLine(" /DUSE_FORT_MIXED_STR_LEN \")
 	mfile.WriteLine(" /DHAVE_C_API")
@@ -6315,6 +6575,10 @@ Function GenBuild()
 	mfile.WriteLine("gfcflags = $(gfcflags) /DHAVE_AINT_LARGER_THAN_FINT")
 	mfile.WriteLine("sfcflags = $(sfcflags) /DHAVE_AINT_LARGER_THAN_FINT")
 	mfile.WriteLine("!ENDIF")
+	mfile.WriteLine("fpcflags = \")
+        mfile.WriteLine(" $(fcflags) \")
+        mfile.WriteLine(" /DMPICH_MPI_FROM_PMPI \")
+        mfile.WriteLine(" /DUSE_ONLY_MPI_NAMES")
 	mfile.WriteLine("fortflags = /iface:cref /c /names:uppercase")
 	mfile.WriteLine("gfortflags = /iface:cref /assume:underscore /c /names:lowercase")
 	mfile.WriteLine("sfortflags = /iface:stdcall /c /names:uppercase")
@@ -6360,14 +6624,15 @@ Function GenBuild()
 	mfile.WriteLine(" /DMPICH_MULTITHREADED /D ENABLE_NO_MACRO_VARARG_NAME \")
 	mfile.WriteLine(" /I..\src\mpid\ch3\channels\nemesis\nemesis\include \")
 	mfile.WriteLine(" /I..\src\mpid\ch3\channels\nemesis\nemesis\utils\monitor \")
-	mfile.WriteLine(" /I..\src\mpid\ch3\channels\nemesis\nemesis\netmod\wintcp")
+	mfile.WriteLine(" /I..\src\mpid\ch3\channels\nemesis\nemesis\netmod\wintcp \")
+	mfile.WriteLine(" /I..\src\mpid\ch3\channels\nemesis\nemesis\netmod\nd")
 	mfile.WriteLine("!ENDIF")
 '	mfile.WriteLine
 '	mfile.WriteLine("!IF ""$(CHANNEL)"" == ""essm""")
 '	mfile.WriteLine("cflags = $(cflags) /DMPICH_MULTITHREADED")
 '	mfile.WriteLine("!ENDIF")
 	mfile.WriteLine
-	mfile.WriteLine("mpich2_libs = activeds.lib adsiid.lib netapi32.lib ntdsapi.lib secur32.lib mswsock.lib ws2_32.lib mpr.lib rpcrt4.lib crypt32.lib gdi32.lib kernel32.lib advapi32.lib")
+	mfile.WriteLine("mpich2_libs = activeds.lib adsiid.lib netapi32.lib ntdsapi.lib secur32.lib mswsock.lib ws2_32.lib mpr.lib rpcrt4.lib crypt32.lib gdi32.lib kernel32.lib advapi32.lib comsupp.lib")
 	mfile.WriteLine("!IF ""$(CPU)"" != ""x86""")
 	mfile.WriteLine("common_libs = bufferoverflowU.lib")
 	mfile.WriteLine("!ENDIF")
@@ -6406,12 +6671,11 @@ Function GenBuild()
 	mfile.WriteLine("BIN_OUTDIR = $(CPU)\$(CFG)\bin")
 	mfile.WriteLine("SOCK_OUTDIR = $(CPU)\$(CFG)\sock$(P)")
 	mfile.WriteLine("MT_OUTDIR = $(CPU)\$(CFG)\mt$(P)")
-	mfile.WriteLine("SSM_OUTDIR = $(CPU)\$(CFG)\ssm$(P)")
-	mfile.WriteLine("SHM_OUTDIR = $(CPU)\$(CFG)\shm$(P)")
 	mfile.WriteLine("NEMESIS_OUTDIR = $(CPU)\$(CFG)\nemesis$(P)")
 '	mfile.WriteLine("SSHM_OUTDIR = $(CPU)\$(CFG)\sshm$(P)")
 '	mfile.WriteLine("ESSM_OUTDIR = $(CPU)\$(CFG)\essm$(P)")
 '	mfile.WriteLine("IB_OUTDIR = $(CPU)\$(CFG)\ib_$(IB)$(P)")
+	mfile.WriteLine("FORTP_OUTDIR = $(CPU)\$(CFG)\fortranp")
 	mfile.WriteLine("FORT_OUTDIR = $(CPU)\$(CFG)\fortran")
 	mfile.WriteLine("GFORT_OUTDIR = $(CPU)\$(CFG)\gfortran")
 	mfile.WriteLine("SFORT_OUTDIR = $(CPU)\$(CFG)\sfortran")
@@ -6419,7 +6683,6 @@ Function GenBuild()
 	mfile.WriteLine("MPI_OUTDIR = $(CPU)\$(CFG)\mpi")
 	mfile.WriteLine("RLOG_OUTDIR = $(CPU)\$(CFG)\rlog")
 	mfile.WriteLine("MPE_OUTDIR = $(CPU)\$(CFG)\mpe")
-	mfile.WriteLine("FMPE_OUTDIR = $(CPU)\$(CFG)\fmpe")
 	mfile.WriteLine("MPE_WRAP_OUTDIR = $(CPU)\$(CFG)\mpe_wrap")
 	mfile.WriteLine("GCC_OUTDIR = $(CPU)\$(CFG)\gcc")
 	mfile.WriteLine
@@ -6431,6 +6694,9 @@ Function GenBuild()
 	mfile.WriteLine
 	mfile.WriteLine("$(BIN_OUTDIR) :")
 	mfile.WriteLine("	if not exist ""$(BIN_OUTDIR)\$(NULL)"" mkdir $(BIN_OUTDIR)")
+	mfile.WriteLine
+	mfile.WriteLine("$(FORTP_OUTDIR) :")
+	mfile.WriteLine("	if not exist ""$(FORTP_OUTDIR)\$(NULL)"" mkdir $(FORTP_OUTDIR)")
 	mfile.WriteLine
 	mfile.WriteLine("$(FORT_OUTDIR) :")
 	mfile.WriteLine("	if not exist ""$(FORT_OUTDIR)\$(NULL)"" mkdir $(FORT_OUTDIR)")
@@ -6452,9 +6718,6 @@ Function GenBuild()
 	mfile.WriteLine
 	mfile.WriteLine("$(MPE_OUTDIR) :")
 	mfile.WriteLine("	if not exist ""$(MPE_OUTDIR)\$(NULL)"" mkdir $(MPE_OUTDIR)")
-	mfile.WriteLine
-	mfile.WriteLine("$(FMPE_OUTDIR) :")
-	mfile.WriteLine("	if not exist ""$(FMPE_OUTDIR)\$(NULL)"" mkdir $(FMPE_OUTDIR)")
 	mfile.WriteLine
 	mfile.WriteLine("$(MPE_WRAP_OUTDIR) :")
 	mfile.WriteLine("	if not exist ""$(MPE_WRAP_OUTDIR)\$(NULL)"" mkdir $(MPE_WRAP_OUTDIR)")
@@ -6484,6 +6747,7 @@ Function GenBuild()
 '	mfile.WriteLine("	if exist $(ESSM_OUTDIR)p\$(NULL) rd /s /q $(ESSM_OUTDIR)p")
 '	mfile.WriteLine("	if exist $(IB_OUTDIR)IBALp\$(NULL) rd /s /q $(IB_OUTDIR)IBALp")
 '	mfile.WriteLine("	if exist $(IB_OUTDIR)VAPIp\$(NULL) rd /s /q $(IB_OUTDIR)VAPIp")
+	mfile.WriteLine("	if exist $(FORTP_OUTDIR)\$(NULL) rd /s /q $(FORTP_OUTDIR)")
 	mfile.WriteLine("	if exist $(FORT_OUTDIR)\$(NULL) rd /s /q $(FORT_OUTDIR)")
 	mfile.WriteLine("	if exist $(GFORT_OUTDIR)\$(NULL) rd /s /q $(GFORT_OUTDIR)")
 	mfile.WriteLine("	if exist $(SFORT_OUTDIR)\$(NULL) rd /s /q $(SFORT_OUTDIR)")
@@ -6491,7 +6755,6 @@ Function GenBuild()
 	mfile.WriteLine("	if exist $(MPI_OUTDIR)\$(NULL) rd /s /q $(MPI_OUTDIR)")
 	mfile.WriteLine("	if exist $(RLOG_OUTDIR)\$(NULL) rd /s /q $(RLOG_OUTDIR)")
 	mfile.WriteLine("	if exist $(MPE_OUTDIR)\$(NULL) rd /s /q $(MPE_OUTDIR)")
-	mfile.WriteLine("	if exist $(FMPE_OUTDIR)\$(NULL) rd /s /q $(FMPE_OUTDIR)")
 	mfile.WriteLine("	if exist $(MPE_WRAP_OUTDIR)\$(NULL) rd /s /q $(MPE_WRAP_OUTDIR)")
 	mfile.WriteLine("	if exist $(GCC_OUTDIR)\$(NULL) rd /s /q $(GCC_OUTDIR)")
 	mfile.WriteLine
@@ -6508,6 +6771,7 @@ Function GenBuild()
 	CreateRules f.GetFolder("src\util\dbg"), trimlength
 	CreateRules f.GetFolder("src\util\msgs"), trimlength
 	CreateRules f.GetFolder("src\util\procmap"), trimlength
+	CreateRules f.GetFolder("src\util\ex"), trimlength
 	CreateRules f.GetFolder("src\pmi\smpd"), trimlength
 	CreateRules f.GetFolder("src\pm\smpd"), trimlength
 	' Create a special rule for smpd_adreg.cpp since it must be compiled for UNICODE
@@ -6523,6 +6787,11 @@ Function GenBuild()
 	CreateRules f.GetFolder("src\util\logging\common"), trimlength
 	CreateRules f.GetFolder("src\util\param"), trimlength
         CreateRules f.GetFolder("src\util\thread"), trimlength
+        CreateRules f.GetFolder("src\util\other"), trimlength
+        ' Insert rules for mpl manually since mpl is not build with Makefile.sm files
+        mfile.WriteLine("{..\src\mpl\src}.c{$(OUTDIR)}.obj:")
+        mfile.WriteLine("    $(cc) $(cflags) /Fo""$(OUTDIR)\\"" /Fd""$(OUTDIR)\\"" $**")
+        mfile.WriteLine
 	' Insert rules for romio manually since romio is not build with Makefile.sm files
 	mfile.WriteLine("{..\src\mpi\romio\adio\ad_ntfs}.c{$(OUTDIR)}.obj:")
 	mfile.WriteLine("    $(cc) $(cflags) /Fo""$(OUTDIR)\\"" /Fd""$(OUTDIR)\\"" $**")
@@ -6548,6 +6817,7 @@ Function GenBuild()
 	CreateObjs "mpich2", f.GetFolder("src\util\dbg"), trimlength, false, false
 	CreateObjs "mpich2", f.GetFolder("src\util\msgs"), trimlength, false, false
 	CreateObjs "mpich2", f.GetFolder("src\util\procmap"), trimlength, false, false
+	CreateObjs "mpich2", f.GetFolder("src\util\ex"), trimlength, false, false
 	CreateObjs "mpich2", f.GetFolder("src\pmi\smpd"), trimlength, false, false
 	CreateObjs "mpich2", f.GetFolder("src\pm\smpd"), trimlength, false, false
 	mfile.Write(" \" & vbCrLF & "	$(" & outdir & ")\smpd_adreg.obj")
@@ -6560,6 +6830,7 @@ Function GenBuild()
 	CreateObjs "mpich2", f.GetFolder("src\util\logging\common"), trimlength, false, false
 	CreateObjs "mpich2", f.GetFolder("src\util\param"), trimlength, false, false
         CreateObjs "mpich2", f.GetFolder("src\util\thread"), trimlength, false, false
+        CreateObjs "mpich2", f.GetFolder("src\util\other"), trimlength, false, false
 	mfile.WriteLine(" \" & vbCrLf & "	$(OUTDIR)\ad_ntfs.obj \")
 	mfile.WriteLine("	$(OUTDIR)\ad_ntfs_close.obj \")
 	mfile.WriteLine("	$(OUTDIR)\ad_ntfs_done.obj \")
@@ -6683,6 +6954,10 @@ Function GenBuild()
 	mfile.WriteLine("	$(OUTDIR)\write_ordb.obj \")
 	mfile.WriteLine("	$(OUTDIR)\write_orde.obj \")
 	mfile.WriteLine("	$(OUTDIR)\write_sh.obj \")
+        ' Insert objs for mpl manually
+        mfile.WriteLine("   $(OUTDIR)\mplstr.obj \")
+        mfile.WriteLine("   $(OUTDIR)\mplenv.obj \")
+        mfile.WriteLine("   $(OUTDIR)\mpltrmem.obj \")
 	' Insert objs for f90 type create funcs manually because the src/binding/f90
         ' directory has both C & fortran interfaces
         mfile.WriteLine("   $(OUTDIR)\create_f90_util.obj \")
@@ -6724,67 +6999,13 @@ Function GenBuild()
 	CreateRules f.GetFolder("src\mpid\ch3\channels\nemesis\nemesis\src"), trimlength
 '	CreateRules f.GetFolder("src\mpid\ch3\channels\nemesis\nemesis\utils"), trimlength
 	CreateRules f.GetFolder("src\mpid\ch3\channels\nemesis\nemesis\netmod\wintcp"), trimlength
+	CreateRules f.GetFolder("src\mpid\ch3\channels\nemesis\nemesis\netmod\nd"), trimlength
 	CreateObjs "ch3nemesis", f.GetFolder("src\mpid\ch3\channels\nemesis\src"), trimlength, true, false
 	CreateObjs "ch3nemesis", f.GetFolder("src\mpid\ch3\channels\nemesis\nemesis\src"), trimlength, false, false
 '	CreateObjs "ch3nemesis", f.GetFolder("src\mpid\ch3\channels\nemesis\nemesis\utils"), trimlength, false, false
-	CreateObjs "ch3nemesis", f.GetFolder("src\mpid\ch3\channels\nemesis\nemesis\netmod\wintcp"), trimlength, false, true
+	CreateObjs "ch3nemesis", f.GetFolder("src\mpid\ch3\channels\nemesis\nemesis\netmod\wintcp"), trimlength, false, false
+	CreateObjs "ch3nemesis", f.GetFolder("src\mpid\ch3\channels\nemesis\nemesis\netmod\nd"), trimlength, false, true
 
-	mfile.WriteLine
-	mfile.WriteLine("# ch3ssm")
-	mfile.WriteLine
-	outdir = "SSM_OUTDIR"
-	CreateRules f.GetFolder("src\mpid\ch3\channels\ssm"), trimlength
-	CreateRules f.GetFolder("src\mpid\ch3\util\sock"), trimlength
-	CreateRules f.GetFolder("src\mpid\ch3\util\shm"), trimlength
-	CreateRules f.GetFolder("src\mpid\ch3\util\shmproc"), trimlength
-	CreateRules f.GetFolder("src\mpid\ch3\util\shmbase"), trimlength
-	CreateObjs "ch3ssm", f.GetFolder("src\mpid\ch3\channels\ssm"), trimlength, true, false
-	CreateObjs "ch3ssm", f.GetFolder("src\mpid\ch3\util\shm"), trimlength, false, false
-	CreateObjs "ch3ssm", f.GetFolder("src\mpid\ch3\util\shmproc"), trimlength, false, false
-	CreateObjs "ch3ssm", f.GetFolder("src\mpid\ch3\util\shmbase"), trimlength, false, false
-	CreateObjs "ch3ssm", f.GetFolder("src\mpid\ch3\util\sock"), trimlength, false, true
-
-	mfile.WriteLine
-	mfile.WriteLine("# ch3shm")
-	mfile.WriteLine
-	outdir = "SHM_OUTDIR"
-	CreateRules f.GetFolder("src\mpid\ch3\channels\shm"), trimlength
-	CreateRules f.GetFolder("src\mpid\ch3\channels\shm\src"), trimlength
-	CreateRules f.GetFolder("src\mpid\common\locks"), trimlength
-	CreateRules f.GetFolder("src\mpid\ch3\util\shmbase"), trimlength
-	CreateObjs "ch3shm", f.GetFolder("src\mpid\ch3\channels\shm"), trimlength, true, false
-	CreateObjs "ch3shm", f.GetFolder("src\mpid\ch3\channels\shm\src"), trimlength, false, false
-	CreateObjs "ch3shm", f.GetFolder("src\mpid\common\locks"), trimlength, false, false
-	CreateObjs "ch3shm", f.GetFolder("src\mpid\ch3\util\shmbase"), trimlength, false, true
-
-'	mfile.WriteLine
-'	mfile.WriteLine("# ch3sshm")
-'	mfile.WriteLine
-'	outdir = "SSHM_OUTDIR"
-'	CreateRules f.GetFolder("src\mpid\ch3\channels\sshm"), trimlength
-'	CreateRules f.GetFolder("src\mpid\ch3\util\shm"), trimlength
-'	CreateObjs "ch3sshm", f.GetFolder("src\mpid\ch3\channels\sshm"), trimlength, true, false
-'	CreateObjs "ch3sshm", f.GetFolder("src\mpid\ch3\util\shm"), trimlength, false, true
-
-'	mfile.WriteLine
-'	mfile.WriteLine("# ch3essm")
-'	mfile.WriteLine
-'	outdir = "ESSM_OUTDIR"
-'	CreateRules f.GetFolder("src\mpid\ch3\channels\essm"), trimlength
-'	CreateRules f.GetFolder("src\util\events"), trimlength
-'	mfile.WriteLine("{..\src\util\thread}.c{$(ESSM_OUTDIR)}.obj:")
-'	mfile.WriteLine("    $(cc) $(cflags) /Fo""$(ESSM_OUTDIR)\\"" /Fd""$(ESSM_OUTDIR)\\"" $**")
-'	mfile.WriteLine
-'	CreateObjs "ch3essm", f.GetFolder("src\mpid\ch3\channels\essm"), trimlength, true, false
-'	CreateObjs "ch3essm", f.GetFolder("src\util\events"), trimlength, false, false
-'	mfile.WriteLine(" \" & vbCrLf & "	$(ESSM_OUTDIR)\mpe_thread_win.obj")
-
-'	mfile.WriteLine
-'	mfile.WriteLine("# ch3ib")
-'	mfile.WriteLine
-'	outdir = "IB_OUTDIR"
-'	CreateRules f.GetFolder("src\mpid\ch3\channels\ib"), trimlength
-'	CreateObjs "ch3ib", f.GetFolder("src\mpid\ch3\channels\ib"), trimlength, true, true
 
 	mfile.WriteLine
 	mfile.WriteLine("!IF ""$(CHANNEL)"" == ""sock""")
@@ -6797,17 +7018,7 @@ Function GenBuild()
 	mfile.WriteLine
 	mfile.WriteLine("!ELSE")
 	mfile.WriteLine
-	mfile.WriteLine("!IF ""$(CHANNEL)"" == ""ssm""")
-	mfile.WriteLine("channel_objs = $(ch3ssm_objs)")
-	mfile.WriteLine("!ELSEIF ""$(CHANNEL)"" == ""shm""")
-	mfile.WriteLine("channel_objs = $(ch3shm_objs)")
-'	mfile.WriteLine("# !ELSEIF ""$(CHANNEL)"" == ""sshm""")
-'	mfile.WriteLine("# channel_objs = $(ch3sshm_objs)")
-'	mfile.WriteLine("# !ELSEIF ""$(CHANNEL)"" == ""essm""")
-'	mfile.WriteLine("# channel_objs = $(ch3essm_objs)")
-'	mfile.WriteLine("# !ELSEIF ""$(CHANNEL)"" == ""ib""")
-'	mfile.WriteLine("# channel_objs = $(ch3ib_objs)")
-	mfile.WriteLine("!ELSEIF ""$(CHANNEL)"" == ""mt""")
+	mfile.WriteLine("!IF ""$(CHANNEL)"" == ""mt""")
 	mfile.WriteLine("channel_objs = $(ch3mt_objs)")
 	mfile.WriteLine("!ELSEIF ""$(CHANNEL)"" == ""nemesis""")
 	mfile.WriteLine("channel_objs = $(ch3nemesis_objs)")
@@ -6874,10 +7085,12 @@ Function GenBuild()
 	mfile.WriteLine("# Fortran")
 	mfile.WriteLine
 	outdir = "FORT_OUTDIR"
-	extra_flags = "$(fcflags)"
+        'extra_flags = "$(fcflags)"
+        SetCompileFlags("$(fcflags)")
 	fort_prefix = ""
 	CreateRules f.GetFolder("src\binding\f77"), trimlength
 	CreateRules f.GetFolder("src\binding\f90"), trimlength
+        ResetCompileFlags()
 	mfile.WriteLine
 	CreateObjs "fort", f.GetFolder("src\binding\f77"), trimlength, true, false
 	mfile.WriteLine(" \" & vbCrLf & "   $(FORT_OUTDIR)\typef90intf.obj \")
@@ -6886,10 +7099,30 @@ Function GenBuild()
         mfile.WriteLine
 
 	mfile.WriteLine("$(FORT_OUTDIR)\fmpich2$(D).dll: $(fort_objs)")
-	mfile.WriteLine("	$(link) $(dlllflags) $(fort_objs) $(MPI_OUTDIR)\mpi$(D).lib $(common_libs) /DEF:..\src\binding\f77\mpich2f.def -out:$(FORT_OUTDIR)\fmpich2$(D).dll")
+	mfile.WriteLine("	$(link) $(dlllflags) $(fort_objs) $(FORTP_OUTDIR)\fmpich2p$(D).lib $(MPI_OUTDIR)\mpi$(D).lib $(common_libs) /DEF:..\src\binding\f77\mpich2f.def -out:$(FORT_OUTDIR)\fmpich2$(D).dll")
 	mfile.WriteLine("	if exist $(FORT_OUTDIR)\fmpich2$(D).dll.manifest mt.exe -manifest $(FORT_OUTDIR)\fmpich2$(D).dll.manifest -outputresource:$(FORT_OUTDIR)\fmpich2$(D).dll;2")
 	mfile.WriteLine
-	mfile.WriteLine("fort: $(FORT_OUTDIR) $(FORT_OUTDIR)\fmpich2$(D).dll")
+	mfile.WriteLine("fort: fortp $(FORT_OUTDIR) $(FORT_OUTDIR)\fmpich2$(D).dll")
+	mfile.WriteLine
+	outdir = "FORTP_OUTDIR"
+        'extra_flags = "$(fpcflags)"
+        SetCompileFlags("$(fpcflags)")
+	fort_prefix = ""
+	CreateRules f.GetFolder("src\binding\f77"), trimlength
+	CreateRules f.GetFolder("src\binding\f90"), trimlength
+        ResetCompileFlags()
+        mfile.WriteLine
+        CreateObjs "fortp", f.GetFolder("src\binding\f77"), trimlength, true, false
+	mfile.WriteLine(" \" & vbCrLf & "   $(FORTP_OUTDIR)\typef90intf.obj \")
+        mfile.WriteLine("   $(FORTP_OUTDIR)\typef90realf.obj \")
+        mfile.WriteLine("   $(FORTP_OUTDIR)\typef90cmplxf.obj")
+        mfile.WriteLine
+
+	mfile.WriteLine("$(FORTP_OUTDIR)\fmpich2p$(D).lib: $(fortp_objs)")
+	mfile.WriteLine("	$(implib) $(liblflags) $(fortp_objs) $(MPI_OUTDIR)\mpi$(D).lib $(common_libs) -out:$(FORTP_OUTDIR)\fmpich2p$(D).lib")
+	mfile.WriteLine
+	mfile.WriteLine("fortp: $(FORTP_OUTDIR) $(FORTP_OUTDIR)\fmpich2p$(D).lib")
+
 	mfile.WriteLine
         ' Adding rules for F90 mod files
         mfile.WriteLine("{..\src\binding\f90}.f90{$(FORT_OUTDIR)}.mod:")
@@ -6909,9 +7142,11 @@ Function GenBuild()
         mfile.WriteLine("mpi_mod: $(FORT_OUTDIR) $(mpi_mod_objs)")
         mfile.WriteLine
 	outdir = "GFORT_OUTDIR"
-	extra_flags = "$(gfcflags)"
+        'extra_flags = "$(gfcflags)"
+        SetCompileFlags("$(gfcflags)")
 	fort_prefix = "g"
 	CreateRules f.GetFolder("src\binding\f77"), trimlength
+        ResetCompileFlags()
 	CreateObjs "gfort", f.GetFolder("src\binding\f77"), trimlength, true, true
 	mfile.WriteLine("$(GFORT_OUTDIR)\fmpich2g$(D).dll: $(gfort_objs)")
 	mfile.WriteLine("	$(link) $(dlllflags) $(gfort_objs) $(MPI_OUTDIR)\mpi$(D).lib $(common_libs) /DEF:..\src\binding\f77\mpich2fg.def -out:$(GFORT_OUTDIR)\fmpich2g$(D).dll")
@@ -6925,9 +7160,11 @@ Function GenBuild()
 	mfile.WriteLine
 	mfile.WriteLine("!ELSE")
 	outdir = "SFORT_OUTDIR"
-	extra_flags = "$(sfcflags)"
+        SetCompileFlags("$(sfcflags)")
+        'extra_flags = "$(sfcflags)"
 	fort_prefix = "s"
 	CreateRules f.GetFolder("src\binding\f77"), trimlength
+        ResetCompileFlags()
 	CreateObjs "sfort", f.GetFolder("src\binding\f77"), trimlength, true, false
 	' Add the extra character* versions of the MPI functions here
 	mfile.WriteLine(" \" & vbCrLf & "	$(SFORT_OUTDIR)\accumulatefs.obj \")
@@ -7036,45 +7273,14 @@ Function GenBuild()
 	mfile.WriteLine("	$(MPE_OUTDIR)\iterator.obj \")
 	mfile.WriteLine("	$(MPE_OUTDIR)\mpe_log.obj")
 	mfile.WriteLine
-	mfile.WriteLine("{..\src\mpe2\src\logging\src}.c{$(FMPE_OUTDIR)}.obj:")
-	mfile.WriteLine("    $(cc) $(cflags) $(mpe_cflags) /DMPE_EXPORTS /DF77_NAME_UPPER /Fo""$(FMPE_OUTDIR)\\"" /Fd""$(FMPE_OUTDIR)\\"" $**")
-	mfile.WriteLine
 	mfile.WriteLine("{..\src\mpe2\src\callstack\src}.c{$(MPE_OUTDIR)}.obj:")
 	mfile.WriteLine("    $(cc) $(cflags) $(mpe_cflags) /DMPE_EXPORTS /Fo""$(MPE_OUTDIR)\\"" /Fd""$(MPE_OUTDIR)\\"" $**")
-	mfile.WriteLine
-	mfile.WriteLine("$(FMPE_OUTDIR)\mpiu_thread.obj: ..\src\util\thread\mpiu_thread.c")
-	mfile.WriteLine("    $(cc) $(cflags) $(mpe_cflags) /DMPE_EXPORTS /DF77_NAME_UPPER /Fo""$(FMPE_OUTDIR)\\"" /Fd""$(FMPE_OUTDIR)\\"" $**")
-	mfile.WriteLine
-	mfile.WriteLine("fmpe_objs = \")
-	mfile.WriteLine("	$(FMPE_OUTDIR)\clog.obj \")
-	mfile.WriteLine("	$(FMPE_OUTDIR)\clog_block.obj \")
-	mfile.WriteLine("	$(FMPE_OUTDIR)\clog_buffer.obj \")
-	mfile.WriteLine("   $(FMPE_OUTDIR)\clog_commset.obj \")
-	mfile.WriteLine("	$(FMPE_OUTDIR)\clog_merger.obj \")
-	mfile.WriteLine("	$(FMPE_OUTDIR)\clog_preamble.obj \")
-	mfile.WriteLine("	$(FMPE_OUTDIR)\clog_print.obj \")
-	mfile.WriteLine("	$(FMPE_OUTDIR)\clog_record.obj \")
-	mfile.WriteLine("	$(FMPE_OUTDIR)\clog_sync.obj \")
-	mfile.WriteLine("	$(FMPE_OUTDIR)\clog_timer.obj \")
-	mfile.WriteLine("	$(FMPE_OUTDIR)\clog_util.obj \")
-	mfile.WriteLine("   $(FMPE_OUTDIR)\clog_uuid.obj \")
-	mfile.WriteLine("	$(FMPE_OUTDIR)\clog_cache.obj \")
-	mfile.WriteLine("	$(FMPE_OUTDIR)\clog_joiner.obj \")
-	mfile.WriteLine("	$(FMPE_OUTDIR)\mpe_logf.obj \")
-	mfile.WriteLine("	$(FMPE_OUTDIR)\mpiu_thread.obj \")
-	mfile.WriteLine("	$(MPE_OUTDIR)\fancyprint.obj \")
-	mfile.WriteLine("	$(MPE_OUTDIR)\iterator.obj \")
-	mfile.WriteLine("	$(FMPE_OUTDIR)\mpe_log.obj")
 	mfile.WriteLine
 	mfile.WriteLine("$(MPE_OUTDIR)\mpe$(D).dll: $(mpe_objs)")
 	mfile.WriteLine("	$(link) $(dlllflags) $(mpe_objs) $(MPI_OUTDIR)\mpi$(D).lib $(common_libs) /DEF:..\src\mpe2\mpe.def -out:$(MPE_OUTDIR)\mpe$(D).dll /IMPLIB:$(MPE_OUTDIR)\mpe$(D).lib")
 	mfile.WriteLine("	if exist $(MPE_OUTDIR)\mpe$(D).dll.manifest mt.exe -manifest $(MPE_OUTDIR)\mpe$(D).dll.manifest -outputresource:$(MPE_OUTDIR)\mpe$(D).dll;2")
 	mfile.WriteLine
-	mfile.WriteLine("$(FMPE_OUTDIR)\fmpe$(D).dll: $(fmpe_objs)")
-	mfile.WriteLine("	$(link) $(dlllflags) $(fmpe_objs) $(MPI_OUTDIR)\mpi$(D).lib $(common_libs) /DEF:..\src\mpe2\fmpe.def -out:$(FMPE_OUTDIR)\fmpe$(D).dll /IMPLIB:$(FMPE_OUTDIR)\fmpe$(D).lib")
-	mfile.WriteLine("	if exist $(FMPE_OUTDIR)\fmpe$(D).dll.manifest mt.exe -manifest $(FMPE_OUTDIR)\fmpe$(D).dll.manifest -outputresource:$(FMPE_OUTDIR)\fmpe$(D).dll;2")
-	mfile.WriteLine
-	mfile.WriteLine("mpe: $(MPE_OUTDIR) $(FMPE_OUTDIR) $(MPE_OUTDIR)\mpe$(D).dll $(FMPE_OUTDIR)\fmpe$(D).dll ")
+	mfile.WriteLine("mpe: $(MPE_OUTDIR) $(MPE_OUTDIR)\mpe$(D).dll ")
 
 	mfile.WriteLine
 	mfile.WriteLine("# MPE wrapper")
@@ -7301,6 +7507,10 @@ Function ParseSrcFiles(filename)
 				End If
 				If Left(fullline, 28) = "lib${MPILIBNAME}_a_SOURCES =" Then
 					src_line = src_line & " " & Right(fullline, Len(fullline) - 28)
+					'cEcho src_line
+				End If
+				If Left(fullline, 18) = "libmpl_a_SOURCES =" Then
+					src_line = src_line & " " & Right(fullline, Len(fullline) - 18)
 					'cEcho src_line
 				End If
 				fullline = ""
@@ -7646,8 +7856,7 @@ End If
 
 Sub UpdateSMPDVersion
         GetMPICH2Versions mpich2VerStr, mpich2ABIVerStr
-	'WScript.Echo "Version = " & version_str
-	printMsg "VERBOSE", "Creating src\pm\smpd\smpd_version.h: " & version_str
+	printMsg "VERBOSE", "Creating src\pm\smpd\smpd_version.h"
 	Set fout = f.CreateTextFile("src\pm\smpd\smpd_version.h", true)
 	fout.WriteLine("#define SMPD_VERSION """ & mpich2VerStr & """")
 	fout.Close()

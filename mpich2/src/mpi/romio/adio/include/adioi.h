@@ -70,6 +70,10 @@ struct ADIOI_Hints_struct {
                     int coll_threshold;
                     int ds_in_coll;
             } lustre;
+		struct {
+			unsigned read_chunk_sz; /* chunk size for direct reads */
+			unsigned write_chunk_sz; /* chunk size for direct writes */
+		} xfs;
     } fs_hints;
 
 };
@@ -733,6 +737,23 @@ int ADIOI_Strncpy( char *outstr, const char *instr, size_t maxlen );
 int ADIOI_Strnapp( char *, const char *, size_t );
 char *ADIOI_Strdup( const char * );
 
+/* the current MPI standard is not const-correct, and modern compilers warn
+ * about the following sort of code:
+ *
+ *   MPI_Info_set(info, "key", "val");
+ *
+ * reminding us that "key" and "val" are const.  We use the following macros to
+ * cast away the const and suppress the warning. */
+#define ADIOI_Info_set(info_,key_str_,val_) \
+    MPI_Info_set((info_),((char*)key_str_),(char*)(val_))
+#define ADIOI_Info_get(info_,key_str_,val_len_,val_,flag_) \
+    MPI_Info_get((info_),((char*)key_str_),(val_len_),(val_),(flag_))
+#define ADIOI_Info_get_valuelen(info_,key_str_,val_len_,flag_) \
+    MPI_Info_get_valuelen((info_),((char*)key_str_),(val_len_),(flag_))
+#define ADIOI_Info_delete(info_,key_str_) \
+    MPI_Info_delete((info_),((char*)key_str_))
+
+
 /* Provide a fallback snprintf for systems that do not have one */
 /* Define attribute as empty if it has no definition */
 #ifndef ATTRIBUTE
@@ -824,6 +845,7 @@ int  ADIOI_MPE_stat_b;
   #define ADIOI_ENSURE_AINT_FITS_IN_PTR(aint_value) 
   #define ADIOI_Assert assert
   #define MPIR_Upint unsigned int
+  #define MPIU_THREADPRIV_DECL
 #endif
 
 #ifdef USE_DBG_LOGGING    /*todo fix dependency on mpich?*/

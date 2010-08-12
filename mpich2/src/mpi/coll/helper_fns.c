@@ -16,6 +16,31 @@
    MPID_CONTEXT_INTRA_COLL or MPID_CONTEXT_INTER_COLL. */
 
 #undef FUNCNAME
+#define FUNCNAME MPIC_Probe
+#undef FCNAME
+#define FCNAME MPIU_QUOTE(FUNCNAME)
+int MPIC_Probe(int source, int tag, MPI_Comm comm, MPI_Status *status)
+{
+    int mpi_errno = MPI_SUCCESS;
+    int context_id;
+    MPID_Comm *comm_ptr;
+
+    MPID_Comm_get_ptr( comm, comm_ptr );
+
+    context_id = (comm_ptr->comm_kind == MPID_INTRACOMM) ?
+        MPID_CONTEXT_INTRA_COLL : MPID_CONTEXT_INTER_COLL;
+    
+    mpi_errno = MPID_Probe(source, tag, comm_ptr, context_id, status);
+    if (mpi_errno != MPI_SUCCESS) goto fn_fail;
+
+ fn_exit:
+    return mpi_errno;
+ fn_fail:
+    goto fn_exit;
+}
+
+
+#undef FUNCNAME
 #define FUNCNAME MPIC_Send
 #undef FCNAME
 #define FCNAME "MPIC_Send"
@@ -193,7 +218,6 @@ int MPIC_Sendrecv_replace(void *buf, int count, MPI_Datatype datatype,
     int tmpbuf_size = 0;
     int tmpbuf_count = 0;
     MPID_Comm *comm_ptr;
-    MPIU_THREADPRIV_DECL;
     MPIU_CHKLMEM_DECL(1);
     MPIDI_STATE_DECL(MPID_STATE_MPIC_SENDRECV_REPLACE);
 #ifdef MPID_LOG_ARROWS
@@ -202,24 +226,18 @@ int MPIC_Sendrecv_replace(void *buf, int count, MPI_Datatype datatype,
 #endif
 
     MPIDI_PT2PT_FUNC_ENTER_BOTH(MPID_STATE_MPIC_SENDRECV_REPLACE);
-
-    MPIU_THREADPRIV_GET;
-
+    
     MPID_Comm_get_ptr( comm, comm_ptr );
     context_id_offset = (comm_ptr->comm_kind == MPID_INTRACOMM) ?
         MPID_CONTEXT_INTRA_COLL : MPID_CONTEXT_INTER_COLL;
 
     if (count > 0 && dest != MPI_PROC_NULL)
     {
-        MPIR_Nest_incr();
-        mpi_errno = NMPI_Pack_size(count, datatype, comm, &tmpbuf_size);
-        if (mpi_errno) MPIU_ERR_POP(mpi_errno);
-
+        MPIR_Pack_size_impl(count, datatype, &tmpbuf_size);
         MPIU_CHKLMEM_MALLOC(tmpbuf, void *, tmpbuf_size, mpi_errno, "temporary send buffer");
 
-        mpi_errno = NMPI_Pack(buf, count, datatype, tmpbuf, tmpbuf_size, &tmpbuf_count, comm);
+        mpi_errno = MPIR_Pack_impl(buf, count, datatype, tmpbuf, tmpbuf_size, &tmpbuf_count);
         if (mpi_errno) MPIU_ERR_POP(mpi_errno);
-        MPIR_Nest_decr();
     }
 
     mpi_errno = MPID_Irecv(buf, count, datatype, source, recvtag,
@@ -238,12 +256,12 @@ int MPIC_Sendrecv_replace(void *buf, int count, MPI_Datatype datatype,
         /* --END ERROR HANDLING-- */
     }
 
-    if (*sreq->cc_ptr != 0 || *rreq->cc_ptr != 0)
+    if (!MPID_Request_is_complete(sreq) || !MPID_Request_is_complete(rreq))
     {
         MPID_Progress_state progress_state;
 
         MPID_Progress_start(&progress_state);
-        while (*sreq->cc_ptr != 0 || *rreq->cc_ptr != 0)
+        while (!MPID_Request_is_complete(sreq) || !MPID_Request_is_complete(rreq))
         {
             mpi_errno = MPID_Progress_wait(&progress_state);
             if (mpi_errno != MPI_SUCCESS)
@@ -324,16 +342,19 @@ int MPIR_Localcopy(void *sendbuf, int sendcount, MPI_Datatype sendtype,
         copy_sz = sdata_sz;
     }
 
-    mpi_errno = NMPI_Type_get_true_extent(sendtype, &sendtype_true_lb, &true_extent);
-    if (mpi_errno) { MPIU_ERR_POP(mpi_errno); }
-    
-    mpi_errno = NMPI_Type_get_true_extent(recvtype, &recvtype_true_lb, &true_extent);
-    if (mpi_errno) { MPIU_ERR_POP(mpi_errno); }
+    MPIR_Type_get_true_extent_impl(sendtype, &sendtype_true_lb, &true_extent);
+    MPIR_Type_get_true_extent_impl(recvtype, &recvtype_true_lb, &true_extent);
 
     if (sendtype_iscontig && recvtype_iscontig)
-    {    
-        MPIU_Memcpy(((char *) recvbuf + recvtype_true_lb), 
-               ((char *) sendbuf + sendtype_true_lb), 
+    {
+#if defined(HAVE_ERROR_CHECKING)
+        MPIU_ERR_CHKMEMCPYANDJUMP(mpi_errno,
+                                  ((char *)recvbuf + recvtype_true_lb),
+                                  ((char *)sendbuf + sendtype_true_lb),
+                                  copy_sz);
+#endif
+        MPIU_Memcpy(((char *) recvbuf + recvtype_true_lb),
+               ((char *) sendbuf + sendtype_true_lb),
                copy_sz);
     }
     else if (sendtype_iscontig)
@@ -502,12 +523,12 @@ int MPIC_Wait(MPID_Request * request_ptr)
     MPIDI_STATE_DECL(MPID_STATE_MPIC_WAIT);
 
     MPIDI_PT2PT_FUNC_ENTER(MPID_STATE_MPIC_WAIT);
-    if ((*(request_ptr)->cc_ptr) != 0)
+    if (!MPID_Request_is_complete(request_ptr))
     {
 	MPID_Progress_state progress_state;
 	
 	MPID_Progress_start(&progress_state);
-	while((*(request_ptr)->cc_ptr) != 0)
+        while (!MPID_Request_is_complete(request_ptr))
 	{
 	    mpi_errno = MPID_Progress_wait(&progress_state);
 	    if (mpi_errno) { MPIU_ERR_POP(mpi_errno); }

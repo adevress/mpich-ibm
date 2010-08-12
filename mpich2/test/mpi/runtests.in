@@ -39,15 +39,20 @@ use Cwd;
 #
 
 # Global variables
-$mpiexec          = "@MPIEXEC@"; # Name of mpiexec program (including path, if necessary)
-$np_arg           = "-np";       # Name of argument to specify the number of processes
-$err_count        = 0;           # Number of programs that failed.
-$total_count      = 0;           # Number of programs tested
-$np_default       = 2;           # Default number of processes to use
-$np_max           = -1;          # Maximum number of processes to use (overrides any value in the test list files.  -1 is Infinity
-$defaultTimeLimit = 180;         # default timeout
-$srcdir           = ".";         # Used to set the source dir for testlist files
-$curdir           = ".";         # used to track the relative current directory
+$MPIMajorVersion = "@MPI_SUBVERSION@";
+$MPIMinorVersion = "@MPI_VERSION@";
+$mpiexec = "@MPIEXEC@";  # Name of mpiexec program (including path, if necessary)
+$np_arg  = "-np";        # Name of argument to specify the number of processes
+$err_count = 0;          # Number of programs that failed.
+$total_count = 0;        # Number of programs tested
+$np_default = 2;         # Default number of processes to use
+$np_max     = -1;        # Maximum number of processes to use (overrides any
+                         # value in the test list files.  -1 is Infinity
+$defaultTimeLimit = 180; # default timeout
+
+$srcdir = ".";           # Used to set the source dir for testlist files
+
+$curdir = ".";           # used to track the relative current directory
 
 # Output forms
 $xmloutput        = 0;    # Set to true to get xml output (also specify file)
@@ -535,61 +540,76 @@ sub RunList {
         s/\r?\n//;
         # Remove any leading whitespace
         s/^\s*//;
-        # Some tests require that support routines are built first
-        # This is specified with !<dir>:<target>
-        if (/^\s*\!([^:]*):(.*)/) {
-            # Hack: just execute in a subshell.  This discards any
-            # output.
-            `cd $1 && make $2`;
-            next;
-        }
-        # List file entries have the form:
-        # program [ np [ name=value ... ] ]
-        # See files errhan/testlist, init/testlist, and spawn/testlist
-        # for examples of using the key=value form
-        my @args = split(/\s+/,$_);
-        my $programname = $args[0];
-        my $np = "";
-        my $ResultTest = "";
-        my $InitForRun = "";
-        my $timeLimit  = "";
-        my $progArgs   = "";
-        my $mpiexecArgs = "";
-        my $progEnv    = "";
-        if ($#args >= 1) { $np = $args[1]; }
-        # Process the key=value arguments
-        for (my $i=2; $i <= $#args; $i++) {
-            if ($args[$i] =~ /([^=]+)=(.*)/) {
-                my $key = $1;
-                my $value = $2;
-                if ($key eq "resultTest") {
-                    $ResultTest = $value;
-                }
-                elsif ($key eq "init") {
-                    $InitForRun = $value;
-                }
-                elsif ($key eq "timeLimit") {
-                    $timeLimit = $value;
-                }
-                elsif ($key eq "arg") {
-                    $progArgs = "$progArgs $value";
-                }
-                elsif ($key eq "mpiexecarg") {
-                    $mpiexecArgs = "$mpiexecArgs $value";
-                }
-                elsif ($key eq "env") {
-                    $progEnv = "$progEnv $value";
-                }
-                else {
-                    print STDERR "Unrecognized key $key in $listfileSource\n";
-                }
-            }
-        }
+	# Some tests require that support routines are built first
+	# This is specified with !<dir>:<target>
+	if (/^\s*\!([^:]*):(.*)/) {
+	    # Hack: just execute in a subshell.  This discards any
+	    # output.
+	    `cd $1 && make $2`;
+	    next;
+	}
+	# List file entries have the form:
+	# program [ np [ name=value ... ] ]
+	# See files errhan/testlist, init/testlist, and spawn/testlist
+	# for examples of using the key=value form
+	my @args = split(/\s+/,$_);
+	my $programname = $args[0];
+	my $np = "";
+	my $ResultTest = "";
+	my $InitForRun = "";
+	my $timeLimit  = "";
+	my $progArgs   = "";
+	my $mpiexecArgs = "";
+	my $progEnv    = "";
+	my $mpiVersion = "";
+	if ($#args >= 1) { $np = $args[1]; }
+	# Process the key=value arguments
+	for (my $i=2; $i <= $#args; $i++) {
+	    if ($args[$i] =~ /([^=]+)=(.*)/) {
+		my $key = $1;
+		my $value = $2;
+		if ($key eq "resultTest") {
+		    $ResultTest = $value;
+		}
+		elsif ($key eq "init") {
+		    $InitForRun = $value;
+		}
+		elsif ($key eq "timeLimit") {
+		    $timeLimit = $value;
+		}
+		elsif ($key eq "arg") {
+		    $progArgs = "$progArgs $value";
+		}
+		elsif ($key eq "mpiexecarg") {
+		    $mpiexecArgs = "$mpiexecArgs $value";
+		}
+		elsif ($key eq "env") {
+		    $progEnv = "$progEnv $value";
+		}
+		elsif ($key eq "mpiversion") {
+		    $mpiVersion = $value;
+		}
+		else {
+		    print STDERR "Unrecognized key $key in $listfileSource\n";
+		}
+	    }
+	}
 
-        if ($np eq "") { $np = $np_default; }
-        if ($np_max > 0 && $np > $np_max) { $np = $np_max; }
-        # skip empty lines
-        if ($programname eq "") { next; }
+	# If a minimum MPI version is specified, check against the
+	# available MPI.  If the version is unknown, we ignore this
+	# test (thus, all tests will be run).
+	if ($mpiVersion ne "" && $MPIMajorVersion ne "unknown" &&
+	    $MPIMinorVersion ne "unknown") {
+	    my ($majorReq,$minorReq) = split(/\./,$mpiVersion);
+	    if ($majorReq > $MPIMajorVersion) { next; }
+	    if ($majorReq == $MPIMajorVersion &&
+		$minorReq > $MPIMinorVersion) { next; }
+	}
+
+	if ($np eq "") { $np = $np_default; }
+	if ($np_max > 0 && $np > $np_max) { $np = $np_max; }
+	# skip empty lines
+	if ($programname eq "") { next; }
 
         next if defined $program_list{$programname}{$np};
         $program_list{$programname}{$np} = 1;
@@ -618,8 +638,9 @@ sub RunList {
             # If a directory, go into the that directory and
             # look for a new list file
             &ProcessDir( $programname, $listfile );
-        } else {
-            $total_count++;
+	}
+	else {
+	    $total_count++;
 
             # Save these so we can restore them later
             my $savedir = `pwd`; chop $savedir;
@@ -635,17 +656,23 @@ sub RunList {
                 chdir $path;
             }
 
-            if (&BuildMPIProgram( $programname ) == 0) {
-                &RunMPIProgram( $programname, $np, $ResultTest, $InitForRun,
-                                $timeLimit, $progArgs, $progEnv, $mpiexecArgs );
-            }
-            &CleanUpAfterRun( $programname );
+	    if (&BuildMPIProgram( $programname ) == 0) {
+		&RunMPIProgram( $programname, $np, $ResultTest, $InitForRun,
+				$timeLimit, $progArgs, $progEnv, $mpiexecArgs );
+	    }
+	    else {
+		# We expected to run this program, so failure to build
+		# is an error
+		$found_error = 1;
+		$err_count++;
+	    }
+	    &CleanUpAfterRun( $programname );
 
             # Restore saved dirs
             chdir $savedir;
             $curdir = $savecurdir;
             $srcdir = $savesrcdir;
-        }
+	}
     }
     close( $LIST );
 }
@@ -1016,25 +1043,25 @@ sub TestTimeout {
 
     my $inline = "";
     while (<$MPIOUT>) {
-        #print STDOUT $_ if $verbose;
-        # Skip FORTRAN STOP
-        if (/FORTRAN STOP/) { next; }
-        $inline .= $_;
-        if (/[Tt]imeout/) { next; }
-        # Allow 'signaled with Interrupt' (see gforker mpiexec)
-        if (/signaled with Interrupt/) { next; }
-        # Allow 'job ending due to env var MPIEXEC_TIMEOUT' (mpd)
-        if (/job ending due to env var MPIEXEC_TIMEOUT/) { next; }
-        # Allow 'Terminated \(signal 15\)' (hydra)
-        if (/Terminated \(signal 15\)/) { next; }
-        # ANY output is an error (other than timeout)
-        if (! /^\s*$/) {
-            print STDERR "Unexpected output in $programname: $_" if !$verbose;
-            if (!$found_error) {
-                $found_error = 1;
-                $err_count ++;
-            }
-        }
+	#print STDOUT $_ if $verbose;
+	# Skip FORTRAN STOP
+	if (/FORTRAN STOP/) { next; }
+	$inline .= $_;
+	if (/[Tt]imeout/) { next; }
+	# Allow 'signaled with Interrupt' (see gforker mpiexec)
+	if (/signaled with Interrupt/) { next; }
+	# Allow 'job ending due to env var MPIEXEC_TIMEOUT' (mpd)
+	if (/job ending due to env var MPIEXEC_TIMEOUT/) { next; }
+	# Allow 'EXIT STRING: Terminated \(signal 15\)' (hydra)
+	if (/APPLICATION TERMINATED WITH THE EXIT STRING: Hangup \(signal 1\)/) { next; }
+	# ANY output is an error (other than timeout)
+	if (! /^\s*$/) {
+	    print STDERR "Unexpected output in $programname: $_";
+	    if (!$found_error) {
+		$found_error = 1;
+		$err_count ++;
+	    }
+	}
     }
     $rc = close ( MPIOUT );
     if ($rc == 0) {

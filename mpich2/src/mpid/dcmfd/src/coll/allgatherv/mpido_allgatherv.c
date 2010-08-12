@@ -61,9 +61,9 @@ MPIDO_Allgatherv(void *sendbuf,
   if (MPIDO_INFO_ISSET(comm_prop, MPIDO_USE_MPICH_ALLGATHERV))
   {
     comm->dcmf.last_algorithm = MPIDO_USE_MPICH_ALLGATHERV;
-    return MPIR_Allgatherv(sendbuf, sendcount, sendtype,
-			   recvbuf, recvcounts, displs, recvtype,
-			   comm);
+    return MPIR_Allgatherv_intra(sendbuf, sendcount, sendtype,
+                                 recvbuf, recvcounts, displs, recvtype,
+                                 comm);
   }
   MPIDI_Datatype_get_info(1,
 			  recvtype,
@@ -249,9 +249,9 @@ MPIDO_Allgatherv(void *sendbuf,
     if(!func)
     {
       comm->dcmf.last_algorithm = MPIDO_USE_MPICH_ALLGATHERV;
-      return MPIR_Allgatherv(sendbuf, sendcount, sendtype,
-                             recvbuf, recvcounts, displs, recvtype,
-                             comm);
+      return MPIR_Allgatherv_intra(sendbuf, sendcount, sendtype,
+                                   recvbuf, recvcounts, displs, recvtype,
+                                   comm);
     }
     
     /* If we're using allreduce, we might have verified the buffer
@@ -321,9 +321,9 @@ MPIDO_Allgatherv(void *sendbuf,
     STAR_info.internal_control_flow = 0;
       
     if (rc == STAR_FAILURE)
-      rc = MPIR_Allgatherv(sendbuf, sendcount, sendtype,
-                           recvbuf, recvcounts, displs, recvtype,
-                           comm);
+      rc = MPIR_Allgatherv_intra(sendbuf, sendcount, sendtype,
+                                 recvbuf, recvcounts, displs, recvtype,
+                                 comm);
     MPIU_Free(tb_ptr);
   }  
   return rc;

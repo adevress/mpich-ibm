@@ -44,7 +44,7 @@ sub usage
     print "\t--source          source svn repository (required)\n";
 
     # svn repository for the previous source in this series to ensure ABI compliance
-    print "\t--psource    source repo for the previous version for ABI compliance (required)\n";
+    print "\t--psource         source repo for the previous version for ABI compliance (required)\n";
 
     # what package we are creating
     print "\t--package         package to create (optional)\n";
@@ -154,13 +154,21 @@ run_cmd("rm -rf ${pack}-${version}");
 run_cmd("svn export -q ${source} ${pack}-${version}");
 print("done\n");
 
+print("===> Create release date and version information... ");
+chdir("${root}/${pack}-${version}");
+system(qq(echo `date` > ./maint/ReleaseDate));
+system(qq(mkdir ./src/pm/hydra/version));
+system(qq(cp ./maint/Version ./src/pm/hydra/version/version));
+system(qq(cp ./maint/ReleaseDate ./src/pm/hydra/version/release_date));
+print("done\n");
+
 # Remove packages that are not being released
 print("===> Removing packages that are not being released... ");
 chdir("${root}/${pack}-${version}");
 run_cmd("rm -rf src/mpid/globus doc/notes src/pm/mpd/Zeroconf.py");
 
 chdir("${root}/${pack}-${version}/src/mpid/ch3/channels/nemesis/nemesis/netmod");
-my @nem_modules = qw(elan ib psm);
+my @nem_modules = qw(elan psm);
 run_cmd("rm -rf ".join(' ', map({$_ . "/*"} @nem_modules)));
 for my $module (@nem_modules) {
     # system to avoid problems with shell redirect in run_cmd
@@ -172,7 +180,14 @@ print("done\n");
 print("===> Creating configure in the main package... ");
 chdir("${root}/${pack}-${version}");
 {
+    # ./maint/updatefiles needs to be run twice; once without the
+    # -distrib option and once with.
     my $cmd = "./maint/updatefiles";
+    $cmd .= " --with-autoconf=$with_autoconf" if $with_autoconf;
+    $cmd .= " --with-automake=$with_automake" if $with_automake;
+    run_cmd($cmd);
+
+    $cmd = "./maint/updatefiles -distrib";
     $cmd .= " --with-autoconf=$with_autoconf" if $with_autoconf;
     $cmd .= " --with-automake=$with_automake" if $with_automake;
     run_cmd($cmd);

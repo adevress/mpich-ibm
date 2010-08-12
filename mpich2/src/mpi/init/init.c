@@ -30,9 +30,7 @@
 /* Any internal routines can go here.  Make them static if possible */
 #endif
 
-#if defined USE_ASYNC_PROGRESS
 int MPIR_async_thread_initialized = 0;
-#endif /* USE_ASYNC_PROGRESS */
 
 #undef FUNCNAME
 #define FUNCNAME MPI_Init
@@ -74,7 +72,6 @@ int MPI_Init( int *argc, char ***argv )
     int mpi_errno = MPI_SUCCESS;
     int rc;
     int threadLevel, provided;
-    MPIU_THREADPRIV_DECL;
     MPID_MPI_INIT_STATE_DECL(MPID_STATE_MPI_INIT);
 
     rc = MPID_Wtime_init();
@@ -82,23 +79,6 @@ int MPI_Init( int *argc, char ***argv )
     MPIU_DBG_PreInit( argc, argv, rc );
 #endif
 
-    MPID_CS_INITIALIZE();
-    /* FIXME: Can we get away without locking every time.  Now, we
-       need a MPID_CS_ENTER/EXIT around MPI_Init and MPI_Init_thread.
-       Progress may be called within MPI_Init, e.g., by a spawned
-       child process.  Within progress, the lock is released and
-       reacquired when blocking.  If the lock isn't acquired before
-       then, the release in progress is incorrect.  Furthermore, if we
-       don't release the lock after progress, we'll deadlock the next
-       time this process tries to acquire the lock.
-       MPID_CS_ENTER/EXIT functions are used here instead of
-       MPIU_THREAD_SINGLE_CS_ENTER/EXIT because
-       MPIR_ThreadInfo.isThreaded hasn't been initialized yet.
-    */
-#if MPIU_THREAD_GRANULARITY == MPIU_THREAD_GRANULARITY_GLOBAL
-    MPID_CS_ENTER();
-#endif
-    
     MPID_MPI_INIT_FUNC_ENTER(MPID_STATE_MPI_INIT);
 #   ifdef HAVE_ERROR_CHECKING
     {
@@ -122,7 +102,7 @@ int MPI_Init( int *argc, char ***argv )
     {
 	const char *str = 0;
 	threadLevel = MPI_THREAD_SINGLE;
-	if (MPIU_GetEnvStr( "MPICH_THREADLEVEL_DEFAULT", &str )) {
+	if (MPL_env2str( "MPICH_THREADLEVEL_DEFAULT", &str )) {
 	    if (strcmp(str,"MULTIPLE") == 0 || strcmp(str,"multiple") == 0) {
 		threadLevel = MPI_THREAD_MULTIPLE;
 	    }
@@ -145,35 +125,27 @@ int MPI_Init( int *argc, char ***argv )
     threadLevel = MPI_THREAD_SINGLE;
 #endif
 
-#if defined USE_ASYNC_PROGRESS
     /* If the user requested for asynchronous progress, request for
      * THREAD_MULTIPLE. */
     rc = 0;
-    MPIU_GetEnvBool("MPICH_ASYNC_PROGRESS", &rc);
+    MPL_env2bool("MPICH_ASYNC_PROGRESS", &rc);
     if (rc)
         threadLevel = MPI_THREAD_MULTIPLE;
-#endif /* USE_ASYNC_PROGRESS */
 
     mpi_errno = MPIR_Init_thread( argc, argv, threadLevel, &provided );
     if (mpi_errno != MPI_SUCCESS) goto fn_fail;
 
-#if defined USE_ASYNC_PROGRESS
     if (rc && provided == MPI_THREAD_MULTIPLE) {
         mpi_errno = MPIR_Init_async_thread();
         if (mpi_errno) goto fn_fail;
 
         MPIR_async_thread_initialized = 1;
     }
-#endif /* USE_ASYNC_PROGRESS */
 
     /* ... end of body of routine ... */
-    
     MPID_MPI_INIT_FUNC_EXIT(MPID_STATE_MPI_INIT);
-#if MPIU_THREAD_GRANULARITY == MPIU_THREAD_GRANULARITY_GLOBAL
-    MPID_CS_EXIT();
-#endif
     return mpi_errno;
-    
+
   fn_fail:
     /* --BEGIN ERROR HANDLING-- */
 #   ifdef HAVE_ERROR_REPORTING
@@ -184,8 +156,6 @@ int MPI_Init( int *argc, char ***argv )
     }
 #   endif
     mpi_errno = MPIR_Err_return_comm( 0, FCNAME, mpi_errno );
-    MPID_CS_EXIT();
-    MPID_CS_FINALIZE();
     return mpi_errno;
     /* --END ERROR HANDLING-- */
 }

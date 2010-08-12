@@ -20,9 +20,9 @@ int MPIDI_Win_create(void *base, MPI_Aint size, int disp_unit, MPID_Info *info,
 {
     int mpi_errno=MPI_SUCCESS, i, comm_size, rank;
     MPI_Aint *tmp_buf;
+    MPID_Comm *win_comm_ptr;
     MPIU_CHKPMEM_DECL(4);
     MPIU_CHKLMEM_DECL(1);
-    MPIU_THREADPRIV_DECL;
     MPIDI_STATE_DECL(MPID_STATE_MPIDI_WIN_CREATE);
     
     MPIDI_RMA_FUNC_ENTER(MPID_STATE_MPIDI_WIN_CREATE);
@@ -30,10 +30,6 @@ int MPIDI_Win_create(void *base, MPI_Aint size, int disp_unit, MPID_Info *info,
     /* FIXME: There should be no unreferenced args */
     MPIU_UNREFERENCED_ARG(info);
 
-    MPIU_THREADPRIV_GET;
-
-    MPIR_Nest_incr();
-        
     comm_size = comm_ptr->local_size;
     rank = comm_ptr->rank;
     
@@ -57,8 +53,9 @@ int MPIDI_Win_create(void *base, MPI_Aint size, int disp_unit, MPID_Info *info,
     (*win_ptr)->my_counter = 0;
     (*win_ptr)->my_pt_rma_puts_accs = 0;
     
-    mpi_errno = NMPI_Comm_dup(comm_ptr->handle, &((*win_ptr)->comm));
-    if (mpi_errno) { MPIU_ERR_POP(mpi_errno); }
+    mpi_errno = MPIR_Comm_dup_impl(comm_ptr, &win_comm_ptr);
+    if (mpi_errno) MPIU_ERR_POP(mpi_errno);
+    (*win_ptr)->comm = win_comm_ptr->handle;
     
     /* allocate memory for the base addresses, disp_units, and
        completion counters of all processes */ 
@@ -88,9 +85,9 @@ int MPIDI_Win_create(void *base, MPI_Aint size, int disp_unit, MPID_Info *info,
     tmp_buf[3*rank+1] = (MPI_Aint) disp_unit;
     tmp_buf[3*rank+2] = (MPI_Aint) (*win_ptr)->handle;
     
-    mpi_errno = NMPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL,
-			       tmp_buf, 3 * sizeof(MPI_Aint), MPI_BYTE, 
-			       comm_ptr->handle);   
+    mpi_errno = MPIR_Allgather_impl(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL,
+                                    tmp_buf, 3 * sizeof(MPI_Aint), MPI_BYTE,
+                                    comm_ptr);
     if (mpi_errno) { MPIU_ERR_POP(mpi_errno); }
     
     for (i=0; i<comm_size; i++)
@@ -101,7 +98,6 @@ int MPIDI_Win_create(void *base, MPI_Aint size, int disp_unit, MPID_Info *info,
     }
         
  fn_exit:
-    MPIR_Nest_decr();
     MPIU_CHKLMEM_FREEALL();
     MPIDI_RMA_FUNC_EXIT(MPID_STATE_MPIDI_WIN_CREATE);
     return mpi_errno;
@@ -121,31 +117,19 @@ int MPIDI_Win_create(void *base, MPI_Aint size, int disp_unit, MPID_Info *info,
 #define FCNAME MPIDI_QUOTE(FUNCNAME)
 int MPIDI_Win_free(MPID_Win **win_ptr)
 {
-    int mpi_errno=MPI_SUCCESS, total_pt_rma_puts_accs, i, *recvcnts, comm_size;
-    MPID_Comm *comm_ptr;
+    int mpi_errno=MPI_SUCCESS, total_pt_rma_puts_accs;
     int in_use;
-    MPIU_CHKLMEM_DECL(1);
-    MPIU_THREADPRIV_DECL;
+    MPID_Comm *comm_ptr;
     
     MPIDI_STATE_DECL(MPID_STATE_MPIDI_WIN_FREE);
         
     MPIDI_RMA_FUNC_ENTER(MPID_STATE_MPIDI_WIN_FREE);
         
-    MPIU_THREADPRIV_GET;
-    MPIR_Nest_incr();
-
-    /* set up the recvcnts array for the reduce scatter to check if all
-       passive target rma operations are done */
     MPID_Comm_get_ptr( (*win_ptr)->comm, comm_ptr );
-    comm_size = comm_ptr->local_size;
-        
-    MPIU_CHKLMEM_MALLOC(recvcnts, int *, comm_size*sizeof(int), mpi_errno, 
-			"recvcnts");
-    for (i=0; i<comm_size; i++)  recvcnts[i] = 1;
-        
-    mpi_errno = NMPI_Reduce_scatter((*win_ptr)->pt_rma_puts_accs, 
-				    &total_pt_rma_puts_accs, recvcnts, 
-				    MPI_INT, MPI_SUM, (*win_ptr)->comm);
+
+    mpi_errno = MPIR_Reduce_scatter_block_impl((*win_ptr)->pt_rma_puts_accs, 
+                                               &total_pt_rma_puts_accs, 1, 
+                                               MPI_INT, MPI_SUM, comm_ptr);
     if (mpi_errno) { MPIU_ERR_POP(mpi_errno); }
 
     if (total_pt_rma_puts_accs != (*win_ptr)->my_pt_rma_puts_accs)
@@ -168,7 +152,9 @@ int MPIDI_Win_free(MPID_Win **win_ptr)
 	MPID_Progress_end(&progress_state);
     }
 
-    NMPI_Comm_free(&((*win_ptr)->comm));
+    
+    mpi_errno = MPIR_Comm_free_impl(comm_ptr);
+    if (mpi_errno) MPIU_ERR_POP(mpi_errno);
 
     MPIU_Free((*win_ptr)->base_addrs);
     MPIU_Free((*win_ptr)->disp_units);
@@ -181,8 +167,6 @@ int MPIDI_Win_free(MPID_Win **win_ptr)
     MPIU_Handle_obj_free( &MPID_Win_mem, *win_ptr );
 
  fn_exit:
-    MPIR_Nest_decr();
-    MPIU_CHKLMEM_FREEALL();
     MPIDI_RMA_FUNC_EXIT(MPID_STATE_MPIDI_WIN_FREE);
     return mpi_errno;
 
@@ -206,13 +190,12 @@ int MPIDI_Put(void *origin_addr, int origin_count, MPI_Datatype
     MPID_Datatype *dtp;
     MPI_Aint dt_true_lb;
     MPIDI_msg_sz_t data_sz;
+    MPID_Comm *win_comm_ptr;
     MPIU_CHKPMEM_DECL(1);
-    MPIU_THREADPRIV_DECL;
     MPIDI_STATE_DECL(MPID_STATE_MPIDI_PUT);
         
     MPIDI_RMA_FUNC_ENTER(MPID_STATE_MPIDI_PUT);
 
-    MPIU_THREADPRIV_GET;
     MPIDI_Datatype_get_info(origin_count, origin_datatype,
 			    dt_contig, data_sz, dtp,dt_true_lb); 
     
@@ -226,9 +209,8 @@ int MPIDI_Put(void *origin_addr, int origin_count, MPI_Datatype
        or to save a pointer to the communicator structure, rather than
        just the handle 
     */
-    MPIR_Nest_incr();
-    NMPI_Comm_rank(win_ptr->comm, &rank);
-    MPIR_Nest_decr();
+    MPID_Comm_get_ptr(win_ptr->comm, win_comm_ptr);
+    rank = MPIR_Comm_rank(win_comm_ptr);
     
     /* If the put is a local operation, do it here */
     if (target_rank == rank)
@@ -309,13 +291,12 @@ int MPIDI_Get(void *origin_addr, int origin_count, MPI_Datatype
     MPI_Aint dt_true_lb;
     MPIDI_RMA_ops *curr_ptr, *prev_ptr, *new_ptr;
     MPID_Datatype *dtp;
+    MPID_Comm *win_comm_ptr;
     MPIU_CHKPMEM_DECL(1);
-    MPIU_THREADPRIV_DECL;
     MPIDI_STATE_DECL(MPID_STATE_MPIDI_GET);
         
     MPIDI_RMA_FUNC_ENTER(MPID_STATE_MPIDI_GET);
 
-    MPIU_THREADPRIV_GET;
     MPIDI_Datatype_get_info(origin_count, origin_datatype,
 			    dt_contig, data_sz, dtp, dt_true_lb); 
 
@@ -326,9 +307,8 @@ int MPIDI_Get(void *origin_addr, int origin_count, MPI_Datatype
 
     /* FIXME: It makes sense to save the rank (and size) of the
        communicator in the window structure to speed up these operations */
-    MPIR_Nest_incr();
-    NMPI_Comm_rank(win_ptr->comm, &rank);
-    MPIR_Nest_decr();
+    MPID_Comm_get_ptr(win_ptr->comm, win_comm_ptr);
+    rank = MPIR_Comm_rank(win_comm_ptr);
     
     /* If the get is a local operation, do it here */
     if (target_rank == rank)
@@ -416,6 +396,7 @@ int MPIDI_Accumulate(void *origin_addr, int origin_count, MPI_Datatype
     MPI_Aint dt_true_lb;
     MPIDI_RMA_ops *curr_ptr, *prev_ptr, *new_ptr;
     MPID_Datatype *dtp;
+    MPID_Comm *win_comm_ptr;
     MPIU_CHKLMEM_DECL(2);
     MPIU_CHKPMEM_DECL(1);
     MPIU_THREADPRIV_DECL;
@@ -440,7 +421,8 @@ int MPIDI_Accumulate(void *origin_addr, int origin_count, MPI_Datatype
        or to save a pointer to the communicator structure, rather than
        just the handle 
     */
-    NMPI_Comm_rank(win_ptr->comm, &rank);
+    MPID_Comm_get_ptr(win_ptr->comm, win_comm_ptr);
+    rank = MPIR_Comm_rank(win_comm_ptr);
     
     MPIDI_CH3I_DATATYPE_IS_PREDEFINED(origin_datatype, origin_predefined);
     MPIDI_CH3I_DATATYPE_IS_PREDEFINED(target_datatype, target_predefined);
@@ -488,10 +470,7 @@ int MPIDI_Accumulate(void *origin_addr, int origin_count, MPI_Datatype
 		   the same datatype as the target. Then do the
 		   accumulate operation. */
 		
-		mpi_errno = NMPI_Type_get_true_extent(target_datatype, 
-						      &true_lb, &true_extent);
-		if (mpi_errno) { MPIU_ERR_POP(mpi_errno); }
-		
+		MPIR_Type_get_true_extent_impl(target_datatype, &true_lb, &true_extent);
 		MPID_Datatype_get_extent_macro(target_datatype, extent); 
 		
 		MPIU_CHKLMEM_MALLOC(tmp_buf, void *, 

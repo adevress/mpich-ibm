@@ -76,13 +76,18 @@ typedef MPIR_Rank_t MPID_Node_id_t;
    confirm that the size of comm_world is less than 2^15, and in an communicator
    create (that may make use of dynamically created processes) that the
    size of the communicator is within range.
+
+   If any part of the definition of this type is changed, those changes
+   must be reflected in the debugger interface in src/mpi/debugger/dll_mpich2.c
+   and dbgstub.c
 */
+typedef struct MPIDI_Message_match_parts {
+    int32_t tag;
+    MPIR_Rank_t rank;
+    MPIR_Context_id_t context_id;
+} MPIDI_Message_match_parts_t;
 typedef union {
-    struct {
-	int32_t tag;
-	MPIR_Rank_t rank;
-	MPIR_Context_id_t context_id;
-    } parts;
+    MPIDI_Message_match_parts_t parts;
     MPIR_Upint whole;
 } MPIDI_Message_match;
 #define MPIDI_TAG_UB (0x7fffffff)
@@ -212,7 +217,7 @@ typedef struct MPIDI_Request {
     struct MPID_Datatype * datatype_ptr;
 
     /* iov and iov_count define the data to be transferred/received.  
-       iov_offset points to the current head eleemnt in the IOV */
+       iov_offset points to the current head element in the IOV */
     MPID_IOV iov[MPID_IOV_LIMIT];
     int iov_count;
     int iov_offset;
@@ -244,8 +249,16 @@ typedef struct MPIDI_Request {
 
     unsigned int   state;
     int            cancel_pending;
-    /* FIXME the precise meaning of this field is unclear, comments/docs
-       about it should be added */
+
+    /* This field seems to be used for unexpected messages.  Unexpected messages
+     * need to go through two steps: matching and receiving the data.  These
+     * steps could happen in either order though, so this field is initialized
+     * to 2.  It is decremented when the request is matched and also when all of
+     * the data is available.  Once it reaches 0 it should be safe to copy from
+     * the temporary buffer (if there is one) to the user buffer.  This field is
+     * related to, but not quite the same thing as the completion counter (cc). */
+    /* MT access should be controlled by the MSGQUEUE CS when the req is still
+     * unexpected, exclusive access otherwise */
     int            recv_pending_count;
 
     /* The next 8 are for RMA */

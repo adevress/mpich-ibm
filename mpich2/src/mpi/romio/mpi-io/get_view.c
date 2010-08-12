@@ -51,7 +51,6 @@ int MPI_File_get_view(MPI_File mpi_fh,
     static char myname[] = "MPI_FILE_GET_VIEW";
     int i, j, k, combiner;
     MPI_Datatype copy_etype, copy_filetype;
-    MPIU_THREADPRIV_DECL;
 
     MPIU_THREAD_CS_ENTER(ALLFUNC,);
     MPIR_Nest_incr();
@@ -79,7 +78,7 @@ int MPI_File_get_view(MPI_File mpi_fh,
     else {
 	/* FIXME: It is wrong to use MPI_Type_contiguous; the user could choose to
 	   re-implement MPI_Type_contiguous in an unexpected way.  Either use 
-	   NMPI_Barrier as in MPICH2 or PMPI_Type_contiguous */
+	   MPIR_Barrier_impl as in MPICH2 or PMPI_Type_contiguous */
         MPI_Type_contiguous(1, fh->etype, &copy_etype);
 
 	/* FIXME: Ditto for MPI_Type_commit - use NMPI or PMPI */

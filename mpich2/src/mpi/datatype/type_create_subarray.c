@@ -64,6 +64,7 @@ int MPI_Type_create_subarray(int ndims,
 {
     static const char FCNAME[] = "MPI_Type_create_subarray";
     int mpi_errno = MPI_SUCCESS, i;
+    MPI_Datatype new_handle;
 
     /* these variables are from the original version in ROMIO */
     MPI_Aint size, extent, disps[3];
@@ -145,7 +146,7 @@ int MPI_Type_create_subarray(int ndims,
 						 "order");
 	    }
 
-	    NMPI_Type_extent(oldtype, &extent);
+	    MPIR_Type_extent_impl(oldtype, &extent);
 
 	    /* check if MPI_Aint is large enough for size of global array.
 	       if not, complain. */
@@ -179,7 +180,7 @@ int MPI_Type_create_subarray(int ndims,
     /* TODO: CHECK THE ERROR RETURNS FROM ALL THESE!!! */
 
     /* TODO: GRAB EXTENT WITH A MACRO OR SOMETHING FASTER */
-    NMPI_Type_extent(oldtype, &extent);
+    MPIR_Type_extent_impl(oldtype, &extent);
 
     if (order == MPI_ORDER_FORTRAN) {
 	if (ndims == 1)
@@ -203,7 +204,7 @@ int MPI_Type_create_subarray(int ndims,
 					     1, /* stride in bytes */
 					     tmp1,
 					     &tmp2);
-		NMPI_Type_free(&tmp1);
+		MPIR_Type_free_impl(&tmp1);
 		tmp1 = tmp2;
 	    }
 	}
@@ -244,7 +245,7 @@ int MPI_Type_create_subarray(int ndims,
 					     tmp1, /* old type */
 					     &tmp2);
 
-		NMPI_Type_free(&tmp1);
+		MPIR_Type_free_impl(&tmp1);
 		tmp1 = tmp2;
 	    }
 	}
@@ -284,9 +285,9 @@ int MPI_Type_create_subarray(int ndims,
 				 blklens,
 				 disps,
 				 types,
-				 newtype);
+				 &new_handle);
 
-    NMPI_Type_free(&tmp1);
+    MPIR_Type_free_impl(&tmp1);
 
     /* at this point we have the new type, and we've cleaned up any
      * intermediate types created in the process.  we just need to save
@@ -308,7 +309,7 @@ int MPI_Type_create_subarray(int ndims,
     }
     ints[3*ndims + 1] = order;
 
-    MPID_Datatype_get_ptr(*newtype, new_dtp);
+    MPID_Datatype_get_ptr(new_handle, new_dtp);
     mpi_errno = MPID_Datatype_set_contents(new_dtp,
 					   MPI_COMBINER_SUBARRAY,
 					   3 * ndims + 2, /* ints */
@@ -320,6 +321,7 @@ int MPI_Type_create_subarray(int ndims,
 
     if (mpi_errno != MPI_SUCCESS) goto fn_fail;
 
+    MPIU_OBJ_PUBLISH_HANDLE(*newtype, new_handle);
     /* ... end of body of routine ... */
     MPIR_Nest_decr();
 

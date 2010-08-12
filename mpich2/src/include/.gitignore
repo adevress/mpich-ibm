@@ -1,3 +1,4 @@
+/mpich_param_vals.h
 /mpi.h
 /mpif.h
 /mpichtimer.h

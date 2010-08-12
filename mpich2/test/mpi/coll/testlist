@@ -5,7 +5,8 @@ allred3 10
 allred4 4
 reduce 5
 reduce 10
-reduce_local 2
+reduce_local 2 mpiversion=2.2
+op_commutative 2
 red3 10
 red4 10
 alltoall1 8
@@ -52,6 +53,9 @@ redscat2 10
 red_scat_block 4
 red_scat_block 5
 red_scat_block 8
+red_scat_block2 4
+red_scat_block2 5
+red_scat_block2 10
 scantst 4
 exscan 10
 exscan2 5

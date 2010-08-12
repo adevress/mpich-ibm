@@ -130,14 +130,12 @@ int MPI_Finalize( void )
     
     /* ... body of routine ... */
 
-#if defined USE_ASYNC_PROGRESS
     /* If the user requested for asynchronous progress, we need to
      * shutdown the progress thread */
     if (MPIR_async_thread_initialized) {
         mpi_errno = MPIR_Finalize_async_thread();
         if (mpi_errno) goto fn_fail;
     }
-#endif /* USE_ASYNC_PROGRESS */
     
 #if defined(HAVE_USLEEP) && defined(USE_COVERAGE)
     /* We need to get the rank before freeing MPI_COMM_WORLD */
@@ -167,6 +165,7 @@ int MPI_Finalize( void )
      * At this point, we will release any user-defined error handlers on 
      * comm self and comm world
      */
+    /* no MPI_OBJ CS needed here */
     if (MPIR_Process.comm_world->errhandler && 
 	! (HANDLE_GET_KIND(MPIR_Process.comm_world->errhandler->handle) == 
 	   HANDLE_KIND_BUILTIN) ) {
@@ -226,13 +225,7 @@ int MPI_Finalize( void )
        finalize callbacks */
 #ifdef MPICH_DEBUG_NESTING
     {
-	int parmFound, parmValue;
-
-	MPIU_Param_register( "nestcheck", "NESTCHECK", 
-	     "List any memory that was allocated by MPICH2 and that remains allocated when MPI_Finalize completes" );
-	parmFound = MPIU_GetEnvBool( "MPICH_NESTCHECK", &parmValue );
-	if (!parmFound) parmValue = 1;
-	if (parmValue) {
+	if (MPIR_PARAM_NESTCHECK) {
 	    MPIU_THREADPRIV_GET;
 	    /* Check for an error in the nesting level */
 	    if (MPIR_Nest_value()) {
@@ -253,7 +246,7 @@ int MPI_Finalize( void )
     MPIU_THREAD_CS_EXIT(ALLFUNC,);
     MPIR_Process.initialized = MPICH_POST_FINALIZED;
 
-    MPID_CS_FINALIZE();
+    MPIU_THREAD_CS_FINALIZE;
 
     /* We place the memory tracing at the very end because any of the other
        steps may have allocated memory that they still need to release*/
@@ -262,16 +255,7 @@ int MPI_Finalize( void )
        go to separate files or to be sorted by rank (note that
        the rank is at the head of the line) */
     {
-	int parmFound, parmValue;
-	/* The Param_register is used to document the parameters.  A 
-	   script will extract the information about these parameters,
-	   allowing the documentation to stay up-to-date with the use of the
-	   parameters (this script is still to be written) */
-	MPIU_Param_register( "memdump", "MEMDUMP", 
-	     "List any memory that was allocated by MPICH2 and that remains allocated when MPI_Finalize completes" );
-	parmFound = MPIU_GetEnvBool( "MPICH_MEMDUMP", &parmValue );
-	if (!parmFound) parmValue = 1;
-	if (parmValue) {
+	if (MPIR_PARAM_MEMDUMP) {
 	    /* The second argument is the min id to print; memory allocated 
 	       after MPI_Init is given an id of one.  This allows us to
 	       ignore, if desired, memory leaks in the MPID_Init call */
