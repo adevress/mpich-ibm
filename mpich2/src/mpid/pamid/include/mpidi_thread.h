@@ -12,7 +12,7 @@
 
 #ifndef __include_mpidi_thread_h__
 #define __include_mpidi_thread_h__
-
+#if 0
 /**
  * ******************************************************************
  * \brief Mutexes for thread/interrupt safety
@@ -84,5 +84,5 @@
 
 #endif
 
-
+#endif /* #if 0 */
 #endif /* !MPICH_MPIDTHREAD_H_INCLUDED */
