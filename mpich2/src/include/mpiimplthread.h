@@ -482,7 +482,7 @@ M*/
     }                                           \
     MPIU_THREAD_CS_EXIT(INITFLAG,)
 
-#else /* !defined(MPICH_IS_THREADED) */
+#elif !defined(MPID_DEVICE_DEFINES_THREAD_CS) /* !defined(MPICH_IS_THREADED) */
 
 /* These provide a uniform way to perform a first-use initialization
    in a thread-safe way.  See the web page or mpidtime.c for the generic
@@ -900,7 +900,7 @@ enum MPIU_Nest_mutexes {
 #error Unrecognized thread granularity
 #endif
 
-#else /* ! MPICH_IS_THREAED */
+#elif !defined(MPID_DEVICE_DEFINES_THREAD_CS) /* ! MPICH_IS_THREAED */
 #define MPIU_THREAD_CS_INIT
 #define MPIU_THREAD_CS_FINALIZE
 #define MPIU_THREAD_CS_ENTER(_name,_context)
