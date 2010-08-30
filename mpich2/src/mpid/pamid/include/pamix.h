@@ -21,4 +21,8 @@ PAMIX_Dispatch_set(pami_context_t              context[],
                    pami_dispatch_callback_fn   fn,
                    pami_send_hint_t            options,
                    size_t                    * immediate_max);
+int PAMIX_Get_torus_dims(size_t *numdim);
+int PAMIX_Rank2torus(int rank, size_t *coords);
+int PAMIX_Torus2rank(size_t *coords, int *rank);
+
 #endif
