@@ -17,9 +17,9 @@ extern "C" {
 #endif
 
 
-int PAMIX_Get_torus_dims(size_t *numdim);
-int PAMIX_Rank2torus(int rank, size_t *coords);
-int PAMIX_Torus2rank(size_t *coords, int *rank);
+int MPIX_Get_torus_dims(size_t *numdim);
+int MPIX_Rank2torus(int rank, size_t *coords);
+int MPIX_Torus2rank(size_t *coords, int *rank);
 
 
 #if defined(__cplusplus)
