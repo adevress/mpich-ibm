@@ -183,13 +183,6 @@ MPIDI_Init(int* rank, int* size, int* threading)
       *threading = MPI_THREAD_SINGLE;
     }
 
-  /** \todo remove this check when trac #237 is fixed */
-  if(MPIDI_Process.avail_contexts > 1)
-    {
-      TRACE_ERR("Warning: num contexts=%u, but collectives only work with 1 context (see trac #237)\n", MPIDI_Process.avail_contexts);
-      MPIDI_Process.optimized.collectives = 0;
-    }
-
   /* ----------------------------------- */
   /*  Create the communication contexts  */
   /* ----------------------------------- */
