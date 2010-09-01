@@ -168,21 +168,20 @@ MPIDI_Init(int* rank, int* size, int* threading)
   /*  We didn't lock on the way in, but we will lock on the   */
   /*  way out if we are threaded.  Lock now to make it even.  */
   /* -------------------------------------------------------- */
-  /** \todo Add these in when trac #118 is fixed */
-#if 0
   if (PAMIX_Client_query(MPIDI_Client, PAMI_CLIENT_HWTHREADS_AVAILABLE).value.intval > 1)
     {
       /** \todo Add these in when trac #72 is fixed */
 #if 0
       MPIR_ThreadInfo.isThreaded = 1;
       MPID_CS_ENTER();
+#else
+      *threading = MPI_THREAD_SINGLE;
 #endif
     }
   else
     {
       *threading = MPI_THREAD_SINGLE;
     }
-#endif
 
   /** \todo remove this check when trac #237 is fixed */
   if(MPIDI_Process.avail_contexts > 1)
