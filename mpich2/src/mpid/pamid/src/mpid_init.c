@@ -7,12 +7,7 @@
 #include "mpidi_onesided.h"
 
 pami_client_t   MPIDI_Client;
-#ifdef __BGP__
-/** \todo remove this when trac #238 is fixed */
-#define MAX_CONTEXTS 2
-#else
 #define MAX_CONTEXTS 16
-#endif
 pami_context_t MPIDI_Context[MAX_CONTEXTS];
 
 
