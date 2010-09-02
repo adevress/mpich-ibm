@@ -7,6 +7,7 @@
 
 /**
  * \brief The standard callback for a new message
+ *
  * \param[in]   context     The context on which the message is being received.
  * \param[in]  _contextid   The numerical index of the context
  * \param[in]  _msginfo     The header information
@@ -118,6 +119,7 @@ void MPIDI_RecvCB(pami_context_t    context,
               rreq->mpid.uebuf    = MPIU_Malloc(sndlen);
               MPID_assert(rreq->mpid.uebuf != NULL);
 
+              recv->data_fn = PAMI_DATA_COPY;
               recv->type = PAMI_BYTE;
               recv->addr = rreq->mpid.uebuf;
             }
@@ -148,6 +150,7 @@ void MPIDI_RecvCB(pami_context_t    context,
 
           if (unlikely(recv != NULL))
             {
+              recv->data_fn = PAMI_DATA_COPY;
               recv->type = PAMI_BYTE;
               recv->addr = rcvbuf;
             }
@@ -200,6 +203,7 @@ void MPIDI_RecvCB(pami_context_t    context,
       /* -------------------------------------------------- */
       /*  Let PAMI know where to put the rest of the data.  */
       /* -------------------------------------------------- */
+      recv->data_fn = PAMI_DATA_COPY;
       recv->type = PAMI_BYTE;
       recv->addr = rreq->mpid.uebuf;
     }

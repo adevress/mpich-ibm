@@ -39,7 +39,6 @@ void MPIDI_RecvRzvCB(pami_context_t    context,
   MPID_Request * rreq = NULL;
   int found;
 
-
   /* -------------------- */
   /*  Match the request.  */
   /* -------------------- */
