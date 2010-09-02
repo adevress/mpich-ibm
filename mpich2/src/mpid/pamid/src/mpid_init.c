@@ -30,7 +30,6 @@ MPIDI_Process_t  MPIDI_Process = {
   },
 };
 
-MPID_Hardware_t mpid_hw;
 
 struct protocol_t
 {

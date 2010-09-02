@@ -7,8 +7,9 @@
 #include "mpidimpl.h"
 
 #include "pamix.h"
+#include "mpix.h"
 
-void MPIDI_HW_Init(MPID_Hardware_t *hw)
+void MPIDI_HW_Init(MPIX_Hardware_t *hw)
 {
    typedef struct pami_extension_torus_information
    {
@@ -27,8 +28,6 @@ void MPIDI_HW_Init(MPID_Hardware_t *hw)
 
    hw->clockMHz = PAMIX_Client_query(MPIDI_Client, PAMI_CLIENT_CLOCK_MHZ).value.intval;
    hw->memSize = PAMIX_Client_query(MPIDI_Client, PAMI_CLIENT_MEM_SIZE).value.intval;
-
-/*   fprintf(stderr,"clockMHz: %d, memSize: %d\n", hw->clockMHz, hw->memSize);*/
 
    rc = PAMI_Extension_open(MPIDI_Client, "EXT_torus_network", &extension);
 
@@ -54,5 +53,7 @@ void MPIDI_HW_Init(MPID_Hardware_t *hw)
       hw->Coords[i] = (int)info->coord[i];
       hw->isTorus[i] = (int)info->torus[i];
    }
+   /* The torus extension returns "T" as the last element */
    hw->coreID = (int)info->coord[info->dims-1];
+   hw->ppn = (int)info->size[info->dims-1];
 }

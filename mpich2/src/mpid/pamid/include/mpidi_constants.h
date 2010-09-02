@@ -24,7 +24,6 @@
 #define MPID_MEDIUMCOUNT        4 /**< Total send count is "medium" */
 #define MPID_ALIGNEDBUFFER      5 /**< Buffers are 16b aligned */
 
-#define MPID_TORUS_MAX_DIMS     5 /**< Maximum number of torus dimensions */
 /** \} */
 
 #endif
