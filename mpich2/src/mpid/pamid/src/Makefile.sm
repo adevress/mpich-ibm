@@ -18,5 +18,6 @@ lib${MPILIBNAME}_a_SOURCES =			\
         mpid_vc.c				\
         mpid_unimpl.c				\
         mpidi_env.c				\
+				mpid_hw.c \
         pamix.c \
 				mpix.c 

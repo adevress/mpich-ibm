@@ -30,6 +30,8 @@ MPIDI_Process_t  MPIDI_Process = {
   },
 };
 
+MPID_Hardware_t mpid_hw;
+
 struct protocol_t
 {
   pami_dispatch_p2p_fn func;
@@ -248,6 +250,11 @@ int MPID_Init(int * argc,
   /* ------------------------- */
   MPIDI_Recvq_init();
 
+  /* -------------------------------------- */
+  /* FIll in some hardware structure fields */
+  /* -------------------------------------- */
+
+  MPIDI_HW_Init(&mpid_hw);
 
   /* ------------------------------------------------------ */
   /* Set process attributes.                                */

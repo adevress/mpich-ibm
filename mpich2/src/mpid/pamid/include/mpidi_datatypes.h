@@ -36,6 +36,29 @@ typedef struct
   unsigned avail_contexts;
 } MPIDI_Process_t;
 
+/* 
+ * This is just a start. It will likely require/desire more stuff and then it
+ * will require some organization probably.
+ */
+typedef struct
+{
+   uint32_t Size[MPID_TORUS_MAX_DIMS]; /**< Size of the job */
+   uint32_t Coords[MPID_TORUS_MAX_DIMS]; /**< This node's coordinates */
+   uint32_t isTorus[MPID_TORUS_MAX_DIMS]; /**< Do we have wraparound links? */
+   uint32_t torus_dimension;/**< Actual dimension for the torus */
+   uint32_t coreID; /**< Core+Thread info. Value ranges from 1..64 */
+   uint32_t prank; /**< Physical rank of the node (irrespective of mapping) */
+   uint32_t psize; /**< Size of the partition (irrespective of mapping) */
+   uint32_t rankInPset; 
+   uint32_t sizeOfPset;
+   uint32_t idOfPset;
+
+   uint32_t clockMHz; /**< Frequency in MegaHertz */
+   uint32_t memSize; /**< Size of the core memory in MB */
+   
+} MPID_Hardware_t;
+
+
 typedef struct
 {
   unsigned Send;
