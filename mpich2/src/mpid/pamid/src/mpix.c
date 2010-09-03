@@ -128,7 +128,7 @@ int MPIX_Get_hardware(MPIX_Hardware_t *hw)
     * so just copy it to the users buffer
     */
    memcpy(hw, &mpid_hw, sizeof(MPIX_Hardware_t));
-   return MPI_SUCCESS;
+   return 0;
 }
 
 
