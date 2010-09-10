@@ -28,6 +28,14 @@ MPIX_Hardware_t mpid_hw;
  * destructive so the user needs to verify numdimensions != -1
  */
 
+/**
+ * \brief Determine the number of physical hardware dimensions
+ * \param[out] numdimensions The number of torus dimensions
+ * Note: This does NOT include the core+thread ID, so if you plan
+ * on allocating an array based on this information, you'll need to
+ * add 1 to the value returned here
+ */
+
 int MPIX_Get_torus_dims(int *numdimensions)
 {
    typedef struct pami_extension_torus_information
@@ -59,10 +67,11 @@ int MPIX_Get_torus_dims(int *numdimensions)
    rc = PAMI_Extension_close(extension);
    return rc;
 }
-/* We might need to cache the extension. I suppose it depends on how
- * slow this is, and/or if the rank2torus/torus2rank functions become
- * performance-critical. it could probably be "opened" as part of 
- * MPI_Init() for example.
+/**
+ * \brief Convert an MPI rank into physical coordinates plus core ID
+ * \param[in] rank The MPI Rank
+ * \param[out] coords An array of size hw.torus_dimensions+1. The last
+ *                   element of the returned array is the core+thread ID
  */
 int MPIX_Rank2torus(int rank, int *coords)
 {
@@ -72,7 +81,11 @@ int MPIX_Rank2torus(int rank, int *coords)
    size_t *coord_array;
    int i;
    rc = PAMI_Extension_open(MPIDI_Client, "EXT_torus_network", &extension);
-   MPIX_assert(rc == PAMI_SUCCESS);
+   if(rc != PAMI_SUCCESS)
+   {
+      fprintf(stderr,"PAMI_Extension_open returned %d\n", rc);
+      MPIX_assert(rc == PAMI_SUCCESS);
+   }
 
    pami_extension_torus_task2torus_fn pamix_torus_task2torus =
       (pami_extension_torus_task2torus_fn) PAMI_Extension_function(extension,
@@ -83,7 +96,11 @@ int MPIX_Rank2torus(int rank, int *coords)
    MPIX_assert(coord_array != NULL);
 
    rc = pamix_torus_task2torus((pami_task_t)rank, coord_array);
-   MPIX_assert(rc == PAMI_SUCCESS);
+   if(rc != PAMI_SUCCESS)
+   {
+      fprintf(stderr,"pamix_torus_torus2task returned error code %d\n", rc);
+      MPIX_assert(rc == PAMI_SUCCESS);
+   }
 
    for(i=0;i<mpid_hw.torus_dimension+1;i++)
       coords[i] = (int)coord_array[i];
@@ -91,6 +108,13 @@ int MPIX_Rank2torus(int rank, int *coords)
    rc = PAMI_Extension_close(extension);
    return rc;
 }
+
+/**
+ * \brief Convert a set of coordinates (physical+core/thread) to an MPI rank
+ * \param[in] coords An array of size hw.torus_dimensions+1. The last element
+ *                   should be the core+thread ID (0..63).
+ * \param[out] rank The MPI rank cooresponding to the coords array passed in
+ */
 
 int MPIX_Torus2rank(int *coords, int *rank)
 {
@@ -113,12 +137,21 @@ int MPIX_Torus2rank(int *coords, int *rank)
       coord_array[i] = (size_t)coords[i];
 
    rc = pamix_torus_torus2task(coord_array, (pami_task_t *)rank);
-   MPIX_assert(rc == PAMI_SUCCESS);
+   if(rc != PAMI_SUCCESS)
+   {
+      fprintf(stderr,"pamix_torus_torus2task returned error code %d\n", rc);
+      MPIX_assert(rc == PAMI_SUCCESS);
+   }
 
 
    rc = PAMI_Extension_close(extension);
    return rc;
 }
+
+/**
+ * \brief Fill in an MPIX_Hardware_t structure
+ * \param[in] hw A pointer to an MPIX_Hardware_t structure to be filled in
+ */
 
 int MPIX_Get_hardware(MPIX_Hardware_t *hw)
 {

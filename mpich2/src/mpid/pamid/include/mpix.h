@@ -16,7 +16,7 @@
 extern "C" {
 #endif
 
-#define MPID_TORUS_MAX_DIMS 5
+#define MPID_TORUS_MAX_DIMS 5 /* This is the maximum physical size of the torus */
 typedef struct
 {
    unsigned Size[MPID_TORUS_MAX_DIMS]; /**< Max coordinates on the torus */
