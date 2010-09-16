@@ -12,7 +12,6 @@
 
 #ifndef __include_mpidi_thread_h__
 #define __include_mpidi_thread_h__
-#define HAVE_RUNTIME_THREADCHECK
 #if 0
 /**
  * ******************************************************************
