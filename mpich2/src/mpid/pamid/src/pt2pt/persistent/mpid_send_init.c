@@ -33,7 +33,8 @@ MPID_PSendRequest(const void    * buf,
   (*request)->mpid.userbufcount = count;
   (*request)->mpid.datatype     = datatype;
   (*request)->partner_request   = NULL;
-  (*request)->cc		= 0;
+  //  (*request)->cc		= 0;
+  MPID_cc_set (&(*request)->cc, 0);  
 
   if (HANDLE_GET_KIND(datatype) != HANDLE_KIND_BUILTIN)
     {

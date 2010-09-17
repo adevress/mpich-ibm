@@ -89,13 +89,13 @@ MPID_Put(void         *origin_addr,
       req->pack_buffer = MPIU_Malloc(req->origin_dt.size);
       MPID_assert(req->pack_buffer != NULL);
 
-      int mpi_errno =
-      MPIR_Localcopy(origin_addr,
-                     origin_count,
-                     origin_datatype,
-                     req->pack_buffer,
-                     req->origin_dt.size,
-                     MPI_CHAR);
+      int mpi_errno = 0;
+      mpi_errno = MPIR_Localcopy(origin_addr,
+				 origin_count,
+				 origin_datatype,
+				 req->pack_buffer,
+				 req->origin_dt.size,
+				 MPI_CHAR);
       MPID_assert(mpi_errno == MPI_SUCCESS);
     }
 

@@ -534,6 +534,7 @@ void MPIDI_Recvq_DumpQueues(int verbose)
   fprintf(stderr,"-------------\n");
   while (rreq != NULL)
     {
+#if 0
       if(verbose >= 2)
         fprintf(stderr, "P %d: MPItag=%d MPIrank=%d ctxt=%d cc=%d count=%d\n",
                 i++,
@@ -543,6 +544,7 @@ void MPIDI_Recvq_DumpQueues(int verbose)
                 rreq->cc,
                 rreq->mpid.userbufcount
                 );
+#endif
       numposted++;
       postedbytes+=rreq->mpid.userbufcount;
       prev_rreq = rreq;
@@ -558,6 +560,7 @@ void MPIDI_Recvq_DumpQueues(int verbose)
   fprintf(stderr, "-----------------\n");
   while (rreq != NULL)
     {
+#if 0
       if(verbose >= 2)
         fprintf(stderr, "UE %d: MPItag=%d MPIrank=%d ctxt=%d cc=%d uebuf=%p uebuflen=%u\n",
                 i++,
@@ -567,6 +570,7 @@ void MPIDI_Recvq_DumpQueues(int verbose)
                 *rreq->cc_ptr,
                 rreq->mpid.uebuf,
                 rreq->mpid.uebuflen);
+#endif
       numue++;
       uebytes+=rreq->mpid.uebuflen;
       prev_rreq = rreq;

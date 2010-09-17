@@ -121,8 +121,10 @@ MPIDI_RendezvousTransfer(pami_context_t context,
   },
   };
 
+  MPIU_THREAD_CS_ENTER(PAMI,);
   rc = PAMI_Rget(context, &params);
   MPID_assert(rc == PAMI_SUCCESS);
+  MPIU_THREAD_CS_EXIT(PAMI,);
 #else
   pami_get_simple_t params = {
   rma  : {
@@ -141,7 +143,9 @@ MPIDI_RendezvousTransfer(pami_context_t context,
   },
   };
 
+  MPIU_THREAD_CS_ENTER(PAMI,);
   rc = PAMI_Get(context, &params);
   MPID_assert(rc == PAMI_SUCCESS);
+  MPIU_THREAD_CS_EXIT(PAMI,);
 #endif
 }

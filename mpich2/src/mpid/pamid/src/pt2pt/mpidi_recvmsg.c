@@ -34,6 +34,7 @@ MPIDI_RecvMsg(void          * buf,
   int found;
   MPID_Request * rreq;
 
+  MPIU_THREAD_CS_ENTER(RECVQ,0);
   /* ---------------------------------------- */
   /* find our request in the unexpected queue */
   /* or allocate one in the posted queue      */
@@ -96,7 +97,8 @@ MPIDI_RecvMsg(void          * buf,
           MPIDI_Request_complete(sreq);
           /* no other thread can possibly be waiting on rreq,
              so it is safe to reset ref_count and cc */
-          rreq->cc = 0;
+          //rreq->cc = 0;
+	  MPID_cc_set (&rreq->cc, 0);
         }
       else if (MPIDI_Request_isRzv(rreq))
         {
@@ -112,7 +114,7 @@ MPIDI_RecvMsg(void          * buf,
 
           MPIDI_RendezvousTransfer(MPIDI_Context_local(rreq), rreq);
         }
-      else if (*rreq->cc_ptr == 0)
+      else if (MPID_cc_is_complete(&rreq->cc)) // if(*rreq->cc_ptr == 0)
         {
           /* -------------------------------- */
           /* request is complete              */
@@ -168,6 +170,8 @@ MPIDI_RecvMsg(void          * buf,
   *request = rreq;
   if (status != MPI_STATUS_IGNORE)
     *status = rreq->status;
+
+  MPIU_THREAD_CS_EXIT(RECVQ,0);
 
   return rreq->status.MPI_ERROR;
 }

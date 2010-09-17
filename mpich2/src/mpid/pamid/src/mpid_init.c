@@ -15,6 +15,10 @@ pami_client_t   MPIDI_Client;
 #endif
 pami_context_t MPIDI_Context[MAX_CONTEXTS];
 
+#if MPIU_HANDLE_ALLOCATION_METHOD == MPIU_HANDLE_ALLOCATION_THREAD_LOCAL
+__thread MPID_Request * MPID_PAMID_Thread_request_handles;
+__thread int MPID_PAMID_Thread_request_handle_count;
+#endif
 
 MPIDI_Process_t  MPIDI_Process = {
  verbose        : 0,

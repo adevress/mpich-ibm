@@ -75,7 +75,7 @@ MPIDI_Send(const void    * buf,
                                        request);
       if (is_blocking)
         if ( (MPIR_ThreadInfo.thread_provided <= MPI_THREAD_FUNNELED) &&
-             (sreq != NULL && sreq->cc != 0) )
+             (sreq != NULL && !MPID_cc_is_complete(&sreq->cc)) )
           {
             *request = NULL;
             mpi_errno = MPIR_Err_create_code(MPI_SUCCESS,
@@ -136,7 +136,8 @@ MPIDI_Send(const void    * buf,
         }
       else
         {
-          sreq->cc = 0;
+          //sreq->cc = 0;
+	  MPID_cc_set (&sreq->cc, 0);
           *request = sreq;
         }
       return MPI_SUCCESS;

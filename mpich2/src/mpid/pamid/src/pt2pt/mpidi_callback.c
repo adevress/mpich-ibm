@@ -46,6 +46,7 @@ void MPIDI_RecvCB(pami_context_t    context,
   match.tag        = msginfo->msginfo.MPItag;
   match.context_id = msginfo->msginfo.MPIctxt;
 
+  MPIU_THREAD_CS_ENTER(RECVQ,0);
   rreq = MPIDI_Recvq_FDP_or_AEU(match.rank, match.tag, match.context_id, &found);
 
   /* ---------------------------------------- */
@@ -128,6 +129,8 @@ void MPIDI_RecvCB(pami_context_t    context,
               rreq->mpid.uebuf    = (void*)sndbuf;
               MPIDI_RecvDoneCB(context, rreq, PAMI_SUCCESS);
             }
+
+	  MPIU_THREAD_CS_EXIT(RECVQ,0);
           return;
         }
 
@@ -136,6 +139,7 @@ void MPIDI_RecvCB(pami_context_t    context,
       /* --------------------------------------- */
       if (likely(dt_contig))
         {
+	  MPIU_THREAD_CS_EXIT(RECVQ,0);
           /*
            * This is to test that the fields don't need to be
            * initialized.  Remove after this doesn't fail for a while.
@@ -179,6 +183,8 @@ void MPIDI_RecvCB(pami_context_t    context,
               rreq->mpid.uebuflen = sndlen;
               rreq->mpid.uebuf    = (void*)sndbuf;
               MPIDI_RecvDoneCB(context, rreq, PAMI_SUCCESS);
+
+	      MPIU_THREAD_CS_EXIT(RECVQ,0);
               return;
             }
         }
@@ -211,4 +217,6 @@ void MPIDI_RecvCB(pami_context_t    context,
       memcpy(rreq->mpid.uebuf, sndbuf, sndlen);
       MPIDI_RecvDoneCB(context, rreq, PAMI_SUCCESS);
     }
+
+  MPIU_THREAD_CS_EXIT(RECVQ,0);
 }

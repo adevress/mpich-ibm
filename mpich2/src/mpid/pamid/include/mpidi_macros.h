@@ -12,7 +12,6 @@
 #ifndef __include_mpidi_macros_h__
 #define __include_mpidi_macros_h__
 
-
 /* Best results are achieved when your expression evaluates to 1 or 0. */
 #define   likely(x) __builtin_expect(x,1)
 #define unlikely(x) __builtin_expect(x,0)
@@ -37,9 +36,16 @@
  * \{
  */
 void    MPIDI_Request_complete(MPID_Request *req);
+#if 0
 #define MPIDI_Request_decrement_cc(_req, _inuse) ({ *(_inuse) = --(*(_req)->cc_ptr);                                 })
 #define MPIDI_Request_increment_cc(_req)         ({             ++(*(_req)->cc_ptr);                                 })
 #define MPIDI_Request_get_cc(_req)               ({                *(_req)->cc_ptr;                                  })
+#endif
+
+#define MPIDI_Request_decrement_cc(req_, cc)   \
+  MPID_cc_decr((req_)->cc_ptr, cc)
+#define MPIDI_Request_increment_cc(req_, cc)   \
+  MPID_cc_incr((req_)->cc_ptr, cc)
 
 #define MPIDI_Request_getCA(_req)                ({ (_req)->mpid.ca;                                                 })
 #define MPIDI_Request_isSelf(_req)               ({ (_req)->mpid.isSelf;                                             })

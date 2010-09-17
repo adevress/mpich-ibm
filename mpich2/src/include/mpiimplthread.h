@@ -941,6 +941,8 @@ do {                                           \
 
 # elif MPIU_THREAD_GRANULARITY == MPIU_THREAD_GRANULARITY_PER_OBJECT
 
+#include "opa_primitives.h"
+
 typedef OPA_int_t MPID_cc_t;
 
 /* implies no barrier, since this routine should only be used for request

@@ -59,7 +59,8 @@ MPIDI_Recv(void          * buf,
                                         MPI_ERR_OTHER,
                                         "**nomem",
                                         0);
-          rreq->cc                = 0;
+          //rreq->cc                = 0;
+	  MPID_cc_set (&rreq->cc, 0);
           rreq->kind              = MPID_REQUEST_RECV;
           MPIR_Status_set_procnull(&rreq->status);
           rreq->comm              = comm;
@@ -84,7 +85,7 @@ MPIDI_Recv(void          * buf,
                             request);
 
   if (is_blocking)
-    if (*((*request)->cc_ptr) == 0)
+    if (MPID_cc_is_complete(&(*request)->cc))
       {
         MPID_Request_release(*request);
         *request = NULL;
