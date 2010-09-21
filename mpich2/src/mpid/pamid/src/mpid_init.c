@@ -7,12 +7,7 @@
 #include "mpidi_onesided.h"
 
 pami_client_t   MPIDI_Client;
-#ifdef __BGP__
-/** \todo remove this when trac #238 is fixed */
-#define MAX_CONTEXTS 2
-#else
 #define MAX_CONTEXTS 16
-#endif
 pami_context_t MPIDI_Context[MAX_CONTEXTS];
 
 #if MPIU_HANDLE_ALLOCATION_METHOD == MPIU_HANDLE_ALLOCATION_THREAD_LOCAL
@@ -38,6 +33,7 @@ MPIDI_Process_t  MPIDI_Process = {
   topology    : 0,
   },
 };
+
 
 struct protocol_t
 {
@@ -177,27 +173,19 @@ MPIDI_Init(int* rank, int* size, int* threading)
   /*  We didn't lock on the way in, but we will lock on the   */
   /*  way out if we are threaded.  Lock now to make it even.  */
   /* -------------------------------------------------------- */
-  /** \todo Add these in when trac #118 is fixed */
-#if 0
   if (PAMIX_Client_query(MPIDI_Client, PAMI_CLIENT_HWTHREADS_AVAILABLE).value.intval > 1)
     {
       /** \todo Add these in when trac #72 is fixed */
 #if 0
       MPIR_ThreadInfo.isThreaded = 1;
       MPID_CS_ENTER();
+#else
+      *threading = MPI_THREAD_SINGLE;
 #endif
     }
   else
     {
       *threading = MPI_THREAD_SINGLE;
-    }
-#endif
-
-  /** \todo remove this check when trac #237 is fixed */
-  if(MPIDI_Process.avail_contexts > 1)
-    {
-      TRACE_ERR("Warning: num contexts=%u, but collectives only work with 1 context (see trac #237)\n", MPIDI_Process.avail_contexts);
-      MPIDI_Process.optimized.collectives = 0;
     }
 
   /* ----------------------------------- */
@@ -265,6 +253,11 @@ int MPID_Init(int * argc,
   /* ------------------------- */
   MPIDI_Recvq_init();
 
+  /* -------------------------------------- */
+  /* FIll in some hardware structure fields */
+  /* -------------------------------------- */
+
+  MPIDI_HW_Init(&mpid_hw);
 
   /* ------------------------------------------------------ */
   /* Set process attributes.                                */

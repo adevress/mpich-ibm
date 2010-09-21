@@ -1,7 +1,8 @@
 /*  (C)Copyright IBM Corp.  2007, 2008  */
 /**
  * \file src/pamix.c
- * \brief ???
+ * \brief This file contains routines to make the PAMI API usable for MPI internals. It is less likely that
+ *        MPI apps will use these routines.
  */
 
 #include <pami.h>
@@ -9,6 +10,8 @@
 #include <mpid_config.h>
 #include <assert.h>
 #include <limits.h>
+
+#include <stdio.h>
 #if ASSERT_LEVEL==0
 #define PAMIX_assert(x)
 #elif ASSERT_LEVEL>=1
@@ -16,6 +19,7 @@
 #endif
 
 #define MIN(a,b) ((a<b)?a:b)
+extern pami_client_t MPIDI_Client;
 
 pami_configuration_t
 PAMIX_Client_query(pami_client_t         client,
@@ -73,3 +77,6 @@ PAMIX_Dispatch_set(pami_context_t              context[],
   if (immediate_max != NULL)
     *immediate_max = last_immediate_max;
 }
+
+
+

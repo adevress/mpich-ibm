@@ -38,8 +38,8 @@
 
 
 #include <mpidi_thread.h>
-#include <mpidi_datatypes.h>
 #include <mpidi_constants.h>
+#include <mpidi_datatypes.h>
 #include <mpidi_externs.h>
 #include <mpidi_hooks.h>
 

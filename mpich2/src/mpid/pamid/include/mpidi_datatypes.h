@@ -36,6 +36,7 @@ typedef struct
   unsigned avail_contexts;
 } MPIDI_Process_t;
 
+
 typedef struct
 {
   unsigned Send;

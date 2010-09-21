@@ -21,4 +21,5 @@ PAMIX_Dispatch_set(pami_context_t              context[],
                    pami_dispatch_callback_fn   fn,
                    pami_send_hint_t            options,
                    size_t                    * immediate_max);
+
 #endif

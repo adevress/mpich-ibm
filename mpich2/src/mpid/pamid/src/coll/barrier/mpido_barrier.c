@@ -11,6 +11,7 @@ static void cb_barrier(void *ctxt, void *clientdata, pami_result_t err)
 {
    int *active = (int *) clientdata;
    TRACE_ERR("callback. enter: %d\n", (*active));
+   MPIDI_Progress_signal();
    (*active)--;
 }
 
@@ -31,11 +32,7 @@ int MPIDO_Barrier(MPID_Comm *comm_ptr)
    assert(rc == PAMI_SUCCESS);
 
    TRACE_ERR("advance spinning\n");
-   while(active)
-   {
-      TRACE_ERR("active: %d\n", active);
-      rc = PAMI_Context_advance(MPIDI_Context[0], 1);
-   }
+   MPID_PROGRESS_WAIT_WHILE(active);
    TRACE_ERR("exiting mpido_barrier\n");
    return rc;
 }

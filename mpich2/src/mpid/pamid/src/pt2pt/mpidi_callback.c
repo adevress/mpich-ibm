@@ -5,8 +5,12 @@
  */
 #include "mpidimpl.h"
 
+/* This is used to effectively zero-out the recv hints in the done callback */
+static const pami_recv_hint_t null_recv_hint={0};
+
 /**
  * \brief The standard callback for a new message
+ *
  * \param[in]   context     The context on which the message is being received.
  * \param[in]  _contextid   The numerical index of the context
  * \param[in]  _msginfo     The header information
@@ -71,7 +75,7 @@ void MPIDI_RecvCB(pami_context_t    context,
   /* --------------------------------------- */
   if (unlikely(recv != NULL))
     {
-      /* recv->hints    = {}; */
+      recv->hints    = null_recv_hint;
       recv->local_fn = MPIDI_RecvDoneCB;
       recv->cookie   = rreq;
     }
@@ -119,6 +123,7 @@ void MPIDI_RecvCB(pami_context_t    context,
               rreq->mpid.uebuf    = MPIU_Malloc(sndlen);
               MPID_assert(rreq->mpid.uebuf != NULL);
 
+              recv->data_fn = PAMI_DATA_COPY;
               recv->type = PAMI_BYTE;
               recv->addr = rreq->mpid.uebuf;
             }
@@ -151,6 +156,7 @@ void MPIDI_RecvCB(pami_context_t    context,
 
           if (unlikely(recv != NULL))
             {
+              recv->data_fn = PAMI_DATA_COPY;
               recv->type = PAMI_BYTE;
               recv->addr = rcvbuf;
             }
@@ -204,6 +210,7 @@ void MPIDI_RecvCB(pami_context_t    context,
       /* -------------------------------------------------- */
       /*  Let PAMI know where to put the rest of the data.  */
       /* -------------------------------------------------- */
+      recv->data_fn = PAMI_DATA_COPY;
       recv->type = PAMI_BYTE;
       recv->addr = rreq->mpid.uebuf;
     }

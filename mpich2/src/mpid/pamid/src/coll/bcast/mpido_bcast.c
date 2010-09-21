@@ -11,6 +11,7 @@ static void cb_bcast(void *ctxt, void *clientdata, pami_result_t err)
 {
    int *active = (int *) clientdata;
    TRACE_ERR("callback enter, active: %d\n", (*active));
+   MPIDI_Progress_signal();
    (*active)--;
 }
 
@@ -78,14 +79,7 @@ int MPIDO_Bcast(void *buffer,
 
    assert(rc == PAMI_SUCCESS);
 
-   while(active)
-   {
-      static int spin = 0;
-      if(spin %1000 == 0)
-         TRACE_ERR("spinning, %d\n", spin);
-      rc = PAMI_Context_advance(MPIDI_Context[0], 1);
-      spin++;
-   }
+   MPID_PROGRESS_WAIT_WHILE(active);
    TRACE_ERR("bcast done\n");
 
    if(!data_contig)
