@@ -27,8 +27,7 @@ int MPID_Recv_init(void * buf,
   rreq->mpid.userbufcount = count;
   rreq->mpid.datatype = datatype;
   rreq->partner_request = NULL;
-  //rreq->cc = 0;
-  MPID_cc_set (&rreq->cc, 0);  
+  MPID_cc_set(&rreq->cc, 0);
 
   MPIDI_Request_setPType(rreq, MPIDI_REQUEST_PTYPE_RECV);
   if (HANDLE_GET_KIND(datatype) != HANDLE_KIND_BUILTIN)

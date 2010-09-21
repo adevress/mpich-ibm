@@ -91,11 +91,11 @@ MPID_Put(void         *origin_addr,
 
       int mpi_errno = 0;
       mpi_errno = MPIR_Localcopy(origin_addr,
-				 origin_count,
-				 origin_datatype,
-				 req->pack_buffer,
-				 req->origin_dt.size,
-				 MPI_CHAR);
+                                 origin_count,
+                                 origin_datatype,
+                                 req->pack_buffer,
+                                 req->origin_dt.size,
+                                 MPI_CHAR);
       MPID_assert(mpi_errno == MPI_SUCCESS);
     }
 

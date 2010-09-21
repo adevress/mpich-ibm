@@ -35,14 +35,12 @@ MPID_Request_create()
 {
   MPID_Request * req;
 
-  //  req = MPIU_Handle_obj_alloc(&MPID_Request_mem);
   MPIDI_Request_tls_alloc(req);
   if (req == NULL)
     MPID_Abort(NULL, MPI_ERR_NO_SPACE, -1, "Cannot allocate Request");
 
   MPID_assert(HANDLE_GET_MPI_KIND(req->handle) == MPID_REQUEST);
   MPIU_Object_set_ref(req, 1);
-  //req->cc                = 1;
   MPID_cc_set(&req->cc, 1);
   req->cc_ptr            = &req->cc;
   req->status.MPI_SOURCE = MPI_UNDEFINED;
@@ -67,12 +65,10 @@ MPID_Request_create()
 static inline void
 MPIDI_Request_try_free(MPID_Request *req)
 {
-  //if ( (req->ref_count == 0) && (MPIDI_Request_get_cc(req) == 0) )
   if ( (MPIU_Object_get_ref(req) == 0) && (MPID_cc_is_complete(&req->cc)) )
     {
       if (req->comm)              MPIR_Comm_release(req->comm, 0);
       if (req->mpid.datatype_ptr) MPID_Datatype_release(req->mpid.datatype_ptr);
-      //MPIU_Handle_obj_free(&MPID_Request_mem, req);
       MPIDI_Request_tls_free(req);
     }
 }
@@ -88,7 +84,6 @@ MPID_Request_release(MPID_Request *req)
   int ref_count;
   MPID_assert(HANDLE_GET_MPI_KIND(req->handle) == MPID_REQUEST);
   MPIU_Object_release_ref(req, &ref_count);
-  //MPID_assert(req->ref_count >= 0);
   MPID_assert(MPIU_Object_get_ref(req) >= 0);
   MPIDI_Request_try_free(req);
 }
@@ -102,7 +97,6 @@ MPIDI_Request_complete(MPID_Request *req)
 {
   int cc;
   MPIDI_Request_decrement_cc(req, &cc);
-  //MPID_assert(cc >= 0);
   if (MPID_cc_is_complete(&req->cc)) /* decrement completion count; if 0, signal progress engine */
     {
       MPIDI_Request_try_free(req);
@@ -113,8 +107,7 @@ MPIDI_Request_complete(MPID_Request *req)
 void
 MPID_Request_set_completed(MPID_Request *req)
 {
-  //*(req)->cc_ptr = 0; /* force completion count to 0 */
-  MPID_cc_set(&req->cc, 0);  
+  MPID_cc_set(&req->cc, 0);
   MPIDI_Request_try_free(req);
   MPIDI_Progress_signal();
 }

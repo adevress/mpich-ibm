@@ -117,8 +117,7 @@ int MPIDI_Isend_self(const void    * buf,
 
       /* sreq has never been seen by the user or outside this thread,
          so it is safe to reset ref_count and cc */
-      //sreq->cc                   = 0;
-      MPID_cc_set (&sreq->cc, 0);
+      MPID_cc_set(&sreq->cc, 0);
       *request                   = sreq;
       sreq->comm                 = comm;
       sreq->kind                 = MPID_REQUEST_SEND;

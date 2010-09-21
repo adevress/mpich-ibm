@@ -97,8 +97,7 @@ MPIDI_RecvMsg(void          * buf,
           MPIDI_Request_complete(sreq);
           /* no other thread can possibly be waiting on rreq,
              so it is safe to reset ref_count and cc */
-          //rreq->cc = 0;
-	  MPID_cc_set (&rreq->cc, 0);
+          MPID_cc_set(&rreq->cc, 0);
         }
       else if (MPIDI_Request_isRzv(rreq))
         {
@@ -114,7 +113,7 @@ MPIDI_RecvMsg(void          * buf,
 
           MPIDI_RendezvousTransfer(MPIDI_Context_local(rreq), rreq);
         }
-      else if (MPID_cc_is_complete(&rreq->cc)) // if(*rreq->cc_ptr == 0)
+      else if (MPID_cc_is_complete(&rreq->cc))
         {
           /* -------------------------------- */
           /* request is complete              */
@@ -172,6 +171,5 @@ MPIDI_RecvMsg(void          * buf,
     *status = rreq->status;
 
   MPIU_THREAD_CS_EXIT(RECVQ,0);
-
   return rreq->status.MPI_ERROR;
 }

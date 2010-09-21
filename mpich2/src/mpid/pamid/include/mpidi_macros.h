@@ -12,6 +12,7 @@
 #ifndef __include_mpidi_macros_h__
 #define __include_mpidi_macros_h__
 
+
 /* Best results are achieved when your expression evaluates to 1 or 0. */
 #define   likely(x) __builtin_expect(x,1)
 #define unlikely(x) __builtin_expect(x,0)
@@ -36,16 +37,8 @@
  * \{
  */
 void    MPIDI_Request_complete(MPID_Request *req);
-#if 0
-#define MPIDI_Request_decrement_cc(_req, _inuse) ({ *(_inuse) = --(*(_req)->cc_ptr);                                 })
-#define MPIDI_Request_increment_cc(_req)         ({             ++(*(_req)->cc_ptr);                                 })
-#define MPIDI_Request_get_cc(_req)               ({                *(_req)->cc_ptr;                                  })
-#endif
-
-#define MPIDI_Request_decrement_cc(req_, cc)   \
-  MPID_cc_decr((req_)->cc_ptr, cc)
-#define MPIDI_Request_increment_cc(req_, cc)   \
-  MPID_cc_incr((req_)->cc_ptr, cc)
+#define MPIDI_Request_decrement_cc(req_, cc) MPID_cc_decr((req_)->cc_ptr, cc)
+#define MPIDI_Request_increment_cc(req_, cc) MPID_cc_incr((req_)->cc_ptr, cc)
 
 #define MPIDI_Request_getCA(_req)                ({ (_req)->mpid.ca;                                                 })
 #define MPIDI_Request_isSelf(_req)               ({ (_req)->mpid.isSelf;                                             })
@@ -77,6 +70,64 @@ void    MPIDI_Request_complete(MPID_Request *req);
 #define MPIDI_Request_setPeerRequest(_req,_r)   ({ (_req)->mpid.envelope.envelope.msginfo.msginfo.req = (_r); MPI_SUCCESS; })
 #define MPIDI_Msginfo_cpyPeerRequest(_dst,_src) ({ (_dst)->msginfo.req = (_src)->msginfo.req;                 MPI_SUCCESS; })
 #define MPIDI_Request_cpyPeerRequest(_dst,_src)   MPIDI_Msginfo_cpyPeerRequest(&(_dst)->mpid.envelope.envelope.msginfo,_src)
+
+
+#define MPIU_HANDLE_ALLOCATION_MUTEX         0
+#define MPIU_HANDLE_ALLOCATION_THREAD_LOCAL  1
+
+/* XXX DJG for TLS hack */
+#define MPID_REQUEST_TLS_MAX 512
+
+#if MPIU_HANDLE_ALLOCATION_METHOD == MPIU_HANDLE_ALLOCATION_THREAD_LOCAL
+
+extern __thread MPID_Request * MPID_PAMID_Thread_request_handles;
+extern __thread int MPID_PAMID_Thread_request_handle_count;
+
+#  define MPIDI_Request_tls_alloc(req)                                  \
+({                                                                      \
+  int i;                                                                \
+  if (!MPID_PAMID_Thread_request_handles) {                             \
+    MPID_Request *prev, *cur;                                           \
+    /* batch allocate a linked list of requests */                      \
+    MPIU_THREAD_CS_ENTER(HANDLEALLOC,);                                 \
+    prev = MPIU_Handle_obj_alloc_unsafe(&MPID_Request_mem);             \
+    prev->mpid.next = NULL;                                             \
+    assert(prev);                                                       \
+    for (i = 1; i < MPID_REQUEST_TLS_MAX; ++i) {                        \
+      cur = MPIU_Handle_obj_alloc_unsafe(&MPID_Request_mem);            \
+      assert(cur);                                                      \
+      cur->mpid.next = prev;                                            \
+      prev = cur;                                                       \
+    }                                                                   \
+    MPIU_THREAD_CS_EXIT(HANDLEALLOC,);                                  \
+    MPID_PAMID_Thread_request_handles = cur;                            \
+    MPID_PAMID_Thread_request_handle_count += MPID_REQUEST_TLS_MAX;     \
+  }                                                                     \
+  (req) = MPID_PAMID_Thread_request_handles;                            \
+  MPID_PAMID_Thread_request_handles = req->mpid.next;                   \
+  MPID_PAMID_Thread_request_handle_count -= 1;                          \
+})
+
+#  define MPIDI_Request_tls_free(req)                                   \
+({                                                                      \
+  if (MPID_PAMID_Thread_request_handle_count < MPID_REQUEST_TLS_MAX) {  \
+    /* push request onto the top of the stack */                        \
+    req->mpid.next = MPID_PAMID_Thread_request_handles;                 \
+    MPID_PAMID_Thread_request_handles = req;                            \
+    MPID_PAMID_Thread_request_handle_count += 1;                        \
+  }                                                                     \
+  else {                                                                \
+    MPIU_Handle_obj_free(&MPID_Request_mem, req);                       \
+  }                                                                     \
+})
+
+#elif MPIU_HANDLE_ALLOCATION_METHOD == MPIU_HANDLE_ALLOCATION_MUTEX
+#  define MPIDI_Request_tls_alloc(req) (req) = MPIU_Handle_obj_alloc(&MPID_Request_mem)
+#  define MPIDI_Request_tls_free(req) MPIU_Handle_obj_free(&MPID_Request_mem, (req))
+#else
+#  error MPIU_HANDLE_ALLOCATION_METHOD not defined
+#endif
+
 /** \} */
 
 

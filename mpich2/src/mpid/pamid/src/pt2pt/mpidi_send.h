@@ -136,8 +136,7 @@ MPIDI_Send(const void    * buf,
         }
       else
         {
-          //sreq->cc = 0;
-	  MPID_cc_set (&sreq->cc, 0);
+          MPID_cc_set(&sreq->cc, 0);
           *request = sreq;
         }
       return MPI_SUCCESS;

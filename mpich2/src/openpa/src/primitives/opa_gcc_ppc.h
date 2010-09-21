@@ -8,8 +8,8 @@
 #define OPA_GCC_PPC_H_INCLUDED
 
 /* these need to be aligned on an 8-byte boundary to work on a BG/P */
-typedef struct _opa_int_t { volatile int v; int dummy;  } OPA_int_t;
-typedef struct _opa_ptr_t { void * volatile v ;         } OPA_ptr_t;
+typedef struct { volatile int v; int dummy;  } OPA_int_t;
+typedef struct { void * volatile v ;         } OPA_ptr_t;
 
 #define OPA_INT_T_INITIALIZER(val_) { (val_) }
 #define OPA_PTR_T_INITIALIZER(val_) { (val_) }

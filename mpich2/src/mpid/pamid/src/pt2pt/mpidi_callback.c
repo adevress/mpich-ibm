@@ -129,7 +129,6 @@ void MPIDI_RecvCB(pami_context_t    context,
               rreq->mpid.uebuf    = (void*)sndbuf;
               MPIDI_RecvDoneCB(context, rreq, PAMI_SUCCESS);
             }
-
 	  MPIU_THREAD_CS_EXIT(RECVQ,0);
           return;
         }
@@ -183,7 +182,6 @@ void MPIDI_RecvCB(pami_context_t    context,
               rreq->mpid.uebuflen = sndlen;
               rreq->mpid.uebuf    = (void*)sndbuf;
               MPIDI_RecvDoneCB(context, rreq, PAMI_SUCCESS);
-
 	      MPIU_THREAD_CS_EXIT(RECVQ,0);
               return;
             }

@@ -91,8 +91,7 @@ MPID_Cancel_send(MPID_Request * sreq)
           MPID_assert(rreq->partner_request == sreq);
           MPID_Request_release(rreq);
           sreq->status.cancelled = TRUE;
-          //sreq->cc = 0;
-	  MPID_cc_set(&sreq->cc, 0);
+          MPID_cc_set(&sreq->cc, 0);
         }
       return MPI_SUCCESS;
     }
@@ -101,7 +100,7 @@ MPID_Cancel_send(MPID_Request * sreq)
       if(!sreq->comm)
         return MPI_SUCCESS;
 
-      int val; 
+      int val;
       MPIDI_Request_increment_cc(sreq, &val);
 
       {

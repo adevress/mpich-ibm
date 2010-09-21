@@ -18,6 +18,7 @@
  * \brief Mutexes for thread/interrupt safety
  * ******************************************************************
  */
+
 /* This file is included by mpidpre.h, so it is included before mpiimplthread.h.
  * This is intentional because it lets us override the critical section macros */
 
@@ -56,8 +57,8 @@
 #define MPID_CS_CYCLE() ({ pami_result_t rc; rc = PAMI_Context_advancev(MPIDI_Context, MPIDI_Process.avail_contexts, 1); MPID_assert(rc == PAMI_SUCCESS); })
 
 
-#ifndef HAVE_RUNTIME_THREADCHECK 
-#define HAVE_RUNTIME_THREADCHECK  1
+#ifndef HAVE_RUNTIME_THREADCHECK
+#error Need HAVE_RUNTIME_THREADCHECK
 #endif
 #define MPIU_THREAD_CHECK_BEGIN if (MPIR_ThreadInfo.isThreaded) {
 #define MPIU_THREAD_CHECK_END   }
@@ -119,7 +120,7 @@ M*/
 #if MPIU_THREAD_GRANULARITY == MPIU_THREAD_GRANULARITY_GLOBAL
 /* There is a single, global lock, held for the duration of an MPI call */
 #define MPIU_THREAD_CS_ENTER_ALLFUNC(_context)   MPID_CS_ENTER()
-#define MPIU_THREAD_CS_EXIT_ALLFUNC(_context)    MPID_CS_EXIT()  
+#define MPIU_THREAD_CS_EXIT_ALLFUNC(_context)    MPID_CS_EXIT()
 #define MPIU_THREAD_CS_YIELD_ALLFUNC(_context)   MPID_CS_CYCLE()
 
 #define MPIU_THREAD_CS_ENTER_HANDLE(_context)
@@ -127,21 +128,21 @@ M*/
 #define MPIU_THREAD_CS_ENTER_HANDLEALLOC(_context)
 #define MPIU_THREAD_CS_EXIT_HANDLEALLOC(_context)
 #define MPIU_THREAD_CS_ENTER_CONTEXTID(_context)
-#define MPIU_THREAD_CS_EXIT_CONTEXTID(_context) 
+#define MPIU_THREAD_CS_EXIT_CONTEXTID(_context)
 #define MPIU_THREAD_CS_YIELD_CONTEXTID(_context)
 #define MPIU_THREAD_CS_ENTER_DCMF(_context)
-#define MPIU_THREAD_CS_EXIT_DCMF(_context) 
+#define MPIU_THREAD_CS_EXIT_DCMF(_context)
 #define MPIU_THREAD_CS_YIELD_DCMF(_context)
 #define MPIU_THREAD_CS_ENTER_RECVQ(_context)
-#define MPIU_THREAD_CS_EXIT_RECVQ(_context) 
+#define MPIU_THREAD_CS_EXIT_RECVQ(_context)
 #define MPIU_THREAD_CS_ENTER_PAMI(_context)
-#define MPIU_THREAD_CS_EXIT_PAMI(_context) 
+#define MPIU_THREAD_CS_EXIT_PAMI(_context)
 #define MPIU_THREAD_CS_ENTER_MPI_OBJ(_context)
 #define MPIU_THREAD_CS_EXIT_MPI_OBJ(_context)
 #define MPIU_THREAD_CS_ENTER_INIT(_context)
-#define MPIU_THREAD_CS_EXIT_INIT(_context) 
+#define MPIU_THREAD_CS_EXIT_INIT(_context)
 #define MPIU_THREAD_CS_ENTER_INITFLAG(_context)
-#define MPIU_THREAD_CS_EXIT_INITFLAG(_context) 
+#define MPIU_THREAD_CS_EXIT_INITFLAG(_context)
 
 
 /* MPIU_THREAD_CS_INIT will be invoked early in the top level
@@ -160,25 +161,25 @@ M*/
 
 #define MPIU_THREAD_CS_ENTER_ALLFUNC(_context)
 #define MPIU_THREAD_CS_EXIT_ALLFUNC(_context)
-#define MPIU_THREAD_CS_YIELD_ALLFUNC(_context) 
+#define MPIU_THREAD_CS_YIELD_ALLFUNC(_context)
 
 #define MPIU_THREAD_CS_ENTER_HANDLE(_context)       MPID_CS_ENTER()
-#define MPIU_THREAD_CS_EXIT_HANDLE(_context)        MPID_CS_EXIT()  
+#define MPIU_THREAD_CS_EXIT_HANDLE(_context)        MPID_CS_EXIT()
 #define MPIU_THREAD_CS_ENTER_HANDLEALLOC(_context)  MPID_CS_ENTER()
-#define MPIU_THREAD_CS_EXIT_HANDLEALLOC(_context)   MPID_CS_EXIT() 
+#define MPIU_THREAD_CS_EXIT_HANDLEALLOC(_context)   MPID_CS_EXIT()
 #define MPIU_THREAD_CS_ENTER_CONTEXTID(_context)    MPID_CS_ENTER()
-#define MPIU_THREAD_CS_EXIT_CONTEXTID(_context)     MPID_CS_EXIT() 
+#define MPIU_THREAD_CS_EXIT_CONTEXTID(_context)     MPID_CS_EXIT()
 #define MPIU_THREAD_CS_YIELD_CONTEXTID(_context)    MPID_CS_CYCLE()
 #define MPIU_THREAD_CS_ENTER_RECVQ(_context)        MPID_CS_ENTER()
-#define MPIU_THREAD_CS_EXIT_RECVQ(_context) 	    MPID_CS_EXIT() 
+#define MPIU_THREAD_CS_EXIT_RECVQ(_context)         MPID_CS_EXIT()
 #define MPIU_THREAD_CS_ENTER_PAMI(_context)         MPID_CS_ENTER()
-#define MPIU_THREAD_CS_EXIT_PAMI(_context) 	    MPID_CS_EXIT() 
+#define MPIU_THREAD_CS_EXIT_PAMI(_context)          MPID_CS_EXIT()
 #define MPIU_THREAD_CS_ENTER_MPI_OBJ(context_)      MPID_CS_ENTER()
-#define MPIU_THREAD_CS_EXIT_MPI_OBJ(context_)  	    MPID_CS_EXIT() 
+#define MPIU_THREAD_CS_EXIT_MPI_OBJ(context_)       MPID_CS_EXIT()
 #define MPIU_THREAD_CS_ENTER_INIT(_context)         MPID_CS_ENTER()
-#define MPIU_THREAD_CS_EXIT_INIT(_context) 	    MPID_CS_EXIT() 
+#define MPIU_THREAD_CS_EXIT_INIT(_context)          MPID_CS_EXIT()
 #define MPIU_THREAD_CS_ENTER_INITFLAG(_context)     MPID_CS_ENTER()
-#define MPIU_THREAD_CS_EXIT_INITFLAG(_context) 	    MPID_CS_EXIT() 
+#define MPIU_THREAD_CS_EXIT_INITFLAG(_context)      MPID_CS_EXIT()
 
 
 /* MPIU_THREAD_CS_INIT will be invoked early in the top level
