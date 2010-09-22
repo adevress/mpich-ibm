@@ -124,13 +124,6 @@ int main(int argc, char **argv)
 	}
 	else if (!strcmp("cb_nodes", key)) {
 	    /* unreliable test -- just ignore value */
-#if 0
-	    if (atoi(value) != 1) {
-		errs++;
-		if (verbose) fprintf(stderr, "cb_nodes is %d; should be %d\n", atoi(value),
-				     1);
-	    }
-#endif
 	}
 	else if (!strcmp("romio_no_indep_rw", key)) {
 	    if (strcmp("false", value)) {
@@ -162,13 +155,6 @@ int main(int argc, char **argv)
 	}
 	else if (!strcmp("romio_ds_write", key)) {
 	    /* Unreliable test -- value is file system dependent.  Ignore. */
-#if 0
-	    if (strcmp("automatic", value)) {
-		errs++;
-		if (verbose) fprintf(stderr, "romio_ds_write is set to %s; should be %s\n",
-				     value, "automatic");
-	    }
-#endif
 	}
 	else if (!strcmp("cb_config_list", key)) {
 #ifndef SKIP_CB_CONFIG_LIST_TEST
@@ -344,13 +330,6 @@ int main(int argc, char **argv)
 	}
 	else if (!strcmp("romio_ds_write", key)) {
 	    /* Unreliable test -- value is file system dependent.  Ignore. */
-#if 0
-	    if (strcmp("automatic", value)) {
-		errs++;
-		if (verbose) fprintf(stderr, "romio_ds_write is set to %s; should be %s\n",
-				     value, "automatic");
-	    }
-#endif
 	}
 	else if (!strcmp("cb_config_list", key)) {
 #ifndef SKIP_CB_CONFIG_LIST_TEST

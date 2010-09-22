@@ -620,17 +620,6 @@ static int MPIDI_CH3U_VC_FinishPending( MPIDI_VCRT_t *vcrt )
 			i, vc[i]->state ); fflush(stdout);
 		nPending++;
 	    }
-#if 0
-	    /* FIXME: We shouldn't have any references to the channel-specific
-	       fields in this part of the code.  This case should actually
-	       not be needed; if there is a pending send element, the
-	       top-level state should not be inactive */
-	    if (vc[i]->ch.sendq_head) {
-		/* FIXME: Printf for debugging */
-		printf( "Nonempty sendQ for vc[%d]\n", i ); fflush(stdout);
-		nPending++;
-	    }
-#endif
 	}
 	if (nPending > 0) {
 	    printf( "Panic! %d pending operations!\n", nPending );
@@ -1036,15 +1025,16 @@ static int populate_ids_from_mapping(char *mapping, int *num_nodes, MPIDI_PG_t *
                     pg->vct[rank].node_id = node_id;
                     ++rank;
                     if (rank == pg->size)
-                        goto fn_exit;
+                        goto map_done;
                 }
                 ++node_id;
             }
         }
     }
 
-fn_exit:
+map_done:
     ++(*num_nodes); /* add one to get the num instead of the max */
+fn_exit:
     MPIU_Free(mb);
     return mpi_errno;
 fn_fail:
@@ -1128,29 +1118,6 @@ int MPIDI_Populate_vc_node_ids(MPIDI_PG_t *pg, int our_pg_rank)
     }
 
 #ifdef USE_PMI2_API
-#if 0 /* use nodeid list */
-    {
-        int *node_ids;
-        int outlen;
-        int found = FALSE;
-        MPIU_CHKLMEM_MALLOC(node_ids, int *, pg->size * sizeof(int), mpi_errno, "node_ids");
-
-        mpi_errno = PMI2_Info_GetJobAttrIntArray("nodeIDs", node_ids, pg->size, &outlen, &found);
-        if (mpi_errno) MPIU_ERR_POP(mpi_errno);
-        MPIU_ERR_CHKINTERNAL(!found, mpi_errno, "nodeIDs attribute not found");
-        MPIU_ERR_CHKINTERNAL(outlen != pg->size, mpi_errno, "did not receive enough nodeids");
-        g_num_nodes = 0;
-        for (i = 0; i < pg->size; ++i) {
-            pg->vct[i].node_id = node_ids[i];
-            if (g_num_nodes < node_ids[i])
-                g_num_nodes = node_ids[i];
-        }
-
-        ++g_num_nodes;
-
-        /* FIXME: need to handle oddeven cliques DARIUS */
-    }
-#else
     {
         char process_mapping[PMI2_MAX_VALLEN];
         int outlen;
@@ -1172,7 +1139,6 @@ int MPIDI_Populate_vc_node_ids(MPIDI_PG_t *pg, int our_pg_rank)
         MPIU_ERR_CHKINTERNAL(!did_map, mpi_errno, "unable to populate node ids from PMI_process_mapping");
         g_num_nodes = num_nodes;
     }
-#endif
 #else /* USE_PMI2_API */
     if (our_pg_rank == -1) {
         /* FIXME this routine can't handle the dynamic process case at this
@@ -1232,8 +1198,11 @@ int MPIDI_Populate_vc_node_ids(MPIDI_PG_t *pg, int our_pg_rank)
         node_names[i][0] = '\0';
     }
 
+    g_num_nodes = 0; /* defensive */
+
     for (i = 0; i < pg->size; ++i)
     {
+        MPIU_Assert(g_num_nodes < pg->size);
         if (i == our_pg_rank)
         {
             /* This is us, no need to perform a get */

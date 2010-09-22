@@ -9,6 +9,7 @@
 #include "pmci.h"
 #include "pmiserv_pmi.h"
 #include "bsci.h"
+#include "bind.h"
 #include "pmiserv.h"
 #include "pmiserv_utils.h"
 
@@ -36,6 +37,9 @@ static HYD_status cleanup_procs(void)
     else {
         HYDU_dump_noprefix(stdout, "Ctrl-C caught... forcing cleanup\n");
 
+        /* Something has gone really wrong! Ask the bootstrap server
+         * to forcefully cleanup the proxies, but this may leave some
+         * of the application processes still running. */
         status = HYDT_bsci_cleanup_procs();
         HYDU_ERR_POP(status, "error cleaning up processes\n");
     }
@@ -282,6 +286,9 @@ HYD_status HYD_pmci_launch_procs(void)
     for (i = 0; i < node_count; i++)
         control_fd[i] = HYD_FD_UNSET;
 
+    status = HYDT_bind_init(HYD_handle.user_global.binding, HYD_handle.user_global.bindlib);
+    HYDU_ERR_POP(status, "unable to initializing binding library");
+
     status = HYDT_bsci_launch_procs(proxy_args, node_list, control_fd, enable_stdin, stdout_cb,
                                     stderr_cb);
     HYDU_ERR_POP(status, "bootstrap server cannot launch processes\n");
@@ -317,30 +324,28 @@ HYD_status HYD_pmci_wait_for_completion(int timeout)
 
     HYDU_FUNC_ENTER();
 
-    status = HYDT_bsci_wait_for_completion(timeout);
-    if (status == HYD_TIMED_OUT) {
-        status = HYD_pmcd_pmiserv_cleanup();
-        HYDU_ERR_POP(status, "cleanup of processes failed\n");
-    }
-    HYDU_ERR_POP(status, "bootstrap server returned error waiting for completion\n");
-
-    /* Wait for the processes to terminate */
-    status = HYDT_bsci_wait_for_completion(-1);
-    HYDU_ERR_POP(status, "bootstrap server returned error waiting for completion\n");
-
-    /* If we didn't get a user abort signal yet, wait for the exit
-     * status'es */
+    /* We first wait for the exit statuses to arrive till the timeout
+     * period */
     for (pg = &HYD_handle.pg_list; pg; pg = pg->next) {
         pg_scratch = (struct HYD_pmcd_pmi_pg_scratch *) pg->pg_scratch;
 
         while (pg_scratch->control_listen_fd != HYD_FD_CLOSED) {
-            status = HYDT_dmx_wait_for_event(-1);
+            status = HYDT_dmx_wait_for_event(timeout);
+            if (status == HYD_TIMED_OUT) {
+                status = HYD_pmcd_pmiserv_cleanup();
+                HYDU_ERR_POP(status, "cleanup of processes failed\n");
+            }
             HYDU_ERR_POP(status, "error waiting for event\n");
         }
 
         status = HYD_pmcd_pmi_free_pg_scratch(pg);
         HYDU_ERR_POP(status, "error freeing PG scratch space\n");
     }
+
+    /* Either all application processes exited or we have timed
+     * out. We now wait for all the proxies to terminate. */
+    status = HYDT_bsci_wait_for_completion(-1);
+    HYDU_ERR_POP(status, "bootstrap server returned error waiting for completion\n");
 
   fn_exit:
     HYDU_FUNC_EXIT();

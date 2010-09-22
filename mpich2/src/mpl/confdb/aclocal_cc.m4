@@ -1,38 +1,13 @@
-dnl
-dnl This is a replacement for AC_PROG_CC that does not prefer gcc and
-dnl that does not mess with CFLAGS.  See acspecific.m4 for the original defn.
-dnl
-dnl/*D
-dnl PAC_PROG_CC - Find a working C compiler
-dnl
-dnl Synopsis:
-dnl PAC_PROG_CC
-dnl
-dnl Output Effect:
-dnl   Sets the variable CC if it is not already set
-dnl
-dnl Notes:
-dnl   Unlike AC_PROG_CC, this does not prefer gcc and does not set CFLAGS.
-dnl   It does check that the compiler can compile a simple C program.
-dnl   It also sets the variable GCC to yes if the compiler is gcc.  It does
-dnl   not yet check for some special options needed in particular for 
-dnl   parallel computers, such as -Tcray-t3e, or special options to get
-dnl   full ANSI/ISO C, such as -Aa for HP.
-dnl
-dnl D*/
-dnl 2.52 doesn't have AC_PROG_CC_GNU
+dnl AC_PROG_CC_GNU
 ifdef([AC_PROG_CC_GNU],,[AC_DEFUN([AC_PROG_CC_GNU],)])
+
+dnl PAC_PROG_CC - reprioritize the C compiler search order
 AC_DEFUN([PAC_PROG_CC],[
-AC_CHECK_PROGS(CC, cc xlC xlc pgcc icc pathcc gcc )
-test -z "$CC" && AC_MSG_ERROR([no acceptable cc found in \$PATH])
-PAC_PROG_CC_WORKS
-AC_PROG_CC_GNU
-if test "$ac_cv_prog_gcc" = yes; then
-  GCC=yes
-else
-  GCC=
-fi
+	PAC_PUSH_FLAG([CFLAGS])
+	AC_PROG_CC([gcc icc pgcc xlc xlC pathcc cc])
+	PAC_POP_FLAG([CFLAGS])
 ])
+
 dnl
 dnl/*D
 dnl PAC_C_CHECK_COMPILER_OPTION - Check that a compiler option is accepted
@@ -527,45 +502,67 @@ if test "$enable_strict_done" != "yes" ; then
         -Wno-format-zero-length
 	-Wno-type-limits
     "
-    pac_cc_strict_flags=""
-    case "$1" in 
-        yes|all|posix)
+
+    enable_c89=yes
+    enable_c99=no
+    enable_posix=yes
+    enable_opt=yes
+    flags="`echo $1 | sed -e 's/:/ /g' -e 's/,/ /g'`"
+    for flag in ${flags}; do
+        case "$flag" in
+	     c89)
 		enable_strict_done="yes"
-		pac_cc_strict_flags="-O2 $pac_common_strict_flags -D_POSIX_C_SOURCE=199506L"
-                PAC_APPEND_FLAG([-std=c89],[pac_cc_strict_flags])
-        ;;
-
-        # sometimes we want to assume c99 but still want strict warnings/errors
-        c99)
-                enable_strict_done="yes"
-                pac_cc_strict_flags="-O2 $pac_common_strict_flags -D_POSIX_C_SOURCE=199506L"
-                PAC_APPEND_FLAG([-std=c99],[pac_cc_strict_flags])
-        ;;
-
-        noposix)
+		enable_c89=yes
+		;;
+	     c99)
 		enable_strict_done="yes"
-		pac_cc_strict_flags="-O2 $pac_common_strict_flags"
-                PAC_APPEND_FLAG([-std=c89],[pac_cc_strict_flags])
-        ;;
-
-	noopt)
+		enable_c99=yes
+		;;
+	     posix)
 		enable_strict_done="yes"
-		pac_cc_strict_flags="$pac_common_strict_flags -D_POSIX_C_SOURCE=199506L"
-                PAC_APPEND_FLAG([-std=c89],[pac_cc_strict_flags])
-	;;
-
-        no)
+		enable_posix=yes
+		;;
+	     noposix)
+		enable_strict_done="yes"
+		enable_posix=no
+		;;
+	     opt)
+		enable_strict_done="yes"
+		enable_opt=yes
+		;;
+	     noopt)
+		enable_strict_done="yes"
+		enable_opt=no
+		;;
+	     no)
 		# Accept and ignore this value
 		:
-        ;;
-
-        *)
-		if test -n "$1" ; then
-		   AC_MSG_WARN([Unrecognized value for enable-strict:$1])
+		;;
+	     *)
+		if test -n "$flag" ; then
+		   AC_MSG_WARN([Unrecognized value for enable-strict:$flag])
 		fi
-        ;;
+		;;
+	esac
+    done
 
-    esac
+    pac_cc_strict_flags=""
+    if test "${enable_strict_done}" = "yes" ; then
+       if test "${enable_opt}" = "yes" ; then
+       	  pac_cc_strict_flags="-O2"
+       fi
+       pac_cc_strict_flags="$pac_cc_strict_flags $pac_common_strict_flags"
+       if test "${enable_posix}" = "yes" ; then
+       	  PAC_APPEND_FLAG([-D_POSIX_C_SOURCE=199506L],[pac_cc_strict_flags])
+       fi
+       # We only allow one of strict-C99 or strict-C89 to be
+       # enabled. If C99 is enabled, we automatically disable C89.
+       if test "${enable_c99}" = "yes" ; then
+       	  PAC_APPEND_FLAG([-std=c99],[pac_cc_strict_flags])
+       elif test "${enable_c89}" = "yes" ; then
+       	  PAC_APPEND_FLAG([-std=c89],[pac_cc_strict_flags])
+       fi
+    fi
 
     # See if the above options work with the compiler
     accepted_flags=""
@@ -591,7 +588,7 @@ dnl
 dnl D*/
 AC_DEFUN([PAC_ARG_STRICT],[
 AC_ARG_ENABLE(strict,
-[--enable-strict  - Turn on strict compilation testing])
+	AC_HELP_STRING([--enable-strict], [Turn on strict compilation testing]))
 PAC_CC_STRICT($enable_strict)
 CFLAGS="$CFLAGS $pac_cc_strict_flags"
 export CFLAGS

@@ -68,12 +68,9 @@ int MPID_Put(void *origin_addr, int origin_count,
         MPID_Datatype *dtp;
         MPI_Aint dt_true_lb;
         MPIDI_msg_sz_t data_sz;
-        MPIU_THREADPRIV_DECL;
         MPID_MPI_STATE_DECL(MPID_STATE_MPID_PUT);
 
         MPID_MPI_FUNC_ENTER(MPID_STATE_MPID_PUT);
-        MPIU_THREADPRIV_GET;
-        MPIR_Nest_incr();
 
         if (win_ptr->_dev.as_origin.epoch_type == win_ptr->_dev.as_target.epoch_type &&
 	    win_ptr->_dev.as_origin.epoch_type == MPID_EPOTYPE_REFENCE) {
@@ -306,7 +303,6 @@ int MPID_Put(void *origin_addr, int origin_count,
         }
 
 fn_exit:
-        MPIR_Nest_decr();
         MPID_MPI_FUNC_EXIT(MPID_STATE_MPID_PUT);
         return mpi_errno;
 

@@ -305,18 +305,6 @@ static int MPIDI_CH3I_Initialize_tmp_comm(MPID_Comm **comm_pptr,
 
     *comm_pptr = tmp_comm;
 
-    /* FIXME: Who sets?  Why? Where is this defined? Document.  
-     Why is this not done as part of the VC initialization? */
-    /* channels/sshm/include/mpidi_ch3_pre.h defines this */
-#ifdef MPIDI_CH3_HAS_CONN_ACCEPT_HOOK
-    /* If the VC creates non-duplex connections then the acceptor will
-     * need to connect back to form the other half of the connection. */
-    /* FIXME: A hook should not be such a specific function; instead,
-       it should invoke a function pointer defined in the channel 
-       interface structure */
-    mpi_errno = MPIDI_CH3_Complete_unidirectional_connection( vc_ptr );
-#endif
-
 fn_exit:
     MPIDI_FUNC_EXIT(MPID_STATE_MPIDI_CH3I_INITIALIZE_TMP_COMM);
     return mpi_errno;
@@ -721,20 +709,6 @@ static int ReceivePGAndDistribute( MPID_Comm *tmp_comm, MPID_Comm *comm_ptr,
 	}
 	
 	MPIU_Free(pg_str);
-	if (flag) {
-	    /* FIXME: If this is really needed, make it a destroy callback
-	       on the process group rather than an SSHM-specific item */
-#ifdef MPIDI_CH3_USES_SSHM
-	    /* extra pg ref needed for shared memory modules because the 
-	     * shm_XXXXing_list's
-	     * need to be walked though in the later stages of finalize to
-	     * free queue_info's.
-	     */
-	    /* FIXME: Need to understand this and either remove or make
-	       common to all channels */
-	    MPIDI_PG_add_ref(remote_pg[i]);
-#endif
-	}
     }
  fn_exit:
     MPIDI_FUNC_EXIT(MPID_STATE_RECEIVEPGANDDISTRIBUTE);
@@ -1205,12 +1179,6 @@ static int FreeNewVC( MPIDI_VC_t *new_vc )
 	}
 	MPID_Progress_end(&progress_state);
     }
-
-    /* FIXME: remove this ifdef - method on connection? */
-#ifdef MPIDI_CH3_HAS_CONN_ACCEPT_HOOK
-    /* FIXME should this be an MPIU_CALL macro? */
-    mpi_errno = MPIDI_CH3_Cleanup_after_connection( new_vc );
-#endif
 
     MPIU_CALL(MPIDI_CH3,VC_Destroy(new_vc));
     MPIU_Free(new_vc);

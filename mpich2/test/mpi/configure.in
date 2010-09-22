@@ -319,11 +319,8 @@ elif test -n "$with_mpi" ; then
 fi
 
 # Running C compiler tests
-# Work around feature in autoconf that adds -g -O2 to CFLAGS
-saveCFLAGS="$CFLAGS"
-AC_PROG_CC
-CFLAGS="$saveCFLAGS"
-#
+PAC_PROG_CC
+
 # Note that some versions of autoconf will insist that the compiler 
 # produce executables at this point, which is why we must do something
 # special for building within MPICH2
@@ -357,7 +354,7 @@ AC_C_RESTRICT
 # General headers
 dnl AC_CHECK_HEADERS(stdarg.h unistd.h string.h stdlib.h memory.h stdint.h)
 dnl unistd.h string.h stdlib.h memory.h stdint.h are checked by AC_PROG_CC.
-AC_CHECK_HEADERS(stdarg.h )
+AC_CHECK_HEADERS(stdarg.h sys/time.h)
 
 # Check for fixed width types
 AC_TYPE_INT8_T
@@ -431,10 +428,7 @@ AC_SUBST(MPI_SUBVERSION)
 
 # Running Fortran 77 compiler tests
 if test "$enable_f77" = yes ; then
-    # Work around feature in autoconf that adds -g -O2 to FFLAGS
-    saveFFLAGS="$FFLAGS"
-    AC_PROG_F77
-    FFLAGS="$saveFFLAGS"
+    PAC_PROG_F77
     # If there is no working F77, then set enable_f77 to no
     if test -z "$F77" ; then
         enable_f77=no
@@ -797,10 +791,7 @@ fi
 
 # Running C++ compiler tests
 if test "$enable_cxx" = yes ; then
-    # Work around feature in autoconf that adds -g -O2 to CXXFLAGS
-    saveCXXFLAGS="$CXXFLAGS"
-    AC_PROG_CXX
-    CXXFLAGS="$saveCXXFLAGS"
+    PAC_PROG_CXX
     if test -z "$CXX" ; then
         enable_cxx=no
     fi

@@ -74,7 +74,7 @@ typedef struct MPIDI_PG
 
     /* VC table.  At present this is a pointer to an array of VC structures. 
        Someday we may want make this a pointer to an array
-       of VC references.  Thus, it is important to use MPIDI_PG_Get_vc_set_active() 
+       of VC references.  Thus, it is important to use MPIDI_PG_Get_vc() 
        instead of directly referencing this field. */
     struct MPIDI_VC * vct;
 
@@ -500,6 +500,8 @@ extern MPIDI_Process_t MPIDI_Process;
 /*------------------
   BEGIN COMM SECTION
   ------------------*/
+#define MPIDI_Comm_get_vc(comm_, rank_, vcp_) *(vcp_) = (comm_)->vcr[(rank_)]
+
 #define MPIDI_Comm_get_vc_set_active(comm_, rank_, vcp_) do {           \
         *(vcp_) = (comm_)->vcr[(rank_)];                                \
         if ((*(vcp_))->state == MPIDI_VC_STATE_INACTIVE)                \
@@ -559,8 +561,6 @@ int MPIDI_PG_Get_iterator(MPIDI_PG_iterator *iter);
 int MPIDI_PG_Has_next(MPIDI_PG_iterator *iter);
 int MPIDI_PG_Get_next(MPIDI_PG_iterator *iter, MPIDI_PG_t **pgp);
 
-/* FIXME: MPIDI_PG_Get_vc_set_active is a macro, not a routine */
-int MPIDI_PG_Get_vc_set_active(MPIDI_PG_t * pg, int rank, struct MPIDI_VC ** vc); 
 int MPIDI_PG_Close_VCs( void );
 
 int MPIDI_PG_InitConnKVS( MPIDI_PG_t * );
@@ -584,6 +584,8 @@ do {                                            \
 do {                                            \
     MPIU_Object_release_ref(pg_, inuse_);	\
 } while (0)
+
+#define MPIDI_PG_Get_vc(pg_, rank_, vcp_) *(vcp_) = &(pg_)->vct[rank_]
 
 #define MPIDI_PG_Get_vc_set_active(pg_, rank_, vcp_)  do {              \
         *(vcp_) = &(pg_)->vct[rank_];                                   \
@@ -617,11 +619,14 @@ int MPIDI_PG_Create_from_string(const char * str, MPIDI_PG_t ** pg_pptr,
  E*/
 typedef enum MPIDI_VC_State
 {
-    MPIDI_VC_STATE_INACTIVE=1,
-    MPIDI_VC_STATE_ACTIVE,
-    MPIDI_VC_STATE_LOCAL_CLOSE,
-    MPIDI_VC_STATE_REMOTE_CLOSE,
-    MPIDI_VC_STATE_CLOSE_ACKED
+    MPIDI_VC_STATE_INACTIVE=1,      /* Comm either hasn't started or has completed. */
+    MPIDI_VC_STATE_ACTIVE,          /* Comm has started and hasn't completed */
+    MPIDI_VC_STATE_LOCAL_CLOSE,     /* Local side has initiated close protocol */
+    MPIDI_VC_STATE_REMOTE_CLOSE,    /* Remote side has initiated close protocol */
+    MPIDI_VC_STATE_CLOSE_ACKED,     /* Both have initiated close, we have acknowledged remote side */
+    MPIDI_VC_STATE_CLOSED,          /* Both have initiated close, both have acked */
+    MPIDI_VC_STATE_INACTIVE_CLOSED, /* INACTIVE VCs are moved to this state in Finalize */
+    MPIDI_VC_STATE_MORIBUND         /* Abnormally terminated, there may be unsent/unreceived msgs */
 } MPIDI_VC_State_t;
 
 struct MPID_Comm;

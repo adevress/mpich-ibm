@@ -127,6 +127,7 @@ void MPIR_CleanupThreadStorage( void *a )
     }
 }
 
+#if !defined(MPID_DEVICE_DEFINES_THREAD_CS)
 /* These routine handle any thread initialization that my be required */
 #undef FUNCNAME
 #define FUNCNAME MPIR_Thread_CS_Init
@@ -135,6 +136,8 @@ void MPIR_CleanupThreadStorage( void *a )
 static int MPIR_Thread_CS_Init( void )
 {
     MPIU_THREADPRIV_DECL;
+
+    MPIU_Assert(MPICH_MAX_LOCKS >= MPIU_Nest_NUM_MUTEXES);
 
     /* we create this at all granularities right now */
     MPID_Thread_mutex_create(&MPIR_ThreadInfo.memalloc_mutex, NULL);
@@ -210,6 +213,7 @@ int MPIR_Thread_CS_Finalize( void )
 
     return MPI_SUCCESS;
 }
+#endif /* !MPID_DEVICE_DEFINES_THREAD_CS */
 #endif /* MPICH_IS_THREADED */
 
 
@@ -224,7 +228,6 @@ int MPIR_Init_thread(int * argc, char ***argv, int required, int * provided)
     int has_env;
     int thread_provided;
     int exit_init_cs_on_failure = 0;
-    MPIU_THREADPRIV_DECL;
 
     /* For any code in the device that wants to check for runtime 
        decisions on the value of isThreaded, set a provisional
@@ -263,12 +266,6 @@ int MPIR_Init_thread(int * argc, char ***argv, int required, int * provided)
     }
 #   endif
 
-#if 0
-    /* This should never happen */
-    if (MPIR_Version_device == 0) {
-	
-    }
-#endif     
 #ifdef HAVE_ERROR_CHECKING
     /* Eventually this will support commandline and environment options
      for controlling error checks.  It will use the routine 
@@ -359,11 +356,20 @@ int MPIR_Init_thread(int * argc, char ***argv, int required, int * provided)
     MPIR_Datatype_init();
     MPIR_Group_init();
 
-    MPIR_Nest_init();
     /* MPIU_Timer_pre_init(); */
 
     mpi_errno = MPIR_Param_init_params();
     if (mpi_errno) MPIU_ERR_POP(mpi_errno);
+
+    /* Wait for debugger to attach if requested. */
+    if (MPIR_PARAM_DEBUG_HOLD) {
+        volatile int hold = 1;
+        while (hold)
+#ifdef HAVE_USLEEP
+            usleep(100);
+#endif
+            ;
+    }
 
     /* define MPI as initialized so that we can use MPI functions within 
        MPID_Init if necessary */

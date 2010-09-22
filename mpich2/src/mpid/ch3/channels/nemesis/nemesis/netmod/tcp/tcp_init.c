@@ -8,6 +8,9 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
+#ifdef HAVE_SIGNAL_H
+#include <signal.h>
+#endif
 
 #define DBG_IFNAME 0
 
@@ -99,7 +102,25 @@ int MPID_nem_tcp_init (MPIDI_PG_t *pg_p, int pg_rank, char **bc_val_p, int *val_
     mpi_errno = MPID_nem_tcp_send_init();
     if (mpi_errno) MPIU_ERR_POP(mpi_errno);
 
+#ifdef HAVE_SIGNAL
+    {
+        /* In order to be able to handle socket errors on our own, we need
+           to ignore SIGPIPE.  This may cause problems for programs that
+           intend to handle SIGPIPE or count on being killed, but I expect
+           such programs are very rare, and I'm not sure what the best
+           solution would be anyway. */
+        void *ret;
 
+        ret = signal(SIGPIPE, SIG_IGN);
+        MPIU_ERR_CHKANDJUMP1(ret == SIG_ERR, mpi_errno, MPI_ERR_OTHER, "**signal", "**signal %s", MPIU_Strerror(errno));
+        if (ret != SIG_DFL && ret != SIG_IGN) {
+            /* The app has set its own signal handler.  Replace the previous handler. */
+            ret = signal(SIGPIPE, ret);
+            MPIU_ERR_CHKANDJUMP1(ret == SIG_ERR, mpi_errno, MPI_ERR_OTHER, "**signal", "**signal %s", MPIU_Strerror(errno));
+        }
+    }
+#endif
+    
  fn_exit:
     MPIDI_FUNC_EXIT(MPID_STATE_MPID_NEM_TCP_INIT);
 /*     fprintf(stdout, FCNAME " Exit\n"); fflush(stdout); */
@@ -133,7 +154,7 @@ static int ckpt_restart(void)
         MPIDI_VC_t *vc;
         if (i == MPIDI_Process.my_pg_rank)
             continue;
-        MPIDI_PG_Get_vc_set_active(MPIDI_Process.my_pg, i, &vc);
+        MPIDI_PG_Get_vc(MPIDI_Process.my_pg, i, &vc);
         {
             MPIDI_CH3I_VC *vc_ch = (MPIDI_CH3I_VC *)vc->channel_private;
             MPID_nem_tcp_vc_area *vc_tcp = VC_TCP(vc);
@@ -173,7 +194,7 @@ static int ckpt_restart(void)
         MPIDI_CH3I_VC *vc_ch;
         if (i == MPIDI_Process.my_pg_rank)
             continue;
-        MPIDI_PG_Get_vc_set_active(MPIDI_Process.my_pg, i, &vc);
+        MPIDI_PG_Get_vc(MPIDI_Process.my_pg, i, &vc);
         vc_ch = ((MPIDI_CH3I_VC *)vc->channel_private);
         if (!vc_ch->is_local) {
             mpi_errno = vc_ch->ckpt_restart_vc(vc);
@@ -294,6 +315,7 @@ static int GetSockInterfaceAddr(int myRank, char *ifname, int maxIfname,
 int MPID_nem_tcp_get_business_card (int my_rank, char **bc_val_p, int *val_max_sz_p)
 {
     int mpi_errno = MPI_SUCCESS;
+    int str_errno = MPIU_STR_SUCCESS;
     MPIDU_Sock_ifaddr_t ifaddr;
     char ifname[MAX_HOST_DESCRIPTION_LEN];
     int ret;
@@ -307,34 +329,20 @@ int MPID_nem_tcp_get_business_card (int my_rank, char **bc_val_p, int *val_max_s
     if (mpi_errno) MPIU_ERR_POP(mpi_errno);
     
     
-    mpi_errno = MPIU_Str_add_string_arg(bc_val_p, val_max_sz_p, MPIDI_CH3I_HOST_DESCRIPTION_KEY, ifname);
-    if (mpi_errno != MPIU_STR_SUCCESS)
-    {
-        if (mpi_errno == MPIU_STR_NOMEM)
-        {
-            MPIU_ERR_SETANDJUMP(mpi_errno, MPI_ERR_OTHER, "**buscard_len");
-        }
-        else
-        {
-            MPIU_ERR_SETANDJUMP(mpi_errno, MPI_ERR_OTHER, "**buscard");
-        }
+    str_errno = MPIU_Str_add_string_arg(bc_val_p, val_max_sz_p, MPIDI_CH3I_HOST_DESCRIPTION_KEY, ifname);
+    if (str_errno) {
+        MPIU_ERR_CHKANDJUMP(str_errno == MPIU_STR_NOMEM, mpi_errno, MPI_ERR_OTHER, "**buscard_len");
+        MPIU_ERR_SETANDJUMP(mpi_errno, MPI_ERR_OTHER, "**buscard");
     }
 
     len = sizeof(sock_id);
     ret = getsockname (MPID_nem_tcp_g_lstn_sc.fd, (struct sockaddr *)&sock_id, &len);
     MPIU_ERR_CHKANDJUMP1 (ret == -1, mpi_errno, MPI_ERR_OTHER, "**getsockname", "**getsockname %s", MPIU_Strerror (errno));
 
-    mpi_errno = MPIU_Str_add_int_arg (bc_val_p, val_max_sz_p, MPIDI_CH3I_PORT_KEY, ntohs(sock_id.sin_port));
-    if (mpi_errno != MPIU_STR_SUCCESS)
-    {
-        if (mpi_errno == MPIU_STR_NOMEM)
-        {
-            MPIU_ERR_SETANDJUMP(mpi_errno, MPI_ERR_OTHER, "**buscard_len");
-        }
-        else
-        {
-            MPIU_ERR_SETANDJUMP(mpi_errno, MPI_ERR_OTHER, "**buscard");
-        }
+    str_errno = MPIU_Str_add_int_arg (bc_val_p, val_max_sz_p, MPIDI_CH3I_PORT_KEY, ntohs(sock_id.sin_port));
+    if (str_errno) {
+        MPIU_ERR_CHKANDJUMP(str_errno == MPIU_STR_NOMEM, mpi_errno, MPI_ERR_OTHER, "**buscard_len");
+        MPIU_ERR_SETANDJUMP(mpi_errno, MPI_ERR_OTHER, "**buscard");
     }
     
     if (ifaddr.len > 0 && ifaddr.type == AF_INET)
@@ -343,17 +351,10 @@ int MPID_nem_tcp_get_business_card (int my_rank, char **bc_val_p, int *val_max_s
         p = (unsigned char *)(ifaddr.ifaddr);
         MPIU_Snprintf( ifname, sizeof(ifname), "%u.%u.%u.%u", p[0], p[1], p[2], p[3] );
         MPIU_DBG_MSG_S(CH3_CONNECT,VERBOSE,"ifname = %s",ifname );
-        mpi_errno = MPIU_Str_add_string_arg(bc_val_p, val_max_sz_p, MPIDI_CH3I_IFNAME_KEY, ifname);
-        if (mpi_errno != MPIU_STR_SUCCESS)
-        {
-            if (mpi_errno == MPIU_STR_NOMEM)
-            {
-                MPIU_ERR_SETANDJUMP(mpi_errno, MPI_ERR_OTHER, "**buscard_len");
-            }
-            else
-            {
-                MPIU_ERR_SETANDJUMP(mpi_errno, MPI_ERR_OTHER, "**buscard");
-            }
+        str_errno = MPIU_Str_add_string_arg(bc_val_p, val_max_sz_p, MPIDI_CH3I_IFNAME_KEY, ifname);
+        if (str_errno) {
+            MPIU_ERR_CHKANDJUMP(str_errno == MPIU_STR_NOMEM, mpi_errno, MPI_ERR_OTHER, "**buscard_len");
+            MPIU_ERR_SETANDJUMP(mpi_errno, MPI_ERR_OTHER, "**buscard");
         }
     }
     
@@ -457,16 +458,6 @@ int MPID_nem_tcp_vc_destroy(MPIDI_VC_t *vc)
     int mpi_errno = MPI_SUCCESS;
 
     /* currently do nothing */
-#if 0
-    struct pollfd *plfd;
-    sockconn_t *sc;
-
-    sc = VC_FIELD(vc, sc);
-    if (sc == NULL)
-        goto fn_exit;
-
-    plfd = &MPID_nem_tcp_plfd_tbl[sc->index]; 
-#endif
 
     return mpi_errno;
 }

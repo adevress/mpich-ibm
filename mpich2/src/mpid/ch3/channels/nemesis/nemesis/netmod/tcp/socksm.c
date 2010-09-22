@@ -72,13 +72,6 @@ static struct {
 #define IS_SAME_PGID(id1, id2) \
     (strcmp(id1, id2) == 0)
 
-/* Will evaluate to false if either one of these sc's does not have valid pg data */
-#define IS_SAME_CONNECTION(sc1, sc2)                                    \
-    (sc1->pg_is_set && sc2->pg_is_set &&                                \
-     sc1->pg_rank == sc2->pg_rank &&                                    \
-     ((sc1->is_same_pg && sc2->is_same_pg) ||                           \
-      (!sc1->is_same_pg && !sc2->is_same_pg &&                          \
-       IS_SAME_PGID(sc1->pg_id, sc2->pg_id))))
 
 #define INIT_SC_ENTRY(sc, ind)                  \
     do {                                        \
@@ -124,6 +117,32 @@ static void dbg_print_sc_tbl(FILE *stream, int print_free_entries)
 static int find_free_entry(int *index);
 static int cleanup_and_free_sc_plfd(sockconn_t *const sc);
 static int error_closed(struct MPIDI_VC *const vc);
+
+#undef FUNCNAME
+#define FUNCNAME is_same_connection
+#undef FCNAME
+#define FCNAME MPIU_QUOTE(FUNCNAME)
+static inline int is_same_connection(sockconn_t *sc1, sockconn_t *sc2)
+{
+
+    /* Returns TRUE iff sc1 and sc2 connect the same processes */
+
+    /* if pg_is_set is TRUE, then either it's the same pg, or pg_id is not NULL */
+    MPIU_Assert(!sc1->pg_is_set || sc1->is_same_pg || sc1->pg_id != NULL);
+    MPIU_Assert(!sc2->pg_is_set || sc2->is_same_pg || sc2->pg_id != NULL);
+
+    /* if it's a tmpvc, the pg should not be set */
+    MPIU_Assert(!sc1->is_tmpvc || !sc1->pg_is_set);
+    MPIU_Assert(!sc1->is_tmpvc || !sc1->pg_is_set);
+
+    return !sc1->is_tmpvc && !sc2->is_tmpvc &&
+        sc1->pg_is_set && sc2->pg_is_set &&
+        sc1->pg_rank == sc2->pg_rank &&
+        (( sc1->is_same_pg &&  sc2->is_same_pg) ||
+         (!sc1->is_same_pg && !sc2->is_same_pg &&
+          IS_SAME_PGID(sc1->pg_id, sc2->pg_id)));
+}
+
 
 #undef FUNCNAME
 #define FUNCNAME alloc_sc_plfd_tbls
@@ -347,7 +366,7 @@ static int found_better_sc(sockconn_t *sc, sockconn_t **fnd_sc)
         MPID_nem_tcp_Conn_State_t istate = iter_sc->state.cstate;
 
         if (iter_sc != sc && iter_sc->fd != CONN_INVALID_FD 
-            && IS_SAME_CONNECTION(iter_sc, sc))
+            && is_same_connection(iter_sc, sc))
         {
             switch (sc->state.cstate)
             {
@@ -415,8 +434,11 @@ static int vc_is_in_shutdown(MPIDI_VC_t *vc)
     MPIU_Assert(vc != NULL);
     if (vc->state == MPIDI_VC_STATE_REMOTE_CLOSE ||
         vc->state == MPIDI_VC_STATE_CLOSE_ACKED ||
+        vc->state == MPIDI_VC_STATE_CLOSED ||
         vc->state == MPIDI_VC_STATE_LOCAL_CLOSE ||
-        vc->state == MPIDI_VC_STATE_INACTIVE)
+        vc->state == MPIDI_VC_STATE_INACTIVE ||
+        vc->state == MPIDI_VC_STATE_INACTIVE_CLOSED ||
+        vc->state == MPIDI_VC_STATE_MORIBUND)
     {
         retval = TRUE;
     }
@@ -615,8 +637,9 @@ static int recv_id_or_tmpvc_info(sockconn_t *const sc, int *got_sc_eof)
             ++sc_vc_tcp->sc_ref_count;
         }
         
-        /* very important, without this IS_SAME_CONNECTION will always fail */
+        /* very important, without this is_same_connection() will always fail */
         sc->pg_is_set = TRUE;
+        MPIU_Assert(!sc->is_tmpvc);
         
 	MPIU_DBG_MSG_FMT(CH3_CHANNEL, VERBOSE, (MPIU_DBG_FDEST, "PKT_ID_INFO: sc->fd=%d, sc->vc=%p, sc=%p", sc->fd, sc->vc, sc));
     }
@@ -660,6 +683,8 @@ static int recv_id_or_tmpvc_info(sockconn_t *const sc, int *got_sc_eof)
 
         MPIU_DBG_MSG_FMT(CH3_CHANNEL, VERBOSE, (MPIU_DBG_FDEST, "enqueuing on acceptq vc=%p, sc->fd=%d, tag=%d", vc, sc->fd, sc->vc->port_name_tag));
         MPIDI_CH3I_Acceptq_enqueue(vc, sc->vc->port_name_tag);
+
+        MPIU_Assert(!sc->pg_is_set);
     }
 
     MPIU_CHKPMEM_COMMIT();
@@ -689,11 +714,9 @@ static int send_cmd_pkt(int fd, MPIDI_nem_tcp_socksm_pkt_type_t pkt_type)
 
     MPIU_Assert(pkt_type == MPIDI_NEM_TCP_SOCKSM_PKT_ID_ACK ||
                 pkt_type == MPIDI_NEM_TCP_SOCKSM_PKT_ID_NAK ||
-                pkt_type == MPIDI_NEM_TCP_SOCKSM_PKT_DISC_REQ ||
-                pkt_type == MPIDI_NEM_TCP_SOCKSM_PKT_DISC_ACK ||
-		pkt_type == MPIDI_NEM_TCP_SOCKSM_PKT_DISC_NAK ||
 		pkt_type == MPIDI_NEM_TCP_SOCKSM_PKT_TMPVC_ACK ||
-		pkt_type == MPIDI_NEM_TCP_SOCKSM_PKT_TMPVC_NAK);
+		pkt_type == MPIDI_NEM_TCP_SOCKSM_PKT_TMPVC_NAK ||
+                pkt_type == MPIDI_NEM_TCP_SOCKSM_PKT_CLOSED);
 
     pkt.pkt_type = pkt_type;
     pkt.datalen = 0;
@@ -740,9 +763,8 @@ static int recv_cmd_pkt(int fd, MPIDI_nem_tcp_socksm_pkt_type_t *pkt_type)
                 pkt.pkt_type == MPIDI_NEM_TCP_SOCKSM_PKT_ID_NAK ||
                 pkt.pkt_type == MPIDI_NEM_TCP_SOCKSM_PKT_TMPVC_ACK ||
                 pkt.pkt_type == MPIDI_NEM_TCP_SOCKSM_PKT_TMPVC_NAK ||
-                pkt.pkt_type == MPIDI_NEM_TCP_SOCKSM_PKT_DISC_REQ ||
-                pkt.pkt_type == MPIDI_NEM_TCP_SOCKSM_PKT_DISC_ACK ||
-                pkt.pkt_type == MPIDI_NEM_TCP_SOCKSM_PKT_DISC_NAK);
+                pkt.pkt_type == MPIDI_NEM_TCP_SOCKSM_PKT_CLOSED);
+    
     *pkt_type = pkt.pkt_type;
  fn_exit:
     MPIDI_FUNC_EXIT(MPID_STATE_RECV_CMD_PKT);
@@ -775,9 +797,15 @@ int MPID_nem_tcp_connect(struct MPIDI_VC *const vc)
 
     MPIU_Assert(vc != NULL);
 
+    /* Handle error case */
+    if (vc_tcp->state == MPID_NEM_TCP_VC_STATE_ERROR ||
+        vc->state == MPIDI_VC_STATE_MORIBUND) {
+        MPIU_ERR_SETANDJUMP(mpi_errno, MPI_ERR_OTHER, "**vc_in_error_state");
+    }
+
     /* We have an active connection, start polling more often */
     MPID_nem_tcp_skip_polls = MAX_SKIP_POLLS_ACTIVE;
-        
+
     MPIDI_CHANGE_VC_STATE(vc, ACTIVE);
 
     if (vc_tcp->state == MPID_NEM_TCP_VC_STATE_DISCONNECTED) {
@@ -836,6 +864,7 @@ int MPID_nem_tcp_connect(struct MPIDI_VC *const vc)
         }
         else {
             sc->is_tmpvc = TRUE;
+            MPIU_Assert(!sc->pg_is_set);
         }
 
         sock_addr = &(vc_tcp->sock_id);
@@ -880,14 +909,13 @@ int MPID_nem_tcp_connect(struct MPIDI_VC *const vc)
                 sc->is_same_pg = FALSE;
                 sc->pg_id = vc->pg->id;
             }
+            /* very important, without this is_same_connection() will always fail */
+            sc->pg_is_set = TRUE;
+            MPIU_Assert(!sc->is_tmpvc);
         }
         else { /* (vc->pg == NULL), dynamic proc connection - temp vc */
-            sc->is_same_pg = FALSE;
-            sc->pg_id = NULL;
+            MPIU_Assert(sc->is_tmpvc);
         }
-
-        /* very important, without this IS_SAME_CONNECTION will always fail */
-        sc->pg_is_set = TRUE;
 
         ASSIGN_SC_TO_VC(vc_tcp, sc);
         sc->vc = vc;
@@ -903,7 +931,8 @@ int MPID_nem_tcp_connect(struct MPIDI_VC *const vc)
            resolution. */
     }
     else {
-        MPIU_ERR_SETANDJUMP(mpi_errno, MPI_ERR_OTHER, "**vc_in_error_state");
+        /* We already handled the error case at the top of the routine. */
+        MPIU_Assertp(0);
     }
 
  fn_exit:
@@ -985,7 +1014,7 @@ static int cleanup_and_free_sc_plfd(sockconn_t *const sc)
     goto fn_exit;
 }
 
-/* this function is called when vc->state becomes CLOSE_ACKED or when we need
+/* this function is called when vc->state becomes CLOSED or when we need
    to clean up after we restart from a checkpoint */
 /* FIXME XXX DJG do we need to do anything here to ensure that the final
    close(TRUE) packet has made it into a writev call?  The code might have a
@@ -1140,19 +1169,30 @@ static int state_c_ranksent_handler(struct pollfd *const plfd, sockconn_t *const
         if (mpi_errno) MPIU_ERR_POP(mpi_errno);
         
         MPIU_Assert(pkt_type == MPIDI_NEM_TCP_SOCKSM_PKT_ID_ACK ||
-                    pkt_type == MPIDI_NEM_TCP_SOCKSM_PKT_ID_NAK);
+                    pkt_type == MPIDI_NEM_TCP_SOCKSM_PKT_ID_NAK ||
+                    pkt_type == MPIDI_NEM_TCP_SOCKSM_PKT_CLOSED);
 
-        if (pkt_type == MPIDI_NEM_TCP_SOCKSM_PKT_ID_ACK) {
+        switch (pkt_type) {
+        case MPIDI_NEM_TCP_SOCKSM_PKT_ID_ACK:
             CHANGE_STATE(sc, CONN_STATE_TS_COMMRDY);
             ASSIGN_SC_TO_VC(sc_vc_tcp, sc);
 
             MPID_nem_tcp_conn_est (sc_vc);
             sc_vc_tcp->connect_retry_count = 0; /* successfully connected, reset connection retry count */
             MPIU_DBG_MSG_FMT(NEM_SOCK_DET, VERBOSE, (MPIU_DBG_FDEST, "c_ranksent_handler(): connection established (sc=%p, sc->vc=%p, fd=%d)", sc, sc->vc, sc->fd));
-        }
-        else { /* pkt_type must be MPIDI_NEM_TCP_SOCKSM_PKT_ID_NAK */
+            break;
+        case MPIDI_NEM_TCP_SOCKSM_PKT_ID_NAK:
             MPIU_DBG_MSG(NEM_SOCK_DET, VERBOSE, "received NAK, closing sc");
             mpi_errno = cleanup_and_free_sc_plfd(sc); /* QUIESCENT */
+            break;
+        case MPIDI_NEM_TCP_SOCKSM_PKT_CLOSED:
+            MPIU_DBG_MSG(NEM_SOCK_DET, VERBOSE, "received CLOSED, closing sc");
+            mpi_errno = MPIDI_CH3U_Handle_connection(sc_vc, MPIDI_VC_EVENT_TERMINATED);
+            if (mpi_errno) MPIU_ERR_POP(mpi_errno);
+            mpi_errno = cleanup_and_free_sc_plfd(sc); /* QUIESCENT */
+            break;
+        default:
+            MPIU_Assert(0);
         }
     }
 
@@ -1326,15 +1366,22 @@ static int state_l_rankrcvd_handler(struct pollfd *const plfd, sockconn_t *const
     status = MPID_nem_tcp_check_sock_status(plfd);
     if (status == MPID_NEM_TCP_SOCK_ERROR_EOF)
         goto fn_fail;
-    
-    if (found_better_sc(sc, &fnd_sc)) {
-        if (fnd_sc->state.cstate == CONN_STATE_TS_COMMRDY)
-            snd_nak = TRUE;
-        else if (fnd_sc->state.cstate == CONN_STATE_TC_C_RANKSENT)
-            snd_nak = do_i_win(sc);
-    }
-    
+
     if (IS_WRITEABLE(plfd)) {
+
+        if (sc_vc->state == MPIDI_VC_STATE_INACTIVE_CLOSED) {
+            mpi_errno = send_cmd_pkt(sc->fd, MPIDI_NEM_TCP_SOCKSM_PKT_CLOSED);
+            if (mpi_errno) MPIU_ERR_POP(mpi_errno);
+            mpi_errno = cleanup_and_free_sc_plfd(sc); /* QUIESCENT */
+        }
+        
+        if (found_better_sc(sc, &fnd_sc)) {
+            if (fnd_sc->state.cstate == CONN_STATE_TS_COMMRDY)
+                snd_nak = TRUE;
+            else if (fnd_sc->state.cstate == CONN_STATE_TC_C_RANKSENT)
+                snd_nak = do_i_win(sc);
+        }
+    
         if (snd_nak) {
             mpi_errno = send_cmd_pkt(sc->fd, MPIDI_NEM_TCP_SOCKSM_PKT_ID_NAK);
             if (mpi_errno) MPIU_ERR_POP(mpi_errno);
@@ -1458,7 +1505,7 @@ static int MPID_nem_tcp_recv_handler (struct pollfd *pfd, sockconn_t *const sc)
                        the other side performs a tcp close() before we do and we
                        blow up here. */
                     MPIU_DBG_MSG(NEM_SOCK_DET, VERBOSE, "other side closed, but we're shutting down, closing sc");
-                    mpi_errno = cleanup_and_free_sc_plfd(sc); /* QUIESCENT */
+                    mpi_errno = MPID_nem_tcp_cleanup_on_error(sc_vc);
                     goto fn_exit;
                 }
                 else
@@ -1866,12 +1913,15 @@ int MPID_nem_tcp_state_listening_handler(struct pollfd *const unused_1, sockconn
 static int error_closed(struct MPIDI_VC *const vc)
 {
     int mpi_errno = MPI_SUCCESS;
-    MPID_nem_tcp_vc_area *vc_tcp = VC_TCP(vc);
+    MPID_nem_tcp_vc_area * const vc_tcp = VC_TCP(vc);
     MPIDI_STATE_DECL(MPID_STATE_ERROR_CLOSED);
 
     MPIDI_FUNC_ENTER(MPID_STATE_ERROR_CLOSED);
 
     vc_tcp->state = MPID_NEM_TCP_VC_STATE_ERROR;
+
+    mpi_errno = MPIDI_CH3U_Handle_connection(vc, MPIDI_VC_EVENT_TERMINATED);
+    if (mpi_errno) MPIU_ERR_POP(mpi_errno);
     /* complete pending send/recv requests with error ??? */
 
  fn_exit:

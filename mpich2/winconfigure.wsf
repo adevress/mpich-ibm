@@ -1281,9 +1281,10 @@ End Function
 '
 ' Get MPICH2 Version & ABI Version
 '
-Function GetMPICH2Versions(ByRef mpich2Version, ByRef mpich2ABIVersion)
+Function GetMPICH2Versions(ByRef mpich2Version, ByRef mpich2ABIVersion, ByRef mpich2ReleaseDate)
     mpich2Version = "0.0"
     mpich2ABIVersion = "0.0"
+    mpich2ReleaseDate = "0/0/0"
     if f.FileExists("maint\Version") then
         Dim fin, str
         Set fin = f.OpenTextFile("maint\Version")
@@ -1291,22 +1292,31 @@ Function GetMPICH2Versions(ByRef mpich2Version, ByRef mpich2ABIVersion)
             Dim strTokenArr
             str = fin.ReadLine()
             Trim(str)
-            strTokenArr = Split(str, " ", -1 , 1)
-            If UBound(strTokenArr, 1) = 1 Then
-                If(StrComp(Left(strTokenArr(0), 14), "MPICH2_VERSION") = 0) Then
-                    mpich2Version = strTokenArr(1)
-                ElseIf(StrComp(Left(strTokenArr(0), 17), "MPICH2_ABIVERSION") = 0) Then
-                    mpich2ABIVersion = Replace(strTokenArr(1), ":", ".")
-                Else
-                    printMsg "ERROR", "Invalid String """ & str & """ found in mpich2 Version file"
-                End If
+            If(StrComp(Left(str, 1), "#") = 0) OR (str = "") Then
+                ' Ignore comments and newlines
             Else
-                printMsg "ERROR", "Invalid format in mpich2 Version file. Expected: ""MPICH2_VERSION_NAME MPICH2_VERSION"" format"
+                strTokenArr = Split(str, "=", -1 , 1)
+                If UBound(strTokenArr, 1) = 1 Then
+                    If(StrComp(Left(strTokenArr(0), 14), "MPICH2_VERSION") = 0) Then
+                        mpich2Version = strTokenArr(1)
+                    ElseIf(StrComp(Left(strTokenArr(0), 17), "MPICH2_ABIVERSION") = 0) Then
+                        mpich2ABIVersion = Replace(strTokenArr(1), ":", ".")
+                    ElseIf(StrComp(Left(strTokenArr(0), 19), "MPICH2_RELEASE_DATE") = 0) Then
+                        mpich2ReleaseDate = strTokenArr(1)
+                    ElseIf(StrComp(Left(strTokenArr(0), 19), "libmpich_so_version") = 0) Then
+                        'Ignore libmpich so version
+                    Else
+                        printMsg "ERROR", "Invalid String """ & str & """ found in mpich2 Version file"
+                    End If
+                Else
+                    printMsg "ERROR", "Invalid format in mpich2 Version file. Expected: ""MPICH2_VERSION_NAME MPICH2_VERSION"" format"
+                End If
             End If
         Loop
         fin.Close()
     end if
-    If (StrComp(mpich2Version, "0.0") <> 0) AND (StrComp(mpich2ABIVersion, "0.0") <> 0) Then
+    ' We only care about MPICH2 version for now
+    If (StrComp(mpich2Version, "0.0") <> 0) Then
         GetMPICH2Versions = True
     Else
         GetMPICH2Versions = False
@@ -1526,8 +1536,8 @@ Function GetMPICH2NumVersion(ver)
 	printMsg "VERBOSE", " MPICH2 NUM VERSION " & numVer
 End Function
 
-GetMPICH2Versions mpich2Version, mpich2ABIVersion
-printMsg "VERBOSE", "MPICH2_VERSION = " & mpich2Version & " MPICH2_ABIVERSION = " & mpich2ABIVersion
+GetMPICH2Versions mpich2Version, mpich2ABIVersion, mpich2ReleaseDate
+printMsg "VERBOSE", "MPICH2_VERSION = " & mpich2Version & " MPICH2_RELEASE_DATE = " & mpich2ReleaseDate
 mpich2NumVersion = GetMPICH2NumVersion(mpich2Version)
 
 Function RegExpFind(pattern, str)
@@ -2048,6 +2058,10 @@ Function ReplaceAts( str, use_f77, b64 )
 				'str = Replace(str, "@PCONTROL_LIST@", "")
 			Case "@configure_input@"
 				'str = Replace(str, "@configure_input@", "")
+			Case "@CMB_STATUS_ALIGNMENT@"
+				'str = Replace(str, "@CMB_STATUS_ALIGNMENT@", "")
+			Case "@CMB_1INT_ALIGNMENT@"
+				'str = Replace(str, "@CMB_1INT_ALIGNMENT@", "")
 			Case "@DLLIMPORT@"
 				str = Replace(str, "@DLLIMPORT@", "CDEC$ ATTRIBUTES DLLIMPORT::/MPIFCMB1/" & vbNewLine & "CDEC$ ATTRIBUTES DLLIMPORT::/MPIFCMB2/" & vbNewLine & "CDEC$ ATTRIBUTES DLLIMPORT::/MPIFCMB3/" & vbNewLine & "CDEC$ ATTRIBUTES DLLIMPORT::/MPIFCMB4/" & vbNewLine & "CDEC$ ATTRIBUTES DLLIMPORT::/MPIFCMB5/" & vbNewLine & "CDEC$ ATTRIBUTES DLLIMPORT::/MPIFCMB7/" & vbNewLine & "CDEC$ ATTRIBUTES DLLIMPORT::/MPIFCMB8/")
 			Case "@MPID_THREAD_TYPEDEFS@"
@@ -2117,8 +2131,8 @@ Function ReplaceAts( str, use_f77, b64 )
 			' Config options 
 			Case "@CONFIGURE_ARGS_CLEAN@"
 				str = Replace(str, "@CONFIGURE_ARGS_CLEAN@", "Check winconfigure.wsf for config options")
-			Case "@RELEASE_DATE@"
-				str = Replace(str, "@RELEASE_DATE@", Date)
+			Case "@MPICH2_RELEASE_DATE@"
+				str = Replace(str, "@MPICH2_RELEASE_DATE@", Date)
 			Case "@DEVICE@"
 				str = Replace(str, "@DEVICE@", "ch3")
 			Case "@CC@"
@@ -2244,6 +2258,8 @@ Sub AddOPADefinitions( fout, filename, b64 )
                 fout.WriteLine("/* #undef HAVE_UNISTD_H */")
             Case "HAVE_STDDEF_H"
                 fout.WriteLine("#define HAVE_STDDEF_H 1")
+            Case "HAVE_DLFCN_H"
+                fout.WriteLine("/* #undef HAVE_DLFCN_H */")
             Case "LIMIT_THREADS"
                 fout.WriteLine("/* #undef LIMIT_THREADS */")
             ' Just using the default value in the unix build for max nthreads
@@ -2288,6 +2304,10 @@ Sub AddOPADefinitions( fout, filename, b64 )
                 fout.WriteLine("/* #undef USE_LOCK_BASED_PRIMITIVES */")
             Case "EXPLICIT_EMULATION"
                 fout.WriteLine("/* #undef EXPLICIT_EMULATION */")
+            ' Windows builds don't rely on libtool - so no need to define
+            ' LT_OBJDIR
+            Case "LT_OBJDIR"
+                fout.WriteLine("/* #undef LT_OBJDIR */")
             Case Else
                 'MsgBox("Unhandled definition <" & define & ">")
                 If appendUniqueString(unhandled_definitions, macroname) Then
@@ -3066,6 +3086,10 @@ Sub AddDefinitions( fout, filename, b64 )
 					fout.WriteLine("/* #undef MPIR_INTEGER8_CTYPE */")
 				Case "MPIR_INTEGER16_CTYPE"
 					fout.WriteLine("/* #undef MPIR_INTEGER16_CTYPE */")
+				Case "MPIR_CXX_BOOL_CTYPE"
+					fout.WriteLine("#define MPIR_CXX_BOOL_CTYPE unsigned char")
+				Case "MPIR_CXX_BOOL_VALUE"
+					fout.WriteLIne("#define MPIR_CXX_BOOL_VALUE "+ MPIR_CXX_BOOL)
 				Case "MPIR_CXX_COMPLEX_VALUE"
 					fout.WriteLIne("#define MPIR_CXX_COMPLEX_VALUE "+ MPIR_CXX_COMPLEX)
 				Case "MPIR_CXX_DOUBLE_COMPLEX_VALUE"
@@ -3286,6 +3310,8 @@ Sub AddDefinitions( fout, filename, b64 )
 					fout.WriteLine("/* #undef HAVE_READLINK */")
 				Case "HAVE_SIGNAL_H"
 					fout.WriteLine("/* #undef HAVE_SIGNAL_H */")
+				Case "HAVE_SIGNAL"
+					fout.WriteLine("/* #undef HAVE_SIGNAL */")
 				Case "HAVE_STAT"
 					fout.WriteLine("/* #undef HAVE_STAT */")
 				Case "HAVE_STATUS_SET_BYTES"
@@ -7323,10 +7349,10 @@ Function GenBuild()
 	mfile.WriteLine
 	mfile.WriteLine("# create special rules for the TraceInput.dll source files since they need to include Java paths")
 	mfile.WriteLine("$(RLOG_OUTDIR)\logformat_trace_InputLog.obj: ..\src\util\logging\rlog\logformat_trace_InputLog.c")
-	mfile.WriteLine("    $(cc) $(cflags) /I..\src\mpe2\src\slog2sdk\src\logformat\trace -DHAVE_STRNICMP /I$(JAVA_HOME)\include /I$(JAVA_HOME)\include\win32 /Fo""$(RLOG_OUTDIR)\\"" /Fd""$(RLOG_OUTDIR)\\"" ..\src\util\logging\rlog\logformat_trace_InputLog.c")
+	mfile.WriteLine("    $(cc) $(cflags) /I..\src\mpe2\src\slog2sdk\src\logformat\trace -DHAVE_STRNICMP /I""$(JAVA_HOME)""\include /I""$(JAVA_HOME)""\include\win32 /Fo""$(RLOG_OUTDIR)\\"" /Fd""$(RLOG_OUTDIR)\\"" ..\src\util\logging\rlog\logformat_trace_InputLog.c")
 	mfile.WriteLine
 	mfile.WriteLine("$(RLOG_OUTDIR)\trace_input.obj: ..\src\util\logging\rlog\trace_input.c")
-	mfile.WriteLine("    $(cc) $(cflags) /DHAVE_STRNICMP /I..\src\mpe2\src\slog2sdk\src\logformat\trace /I$(JAVA_HOME)\include /I$(JAVA_HOME)\include\win32 /Fo""$(RLOG_OUTDIR)\\"" /Fd""$(RLOG_OUTDIR)\\"" ..\src\util\logging\rlog\trace_input.c")
+	mfile.WriteLine("    $(cc) $(cflags) /DHAVE_STRNICMP /I..\src\mpe2\src\slog2sdk\src\logformat\trace /I""$(JAVA_HOME)""\include /I""$(JAVA_HOME)""\include\win32 /Fo""$(RLOG_OUTDIR)\\"" /Fd""$(RLOG_OUTDIR)\\"" ..\src\util\logging\rlog\trace_input.c")
 	mfile.WriteLine
 	mfile.WriteLine("trace_input_objs = \")
 	mfile.WriteLine("	$(RLOG_OUTDIR)\logformat_trace_InputLog.obj \")
@@ -7855,7 +7881,7 @@ If bRemoveFortran Then
 End If
 
 Sub UpdateSMPDVersion
-        GetMPICH2Versions mpich2VerStr, mpich2ABIVerStr
+        GetMPICH2Versions mpich2VerStr, mpich2ABIVerStr, mpich2ReleaseDate
 	printMsg "VERBOSE", "Creating src\pm\smpd\smpd_version.h"
 	Set fout = f.CreateTextFile("src\pm\smpd\smpd_version.h", true)
 	fout.WriteLine("#define SMPD_VERSION """ & mpich2VerStr & """")

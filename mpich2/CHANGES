@@ -11,6 +11,8 @@
 
  # OVERALL: Checkpoint/restart support using BLCR.
 
+ # OVERALL: Experimental support for inter-library dependencies.
+
  # PM/PMI: Hydra is now the default process management framework
    replacing MPD.
 
@@ -23,14 +25,19 @@
  # Build system: Replaced F90/F90FLAGS by FC/FCFLAGS. F90/F90FLAGS are
    not longer supported in the configure.
 
+ # Multi-compiler support: On systems where C compiler that is used to
+   build mpich2 libraries supports multiple weak symbols and multiple aliases,
+   the Fortran binding built in the mpich2 libraries can handle different
+   Fortran compilers (than the one used to build mpich2).  Details in README.
+
  # Several other minor bug fixes, memory leak fixes, and code cleanup.
    A full list of changes is available using:
 
-     svn log -r5762:HEAD https://svn.mcs.anl.gov/repos/mpi/mpich2/tags/release/mpich2-1.3b1
+     svn log -r5762:HEAD https://svn.mcs.anl.gov/repos/mpi/mpich2/tags/release/mpich2-1.3rc1
 
      ... or at the following link:
 
-     https://trac.mcs.anl.gov/projects/mpich2/log/mpich2/tags/release/mpich2-1.3b1?action=follow_copy&rev=HEAD&stop_rev=5762&mode=follow_copy
+     https://trac.mcs.anl.gov/projects/mpich2/log/mpich2/tags/release/mpich2-1.3rc1?action=follow_copy&rev=HEAD&stop_rev=5762&mode=follow_copy
 
 
 ===============================================================================

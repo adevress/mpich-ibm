@@ -58,12 +58,10 @@ int MPIDI_Win_fence(int assert, MPID_Win *win_ptr)
     void **dataloops=NULL;    /* to store dataloops for each datatype */
     MPID_Progress_state progress_state;
     MPIU_CHKLMEM_DECL(6);
-    MPIU_THREADPRIV_DECL;
     MPIDI_STATE_DECL(MPID_STATE_MPIDI_WIN_FENCE);
 
     MPIDI_RMA_FUNC_ENTER(MPID_STATE_MPIDI_WIN_FENCE);
 
-    MPIU_THREADPRIV_GET;
     /* In case this process was previously the target of passive target rma
      * operations, we need to take care of the following...
      * Since we allow MPI_Win_unlock to return without a done ack from
@@ -800,27 +798,20 @@ static int MPIDI_CH3I_Recv_rma_msg(MPIDI_RMA_ops *rma_op, MPID_Win *win_ptr,
 #define FCNAME MPIDI_QUOTE(FUNCNAME)
 int MPIDI_Win_post(MPID_Group *post_grp_ptr, int assert, MPID_Win *win_ptr)
 {
-    int nest_level_inc = FALSE;
     int mpi_errno=MPI_SUCCESS;
     MPID_Group *win_grp_ptr;
     int i, post_grp_size, *ranks_in_post_grp, *ranks_in_win_grp, dst, rank;
     MPID_Comm *win_comm_ptr;
     MPIU_CHKLMEM_DECL(4);
-    MPIU_THREADPRIV_DECL;
     MPIDI_STATE_DECL(MPID_STATE_MPIDI_WIN_POST);
 
     MPIDI_RMA_FUNC_ENTER(MPID_STATE_MPIDI_WIN_POST);
 
-    MPIU_THREADPRIV_GET;
-
-#if 0
-    /* Reset the fence counter so that in case the user has switched from 
-       fence to 
-       post-wait synchronization, he cannot use the previous fence to mark 
-       the beginning of a fence epoch.  */
-    /* FIXME: We can't do this because fence_cnt must be updated collectively */
-    win_ptr->fence_cnt = 0;
-#endif
+    /* Even though we would want to reset the fence counter to keep
+     * the user from using the previous fence to mark the beginning of
+     * a fence epoch if he switched from fence to lock-unlock
+     * synchronization, we cannot do this because fence_cnt must be
+     * updated collectively */
 
     /* In case this process was previously the target of passive target rma
      * operations, we need to take care of the following...
@@ -925,10 +916,6 @@ int MPIDI_Win_post(MPID_Group *post_grp_ptr, int assert, MPID_Win *win_ptr)
 
  fn_exit:
     MPIU_CHKLMEM_FREEALL();
-    if (nest_level_inc)
-    { 
-	MPIR_Nest_decr();
-    }
     MPIDI_RMA_FUNC_EXIT(MPID_STATE_MPIDI_WIN_POST);
     return mpi_errno;
     /* --BEGIN ERROR HANDLING-- */
@@ -950,13 +937,11 @@ int MPIDI_Win_start(MPID_Group *group_ptr, int assert, MPID_Win *win_ptr)
 
     MPIDI_RMA_FUNC_ENTER(MPID_STATE_MPIDI_WIN_START);
 
-#if 0
-    /* Reset the fence counter so that in case the user has switched from 
-       fence to start-complete synchronization, he cannot use the previous 
-       fence to mark the beginning of a fence epoch.  */
-    /* FIXME: We can't do this because fence_cnt must be updated collectively */
-    win_ptr->fence_cnt = 0;
-#endif
+    /* Even though we would want to reset the fence counter to keep
+     * the user from using the previous fence to mark the beginning of
+     * a fence epoch if he switched from fence to lock-unlock
+     * synchronization, we cannot do this because fence_cnt must be
+     * updated collectively */
 
     /* In case this process was previously the target of passive target rma
      * operations, we need to take care of the following...
@@ -1001,7 +986,6 @@ int MPIDI_Win_start(MPID_Group *group_ptr, int assert, MPID_Win *win_ptr)
 #define FCNAME MPIDI_QUOTE(FUNCNAME)
 int MPIDI_Win_complete(MPID_Win *win_ptr)
 {
-    int nest_level_inc = FALSE;
     int mpi_errno = MPI_SUCCESS;
     int comm_size, *nops_to_proc, src, new_total_op_count;
     int i, j, dst, done, total_op_count, *curr_ops_cnt;
@@ -1014,12 +998,10 @@ int MPIDI_Win_complete(MPID_Win *win_ptr)
     MPID_Group *win_grp_ptr;
     int start_grp_size, *ranks_in_start_grp, *ranks_in_win_grp, rank;
     MPIU_CHKLMEM_DECL(9);
-    MPIU_THREADPRIV_DECL;
     MPIDI_STATE_DECL(MPID_STATE_MPIDI_WIN_COMPLETE);
 
     MPIDI_RMA_FUNC_ENTER(MPID_STATE_MPIDI_WIN_COMPLETE);
 
-    MPIU_THREADPRIV_GET;
     MPID_Comm_get_ptr( win_ptr->comm, comm_ptr );
     comm_size = comm_ptr->local_size;
         
@@ -1047,9 +1029,6 @@ int MPIDI_Win_complete(MPID_Win *win_ptr)
         
     rank = MPIR_Comm_rank(comm_ptr);
 
-    nest_level_inc = TRUE;
-    MPIR_Nest_incr();
-    
     /* If MPI_MODE_NOCHECK was not specified, we need to check if
        Win_post was called on the target processes. Wait for a 0-byte sync
        message from each target process */
@@ -1284,10 +1263,6 @@ int MPIDI_Win_complete(MPID_Win *win_ptr)
     win_ptr->start_group_ptr = NULL; 
     
  fn_exit:
-    if (nest_level_inc)
-    { 
-	MPIR_Nest_decr();
-    }
     MPIU_CHKLMEM_FREEALL();
     MPIDI_RMA_FUNC_EXIT(MPID_STATE_MPIDI_WIN_COMPLETE);
     return mpi_errno;
@@ -1379,13 +1354,11 @@ int MPIDI_Win_lock(int lock_type, int dest, int assert, MPID_Win *win_ptr)
 
     MPIU_UNREFERENCED_ARG(assert);
 
-#if 0
-    /* Reset the fence counter so that in case the user has switched from 
-       fence to lock-unlock synchronization, he cannot use the previous fence 
-       to mark the beginning of a fence epoch.  */
-    /* FIXME: We can't do this because fence_cnt must be updated collectively */
-    win_ptr->fence_cnt = 0;
-#endif
+    /* Even though we would want to reset the fence counter to keep
+     * the user from using the previous fence to mark the beginning of
+     * a fence epoch if he switched from fence to lock-unlock
+     * synchronization, we cannot do this because fence_cnt must be
+     * updated collectively */
 
     if (dest == MPI_PROC_NULL) goto fn_exit;
         
@@ -2078,8 +2051,10 @@ static int MPIDI_CH3I_Send_lock_get(MPID_Win *win_ptr)
     MPID_Comm_get_ptr(win_ptr->comm, comm_ptr);
     MPIDI_Comm_get_vc_set_active(comm_ptr, rma_op->target_rank, &vc);
 
+    MPIU_THREAD_CS_ENTER(CH3COMM,vc);
     mpi_errno = MPIU_CALL(MPIDI_CH3,iStartMsg(vc, lock_get_unlock_pkt, 
 				      sizeof(*lock_get_unlock_pkt), &sreq));
+    MPIU_THREAD_CS_EXIT(CH3COMM,vc);
     if (mpi_errno != MPI_SUCCESS) {
 	MPIU_ERR_SETANDJUMP(mpi_errno,MPI_ERR_OTHER,"**ch3|rmamsg");
     }
@@ -2151,9 +2126,11 @@ int MPIDI_CH3I_Send_lock_granted_pkt(MPIDI_VC_t *vc, MPI_Win source_win_handle)
     /* send lock granted packet */
     MPIDI_Pkt_init(lock_granted_pkt, MPIDI_CH3_PKT_LOCK_GRANTED);
     lock_granted_pkt->source_win_handle = source_win_handle;
-        
+
+    MPIU_THREAD_CS_ENTER(CH3COMM,vc);
     mpi_errno = MPIU_CALL(MPIDI_CH3,iStartMsg(vc, lock_granted_pkt,
 				      sizeof(*lock_granted_pkt), &req));
+    MPIU_THREAD_CS_EXIT(CH3COMM,vc);
     if (mpi_errno) {
 	MPIU_ERR_SETANDJUMP(mpi_errno,MPI_ERR_OTHER,"**ch3|rmamsg");
     }
@@ -2389,14 +2366,15 @@ int MPIDI_CH3_PktHandler_Get( MPIDI_VC_t *vc, MPIDI_CH3_Pkt_t *pkt,
 	MPID_Datatype_get_size_macro(get_pkt->datatype, type_size);
 	iov[1].MPID_IOV_LEN = get_pkt->count * type_size;
 
-	/* Because this is in a packet handler, it is already within a critical section */	
+        MPIU_THREAD_CS_ENTER(CH3COMM,vc);
 	mpi_errno = MPIU_CALL(MPIDI_CH3,iSendv(vc, req, iov, 2));
+        MPIU_THREAD_CS_EXIT(CH3COMM,vc);
 	/* --BEGIN ERROR HANDLING-- */
 	if (mpi_errno != MPI_SUCCESS)
 	{
 	    MPIU_Object_set_ref(req, 0);
 	    MPIDI_CH3_Request_destroy(req);
-	    MPIU_ERR_SETFATALANDJUMP(mpi_errno,MPI_ERR_OTHER,"**ch3|rmamsg");
+	    MPIU_ERR_SETANDJUMP(mpi_errno,MPI_ERR_OTHER,"**ch3|rmamsg");
 	}
 	/* --END ERROR HANDLING-- */
 	
@@ -2875,7 +2853,7 @@ int MPIDI_CH3_PktHandler_LockGetUnlock( MPIDI_VC_t *vc, MPIDI_CH3_Pkt_t *pkt,
 	{
 	    MPIU_Object_set_ref(req, 0);
 	    MPIDI_CH3_Request_destroy(req);
-	    MPIU_ERR_SETFATALANDJUMP(mpi_errno,MPI_ERR_OTHER,"**ch3|rmamsg");
+	    MPIU_ERR_SETANDJUMP(mpi_errno,MPI_ERR_OTHER,"**ch3|rmamsg");
 	}
 	/* --END ERROR HANDLING-- */
     }
