@@ -153,8 +153,8 @@ M*/
  * MPIR_ThreadInfo.isThreaded will be set prior to this macros invocation, based
  * on the "provided" value to MPI_Init_thread
  */
-#define MPIU_THREAD_CS_INIT     MPIR_Thread_CS_Init()     /* in src/mpi/init/initthread.c */
-#define MPIU_THREAD_CS_FINALIZE MPIR_Thread_CS_Finalize() /* in src/mpi/init/initthread.c */
+#define MPIU_THREAD_CS_INIT     /* MPIR_Thread_CS_Init()     /\* in src/mpi/init/initthread.c *\/ */
+#define MPIU_THREAD_CS_FINALIZE /* MPIR_Thread_CS_Finalize() /\* in src/mpi/init/initthread.c *\/ */
 
 //Locks setup to make this look like the old brief global
 #elif MPIU_THREAD_GRANULARITY == MPIU_THREAD_GRANULARITY_PER_OBJECT
@@ -190,8 +190,8 @@ M*/
  * MPIR_ThreadInfo.isThreaded will be set prior to this macros invocation, based
  * on the "provided" value to MPI_Init_thread
  */
-#define MPIU_THREAD_CS_INIT     MPIR_Thread_CS_Init()     /* in src/mpi/init/initthread.c */
-#define MPIU_THREAD_CS_FINALIZE MPIR_Thread_CS_Finalize() /* in src/mpi/init/initthread.c */
+#define MPIU_THREAD_CS_INIT     /* MPIR_Thread_CS_Init()     /\* in src/mpi/init/initthread.c *\/ */
+#define MPIU_THREAD_CS_FINALIZE /* MPIR_Thread_CS_Finalize() /\* in src/mpi/init/initthread.c *\/ */
 
 #endif // MPIU_THREAD_GRANULARITY == MPIU_THREAD_GRANULARITY_GLOBAL
 
