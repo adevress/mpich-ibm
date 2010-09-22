@@ -40,6 +40,7 @@ XI.   Developer Builds
 XII.  Building ROMIO into MPICH2
 XIII. Testing the MPICH2 installation
 XIV.  Installing MPICH2 on windows
+XV.   Multiple Fortran compiler support.
 
 
 -------------------------------------------------------------------------
@@ -70,7 +71,7 @@ shared memory), Hydra process management) of MPICH2 up and running.
       use those routines, however, the MPI module does not contain
       interface specifications for them. If you have trouble with the
       configuration step and do not need Fortran 90, configure with
-      --disable-f90 .
+      --disable-fc .
 
     Configure will check for these prerequisites and try to work around
     deficiencies if possible.  (If you don't have Fortran, you will
@@ -448,39 +449,6 @@ channel can be configured using the following option:
 
   --with-device=ch3:sock
 
-dllchan
--------
-dllchan is an *experimental* channel for supporting dynamic loading of
-other channels. This channel is unsupported as well.
-
-To use this channel, configure with:
-
-  --with-device=ch3:dllchan:sock,shm,ssm
-
-This provides the sock, shm, and ssm channels as options, with sock
-being the default. In addition, you must specify the shared library
-type; under Linux and when using gcc (or compilers that mimic gcc for
-shared-library construction) add:
-
-  --enable-sharedlibs=gcc
-
-On Mac OSX, use:
-
-  --enable-sharedlibs=gcc-osx
-
-On Solaris, use:
-
-  --enable-sharedlibs=solaris-cc
-
-To select a channel other than the default channel, set the
-environment variable MPICH_CH3CHANNEL to the channel name (i.e., sock,
-shm, or ssm).
-
-There are known problems with this channel, particularly during the
-make step. You may find that some symbols are not found when loading
-the libraries. If you want to try this experimental channel, please
-let us know what does and does not work.
-
 sctp channel
 ------------
 The SCTP channel is a new channel using the Stream Control
@@ -631,9 +599,15 @@ placed in /home/me/mpich2-<VERSION>, the build is done in
 
 VII. Shared Libraries
 =====================
-Shared libraries are currently only supported for gcc on Linux and Mac
-and for cc on Solaris. To have shared libraries created when MPICH2 is
-built, specify the following when MPICH2 is configured:
+Shared libraries are currently only supported for gcc (and gcc-like
+compilers) on Linux and Mac and for cc on Solaris. To have shared
+libraries created when MPICH2 is built, specify the following when
+MPICH2 is configured:
+
+    configure --enable-shared
+
+For users who wish to manually control the linker parameters, this can
+be done using:
 
     configure --enable-sharedlibs=gcc         (on Linux)
     configure --enable-sharedlibs=osx-gcc     (on Mac OS X)
@@ -686,8 +660,7 @@ Language bindings:
                  It has been tested with the Fortran parts of the Intel
                  test suite.
 
-  --enable-f90 - Build the Fortran 90 bindings.  This is not on by
-                 default, since these have not yet been tested.
+  --enable-fc  - Build the Fortran 90 bindings.  This is on by default.
 
   --enable-cxx - Build the C++ bindings.  This has been tested with the
                  Notre Dame C++ test suite and some additional tests.
@@ -1018,3 +991,39 @@ Here are the instructions for setting up MPICH2 on a Windows machine:
     to all the machines.
     
     Execute a job by running something like: mpiexec -n 3 myapp.exe
+
+-------------------------------------------------------------------------
+
+XIV. Multiple Fortran compiler support
+======================================
+
+If the C compiler that is used to build MPICH2 libraries supports both
+multiple weak symbols and multiple aliases of common symbols, the Fortran 77
+binding can support multiple Fortran compilers.  The multiple weak symbols
+support allow MPICH2 to provide different name mangling scheme (of
+subroutine names) required by differen Fortran compilers.  The multiple
+aliases of common symbols support enables MPICH2 to equal different common
+block symbols of the MPI Fortran constant, e.g. MPI_IN_PLACE,
+MPI_STATUS_IGNORE...  So they are understood by different Fortran compilers.
+
+Since the support of multiple aliases of common symbols is new/experimental,
+users can disable the feature by using configure option --disable-multi-aliases
+if it causes any undesirable effect, e.g. linker warnings of different sizes
+of common symbols, MPIFCMB* (the warning should be harmless).
+
+We have only tested this support on a limited set of platforms/compilers.
+On linux, if the C compiler that builds MPICH2 is either gcc or icc,
+the above support will be enabled by configure.  At the time of this
+writing, pgcc does not seem to have this multiple aliases of common symbols,
+so configure will detect the deficiency and disable the feature automatically.
+The tested Fortran compiler includes GNU Forran compilers(gfortan, g77),
+Intel Fortran compiler(ifort), Portland Group Fortran compilers(pgf77, pgf90), 
+Absoft Fortran compilers (af77, af90), and IBM XL fortran compiler(xlf).
+What this mean is that if mpich2 is built by gcc/gfortran, the resulting
+mpich2 library can be used to link a Fortran program compiled/linked by
+another fortran compiler, say pgf77, say through mpif77 -f77=pgf77.
+As long as the Fortran program is linked without any errors by
+one of these compilers, the program shall be running fine.
+
+Ref: http://trac.mcs.anl.gov/projects/mpich2/ticket/502.
+

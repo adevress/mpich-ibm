@@ -1109,7 +1109,7 @@ sub ReadMfile {
 }
 
 sub WriteMfile {
-    $maxline = 80;
+    $maxline = 100;
     $output_filename = $_[0];
     # Write out the generated Makefile
     unlink $output_filename . ".new";
@@ -1682,10 +1682,10 @@ sub DefaultRules {
 	# number in it (!)
 	&print_make_longline( FD, "\t\@rm -rf autom4te*.cache" );
 	if ($configure_has_config_headers ne "no") {
-	    &print_make_longline( FD,  "\t(cd \${srcdir} && $autoheader_prog $aargs && \\$newline\t$autoconf $aargs )" );
+	    &print_make_longline( FD,  "\t(cd \${srcdir} && $autoheader_prog $aargs && $autoconf $aargs)" );
 	}
 	else {
-	    &print_make_longline( FD,  "\t(cd \${srcdir} && $autoconf $aargs )" );
+	    &print_make_longline( FD,  "\t(cd \${srcdir} && $autoconf $aargs)" );
 	}
 	if ($fixup_autoconf_cd) {
 	    # This is needed for DOS in case the pwd contains blanks
@@ -3991,6 +3991,10 @@ sub TargetInstall {
 	    # install should be constrained.  If there is a reason for an 
 	    # install with three levels of directories, either install the 
 	    # subdirectories separately or modify this code.
+            #
+            # The generated code assumes ${INSTALL_DATA} is not relative.
+            # Autoconf doesn't guarantee this, but we fix it up in
+            # PAC_PROG_CHECK_INSTALL_WORKS.  See also ticket #1007.
 
 	    # Sigh.  This causes some make programs (such as gnumake)
 	    # to print a message about an ignored error.  To avoid that,

@@ -126,7 +126,7 @@ check_package("autoconf");
 check_package("automake");
 print("\n");
 
-my $current_ver = `svn cat ${source}/maint/Version | grep ^MPICH2_VERSION: | cut -f2 -d' '`;
+my $current_ver = `svn cat ${source}/maint/Version | grep ^MPICH2_VERSION | cut -f2 -d'='`;
 if ("$current_ver" ne "$version\n") {
     print("\tWARNING: Version mismatch\n\n");
 }
@@ -156,10 +156,10 @@ print("done\n");
 
 print("===> Create release date and version information... ");
 chdir("${root}/${pack}-${version}");
-system(qq(echo `date` > ./maint/ReleaseDate));
-system(qq(mkdir ./src/pm/hydra/version));
-system(qq(cp ./maint/Version ./src/pm/hydra/version/version));
-system(qq(cp ./maint/ReleaseDate ./src/pm/hydra/version/release_date));
+
+my $date = `date`;
+chomp $date;
+system(qq(perl -p -i -e 's/MPICH2_RELEASE_DATE=.*/MPICH2_RELEASE_DATE="$date"/g' ./maint/Version));
 print("done\n");
 
 # Remove packages that are not being released
@@ -215,7 +215,7 @@ chdir("${root}/${pack}-${version}-tmp");
     $cmd .= " --with-automake=$with_automake" if $with_automake;
     run_cmd($cmd);
 }
-run_cmd("./configure --disable-mpe --disable-f90 --disable-f77 --disable-cxx");
+run_cmd("./configure --disable-mpe --disable-fc --disable-f77 --disable-cxx");
 run_cmd("(make mandoc && make htmldoc && make latexdoc)");
 print("done\n");
 

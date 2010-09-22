@@ -9,15 +9,6 @@
 /* Count the number of outstanding close requests */
 static volatile int MPIDI_Outstanding_close_ops = 0;
 
-/* FIXME: What is this routine for?
-   It appears to be used only in ch3_progress, ch3_progress_connect, or
-   ch3_progress_sock files.  Is this a general operation, or does it 
-   belong in util/sock ? It appears to be used in multiple channels, 
-   but probably belongs in mpid_vc, along with the vc exit code that 
-   is currently in MPID_Finalize */
-
-/* FIXME: The only event is event_terminated.  Should this have 
-   a different name/expected function? */
 
 #undef FUNCNAME
 #define FUNCNAME MPIDI_CH3U_Handle_connection
@@ -31,7 +22,16 @@ static volatile int MPIDI_Outstanding_close_ops = 0;
 . event - connection event
 
   NOTE:
-  At present this function is only used for connection termination
+  This routine is used to transition the VC state.
+
+  The only events currently handled are TERMINATED events.  This
+  routine should be called (with TERMINATED) whenever a connection is
+  terminated whether normally (in MPIDI_CH3_Connection_terminate() ),
+  or abnormally.
+
+  FIXME: Currently state transitions resulting from receiving CLOSE
+  packets are performed in MPIDI_CH3_PktHandler_Close().  Perhaps that
+  should move here.
 @*/
 int MPIDI_CH3U_Handle_connection(MPIDI_VC_t * vc, MPIDI_VC_Event_t event)
 {
@@ -47,33 +47,9 @@ int MPIDI_CH3U_Handle_connection(MPIDI_VC_t * vc, MPIDI_VC_Event_t event)
 	{
 	    switch (vc->state)
 	    {
-		case MPIDI_VC_STATE_CLOSE_ACKED:
-		{
+		case MPIDI_VC_STATE_CLOSED:
+                    /* Normal termination. */
                     MPIDI_CHANGE_VC_STATE(vc, INACTIVE);
-		    /* FIXME: Decrement the reference count?  Who increments? */
-		    /* FIXME: The reference count is often already 0.  But
-		       not always */
-		    /* MPIU_Object_set_ref(vc, 0); ??? */
-
-		    /*
-		     * FIXME: The VC used in connect accept has a NULL 
-		     * process group
-		     */
-                    /* XXX DJG FIXME-MT should we be checking this ref_count? */
-		    if (vc->pg != NULL && (MPIU_Object_get_ref(vc) == 0))
-		    {
-			/* FIXME: Who increments the reference count that
-			   this is decrementing? */
-			/* When the reference count for a vc becomes zero, 
-			   decrement the reference count
-			   of the associated process group.  */
-			/* FIXME: This should be done when the reference 
-			   count of the vc is first decremented */
-			MPIDI_PG_release_ref(vc->pg, &inuse);
-			if (inuse == 0) {
-			    MPIDI_PG_Destroy(vc->pg);
-			}
-		    }
 
 		    /* MT: this is not thread safe */
 		    MPIDI_Outstanding_close_ops -= 1;
@@ -88,12 +64,55 @@ int MPIDI_CH3U_Handle_connection(MPIDI_VC_t * vc, MPIDI_VC_Event_t event)
 		    }
 
 		    break;
-		}
+
+                case MPIDI_VC_STATE_ACTIVE:
+                case MPIDI_VC_STATE_REMOTE_CLOSE:
+                    /* This is a premature termination.  This process
+                       has not started the close protocol.  There may
+                       be outstanding sends or receives on the local
+                       side, remote side or both. */
+                    
+ 		    MPIU_DBG_MSG(CH3_DISCONNECT,TYPICAL, "Connection closed prematurely.");
+
+                    MPIDI_CHANGE_VC_STATE(vc, MORIBUND);
+
+                    break;
+                    
+                case MPIDI_VC_STATE_LOCAL_CLOSE:
+                    /* This is a premature termination.  This process
+                       has started the close protocol, but hasn't
+                       received a CLOSE packet from the remote side.
+                       This process may not have been able to send the
+                       CLOSE ack=F packet to the remote side.  There
+                       may be outstanding sends or receives on the
+                       local or remote sides. */
+                case MPIDI_VC_STATE_CLOSE_ACKED:
+                    /* This is a premature termination.  Both sides
+                       have started the close protocol.  This process
+                       has received CLOSE ack=F, but not CLOSE ack=t.
+                       This process may not have been able to send
+                       CLOSE ack=T.  There should not be any
+                       outstanding sends or receives on either
+                       side. */
+
+ 		    MPIU_DBG_MSG_D(CH3_DISCONNECT,TYPICAL, "Connection closed prematurely during close protocol.  "
+                                   "Outstanding close operations = %d", MPIDI_Outstanding_close_ops);
+                    MPIDI_CHANGE_VC_STATE(vc, MORIBUND);
+                    
+		    /* MT: this is not thread safe */
+		    MPIDI_Outstanding_close_ops -= 1;
+	    
+		    if (MPIDI_Outstanding_close_ops == 0) {
+			MPIDI_CH3_Progress_signal_completion();
+                        mpi_errno = MPIDI_CH3_Channel_close();
+                        if (mpi_errno) MPIU_ERR_POP(mpi_errno);
+		    }
+                    
+                    break;
 
 		default:
 		{
-		    MPIU_DBG_MSG_D(CH3_DISCONNECT,TYPICAL,
-           "Unhandled connection state %d when closing connection",vc->state);
+		    MPIU_DBG_MSG_D(CH3_DISCONNECT,TYPICAL, "Unhandled connection state %d when closing connection",vc->state);
 		    mpi_errno = MPIR_Err_create_code(
 			MPI_SUCCESS, MPIR_ERR_FATAL, FCNAME, __LINE__, 
                         MPI_ERR_INTERN, "**ch3|unhandled_connection_state",
@@ -102,6 +121,31 @@ int MPIDI_CH3U_Handle_connection(MPIDI_VC_t * vc, MPIDI_VC_Event_t event)
 		    break;
 		}
 	    }
+
+            /* FIXME: Decrement the reference count?  Who increments? */
+            /* FIXME: The reference count is often already 0.  But
+               not always */
+            /* MPIU_Object_set_ref(vc, 0); ??? */
+
+            /*
+             * FIXME: The VC used in connect accept has a NULL 
+             * process group
+             */
+            /* XXX DJG FIXME-MT should we be checking this ref_count? */
+            if (vc->pg != NULL && (MPIU_Object_get_ref(vc) == 0))
+            {
+                /* FIXME: Who increments the reference count that
+                   this is decrementing? */
+                /* When the reference count for a vc becomes zero, 
+                   decrement the reference count
+                   of the associated process group.  */
+                /* FIXME: This should be done when the reference 
+                   count of the vc is first decremented */
+                MPIDI_PG_release_ref(vc->pg, &inuse);
+                if (inuse == 0) {
+                    MPIDI_PG_Destroy(vc->pg);
+                }
+            }
 
 	    break;
 	}
@@ -146,23 +190,8 @@ int MPIDI_CH3U_VC_SendClose( MPIDI_VC_t *vc, int rank )
 
     MPIU_THREAD_CS_ENTER(CH3COMM,vc);
 
-    /* FIXME: Remove this IFDEF */
-#if defined(MPIDI_CH3_USES_SSHM) && 0
-    MPIU_Assert( vc->state == MPIDI_VC_STATE_ACTIVE || 
-		 vc->state == MPIDI_VC_STATE_REMOTE_CLOSE 
-		 /* sshm queues are uni-directional.  A VC that is connected 
-		 * in the read direction is marked MPIDI_VC_STATE_INACTIVE
-		 * so that a connection will be formed on the first write.  
-		 * Since the other side is marked MPIDI_VC_STATE_ACTIVE for 
-		 * writing 
-		 * we need to initiate the close protocol on the read side 
-		 * even if the write state is MPIDI_VC_STATE_INACTIVE. */
-		 || ((vc->state == MPIDI_VC_STATE_INACTIVE) && 
-		     ((MPIDI_CH3I_VC *)(vc->channel_private))->shm_read_connected) );
-#else
-    MPIU_Assert( vc->state == MPIDI_VC_STATE_ACTIVE || 
+    MPIU_Assert( vc->state == MPIDI_VC_STATE_ACTIVE ||
 		 vc->state == MPIDI_VC_STATE_REMOTE_CLOSE );
-#endif
 
     MPIDI_Pkt_init(close_pkt, MPIDI_CH3_PKT_CLOSE);
     close_pkt->ack = (vc->state == MPIDI_VC_STATE_ACTIVE) ? FALSE : TRUE;
@@ -191,10 +220,7 @@ int MPIDI_CH3U_VC_SendClose( MPIDI_VC_t *vc, int rank )
 		
     mpi_errno = MPIU_CALL(MPIDI_CH3,iStartMsg(vc, close_pkt, 
 					      sizeof(*close_pkt), &sreq));
-    if (mpi_errno != MPI_SUCCESS) {
-	MPIU_ERR_SET(mpi_errno,MPI_ERR_OTHER,
-		     "**ch3|send_close_ack");
-    }
+    MPIU_ERR_CHKANDJUMP(mpi_errno, mpi_errno, MPI_ERR_OTHER, "**ch3|send_close_ack");
     
     if (sreq != NULL) {
 	/* There is still another reference being held by the channel.  It
@@ -202,14 +228,21 @@ int MPIDI_CH3U_VC_SendClose( MPIDI_VC_t *vc, int rank )
 	MPID_Request_release(sreq);
     }
 
+ fn_exit:
     MPIU_THREAD_CS_EXIT(CH3COMM,vc);
 
     MPIDI_FUNC_EXIT(MPID_STATE_MPIDI_CH3U_VC_SENDCLOSE);
     return mpi_errno;
+ fn_fail:
+    goto fn_exit;
 }
 
 /* Here is the matching code that processes a close packet when it is 
    received */
+#undef FUNCNAME
+#define FUNCNAME MPIDI_CH3_PktHandler_Close
+#undef FCNAME
+#define FCNAME MPIU_QUOTE(FUNCNAME)
 int MPIDI_CH3_PktHandler_Close( MPIDI_VC_t *vc, MPIDI_CH3_Pkt_t *pkt, 
 				MPIDI_msg_sz_t *buflen, MPID_Request **rreqp )
 {
@@ -229,10 +262,7 @@ int MPIDI_CH3_PktHandler_Close( MPIDI_VC_t *vc, MPIDI_CH3_Pkt_t *pkt,
 		       vc->pg_rank);
 	mpi_errno = MPIU_CALL(MPIDI_CH3,iStartMsg(vc, resp_pkt, 
 					  sizeof(*resp_pkt), &resp_sreq));
-	if (mpi_errno != MPI_SUCCESS) {
-	    MPIU_ERR_SETANDJUMP(mpi_errno,MPI_ERR_OTHER,
-				"**ch3|send_close_ack");
-	}
+        MPIU_ERR_CHKANDJUMP(mpi_errno, mpi_errno, MPI_ERR_OTHER, "**ch3|send_close_ack");
 	
 	if (resp_sreq != NULL)
 	{
@@ -251,26 +281,8 @@ int MPIDI_CH3_PktHandler_Close( MPIDI_VC_t *vc, MPIDI_CH3_Pkt_t *pkt,
 		   vc->pg_rank);
             MPIDI_CHANGE_VC_STATE(vc, CLOSE_ACKED);
 	}
-#if 0
-	else if (vc->state == MPIDI_VC_STATE_CLOSE_ACKED) {
-	    /* FIXME: This situation has been seen with the ssm device,
-	       when running on a single process.  It may indicate that the
-	       close protocol, for shared memory connections, can
-	       occasionally reach this state when both sides start
-	       closing the connection.  We will act as if this is
-	       duplicate information can be ignored (rather than triggering
-	       the Assert in the next case) */
-	    MPIU_DBG_MSG(CH3_DISCONNECT,TYPICAL,
-			 "Saw CLOSE_ACKED while already in that state");
-            MPIDI_CHANGE_VC_STATE(vc, REMOTE_CLOSE);
- 	    /* We need this terminate to decrement the outstanding closes */
-	    /* For example, with sockets, Connection_terminate will close
-	       the socket */
-	    mpi_errno = MPIU_CALL(MPIDI_CH3,Connection_terminate(vc));
-	}
-#endif
 	else /* (vc->state == MPIDI_VC_STATE_ACTIVE) */
-	{
+        {
 	    /* FIXME: Debugging */
 	    if (vc->state != MPIDI_VC_STATE_ACTIVE) {
 		printf( "Unexpected state %d in vc %p\n", vc->state, vc );
@@ -286,11 +298,11 @@ int MPIDI_CH3_PktHandler_Close( MPIDI_VC_t *vc, MPIDI_CH3_Pkt_t *pkt,
     else /* (close_pkt->ack == TRUE) */
     {
 	MPIU_DBG_MSG_D(CH3_DISCONNECT,TYPICAL,
-                       "received close(TRUE) from %d, moving to CLOSE_ACKED.", 
+                       "received close(TRUE) from %d, moving to CLOSED.", 
 			       vc->pg_rank);
 	MPIU_Assert (vc->state == MPIDI_VC_STATE_LOCAL_CLOSE || 
 		     vc->state == MPIDI_VC_STATE_CLOSE_ACKED);
-        MPIDI_CHANGE_VC_STATE(vc, CLOSE_ACKED);
+        MPIDI_CHANGE_VC_STATE(vc, CLOSED);
 	/* For example, with sockets, Connection_terminate will close
 	   the socket */
 	mpi_errno = MPIU_CALL(MPIDI_CH3,Connection_terminate(vc));
