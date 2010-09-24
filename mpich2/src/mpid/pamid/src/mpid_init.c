@@ -82,7 +82,6 @@ static struct
     func: MPIDI_ControlCB,
     dispatch: 3,
     options: {
-      high_priority:  PAMI_HINT2_ON,
       use_rdma:       PAMI_HINT3_FORCE_OFF,
       no_long_header: PAMI_HINT2_ON,
       },
@@ -92,7 +91,6 @@ static struct
     func: MPIDI_WinControlCB,
     dispatch: 4,
     options: {
-      high_priority:  PAMI_HINT2_ON,
       use_rdma:       PAMI_HINT3_FORCE_OFF,
       no_long_header: PAMI_HINT2_ON,
       },
