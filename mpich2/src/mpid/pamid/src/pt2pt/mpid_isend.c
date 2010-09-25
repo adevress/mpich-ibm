@@ -6,6 +6,7 @@
 #include "mpidimpl.h"
 #include "mpidi_send.h"
 
+#if 0
 /**
  * \brief ADI level implemenation of MPI_Isend()
  *
@@ -44,3 +45,5 @@ int MPID_Isend(const void    * buf,
                     0,
                     request);
 }
+
+#endif

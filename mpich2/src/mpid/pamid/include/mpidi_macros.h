@@ -86,7 +86,7 @@ extern __thread int MPID_PAMID_Thread_request_handle_count;
 #  define MPIDI_Request_tls_alloc(req)                                  \
 ({                                                                      \
   int i;                                                                \
-  if (!MPID_PAMID_Thread_request_handles) {                             \
+  if (unlikely(!MPID_PAMID_Thread_request_handles)) {                             \
     MPID_Request *prev, *cur;                                           \
     /* batch allocate a linked list of requests */                      \
     MPIU_THREAD_CS_ENTER(HANDLEALLOC,);                                 \
@@ -122,8 +122,11 @@ extern __thread int MPID_PAMID_Thread_request_handle_count;
 })
 
 #elif MPIU_HANDLE_ALLOCATION_METHOD == MPIU_HANDLE_ALLOCATION_MUTEX
-#  define MPIDI_Request_tls_alloc(req) (req) = MPIU_Handle_obj_alloc(&MPID_Request_mem)
-#  define MPIDI_Request_tls_free(req) MPIU_Handle_obj_free(&MPID_Request_mem, (req))
+#  define MPIDI_Request_tls_alloc(req) (req) = MPIU_Handle_obj_alloc(&MPID_Request_mem);   \
+                                       if (req == NULL)  \
+					 MPID_Abort(NULL, MPI_ERR_NO_SPACE, -1, "Cannot allocate Request");
+
+#  define MPIDI_Request_tls_free(req)  MPIU_Handle_obj_free(&MPID_Request_mem, (req))
 #else
 #  error MPIU_HANDLE_ALLOCATION_METHOD not defined
 #endif

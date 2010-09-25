@@ -7,6 +7,7 @@
 #include "mpiimpl.h"
 #include "mpi_init.h"
 #include "mpiu_thread.h"
+#include "mpidimpl.h"
 
 #ifndef MPICH_MPI_FROM_PMPI
 
