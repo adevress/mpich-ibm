@@ -892,7 +892,7 @@ enum MPIU_Nest_mutexes {
  * counters is done while holding the ALLFUNC critical section */
 typedef volatile int MPID_cc_t;
 #  define MPID_cc_set(cc_ptr_, val_) (*(cc_ptr_)) = (val_)
-#  define MPID_cc_set_1(cc_ptr_, 1) (*(cc_ptr_)) = (1)
+#  define MPID_cc_set_1(cc_ptr_)     (*(cc_ptr_)) = (1)
 #  define MPID_cc_is_complete(cc_ptr_) (0 == *(cc_ptr_))
 #define MPID_cc_decr(cc_ptr_, incomplete_)     \
 do {                                           \
@@ -932,7 +932,7 @@ static inline void MPID_cc_set(MPID_cc_t *cc_ptr, int val)
         OPA_write_barrier();
         MPL_VG_ANNOTATE_HAPPENS_BEFORE(cc_ptr);
     }
-#if 0 //defined(MPL_VG_AVAILABLE)
+#if defined(MPL_VG_AVAILABLE)
     /* MT subtle: store_int is actually safe to use, but Helgrind/DRD/TSan all
      * view the store/load pair as a race.  Using an atomic operation for the
      * store side makes all three happy.  DRD & TSan also support
