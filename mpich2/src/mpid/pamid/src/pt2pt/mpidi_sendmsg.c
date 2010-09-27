@@ -33,7 +33,7 @@ MPIDI_SendMsg_short(pami_context_t    context,
 #ifdef TRACE_ON
   if (rc)
     {
-      TRACE_ERR("msginfo=%zu data=%zu\n", sizeof(MPIDI_MsgInfo), sndlen);
+      TRACE_ERR("sizeof(msginfo)=%zu sizeof(data)=%u\n", sizeof(MPIDI_MsgInfo), sndlen);
     }
 #endif
   MPID_assert(rc == PAMI_SUCCESS);
@@ -104,6 +104,12 @@ MPIDI_SendMsg_rzv(pami_context_t    context,
                              &sreq->mpid.envelope.envelope.memregion);
   MPID_assert(rc == PAMI_SUCCESS);
   MPID_assert(sndlen == sndlen_out);
+  TRACE_ERR("RZV send for mr=%#llx addr=%p *addr[0]=%#016llx *addr[1]=%#016llx bytes=%u\n",
+            *(unsigned long long*)&sreq->mpid.envelope.envelope.memregion,
+            sndbuf,
+            *(((unsigned long long*)sndbuf)+0),
+            *(((unsigned long long*)sndbuf)+1),
+            sndlen);
 #else
   sreq->mpid.envelope.envelope.data   = sndbuf;
 #endif
@@ -224,6 +230,7 @@ MPIDI_SendMsg_handoff(pami_context_t   context,
    */
   if (likely(data_sz <= MPIDI_Process.short_limit))
     {
+      TRACE_ERR("Sending(short) bytes=%u (eager_limit=%u)\n", data_sz, MPIDI_Process.eager_limit);
       MPIDI_SendMsg_short(context,
                           sreq,
                           dest,
@@ -235,6 +242,7 @@ MPIDI_SendMsg_handoff(pami_context_t   context,
    */
   else if (data_sz < MPIDI_Process.eager_limit)
     {
+      TRACE_ERR("Sending(eager) bytes=%u (eager_limit=%u)\n", data_sz, MPIDI_Process.eager_limit);
       MPIDI_SendMsg_eager(context,
                           sreq,
                           dest,
@@ -247,6 +255,7 @@ MPIDI_SendMsg_handoff(pami_context_t   context,
    */
   else
     {
+      TRACE_ERR("Sending(RZV) bytes=%u (eager_limit=%u)\n", data_sz, MPIDI_Process.eager_limit);
       MPIDI_SendMsg_rzv(context,
                         sreq,
                         dest,

@@ -98,6 +98,12 @@ MPIDI_RendezvousTransfer(pami_context_t context,
   MPID_assert(rc == PAMI_SUCCESS);
   MPID_assert(rcvlen == rcvlen_out);
 
+  TRACE_ERR("RZV Xfer for req=%p addr=%p *addr[0]=%#016llx *addr[1]=%#016llx\n",
+            rreq,
+            rcvbuf,
+            *(((unsigned long long*)rcvbuf)+0),
+            *(((unsigned long long*)rcvbuf)+1));
+
   pami_rget_simple_t params = {
   rma  : {
     dest    : dest,
