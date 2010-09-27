@@ -6,7 +6,6 @@
 #include "mpidimpl.h"
 #include "mpidi_send.h"
 
-#if 0
 /**
  * \brief ADI level implemenation of MPI_Isend()
  *
@@ -25,14 +24,14 @@
  * want to return a send request even if the request is already
  * complete (as is in the case of sending to a NULL rank).
  */
-int MPID_Isend(const void    * buf,
-               int             count,
-               MPI_Datatype    datatype,
-               int             rank,
-               int             tag,
-               MPID_Comm     * comm,
-               int             context_offset,
-               MPID_Request ** request)
+int MPID_Isend_outline(const void    * buf,
+                       int             count,
+                       MPI_Datatype    datatype,
+                       int             rank,
+                       int             tag,
+                       MPID_Comm     * comm,
+                       int             context_offset,
+                       MPID_Request ** request)
 {
   return MPIDI_Send(buf,
                     count,
@@ -45,4 +44,3 @@ int MPID_Isend(const void    * buf,
                     0,
                     request);
 }
-#endif

@@ -70,6 +70,17 @@ MPIDI_SendMsg(MPID_Request * sreq)
 #include "../src/pt2pt/mpidi_send.h"
 
 
+int
+MPID_Isend_outline(const void    * buf,
+                   int             count,
+                   MPI_Datatype    datatype,
+                   int             rank,
+                   int             tag,
+                   MPID_Comm     * comm,
+                   int             context_offset,
+                   MPID_Request ** request);
+
+
 /**
  * \brief ADI level implemenation of MPI_Isend()
  *
@@ -88,14 +99,15 @@ MPIDI_SendMsg(MPID_Request * sreq)
  * want to return a send request even if the request is already
  * complete (as is in the case of sending to a NULL rank).
  */
-static inline int MPID_Isend_inline (const void    * buf,
-				     int             count,
-				     MPI_Datatype    datatype,
-				     int             rank,
-				     int             tag,
-				     MPID_Comm     * comm,
-				     int             context_offset,
-				     MPID_Request ** request)
+static inline int
+MPID_Isend_inline (const void    * buf,
+                   int             count,
+                   MPI_Datatype    datatype,
+                   int             rank,
+                   int             tag,
+                   MPID_Comm     * comm,
+                   int             context_offset,
+                   MPID_Request ** request)
 {
   MPID_Request * sreq = NULL;
 
@@ -108,16 +120,14 @@ static inline int MPID_Isend_inline (const void    * buf,
 		/* (comm->comm_kind == MPID_INTERCOMM) ||*/
 		(rank == MPI_PROC_NULL) ))
     {
-      return MPIDI_Send(buf,
-                        count,
-                        datatype,
-                        rank,
-                        tag,
-                        comm,
-                        context_offset,
-                        0,
-                        0,
-                        request);
+      return MPID_Isend_outline(buf,
+                                count,
+                                datatype,
+                                rank,
+                                tag,
+                                comm,
+                                context_offset,
+                                request);
     }
 
   /* --------------------- */
