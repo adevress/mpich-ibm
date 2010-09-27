@@ -170,6 +170,16 @@ MPIDI_SendMsg_handoff(pami_context_t   context,
   MPID_Datatype * dt_ptr;
   void          * sndbuf;
 
+  /* ------------------------------ */
+  /* special case: NULL destination */
+  /* ------------------------------ */
+  if (unlikely(MPIDI_Request_getPeerRank(sreq) == MPI_PROC_NULL))
+    {
+      MPID_cc_set(&sreq->cc, 0);
+      MPIDI_Progress_signal();
+      return MPI_SUCCESS;
+    }
+
   /*
    * Create the destination endpoint
    */

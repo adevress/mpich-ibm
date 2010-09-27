@@ -94,9 +94,9 @@ MPIDI_Send(const void    * buf,
   /* --------------------- */
 
   sreq = MPID_Request_create();
+  *request = sreq;
   if (unlikely(sreq == NULL))
     {
-      *request = NULL;
       int mpi_errno = MPIR_Err_create_code(MPI_SUCCESS,
                                            MPIR_ERR_FATAL,
                                            __FUNCTION__,
@@ -118,6 +118,8 @@ MPIDI_Send(const void    * buf,
   sreq->comm              = comm;  MPIR_Comm_add_ref(comm);
   if (likely(rank != MPI_PROC_NULL))
     MPIDI_Request_setPeerRank(sreq, comm->vcr[rank]);
+  else
+    MPIDI_Request_setPeerRank(sreq, MPI_PROC_NULL);
   MPIDI_Request_setPeerRequest(sreq, sreq);
 
   /* message type info */
@@ -125,28 +127,10 @@ MPIDI_Send(const void    * buf,
   if (is_sync)
     MPIDI_Request_setSync(sreq, 1);
 
-  /* ------------------------------ */
-  /* special case: NULL destination */
-  /* ------------------------------ */
-  if (unlikely(rank == MPI_PROC_NULL))
-    {
-      if (is_blocking)
-        {
-          *request = NULL;
-        }
-      else
-        {
-          MPID_cc_set(&sreq->cc, 0);
-          *request = sreq;
-        }
-      return MPI_SUCCESS;
-    }
-
   /* ----------------------------------------- */
   /*      start the message                    */
   /* ----------------------------------------- */
 
-  *request = sreq;
   MPIDI_SendMsg(sreq);
   return MPI_SUCCESS;
 }
