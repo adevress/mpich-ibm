@@ -25,6 +25,7 @@ MPIU_Object_alloc_t MPID_Request_mem =
     MPID_REQUEST_PREALLOC
   };
 
+
 #if 0
 /**
  * \brief Create and initialize a new request
@@ -51,13 +52,10 @@ MPID_Request_create()
   req->comm              = NULL;
 
   struct MPIDI_Request* mpid = &req->mpid;
-#if 0
   memset(mpid, 0x00, sizeof(struct MPIDI_Request));
-#else
+#if 0
   /* These two commands are not needed as long as the constants are 0.
      There are comments to that effect in their definitions. */
-  mpid->next                     = NULL;
-  mpid->cancel_pending           = FALSE;
   mpid->state = MPIDI_INITIALIZED;
   MPIDI_Request_setCA(req, MPIDI_CA_COMPLETE);
 #endif

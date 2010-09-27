@@ -45,5 +45,4 @@ int MPID_Isend(const void    * buf,
                     0,
                     request);
 }
-
 #endif

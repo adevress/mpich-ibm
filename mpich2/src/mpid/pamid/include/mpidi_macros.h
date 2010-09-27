@@ -86,7 +86,7 @@ extern __thread int MPID_PAMID_Thread_request_handle_count;
 #  define MPIDI_Request_tls_alloc(req)                                  \
 ({                                                                      \
   int i;                                                                \
-  if (unlikely(!MPID_PAMID_Thread_request_handles)) {                             \
+  if (unlikely(!MPID_PAMID_Thread_request_handles)) {                   \
     MPID_Request *prev, *cur;                                           \
     /* batch allocate a linked list of requests */                      \
     MPIU_THREAD_CS_ENTER(HANDLEALLOC,);                                 \
@@ -122,11 +122,14 @@ extern __thread int MPID_PAMID_Thread_request_handle_count;
 })
 
 #elif MPIU_HANDLE_ALLOCATION_METHOD == MPIU_HANDLE_ALLOCATION_MUTEX
-#  define MPIDI_Request_tls_alloc(req) (req) = MPIU_Handle_obj_alloc(&MPID_Request_mem);   \
-                                       if (req == NULL)  \
-					 MPID_Abort(NULL, MPI_ERR_NO_SPACE, -1, "Cannot allocate Request");
+#  define MPIDI_Request_tls_alloc(req)                                  \
+({                                                                      \
+  (req) = MPIU_Handle_obj_alloc(&MPID_Request_mem);                     \
+  if (req == NULL)                                                      \
+    MPID_Abort(NULL, MPI_ERR_NO_SPACE, -1, "Cannot allocate Request");  \
+})
 
-#  define MPIDI_Request_tls_free(req)  MPIU_Handle_obj_free(&MPID_Request_mem, (req))
+#  define MPIDI_Request_tls_free(req) MPIU_Handle_obj_free(&MPID_Request_mem, (req))
 #else
 #  error MPIU_HANDLE_ALLOCATION_METHOD not defined
 #endif
@@ -197,22 +200,6 @@ MPIDI_Context_local(MPID_Request * req)
   unsigned    lctxt  = MPIDI_Context_hash(remote, req->comm->context_id);
   MPID_assert(lctxt < MPIDI_Process.avail_contexts);
   return MPIDI_Context[lctxt];
-}
-
-
-static inline void
-MPIDI_SendMsg(MPID_Request * sreq)
-{
-  if (MPIDI_Process.avail_contexts > 1) {
-    pami_context_t context = MPIDI_Context_local(sreq);
-    
-    pami_result_t rc;
-    rc = PAMI_Context_post(context, &sreq->mpid.post_request, MPIDI_SendMsg_handoff, sreq);
-    MPID_assert(rc == PAMI_SUCCESS);
-  }
-  else {
-    MPIDI_SendMsg_handoff( MPIDI_Context[0], sreq);
-  }
 }
 
 
