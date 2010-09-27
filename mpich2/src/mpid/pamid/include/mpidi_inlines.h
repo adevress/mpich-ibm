@@ -114,7 +114,6 @@ MPID_Isend_inline (const void    * buf,
   /* --------------------------- */
   /* special case: send-to-self  */
   /* --------------------------- */
-
   if (unlikely( (rank == comm->rank) ||
 		/* Do we care about inter communicators ??*/
 		/* (comm->comm_kind == MPID_INTERCOMM) ||*/
@@ -138,14 +137,14 @@ MPID_Isend_inline (const void    * buf,
 
   /* match info */
   MPIDI_Request_setMatch(sreq, tag, comm->rank, comm->context_id+context_offset);
+  MPIDI_Request_setPeerRequest(sreq, sreq);
 
   /* data buffer info */
   sreq->mpid.userbuf      = (void*)buf;
   sreq->mpid.userbufcount = count;
   sreq->mpid.datatype     = datatype;
   MPIDI_Request_setPeerRank(sreq, comm->vcr[rank]);
-  MPIDI_Request_setPeerRequest(sreq, sreq);
-
+  
   /* communicator & destination info */
   sreq->comm              = comm;
 

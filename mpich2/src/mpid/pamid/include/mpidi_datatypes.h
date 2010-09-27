@@ -159,14 +159,15 @@ struct MPIDI_Request
   struct MPID_Request  *next;         /**< Link to next req. in queue */
 
   pami_work_t           post_request; /**<                            */
-  pami_task_t           peerrank;     /**< The other guy's rank       */
 
   void                 *userbuf;      /**< User buffer                */
   unsigned              userbufcount; /**< Userbuf data count         */
+  MPI_Datatype          datatype;     /**< Data type of message       */
+  pami_task_t           peerrank;     /**< The other guy's rank       */
+
   void                 *uebuf;        /**< Unexpected buffer          */
   unsigned              uebuflen;     /**< Length (bytes) of uebuf    */
 
-  MPI_Datatype          datatype;     /**< Data type of message       */
   struct MPID_Datatype *datatype_ptr; /**< Info about the datatype    */
 
   int                   isSelf;       /**< message sent to self       */
