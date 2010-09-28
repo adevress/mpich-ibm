@@ -90,6 +90,8 @@ void MPIDI_Progress_signal();
  * \{
  */
 pami_result_t MPIDI_SendMsg_handoff(pami_context_t context, void * sreq);
+pami_result_t MPIDI_Isend_handoff(pami_context_t context, void * sreq);
+
 int MPIDI_RecvMsg(void          * buf,
                   int             count,
                   MPI_Datatype    datatype,

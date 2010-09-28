@@ -272,3 +272,45 @@ MPIDI_SendMsg_handoff(pami_context_t   context,
 
   return PAMI_SUCCESS;
 }
+
+
+/*
+ * \brief Central function for all low-level sends.
+ *
+ * This is assumed to have been posted to a context, and is now being
+ * called from inside advance.  This has (unspecified) locking
+ * implications.
+ *
+ * Prerequisites:
+ *    + Not sending to a NULL rank
+ *    + Request already allocated
+ *    + Not sending to self
+ *
+ * \param[in]     context The PAMI context on which to do the send operation
+ * \param[in,out] sreq    Structure containing all relevant info about the message.
+ */
+pami_result_t
+MPIDI_Isend_handoff(pami_context_t   context,
+		    void           * _sreq) 
+{
+  MPID_Request * sreq = (MPID_Request*)_sreq;
+  MPID_assert(sreq != NULL);
+
+  sreq->status.count      = 0;
+  sreq->status.cancelled  = FALSE;
+  sreq->status.MPI_SOURCE = MPI_UNDEFINED;
+  sreq->status.MPI_TAG    = MPI_UNDEFINED;
+  sreq->status.MPI_ERROR  = MPI_SUCCESS;
+  
+  struct MPIDI_Request* mpid = &sreq->mpid;
+  /* These two commands are not needed as long as the constants are 0.
+     There are comments to that effect in their definitions. */
+  mpid->next                     = NULL;
+  mpid->cancel_pending           = FALSE;
+  mpid->state = MPIDI_INITIALIZED;
+  MPIDI_Request_setCA(sreq, MPIDI_CA_COMPLETE);
+
+  MPIDI_Request_setPeerRequest(sreq, sreq); 
+  
+  return MPIDI_SendMsg_handoff(context, sreq);
+}

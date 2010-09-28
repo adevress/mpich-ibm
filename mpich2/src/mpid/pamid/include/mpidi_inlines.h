@@ -17,7 +17,6 @@ extern MPIU_Object_alloc_t MPID_Request_mem;
 /**
  * \brief Create and initialize a new request
  */
-
 static inline MPID_Request *
 MPID_Request_create_inline()
 {
@@ -46,6 +45,24 @@ MPID_Request_create_inline()
   mpid->state = MPIDI_INITIALIZED;
   MPIDI_Request_setCA(req, MPIDI_CA_COMPLETE);
 #endif
+
+  return req;
+}
+
+
+/**
+ * \brief Create new request without initalizing
+ */
+static inline MPID_Request *
+MPID_Request_create_fast_inline()
+{
+  MPID_Request * req;
+
+  MPIDI_Request_tls_alloc(req);
+  MPID_assert(HANDLE_GET_MPI_KIND(req->handle) == MPID_REQUEST);
+  MPIU_Object_set_ref(req, 1);
+  MPID_cc_set_1(&req->cc);
+  req->cc_ptr            = &req->cc;
 
   return req;
 }
@@ -118,43 +135,55 @@ MPID_Isend_inline (const void    * buf,
 		/* Do we care about inter communicators ??*/
 		/* (comm->comm_kind == MPID_INTERCOMM) ||*/
 		(rank == MPI_PROC_NULL) ))
-    {
-      return MPID_Isend_outline(buf,
-                                count,
-                                datatype,
-                                rank,
-                                tag,
-                                comm,
-                                context_offset,
-                                request);
-    }
+   {
+     return MPID_Isend_outline(buf,
+			       count,
+			       datatype,
+			       rank,
+			       tag,
+			       comm,
+			       context_offset,
+			       request);
+   }
 
   /* --------------------- */
   /* create a send request */
   /* --------------------- */
 
-  sreq = MPID_Request_create();
-
+  sreq = MPID_Request_create_fast_inline();
+  
   /* match info */
   MPIDI_Request_setMatch(sreq, tag, comm->rank, comm->context_id+context_offset);
-  MPIDI_Request_setPeerRequest(sreq, sreq);
 
   /* data buffer info */
   sreq->mpid.userbuf      = (void*)buf;
   sreq->mpid.userbufcount = count;
   sreq->mpid.datatype     = datatype;
-  MPIDI_Request_setPeerRank(sreq, comm->vcr[rank]);
+
+  /* Enable passing in MPI_PROC_NULL, do the translation in the
+     handoff function */
+  MPIDI_Request_setPeerRank(sreq, comm->vcr[rank]); 
   
   /* communicator & destination info */
   sreq->comm              = comm;
-
   MPIR_Comm_add_ref(comm);
 
   /* message type info */
   sreq->kind = MPID_REQUEST_SEND;
 
   *request = sreq;
-  MPIDI_SendMsg(sreq);
+  if (likely(MPIDI_Process.avail_contexts > 1)) 
+  {
+    pami_context_t context = MPIDI_Context_local(sreq);
+    
+    pami_result_t rc;
+    rc = PAMI_Context_post(context, &sreq->mpid.post_request, MPIDI_Isend_handoff, sreq);
+    MPID_assert(rc == PAMI_SUCCESS);
+  }
+  else {
+    MPIDI_Isend_handoff(MPIDI_Context[0], sreq);
+  }
+  
   return MPI_SUCCESS;
 }
 
