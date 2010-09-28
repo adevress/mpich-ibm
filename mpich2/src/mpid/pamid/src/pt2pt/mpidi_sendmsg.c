@@ -291,7 +291,7 @@ MPIDI_SendMsg_handoff(pami_context_t   context,
  */
 pami_result_t
 MPIDI_Isend_handoff(pami_context_t   context,
-		    void           * _sreq) 
+                    void           * _sreq)
 {
   MPID_Request * sreq = (MPID_Request*)_sreq;
   MPID_assert(sreq != NULL);
@@ -301,7 +301,7 @@ MPIDI_Isend_handoff(pami_context_t   context,
   sreq->status.MPI_SOURCE = MPI_UNDEFINED;
   sreq->status.MPI_TAG    = MPI_UNDEFINED;
   sreq->status.MPI_ERROR  = MPI_SUCCESS;
-  
+
   struct MPIDI_Request* mpid = &sreq->mpid;
   /* These two commands are not needed as long as the constants are 0.
      There are comments to that effect in their definitions. */
@@ -310,10 +310,11 @@ MPIDI_Isend_handoff(pami_context_t   context,
   mpid->state = MPIDI_INITIALIZED;
   MPIDI_Request_setCA(sreq, MPIDI_CA_COMPLETE);
 
-  MPIDI_Request_setPeerRequest(sreq, sreq); 
-  
-  int rank = (sreq->mpid.peerrank != MPI_PROC_NULL) ? (sreq->comm->vcr[sreq->mpid.peerrank]) : MPI_PROC_NULL;
-  MPIDI_Request_setPeerRank(sreq, rank); 
-  
+  MPIDI_Request_setPeerRequest(sreq, sreq);
+
+  int rank = MPIDI_Request_getPeerRank(sreq);
+  if (likely(rank != MPI_PROC_NULL))
+    MPIDI_Request_setPeerRank(sreq, sreq->comm->vcr[rank]);
+
   return MPIDI_SendMsg_handoff(context, sreq);
 }

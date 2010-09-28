@@ -126,18 +126,15 @@ MPID_Isend_inline (const void    * buf,
                    int             context_offset,
                    MPID_Request ** request)
 {
-  MPID_Request * sreq = NULL;
-
   /* --------------------------------------------------------------------- */
   /* special case: send-to-self and PROC null handled by handoff function  */
   /* --------------------------------------------------------------------- */
-  
+
   /* --------------------- */
   /* create a send request */
   /* --------------------- */
+  MPID_Request * sreq = MPID_Request_create_fast_inline();
 
-  sreq = MPID_Request_create_fast_inline();
-  
   /* match info */
   MPIDI_Request_setMatch(sreq, tag, comm->rank, comm->context_id+context_offset);
 
@@ -148,9 +145,8 @@ MPID_Isend_inline (const void    * buf,
 
   /* Enable passing in MPI_PROC_NULL, do the translation in the
      handoff function */
-  //MPIDI_Request_setPeerRank(sreq, comm->vcr[rank]); 
-  MPIDI_Request_setPeerRank(sreq, rank); 
-  
+  MPIDI_Request_setPeerRank(sreq, rank);
+
   /* communicator & destination info */
   sreq->comm              = comm;
   MPIR_Comm_add_ref(comm);
@@ -159,10 +155,10 @@ MPID_Isend_inline (const void    * buf,
   sreq->kind = MPID_REQUEST_SEND;
 
   *request = sreq;
-  if (likely(MPIDI_Process.avail_contexts > 1)) 
+  if (likely(MPIDI_Process.avail_contexts > 1))
   {
     pami_context_t context = MPIDI_Context_local(sreq);
-    
+
     pami_result_t rc;
     rc = PAMI_Context_post(context, &sreq->mpid.post_request, MPIDI_Isend_handoff, sreq);
     MPID_assert(rc == PAMI_SUCCESS);
@@ -170,7 +166,7 @@ MPID_Isend_inline (const void    * buf,
   else {
     MPIDI_Isend_handoff(MPIDI_Context[0], sreq);
   }
-  
+
   return MPI_SUCCESS;
 }
 
