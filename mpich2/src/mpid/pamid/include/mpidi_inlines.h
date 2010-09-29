@@ -128,24 +128,10 @@ MPID_Isend_inline (const void    * buf,
 {
   MPID_Request * sreq = NULL;
 
-  /* --------------------------- */
-  /* special case: send-to-self  */
-  /* --------------------------- */
-  if (unlikely( (rank == comm->rank) ||
-		/* Do we care about inter communicators ??*/
-		/* (comm->comm_kind == MPID_INTERCOMM) ||*/
-		(rank == MPI_PROC_NULL) ))
-   {
-     return MPID_Isend_outline(buf,
-			       count,
-			       datatype,
-			       rank,
-			       tag,
-			       comm,
-			       context_offset,
-			       request);
-   }
-
+  /* --------------------------------------------------------------------- */
+  /* special case: send-to-self and PROC null handled by handoff function  */
+  /* --------------------------------------------------------------------- */
+  
   /* --------------------- */
   /* create a send request */
   /* --------------------- */
@@ -162,7 +148,8 @@ MPID_Isend_inline (const void    * buf,
 
   /* Enable passing in MPI_PROC_NULL, do the translation in the
      handoff function */
-  MPIDI_Request_setPeerRank(sreq, comm->vcr[rank]); 
+  //MPIDI_Request_setPeerRank(sreq, comm->vcr[rank]); 
+  MPIDI_Request_setPeerRank(sreq, rank); 
   
   /* communicator & destination info */
   sreq->comm              = comm;

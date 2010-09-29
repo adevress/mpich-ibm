@@ -312,5 +312,8 @@ MPIDI_Isend_handoff(pami_context_t   context,
 
   MPIDI_Request_setPeerRequest(sreq, sreq); 
   
+  int rank = (sreq->mpid.peerrank != MPI_PROC_NULL) ? (sreq->comm->vcr[sreq->mpid.peerrank]) : MPI_PROC_NULL;
+  MPIDI_Request_setPeerRank(sreq, rank); 
+  
   return MPIDI_SendMsg_handoff(context, sreq);
 }

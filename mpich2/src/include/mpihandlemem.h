@@ -305,8 +305,6 @@ typedef OPA_int_t MPIU_Handle_ref_count;
  * confidence, this is a configurable option. */
 #if defined(MPIU_THREAD_SUPPRESS_PREDEFINED_REFCOUNTS)
 
-#define unlikely(x) __builtin_expect(x,0)
-
 /* The assumption here is that objects with handles of type HANDLE_KIND_BUILTIN
  * will be created/destroyed only at MPI_Init/MPI_Finalize time and don't need
  * to be reference counted.  This can be a big performance win on some

@@ -362,6 +362,9 @@ void MPIR_DatatypeAttrFinalize( void );
 /* Should the following be moved into mpihandlemem.h ?*/
 /* ------------------------------------------------------------------------- */
 
+#define unlikely(x) __builtin_expect(x,0)
+#define likely(x)   __builtin_expect(x,1)
+
 /* Routines to initialize handle allocations */
 /* These are now internal to the handlemem package
 void *MPIU_Handle_direct_init( void *, int, int, int );
@@ -369,6 +372,7 @@ void *MPIU_Handle_indirect_init( void *(**)[], int *, int, int, int, int );
 int MPIU_Handle_free( void *((*)[]), int );
 */
 /* Convert Handles to objects for MPI types that have predefined objects */
+/*
 #define MPID_Getb_ptr(kind,a,bmsk,ptr)                                  \
 {                                                                       \
    switch (HANDLE_GET_KIND(a)) {                                        \
@@ -388,6 +392,23 @@ int MPIU_Handle_free( void *((*)[]), int );
           break;							\
     }                                                                   \
 }
+*/
+
+#define MPID_Getb_ptr(kind,a,bmsk,ptr)                                  \
+{                                                                       \
+    int handle_kind = HANDLE_GET_KIND(a);				\
+    if ( likely(handle_kind == HANDLE_KIND_BUILTIN) )			\
+	ptr=MPID_##kind##_builtin+((a)&(bmsk));				\
+    else if (handle_kind == HANDLE_KIND_DIRECT)				\
+	ptr=MPID_##kind##_direct+HANDLE_INDEX(a);			\
+    else if (handle_kind == HANDLE_KIND_INDIRECT)			\
+	ptr=((MPID_##kind*)						\
+	     MPIU_Handle_get_ptr_indirect(a,&MPID_##kind##_mem));	\
+    else {                                                              \
+	ptr = 0;                                                        \
+    }                                                                   \
+}
+
 
 /* Convert handles to objects for MPI types that do _not_ have any predefined
    objects */
