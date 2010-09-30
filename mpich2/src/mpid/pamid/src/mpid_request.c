@@ -26,44 +26,6 @@ MPIU_Object_alloc_t MPID_Request_mem =
   };
 
 
-#if 0
-/**
- * \brief Create and initialize a new request
- */
-
-MPID_Request *
-MPID_Request_create()
-{
-  MPID_Request * req;
-
-  MPIDI_Request_tls_alloc(req);
-  if (req == NULL)
-    MPID_Abort(NULL, MPI_ERR_NO_SPACE, -1, "Cannot allocate Request");
-
-  MPID_assert(HANDLE_GET_MPI_KIND(req->handle) == MPID_REQUEST);
-  MPIU_Object_set_ref(req, 1);
-  MPID_cc_set(&req->cc, 1);
-  req->cc_ptr            = &req->cc;
-  req->status.MPI_SOURCE = MPI_UNDEFINED;
-  req->status.MPI_TAG    = MPI_UNDEFINED;
-  req->status.MPI_ERROR  = MPI_SUCCESS;
-  req->status.count      = 0;
-  req->status.cancelled  = FALSE;
-  req->comm              = NULL;
-
-  struct MPIDI_Request* mpid = &req->mpid;
-  memset(mpid, 0x00, sizeof(struct MPIDI_Request));
-#if 0
-  /* These two commands are not needed as long as the constants are 0.
-     There are comments to that effect in their definitions. */
-  mpid->state = MPIDI_INITIALIZED;
-  MPIDI_Request_setCA(req, MPIDI_CA_COMPLETE);
-#endif
-
-  return req;
-}
-#endif
-
 static inline void
 MPIDI_Request_try_free(MPID_Request *req)
 {

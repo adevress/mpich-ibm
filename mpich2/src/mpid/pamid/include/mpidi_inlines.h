@@ -35,16 +35,12 @@ MPID_Request_create_inline()
   req->status.MPI_ERROR  = MPI_SUCCESS;
 
   struct MPIDI_Request* mpid = &req->mpid;
-#if 0
-  memset(mpid, 0x00, sizeof(struct MPIDI_Request));
-#else
-  /* These two commands are not needed as long as the constants are 0.
-     There are comments to that effect in their definitions. */
-  mpid->next                     = NULL;
-  mpid->cancel_pending           = FALSE;
+  mpid->next             = NULL;
+  mpid->cancel_pending   = FALSE;
+  mpid->uebuf            = NULL;
+  mpid->uebuflen         = 0;
   mpid->state = MPIDI_INITIALIZED;
   MPIDI_Request_setCA(req, MPIDI_CA_COMPLETE);
-#endif
 
   return req;
 }
