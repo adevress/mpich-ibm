@@ -118,23 +118,30 @@ MPIDI_RecvMsg(void          * buf,
           /* -------------------------------- */
           /* request is complete              */
           /* -------------------------------- */
-          MPID_assert(rreq->mpid.uebuf != NULL);
-          if(rreq->status.cancelled == FALSE)
+          if (rreq->mpid.uebuf != NULL)
             {
-              MPIDI_msg_sz_t _count=0;
-              MPIDI_Buffer_copy(rreq->mpid.uebuf,
-                                rreq->mpid.uebuflen,
-                                MPI_CHAR,
-                                &rreq->status.MPI_ERROR,
-                                buf,
-                                count,
-                                datatype,
-                                &_count,
-                                &rreq->status.MPI_ERROR);
-              rreq->status.count = _count;
+              if (likely(rreq->status.cancelled == FALSE))
+                {
+                  MPIDI_msg_sz_t _count=0;
+                  MPIDI_Buffer_copy(rreq->mpid.uebuf,
+                                    rreq->mpid.uebuflen,
+                                    MPI_CHAR,
+                                    &rreq->status.MPI_ERROR,
+                                    buf,
+                                    count,
+                                    datatype,
+                                    &_count,
+                                    &rreq->status.MPI_ERROR);
+                  rreq->status.count = _count;
+                }
+              MPIU_Free(rreq->mpid.uebuf);
+              rreq->mpid.uebuf = NULL;
             }
-          MPIU_Free(rreq->mpid.uebuf);
-          rreq->mpid.uebuf = NULL;
+          else
+            {
+              MPID_assert(rreq->mpid.uebuflen == 0);
+              rreq->status.count = 0;
+            }
         }
 
       else

@@ -59,6 +59,12 @@ MPIDI_RecvRzvDoneCB(pami_context_t  context,
   MPID_Request * rreq = (MPID_Request*)cookie;
   MPID_assert(rreq != NULL);
 
+  TRACE_ERR("RZV Done for req=%p addr=%p *addr[0]=%#016llx *addr[1]=%#016llx\n",
+            rreq,
+            rreq->mpid.userbuf,
+            *(((unsigned long long*)rreq->mpid.userbuf)+0),
+            *(((unsigned long long*)rreq->mpid.userbuf)+1));
+
   /* Is it neccesary to save the original value of the 'type' field ?? */
   unsigned original_value = MPIDI_Request_getControl(rreq);
   MPIDI_Request_setControl(rreq, MPIDI_CONTROL_RENDEZVOUS_ACKNOWLEDGE);

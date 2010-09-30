@@ -23,5 +23,7 @@ extern MPIDI_Protocol_t MPIDI_Protocols;
 extern MPIDI_CollectiveProtocol_t MPIDI_CollectiveProtocols;
 extern MPIX_Hardware_t mpid_hw;
 
+extern unsigned MPIDI_Progress_requests;
+
 
 #endif
