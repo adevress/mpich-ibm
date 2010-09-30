@@ -9,10 +9,10 @@ void foo(void *sendbuf, MPI_Datatype sendtype, void *recvbuf, MPI_Datatype recvt
     MPI_Datatype types[2], tmp_type;
 
     blocks[0] = 256;
-    struct_displs[0] = (MPI_Aint) sendbuf;
+    struct_displs[0] = (MPI_Aint)(size_t)sendbuf;
     types[0] = sendtype;
     blocks[1] = 256;
-    struct_displs[1] = (MPI_Aint) recvbuf;
+    struct_displs[1] = (MPI_Aint)(size_t)recvbuf;
     types[1] = MPI_BYTE;
 
     MPI_Type_create_struct(2, blocks, struct_displs, types, &tmp_type);
