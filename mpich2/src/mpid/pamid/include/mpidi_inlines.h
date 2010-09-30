@@ -14,37 +14,6 @@
 
 extern MPIU_Object_alloc_t MPID_Request_mem;
 
-/**
- * \brief Create and initialize a new request
- */
-static inline MPID_Request *
-MPID_Request_create_inline()
-{
-  MPID_Request * req;
-
-  MPIDI_Request_tls_alloc(req);
-  MPID_assert(HANDLE_GET_MPI_KIND(req->handle) == MPID_REQUEST);
-  MPIU_Object_set_ref(req, 1);
-  MPID_cc_set_1(&req->cc);
-  req->cc_ptr            = &req->cc;
-  req->comm              = NULL;
-  req->status.count      = 0;
-  req->status.cancelled  = FALSE;
-  req->status.MPI_SOURCE = MPI_UNDEFINED;
-  req->status.MPI_TAG    = MPI_UNDEFINED;
-  req->status.MPI_ERROR  = MPI_SUCCESS;
-
-  struct MPIDI_Request* mpid = &req->mpid;
-  mpid->next             = NULL;
-  mpid->cancel_pending   = FALSE;
-  mpid->uebuf            = NULL;
-  mpid->uebuflen         = 0;
-  mpid->state = MPIDI_INITIALIZED;
-  MPIDI_Request_setCA(req, MPIDI_CA_COMPLETE);
-
-  return req;
-}
-
 
 /**
  * \brief Create new request without initalizing
@@ -58,7 +27,37 @@ MPID_Request_create_fast_inline()
   MPID_assert(HANDLE_GET_MPI_KIND(req->handle) == MPID_REQUEST);
   MPIU_Object_set_ref(req, 1);
   MPID_cc_set_1(&req->cc);
-  req->cc_ptr            = &req->cc;
+  req->cc_ptr = &req->cc;
+
+  req->mpid.cancel_pending   = FALSE;
+
+  return req;
+}
+
+
+/**
+ * \brief Create and initialize a new request
+ */
+static inline MPID_Request *
+MPID_Request_create_inline()
+{
+  MPID_Request * req;
+  req = MPID_Request_create_fast_inline();
+
+  req->comm              = NULL;
+  req->status.count      = 0;
+  req->status.cancelled  = FALSE;
+  req->status.MPI_SOURCE = MPI_UNDEFINED;
+  req->status.MPI_TAG    = MPI_UNDEFINED;
+  req->status.MPI_ERROR  = MPI_SUCCESS;
+
+  struct MPIDI_Request* mpid = &req->mpid;
+  mpid->next             = NULL;
+  mpid->datatype_ptr     = NULL;
+  mpid->uebuf            = NULL;
+  mpid->uebuflen         = 0;
+  mpid->state            = MPIDI_INITIALIZED;
+  MPIDI_Request_setCA(req, MPIDI_CA_COMPLETE);
 
   return req;
 }
@@ -135,9 +134,9 @@ MPID_Isend_inline (const void    * buf,
   MPIDI_Request_setMatch(sreq, tag, comm->rank, comm->context_id+context_offset);
 
   /* data buffer info */
-  sreq->mpid.userbuf      = (void*)buf;
-  sreq->mpid.userbufcount = count;
-  sreq->mpid.datatype     = datatype;
+  sreq->mpid.userbuf        = (void*)buf;
+  sreq->mpid.userbufcount   = count;
+  sreq->mpid.datatype       = datatype;
 
   /* Enable passing in MPI_PROC_NULL, do the translation in the
      handoff function */

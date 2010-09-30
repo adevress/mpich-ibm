@@ -303,11 +303,9 @@ MPIDI_Isend_handoff(pami_context_t   context,
   sreq->status.MPI_ERROR  = MPI_SUCCESS;
 
   struct MPIDI_Request* mpid = &sreq->mpid;
-  /* These two commands are not needed as long as the constants are 0.
-     There are comments to that effect in their definitions. */
-  mpid->next                     = NULL;
-  mpid->cancel_pending           = FALSE;
-  mpid->state = MPIDI_INITIALIZED;
+  mpid->next              = NULL;
+  mpid->datatype_ptr      = NULL;
+  mpid->state             = MPIDI_INITIALIZED;
   MPIDI_Request_setCA(sreq, MPIDI_CA_COMPLETE);
 
   MPIDI_Request_setPeerRequest(sreq, sreq);
