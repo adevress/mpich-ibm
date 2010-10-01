@@ -4,6 +4,7 @@
  * \brief ???
  */
 
+//#define TRACE_ON
 
 #include "mpidimpl.h"
 
@@ -65,15 +66,15 @@ int MPIDO_Bcast(void *buffer,
    pami_xfer_t bcast;
    bcast.cb_done = cb_bcast;
    bcast.cookie = (void *)&active;
-   bcast.algorithm = comm_ptr->mpid.bcasts[0];
    bcast.cmd.xfer_broadcast.root = MPID_VCR_GET_LPID(comm_ptr->vcr, root);
+   bcast.algorithm = comm_ptr->mpid.coll_algorithm[PAMI_XFER_BROADCAST][0][0];
    bcast.cmd.xfer_broadcast.buf = data_buffer;
    bcast.cmd.xfer_broadcast.type = PAMI_BYTE;
    /* Needs to be sizeof(type)*count since we are using bytes as * the generic type */
    bcast.cmd.xfer_broadcast.typecount = data_size;
 
-   TRACE_ERR("posting bcast, context: %d, algoname: %s\n",0, comm_ptr->mpid.bcast_metas[0].name);
-   MPIDI_Update_last_algorithm(comm_ptr, comm_ptr->mpid.bcast_metas[0].name);
+   TRACE_ERR("posting bcast, context: %d, algoname: %s\n",0, comm_ptr->mpid.coll_metadata[PAMI_XFER_BROADCAST][0][0].name);
+   MPIDI_Update_last_algorithm(comm_ptr, comm_ptr->mpid.coll_metadata[PAMI_XFER_BROADCAST][0][0].name);
    rc = PAMI_Collective(MPIDI_Context[0], (pami_xfer_t *)&bcast);
    TRACE_ERR("bcast posted, rc: %d\n", rc);
 
