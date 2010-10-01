@@ -226,7 +226,7 @@ MPIDO_Allgatherv(void *sendbuf,
 
   allred.cb_done = allred_cb_done;
   allred.cookie = (void *)&allred_active;
-  allred.algorithm = comm_ptr->mpid.allreduces[0];
+  allred.algorithm = comm_ptr->mpid.coll_algorithm[PAMI_XFER_ALLREDUCE][0][0];
   allred.cmd.xfer_allreduce.sndbuf = (void *)config;
   allred.cmd.xfer_allreduce.stype = PAMI_BYTE;
   allred.cmd.xfer_allreduce.rcvbuf = (void *)config;

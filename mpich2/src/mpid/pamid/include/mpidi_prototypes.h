@@ -163,6 +163,7 @@ int  MPID_Dims_create       (int nnodes, int ndims, int *dims);
 
 void MPIDI_Coll_Comm_create (MPID_Comm *comm);
 void MPIDI_Coll_Comm_destroy(MPID_Comm *comm);
+void MPIDI_Comm_coll_query  (MPID_Comm *comm);
 void MPIDI_Coll_register    (void);
 
 int MPIDO_Bcast(void *buffer, int count, MPI_Datatype dt, int root, MPID_Comm *comm_ptr);

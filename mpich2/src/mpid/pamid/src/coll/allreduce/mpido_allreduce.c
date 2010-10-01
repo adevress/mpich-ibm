@@ -4,6 +4,7 @@
  * \brief ???
  */
 
+//#define TRACE_ON
 
 #include "mpidimpl.h"
 
@@ -43,7 +44,7 @@ int MPIDO_Allreduce(void *sendbuf,
       MPIDI_Datatype_get_info(count, dt, data_contig, data_size, data_ptr, data_true_lb);
       allred.cb_done = cb_allreduce;
       allred.cookie = (void *)&active;
-      allred.algorithm = comm_ptr->mpid.allreduces[0];
+      allred.algorithm = comm_ptr->mpid.coll_algorithm[PAMI_XFER_ALLREDUCE][0][0];
       allred.cmd.xfer_allreduce.sndbuf = sendbuf;
       allred.cmd.xfer_allreduce.stype = PAMI_BYTE;
       allred.cmd.xfer_allreduce.rcvbuf = recvbuf;
@@ -53,8 +54,8 @@ int MPIDO_Allreduce(void *sendbuf,
       allred.cmd.xfer_allreduce.dt = pdt;
       allred.cmd.xfer_allreduce.op = pop;
       TRACE_ERR("posting allreduce, context: %d, algoname: %s, dt: %s, op: %s, count: %d\n", 0,
-                comm_ptr->mpid.allreduce_metas[0].name, dt_str, op_str, count);
-      MPIDI_Update_last_algorithm(comm_ptr, comm_ptr->mpid.allreduce_metas[0].name);
+                comm_ptr->mpid.coll_metadata[PAMI_XFER_ALLREDUCE][0][0].name, dt_str, op_str, count);
+      MPIDI_Update_last_algorithm(comm_ptr, comm_ptr->mpid.coll_metadata[PAMI_XFER_ALLREDUCE][0][0].name);
       rc = PAMI_Collective(MPIDI_Context[0], (pami_xfer_t *)&allred);
       TRACE_ERR("allreduce posted, rc: %d\n", rc);
 

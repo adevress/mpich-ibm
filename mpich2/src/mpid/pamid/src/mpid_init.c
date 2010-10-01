@@ -275,9 +275,9 @@ int MPID_Init(int * argc,
   for (i=0; i<size; i++)
     comm->vcr[i] = i;
 
-   /* basically a noop for now */
   MPIDI_Comm_create(comm);
 
+  /* basically a noop for now */
   MPIDI_Comm_world_setup();
 
 

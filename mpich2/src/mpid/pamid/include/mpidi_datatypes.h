@@ -161,21 +161,16 @@ struct MPIDI_Request
 struct MPIDI_Comm
 {
   pami_geometry_t geometry; /**< Geometry component for collectives      */
-  /** \todo It is unlikely these should stay in here, but more thought
-   *        needs put in to this after 5/1
-   */
-  pami_algorithm_t *bcasts;
-  pami_algorithm_t *barriers;
-  pami_algorithm_t *allreduces;
-  pami_metadata_t *bcast_metas; /* is there one per algorithm? */
-  pami_metadata_t *barrier_metas;
-  pami_metadata_t *allreduce_metas;
-  char allgathers[4]; /* temporary */
+  pami_algorithm_t *coll_algorithm[PAMI_XFER_COUNT][2];
+  pami_metadata_t *coll_metadata[PAMI_XFER_COUNT][2];
+  char coll_count[PAMI_XFER_COUNT][2];
+  char last_algorithm[100][5];
+  char last_algo_index;
+  /* \todo Need to figure out how to deal with algorithms above the pami level */
+  char allgathers[4]; 
   char allgathervs[4];
   char scattervs[2];
-  char optscatter;
-  char optgather;
-  char last_algorithm[100];
+  char optgather, optscatter;
 };
 
 

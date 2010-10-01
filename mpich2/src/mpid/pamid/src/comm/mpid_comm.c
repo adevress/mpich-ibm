@@ -4,6 +4,7 @@
  * \brief ???
  */
 
+//#define TRACE_ON
 
 #include "mpidimpl.h"
 
@@ -28,6 +29,10 @@ void MPIDI_Coll_comm_create(MPID_Comm *comm)
 
   if(comm->comm_kind != MPID_INTRACOMM) return;
 
+   /* Determine what protocols are available for this comm/geom */
+  MPIDI_Comm_coll_query(comm);
+
+
   TRACE_ERR("MPIDI_Coll_comm_create exit\n");
 }
 
@@ -42,248 +47,81 @@ void MPIDI_Coll_comm_destroy(MPID_Comm *comm)
   TRACE_ERR("MPIDI_Coll_comm_destroy exit\n");
 }
 
+
+/* Determine how many of each collective type this communicator supports */
+void MPIDI_Comm_coll_query(MPID_Comm *comm)
+{
+   TRACE_ERR("MPIDI_Comm_coll_query enter\n");
+   int rc = 0, i, j;
+   size_t num_algorithms[2];
+   pami_geometry_t *geom = comm->mpid.geometry;;
+   for(i = 0; i < PAMI_XFER_COUNT; i++)
+   {
+      if(i == PAMI_XFER_FENCE || i == PAMI_XFER_REDUCE_SCATTER)
+         continue;
+      rc = PAMI_Geometry_algorithms_num(MPIDI_Context[0],
+                                        geom,
+                                        i,
+                                        num_algorithms);
+      if(rc != PAMI_SUCCESS)
+      {
+         fprintf(stderr,"PAMI_Geometry_algorithms_num returned %d for type %d\n", rc, i);
+         continue;
+      }
+
+      if(num_algorithms[0])
+      {
+         comm->mpid.coll_algorithm[i][0] = (pami_algorithm_t *)
+               MPIU_Malloc(sizeof(pami_algorithm_t) * num_algorithms[0]);
+         comm->mpid.coll_metadata[i][0] = (pami_metadata_t *)
+               MPIU_Malloc(sizeof(pami_metadata_t) * num_algorithms[0]);
+         comm->mpid.coll_algorithm[i][1] = (pami_algorithm_t *)
+               MPIU_Malloc(sizeof(pami_algorithm_t) * num_algorithms[1]);
+         comm->mpid.coll_metadata[i][1] = (pami_metadata_t *)
+               MPIU_Malloc(sizeof(pami_metadata_t) * num_algorithms[1]);
+
+         /* Despite the bad name, this looks at algorithms associated with
+          * the geometry, NOT inherent physical properties of the geometry*/
+         rc = PAMI_Geometry_algorithms_query(MPIDI_Context[0],
+                                             geom,
+                                             i,
+                                             comm->mpid.coll_algorithm[i][0],
+                                             comm->mpid.coll_metadata[i][0],
+                                             num_algorithms[0],
+                                             comm->mpid.coll_algorithm[i][1],
+                                             comm->mpid.coll_metadata[i][1],
+                                             num_algorithms[1]);
+         if(rc != PAMI_SUCCESS)
+         {
+            fprintf(stderr,"PAMI_Geometry_algorithms_query returned %d for type %d\n", rc, i);
+            continue;
+         }
+
+         if(MPIDI_Process.verbose >= 1)
+         {
+            for(j = 0; j < num_algorithms[0]; j++)
+               fprintf(stderr,"comm[%p] coll type %d, algorithm %d[0]: %s\n", comm, i, j, comm->mpid.coll_metadata[i][0][j].name);
+            for(j = 0; j < num_algorithms[1]; j++)
+               fprintf(stderr,"comm[%p] coll type %d, algorithm %d[1]: %s\n", comm, i, j, comm->mpid.coll_metadata[i][1][j].name);
+         }
+      }
+   }
+   /* Determine if we have protocols for these maybe, rather than just setting them? */
+   comm->coll_fns->Barrier      = MPIDO_Barrier;
+   comm->coll_fns->Bcast        = MPIDO_Bcast;
+   comm->coll_fns->Allreduce    = MPIDO_Allreduce;
+
+   TRACE_ERR("MPIDI_Comm_coll_query exit\n");
+}
+
+
 void MPIDI_Comm_world_setup()
 {
   TRACE_ERR("MPIDI_Comm_world_setup enter\n");
-  if (!MPIDI_Process.optimized.collectives)
-    return;
 
-  int rc = 0;
-  char *envopts;
-  int useshmembarrier = 1;
-  int useshmembcast = 1;
-  int useshmemallreduce = 1;
-  /* int useglueallgather = 1; */
-  int i;
-  MPID_Comm *world = MPIR_Process.comm_world;
-
-   for(i=0;i<4;i++) world->mpid.allgathervs[i] = 0; /* turn them all off for now */
-   envopts = getenv("PAMI_ALLGATHERV");
-   if(envopts != NULL)
-   {
-      TRACE_ERR("allgatherv: %s\n", envopts);
-      if(strncasecmp(envopts, "ALLT", 4) == 0) /*alltoall based */
-      {
-         world->mpid.allgathervs[0] = 1;
-      }
-      else if(strncasecmp(envopts, "ALLR", 4) == 0) /* allreduce */
-      {
-         world->mpid.allgathervs[1] = 1;
-      }
-      else if(strncasecmp(envopts, "B", 1) == 0) /* bcast */
-      {
-         world->mpid.allgathervs[2] = 1;
-      }
-      else if(strncasecmp(envopts, "M", 1) == 0) /* mpich */
-      {
-         for(i=0;i<4;i++) world->mpid.allgathervs[i] = 1;
-      }
-   }
-
-   for(i=0;i<4;i++) world->mpid.allgathers[i] = 0; /* turn them all off for now */
-   envopts = getenv("PAMI_ALLGATHER");
-   if(envopts != NULL)
-   {
-      TRACE_ERR("allgather: %s\n", envopts);
-      if(strncasecmp(envopts, "ALLT", 4) == 0) /*alltoall based */
-      {
-         world->mpid.allgathers[0] = 1;
-      }
-      else if(strncasecmp(envopts, "ALLR", 4) == 0) /* allreduce */
-      {
-         world->mpid.allgathers[1] = 1;
-      }
-      else if(strncasecmp(envopts, "B", 1) == 0) /* bcast */
-      {
-         world->mpid.allgathers[2] = 1;
-      }
-      else if(strncasecmp(envopts, "M", 1) == 0) /* mpich */
-      {
-         for(i=0;i<4;i++) world->mpid.allgathers[i] = 1;
-      }
-   }
-
-   envopts = getenv("PAMI_SCATTERV");
-   if(envopts != NULL)
-   {
-      TRACE_ERR("scatterv: %s\n", envopts);
-      world->mpid.scattervs[0] = world->mpid.scattervs[1] = 0; /* turn them all off for now */
-      if(strncasecmp(envopts, "B", 1) == 0)
-         world->mpid.scattervs[0] = 1;
-      else if(strncasecmp(envopts, "A", 1) == 0)
-         world->mpid.scattervs[1] = 1;
-      else
-         world->mpid.scattervs[0] = world->mpid.scattervs[1] = 0;
-   }
-   envopts = getenv("PAMI_SCATTER");
-   if(envopts != NULL)
-   {
-      TRACE_ERR("scatter: %s\n", envopts);
-      if(strncasecmp(envopts, "B", 1) == 0)
-         world->mpid.optscatter = 1;
-      else
-         world->mpid.optscatter = 0;
-   }
-
-  envopts = getenv("PAMI_BARRIER");
-  if(envopts != NULL)
-    {
-      TRACE_ERR("barrier: %s\n", envopts);
-      if(strncasecmp(envopts, "S", 1) == 0) /* shmem */
-        {
-          useshmembarrier = 1;
-        }
-      else if(strncasecmp(envopts, "M", 1) == 0) /* mpich */
-        {
-          useshmembarrier = 0;
-        }
-    }
-  TRACE_ERR("shmem barrier: %d\n", useshmembarrier);
-
-  envopts = getenv("PAMI_BCAST");
-  if(envopts != NULL)
-    {
-      TRACE_ERR("bcast: %s\n", envopts);
-      if(strncasecmp(envopts, "S", 1) == 0) /* shmem */
-        {
-          useshmembcast = 1;
-        }
-      else if(strncasecmp(envopts, "M", 1) == 0) /* mpich */
-        {
-          useshmembcast = 0;
-        }
-    }
-  TRACE_ERR("shmem bcast: %d\n", useshmembcast);
-
-  envopts = getenv("PAMI_ALLREDUCE");
-  if(envopts != NULL)
-    {
-      TRACE_ERR("allreduce: %s\n", envopts);
-      if(strncasecmp(envopts, "S", 1) == 0) /* shmem */
-        {
-          useshmemallreduce = 1;
-        }
-      else if(strncasecmp(envopts, "M", 1) == 0) /* mpich */
-        {
-          useshmemallreduce = 0;
-        }
-    }
-  TRACE_ERR("shmem allreduce: %d\n", useshmemallreduce);
-
-
-  world->mpid.bcasts = NULL;
-  world->mpid.barriers = NULL;
-  world->mpid.allreduces = NULL;
-  world->mpid.bcast_metas = NULL;
-  world->mpid.barrier_metas = NULL;
-  world->mpid.allreduce_metas = NULL;
-  world->mpid.allgathers[0] = 1; /* guaranteed to work */
-  size_t num_algorithms[2] = {0};
-
-  /* Don't even bother registering if we are using mpich only */
-  if(useshmembarrier)
-    {
-      rc = PAMI_Geometry_algorithms_num(MPIDI_Context[0],
-                                        world->mpid.geometry,
-                                        PAMI_XFER_BARRIER,
-                                        num_algorithms);
-      TRACE_ERR("After barrier num\n");
-      assert(rc == PAMI_SUCCESS);
-      if(num_algorithms[0])
-        {
-          TRACE_ERR("world geometry has %zu barriers[0] and %zu barriers[1]\n",
-                    num_algorithms[0], num_algorithms[1]);
-
-          world->mpid.barriers = (pami_algorithm_t *)
-            MPIU_Malloc(sizeof(pami_algorithm_t) * num_algorithms[0]);
-          world->mpid.barrier_metas = (pami_metadata_t *)
-            MPIU_Malloc(sizeof(pami_metadata_t) * num_algorithms[0]);
-          /* Despite the bad name, this looks at algorithms associated with
-           * the geometry, NOT inherent physical properties of the geometry*/
-          rc = PAMI_Geometry_algorithms_query(MPIDI_Context[0],
-                                              world->mpid.geometry,
-                                              PAMI_XFER_BARRIER,
-                                              world->mpid.barriers,
-                                              world->mpid.barrier_metas,
-                                              num_algorithms[0],
-                                              NULL,
-                                              NULL,
-                                              0);
-          assert(rc == PAMI_SUCCESS);
-        }
-      TRACE_ERR("barriers registered, assigning\n");
-      world->coll_fns->Barrier             = MPIDO_Barrier;
-    }
-
-  if(useshmemallreduce)
-    {
-      rc = PAMI_Geometry_algorithms_num(MPIDI_Context[0],
-                                        world->mpid.geometry,
-                                        PAMI_XFER_ALLREDUCE,
-                                        num_algorithms);
-      assert(rc == PAMI_SUCCESS);
-      if(num_algorithms[0])
-        {
-          TRACE_ERR("world geometry has %zu allred[0] and %zu allred[1]\n",
-                    num_algorithms[0], num_algorithms[1]);
-
-          world->mpid.allreduces = (pami_algorithm_t *)
-            MPIU_Malloc(sizeof(pami_algorithm_t) * num_algorithms[0]);
-          world->mpid.allreduce_metas = (pami_metadata_t *)
-            MPIU_Malloc(sizeof(pami_metadata_t) * num_algorithms[0]);
-          rc = PAMI_Geometry_algorithms_query(MPIDI_Context[0],
-                                              world->mpid.geometry,
-                                              PAMI_XFER_ALLREDUCE,
-                                              world->mpid.allreduces,
-                                              world->mpid.allreduce_metas,
-                                              num_algorithms[0],
-                                              NULL,
-                                              NULL,
-                                              0);
-          assert(rc == PAMI_SUCCESS);
-        }
-      TRACE_ERR("allreduce registered, assigning\n");
-      world->coll_fns->Allreduce = MPIDO_Allreduce;
-    }
-
-
-  if(useshmembcast)
-    {
-
-      rc = PAMI_Geometry_algorithms_num(MPIDI_Context[0], // this needs figured out
-                                        world->mpid.geometry,
-                                        PAMI_XFER_BROADCAST,
-                                        num_algorithms);
-
-      assert(rc == PAMI_SUCCESS);
-
-      if(num_algorithms[0])
-        {
-          TRACE_ERR("world geometry has %zu bcasts[0] and %zu bcasts[1]\n",
-                    num_algorithms[0], num_algorithms[1]);
-
-          world->mpid.bcasts = (pami_algorithm_t *)MPIU_Malloc(sizeof(pami_algorithm_t) *
-                                                               num_algorithms[0]);
-          world->mpid.bcast_metas = (pami_metadata_t *)MPIU_Malloc(sizeof(pami_metadata_t) *
-                                                                   num_algorithms[0]);
-
-          rc = PAMI_Geometry_algorithms_query(MPIDI_Context[0],
-                                              world->mpid.geometry,
-                                              PAMI_XFER_BROADCAST,
-                                              world->mpid.bcasts,
-                                              world->mpid.bcast_metas,
-                                              num_algorithms[0],
-                                              NULL,
-                                              NULL,
-                                              0);
-          assert(rc == PAMI_SUCCESS);
-        }
-      TRACE_ERR("assigning bcast fns\n");
-      world->coll_fns->Bcast               = MPIDO_Bcast;
-    }
-
-
-  // at this point, i think we have a usable barrier/bcast
+  /* Anything special required for COMM_WORLD goes here */
+   MPID_Comm *comm;
+   comm = MPIR_Process.comm_world;
 
   TRACE_ERR("MPIDI_Comm_world_setup exit\n");
 }

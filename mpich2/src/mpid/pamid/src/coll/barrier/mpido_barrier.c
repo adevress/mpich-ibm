@@ -4,6 +4,7 @@
  * \brief ???
  */
 
+//#define TRACE_ON
 
 #include "mpidimpl.h"
 
@@ -23,10 +24,10 @@ int MPIDO_Barrier(MPID_Comm *comm_ptr)
    pami_xfer_t barrier;
    barrier.cb_done = cb_barrier;
    barrier.cookie = (void *)&active;
-   barrier.algorithm = comm_ptr->mpid.barriers[0];
+   barrier.algorithm = comm_ptr->mpid.coll_algorithm[PAMI_XFER_BARRIER][0][0];
 
    TRACE_ERR("posting barrier\n");
-   MPIDI_Update_last_algorithm(comm_ptr, comm_ptr->mpid.barrier_metas[0].name);
+   MPIDI_Update_last_algorithm(comm_ptr, comm_ptr->mpid.coll_metadata[PAMI_XFER_BARRIER][0][0].name);
    rc = PAMI_Collective(MPIDI_Context[0], (pami_xfer_t *)&barrier);
    TRACE_ERR("barrier posted rc: %d\n", rc);
    assert(rc == PAMI_SUCCESS);

@@ -148,7 +148,7 @@ _dt_contig_out, _data_sz_out, _dt_ptr, _dt_true_lb)             \
 
 /* Add some error checking for size eventually */
 #define MPIDI_Update_last_algorithm(_comm, _name) \
-{ strncpy( (_comm)->mpid.last_algorithm, (_name), strlen((_name))+1); }
+{ strncpy( (_comm)->mpid.last_algorithm[0], (_name), strlen((_name))+1); }
 
 /**
  * \brief Mark a request as cancel-pending
