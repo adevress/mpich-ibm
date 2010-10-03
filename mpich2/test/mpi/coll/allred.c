@@ -37,11 +37,12 @@ struct double_test { double a; int b; };
      (op == MPI_MINLOC) ? "MPI_MINLOC" : \
      "MPI_NO_OP")
 
+/* calloc to avoid spurious valgrind warnings when "type" has padding bytes */
 #define DECL_MALLOC_IN_OUT_SOL(type)                 \
     type *in, *out, *sol;                            \
-    in = (type *) malloc(count * sizeof(type));      \
-    out = (type *) malloc(count * sizeof(type));     \
-    sol = (type *) malloc(count * sizeof(type));
+    in  = (type *) calloc(count, sizeof(type));      \
+    out = (type *) calloc(count, sizeof(type));      \
+    sol = (type *) calloc(count, sizeof(type));
 
 #define SET_INDEX_CONST(arr, val)               \
     {                                           \
@@ -192,7 +193,7 @@ struct double_test { double a; int b; };
 #define lxor_test2(type, mpi_type)                      \
     const_test(type, mpi_type, MPI_LXOR, 0, 0, 0)
 #define lxor_test3(type, mpi_type)                      \
-    const_test(type, mpi_type, MPI_LXOR, 1, 0, 0)
+    const_test(type, mpi_type, MPI_LXOR, 1, (size & 0x1), 0)
 #define land_test1(type, mpi_type)                              \
     const_test(type, mpi_type, MPI_LAND, (rank & 0x1), 0, 0)
 #define land_test2(type, mpi_type)                      \
@@ -204,7 +205,7 @@ struct double_test { double a; int b; };
 #define bxor_test2(type, mpi_type)                      \
     const_test(type, mpi_type, MPI_BXOR, 0, 0, 0)
 #define bxor_test3(type, mpi_type)                      \
-    const_test(type, mpi_type, MPI_BXOR, ~0, 0, 0)
+    const_test(type, mpi_type, MPI_BXOR, ~0, (size &0x1) ? ~0 : 0, 0)
 
 #define band_test1(type, mpi_type)                                      \
     {                                                                   \
@@ -340,6 +341,16 @@ int main( int argc, char **argv )
     MPI_Errhandler_set( MPI_COMM_WORLD, MPI_ERRORS_RETURN );
 
     count = 10;
+    /* Allow an argument to override the count.
+       Note that the product tests may fail if the count is very large.
+     */
+    if (argc >= 2) {
+	count = atoi( argv[1] );
+	if  (count <= 0) {
+	    fprintf( stderr, "Invalid count argument %s\n", argv[1] );
+	    MPI_Abort( MPI_COMM_WORLD, 1 );
+	}
+    }
 
     test_types_set2(sum, 1);
     test_types_set2(prod, 1);

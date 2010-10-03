@@ -11,3 +11,7 @@
 /trace_impl.h.in
 /trace_impl.h.in~
 /libtool
+/config.guess
+/config.sub
+/ltmain.sh
+/install-sh
