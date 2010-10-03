@@ -1,10 +1,13 @@
 #! /bin/sh
 AUTOHEADER=${AUTOHEADER:-autoheader}
 AUTOCONF=${AUTOCONF:-autoconf}
+LIBTOOLIZE=${LIBTOOLIZE:-libtoolize}
 MPE_AUTOHEADER=${MPE_AUTOHEADER:-$AUTOHEADER}
 MPE_AUTOCONF=${MPE_AUTOCONF:-$AUTOCONF}
+MPE_LIBTOOLIZE=${MPE_LIBTOOLIZE:-$LIBTOOLIZE}
 SLOG2_AUTOHEADER=${SLOG2_AUTOHEADER:-$MPE_AUTOHEADER}
 SLOG2_AUTOCONF=${SLOG2_AUTOCONF:-$MPE_AUTOCONF}
+SLOG2_LIBTOOLIZE=${SLOG2_LIBTOOLIZE:-$MPE_LIBTOOLIZE}
 
 # Check that we have a workable autoconf
 acWorks=no
@@ -23,15 +26,19 @@ fi
 if [ "$acWorks" != yes ] ; then
     echo "Selected version of autoconf cannot handle version 2.52"
     echo "Trying to find an autoconf-2.xx..."
-    for ver in 57 56 55 54 53 52 ; do
+    acver_min=59
+    acver_max=69
+    ver="$acver_max"
+    while [ "$ver" -ge "$acver_min" ] ; do
         autoconf="autoconf-2.$ver"
         if (cd .tmp && $autoconf >/dev/null 2>&1 ) ; then
-	    SLOG2_AUTOCONF=$autoconf
-	    SLOG2_AUTOHEADER="autoheader-2.$ver"
-	    echo "Found $autoconf"
-	    acWorks=yes
-	    break
+            SLOG2_AUTOCONF=$autoconf
+            SLOG2_AUTOHEADER="autoheader-2.$ver"
+            echo "Found $autoconf"
+            acWorks=yes
+            break
         fi
+        ver="`expr $ver - 1`"
     done
     if [ "$acWorks" != yes ] ; then
         echo "Unable to find workable autoconf"
@@ -41,18 +48,27 @@ fi
 rm -rf .tmp
 
 # The parent directory of where this script is located
-saved_wd=`pwd`
-cd `dirname $0`/.. && master_dir=`pwd`
-cd $saved_wd
-
-# Locate all the configure.in under master_dir
+pgmdir="`dirname $0`"
+master_dir=`(cd $pgmdir && pwd)`
 cfgins=`find $master_dir -name 'configure.in' -print`
+
+# Locate all configure.ins that need libtoolize.
 for cfgin in $cfgins ; do
     dir="`dirname $cfgin`"
-    echo "Creating configure in $dir/ ..."
-    cd $dir
-    if [ -n "`grep AC_CONFIG_HEADER $cfgin`" ] ; then
-        $SLOG2_AUTOHEADER
+    if [ -n "`grep AC_PROG_LIBTOOL $cfgin`" ] ; then
+        echo "Running libtoolize in $dir/ ..."
+        (cd $dir && $SLOG2_LIBTOOLIZE -ifc) || exit 1
     fi
-    $SLOG2_AUTOCONF && rm -rf autom4te*.cache
+done
+
+# Locate all the configure.in under master_dir to invoke autoconf.
+for cfgin in $cfgins ; do
+    dir="`dirname $cfgin`"
+    if [ -n "`grep AC_CONFIG_HEADER $cfgin`" ] ; then
+        echo "Running autoheader/autoconf in $dir/ ..."
+        (cd $dir && $SLOG2_AUTOHEADER && $SLOG2_AUTOCONF && rm -rf autom4te*.cache) || exit 1
+    else
+        echo "Running autoconf in $dir/ ..."
+        (cd $dir && $SLOG2_AUTOCONF && rm -rf autom4te*.cache) || exit 1
+    fi
 done
