@@ -53,22 +53,6 @@ void MPIDI_Request_allocate_pool()
 #endif
 
 
-static inline void
-MPIDI_Request_try_free(MPID_Request *req)
-{
-  if ( (MPIU_Object_get_ref(req) == 0) && (MPID_cc_is_complete(&req->cc)) )
-    {
-      if (req->comm)              MPIR_Comm_release(req->comm, 0);
-      if (req->mpid.datatype_ptr) MPID_Datatype_release(req->mpid.datatype_ptr);
-      MPIDI_Request_tls_free(req);
-    }
-}
-
-
-/* *********************************************************************** */
-/*           destroy a request                                             */
-/* *********************************************************************** */
-
 void
 MPID_Request_release(MPID_Request *req)
 {
@@ -76,30 +60,45 @@ MPID_Request_release(MPID_Request *req)
   MPID_assert(HANDLE_GET_MPI_KIND(req->handle) == MPID_REQUEST);
   MPIU_Object_release_ref(req, &count);
   MPID_assert(count >= 0);
-  MPIDI_Request_try_free(req);
+
+  if (count == 0)
+    {
+      MPID_assert(MPID_cc_is_complete(&req->cc));
+
+      if (req->comm)              MPIR_Comm_release(req->comm, 0);
+      if (req->mpid.datatype_ptr) MPID_Datatype_release(req->mpid.datatype_ptr);
+      MPIDI_Request_tls_free(req);
+    }
 }
 
-/* *********************************************************************** */
-/*            Dealing with completion counts                               */
-/* *********************************************************************** */
+
+void
+MPIDI_Request_uncomplete(MPID_Request *req)
+{
+  int count;
+  MPIU_Object_add_ref(req);
+  MPID_cc_incr(req->cc_ptr, &count);
+}
+
 
 void
 MPIDI_Request_complete(MPID_Request *req)
 {
   int count;
-  MPIDI_Request_decrement_cc(req, &count);
+  MPID_cc_decr(req->cc_ptr, &count);
   MPID_assert(count >= 0);
+
+  MPID_Request_release(req);
   if (count == 0) /* decrement completion count; if 0, signal progress engine */
     {
-      MPIDI_Request_try_free(req);
       MPIDI_Progress_signal();
     }
 }
+
 
 void
 MPID_Request_set_completed(MPID_Request *req)
 {
   MPID_cc_set(&req->cc, 0);
-  MPIDI_Request_try_free(req);
   MPIDI_Progress_signal();
 }

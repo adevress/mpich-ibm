@@ -13,7 +13,7 @@
  * \param[in,out] sreq MPI receive request object
  */
 void MPIDI_SendDoneCB(pami_context_t   context,
-                      void          * clientdata,
+                      void           * clientdata,
                       pami_result_t    result)
 {
   MPID_Request * sreq = (MPID_Request*)clientdata;
@@ -25,22 +25,6 @@ void MPIDI_SendDoneCB(pami_context_t   context,
       sreq->mpid.uebuf = NULL;
     }
 
-  if(likely(sreq->status.cancelled == FALSE))
-    {
-      if(likely(!MPIDI_Request_isSync(sreq)))
-        {
-          sreq->mpid.state = MPIDI_ACKNOWLEGED;
-          MPIDI_Request_complete(sreq);
-        }
-      else
-        {
-          if(sreq->mpid.state == MPIDI_ACKNOWLEGED)
-            MPIDI_Request_complete(sreq);
-          else
-            sreq->mpid.state = MPIDI_SEND_COMPLETE;
-        }
-    }
-  else
     MPIDI_Request_complete(sreq);
 }
 
@@ -74,7 +58,7 @@ MPIDI_RecvDoneCB_copy(MPID_Request * rreq)
  * \param[in,out] rreq MPI receive request object
  */
 void MPIDI_RecvDoneCB(pami_context_t   context,
-                      void          * clientdata,
+                      void           * clientdata,
                       pami_result_t    result)
 {
   MPID_Request * rreq = (MPID_Request*)clientdata;
@@ -87,18 +71,15 @@ void MPIDI_RecvDoneCB(pami_context_t   context,
         /* free the unexpected data buffer */
         MPIU_Free(rreq->mpid.uebuf);
         rreq->mpid.uebuf = NULL;
-        MPIDI_Request_complete(rreq);
         break;
       }
     case MPIDI_CA_UNPACK_UEBUF_AND_COMPLETE_NOFREE:
       {
         MPIDI_RecvDoneCB_copy(rreq);
-        MPIDI_Request_complete(rreq);
         break;
       }
     case MPIDI_CA_COMPLETE:
       {
-        MPIDI_Request_complete(rreq);
         break;
       }
     default:
@@ -107,4 +88,5 @@ void MPIDI_RecvDoneCB(pami_context_t   context,
         break;
       }
     }
+  MPIDI_Request_complete(rreq);
 }

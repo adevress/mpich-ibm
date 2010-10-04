@@ -77,17 +77,6 @@ typedef enum
 MPIDI_CONTROL;
 
 
-typedef enum
-  {
-    /** This must be 0, since new requests are memset to 0. */
-    MPIDI_INITIALIZED=0,
-    MPIDI_SEND_COMPLETE,
-    MPIDI_ACKNOWLEGED,
-    MPIDI_REQUEST_DONE_CANCELLED
-  }
-MPIDI_REQUEST_STATE;
-
-
 /** \brief Request completion actions */
 typedef enum
   {
@@ -153,7 +142,7 @@ struct MPIDI_Request
   unsigned              userbufcount; /**< Userbuf data count         */
   MPI_Datatype          datatype;     /**< Data type of message       */
   pami_task_t           peerrank;     /**< The other guy's rank       */
-  unsigned            cancel_pending; /**< Cancel State               */
+  unsigned            cancel_pending; /**< Cancel status              */
 
   void                 *uebuf;        /**< Unexpected buffer          */
   unsigned              uebuflen;     /**< Length (bytes) of uebuf    */
@@ -161,7 +150,6 @@ struct MPIDI_Request
   struct MPID_Datatype *datatype_ptr; /**< Info about the datatype    */
 
   MPIDI_REQUEST_PTYPE   ptype;        /**< The persistent msg type    */
-  MPIDI_REQUEST_STATE   state;        /**< The tranfser state         */
   MPIDI_CA              ca;           /**< Completion action          */
 #ifdef USE_PAMI_RDMA
   pami_memregion_t      memregion;    /**< Rendezvous recv memregion  */

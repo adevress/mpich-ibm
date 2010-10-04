@@ -23,7 +23,7 @@ MPID_PSendRequest(const void    * buf,
                   int             context_offset,
                   MPID_Request ** request)
 {
-  MPID_Request* sreq = *request = MPID_Request_create();
+  MPID_Request* sreq = *request = MPID_Request_create2();
 
   sreq->kind              = MPID_PREQUEST_SEND;
   sreq->comm              = comm;
@@ -33,7 +33,7 @@ MPID_PSendRequest(const void    * buf,
   sreq->mpid.userbufcount = count;
   sreq->mpid.datatype     = datatype;
   sreq->partner_request   = NULL;
-  MPID_cc_set(&sreq->cc, 0);
+  MPIDI_Request_complete(sreq);
 
   if (HANDLE_GET_KIND(datatype) != HANDLE_KIND_BUILTIN)
     {

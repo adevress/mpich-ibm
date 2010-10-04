@@ -14,7 +14,7 @@ MPID_Cancel_recv(MPID_Request * rreq)
     {
       rreq->status.cancelled = TRUE;
       rreq->status.count = 0;
-      MPID_Request_set_completed(rreq);
+      MPIDI_Request_complete(rreq);
     }
   /* This is successful, even if the recv isn't cancelled */
   return MPI_SUCCESS;
@@ -82,9 +82,8 @@ MPID_Cancel_send(MPID_Request * sreq)
   if(!sreq->comm)
     return MPI_SUCCESS;
 
-  int val;
-  MPIDI_Request_increment_cc(sreq, &val);
-  TRACE_ERR("Posting cancel for request=%p   cc(curr)=%d\n", sreq, val+1);
+  MPIDI_Request_uncomplete(sreq);
+  /* TRACE_ERR("Posting cancel for request=%p   cc(curr)=%d ref(curr)=%d\n", sreq, val+1, MPIU_Object_get_ref(sreq)); */
 
   {
     /* This leaks intentionally.  At this time, the amount of work
@@ -96,5 +95,5 @@ MPID_Cancel_send(MPID_Request * sreq)
     PAMI_Context_post(context, work, MPIDI_CancelReq_post, sreq);
   }
 
-  return MPI_SUCCESS;
+    return MPI_SUCCESS;
 }

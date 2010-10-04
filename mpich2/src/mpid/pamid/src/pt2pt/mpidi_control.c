@@ -116,11 +116,48 @@ MPIDI_SyncAck_proc(pami_context_t        context,
   MPID_assert(info != NULL);
   MPID_Request *req = MPIDI_Msginfo_getPeerRequest(info);
   MPID_assert(req != NULL);
+  MPIDI_Request_complete(req);
+}
 
-  if(req->mpid.state ==  MPIDI_SEND_COMPLETE)
-    MPIDI_Request_complete(req);
-  else
-    req->mpid.state = MPIDI_ACKNOWLEGED;
+
+/**
+ * \brief 
+ *
+ * \param[in] context 
+ * \param[in] req     
+ */
+static inline void
+MPIDI_RzvAck_proc_req(pami_context_t   context,
+                  MPID_Request   * req)
+{
+#ifdef USE_PAMI_RDMA
+  pami_result_t rc;
+  rc = PAMI_Memregion_destroy(context, &req->mpid.envelope.memregion);
+  MPID_assert(rc == PAMI_SUCCESS);
+#endif
+
+  MPIDI_SendDoneCB(context, req, PAMI_SUCCESS);
+}
+
+
+/**
+ * \brief Process an incoming rendezvous acknowledgment from the
+ * target (remote) node and complete the MPI_Send() on the origin
+ * (local) node.
+ *
+ * \param[in] context 
+ * \param[in] info The contents of the control message as a MPIDI_MsgInfo struct
+ * \param[in] peer The rank of the node sending the data
+ */
+static inline void
+MPIDI_RzvAck_proc(pami_context_t        context,
+                  const MPIDI_MsgInfo * info,
+                  pami_task_t           peer)
+{
+  MPID_assert(info != NULL);
+  MPID_Request *req = MPIDI_Msginfo_getPeerRequest(info);
+  MPID_assert(req != NULL);
+  MPIDI_RzvAck_proc_req(context, req);
 }
 
 
@@ -197,77 +234,47 @@ MPIDI_CancelAck_proc(pami_context_t        context,
   if(info->control == MPIDI_CONTROL_CANCEL_NOT_ACKNOWLEDGE)
     {
       req->mpid.cancel_pending = FALSE;
-      MPIDI_Request_complete(req);
-      return;
     }
-
-  MPID_assert(info->control == MPIDI_CONTROL_CANCEL_ACKNOWLEDGE);
-  MPID_assert(req->mpid.cancel_pending == TRUE);
-
-  req->status.cancelled = TRUE;
-
-  /*
-   * Rendezvous Sends wait until a rzv ack is received to complete the
-   * send. Since this request was canceled, no rzv ack will be sent
-   * from the target node, and the send done callback must be
-   * explicitly called here.
-   */
-  if (MPIDI_Request_isRzv(req))
+  else
     {
-      TRACE_ERR("RZV\n");
-      MPIDI_SendDoneCB(context, req, PAMI_SUCCESS);
-    }
-  /*
-   * This checks for a Sync-Send that hasn't been ACKed (and now will
-   * never be acked), but has transfered the data.  When
-   * MPIDI_SendDoneCB() was called for this one, it wouldn't have
-   * called MPIDI_Request_complete() to decrement the CC.  Therefore,
-   * we call it now to simulate an ACKed message.
-   */
-  if (MPIDI_Request_isSync(req) && (req->mpid.state == MPIDI_SEND_COMPLETE) )
-    {
-      TRACE_ERR("Sync\n");
-      MPIDI_Request_complete(req);
+      MPID_assert(info->control == MPIDI_CONTROL_CANCEL_ACKNOWLEDGE);
+      MPID_assert(req->mpid.cancel_pending == TRUE);
+
+      req->status.cancelled = TRUE;
+
+      /*
+       * Rendezvous-Sends wait until a rzv ack is received to complete
+       * the send. Since this request was canceled, no rzv ack will be
+       * sent from the target node; fake the response here.
+       */
+      if (MPIDI_Request_isRzv(req))
+        {
+          TRACE_ERR("RZV\n");
+          MPIDI_RzvAck_proc_req(context, req);
+        }
+      /*
+       * A canceled Sync-Send hasn't been ACKed (and now will never be
+       * acked).  We call complete now to simulate an ACKed message.
+       * This is the entirety of the sync-ack processing, so it hasn't
+       * been made into a new function.
+       */
+      if (MPIDI_Request_isSync(req))
+        {
+          TRACE_ERR("Sync\n");
+          MPIDI_Request_complete(req);
+        }
+
+      /*
+       * Finally, this request has been faux-Sync-ACKed and
+       * faux-RZV-ACKed.  We just do a normal completion.  The user
+       * can call MPI_Wait()/MPI_Test() to finish it off (unless the
+       * message hasn't finished sending, in which case the done
+       * callback will finish it off).
+       */
     }
 
-  /*
-   * Finally, this request has been faux-Sync-ACKed and
-   * faux-RZV-ACKed.  We just set the state and do a normal
-   * completion.  This will set the completion to 0, so that the user
-   * can call MPI_Wait()/MPI_Test() to finish it off (unless the
-   * message is still in the MPIDI_INITIALIZED state, in which
-   * case the done callback will finish it off).
-   */
-  req->mpid.state=MPIDI_REQUEST_DONE_CANCELLED;
   TRACE_ERR("Completing request\n");
   MPIDI_Request_complete(req);
-}
-
-
-/**
- * \brief Process an incoming rendezvous acknowledgment from the
- * target (remote) node and complete the MPI_Send() on the origin
- * (local) node.
- *
- * \param[in] info The contents of the control message as a MPIDI_MsgInfo struct
- * \param[in] peer The rank of the node sending the data
- */
-static inline void
-MPIDI_RzvAck_proc(pami_context_t        context,
-                  const MPIDI_MsgInfo * info,
-                  pami_task_t           peer)
-{
-  MPID_assert(info != NULL);
-  MPID_Request *req = MPIDI_Msginfo_getPeerRequest(info);
-  MPID_assert(req != NULL);
-
-#ifdef USE_PAMI_RDMA
-  pami_result_t rc;
-  rc = PAMI_Memregion_destroy(context, &req->mpid.envelope.memregion);
-  MPID_assert(rc == PAMI_SUCCESS);
-#endif
-
-  MPIDI_SendDoneCB(context, req, PAMI_SUCCESS);
 }
 
 

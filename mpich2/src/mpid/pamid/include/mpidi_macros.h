@@ -36,9 +36,8 @@
  * \addtogroup MPID_REQUEST
  * \{
  */
+void    MPIDI_Request_uncomplete(MPID_Request *req);
 void    MPIDI_Request_complete(MPID_Request *req);
-#define MPIDI_Request_decrement_cc(req_, cc) MPID_cc_decr((req_)->cc_ptr, cc)
-#define MPIDI_Request_increment_cc(req_, cc) MPID_cc_incr((req_)->cc_ptr, cc)
 #if MPIU_HANDLE_ALLOCATION_METHOD == MPIU_HANDLE_ALLOCATION_THREAD_LOCAL
 void    MPIDI_Request_allocate_pool();
 #endif

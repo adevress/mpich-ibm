@@ -61,7 +61,7 @@ MPIDI_Send(const void    * buf,
   /* create a send request */
   /* --------------------- */
 
-  sreq = MPID_Request_create();
+  sreq = MPID_Request_create2();
   *request = sreq;
   if (unlikely(sreq == NULL))
     {
@@ -92,6 +92,8 @@ MPIDI_Send(const void    * buf,
   /* message type info */
   sreq->kind = MPID_REQUEST_SEND;
   MPIDI_Request_setSync(sreq, is_sync);
+  if (is_sync)
+    MPIDI_Request_uncomplete(sreq);
 
   /* ----------------------------------------- */
   /*      start the message                    */

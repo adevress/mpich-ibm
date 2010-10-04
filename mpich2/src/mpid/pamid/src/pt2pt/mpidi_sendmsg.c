@@ -182,8 +182,7 @@ MPIDI_SendMsg_handoff(pami_context_t   context,
   /* ------------------------------ */
   if (unlikely(MPIDI_Request_getPeerRank(sreq) == MPI_PROC_NULL))
     {
-      MPID_cc_set(&sreq->cc, 0);
-      MPIDI_Progress_signal();
+      MPIDI_Request_complete(sreq);
       return MPI_SUCCESS;
     }
 

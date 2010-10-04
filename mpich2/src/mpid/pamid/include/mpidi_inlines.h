@@ -16,16 +16,16 @@ extern MPIU_Object_alloc_t MPID_Request_mem;
 
 
 /**
- * \brief Create new request without initalizing
+ * \brief Create a very generic request
+ * \note  This should only ever be called by more specific allocators
  */
 static inline MPID_Request *
-MPID_Request_create_fast_inline()
+MPIDI_Request_create_basic()
 {
   MPID_Request * req;
 
   MPIDI_Request_tls_alloc(req);
   MPID_assert(HANDLE_GET_MPI_KIND(req->handle) == MPID_REQUEST);
-  MPIU_Object_set_ref(req, 1);
   MPID_cc_set_1(&req->cc);
   req->cc_ptr = &req->cc;
 
@@ -34,6 +34,20 @@ MPID_Request_create_fast_inline()
      check for fields that are not being correctly initialized. */
   memset(&req->mpid, 0xFFFFFFFF, sizeof(struct MPIDI_Request));
 #endif
+
+  return req;
+}
+
+
+/**
+ * \brief Create new request without initalizing
+ */
+static inline MPID_Request *
+MPID_Request_create2_fast()
+{
+  MPID_Request * req;
+  req = MPIDI_Request_create_basic();
+  MPIU_Object_set_ref(req, 2);
 
   return req;
 }
@@ -57,7 +71,6 @@ MPID_Request_initialize(MPID_Request * req)
   mpid->datatype_ptr     = NULL;
   mpid->uebuf            = NULL;
   mpid->uebuflen         = 0;
-  mpid->state            = MPIDI_INITIALIZED;
   MPIDI_Request_setCA(req, MPIDI_CA_COMPLETE);
 
   MPIDI_Request_setRzv(req, 0);
@@ -71,10 +84,25 @@ static inline MPID_Request *
 MPID_Request_create_inline()
 {
   MPID_Request * req;
-  req = MPID_Request_create_fast_inline();
+  req = MPIDI_Request_create_basic();
+  MPIU_Object_set_ref(req, 1);
 
   MPID_Request_initialize(req);
   req->comm=NULL;
+
+  return req;
+}
+
+
+/**
+ * \brief Create and initialize a new request
+ */
+static inline MPID_Request *
+MPID_Request_create2()
+{
+  MPID_Request * req;
+  req = MPID_Request_create();
+  MPIU_Object_set_ref(req, 2);
 
   return req;
 }
@@ -145,7 +173,7 @@ MPID_Isend_inline (const void    * buf,
   /* --------------------- */
   /* create a send request */
   /* --------------------- */
-  MPID_Request * sreq = *request = MPID_Request_create_fast_inline();
+  MPID_Request * sreq = *request = MPID_Request_create2_fast();
 
   /* match info */
   MPIDI_Request_setMatch(sreq, tag, comm->rank, comm->context_id+context_offset);

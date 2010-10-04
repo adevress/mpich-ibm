@@ -101,8 +101,8 @@ int MPID_Startall(int count, MPID_Request * requests[])
              * Therefore, disconnect the cc_ptr link to the child and
              * mark the parent complete.
              */
-            MPID_cc_set(&preq->cc, 0);
             preq->cc_ptr = &preq->cc;
+            MPID_Request_set_completed(preq);
           }
         else
           preq->cc_ptr = &preq->partner_request->cc;
@@ -117,7 +117,7 @@ int MPID_Startall(int count, MPID_Request * requests[])
         preq->partner_request = NULL;
         preq->status.MPI_ERROR = rc;
         preq->cc_ptr = &preq->cc;
-        MPID_cc_set(&preq->cc, 0);
+        MPID_Request_set_completed(preq);
       }
   } /* for */
   return rc;

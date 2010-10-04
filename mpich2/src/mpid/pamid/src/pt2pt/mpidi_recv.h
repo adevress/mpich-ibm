@@ -50,7 +50,7 @@ MPIDI_Recv(void          * buf,
       else
         {
           MPID_Request * rreq;
-          rreq = MPID_Request_create();
+          rreq = MPID_Request_create2();
           if (!rreq)
             return MPIR_Err_create_code(MPI_SUCCESS,
                                         MPIR_ERR_FATAL,
@@ -59,7 +59,7 @@ MPIDI_Recv(void          * buf,
                                         MPI_ERR_OTHER,
                                         "**nomem",
                                         0);
-          MPID_cc_set(&rreq->cc, 0);
+          MPIDI_Request_complete(rreq);
           rreq->kind              = MPID_REQUEST_RECV;
           MPIR_Status_set_procnull(&rreq->status);
           rreq->comm              = comm;
@@ -82,13 +82,6 @@ MPIDI_Recv(void          * buf,
                             context_offset,
                             status,
                             request);
-
-  if (is_blocking)
-    if (MPID_cc_is_complete(&(*request)->cc))
-      {
-        MPID_Request_release(*request);
-        *request = NULL;
-      }
 
    return mpi_errno;
 }
