@@ -45,10 +45,10 @@ MPIDI_Request_try_free(MPID_Request *req)
 void
 MPID_Request_release(MPID_Request *req)
 {
-  int ref_count;
+  int count;
   MPID_assert(HANDLE_GET_MPI_KIND(req->handle) == MPID_REQUEST);
-  MPIU_Object_release_ref(req, &ref_count);
-  MPID_assert(MPIU_Object_get_ref(req) >= 0);
+  MPIU_Object_release_ref(req, &count);
+  MPID_assert(count >= 0);
   MPIDI_Request_try_free(req);
 }
 
@@ -59,10 +59,10 @@ MPID_Request_release(MPID_Request *req)
 void
 MPIDI_Request_complete(MPID_Request *req)
 {
-  int cc;
-  MPIDI_Request_decrement_cc(req, &cc);
-  MPID_assert(cc >= 0);
-  if (MPID_cc_is_complete(&req->cc)) /* decrement completion count; if 0, signal progress engine */
+  int count;
+  MPIDI_Request_decrement_cc(req, &count);
+  MPID_assert(count >= 0);
+  if (count == 0) /* decrement completion count; if 0, signal progress engine */
     {
       MPIDI_Request_try_free(req);
       MPIDI_Progress_signal();
