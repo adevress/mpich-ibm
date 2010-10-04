@@ -23,22 +23,22 @@ MPID_PSendRequest(const void    * buf,
                   int             context_offset,
                   MPID_Request ** request)
 {
-  (*request) = MPID_Request_create();
+  MPID_Request* sreq = *request = MPID_Request_create();
 
-  (*request)->kind              = MPID_PREQUEST_SEND;
-  (*request)->comm              = comm;
+  sreq->kind              = MPID_PREQUEST_SEND;
+  sreq->comm              = comm;
   MPIR_Comm_add_ref(comm);
-  MPIDI_Request_setMatch((*request), tag, rank, comm->context_id+context_offset);
-  (*request)->mpid.userbuf      = (void*)buf;
-  (*request)->mpid.userbufcount = count;
-  (*request)->mpid.datatype     = datatype;
-  (*request)->partner_request   = NULL;
-  MPID_cc_set(&(*request)->cc, 0);
+  MPIDI_Request_setMatch(sreq, tag, rank, comm->context_id+context_offset);
+  sreq->mpid.userbuf      = (void*)buf;
+  sreq->mpid.userbufcount = count;
+  sreq->mpid.datatype     = datatype;
+  sreq->partner_request   = NULL;
+  MPID_cc_set(&sreq->cc, 0);
 
   if (HANDLE_GET_KIND(datatype) != HANDLE_KIND_BUILTIN)
     {
-      MPID_Datatype_get_ptr(datatype, (*request)->mpid.datatype_ptr);
-      MPID_Datatype_add_ref((*request)->mpid.datatype_ptr);
+      MPID_Datatype_get_ptr(datatype, sreq->mpid.datatype_ptr);
+      MPID_Datatype_add_ref(sreq->mpid.datatype_ptr);
     }
 
   return MPI_SUCCESS;

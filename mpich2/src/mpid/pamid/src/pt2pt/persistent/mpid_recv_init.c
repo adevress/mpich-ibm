@@ -17,7 +17,7 @@ int MPID_Recv_init(void * buf,
                    int context_offset,
                    MPID_Request ** request)
 {
-  MPID_Request * rreq = MPID_Request_create();
+  MPID_Request * rreq = *request = MPID_Request_create();
 
   rreq->kind = MPID_PREQUEST_RECV;
   rreq->comm = comm;
@@ -36,6 +36,5 @@ int MPID_Recv_init(void * buf,
       MPID_Datatype_add_ref(rreq->mpid.datatype_ptr);
     }
 
-  *request = rreq;
   return MPI_SUCCESS;
 }
