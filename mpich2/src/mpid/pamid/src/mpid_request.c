@@ -61,6 +61,7 @@ MPIDI_Request_complete(MPID_Request *req)
 {
   int cc;
   MPIDI_Request_decrement_cc(req, &cc);
+  MPID_assert(cc >= 0);
   if (MPID_cc_is_complete(&req->cc)) /* decrement completion count; if 0, signal progress engine */
     {
       MPIDI_Request_try_free(req);
