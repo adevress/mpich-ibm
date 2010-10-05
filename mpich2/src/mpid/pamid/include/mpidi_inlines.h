@@ -128,7 +128,7 @@ MPID_Isend_inline (const void    * buf,
   /* --------------------- */
   /* create a send request */
   /* --------------------- */
-  MPID_Request * sreq = MPID_Request_create_fast_inline();
+  MPID_Request * sreq = *request = MPID_Request_create_fast_inline();
 
   /* match info */
   MPIDI_Request_setMatch(sreq, tag, comm->rank, comm->context_id+context_offset);
@@ -149,7 +149,6 @@ MPID_Isend_inline (const void    * buf,
   /* message type info */
   sreq->kind = MPID_REQUEST_SEND;
 
-  *request = sreq;
   if (likely(MPIDI_Process.avail_contexts > 1))
   {
     pami_context_t context = MPIDI_Context_local(sreq);
