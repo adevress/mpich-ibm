@@ -1,4 +1,4 @@
-/*  (C)Copyright IBM Corp.  2007, 2008  */
+/*  (C)Copyright IBM Corp.  2007, 2011  */
 /**
  * \file src/misc/mpid_abort.c
  * \brief Handle general operations assosicated with erroneous job termination

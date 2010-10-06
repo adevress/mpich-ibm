@@ -1,4 +1,4 @@
-/*  (C)Copyright IBM Corp.  2007, 2008  */
+/*  (C)Copyright IBM Corp.  2007, 2011  */
 /**
  * \file src/mpidi_env.c
  * \brief Read Env Vars
@@ -524,13 +524,14 @@ MPIDI_Env_setup()
     ENV_Unsigned(names, &MPIDI_Process.context_post);
     TRACE_ERR("MPIDI_Process.context_post=%u\n", MPIDI_Process.context_post);
   }
+
   /* "Globally" set the optimization flag for low-level collectives in geometry creation.
    * This is probably temporary. metadata should set this flag likely.
    */
   {
-   char *names[] = {"PAMI_OPTIMIZED_SUBCOMMS", NULL};
-   ENV_Unsigned(names, &MPIDI_Process.optimized_subcomms);
-   TRACE_ERR("MPIDI_Process.optimized_subcomms=%u\n", MPIDI_Process.optimized_subcomms);
+    char *names[] = {"PAMI_OPTIMIZED_SUBCOMMS", NULL};
+    ENV_Unsigned(names, &MPIDI_Process.optimized_subcomms);
+    TRACE_ERR("MPIDI_Process.optimized_subcomms=%u\n", MPIDI_Process.optimized_subcomms);
   }
 
 #ifdef USE_PAMI_COMM_THREADS

@@ -1,4 +1,4 @@
-/*  (C)Copyright IBM Corp.  2007, 2008  */
+/*  (C)Copyright IBM Corp.  2007, 2011  */
 /**
  * \file include/mpix.h
  * \brief Blue Gene extensions to the MPI Spec

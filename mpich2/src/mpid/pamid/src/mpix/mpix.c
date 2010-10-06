@@ -1,4 +1,4 @@
-/*  (C)Copyright IBM Corp.  2007, 2008  */
+/*  (C)Copyright IBM Corp.  2007, 2011  */
 /**
  * \file src/mpix/mpix.c
  * \brief This file is for MPI extensions that MPI apps are likely to use.

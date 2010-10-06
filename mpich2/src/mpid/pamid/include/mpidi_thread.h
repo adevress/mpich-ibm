@@ -1,4 +1,4 @@
-/*  (C)Copyright IBM Corp.  2007, 2008  */
+/*  (C)Copyright IBM Corp.  2007, 2011  */
 /**
  * \file include/mpidi_thread.h
  * \brief ???

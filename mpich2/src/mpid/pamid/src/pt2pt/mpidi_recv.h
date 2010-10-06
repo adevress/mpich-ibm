@@ -1,4 +1,4 @@
-/*  (C)Copyright IBM Corp.  2007, 2008  */
+/*  (C)Copyright IBM Corp.  2007, 2011  */
 /**
  * \file src/pt2pt/mpidi_recv.h
  * \brief ADI level implemenation of MPI_Irecv()
@@ -150,7 +150,7 @@ MPIDI_Recv(void          * buf,
                             status,
                             request);
 
-   return mpi_errno;
+  return mpi_errno;
 }
 
 #endif

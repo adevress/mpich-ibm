@@ -1,4 +1,4 @@
-/*  (C)Copyright IBM Corp.  2007, 2008  */
+/*  (C)Copyright IBM Corp.  2007, 2011  */
 /**
  * \file src/mpid_progress.h
  * \brief ???
@@ -36,15 +36,15 @@ int  MPID_Progress_test();
  */
 #define MPID_PROGRESS_WAIT_WHILE(COND)          \
 ({                                              \
-   if (COND)                                    \
-     {                                          \
-       MPID_Progress_state __state;             \
-       MPID_Progress_start(&__state);           \
-       while (COND)                             \
-         MPID_Progress_wait(&__state);          \
-       MPID_Progress_end(&__state);             \
-     }                                          \
-    MPI_SUCCESS;                                \
+  if (COND)                                     \
+    {                                           \
+      MPID_Progress_state __state;              \
+      MPID_Progress_start(&__state);            \
+      while (COND)                              \
+        MPID_Progress_wait(&__state);           \
+      MPID_Progress_end(&__state);              \
+    }                                           \
+  MPI_SUCCESS;                                  \
 })
 
 /**

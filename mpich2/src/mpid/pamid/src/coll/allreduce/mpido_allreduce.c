@@ -1,4 +1,4 @@
-/*  (C)Copyright IBM Corp.  2007, 2010  */
+/*  (C)Copyright IBM Corp.  2007, 2011  */
 /**
  * \file src/coll/allreduce/mpido_allreduce.c
  * \brief ???

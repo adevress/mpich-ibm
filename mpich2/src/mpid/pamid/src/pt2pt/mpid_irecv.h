@@ -1,6 +1,6 @@
-/*  (C)Copyright IBM Corp.  2007, 2008  */
+/*  (C)Copyright IBM Corp.  2007, 2011  */
 /**
- * \file src/pt2pt/mpid_irecv.c
+ * \file src/pt2pt/mpid_irecv.h
  * \brief ADI level implemenation of MPI_Irecv()
  */
 #ifndef __src_pt2pt_mpid_irecv_h__

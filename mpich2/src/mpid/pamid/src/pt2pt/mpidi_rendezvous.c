@@ -1,4 +1,4 @@
-/*  (C)Copyright IBM Corp.  2007, 2008  */
+/*  (C)Copyright IBM Corp.  2007, 2011  */
 /**
  * \file src/pt2pt/mpidi_rendezvous.c
  * \brief Provide for a flow-control rendezvous-based send

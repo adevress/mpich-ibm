@@ -1,4 +1,4 @@
-/*  (C)Copyright IBM Corp.  2007, 2008  */
+/*  (C)Copyright IBM Corp.  2007, 2011  */
 /**
  * \file include/mpidi_datatypes.h
  * \brief ???
@@ -69,8 +69,7 @@ typedef enum
     MPIDI_REQUEST_PTYPE_SEND,
     MPIDI_REQUEST_PTYPE_BSEND,
     MPIDI_REQUEST_PTYPE_SSEND,
-  }
-MPIDI_REQUEST_PTYPE;
+  } MPIDI_REQUEST_PTYPE;
 
 
 typedef enum
@@ -80,8 +79,7 @@ typedef enum
     MPIDI_CONTROL_CANCEL_ACKNOWLEDGE,
     MPIDI_CONTROL_CANCEL_NOT_ACKNOWLEDGE,
     MPIDI_CONTROL_RENDEZVOUS_ACKNOWLEDGE,
-  }
-MPIDI_CONTROL;
+  } MPIDI_CONTROL;
 
 
 /** \brief Request completion actions */
@@ -92,8 +90,7 @@ typedef enum
     MPIDI_CA_COMPLETE = 0,
     MPIDI_CA_UNPACK_UEBUF_AND_COMPLETE,         /**< Unpack uebuf, then complete. */
     MPIDI_CA_UNPACK_UEBUF_AND_COMPLETE_NOFREE,  /**< Unpack uebuf (do not free), then complete. */
-  }
-MPIDI_CA;
+  } MPIDI_CA;
 
 
 /**
@@ -105,8 +102,7 @@ typedef struct
   int tag;        /**< match tag     */
   int rank;       /**< match rank    */
   int context_id; /**< match context */
-}
-MPIDI_Message_match;
+} MPIDI_Message_match;
 
 
 /**

@@ -1,6 +1,6 @@
-/*  (C)Copyright IBM Corp.  2007, 2008  */
+/*  (C)Copyright IBM Corp.  2007, 2011  */
 /**
- * \file src/mpid_request.c
+ * \file src/mpid_recvq.h
  * \brief Accessors and actors for MPID Requests
  */
 #ifndef  __src_pt2pt_mpidi_recvq_h__

@@ -1,4 +1,4 @@
-/*  (C)Copyright IBM Corp.  2007, 2008  */
+/*  (C)Copyright IBM Corp.  2007, 2011  */
 /**
  * \file src/pamix/pamix.c
  * \brief This file contains routines to make the PAMI API usable for MPI internals. It is less likely that

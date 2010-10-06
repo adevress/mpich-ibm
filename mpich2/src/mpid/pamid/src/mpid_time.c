@@ -1,4 +1,4 @@
-/*  (C)Copyright IBM Corp.  2007, 2008  */
+/*  (C)Copyright IBM Corp.  2007, 2011  */
 /**
  * \file src/mpid_time.c
  * \brief Devince interface between MPI_Wtime() and PAMI_Wtime()

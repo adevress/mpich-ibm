@@ -1,4 +1,4 @@
-/*  (C)Copyright IBM Corp.  2007, 2008  */
+/*  (C)Copyright IBM Corp.  2007, 2011  */
 /**
  * \file src/misc/mpid_getpname.c
  * \brief Device interface to MPI_Get_processor_name()
