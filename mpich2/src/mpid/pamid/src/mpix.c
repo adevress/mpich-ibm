@@ -38,7 +38,7 @@ MPIX_Hardware_t mpid_hw;
 
 int MPIX_Get_torus_dims(int *numdimensions)
 {
-   typedef struct pami_extension_torus_information
+  typedef struct
    { 
       size_t dims;
       size_t *coord;

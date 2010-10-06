@@ -11,7 +11,7 @@
 
 void MPIDI_HW_Init(MPIX_Hardware_t *hw)
 {
-   typedef struct pami_extension_torus_information
+  typedef struct
    {
       size_t dims;
       size_t *coord;

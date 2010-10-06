@@ -112,7 +112,7 @@ typedef struct MPIDI_RMA_ops {
 
 
 /* to send derived datatype across in RMA ops */
-typedef struct MPIDI_RMA_dtype_info
+typedef struct
 {
   int      is_contig;
   int      n_contig_blocks;

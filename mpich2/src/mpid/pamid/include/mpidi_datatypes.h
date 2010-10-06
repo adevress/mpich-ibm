@@ -104,7 +104,7 @@ MPIDI_CA;
  * \brief MPIDI_Message_match contains enough information to match an
  * MPI message.
  */
-typedef struct MPIDI_Message_match
+typedef struct
 {
   int   tag;        /**< match tag     */
   int   rank;       /**< match rank    */
