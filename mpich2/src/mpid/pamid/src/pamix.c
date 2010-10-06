@@ -5,13 +5,11 @@
  *        MPI apps will use these routines.
  */
 
-#include <pami.h>
-
-#include <mpid_config.h>
 #include <assert.h>
 #include <limits.h>
+#include <pamix.h>
 
-#include <stdio.h>
+#include <mpid_config.h>
 #if ASSERT_LEVEL==0
 #define PAMIX_assert(x)
 #elif ASSERT_LEVEL>=1
@@ -19,7 +17,51 @@
 #endif
 
 #define MIN(a,b) ((a<b)?a:b)
-extern pami_client_t MPIDI_Client;
+
+typedef const pamix_torus_info_t* (*pamix_torus_info_fn) ();
+typedef pami_result_t             (*pamix_task2torus_fn) (pami_task_t, size_t[]);
+typedef pami_result_t             (*pamix_torus2task_fn) (size_t[], pami_task_t *);
+
+struct
+{
+#if defined(__BGQ__) || defined(__BGP__)
+  pamix_torus_info_fn torus_info;
+  pamix_task2torus_fn task2torus;
+  pamix_torus2task_fn torus2task;
+#endif
+} PAMIX_Functions = {0};
+
+
+#define PAMI_EXTENSION_OPEN(client, name, ext)  \
+({                                              \
+  pami_result_t rc;                             \
+  rc = PAMI_Extension_open(client, name, ext);  \
+  PAMIX_assert(rc == PAMI_SUCCESS);             \
+})
+#define PAMI_EXTENSION_FUNCTION(type, name, ext)        \
+({                                                      \
+  void* fn;                                             \
+  fn = PAMI_Extension_function(ext, name);              \
+  PAMIX_assert(fn != NULL);                             \
+  (type)fn;                                             \
+})
+
+void
+PAMIX_Init(pami_client_t client)
+{
+  pami_result_t rc;
+  pami_extension_t extension;
+
+#if defined(__BGQ__) || defined(__BGP__)
+  PAMI_EXTENSION_OPEN(client, "EXT_torus_network", &extension);
+  PAMIX_Functions.torus_info = PAMI_EXTENSION_FUNCTION(pamix_torus_info_fn, "information", extension);
+  PAMIX_Functions.task2torus = PAMI_EXTENSION_FUNCTION(pamix_task2torus_fn, "task2torus",  extension);
+  PAMIX_Functions.torus2task = PAMI_EXTENSION_FUNCTION(pamix_torus2task_fn, "torus2task",  extension);
+  rc = PAMI_Extension_close(extension);
+  PAMIX_assert(rc == PAMI_SUCCESS);
+#endif
+}
+
 
 pami_configuration_t
 PAMIX_Client_query(pami_client_t         client,
@@ -79,4 +121,35 @@ PAMIX_Dispatch_set(pami_context_t              context[],
 }
 
 
+#if defined(__BGQ__) || defined(__BGP__)
 
+const pamix_torus_info_t *
+PAMIX_Torus_info()
+{
+  PAMIX_assert(PAMIX_Functions.torus_info != NULL);
+  return PAMIX_Functions.torus_info();
+}
+
+
+void
+PAMIX_Task2torus(pami_task_t task_id,
+                 size_t      coords[])
+{
+  PAMIX_assert(PAMIX_Functions.task2torus != NULL);
+  pami_result_t rc;
+  rc = PAMIX_Functions.task2torus(task_id, coords);
+  PAMIX_assert(rc == PAMI_SUCCESS);
+}
+
+
+void
+PAMIX_Torus2task(size_t        coords[],
+                 pami_task_t * task_id)
+{
+  PAMIX_assert(PAMIX_Functions.torus2task != NULL);
+  pami_result_t rc;
+  rc = PAMIX_Functions.torus2task(coords, task_id);
+  PAMIX_assert(rc == PAMI_SUCCESS);
+}
+
+#endif

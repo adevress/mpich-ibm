@@ -13,9 +13,6 @@
 #define __include_mpidi_prototypes_h__
 
 
-/* For the MPIX_Hardware_t type which is not part of mpidi_datatypes.h */
-#include <mpix.h> 
-
 /**
  * \addtogroup MPID_RECVQ
  * \{
@@ -189,5 +186,4 @@ int MPIDO_Allgather(void *sendbuf, int sendcount, MPI_Datatype sendtype,
 int MPItoPAMI(MPI_Datatype dt, pami_dt *pdt, MPI_Op op, pami_op *pop, int *musupport);
 void MPIopString(MPI_Op op, char *string);
 
-void MPIDI_HW_Init(MPIX_Hardware_t *hw);
 #endif

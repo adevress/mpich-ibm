@@ -14,5 +14,6 @@
 
 #include <pamix.h>
 #include <mpiimpl.h>
+#include <mpix.h>
 
 #endif
