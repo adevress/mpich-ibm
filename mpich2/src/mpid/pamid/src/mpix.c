@@ -13,18 +13,12 @@ MPIX_Hardware_t MPIDI_HW;
  * destructive so the user needs to verify numdimensions != -1
  */
 
-/**
- * \brief Determine the number of physical hardware dimensions
- * \param[out] numdimensions The number of torus dimensions
- * Note: This does NOT include the core+thread ID, so if you plan
- * on allocating an array based on this information, you'll need to
- * add 1 to the value returned here
- */
-
 
 static void
 MPIX_Init_hw(MPIX_Hardware_t *hw)
 {
+  memset(hw, 0, sizeof(MPIX_Hardware_t));
+
   hw->clockMHz = PAMIX_Client_query(MPIDI_Client, PAMI_CLIENT_CLOCK_MHZ).value.intval;
   hw->memSize  = PAMIX_Client_query(MPIDI_Client, PAMI_CLIENT_MEM_SIZE).value.intval;
 
@@ -54,6 +48,32 @@ MPIX_Init()
 }
 
 
+/**
+ * \brief Fill in an MPIX_Hardware_t structure
+ * \param[in] hw A pointer to an MPIX_Hardware_t structure to be filled in
+ */
+int
+MPIX_Hardware(MPIX_Hardware_t *hw)
+{
+  MPID_assert(hw != NULL);
+  /*
+   * We've already initialized the hw structure in MPID_Init,
+   * so just copy it to the users buffer
+   */
+  memcpy(hw, &MPIDI_HW, sizeof(MPIX_Hardware_t));
+  return MPI_SUCCESS;
+}
+
+
+#if defined(__BGQ__) || defined(__BGP__)
+
+/**
+ * \brief Determine the number of physical hardware dimensions
+ * \param[out] numdimensions The number of torus dimensions
+ * \note This does NOT include the core+thread ID, so if you plan on
+ *       allocating an array based on this information, you'll need to
+ *       add 1 to the value returned here
+ */
 int
 MPIX_Torus_ndims(int *numdimensions)
 {
@@ -106,19 +126,4 @@ MPIX_Torus2rank(int *coords, int *rank)
   return MPI_SUCCESS;
 }
 
-
-/**
- * \brief Fill in an MPIX_Hardware_t structure
- * \param[in] hw A pointer to an MPIX_Hardware_t structure to be filled in
- */
-int
-MPIX_Hardware(MPIX_Hardware_t *hw)
-{
-  MPID_assert(hw != NULL);
-  /*
-   * We've already initialized the hw structure in MPID_Init,
-   * so just copy it to the users buffer
-   */
-  memcpy(hw, &MPIDI_HW, sizeof(MPIX_Hardware_t));
-  return MPI_SUCCESS;
-}
+#endif

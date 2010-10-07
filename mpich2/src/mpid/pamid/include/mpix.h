@@ -17,36 +17,36 @@ extern "C" {
 #endif
 
 
-typedef struct
-{
-#if defined(__BGQ__) || defined(__BGP__)
-#define MPID_TORUS_MAX_DIMS 5 /* This is the maximum physical size of the torus */
-   unsigned Size[MPID_TORUS_MAX_DIMS];    /**< Max coordinates on the torus */
-   unsigned Coords[MPID_TORUS_MAX_DIMS];  /**< This node's coordinates */
-   unsigned isTorus[MPID_TORUS_MAX_DIMS]; /**< Do we have wraparound links? */
-   unsigned torus_dimension;              /**< Actual dimension for the torus */
+#define MPIX_TORUS_MAX_DIMS 5 /* This is the maximum physical size of the torus */
+  typedef struct
+  {
+/* These fields will be used on all platforms. */
+    unsigned prank;    /**< Physical rank of the node (irrespective of mapping) */
+    unsigned psize;    /**< Size of the partition (irrespective of mapping) */
+    unsigned ppn;      /**< Processes per node ("T+P" size) */
+    unsigned coreID;   /**< Core+Thread info. Value ranges from 0..63 */
 
-   unsigned rankInPset;
-   unsigned sizeOfPset;
-   unsigned idOfPset;
-#endif
-   unsigned coreID;   /**< Core+Thread info. Value ranges from 0..63 */
-   unsigned prank;    /**< Physical rank of the node (irrespective of mapping) */
-   unsigned psize;    /**< Size of the partition (irrespective of mapping) */
-   unsigned ppn;      /**< Processes per node ("T+P" size) */
+    unsigned clockMHz; /**< Frequency in MegaHertz */
+    unsigned memSize;  /**< Size of the core memory in MB */
 
-   unsigned clockMHz; /**< Frequency in MegaHertz */
-   unsigned memSize;  /**< Size of the core memory in MB */
+/* These fields are only set on torus platforms (i.e. Blue Gene) */
+    unsigned torus_dimension;              /**< Actual dimension for the torus */
+    unsigned Size[MPIX_TORUS_MAX_DIMS];    /**< Max coordinates on the torus */
+    unsigned Coords[MPIX_TORUS_MAX_DIMS];  /**< This node's coordinates */
+    unsigned isTorus[MPIX_TORUS_MAX_DIMS]; /**< Do we have wraparound links? */
 
-} MPIX_Hardware_t;
+/* These fields are only set on systems using Blue Gene IO psets. */
+    unsigned rankInPset;
+    unsigned sizeOfPset;
+    unsigned idOfPset;
+  } MPIX_Hardware_t;
 
-int MPIX_Hardware(MPIX_Hardware_t *hw);
+  int MPIX_Hardware(MPIX_Hardware_t *hw);
 
-#if defined(__BGQ__) || defined(__BGP__)
-int MPIX_Torus_ndims(int *numdim);
-int MPIX_Rank2torus(int rank, int *coords);
-int MPIX_Torus2rank(int *coords, int *rank);
-#endif
+/* These functions only exist on torus platforms (i.e. Blue Gene) */
+  int MPIX_Torus_ndims(int *numdim);
+  int MPIX_Rank2torus(int rank, int *coords);
+  int MPIX_Torus2rank(int *coords, int *rank);
 
 
 #if defined(__cplusplus)
