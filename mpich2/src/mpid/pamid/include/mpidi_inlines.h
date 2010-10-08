@@ -29,6 +29,11 @@ MPID_Request_create_fast_inline()
   MPID_cc_set_1(&req->cc);
   req->cc_ptr = &req->cc;
 
+#if 0
+  /* This will destroy the MPID part of the request.  Use this to
+     check for fields that are not being correctly initialized. */
+  memset(&req->mpid, 0xFFFFFFFF, sizeof(struct MPIDI_Request));
+#endif
   req->mpid.cancel_pending   = FALSE;
   MPIDI_Request_setSelf(req, 0);
 
