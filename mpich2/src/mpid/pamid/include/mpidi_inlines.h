@@ -38,13 +38,9 @@ MPID_Request_create_fast_inline()
 /**
  * \brief Create and initialize a new request
  */
-static inline MPID_Request *
-MPID_Request_create_inline()
+static inline void
+MPID_Request_initialize(MPID_Request * req)
 {
-  MPID_Request * req;
-  req = MPID_Request_create_fast_inline();
-
-  req->comm              = NULL;
   req->status.count      = 0;
   req->status.cancelled  = FALSE;
   req->status.MPI_SOURCE = MPI_UNDEFINED;
@@ -54,11 +50,23 @@ MPID_Request_create_inline()
   struct MPIDI_Request* mpid = &req->mpid;
   mpid->next             = NULL;
   mpid->datatype_ptr     = NULL;
+  MPIDI_Request_setSelf(req, 0);
   mpid->uebuf            = NULL;
   mpid->uebuflen         = 0;
   mpid->state            = MPIDI_INITIALIZED;
   MPIDI_Request_setCA(req, MPIDI_CA_COMPLETE);
+}
 
+
+/**
+ * \brief Create and initialize a new request
+ */
+static inline MPID_Request *
+MPID_Request_create_inline()
+{
+  MPID_Request * req;
+  req = MPID_Request_create_fast_inline();
+  MPID_Request_initialize(req);
   return req;
 }
 

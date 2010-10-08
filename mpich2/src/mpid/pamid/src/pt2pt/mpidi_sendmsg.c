@@ -176,6 +176,8 @@ MPIDI_SendMsg_handoff(pami_context_t   context,
   MPID_Datatype * dt_ptr;
   void          * sndbuf;
 
+  MPIDI_Request_setPeerRequest(sreq, sreq);
+
   /* ------------------------------ */
   /* special case: NULL destination */
   /* ------------------------------ */
@@ -202,7 +204,6 @@ MPIDI_SendMsg_handoff(pami_context_t   context,
                           dt_ptr,
                           dt_true_lb);
 
-  /** /todo Remove this assert.  It shouldn't be required */
   MPID_assert(sreq->mpid.uebuf == NULL);
 
   /*
@@ -305,19 +306,8 @@ MPIDI_Isend_handoff(pami_context_t   context,
   MPID_Request * sreq = (MPID_Request*)_sreq;
   MPID_assert(sreq != NULL);
 
-  sreq->status.count      = 0;
-  sreq->status.cancelled  = FALSE;
-  sreq->status.MPI_SOURCE = MPI_UNDEFINED;
-  sreq->status.MPI_TAG    = MPI_UNDEFINED;
-  sreq->status.MPI_ERROR  = MPI_SUCCESS;
-
-  struct MPIDI_Request* mpid = &sreq->mpid;
-  mpid->next              = NULL;
-  mpid->datatype_ptr      = NULL;
-  mpid->state             = MPIDI_INITIALIZED;
-  MPIDI_Request_setCA(sreq, MPIDI_CA_COMPLETE);
-
-  MPIDI_Request_setPeerRequest(sreq, sreq);
+  MPID_Request_initialize(sreq);
+  MPIDI_Request_setSync(sreq, 0);
 
   int rank = MPIDI_Request_getPeerRank(sreq);
   if (likely(rank != MPI_PROC_NULL))

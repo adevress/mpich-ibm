@@ -120,12 +120,10 @@ MPIDI_Send(const void    * buf,
     MPIDI_Request_setPeerRank(sreq, MPID_VCR_GET_LPID(comm->vcr, rank));
   else
     MPIDI_Request_setPeerRank(sreq, MPI_PROC_NULL);
-  MPIDI_Request_setPeerRequest(sreq, sreq);
 
   /* message type info */
   sreq->kind = MPID_REQUEST_SEND;
-  if (is_sync)
-    MPIDI_Request_setSync(sreq, 1);
+  MPIDI_Request_setSync(sreq, is_sync);
 
   /* ----------------------------------------- */
   /*      start the message                    */
