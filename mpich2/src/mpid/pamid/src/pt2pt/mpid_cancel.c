@@ -54,6 +54,7 @@ MPIDI_CancelReq_post(pami_context_t context, void * _req)
     },
   };
 
+  TRACE_ERR("Running posted cancel for request=%p\n", req);
   pami_result_t rc;
   rc = PAMI_Send_immediate(context, &params);
   MPID_assert(rc == PAMI_SUCCESS);
@@ -91,6 +92,7 @@ MPID_Cancel_send(MPID_Request * sreq)
           sreq->status.cancelled = TRUE;
           MPID_cc_set(&sreq->cc, 0);
         }
+      TRACE_ERR("Canceling send-to-self for request=%p\n", sreq);
       return MPI_SUCCESS;
     }
   else
@@ -100,6 +102,7 @@ MPID_Cancel_send(MPID_Request * sreq)
 
       int val;
       MPIDI_Request_increment_cc(sreq, &val);
+      TRACE_ERR("Posting cancel for request=%p   cc(curr)=%d\n", sreq, val+1);
 
       {
         /* This leaks intentionally.  At this time, the amount of work

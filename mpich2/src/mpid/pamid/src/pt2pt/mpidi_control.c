@@ -161,6 +161,14 @@ MPIDI_CancelReq_proc(pami_context_t        context,
       type = MPIDI_CONTROL_CANCEL_NOT_ACKNOWLEDGE;
     }
 
+  TRACE_ERR("Cancel search: {rank=%d:tag=%d:ctxt=%d:req=%p}  my_request=%p  result=%s\n",
+            info->MPIrank,
+            info->MPItag,
+            info->MPIctxt,
+            MPIDI_Msginfo_getPeerRequest(info),
+            sreq,
+            (type==MPIDI_CONTROL_CANCEL_ACKNOWLEDGE) ? "ACK" : "NAK");
+
   ackinfo.control = type;
   MPIDI_Msginfo_cpyPeerRequest(&ackinfo, info);
   MPIDI_CtrlSend(context, &ackinfo, peer);
@@ -182,6 +190,10 @@ MPIDI_CancelAck_proc(pami_context_t        context,
   MPID_Request *req = MPIDI_Msginfo_getPeerRequest(info);
   MPID_assert(req != NULL);
 
+  TRACE_ERR("Cancel result: my_request=%p  result=%s\n",
+            req,
+            (info->control==MPIDI_CONTROL_CANCEL_ACKNOWLEDGE) ? "ACK" : "NAK");
+
   if(info->control == MPIDI_CONTROL_CANCEL_NOT_ACKNOWLEDGE)
     {
       req->mpid.cancel_pending = FALSE;
@@ -201,7 +213,10 @@ MPIDI_CancelAck_proc(pami_context_t        context,
    * explicitly called here.
    */
   if (MPIDI_Request_isRzv(req))
-    MPIDI_SendDoneCB(context, req, PAMI_SUCCESS);
+    {
+      TRACE_ERR("RZV\n");
+      MPIDI_SendDoneCB(context, req, PAMI_SUCCESS);
+    }
   /*
    * This checks for a Sync-Send that hasn't been ACKed (and now will
    * never be acked), but has transfered the data.  When
@@ -209,9 +224,11 @@ MPIDI_CancelAck_proc(pami_context_t        context,
    * called MPIDI_Request_complete() to decrement the CC.  Therefore,
    * we call it now to simulate an ACKed message.
    */
-  if (MPIDI_Request_isSync(req) &&
-      (req->mpid.state == MPIDI_SEND_COMPLETE) )
-    MPIDI_Request_complete(req);
+  if (MPIDI_Request_isSync(req) && (req->mpid.state == MPIDI_SEND_COMPLETE) )
+    {
+      TRACE_ERR("Sync\n");
+      MPIDI_Request_complete(req);
+    }
 
   /*
    * Finally, this request has been faux-Sync-ACKed and
@@ -222,6 +239,7 @@ MPIDI_CancelAck_proc(pami_context_t        context,
    * case the done callback will finish it off).
    */
   req->mpid.state=MPIDI_REQUEST_DONE_CANCELLED;
+  TRACE_ERR("Completing request\n");
   MPIDI_Request_complete(req);
 }
 
