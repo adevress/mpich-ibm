@@ -20,6 +20,8 @@ int MPID_Finalize()
   /* ------------------------- */
   MPIDI_Recvq_finalize();
 
+  PAMIX_Finalize(MPIDI_Client);
+
   PAMI_Context_destroyv(MPIDI_Context, MPIDI_Process.avail_contexts);
 
   pami_result_t rc;

@@ -143,7 +143,7 @@ MPIDI_Init(int* rank, int* size, int* threading)
   /* ------------------------------------ */
   rc = PAMI_Client_create("MPICH2", &MPIDI_Client, NULL, 0);
   MPID_assert(rc == PAMI_SUCCESS);
-  PAMIX_Init(MPIDI_Client);
+  PAMIX_Initialize(MPIDI_Client);
 
   /* ---------------------------------- */
   /*  Get my rank and the process size  */

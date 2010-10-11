@@ -31,6 +31,13 @@ struct
 #endif
 } PAMIX_Functions = {0};
 
+struct
+{
+#if defined(__BGQ__) || defined(__BGP__)
+  pami_extension_t torus;
+#endif
+} PAMIX_Extensions;
+
 
 #define PAMI_EXTENSION_OPEN(client, name, ext)  \
 ({                                              \
@@ -47,17 +54,24 @@ struct
 })
 
 void
-PAMIX_Init(pami_client_t client)
+PAMIX_Initialize(pami_client_t client)
+{
+#if defined(__BGQ__) || defined(__BGP__)
+  PAMI_EXTENSION_OPEN(client, "EXT_torus_network", &PAMIX_Extensions.torus);
+  PAMIX_Functions.torus_info = PAMI_EXTENSION_FUNCTION(pamix_torus_info_fn, "information", PAMIX_Extensions.torus);
+  PAMIX_Functions.task2torus = PAMI_EXTENSION_FUNCTION(pamix_task2torus_fn, "task2torus",  PAMIX_Extensions.torus);
+  PAMIX_Functions.torus2task = PAMI_EXTENSION_FUNCTION(pamix_torus2task_fn, "torus2task",  PAMIX_Extensions.torus);
+#endif
+}
+
+
+void
+PAMIX_Finalize(pami_client_t client)
 {
   pami_result_t rc;
-  pami_extension_t extension;
-
+  rc = PAMI_SUCCESS;
 #if defined(__BGQ__) || defined(__BGP__)
-  PAMI_EXTENSION_OPEN(client, "EXT_torus_network", &extension);
-  PAMIX_Functions.torus_info = PAMI_EXTENSION_FUNCTION(pamix_torus_info_fn, "information", extension);
-  PAMIX_Functions.task2torus = PAMI_EXTENSION_FUNCTION(pamix_task2torus_fn, "task2torus",  extension);
-  PAMIX_Functions.torus2task = PAMI_EXTENSION_FUNCTION(pamix_torus2task_fn, "torus2task",  extension);
-  rc = PAMI_Extension_close(extension);
+  rc = PAMI_Extension_close(PAMIX_Extensions.torus);
   PAMIX_assert(rc == PAMI_SUCCESS);
 #endif
 }

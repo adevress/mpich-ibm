@@ -16,7 +16,10 @@ extern "C" {
 
 
 void
-PAMIX_Init(pami_client_t client);
+PAMIX_Initialize(pami_client_t client);
+
+void
+PAMIX_Finalize(pami_client_t client);
 
 pami_configuration_t
 PAMIX_Client_query(pami_client_t         client,
