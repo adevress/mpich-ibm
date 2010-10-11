@@ -30,6 +30,7 @@ MPID_Request_create_fast_inline()
   req->cc_ptr = &req->cc;
 
   req->mpid.cancel_pending   = FALSE;
+  MPIDI_Request_setSelf(req, 0);
 
   return req;
 }
@@ -50,11 +51,12 @@ MPID_Request_initialize(MPID_Request * req)
   struct MPIDI_Request* mpid = &req->mpid;
   mpid->next             = NULL;
   mpid->datatype_ptr     = NULL;
-  MPIDI_Request_setSelf(req, 0);
   mpid->uebuf            = NULL;
   mpid->uebuflen         = 0;
   mpid->state            = MPIDI_INITIALIZED;
   MPIDI_Request_setCA(req, MPIDI_CA_COMPLETE);
+
+  MPIDI_Request_setRzv(req, 0);
 }
 
 
@@ -66,7 +68,10 @@ MPID_Request_create_inline()
 {
   MPID_Request * req;
   req = MPID_Request_create_fast_inline();
+
   MPID_Request_initialize(req);
+  req->comm=NULL;
+
   return req;
 }
 
