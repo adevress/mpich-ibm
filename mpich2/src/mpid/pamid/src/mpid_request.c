@@ -26,6 +26,33 @@ MPIU_Object_alloc_t MPID_Request_mem =
   };
 
 
+#if MPIU_HANDLE_ALLOCATION_METHOD == MPIU_HANDLE_ALLOCATION_THREAD_LOCAL
+__thread MPID_Request * MPID_PAMID_Thread_request_handles;
+__thread int MPID_PAMID_Thread_request_handle_count;
+
+void MPIDI_Request_allocate_pool()
+{
+  int i;
+  MPID_Request *prev, *cur;
+  /* batch allocate a linked list of requests */
+  MPIU_THREAD_CS_ENTER(HANDLEALLOC,);
+  prev = MPIU_Handle_obj_alloc_unsafe(&MPID_Request_mem);
+  prev->mpid.next = NULL;
+  assert(prev);
+  for (i = 1; i < MPID_REQUEST_TLS_MAX; ++i) {
+    cur = MPIU_Handle_obj_alloc_unsafe(&MPID_Request_mem);
+    assert(cur);
+    cur->mpid.next = prev;
+    prev = cur;
+  }
+  MPIU_THREAD_CS_EXIT(HANDLEALLOC,);
+  MPID_PAMID_Thread_request_handles = cur;
+  MPID_PAMID_Thread_request_handle_count += MPID_REQUEST_TLS_MAX;
+}
+
+#endif
+
+
 static inline void
 MPIDI_Request_try_free(MPID_Request *req)
 {

@@ -39,6 +39,9 @@
 void    MPIDI_Request_complete(MPID_Request *req);
 #define MPIDI_Request_decrement_cc(req_, cc) MPID_cc_decr((req_)->cc_ptr, cc)
 #define MPIDI_Request_increment_cc(req_, cc) MPID_cc_incr((req_)->cc_ptr, cc)
+#if MPIU_HANDLE_ALLOCATION_METHOD == MPIU_HANDLE_ALLOCATION_THREAD_LOCAL
+void    MPIDI_Request_allocate_pool();
+#endif
 
 #define MPIDI_Request_getCA(_req)                ({ (_req)->mpid.ca;                                })
 #define MPIDI_Request_getPeerRank(_req)          ({ (_req)->mpid.peerrank;                          })
@@ -83,23 +86,8 @@ extern __thread int MPID_PAMID_Thread_request_handle_count;
 
 #  define MPIDI_Request_tls_alloc(req)                                  \
 ({                                                                      \
-  int i;                                                                \
   if (unlikely(!MPID_PAMID_Thread_request_handles)) {                   \
-    MPID_Request *prev, *cur;                                           \
-    /* batch allocate a linked list of requests */                      \
-    MPIU_THREAD_CS_ENTER(HANDLEALLOC,);                                 \
-    prev = MPIU_Handle_obj_alloc_unsafe(&MPID_Request_mem);             \
-    prev->mpid.next = NULL;                                             \
-    assert(prev);                                                       \
-    for (i = 1; i < MPID_REQUEST_TLS_MAX; ++i) {                        \
-      cur = MPIU_Handle_obj_alloc_unsafe(&MPID_Request_mem);            \
-      assert(cur);                                                      \
-      cur->mpid.next = prev;                                            \
-      prev = cur;                                                       \
-    }                                                                   \
-    MPIU_THREAD_CS_EXIT(HANDLEALLOC,);                                  \
-    MPID_PAMID_Thread_request_handles = cur;                            \
-    MPID_PAMID_Thread_request_handle_count += MPID_REQUEST_TLS_MAX;     \
+    MPIDI_Request_allocate_pool();                                      \
   }                                                                     \
   (req) = MPID_PAMID_Thread_request_handles;                            \
   MPID_PAMID_Thread_request_handles = req->mpid.next;                   \

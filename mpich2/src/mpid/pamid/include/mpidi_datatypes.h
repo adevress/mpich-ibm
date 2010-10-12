@@ -153,13 +153,13 @@ struct MPIDI_Request
   unsigned              userbufcount; /**< Userbuf data count         */
   MPI_Datatype          datatype;     /**< Data type of message       */
   pami_task_t           peerrank;     /**< The other guy's rank       */
+  unsigned            cancel_pending; /**< Cancel State               */
 
   void                 *uebuf;        /**< Unexpected buffer          */
   unsigned              uebuflen;     /**< Length (bytes) of uebuf    */
 
   struct MPID_Datatype *datatype_ptr; /**< Info about the datatype    */
 
-  int                 cancel_pending; /**< Cancel State               */
   MPIDI_REQUEST_PTYPE   ptype;        /**< The persistent msg type    */
   MPIDI_REQUEST_STATE   state;        /**< The tranfser state         */
   MPIDI_CA              ca;           /**< Completion action          */

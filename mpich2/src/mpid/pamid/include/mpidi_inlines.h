@@ -34,7 +34,6 @@ MPID_Request_create_fast_inline()
      check for fields that are not being correctly initialized. */
   memset(&req->mpid, 0xFFFFFFFF, sizeof(struct MPIDI_Request));
 #endif
-  req->mpid.cancel_pending   = FALSE;
 
   return req;
 }
@@ -53,6 +52,7 @@ MPID_Request_initialize(MPID_Request * req)
   req->status.MPI_ERROR  = MPI_SUCCESS;
 
   struct MPIDI_Request* mpid = &req->mpid;
+  mpid->cancel_pending   = FALSE;
   mpid->next             = NULL;
   mpid->datatype_ptr     = NULL;
   mpid->uebuf            = NULL;
