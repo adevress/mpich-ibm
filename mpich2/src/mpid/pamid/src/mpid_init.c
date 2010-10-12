@@ -10,6 +10,10 @@ pami_client_t   MPIDI_Client;
 #define MAX_CONTEXTS 16
 pami_context_t MPIDI_Context[MAX_CONTEXTS];
 
+#include "mpidi_mutex.h"
+OPA_int_t       mutex_vec[MPIDI_MAX_MUTEXES];
+__thread int    mutex_recursion_counter[MPIDI_MAX_MUTEXES];
+
 MPIDI_Process_t  MPIDI_Process = {
  verbose        : 0,
  statistics     : 0,
