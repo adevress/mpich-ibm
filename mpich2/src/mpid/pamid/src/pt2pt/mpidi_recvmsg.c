@@ -72,34 +72,10 @@ MPIDI_RecvMsg(void          * buf,
       /* -------------------------------- */
       if (unlikely(MPIDI_Request_isSync(rreq)))
         {
-          MPID_assert(!MPIDI_Request_isSelf(rreq));
           MPIDI_SyncAck_post(MPIDI_Context_local(rreq), rreq);
         }
 
-      if (MPIDI_Request_isSelf(rreq))
-        {
-          /* ---------------------- */
-          /* "SELF" request         */
-          /* ---------------------- */
-          MPID_Request * const sreq = rreq->partner_request;
-          MPID_assert(sreq != NULL);
-          MPIDI_msg_sz_t _count=0;
-          MPIDI_Buffer_copy(sreq->mpid.userbuf,
-                            sreq->mpid.userbufcount,
-                            sreq->mpid.datatype,
-                            &sreq->status.MPI_ERROR,
-                            buf,
-                            count,
-                            datatype,
-                            &_count,
-                            &rreq->status.MPI_ERROR);
-          rreq->status.count = _count;
-          MPIDI_Request_complete(sreq);
-          /* no other thread can possibly be waiting on rreq,
-             so it is safe to reset ref_count and cc */
-          MPID_cc_set(&rreq->cc, 0);
-        }
-      else if (MPIDI_Request_isRzv(rreq))
+      if (MPIDI_Request_isRzv(rreq))
         {
           /* -------------------------------------------------------- */
           /* Received an expected flow-control rendezvous RTS.        */

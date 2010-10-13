@@ -76,44 +76,22 @@ MPID_Cancel_send(MPID_Request * sreq)
   if (flag)
     return MPI_SUCCESS;
 
-  /* ------------------------------------ */
-  /* Try to cancel a send request to self */
-  /* ------------------------------------ */
-  if (MPIDI_Request_isSelf(sreq))
-    {
-      int source     = MPIDI_Request_getMatchRank(sreq);
-      int tag        = MPIDI_Request_getMatchTag (sreq);
-      int context_id = MPIDI_Request_getMatchCtxt(sreq);
-      MPID_Request * rreq = MPIDI_Recvq_FDUR(sreq, source, tag, context_id);
-      if (rreq)
-        {
-          MPID_assert(rreq->partner_request == sreq);
-          MPID_Request_release(rreq);
-          sreq->status.cancelled = TRUE;
-          MPID_cc_set(&sreq->cc, 0);
-        }
-      TRACE_ERR("Canceling send-to-self for request=%p\n", sreq);
-      return MPI_SUCCESS;
-    }
-  else
-    {
-      if(!sreq->comm)
-        return MPI_SUCCESS;
+  if(!sreq->comm)
+    return MPI_SUCCESS;
 
-      int val;
-      MPIDI_Request_increment_cc(sreq, &val);
-      TRACE_ERR("Posting cancel for request=%p   cc(curr)=%d\n", sreq, val+1);
+  int val;
+  MPIDI_Request_increment_cc(sreq, &val);
+  TRACE_ERR("Posting cancel for request=%p   cc(curr)=%d\n", sreq, val+1);
 
-      {
-        /* This leaks intentionally.  At this time, the amount of work
-         * required to avoid a leak here just isn't worth it.
-         * Hopefully people aren't cancelling sends too much.
-         */
-        pami_work_t  * work    = malloc(sizeof(pami_work_t));
-        pami_context_t context = MPIDI_Context_local(sreq);
-        PAMI_Context_post(context, work, MPIDI_CancelReq_post, sreq);
-      }
+  {
+    /* This leaks intentionally.  At this time, the amount of work
+     * required to avoid a leak here just isn't worth it.
+     * Hopefully people aren't cancelling sends too much.
+     */
+    pami_work_t  * work    = malloc(sizeof(pami_work_t));
+    pami_context_t context = MPIDI_Context_local(sreq);
+    PAMI_Context_post(context, work, MPIDI_CancelReq_post, sreq);
+  }
 
-      return MPI_SUCCESS;
-    }
+  return MPI_SUCCESS;
 }

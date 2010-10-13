@@ -57,38 +57,6 @@ MPIDI_Send(const void    * buf,
 {
   MPID_Request * sreq = NULL;
 
-  /* --------------------------- */
-  /* special case: send-to-self  */
-  /* --------------------------- */
-
-  if (unlikely( (rank == comm->rank) &&
-                (comm->comm_kind != MPID_INTERCOMM) ) )
-    {
-      /* I'm sending to myself! */
-      int mpi_errno = MPIDI_Isend_self(buf,
-                                       count,
-                                       datatype,
-                                       rank,
-                                       tag,
-                                       comm,
-                                       context_offset,
-                                       request);
-      if (is_blocking)
-        if ( (MPIR_ThreadInfo.thread_provided <= MPI_THREAD_FUNNELED) &&
-             (sreq != NULL && !MPID_cc_is_complete(&sreq->cc)) )
-          {
-            *request = NULL;
-            mpi_errno = MPIR_Err_create_code(MPI_SUCCESS,
-                                             MPIR_ERR_FATAL,
-                                             __FUNCTION__,
-                                             __LINE__,
-                                             MPI_ERR_OTHER,
-                                             "**dev|selfsenddeadlock", 0);
-            return mpi_errno;
-          }
-      return mpi_errno;
-    }
-
   /* --------------------- */
   /* create a send request */
   /* --------------------- */

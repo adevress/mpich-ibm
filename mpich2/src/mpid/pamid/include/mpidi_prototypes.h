@@ -146,17 +146,6 @@ MPIDI_WinControlCB(pami_context_t    context,
                    pami_endpoint_t   sender,
                    pami_recv_t     * recv);
 
-
-/** \brief Helper function when sending to self  */
-int MPIDI_Isend_self(const void    * buf,
-                     int             count,
-                     MPI_Datatype    datatype,
-                     int             rank,
-                     int             tag,
-                     MPID_Comm     * comm,
-                     int             context_offset,
-                     MPID_Request ** request);
-
 /** \brief Helper function to complete a rendevous transfer */
 void MPIDI_RendezvousTransfer(pami_context_t context, MPID_Request * rreq);
 

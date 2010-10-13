@@ -158,7 +158,6 @@ MPIDI_SendMsg_rzv(pami_context_t    context,
  * Prerequisites:
  *    + Not sending to a NULL rank
  *    + Request already allocated
- *    + Not sending to self
  *
  * \param[in]     context The PAMI context on which to do the send operation
  * \param[in,out] sreq    Structure containing all relevant info about the message.
@@ -294,7 +293,6 @@ MPIDI_SendMsg_handoff(pami_context_t   context,
  * Prerequisites:
  *    + Not sending to a NULL rank
  *    + Request already allocated
- *    + Not sending to self
  *
  * \param[in]     context The PAMI context on which to do the send operation
  * \param[in,out] sreq    Structure containing all relevant info about the message.

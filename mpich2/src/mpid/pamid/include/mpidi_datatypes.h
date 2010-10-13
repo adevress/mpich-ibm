@@ -159,7 +159,6 @@ struct MPIDI_Request
 
   struct MPID_Datatype *datatype_ptr; /**< Info about the datatype    */
 
-  int                   isSelf;       /**< message sent to self       */
   int                 cancel_pending; /**< Cancel State               */
   MPIDI_REQUEST_PTYPE   ptype;        /**< The persistent msg type    */
   MPIDI_REQUEST_STATE   state;        /**< The tranfser state         */

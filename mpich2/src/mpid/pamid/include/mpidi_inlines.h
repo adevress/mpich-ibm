@@ -35,7 +35,6 @@ MPID_Request_create_fast_inline()
   memset(&req->mpid, 0xFFFFFFFF, sizeof(struct MPIDI_Request));
 #endif
   req->mpid.cancel_pending   = FALSE;
-  MPIDI_Request_setSelf(req, 0);
 
   return req;
 }
@@ -139,9 +138,9 @@ MPID_Isend_inline (const void    * buf,
                    int             context_offset,
                    MPID_Request ** request)
 {
-  /* --------------------------------------------------------------------- */
-  /* special case: send-to-self and PROC null handled by handoff function  */
-  /* --------------------------------------------------------------------- */
+  /* ---------------------------------------------------- */
+  /* special case: PROC null handled by handoff function  */
+  /* ---------------------------------------------------- */
 
   /* --------------------- */
   /* create a send request */

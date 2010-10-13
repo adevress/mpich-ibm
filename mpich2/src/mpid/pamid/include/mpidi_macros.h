@@ -41,7 +41,6 @@ void    MPIDI_Request_complete(MPID_Request *req);
 #define MPIDI_Request_increment_cc(req_, cc) MPID_cc_incr((req_)->cc_ptr, cc)
 
 #define MPIDI_Request_getCA(_req)                ({ (_req)->mpid.ca;                                })
-#define MPIDI_Request_isSelf(_req)               ({ (_req)->mpid.isSelf;                            })
 #define MPIDI_Request_getPeerRank(_req)          ({ (_req)->mpid.peerrank;                          })
 #define MPIDI_Request_getPType(_req)             ({ (_req)->mpid.ptype;                             })
 #define MPIDI_Request_getControl(_req)           ({ (_req)->mpid.envelope.msginfo.control;          })
@@ -52,7 +51,6 @@ void    MPIDI_Request_complete(MPID_Request *req);
 #define MPIDI_Request_getMatchCtxt(_req)         ({ (_req)->mpid.envelope.msginfo.MPIctxt;          })
 
 #define MPIDI_Request_setCA(_req, _ca)           ({ (_req)->mpid.ca                        = (_ca); })
-#define MPIDI_Request_setSelf(_req,_t)           ({ (_req)->mpid.isSelf                    = (_t);  })
 #define MPIDI_Request_setPeerRank(_req,_r)       ({ (_req)->mpid.peerrank                  = (_r);  })
 #define MPIDI_Request_setPType(_req,_t)          ({ (_req)->mpid.ptype                     = (_t);  })
 #define MPIDI_Request_setControl(_req,_t)        ({ (_req)->mpid.envelope.msginfo.control  = (_t);  })
