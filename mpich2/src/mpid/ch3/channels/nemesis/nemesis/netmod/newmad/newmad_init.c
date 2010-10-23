@@ -45,8 +45,6 @@ static MPIDI_Comm_ops_t comm_ops = {
 
 
 static int         mpid_nem_newmad_myrank;
-static int         num_recv_req = 0;
-static int         num_send_req = 0;
 static const char *label="mpich2";
 static const char *local_session_url = NULL;
 nm_session_t       mpid_nem_newmad_session;
@@ -58,11 +56,10 @@ int                mpid_nem_newmad_pending_send_req = 0;
 #define FCNAME MPIDI_QUOTE(FUNCNAME)
 static int init_mad( MPIDI_PG_t *pg_p )
 {
-    int   index = 0;
-    int   ret;
     int   mpi_errno = MPI_SUCCESS;
     char *dummy_argv[2] = {"mpich2",NULL};
     int   dummy_argc    = 1;
+    int   ret;
 
     MPID_nem_newmad_internal_req_queue_init();
 
@@ -86,23 +83,26 @@ static int init_mad( MPIDI_PG_t *pg_p )
     goto fn_exit;
 }
 
-/*
- int  
-   MPID_nem_newmad_init(MPID_nem_queue_ptr_t proc_recv_queue, MPID_nem_queue_ptr_t proc_free_queue, MPID_nem_cell_ptr_t proc_elements, int num_proc_elements,
-	          MPID_nem_cell_ptr_t module_elements, int num_module_elements, 
-		  MPID_nem_queue_ptr_t *module_free_queue)
-
-   IN
-       proc_recv_queue -- main recv queue for the process
-       proc_free_queue -- main free queueu for the process
-       proc_elements -- pointer to the process' queue elements
-       num_proc_elements -- number of process' queue elements
-       module_elements -- pointer to queue elements to be used by this module
-       num_module_elements -- number of queue elements for this module
-   OUT
-       free_queue -- pointer to the free queue for this module.  The process will return elements to
-                     this queue
-*/
+#undef FUNCNAME
+#define FUNCNAME MPID_nem_newmad_init_completed
+#undef FCNAME
+#define FCNAME MPIDI_QUOTE(FUNCNAME)
+int
+MPID_nem_newmad_init_completed(void)
+{
+   
+   int mpi_errno = MPI_SUCCESS ;
+   int ret;
+   
+   ret = nm_sr_monitor(mpid_nem_newmad_session, NM_SR_EVENT_RECV_UNEXPECTED,
+		       &MPID_nem_newmad_get_adi_msg);
+   MPIU_Assert( ret == NM_ESUCCESS);
+   
+fn_exit:
+       return mpi_errno;
+fn_fail:
+       goto fn_exit;
+}
 
 #undef FUNCNAME
 #define FUNCNAME MPID_nem_newmad_init
@@ -115,12 +115,17 @@ MPID_nem_newmad_init (MPIDI_PG_t *pg_p, int pg_rank,
    int mpi_errno = MPI_SUCCESS ;
    int index;
 
+   /*
    fprintf(stdout,"Size of MPID_nem_mad_module_vc_area_internal_t : %i | size of nm_sr_request_t :%i | Size of req_area : %i\n",
          sizeof(MPID_nem_newmad_vc_area_internal_t),sizeof(nm_sr_request_t), sizeof(MPID_nem_newmad_req_area));
+    */
+   
    /*
    MPIU_Assert( sizeof(MPID_nem_newmad_vc_area_internal_t) <= MPID_NEM_VC_NETMOD_AREA_LEN);
    MPIU_Assert( sizeof(MPID_nem_newmad_req_area) <= MPID_NEM_REQ_NETMOD_AREA_LEN);
    */
+   
+   /*
    if (sizeof(MPID_nem_newmad_vc_area_internal_t) > MPID_NEM_VC_NETMOD_AREA_LEN)
    {
        fprintf(stdout,"===========================================================\n");
@@ -130,6 +135,8 @@ MPID_nem_newmad_init (MPIDI_PG_t *pg_p, int pg_rank,
        fprintf(stdout,"===========================================================\n");
        MPIU_Abort();    
    }
+   */
+   
    if (sizeof(MPID_nem_newmad_req_area) > MPID_NEM_REQ_NETMOD_AREA_LEN)
    {
        fprintf(stdout,"===========================================================\n");
@@ -149,6 +156,9 @@ MPID_nem_newmad_init (MPIDI_PG_t *pg_p, int pg_rank,
    mpi_errno = MPIDI_CH3I_Register_anysource_notification(MPID_nem_newmad_anysource_posted, MPID_nem_newmad_anysource_matched);
    if (mpi_errno) MPIU_ERR_POP(mpi_errno);
 
+   mpi_errno = MPID_nem_register_initcomp_cb(MPID_nem_newmad_init_completed);
+   if (mpi_errno) MPIU_ERR_POP(mpi_errno);
+   
    fn_exit:
        return mpi_errno;
    fn_fail: 
@@ -199,13 +209,19 @@ MPID_nem_newmad_get_from_bc (const char *business_card, char *hostname, char *ur
    
    str_errno = MPIU_Str_get_binary_arg (business_card, MPIDI_CH3I_HOSTNAME_KEY, hostname,
 					MPID_NEM_NMAD_MAX_SIZE, &len);
-   /* FIXME: create a real error string for this */
-   MPIU_ERR_CHKANDJUMP(str_errno, mpi_errno, MPI_ERR_OTHER, "**argstr_hostd");
-
-   mpi_errno = MPIU_Str_get_binary_arg (business_card, MPIDI_CH3I_URL_KEY, url,
+   if (str_errno != MPIU_STR_SUCCESS)
+   {	
+      /* FIXME: create a real error string for this */
+      MPIU_ERR_CHKANDJUMP(str_errno, mpi_errno, MPI_ERR_OTHER, "**argstr_hostd");
+   }
+   
+   str_errno = MPIU_Str_get_binary_arg (business_card, MPIDI_CH3I_URL_KEY, url,
 					MPID_NEM_NMAD_MAX_SIZE, &len);
-   /* FIXME: create a real error string for this */
-   MPIU_ERR_CHKANDJUMP(str_errno, mpi_errno, MPI_ERR_OTHER, "**argstr_hostd");
+   if (str_errno != MPIU_STR_SUCCESS)
+   {      
+      /* FIXME: create a real error string for this */
+      MPIU_ERR_CHKANDJUMP(str_errno, mpi_errno, MPI_ERR_OTHER, "**argstr_hostd");
+   }
    
    fn_exit:
      return mpi_errno;
@@ -234,18 +250,28 @@ MPID_nem_newmad_connect_to_root (const char *business_card, MPIDI_VC_t *new_vc)
 int
 MPID_nem_newmad_vc_init (MPIDI_VC_t *vc)
 {
-    MPIDI_CH3I_VC           *vc_ch = (MPIDI_CH3I_VC *)vc->channel_private;
-    char                     business_card[MPID_NEM_NMAD_MAX_SIZE];
-    int                      mpi_errno = MPI_SUCCESS;   
-    int                      ret;
-    int                      index;
-
-    mpi_errno = vc->pg->getConnInfo(vc->pg_rank, business_card,MPID_NEM_NMAD_MAX_SIZE, vc->pg);
-    if (mpi_errno) MPIU_ERR_POP(mpi_errno);
-       
-    (((MPID_nem_newmad_vc_area *)((MPIDI_CH3I_VC *)(vc)->channel_private)->netmod_area.padding)->area) =
-	(MPID_nem_newmad_vc_area_internal_t *)MPIU_Malloc(sizeof(MPID_nem_newmad_vc_area_internal_t));
-    MPIU_Assert( (((MPID_nem_newmad_vc_area *)((MPIDI_CH3I_VC *)(vc)->channel_private)->netmod_area.padding)->area) != NULL);
+   MPIDI_CH3I_VC *vc_ch = (MPIDI_CH3I_VC *)vc->channel_private;
+   char          *business_card;
+   int            mpi_errno = MPI_SUCCESS;   
+   int            val_max_sz;
+   int            ret;
+   
+#ifdef USE_PMI2_API
+   val_max_sz = PMI2_MAX_VALLEN;
+#else
+   mpi_errno = PMI_KVS_Get_value_length_max(&val_max_sz);
+#endif
+   business_card = (char *)MPIU_Malloc(val_max_sz);   
+   mpi_errno = vc->pg->getConnInfo(vc->pg_rank, business_card,val_max_sz,vc->pg);
+   if (mpi_errno) MPIU_ERR_POP(mpi_errno);
+   
+   (((MPID_nem_newmad_vc_area *)((MPIDI_CH3I_VC *)(vc)->channel_private)->netmod_area.padding)->area) =
+     (MPID_nem_newmad_vc_area_internal_t *)MPIU_Malloc(sizeof(MPID_nem_newmad_vc_area_internal_t));
+   MPIU_Assert( (((MPID_nem_newmad_vc_area *)((MPIDI_CH3I_VC *)(vc)->channel_private)->netmod_area.padding)->area) != NULL);
+   
+   /* Very important */
+   memset(VC_FIELD(vc, hostname),0,MPID_NEM_NMAD_MAX_SIZE);
+   memset(VC_FIELD(vc, url),0,MPID_NEM_NMAD_MAX_SIZE);
    
    mpi_errno = MPID_nem_newmad_get_from_bc (business_card, VC_FIELD(vc, hostname), VC_FIELD(vc, url));
    if (mpi_errno) MPIU_ERR_POP (mpi_errno);

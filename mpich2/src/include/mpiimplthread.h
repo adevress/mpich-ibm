@@ -631,13 +631,32 @@ enum MPIU_Nest_mutexes {
 /* Definitions of the thread support for various levels of thread granularity */
 #if MPIU_THREAD_GRANULARITY == MPIU_THREAD_GRANULARITY_GLOBAL
 /* There is a single, global lock, held for the duration of an MPI call */
-#define MPIU_THREAD_CS_ENTER_ALLFUNC(_context) MPIU_THREAD_CS_ENTER_LOCKNAME_CHECKED(global_mutex)
-#define MPIU_THREAD_CS_EXIT_ALLFUNC(_context)  MPIU_THREAD_CS_EXIT_LOCKNAME_CHECKED(global_mutex)
-#define MPIU_THREAD_CS_YIELD_ALLFUNC(_context) MPIU_THREAD_CS_YIELD_LOCKNAME_CHECKED(global_mutex)
+/* FIXME this shouldn't need to be recursive, but using a recursive mutex here
+ * greatly simplifies thread safety in ROMIO right now.  In the long term we
+ * should make ROMIO internally thread safe and then this can go back to being a
+ * non-recursive mutex. [goodell@ 2010-10-15] */
+#define MPIU_THREAD_CS_ENTER_ALLFUNC(_context)                 \
+    do {                                                       \
+        MPIU_THREAD_CHECK_BEGIN                                \
+        MPIU_THREAD_CS_ENTER_LOCKNAME_RECURSIVE(global_mutex); \
+        MPIU_THREAD_CHECK_END                                  \
+    } while (0)
+#define MPIU_THREAD_CS_EXIT_ALLFUNC(_context)                 \
+    do {                                                      \
+        MPIU_THREAD_CHECK_BEGIN                               \
+        MPIU_THREAD_CS_EXIT_LOCKNAME_RECURSIVE(global_mutex); \
+        MPIU_THREAD_CHECK_END                                 \
+    } while (0)
+#define MPIU_THREAD_CS_YIELD_ALLFUNC(_context)                 \
+    do {                                                       \
+        MPIU_THREAD_CHECK_BEGIN                                \
+        MPIU_THREAD_CS_YIELD_LOCKNAME_RECURSIVE(global_mutex); \
+        MPIU_THREAD_CHECK_END                                  \
+    } while (0)
 
 /* not _CHECKED, invoked before MPIU_ISTHREADED will work */
-#define MPIU_THREAD_CS_ENTER_INIT(_context)    MPIU_THREAD_CS_ENTER_LOCKNAME(global_mutex)
-#define MPIU_THREAD_CS_EXIT_INIT(_context)     MPIU_THREAD_CS_EXIT_LOCKNAME(global_mutex)
+#define MPIU_THREAD_CS_ENTER_INIT(_context)    MPIU_THREAD_CS_ENTER_LOCKNAME_RECURSIVE(global_mutex)
+#define MPIU_THREAD_CS_EXIT_INIT(_context)     MPIU_THREAD_CS_EXIT_LOCKNAME_RECURSIVE(global_mutex)
 
 #define MPIU_THREAD_CS_ENTER_HANDLE(_context)
 #define MPIU_THREAD_CS_EXIT_HANDLE(_context)
@@ -663,7 +682,12 @@ enum MPIU_Nest_mutexes {
 #define MPIU_THREAD_CS_EXIT_CONTEXTID(_context)
 /* XXX DJG at the global level should CONTEXTID yield even though it
  * doesn't do anything at ENTER/EXIT? */
-#define MPIU_THREAD_CS_YIELD_CONTEXTID(_context) MPIU_THREAD_CS_YIELD_LOCKNAME_CHECKED(global_mutex)
+#define MPIU_THREAD_CS_YIELD_CONTEXTID(_context)               \
+    do {                                                       \
+        MPIU_THREAD_CHECK_BEGIN                                \
+        MPIU_THREAD_CS_YIELD_LOCKNAME_RECURSIVE(global_mutex); \
+        MPIU_THREAD_CHECK_END                                  \
+    } while (0)
 
 #define MPIU_THREAD_CS_ENTER_MPI_OBJ(context_) do {} while(0)
 #define MPIU_THREAD_CS_EXIT_MPI_OBJ(context_)  do {} while(0)
