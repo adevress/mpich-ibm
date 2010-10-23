@@ -9,7 +9,7 @@
  * Threads
  */
 
-#include "mpiu_process_wrappers.h" /* for MPIU_PW_Sched_yield */
+#include "../../util/wrappers/mpiu_process_wrappers.h" /* for MPIU_PW_Sched_yield */
 
 /* 
    One of PTHREAD_MUTEX_RECURSIVE_NP and PTHREAD_MUTEX_RECURSIVE seem to be 
