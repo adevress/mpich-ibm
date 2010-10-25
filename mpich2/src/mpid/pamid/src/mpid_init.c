@@ -32,10 +32,10 @@ MPIDI_Process_t  MPIDI_Process = {
 
 struct protocol_t
 {
-  pami_dispatch_p2p_fn func;
-  size_t               dispatch;
-  size_t               immediate_min;
-  pami_send_hint_t     options;
+  pami_dispatch_p2p_function func;
+  size_t                     dispatch;
+  size_t                     immediate_min;
+  pami_send_hint_t           options;
 };
 static struct
 {
@@ -108,7 +108,7 @@ MPIDI_Init_dispath(size_t              dispatch,
                    unsigned          * immediate_max)
 {
   size_t im_max = 0;
-  pami_dispatch_callback_fn Recv = {p2p:proto->func};
+  pami_dispatch_callback_function Recv = {p2p:proto->func};
   MPID_assert(dispatch == proto->dispatch);
   PAMIX_Dispatch_set(MPIDI_Context,
                      MPIDI_Process.avail_contexts,
