@@ -303,7 +303,7 @@ MPIDI_Isend_handoff(pami_context_t   context,
   MPID_Request * sreq = (MPID_Request*)_sreq;
   MPID_assert(sreq != NULL);
 
-  MPID_Request_initialize(sreq);
+  MPIDI_Request_initialize(sreq);
   MPIDI_Request_setSync(sreq, 0);
 
   int rank = MPIDI_Request_getPeerRank(sreq);

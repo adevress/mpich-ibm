@@ -23,7 +23,7 @@ MPID_PSendRequest(const void    * buf,
                   int             context_offset,
                   MPID_Request ** request)
 {
-  MPID_Request* sreq = *request = MPID_Request_create2();
+  MPID_Request* sreq = *request = MPIDI_Request_create2();
 
   sreq->kind              = MPID_PREQUEST_SEND;
   sreq->comm              = comm;

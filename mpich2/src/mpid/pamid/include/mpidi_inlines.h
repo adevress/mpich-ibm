@@ -43,7 +43,7 @@ MPIDI_Request_create_basic()
  * \brief Create new request without initalizing
  */
 static inline MPID_Request *
-MPID_Request_create2_fast()
+MPIDI_Request_create2_fast()
 {
   MPID_Request * req;
   req = MPIDI_Request_create_basic();
@@ -57,7 +57,7 @@ MPID_Request_create2_fast()
  * \brief Create and initialize a new request
  */
 static inline void
-MPID_Request_initialize(MPID_Request * req)
+MPIDI_Request_initialize(MPID_Request * req)
 {
   req->status.count      = 0;
   req->status.cancelled  = FALSE;
@@ -87,7 +87,7 @@ MPID_Request_create_inline()
   req = MPIDI_Request_create_basic();
   MPIU_Object_set_ref(req, 1);
 
-  MPID_Request_initialize(req);
+  MPIDI_Request_initialize(req);
   req->comm=NULL;
 
   return req;
@@ -98,7 +98,7 @@ MPID_Request_create_inline()
  * \brief Create and initialize a new request
  */
 static inline MPID_Request *
-MPID_Request_create2()
+MPIDI_Request_create2()
 {
   MPID_Request * req;
   req = MPID_Request_create();
@@ -173,7 +173,7 @@ MPID_Isend_inline (const void    * buf,
   /* --------------------- */
   /* create a send request */
   /* --------------------- */
-  MPID_Request * sreq = *request = MPID_Request_create2_fast();
+  MPID_Request * sreq = *request = MPIDI_Request_create2_fast();
 
   /* match info */
   MPIDI_Request_setMatch(sreq, tag, comm->rank, comm->context_id+context_offset);

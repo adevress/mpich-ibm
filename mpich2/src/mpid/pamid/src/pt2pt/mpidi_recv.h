@@ -50,7 +50,7 @@ MPIDI_Recv(void          * buf,
       else
         {
           MPID_Request * rreq;
-          rreq = MPID_Request_create2();
+          rreq = MPIDI_Request_create2();
           if (!rreq)
             return MPIR_Err_create_code(MPI_SUCCESS,
                                         MPIR_ERR_FATAL,

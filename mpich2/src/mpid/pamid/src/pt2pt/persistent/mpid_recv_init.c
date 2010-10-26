@@ -17,7 +17,7 @@ int MPID_Recv_init(void * buf,
                    int context_offset,
                    MPID_Request ** request)
 {
-  MPID_Request * rreq = *request = MPID_Request_create2();
+  MPID_Request * rreq = *request = MPIDI_Request_create2();
 
   rreq->kind = MPID_PREQUEST_RECV;
   rreq->comm = comm;

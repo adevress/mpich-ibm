@@ -61,7 +61,7 @@ MPIDI_Send(const void    * buf,
   /* create a send request */
   /* --------------------- */
 
-  sreq = MPID_Request_create2();
+  sreq = MPIDI_Request_create2();
   *request = sreq;
   if (unlikely(sreq == NULL))
     {
