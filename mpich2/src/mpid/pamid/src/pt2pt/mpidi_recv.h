@@ -59,15 +59,11 @@ MPIDI_Recv(void          * buf,
                                         MPI_ERR_OTHER,
                                         "**nomem",
                                         0);
-          MPIDI_Request_complete(rreq);
-          rreq->kind              = MPID_REQUEST_RECV;
           MPIR_Status_set_procnull(&rreq->status);
-          rreq->comm              = comm;
+          rreq->kind = MPID_REQUEST_RECV;
+          rreq->comm = comm;
           MPIR_Comm_add_ref(comm);
-          MPIDI_Request_setMatch(rreq, tag, rank, comm->recvcontext_id+context_offset);
-          rreq->mpid.userbuf      = buf;
-          rreq->mpid.userbufcount = count;
-          rreq->mpid.datatype     = datatype;
+          MPIDI_Request_complete(rreq);
           *request = rreq;
         }
       return MPI_SUCCESS;
