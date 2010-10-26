@@ -1,6 +1,6 @@
 /*  (C)Copyright IBM Corp.  2007, 2008  */
 /**
- * \file src/mpid_get_universe_size.c
+ * \file src/misc/mpid_get_universe_size.c
  * \brief ???
  */
 /*

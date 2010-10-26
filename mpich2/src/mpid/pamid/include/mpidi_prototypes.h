@@ -37,43 +37,25 @@ void MPIDI_Buffer_copy(const void     * const sbuf,
                        MPIDI_msg_sz_t *       rsz,
                        int            *       rmpi_errno);
 
-/**
- * \addtogroup MPID_PROGRESS
- * \{
- */
-int  MPID_Progress_wait(MPID_Progress_state * state);
-int  MPID_Progress_poke();
-int  MPID_Progress_test();
-/**
- * \brief A macro to easily implement advancing until a specific
- * condition becomes false.
- *
- * \param[in] COND This is not a true parameter.  It is *specifically*
- * designed to be evaluated several times, allowing for the result to
- * change.  The condition would generally look something like
- * "(cb.client == 0)".  This would be used as the condition on a while
- * loop.
- *
- * \returns MPI_SUCCESS
- *
- * This correctly checks the condition before attempting to loop,
- * since the call to MPID_Progress_wait() may not return if the event
- * is already complete.  Any ssytem *not* using this macro *must* use
- * a similar check before waiting.
- */
-#define MPID_PROGRESS_WAIT_WHILE(COND)          \
-({                                              \
-   if (COND)                                    \
-     {                                          \
-       MPID_Progress_state __state;             \
-       MPID_Progress_start(&__state);           \
-       while (COND)                             \
-         MPID_Progress_wait(&__state);          \
-       MPID_Progress_end(&__state);             \
-     }                                          \
-    MPI_SUCCESS;                                \
-})
-/** \} */
+int MPID_Isend_outline  (const void      * buf,
+                         int               count,
+                         MPI_Datatype      datatype,
+                         int               rank,
+                         int               tag,
+                         MPID_Comm       * comm,
+                         int               context_offset,
+                         MPID_Request   ** request);
+pami_result_t MPIDI_SendMsg_handoff(pami_context_t context, void * sreq);
+pami_result_t MPIDI_Isend_handoff(pami_context_t context, void * sreq);
+int MPIDI_RecvMsg       (void            * buf,
+                         int               count,
+                         MPI_Datatype      datatype,
+                         int               rank,
+                         int               tag,
+                         MPID_Comm       * comm,
+                         int               context_offset,
+                         MPI_Status      * status,
+                         MPID_Request   ** request);
 
 /**
  * \defgroup MPID_CALLBACKS MPID callbacks for communication
@@ -83,23 +65,9 @@ int  MPID_Progress_test();
  * \addtogroup MPID_CALLBACKS
  * \{
  */
-pami_result_t MPIDI_SendMsg_handoff(pami_context_t context, void * sreq);
-pami_result_t MPIDI_Isend_handoff(pami_context_t context, void * sreq);
-
-int MPIDI_RecvMsg(void          * buf,
-                  int             count,
-                  MPI_Datatype    datatype,
-                  int             rank,
-                  int             tag,
-                  MPID_Comm     * comm,
-                  int             context_offset,
-                  MPI_Status    * status,
-                  MPID_Request ** request);
-
 void MPIDI_SendDoneCB   (pami_context_t    context,
                          void            * clientdata,
                          pami_result_t     result);
-
 void MPIDI_RecvCB       (pami_context_t    context,
                          void            * _contextid,
                          const void      * _msginfo,

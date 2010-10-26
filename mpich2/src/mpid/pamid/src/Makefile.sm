@@ -1,22 +1,14 @@
-SUBDIRS= . coll comm onesided pt2pt
+SUBDIRS= . coll comm misc mpix onesided pamix pt2pt
 INCLUDES = -I${master_top_srcdir}/src/include -I${top_builddir}/src/include
 lib${MPILIBNAME}_a_SOURCES =			\
-        mpid_abort.c				\
         mpid_buffer.c				\
         mpid_finalize.c				\
-        mpid_get_universe_size.c		\
-        mpid_getpname.c				\
-        mpid_hooks.c				\
         mpid_init.c				\
         mpid_iprobe.c				\
-        mpid_mem.c				\
         mpid_probe.c				\
         mpid_progress.c				\
         mpid_recvq.c				\
         mpid_request.c				\
         mpid_time.c				\
-        mpid_unimpl.c				\
         mpid_vc.c				\
-        mpidi_env.c				\
-        mpix.c					\
-        pamix.c
+        mpidi_env.c

@@ -1,13 +1,9 @@
 /*  (C)Copyright IBM Corp.  2007, 2008  */
 /**
- * \file src/mpid_hooks.c
+ * \file src/comm/mpid_dims_create.c
  * \brief ???
  */
 #include "mpidimpl.h"
-
-void MPIDU_dtc_free(MPID_Datatype *dt)
-{
-}
 
 extern int MPIR_Dims_create( int nnodes, int ndims, int *dims );
 /** \brief Hook function for a torus-geometry optimized version of MPI_Dims_Create */

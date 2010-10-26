@@ -4,7 +4,7 @@
  * \brief Normal job startup code
  */
 #include "mpidimpl.h"
-#include "mpidi_onesided.h"
+#include "onesided/mpidi_onesided.h"
 
 pami_client_t   MPIDI_Client;
 #define MAX_CONTEXTS 16

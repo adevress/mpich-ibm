@@ -4,11 +4,6 @@
  * \brief API MPID additions to MPI functions and structures
  */
 
-/*
- *  (C) 2001 by Argonne National Laboratory.
- *      See COPYRIGHT in top-level directory.
- */
-
 #ifndef __include_mpidimpl_h__
 #define __include_mpidimpl_h__
 

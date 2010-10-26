@@ -12,6 +12,23 @@
 #ifndef __src_pt2pt_mpidi_send_h__
 #define __src_pt2pt_mpidi_send_h__
 
+
+static inline void
+MPIDI_SendMsg(MPID_Request * sreq)
+{
+  if (MPIDI_Process.avail_contexts > 1) {
+    pami_context_t context = MPIDI_Context_local(sreq);
+
+    pami_result_t rc;
+    rc = PAMI_Context_post(context, &sreq->mpid.post_request, MPIDI_SendMsg_handoff, sreq);
+    MPID_assert(rc == PAMI_SUCCESS);
+  }
+  else {
+    MPIDI_SendMsg_handoff( MPIDI_Context[0], sreq);
+  }
+}
+
+
 /**
  * \brief This is a generic inline verion of the various send functions.
  *
@@ -102,5 +119,6 @@ MPIDI_Send(const void    * buf,
   MPIDI_SendMsg(sreq);
   return MPI_SUCCESS;
 }
+
 
 #endif

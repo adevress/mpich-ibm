@@ -1,6 +1,6 @@
 /*  (C)Copyright IBM Corp.  2007, 2008  */
 /**
- * \file src/mpid_mem.c
+ * \file src/misc/mpid_mem.c
  * \brief ???
  */
 /*

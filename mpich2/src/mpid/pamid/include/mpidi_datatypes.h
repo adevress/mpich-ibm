@@ -167,7 +167,7 @@ struct MPIDI_Comm
   char last_algorithm[100][5];
   char last_algo_index;
   /* \todo Need to figure out how to deal with algorithms above the pami level */
-  char allgathers[4]; 
+  char allgathers[4];
   char allgathervs[4];
   char scattervs[2];
   char optgather, optscatter;

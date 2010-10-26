@@ -1,6 +1,6 @@
 /*  (C)Copyright IBM Corp.  2007, 2008  */
 /**
- * \file src/mpid_getpname.c
+ * \file src/misc/mpid_getpname.c
  * \brief Device interface to MPI_Get_processor_name()
  */
 #include "mpidimpl.h"

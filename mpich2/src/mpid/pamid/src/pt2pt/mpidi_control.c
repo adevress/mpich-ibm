@@ -121,10 +121,10 @@ MPIDI_SyncAck_proc(pami_context_t        context,
 
 
 /**
- * \brief 
+ * \brief
  *
- * \param[in] context 
- * \param[in] req     
+ * \param[in] context
+ * \param[in] req
  */
 static inline void
 MPIDI_RzvAck_proc_req(pami_context_t   context,
@@ -145,7 +145,7 @@ MPIDI_RzvAck_proc_req(pami_context_t   context,
  * target (remote) node and complete the MPI_Send() on the origin
  * (local) node.
  *
- * \param[in] context 
+ * \param[in] context
  * \param[in] info The contents of the control message as a MPIDI_MsgInfo struct
  * \param[in] peer The rank of the node sending the data
  */

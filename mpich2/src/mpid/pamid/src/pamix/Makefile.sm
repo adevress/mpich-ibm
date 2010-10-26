@@ -1,5 +1,4 @@
 SUBDIRS= .
 INCLUDES = -I${master_top_srcdir}/src/include -I${top_builddir}/src/include
 lib${MPILIBNAME}_a_SOURCES =			\
-	mpid_comm.c				\
-	mpid_dims_create.c
+        pamix.c

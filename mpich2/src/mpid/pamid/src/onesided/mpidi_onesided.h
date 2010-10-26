@@ -1,13 +1,12 @@
 /*  (C)Copyright IBM Corp.  2007, 2008  */
 /**
- * \file include/mpidi_onesided.h
+ * \file src/onesided/mpidi_onesided.h
  * \brief ???
  */
-
-#ifndef __include_mpidi_onesided_h__
-#define __include_mpidi_onesided_h__
-
 #include "mpidimpl.h"
+
+#ifndef __src_onesided_mpidi_onesided_h__
+#define __src_onesided_mpidi_onesided_h__
 
 
 /**

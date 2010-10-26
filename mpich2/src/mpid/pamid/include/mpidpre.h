@@ -7,11 +7,6 @@
  * (mpidimpl.h, mpidpost.h, and mpiimpl.h).  It generally contains
  * additions to MPI objects.
  */
-/*
- *  (C) 2001 by Argonne National Laboratory.
- *      See COPYRIGHT in top-level directory.
- */
-
 
 #ifndef __include_mpidpre_h__
 #define __include_mpidpre_h__
@@ -44,4 +39,4 @@
 #include <mpidi_hooks.h>
 
 
-#endif /* !MPICH_MPIDPRE_H_INCLUDED */
+#endif
