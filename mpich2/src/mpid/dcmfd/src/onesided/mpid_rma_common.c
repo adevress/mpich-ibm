@@ -1285,7 +1285,6 @@ void none_rqc_cb(void *v, DCMF_Error_t *e) {
         MPIDU_free_req((DCMF_Request_t *)v, NULL);
 }
 
-#ifdef NOT_USED
 /**
  * \brief Generic send done callback
  *
@@ -1297,11 +1296,10 @@ void none_rqc_cb(void *v, DCMF_Error_t *e) {
  * \param[in] v	Pointer to integer counter to decrement
  * \return nothing
  */
-static void done_cb(void *v, DCMF_Error_t *e) {
+void done_cb(void *v, DCMF_Error_t *e) {
         int *cp = (int *)v;
         --(*cp);
 }
-#endif /* NOT_USED */
 
 /**
  *  \brief receive callback for datatype cache messages (map and iov)
@@ -1417,8 +1415,9 @@ void recv_sm_cb(void *cd, const DCQuad *_mi, unsigned ct, size_t or,
                 ++win->_dev.as_origin.sync_count;
                 break;
 
+        /* The following all use msginfo as DCQuad[2] */
         case MPID_MSGTYPE_PUT:
-                MPID_assert_debug(ct == MPIDU_1SCTL_NQUADS);
+                MPID_assert_debug(ct == MPIDU_1SINFO_NQUADS);
                 MPID_Win_get_ptr((MPI_Win)mi->mpid_info_w1, win);
                 MPID_assert_debug(win != NULL);
                 MPIDU_assert_PUTOK(win);
@@ -1434,7 +1433,6 @@ void recv_sm_cb(void *cd, const DCQuad *_mi, unsigned ct, size_t or,
                 rma_recvs_cb(win, mi->mpid_info_w2, or, 1);
 #endif /* ! USE_DCMF_PUT */
                 break;
-        /* The following all use msginfo as DCQuad[2] */
         case MPID_MSGTYPE_DT_MAP:
                 MPID_assert_debug(ct == MPIDU_1SINFO_NQUADS);
                 rb = MPID_Prepare_rem_dt(mi);
