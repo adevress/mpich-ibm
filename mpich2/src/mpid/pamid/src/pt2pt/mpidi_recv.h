@@ -51,14 +51,6 @@ MPIDI_Recv(void          * buf,
         {
           MPID_Request * rreq;
           rreq = MPIDI_Request_create2();
-          if (!rreq)
-            return MPIR_Err_create_code(MPI_SUCCESS,
-                                        MPIR_ERR_FATAL,
-                                        __FUNCTION__,
-                                        __LINE__,
-                                        MPI_ERR_OTHER,
-                                        "**nomem",
-                                        0);
           MPIR_Status_set_procnull(&rreq->status);
           rreq->kind = MPID_REQUEST_RECV;
           rreq->comm = comm;

@@ -110,9 +110,10 @@ extern __thread int MPID_PAMID_Thread_request_handle_count;
 static inline MPID_Request *
 MPIDI_Request_create_basic()
 {
-  MPID_Request * req;
+  MPID_Request * req = NULL;
 
   MPIDI_Request_tls_alloc(req);
+  MPID_assert(req != NULL);
   MPID_assert(HANDLE_GET_MPI_KIND(req->handle) == MPID_REQUEST);
   MPID_cc_set_1(&req->cc);
   req->cc_ptr = &req->cc;

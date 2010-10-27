@@ -58,26 +58,10 @@ MPIDI_RendezvousTransfer(pami_context_t context,
   else
     {
       MPIDI_Request_setCA(rreq, MPIDI_CA_UNPACK_UEBUF_AND_COMPLETE);
-      rreq->mpid.uebuflen   = rcvlen ;
-      if ((rreq->mpid.uebuf = MPIU_Malloc(rcvlen)) == NULL)
-        {
-          /* ------------------------------------ */
-          /* creation of temporary buffer failed. */
-          /* we are in trouble and must bail out. */
-          /* ------------------------------------ */
-
-          int mpi_errno = MPIR_Err_create_code(MPI_SUCCESS,
-                                               MPIR_ERR_FATAL,
-                                               __FUNCTION__,
-                                               __LINE__,
-                                               MPI_ERR_OTHER,
-                                               "**nomem", 0);
-          rreq->status.MPI_ERROR = mpi_errno;
-          rreq->status.count     = 0;
-          MPID_Abort(NULL, mpi_errno, -1, "Cannot allocate unexpected buffer");
-        }
-
-      rcvbuf = rreq->mpid.uebuf;
+      rcvbuf = MPIU_Malloc(rcvlen);
+      MPID_assert(rcvbuf != NULL);
+      rreq->mpid.uebuf    = rcvbuf;
+      rreq->mpid.uebuflen = rcvlen;
     }
 
   /* ---------------------------------------------------------------- */

@@ -80,16 +80,6 @@ MPIDI_Send(const void    * buf,
 
   sreq = MPIDI_Request_create2();
   *request = sreq;
-  if (unlikely(sreq == NULL))
-    {
-      int mpi_errno = MPIR_Err_create_code(MPI_SUCCESS,
-                                           MPIR_ERR_FATAL,
-                                           __FUNCTION__,
-                                           __LINE__,
-                                           MPI_ERR_OTHER,
-                                           "**nomem", 0);
-      return mpi_errno;
-    }
 
   /* match info */
   MPIDI_Request_setMatch(sreq, tag, comm->rank, comm->context_id+context_offset);
