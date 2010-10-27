@@ -37,7 +37,7 @@ static MTEST_THREAD_LOCK_TYPE num_threads_lock;
 
 MTEST_THREAD_RETURN_TYPE run_test(void *arg)
 {
-    int thread_id = (int) arg;
+    int thread_id = (int)(size_t)arg;
     int i, j, peer;
     MPI_Status status[WINDOW];
     MPI_Request req[WINDOW];
@@ -113,7 +113,7 @@ void loops(void)
         MTest_thread_barrier_init();
 
         for (i = 1; i < nt; i++) {
-            err = MTest_Start_thread(run_test, (void *)i);
+            err = MTest_Start_thread(run_test, (void *)(size_t)i);
             if (err) {
                 /* attempt to continue with fewer threads, we may be on a
                  * thread-constrained platform like BG/P in DUAL mode */

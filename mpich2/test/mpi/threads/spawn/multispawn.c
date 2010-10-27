@@ -40,7 +40,7 @@ MTEST_THREAD_RETURN_TYPE spawnProcess(void *p)
 
     /* The thread number is passed into this routine through the value of the
        argument */
-    i = (int)p;
+    i = (int)(size_t)p;
 
     /* Synchronize */
     MTest_thread_barrier(NTHREADS);
@@ -92,7 +92,7 @@ int main( int argc, char *argv[] )
         }
 
 	for (i=0; i<NTHREADS-1; i++) {
-            MTest_Start_thread(spawnProcess, (void *)i);
+            MTest_Start_thread(spawnProcess, (void *)(size_t)i);
 	}
 
 	/* spawn the processes */

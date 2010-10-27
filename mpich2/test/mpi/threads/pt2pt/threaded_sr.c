@@ -57,7 +57,7 @@ MTEST_THREAD_RETURN_TYPE send_thread(void *p)
     else {
 	sendok = 1;
     }
-    return (MTEST_THREAD_RETURN_TYPE )err;
+    return (MTEST_THREAD_RETURN_TYPE )(size_t)err;
 }
 
 int main( int argc, char *argv[] )
