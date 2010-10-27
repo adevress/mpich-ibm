@@ -20,19 +20,6 @@ typedef enum
 
     MPIDI_WIN_MSGTYPE_COMPLETE, /**< End a START epoch */
     MPIDI_WIN_MSGTYPE_POST,     /**< Begin POST epoch  */
-
-#if JRATT_OLD_1S
-    MPIDI_WIN_MSGTYPE_ACC,      /**< ACCUMULATE RMA operation */
-    MPIDI_WIN_MSGTYPE_DT_IOV,   /**< Datatype iov payload */
-    MPIDI_WIN_MSGTYPE_DT_MAP,   /**< Datatype map payload */
-    MPIDI_WIN_MSGTYPE_FENCE,    /**< (not used) */
-    MPIDI_WIN_MSGTYPE_GET,      /**< GET RMA operation */
-    MPIDI_WIN_MSGTYPE_PUT,      /**< PUT RMA operation */
-    MPIDI_WIN_MSGTYPE_START,    /**< (not used) */
-    MPIDI_WIN_MSGTYPE_UNFENCE,  /**< (not used) */
-    MPIDI_WIN_MSGTYPE_UNLOCKACK,/**< unlock acknowledge, with status */
-    MPIDI_WIN_MSGTYPE_WAIT,     /**< (not used) */
-#endif
   } MPIDI_Win_msgtype_t;
 
 typedef enum
