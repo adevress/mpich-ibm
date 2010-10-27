@@ -12,16 +12,16 @@
 
 
 static inline unsigned
-MPIDI_Context_hash(pami_task_t rank, unsigned ctxt)
+MPIDI_Context_hash(pami_task_t rank, unsigned ctxt, int ncontexts)
 {
-  return (( rank + ctxt ) % MPIDI_Process.avail_contexts);
+  return (( rank + ctxt ) % ncontexts);
 }
 static inline void
 MPIDI_Context_endpoint(MPID_Request * req, pami_endpoint_t * e)
 {
   pami_task_t remote = MPIDI_Request_getPeerRank(req);
   pami_task_t local  = MPIR_Process.comm_world->rank;
-  unsigned    rctxt  = MPIDI_Context_hash(local, req->comm->context_id);
+  unsigned    rctxt  = MPIDI_Context_hash(local, req->comm->context_id, MPIDI_Process.avail_contexts);
 
   pami_result_t rc;
   rc = PAMI_Endpoint_create(MPIDI_Client, remote, rctxt, e);
@@ -31,7 +31,7 @@ static inline pami_context_t
 MPIDI_Context_local(MPID_Request * req)
 {
   pami_task_t remote = MPIDI_Request_getPeerRank(req);
-  unsigned    lctxt  = MPIDI_Context_hash(remote, req->comm->context_id);
+  unsigned    lctxt  = MPIDI_Context_hash(remote, req->comm->context_id, MPIDI_Process.avail_contexts);
   MPID_assert(lctxt < MPIDI_Process.avail_contexts);
   return MPIDI_Context[lctxt];
 }
@@ -74,8 +74,9 @@ MPID_Isend_inline (const void    * buf,
   /* --------------------- */
   MPID_Request * sreq = *request = MPIDI_Request_create2_fast();
 
+  unsigned context_id = comm->context_id;
   /* match info */
-  MPIDI_Request_setMatch(sreq, tag, comm->rank, comm->context_id+context_offset);
+  MPIDI_Request_setMatch(sreq, tag, comm->rank, context_id+context_offset);
 
   /* data buffer info */
   sreq->mpid.userbuf        = (void*)buf;
@@ -86,17 +87,16 @@ MPID_Isend_inline (const void    * buf,
      handoff function */
   MPIDI_Request_setPeerRank(sreq, rank);
 
+  unsigned ncontexts = MPIDI_Process.avail_contexts;
   /* communicator & destination info */
-  sreq->comm              = comm;
+  sreq->comm = comm;
+  sreq->kind = MPID_REQUEST_SEND;
   MPIR_Comm_add_ref(comm);
 
   /* message type info */
-  sreq->kind = MPID_REQUEST_SEND;
-
-  if (likely(MPIDI_Process.avail_contexts > 1))
+  if (likely(ncontexts > 1))
   {
-    pami_context_t context = MPIDI_Context_local(sreq);
-
+    pami_context_t context = MPIDI_Context[MPIDI_Context_hash(rank, context_id, ncontexts)];
     pami_result_t rc;
     rc = PAMI_Context_post(context, &sreq->mpid.post_request, MPIDI_Isend_handoff, sreq);
     MPID_assert(rc == PAMI_SUCCESS);
