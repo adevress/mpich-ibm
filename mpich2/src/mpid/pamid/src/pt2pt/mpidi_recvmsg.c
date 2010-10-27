@@ -34,7 +34,7 @@ MPIDI_RecvMsg(void          * buf,
   int found;
   MPID_Request * rreq;
 
-  MPIU_THREAD_CS_ENTER(RECVQ,0);
+  MPIU_THREAD_CS_ENTER(MSGQUEUE,0);
   /* ---------------------------------------- */
   /* find our request in the unexpected queue */
   /* or allocate one in the posted queue      */
@@ -153,6 +153,6 @@ MPIDI_RecvMsg(void          * buf,
   if (status != MPI_STATUS_IGNORE)
     *status = rreq->status;
 
-  MPIU_THREAD_CS_EXIT(RECVQ,0);
+  MPIU_THREAD_CS_EXIT(MSGQUEUE,0);
   return rreq->status.MPI_ERROR;
 }

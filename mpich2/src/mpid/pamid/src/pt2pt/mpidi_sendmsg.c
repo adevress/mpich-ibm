@@ -28,10 +28,8 @@ MPIDI_SendMsg_short(pami_context_t    context,
   },
   };
 
-  MPIU_THREAD_CS_ENTER(PAMI,);
   pami_result_t rc;
   rc = PAMI_Send_immediate(context, &params);
-  MPIU_THREAD_CS_EXIT(PAMI,);
 #ifdef TRACE_ON
   if (rc)
     {
@@ -72,11 +70,9 @@ MPIDI_SendMsg_eager(pami_context_t    context,
   },
   };
 
-  MPIU_THREAD_CS_ENTER(PAMI,);
   pami_result_t rc;
   rc = PAMI_Send(context, &params);
   MPID_assert(rc == PAMI_SUCCESS);
-  MPIU_THREAD_CS_EXIT(PAMI,);
 }
 
 
@@ -141,10 +137,8 @@ MPIDI_SendMsg_rzv(pami_context_t    context,
   },
   };
 
-  MPIU_THREAD_CS_ENTER(PAMI,);
   rc = PAMI_Send_immediate(context, &params);
   MPID_assert(rc == PAMI_SUCCESS);
-  MPIU_THREAD_CS_EXIT(PAMI,);
 }
 
 

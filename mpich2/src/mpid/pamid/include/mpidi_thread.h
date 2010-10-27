@@ -10,6 +10,7 @@
  */
 
 
+#if 0
 #ifndef __include_mpidi_thread_h__
 #define __include_mpidi_thread_h__
 
@@ -198,3 +199,4 @@ M*/
 #endif // (MPICH_THREAD_LEVEL != MPI_THREAD_MULTIPLE)
 
 #endif /* !MPICH_MPIDTHREAD_H_INCLUDED */
+#endif /* 0 */

@@ -47,7 +47,7 @@ void MPIDI_RecvRzvCB(pami_context_t    context,
   match.tag        = msginfo->MPItag;
   match.context_id = msginfo->MPIctxt;
 
-  MPIU_THREAD_CS_ENTER(RECVQ,0);
+  MPIU_THREAD_CS_ENTER(MSGQUEUE,0);
   rreq = MPIDI_Recvq_FDP_or_AEU(match.rank, match.tag, match.context_id, &found);
   TRACE_ERR("RZV CB for req=%p remote-mr=0x%llx bytes=%zu (%sfound)\n",
             rreq,
@@ -114,5 +114,5 @@ void MPIDI_RecvRzvCB(pami_context_t    context,
       /* rreq->mpid.uebuflen = 0; */
     }
 
-  MPIU_THREAD_CS_EXIT(RECVQ,0);
+  MPIU_THREAD_CS_EXIT(MSGQUEUE,0);
 }

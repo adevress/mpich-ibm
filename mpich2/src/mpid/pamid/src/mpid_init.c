@@ -163,24 +163,9 @@ MPIDI_Init(int* rank, int* size, int* threading)
       MPIDI_Process.avail_contexts = 1; /* If PAMI didn't give all nodes the same number of contexts, all bets are off for now */
     }
 
-  /* -------------------------------------------------------- */
-  /*  We didn't lock on the way in, but we will lock on the   */
-  /*  way out if we are threaded.  Lock now to make it even.  */
-  /* -------------------------------------------------------- */
-  if (PAMIX_Client_query(MPIDI_Client, PAMI_CLIENT_HWTHREADS_AVAILABLE).value.intval > 1)
-    {
-      /** \todo Add these in when trac #72 is fixed */
-#if 0
-      MPIR_ThreadInfo.isThreaded = 1;
-      MPID_CS_ENTER();
-#else
-      *threading = MPI_THREAD_SINGLE;
-#endif
-    }
-  else
-    {
-      *threading = MPI_THREAD_SINGLE;
-    }
+  if (PAMIX_Client_query(MPIDI_Client, PAMI_CLIENT_HWTHREADS_AVAILABLE).value.intval == 1)
+    *threading = MPI_THREAD_SINGLE;
+  TRACE_ERR("Thread-level=%d\n", *threading);
 
   /* ----------------------------------- */
   /*  Create the communication contexts  */
