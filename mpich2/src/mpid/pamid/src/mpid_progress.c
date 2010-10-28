@@ -39,6 +39,7 @@ int MPID_Progress_wait(MPID_Progress_state * state)
   while (state->val == MPIDI_Progress_requests) {
     rc = PAMI_Context_advancev(MPIDI_Context, MPIDI_Process.avail_contexts, 1);
     MPID_assert(rc == PAMI_SUCCESS);
+    MPIU_THREAD_CS_YIELD(ALLFUNC,);
   }
 
   state->val = MPIDI_Progress_requests;
