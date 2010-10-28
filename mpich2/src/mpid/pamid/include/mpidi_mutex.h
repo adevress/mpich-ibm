@@ -13,6 +13,11 @@
 #define __include_mpidi_mutex_h__
 
 
+#undef MPIDI_USE_OPA
+
+
+#ifdef MPIDI_USE_OPA
+
 #define  MPIDI_MAX_MUTEXES        16
 extern OPA_int_t    MPIDI_Mutex_vector [MPIDI_MAX_MUTEXES];
 extern __thread int MPIDI_Mutex_counter[MPIDI_MAX_MUTEXES];
@@ -123,6 +128,51 @@ MPIDI_Mutex_release(unsigned m)
 
   return 0;
 }
+
+#else
+
+extern pthread_mutex_t MPIDI_Mutex_lock;
+
+static inline int
+MPIDI_Mutex_initialize()
+{
+  int rc;
+
+  pthread_mutexattr_t attr;
+  rc = pthread_mutexattr_init(&attr);
+  MPID_assert(rc == 0);
+  extern int pthread_mutexattr_settype (pthread_mutexattr_t *__attr, int __kind) __THROW __nonnull ((1));
+  rc = pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE_NP);
+  MPID_assert(rc == 0);
+
+  rc = pthread_mutex_init(&MPIDI_Mutex_lock, &attr);
+  MPID_assert(rc == 0);
+
+  return 0;
+}
+
+
+static inline int
+MPIDI_Mutex_try_acquire(unsigned m)
+{
+  return pthread_mutex_trylock(&MPIDI_Mutex_lock);
+}
+
+
+static inline int
+MPIDI_Mutex_acquire(unsigned m)
+{
+  return pthread_mutex_lock(&MPIDI_Mutex_lock);
+}
+
+
+static inline int
+MPIDI_Mutex_release(unsigned m)
+{
+  return pthread_mutex_unlock(&MPIDI_Mutex_lock);
+}
+
+#endif
 
 
 #endif

@@ -11,7 +11,6 @@
 #include "mpidi_mutex.h"
 
 
-#if 0
 #ifndef __include_mpidi_thread_h__
 #define __include_mpidi_thread_h__
 
@@ -114,4 +113,3 @@
 
 
 #endif /* !MPICH_MPIDTHREAD_H_INCLUDED */
-#endif /* 0 */

@@ -10,8 +10,12 @@ pami_client_t   MPIDI_Client;
 #define MAX_CONTEXTS 16
 pami_context_t MPIDI_Context[MAX_CONTEXTS];
 
+#ifdef MPIDI_USE_OPA
 OPA_int_t       MPIDI_Mutex_vector [MPIDI_MAX_MUTEXES];
 __thread int    MPIDI_Mutex_counter[MPIDI_MAX_MUTEXES] = {0};
+#else
+pthread_mutex_t MPIDI_Mutex_lock;
+#endif
 
 MPIDI_Process_t  MPIDI_Process = {
  verbose        : 0,
