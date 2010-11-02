@@ -14,8 +14,8 @@
 #include <mpidi_prototypes.h>
 #include <mpidi_macros.h>
 
-#include <../src/mpid_request.h>
-#include <../src/mpid_progress.h>
-#include <../src/pt2pt/mpid_isend.h>
+#include "../src/mpid_request.h"
+#include "../src/mpid_progress.h"
+#include "../src/pt2pt/mpid_isend.h"
 
 #endif
