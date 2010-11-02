@@ -3,7 +3,7 @@
  * \file src/pt2pt/mpidi_callback_rzv.c
  * \brief The callback for a new RZV RTS
  */
-#include "mpidimpl.h"
+#include <mpidimpl.h>
 
 /**
  * \brief The callback for a new RZV RTS

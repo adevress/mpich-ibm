@@ -3,7 +3,7 @@
  * \file src/mpid_progress.c
  * \brief Maintain the state and rules of the MPI progress semantics
  */
-#include "mpidimpl.h"
+#include <mpidimpl.h>
 
 /**
  * \defgroup MPID_PROGRESS MPID Progress engine

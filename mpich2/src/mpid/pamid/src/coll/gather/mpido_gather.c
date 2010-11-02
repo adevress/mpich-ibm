@@ -4,7 +4,7 @@
  * \brief ???
  */
 
-#include "mpidimpl.h"
+#include <mpidimpl.h>
 
 int MPIDO_Gather_reduce(void * sendbuf,
 			int sendcount,

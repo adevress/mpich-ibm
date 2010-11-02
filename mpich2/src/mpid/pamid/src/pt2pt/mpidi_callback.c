@@ -3,7 +3,7 @@
  * \file src/pt2pt/mpidi_callback.c
  * \brief The standard callback for a new message
  */
-#include "mpidimpl.h"
+#include <mpidimpl.h>
 
 /* This is used to effectively zero-out the recv hints in the done callback */
 static const pami_recv_hint_t null_recv_hint={0};

@@ -4,7 +4,7 @@
  * \brief ???
  */
 
-#include "mpidimpl.h"
+#include <mpidimpl.h>
 
 
 /* basically, everyone receives recvcount via bcast */

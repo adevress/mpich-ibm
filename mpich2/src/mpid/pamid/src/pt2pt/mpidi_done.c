@@ -3,7 +3,7 @@
  * \file src/pt2pt/mpidi_done.c
  * \brief "Done" call-backs provided to the message layer for signaling completion
  */
-#include "mpidimpl.h"
+#include <mpidimpl.h>
 
 
 /**

@@ -3,7 +3,7 @@
  * \file src/mpid_iprobe.c
  * \brief ???
  */
-#include "mpidimpl.h"
+#include <mpidimpl.h>
 
 int
 MPID_Iprobe(int source,

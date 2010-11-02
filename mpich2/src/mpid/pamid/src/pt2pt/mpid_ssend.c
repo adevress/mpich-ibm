@@ -3,7 +3,7 @@
  * \file src/pt2pt/mpid_ssend.c
  * \brief ADI level implemenation of MPI_Ssend()
  */
-#include "mpidimpl.h"
+#include <mpidimpl.h>
 #include "mpidi_send.h"
 
 /**

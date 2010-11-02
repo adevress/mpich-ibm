@@ -8,7 +8,7 @@
  *      See COPYRIGHT in top-level directory.
  */
 
-#include "mpidimpl.h"
+#include <mpidimpl.h>
 
 #if !defined(MPIDI_COPY_BUFFER_SZ)
 #define MPIDI_COPY_BUFFER_SZ 16384

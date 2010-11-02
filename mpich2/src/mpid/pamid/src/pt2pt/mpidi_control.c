@@ -3,7 +3,7 @@
  * \file src/pt2pt/mpidi_control.c
  * \brief Interface to the control protocols used by MPID pt2pt
  */
-#include "mpidimpl.h"
+#include <mpidimpl.h>
 
 
 /**

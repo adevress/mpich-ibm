@@ -7,7 +7,7 @@
  * will be easier to maintain, and that the inline nature of the flags
  * will ensure high performance.
  */
-#include "mpidimpl.h"
+#include <mpidimpl.h>
 
 #ifndef __src_pt2pt_mpidi_send_h__
 #define __src_pt2pt_mpidi_send_h__

@@ -3,7 +3,7 @@
  * \file src/comm/mpid_dims_create.c
  * \brief ???
  */
-#include "mpidimpl.h"
+#include <mpidimpl.h>
 
 extern int MPIR_Dims_create( int nnodes, int ndims, int *dims );
 /** \brief Hook function for a torus-geometry optimized version of MPI_Dims_Create */

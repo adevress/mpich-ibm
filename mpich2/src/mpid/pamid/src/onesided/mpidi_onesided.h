@@ -3,7 +3,7 @@
  * \file src/onesided/mpidi_onesided.h
  * \brief ???
  */
-#include "mpidimpl.h"
+#include <mpidimpl.h>
 
 #ifndef __src_onesided_mpidi_onesided_h__
 #define __src_onesided_mpidi_onesided_h__

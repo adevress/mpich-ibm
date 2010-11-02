@@ -6,7 +6,7 @@
 
 /* This creates and initializes a persistent recv request */
 
-#include "mpidimpl.h"
+#include <mpidimpl.h>
 
 int MPID_Recv_init(void * buf,
                    int count,

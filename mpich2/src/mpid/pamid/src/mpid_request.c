@@ -3,7 +3,7 @@
  * \file src/mpid_request.c
  * \brief Accessors and actors for MPID Requests
  */
-#include "mpidimpl.h"
+#include <mpidimpl.h>
 
 #ifndef MPID_REQUEST_PREALLOC
 #define MPID_REQUEST_PREALLOC 8

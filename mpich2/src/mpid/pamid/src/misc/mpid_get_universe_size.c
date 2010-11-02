@@ -8,7 +8,7 @@
  *      See COPYRIGHT in top-level directory.
  */
 
-#include "mpidimpl.h"
+#include <mpidimpl.h>
 
 int MPID_Get_universe_size(int  * universe_size)
 {

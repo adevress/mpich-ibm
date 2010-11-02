@@ -3,7 +3,7 @@
  * \file src/misc/mpid_abort.c
  * \brief Handle general operations assosicated with erroneous job termination
  */
-#include "mpidimpl.h"
+#include <mpidimpl.h>
 #include "mpix.h"
 
 /**

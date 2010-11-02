@@ -3,7 +3,7 @@
  * \file src/pt2pt/mpidi_sendmsg.c
  * \brief Funnel point for starting all MPI messages
  */
-#include "mpidimpl.h"
+#include <mpidimpl.h>
 
 
 static inline void

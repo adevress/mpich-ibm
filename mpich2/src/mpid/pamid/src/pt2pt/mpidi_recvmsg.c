@@ -3,7 +3,7 @@
  * \file src/pt2pt/mpidi_recvmsg.c
  * \brief ADI level implemenation of common recv code.
  */
-#include "mpidimpl.h"
+#include <mpidimpl.h>
 
 /**
  * \brief ADI level implemenation of MPI_Irecv()

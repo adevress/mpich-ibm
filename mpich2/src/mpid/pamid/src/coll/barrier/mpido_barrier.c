@@ -6,7 +6,7 @@
 
 //#define TRACE_ON
 
-#include "mpidimpl.h"
+#include <mpidimpl.h>
 
 static void cb_barrier(void *ctxt, void *clientdata, pami_result_t err)
 {

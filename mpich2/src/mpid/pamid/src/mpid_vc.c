@@ -8,7 +8,7 @@
  *      See COPYRIGHT in top-level directory.
  */
 
-#include "mpidimpl.h"
+#include <mpidimpl.h>
 
 /**
  * \brief Virtual connection reference table

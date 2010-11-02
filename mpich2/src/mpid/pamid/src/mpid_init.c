@@ -3,7 +3,7 @@
  * \file src/mpid_init.c
  * \brief Normal job startup code
  */
-#include "mpidimpl.h"
+#include <mpidimpl.h>
 #include "onesided/mpidi_onesided.h"
 
 pami_client_t   MPIDI_Client;

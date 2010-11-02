@@ -7,8 +7,8 @@
 #ifndef __include_mpidimpl_h__
 #define __include_mpidimpl_h__
 
-#include <pamix.h>
 #include <mpiimpl.h>
-#include <mpix.h>
+#include "pamix.h"
+#include "mpix.h"
 
 #endif

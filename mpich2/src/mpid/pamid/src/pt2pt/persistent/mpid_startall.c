@@ -3,8 +3,8 @@
  * \file src/pt2pt/persistent/mpid_startall.c
  * \brief ???
  */
-#include "mpidimpl.h"
-#include "../../../mpi/pt2pt/bsendutil.h"
+#include <mpidimpl.h>
+#include <../mpi/pt2pt/bsendutil.h>
 
 int MPID_Startall(int count, MPID_Request * requests[])
 {

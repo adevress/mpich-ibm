@@ -11,8 +11,8 @@
 #define __include_mpidpost_h__
 
 #include <mpid_datatype.h>
-#include <mpidi_prototypes.h>
-#include <mpidi_macros.h>
+#include "mpidi_prototypes.h"
+#include "mpidi_macros.h"
 
 #include "../src/mpid_request.h"
 #include "../src/mpid_progress.h"

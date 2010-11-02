@@ -6,7 +6,7 @@
 
 //#define TRACE_ON
 
-#include "mpidimpl.h"
+#include <mpidimpl.h>
 
 void MPIDI_Comm_create (MPID_Comm *comm)
 {

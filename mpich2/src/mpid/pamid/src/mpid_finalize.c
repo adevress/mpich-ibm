@@ -3,7 +3,7 @@
  * \file src/mpid_finalize.c
  * \brief Normal job termination code
  */
-#include "mpidimpl.h"
+#include <mpidimpl.h>
 
 /**
  * \brief Shut down the system

@@ -3,7 +3,7 @@
  * \file src/mpid_time.c
  * \brief Devince interface between MPI_Wtime() and PAMI_Wtime()
  */
-#include "mpidimpl.h"
+#include <mpidimpl.h>
 
 #if MPICH_TIMER_KIND == USE_GETTIMEOFDAY
 #warning Compiling mpid/pamid/src/mpid_time.c when MPICH_TIMER_KIND == USE_GETTIMEOFDAY

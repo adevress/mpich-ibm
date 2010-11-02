@@ -5,7 +5,7 @@
  */
 /* This creates and initializes a persistent send request */
 
-#include "mpidimpl.h"
+#include <mpidimpl.h>
 
 /**
  * ***************************************************************************

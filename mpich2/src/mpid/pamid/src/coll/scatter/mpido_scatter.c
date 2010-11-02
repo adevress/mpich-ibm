@@ -4,7 +4,7 @@
  * \brief ???
  */
 
-#include "mpidimpl.h"
+#include <mpidimpl.h>
 
 /* works for simple data types, assumes fast bcast is available */
 int MPIDO_Scatter_bcast(void * sendbuf,

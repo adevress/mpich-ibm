@@ -3,7 +3,7 @@
  * \file src/misc/mpid_getpname.c
  * \brief Device interface to MPI_Get_processor_name()
  */
-#include "mpidimpl.h"
+#include <mpidimpl.h>
 
 /**
  * \brief Device interface to MPI_Get_processor_name()

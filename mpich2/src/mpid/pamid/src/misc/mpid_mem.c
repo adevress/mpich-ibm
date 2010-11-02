@@ -9,7 +9,7 @@
  *      See COPYRIGHT in top-level directory.
  */
 
-#include "mpidimpl.h"
+#include <mpidimpl.h>
 
 void *MPID_Alloc_mem( size_t size, MPID_Info *info_ptr )
 {

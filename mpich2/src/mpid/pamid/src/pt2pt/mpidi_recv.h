@@ -3,7 +3,7 @@
  * \file src/pt2pt/mpidi_recv.h
  * \brief ADI level implemenation of MPI_Irecv()
  */
-#include "mpidimpl.h"
+#include <mpidimpl.h>
 
 #ifndef __src_pt2pt_mpidi_recv_h__
 #define __src_pt2pt_mpidi_recv_h__

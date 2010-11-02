@@ -3,7 +3,7 @@
  * \file src/pt2pt/mpidi_rendezvous.c
  * \brief Provide for a flow-control rendezvous-based send
  */
-#include "mpidimpl.h"
+#include <mpidimpl.h>
 
 void
 MPIDI_RendezvousTransfer(pami_context_t context,

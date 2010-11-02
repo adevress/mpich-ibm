@@ -7,7 +7,7 @@
  *  (C) 2001 by Argonne National Laboratory.
  *      See COPYRIGHT in top-level directory.
  */
-#include "opa_primitives.h"
+#include <opa_primitives.h>
 
 #ifndef __include_mpidi_mutex_h__
 #define __include_mpidi_mutex_h__
