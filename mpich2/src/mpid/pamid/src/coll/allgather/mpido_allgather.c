@@ -226,10 +226,11 @@ MPIDO_Allgather(void *sendbuf,
   char use_tree_reduce, use_alltoall, use_bcast;
   char *sbuf, *rbuf;
 
-   use_alltoall = comm_ptr->mpid.allgathers[0];
-   use_tree_reduce = comm_ptr->mpid.allgathers[1];
-   use_bcast = comm_ptr->mpid.allgathers[2];
-   if(!( use_alltoall || use_tree_reduce || use_bcast))
+   use_alltoall = comm_ptr->mpid.allgathers[2];
+   use_tree_reduce = comm_ptr->mpid.allgathers[0];
+   use_bcast = comm_ptr->mpid.allgathers[1];
+   if(!( use_alltoall || use_tree_reduce || use_bcast) || 
+      comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLGATHER] == 0)
    {
       MPIDI_Update_last_algorithm(comm_ptr, "ALLGATHER_MPICH");
       return MPIR_Allgather(sendbuf, sendcount, sendtype,
@@ -278,20 +279,15 @@ MPIDO_Allgather(void *sendbuf,
   }
 
 
-
-   use_alltoall = comm_ptr->mpid.allgathers[0];
-   use_tree_reduce = comm_ptr->mpid.allgathers[1];
-   use_bcast = comm_ptr->mpid.allgathers[2];
-
   /* Here is the Default code path or if coming from within another coll */
-    use_alltoall = comm_ptr->mpid.allgathers[0] &&
+    use_alltoall = comm_ptr->mpid.allgathers[2] &&
          config[MPID_RECV_CONTIG] && config[MPID_SEND_CONTIG];;
 
-    use_tree_reduce = comm_ptr->mpid.allgathers[1] &&
+    use_tree_reduce = comm_ptr->mpid.allgathers[0] &&
       config[MPID_RECV_CONTIG] && config[MPID_SEND_CONTIG] &&
       config[MPID_RECV_CONTINUOUS] && (recv_size % sizeof(int) == 0);
 
-    use_bcast = comm_ptr->mpid.allgathers[2];
+    use_bcast = comm_ptr->mpid.allgathers[1];
 
 
    if(use_tree_reduce)

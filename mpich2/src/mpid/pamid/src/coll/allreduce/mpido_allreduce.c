@@ -36,7 +36,7 @@ int MPIDO_Allreduce(void *sendbuf,
    MPIopString(op, op_str);
    PMPI_Type_get_name(dt, dt_str, &len);
    rc = MPItoPAMI(dt, &pdt, op, &pop, &mu);
-   if(rc == MPI_SUCCESS && mu == 1)
+   if(rc == MPI_SUCCESS && mu == 1 && comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLREDUCE] != 0)
    {
       MPI_Aint data_true_lb;
       MPID_Datatype *data_ptr;
@@ -44,7 +44,7 @@ int MPIDO_Allreduce(void *sendbuf,
       MPIDI_Datatype_get_info(count, dt, data_contig, data_size, data_ptr, data_true_lb);
       allred.cb_done = cb_allreduce;
       allred.cookie = (void *)&active;
-      allred.algorithm = comm_ptr->mpid.coll_algorithm[PAMI_XFER_ALLREDUCE][0][0];
+      allred.algorithm = comm_ptr->mpid.user_selected[PAMI_XFER_ALLREDUCE];
       allred.cmd.xfer_allreduce.sndbuf = sendbuf;
       allred.cmd.xfer_allreduce.stype = PAMI_BYTE;
       allred.cmd.xfer_allreduce.rcvbuf = recvbuf;

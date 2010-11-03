@@ -230,7 +230,8 @@ int MPIDO_Scatterv(void *sendbuf,
   allred.cmd.xfer_allreduce.op = PAMI_BAND;
 
 
-   if(!(comm_ptr->mpid.scattervs[0] || comm_ptr->mpid.scattervs[1]))
+   if(!(comm_ptr->mpid.scattervs[0] || comm_ptr->mpid.scattervs[1]) ||
+      comm_ptr->mpid.user_selectedvar[PAMI_XFER_SCATTERV] == 0)
   {
    MPIDI_Update_last_algorithm(comm_ptr, "SCATTERV_MPICH");
     return MPIR_Scatterv(sendbuf, sendcounts, displs, sendtype,

@@ -22,11 +22,16 @@ int MPIDO_Barrier(MPID_Comm *comm_ptr)
    int rc;
    volatile unsigned active=1;
    pami_xfer_t barrier;
+
+   if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_BARRIER] == 0)
+      return MPIR_Barrier(comm_ptr);
+
    barrier.cb_done = cb_barrier;
    barrier.cookie = (void *)&active;
-   barrier.algorithm = comm_ptr->mpid.coll_algorithm[PAMI_XFER_BARRIER][0][0];
+   barrier.algorithm = comm_ptr->mpid.user_selected[PAMI_XFER_BARRIER];
 
    TRACE_ERR("posting barrier\n");
+   /* TODO Name needs fixed somehow */
    MPIDI_Update_last_algorithm(comm_ptr, comm_ptr->mpid.coll_metadata[PAMI_XFER_BARRIER][0][0].name);
    rc = PAMI_Collective(MPIDI_Context[0], (pami_xfer_t *)&barrier);
    TRACE_ERR("barrier posted rc: %d\n", rc);

@@ -236,10 +236,11 @@ MPIDO_Allgatherv(void *sendbuf,
   allred.cmd.xfer_allreduce.dt = PAMI_SIGNED_INT;
   allred.cmd.xfer_allreduce.op = PAMI_BAND;
 
-  use_alltoall = comm_ptr->mpid.allgathervs[0];
-  use_tree_reduce = comm_ptr->mpid.allgathervs[1];
-  use_bcast = comm_ptr->mpid.allgathervs[2];
-  if(!(use_alltoall || use_tree_reduce || use_bcast))
+  use_alltoall = comm_ptr->mpid.allgathervs[2];
+  use_tree_reduce = comm_ptr->mpid.allgathervs[0];
+  use_bcast = comm_ptr->mpid.allgathervs[1];
+  if(!(use_alltoall || use_tree_reduce || use_bcast) ||
+   comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLGATHERV] == 0)
   {
    MPIDI_Update_last_algorithm(comm_ptr, "ALLGATHERV_MPICH");
    return MPIR_Allgatherv(sendbuf, sendcount, sendtype,
@@ -292,14 +293,14 @@ MPIDO_Allgatherv(void *sendbuf,
          MPID_PROGRESS_WAIT_WHILE(allred_active);
       }
 
-   use_tree_reduce = comm_ptr->mpid.allgathervs[1] &&
+   use_tree_reduce = comm_ptr->mpid.allgathervs[0] &&
       config[MPID_RECV_CONTIG] && config[MPID_SEND_CONTIG] &&
       config[MPID_RECV_CONTINUOUS] && buffer_sum % sizeof(int) == 0;
 
-   use_alltoall = comm_ptr->mpid.allgathervs[0] &&
+   use_alltoall = comm_ptr->mpid.allgathervs[2] &&
       config[MPID_RECV_CONTIG] && config[MPID_SEND_CONTIG];
 
-   use_bcast = comm_ptr->mpid.allgathervs[2];
+   use_bcast = comm_ptr->mpid.allgathervs[1];
 
    if(use_tree_reduce)
    {

@@ -122,7 +122,8 @@ int MPIDO_Scatter(void *sendbuf,
   }
 
   MPIDI_Update_last_algorithm(comm_ptr, "SCATTER_MPICH");
-  if(!comm_ptr->mpid.optscatter)
+  if(!comm_ptr->mpid.optscatter ||
+   comm_ptr->mpid.user_selectedvar[PAMI_XFER_SCATTER] == 0)
   {
     return MPIR_Scatter(sendbuf, sendcount, sendtype,
                         recvbuf, recvcount, recvtype,

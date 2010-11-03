@@ -164,6 +164,11 @@ struct MPIDI_Comm
   pami_algorithm_t *coll_algorithm[PAMI_XFER_COUNT][2];
   pami_metadata_t *coll_metadata[PAMI_XFER_COUNT][2];
   char coll_count[PAMI_XFER_COUNT][2];
+  pami_algorithm_t user_selected[PAMI_XFER_COUNT];
+  /* no way to tell if user_selected[] is NULL */
+  /* could probably union these two though? */
+  char user_selectedvar[PAMI_XFER_COUNT];
+  pami_metadata_t user_metadata[PAMI_XFER_COUNT];
   char last_algorithm[100][5];
   char last_algo_index;
   /* \todo Need to figure out how to deal with algorithms above the pami level */

@@ -125,7 +125,8 @@ int MPIDO_Gather(void *sendbuf,
   }
 
   MPIDI_Update_last_algorithm(comm_ptr, "GATHER_MPICH");
-  if(!comm_ptr->mpid.optgather)
+  if(!comm_ptr->mpid.optgather ||
+   comm_ptr->mpid.user_selectedvar[PAMI_XFER_GATHER] == 0)
   {
     return MPIR_Gather(sendbuf, sendcount, sendtype,
                        recvbuf, recvcount, recvtype,
