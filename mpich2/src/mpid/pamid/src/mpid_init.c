@@ -258,6 +258,7 @@ int MPID_Init(int * argc,
   /* -------------------------------- */
   comm = MPIR_Process.comm_world;
   comm->mpid.geometry = MPIDI_Process.world_geometry;
+  comm->mpid.parent = PAMI_NULL_GEOMETRY;
   comm->rank = rank;
   comm->remote_size = comm->local_size = size;
   rc = MPID_VCRT_Create(comm->remote_size, &comm->vcrt);

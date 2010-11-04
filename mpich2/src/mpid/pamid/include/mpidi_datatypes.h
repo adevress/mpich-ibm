@@ -161,6 +161,7 @@ struct MPIDI_Request
 struct MPIDI_Comm
 {
   pami_geometry_t geometry; /**< Geometry component for collectives      */
+  pami_geometry_t parent; /**< The parent geometry this communicator came from */
   pami_algorithm_t *coll_algorithm[PAMI_XFER_COUNT][2];
   pami_metadata_t *coll_metadata[PAMI_XFER_COUNT][2];
   char coll_count[PAMI_XFER_COUNT][2];

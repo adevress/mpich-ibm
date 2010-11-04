@@ -13,6 +13,12 @@ static void MPIDI_Update_coll(pami_algorithm_t coll,
                               int index,
                               MPID_Comm *comm);
 
+void geom_cb_done(void *ctxt, void *data, pami_result_t err)
+{
+   int *active = (int *)data;
+   (*active)--;
+}
+
 void MPIDI_Comm_create (MPID_Comm *comm)
 {
   MPIDI_Coll_comm_create(comm);
@@ -25,6 +31,11 @@ void MPIDI_Comm_destroy (MPID_Comm *comm)
 
 void MPIDI_Coll_comm_create(MPID_Comm *comm)
 {
+   int rc;
+   int geom_init = 1;
+   int i;
+   pami_geometry_range_t *slices;
+
   TRACE_ERR("MPIDI_Coll_comm_create enter\n");
   if (!MPIDI_Process.optimized.collectives)
     return;
@@ -33,10 +44,46 @@ void MPIDI_Coll_comm_create(MPID_Comm *comm)
   MPID_assert(comm->coll_fns != NULL);
 
   if(comm->comm_kind != MPID_INTRACOMM) return;
+  /* Create a geometry */
+   
+   if(comm->mpid.geometry != MPIDI_Process.world_geometry)
+   {
+      fprintf(stderr,"world geom: %p parent geom: %p\n", MPIDI_Process.world_geometry, comm->mpid.parent);
+      TRACE_ERR("Creating subgeom\n");
+      slices = malloc(sizeof(pami_geometry_range_t) * comm->local_size);
+      for(i=0;i<comm->local_size;i++)
+      {
+         slices[i].lo = (size_t)comm->vcr[i];
+         slices[i].hi = (size_t)comm->vcr[i];
+      }
+      rc = PAMI_Geometry_create_taskrange(MPIDI_Client,
+                                         NULL,
+                                         0,
+                                         &comm->mpid.geometry,
+                                         NULL, /*MPIDI_Process.world_geometry,*/
+                                         comm->context_id,
+                                         slices,
+                                         (size_t)comm->local_size,
+                                         MPIDI_Context[0],
+                                         geom_cb_done,
+                                         &geom_init);
 
+      if(rc != PAMI_SUCCESS)
+      {
+         fprintf(stderr,"Error creating subcomm geometry. %d\n", rc);
+         exit(1);
+      }
+      TRACE_ERR("Waiting for geom create to finish\n");
+      while(geom_init)
+         PAMI_Context_advance(MPIDI_Context[0], 1);
+   }
+
+   TRACE_ERR("Querying protocols\n");
    /* Determine what protocols are available for this comm/geom */
   MPIDI_Comm_coll_query(comm);
   MPIDI_Comm_coll_envvars(comm);
+   TRACE_ERR("mpir barrier\n");
+   MPIR_Barrier(comm);
 
 
   TRACE_ERR("MPIDI_Coll_comm_create exit\n");
@@ -70,6 +117,7 @@ void MPIDI_Comm_coll_envvars(MPID_Comm *comm)
 {
    char *envopts;
    int i;
+   TRACE_ERR("MPIDI_Comm_coll_envvars enter\n");
 
    /* Set up always-works defaults */
    for(i = 0; i < PAMI_XFER_COUNT; i++)
@@ -77,6 +125,7 @@ void MPIDI_Comm_coll_envvars(MPID_Comm *comm)
       comm->mpid.user_selectedvar[i] = 1;
    }
 
+   TRACE_ERR("Assigning always works protocols\n");
    /* eventually move this into the for() loop too? */
    comm->mpid.user_selected[PAMI_XFER_BROADCAST] =
       comm->mpid.coll_algorithm[PAMI_XFER_BROADCAST][0][0];
@@ -95,6 +144,7 @@ void MPIDI_Comm_coll_envvars(MPID_Comm *comm)
    comm->mpid.user_selected[PAMI_XFER_BARRIER] =
       comm->mpid.coll_algorithm[PAMI_XFER_BARRIER][0][0];
 
+   TRACE_ERR("Memcpy user data\n");
    memcpy(&comm->mpid.user_metadata[PAMI_XFER_BROADCAST],
       &comm->mpid.coll_metadata[PAMI_XFER_BROADCAST][0][0],
       sizeof(pami_metadata_t));
@@ -120,6 +170,7 @@ void MPIDI_Comm_coll_envvars(MPID_Comm *comm)
       &comm->mpid.coll_metadata[PAMI_XFER_BARRIER][0][0],
       sizeof(pami_metadata_t));
 
+   TRACE_ERR("Checking env vars\n");
 
    envopts = getenv("PAMI_BCAST");
    if(envopts != NULL)
@@ -279,7 +330,11 @@ void MPIDI_Comm_coll_envvars(MPID_Comm *comm)
          comm->mpid.user_selectedvar[PAMI_XFER_ALLGATHER] = 0;
 
       if(strcasecmp(envopts, "GLUE_ALLREDUCE") == 0)
+      {
          comm->mpid.allgathers[0] = 1;
+         if(MPIDI_Process.verbose >= 1)
+            fprintf(stderr,"setting allgather via allreduce as default allgather for comm %p\n", comm);
+      }
 
       if(strcasecmp(envopts, "GLUE_BCAST") == 0)
          comm->mpid.allgathers[1] = 1;
@@ -373,6 +428,7 @@ void MPIDI_Comm_coll_envvars(MPID_Comm *comm)
          }
       }
    }
+   TRACE_ERR("MPIDI_Comm_coll_envvars exit\n");
 }
 
 
@@ -382,6 +438,7 @@ void MPIDI_Comm_coll_query(MPID_Comm *comm)
    TRACE_ERR("MPIDI_Comm_coll_query enter\n");
    int rc = 0, i, j;
    size_t num_algorithms[2];
+   TRACE_ERR("Getting geometry from comm %p\n", comm);
    pami_geometry_t *geom = comm->mpid.geometry;;
    for(i = 0; i < PAMI_XFER_COUNT; i++)
    {
@@ -391,12 +448,15 @@ void MPIDI_Comm_coll_query(MPID_Comm *comm)
                                         geom,
                                         i,
                                         num_algorithms);
+      TRACE_ERR("Num algorithms of type %d: %zd %zd\n", i, num_algorithms[0], num_algorithms[1]);
       if(rc != PAMI_SUCCESS)
       {
          fprintf(stderr,"PAMI_Geometry_algorithms_num returned %d for type %d\n", rc, i);
          continue;
       }
 
+      comm->mpid.coll_count[i][0] = 0;
+      comm->mpid.coll_count[i][1] = 0;
       if(num_algorithms[0])
       {
          comm->mpid.coll_algorithm[i][0] = (pami_algorithm_t *)
