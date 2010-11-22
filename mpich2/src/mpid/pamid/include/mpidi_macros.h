@@ -13,10 +13,6 @@
 #define __include_mpidi_macros_h__
 
 
-/* Best results are achieved when your expression evaluates to 1 or 0. */
-#define   likely(x) __builtin_expect(x,1)
-#define unlikely(x) __builtin_expect(x,0)
-
 #ifdef TRACE_ON
 #ifdef __GNUC__
 #define TRACE_ALL(fd, format, ...) fprintf(fd, "%s:%u (%d) " format, __FILE__, __LINE__, MPIR_Process.comm_world->rank, ##__VA_ARGS__)

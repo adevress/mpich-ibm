@@ -20,9 +20,9 @@ MPID_Win_free(MPID_Win **win_ptr)
   int mpi_errno = MPI_SUCCESS;
 
   MPID_Win *win = *win_ptr;
-  size_t rank = win->mpid.comm->rank;
+  size_t rank = win->comm_ptr->rank;
 
-  mpi_errno = PMPI_Barrier(win->mpid.comm->handle);
+  mpi_errno = PMPI_Barrier(win->comm_ptr->handle);
   if (mpi_errno != MPI_SUCCESS)
     return mpi_errno;
 
@@ -36,9 +36,8 @@ MPID_Win_free(MPID_Win **win_ptr)
 
   MPIU_Free(win->mpid.info);
 
-  mpi_errno = PMPI_Comm_free(&win->comm);
-  if (mpi_errno != MPI_SUCCESS)
-    return mpi_errno;
+  int count = 0;
+  MPIR_Comm_release_ref(win->comm_ptr, &count);
 
   MPIU_Handle_obj_free(&MPID_Win_mem, win);
 

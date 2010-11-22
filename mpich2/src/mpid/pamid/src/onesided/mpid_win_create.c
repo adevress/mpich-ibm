@@ -46,13 +46,6 @@ MPID_Win_create(void       * base,
     return mpi_errno;
   *win_ptr = win;
 
-  MPID_Comm *comm = NULL;
-  mpi_errno = PMPI_Comm_dup(comm_ptr->handle, &win->comm);
-  if (mpi_errno != MPI_SUCCESS)
-    return mpi_errno;
-  MPID_assert(win->comm != MPI_COMM_NULL);
-  MPID_Comm_get_ptr(win->comm, comm);
-  MPID_assert(comm != NULL);
   win->base = base;
   win->size = length;
   win->disp_unit = disp_unit;
@@ -62,10 +55,10 @@ MPID_Win_create(void       * base,
   /* --------------------------------------- */
   memset(&win->mpid, 0, sizeof(struct MPIDI_Win));
 
-  win->mpid.comm = comm;
+  win->comm_ptr = comm_ptr; MPIR_Comm_add_ref(comm_ptr);
 
-  size_t size = comm->local_size;
-  size_t rank = comm->rank;
+  size_t size = comm_ptr->local_size;
+  size_t rank = comm_ptr->rank;
 
   win->mpid.info = MPIU_Calloc0(size, struct MPIDI_Win_info);
 
@@ -92,11 +85,11 @@ MPID_Win_create(void       * base,
                              win->mpid.info,
                              sizeof(struct MPIDI_Win_info),
                              MPI_BYTE,
-                             comm->handle);
+                             comm_ptr->handle);
   if (mpi_errno != MPI_SUCCESS)
     return mpi_errno;
 
-  mpi_errno = PMPI_Barrier(comm->handle);
+  mpi_errno = PMPI_Barrier(comm_ptr->handle);
   if (mpi_errno != MPI_SUCCESS)
     return mpi_errno;
 

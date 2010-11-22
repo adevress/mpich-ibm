@@ -222,7 +222,6 @@ struct MPIDI_Win_info
  */
 struct MPIDI_Win
 {
-  struct MPID_Comm       *comm;    /**< saved pointer to window communicator           */
   struct MPIDI_Win_info  *info;    /**< allocated array of collective info             */
   struct MPIDI_Win_sync
   {

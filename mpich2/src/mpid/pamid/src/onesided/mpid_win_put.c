@@ -60,7 +60,7 @@ MPID_Put(void         *origin_addr,
     }
 
   /* If the get is a local operation, do it here */
-  if (target_rank == win->mpid.comm->rank)
+  if (target_rank == win->comm_ptr->rank)
     {
       MPIU_Free(req);
       return MPIR_Localcopy(origin_addr,
@@ -72,7 +72,7 @@ MPID_Put(void         *origin_addr,
     }
 
 
-  pami_task_t task = MPID_VCR_GET_LPID(win->mpid.comm->vcr, target_rank);
+  pami_task_t task = MPID_VCR_GET_LPID(win->comm_ptr->vcr, target_rank);
   rc = PAMI_Endpoint_create(MPIDI_Client, task, 0, &req->dest);
   MPID_assert(rc == PAMI_SUCCESS);
 
