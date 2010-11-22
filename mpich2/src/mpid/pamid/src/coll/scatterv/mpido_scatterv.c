@@ -39,7 +39,7 @@ int MPIDO_Scatterv_bcast(void *sendbuf,
 
   if (rank != root)
   {
-    tempbuf = MPIU_Malloc(sizeof(char) * sum);
+    tempbuf = MPIU_Malloc(dtsize * sum);
     if (!tempbuf)
       return MPIR_Err_create_code(MPI_SUCCESS,
                                   MPIR_ERR_RECOVERABLE,
