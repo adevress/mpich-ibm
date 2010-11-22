@@ -362,9 +362,6 @@ void MPIR_DatatypeAttrFinalize( void );
 /* Should the following be moved into mpihandlemem.h ?*/
 /* ------------------------------------------------------------------------- */
 
-#define unlikely(x) __builtin_expect(x,0)
-#define likely(x)   __builtin_expect(x,1)
-
 /* Routines to initialize handle allocations */
 /* These are now internal to the handlemem package
 void *MPIU_Handle_direct_init( void *, int, int, int );
