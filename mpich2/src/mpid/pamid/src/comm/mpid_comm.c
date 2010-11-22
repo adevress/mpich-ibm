@@ -53,8 +53,8 @@ void MPIDI_Coll_comm_create(MPID_Comm *comm)
       slices = malloc(sizeof(pami_geometry_range_t) * comm->local_size);
       for(i=0;i<comm->local_size;i++)
       {
-         slices[i].lo = (size_t)comm->vcr[i];
-         slices[i].hi = (size_t)comm->vcr[i];
+         slices[i].lo = MPID_VCR_GET_LPID(comm->vcr, i);
+         slices[i].hi = MPID_VCR_GET_LPID(comm->vcr, i);
       }
       rc = PAMI_Geometry_create_taskrange(MPIDI_Client,
                                          NULL,
