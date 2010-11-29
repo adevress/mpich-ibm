@@ -17,11 +17,12 @@
 #include <pami.h>
 
 
+#if defined(__BGQ__) || defined(__BGP__)
 #define USE_PAMI_RDMA 1
+#endif
 
 
 #define MPID_abort()    assert(0) /**< \brief Always exit--usually implies missing functionality */
-
 #if ASSERT_LEVEL==0
 #define MPID_assert(x)
 #else
