@@ -196,6 +196,17 @@ extern "C" {
    */
   int MPIX_Get_coll_protocol(MPI_Comm comm, char * protocol, int length);
 
+  /**
+   * \brief Returns the integer representing the last collective used (rather than a string)
+   *
+   * \param[in] comm The communicator
+   * \param[out] last_algorithm The integer representing the last algorithm used
+   *
+   * \return MPI_SUCCESS
+   */
+  int MPIX_Get_last_algorithm(MPI_Comm comm, int *last_algorithm);
+
+
 #if defined(__cplusplus)
 }
 #endif

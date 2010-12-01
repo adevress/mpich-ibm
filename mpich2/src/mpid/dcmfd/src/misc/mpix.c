@@ -303,3 +303,19 @@ int MPIX_Get_coll_protocol(MPI_Comm comm, char * protocol, int length)
   return MPI_SUCCESS;
 }
 
+int MPIX_Get_last_algorithm(MPI_Comm comm, int *last_algorithm)
+{
+   MPID_Comm *comm_ptr;
+   MPID_Comm_get_ptr(comm, comm_ptr);
+
+   if(!comm_ptr || comm == MPI_COMM_NULL)
+      return MPI_ERR_COMM;
+
+   if(comm_ptr->dcmf.last_algorithm >= MPIDO_COLL_PROP)
+   {
+      *last_algorithm = comm_ptr->dcmf.last_algorithm;
+      return MPI_SUCCESS;
+   }
+
+   return MPI_ERR_COMM;
+}
