@@ -5441,8 +5441,6 @@ pac_cv_linuxalpha_cycle,[
     if test -n "$MPID_DEVICE_TIMER_TYPE" ; then 
        MPID_TIMER_TYPE=$MPID_DEVICE_TIMER_TYPE
     fi
-    # ToDo: Remove this line and the next when we use the $MPID_DEVICE_TIMER_TYPE var
-    MPID_TIMER_TYPE="double"
     ;;
 
     *)
@@ -5600,7 +5598,6 @@ AC_SUBST(MPI_F77_AINT)
 export MPI_F77_AINT
 # ----------------------------------------------------------------------------
 
-#
 # define MPIU_Size_t - used to express the size of objects
 # This is used in src/include/mpitypedefs.h to define MPIU_SIZE_T, 
 # and is used in various parts of ch3 and mpid/common/sock.  
