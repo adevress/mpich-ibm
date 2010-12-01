@@ -1,5 +1,3 @@
-/mpi_base.f90.orig
-/mpi_base.f90.new
 /mpif.h
 /Makefile
 /Makefile.in
@@ -9,6 +7,7 @@
 /mpimod.pcl
 /mpi_sizeofs.f90
 /mpi_base.f90
+/mpi_base.f90.in
 /mpif90model.h
 /mpif90type.h
 /mpi_constants.f90
