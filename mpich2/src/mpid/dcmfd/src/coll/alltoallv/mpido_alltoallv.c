@@ -42,8 +42,9 @@ MPIDO_Alltoallv(void *sendbuf,
   if (MPIDO_INFO_ISSET(properties, MPIDO_USE_MPICH_ALLTOALLV) ||
       !MPIDO_INFO_ISSET(properties, MPIDO_USE_TORUS_ALLTOALLV) ||
       !snd_contig ||
-      !rcv_contig ||
-      tsndlen != trcvlen)
+      !rcv_contig)
+      /* This doesn't seem necesary for an alltoallv */
+      /* || tsndlen != trcvlen) */
   {
     comm->dcmf.last_algorithm = MPIDO_USE_MPICH_ALLTOALLV;
     return MPIR_Alltoallv(sendbuf, sendcounts, senddispls, sendtype,
