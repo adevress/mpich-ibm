@@ -5,9 +5,6 @@
  */
 #include <mpidimpl.h>
 
-/* This is used to effectively zero-out the recv hints in the done callback */
-static const pami_recv_hint_t null_recv_hint={0};
-
 /**
  * \brief The standard callback for a new message
  *
@@ -75,7 +72,6 @@ void MPIDI_RecvCB(pami_context_t    context,
   /* --------------------------------------- */
   if (unlikely(recv != NULL))
     {
-      recv->hints    = null_recv_hint;
       recv->local_fn = MPIDI_RecvDoneCB;
       recv->cookie   = rreq;
     }
