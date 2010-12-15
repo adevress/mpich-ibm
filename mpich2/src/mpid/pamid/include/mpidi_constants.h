@@ -24,6 +24,13 @@
 #define MPID_MEDIUMCOUNT        4 /**< Total send count is "medium" */
 #define MPID_ALIGNEDBUFFER      5 /**< Buffers are 16b aligned */
 
+#define MPID_ALLGATHER_PREALLREDUCE 0
+#define MPID_ALLGATHERV_PREALLREDUCE 1
+#define MPID_ALLREDUCE_PREALLREDUCE 2
+#define MPID_BCAST_PREALLREDUCE 3
+#define MPID_SCATTERV_PREALLREDUCE 4
+#define MPID_NUM_PREALLREDUCES 5
+
 /** \} */
 
 #endif

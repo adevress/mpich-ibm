@@ -172,6 +172,7 @@ struct MPIDI_Comm
   pami_metadata_t user_metadata[PAMI_XFER_COUNT];
   char last_algorithm[100][5];
   char last_algo_index;
+  char preallreduces[MPID_NUM_PREALLREDUCES];
   /* \todo Need to figure out how to deal with algorithms above the pami level */
   char allgathers[4];
   char allgathervs[4];

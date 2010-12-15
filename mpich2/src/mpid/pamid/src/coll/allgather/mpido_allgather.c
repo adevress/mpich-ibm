@@ -273,6 +273,7 @@ MPIDO_Allgather(void *sendbuf,
  *      MPIDO_Allreduce(MPI_IN_PLACE, &config, 6, MPI_INT, MPI_BAND, comm_ptr);
  *  }
  * else */
+   if(comm_ptr->mpid.preallreduces[MPID_ALLGATHER_PREALLREDUCE])
   {
       rc = PAMI_Collective(MPIDI_Context[0], (pami_xfer_t *)&allred);
       MPID_PROGRESS_WAIT_WHILE(allred_active);
