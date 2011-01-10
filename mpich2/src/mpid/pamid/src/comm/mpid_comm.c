@@ -50,6 +50,21 @@ void MPIDI_Coll_comm_create(MPID_Comm *comm)
    {
       fprintf(stderr,"world geom: %p parent geom: %p\n", MPIDI_Process.world_geometry, comm->mpid.parent);
       TRACE_ERR("Creating subgeom\n");
+      /* Change to this at some point */
+      #if 0
+      rc = PAMI_Geometry_create_tasklist( MPIDI_Client,
+                                          NULL,
+                                          0,
+                                          &comm->mpid.geometry,
+                                          NULL, /* Parent */
+                                          comm->context_id,
+                                          /* task list, where/how do I get that? */
+                                          comm->local_size,
+                                          MPIDI_Context[0],
+                                          geom_cb_done,
+                                          &geom_init);
+      #endif
+
       slices = malloc(sizeof(pami_geometry_range_t) * comm->local_size);
       for(i=0;i<comm->local_size;i++)
       {
@@ -101,7 +116,7 @@ void MPIDI_Coll_comm_destroy(MPID_Comm *comm)
 }
 
 
-void MPIDI_Update_coll(pami_algorithm_t coll, 
+static void MPIDI_Update_coll(pami_algorithm_t coll, 
                        int type, 
                        int index,
                        MPID_Comm *comm_ptr)
@@ -113,10 +128,64 @@ void MPIDI_Update_coll(pami_algorithm_t coll,
           sizeof(pami_metadata_t));
 }
    
+static void MPIDI_Check_preallreduce(char *env, MPID_Comm *comm, char *name, int constant)
+{
+   char *envopts = getenv(env);
+   if(envopts != NULL)
+   {
+      if(strncasecmp(env, "N", 1) == 0)
+      {
+         if(MPIDI_Process.verbose >= 1 && comm->rank == 0)
+            fprintf(stderr,"Bypassing breallreduce for %s\n", name);
+         comm->mpid.preallreduces[constant] = 0;
+      }
+   }
+}
+static int MPIDI_Check_protocols(char *env, MPID_Comm *comm, char *name, int constant)
+{
+   int i;
+   char *envopts = getenv(env);
+   if(envopts != NULL)
+   {
+      if(MPIDI_Process.verbose >= 1 && comm->rank == 0)
+         fprintf(stderr,"Checking %s against known %s protocols\n", envopts, name);
+      /* We could maybe turn off the MPIDO_{} fn ptr instead? */
+      if(strcasecmp(envopts, "MPICH") == 0)
+      {
+         if(MPIDI_Process.verbose >= 1 && comm->rank == 0)
+            fprintf(stderr,"Using MPICH for %s\n", name);
+         comm->mpid.user_selectedvar[constant] = 0;
+         return 0;
+      }
+      if(strncasecmp(envopts, "GLUE_", 5) == 0)
+         return -1;
+
+      for(i=0; i < comm->mpid.coll_count[constant][0];i++)
+      {
+         if(strcasecmp(envopts, comm->mpid.coll_metadata[constant][0][i].name) == 0)
+         {
+            MPIDI_Update_coll(constant, 0, i, comm);
+            if(MPIDI_Process.verbose >= 1 && comm->rank == 0)
+               fprintf(stderr,"setting %s as default %s for comm %p\n", envopts, name, comm);
+            return 0;
+         }
+         if(strcasecmp(envopts, comm->mpid.coll_metadata[constant][1][i].name) == 0)
+         {
+            MPIDI_Update_coll(constant, 1, i, comm);
+            if(MPIDI_Process.verbose >= 1 && comm->rank == 0)
+               fprintf(stderr,"setting (query required protocol) %s as default %s for comm %p\n", envopts, name, comm);
+            return 0;
+         }
+      }
+   }
+   return 0;
+}
+
 void MPIDI_Comm_coll_envvars(MPID_Comm *comm)
 {
    char *envopts;
    int i;
+   int rc;
    TRACE_ERR("MPIDI_Comm_coll_envvars enter\n");
 
    /* Set up always-works defaults */
@@ -134,251 +203,72 @@ void MPIDI_Comm_coll_envvars(MPID_Comm *comm)
       memcpy(&comm->mpid.user_metadata[i], &comm->mpid.coll_metadata[i][0][0],
             sizeof(pami_metadata_t));
    }
-#if 0
-   TRACE_ERR("Assigning always works protocols\n");
-   /* eventually move this into the for() loop too? */
-   comm->mpid.user_selected[PAMI_XFER_BROADCAST] =
-      comm->mpid.coll_algorithm[PAMI_XFER_BROADCAST][0][0];
-   comm->mpid.user_selected[PAMI_XFER_ALLREDUCE] =
-      comm->mpid.coll_algorithm[PAMI_XFER_ALLREDUCE][0][0];
-   comm->mpid.user_selected[PAMI_XFER_ALLGATHER] =
-      comm->mpid.coll_algorithm[PAMI_XFER_ALLGATHER][0][0];
-   comm->mpid.user_selected[PAMI_XFER_ALLGATHERV] =
-      comm->mpid.coll_algorithm[PAMI_XFER_ALLGATHERV][0][0];
-   comm->mpid.user_selected[PAMI_XFER_GATHER] =
-      comm->mpid.coll_algorithm[PAMI_XFER_GATHER][0][0];
-   comm->mpid.user_selected[PAMI_XFER_SCATTERV] =
-      comm->mpid.coll_algorithm[PAMI_XFER_SCATTERV][0][0];
-   comm->mpid.user_selected[PAMI_XFER_SCATTER] =
-      comm->mpid.coll_algorithm[PAMI_XFER_SCATTER][0][0];
-   comm->mpid.user_selected[PAMI_XFER_BARRIER] =
-      comm->mpid.coll_algorithm[PAMI_XFER_BARRIER][0][0];
 
-   TRACE_ERR("Memcpy user data\n");
-   memcpy(&comm->mpid.user_metadata[PAMI_XFER_BROADCAST],
-      &comm->mpid.coll_metadata[PAMI_XFER_BROADCAST][0][0],
-      sizeof(pami_metadata_t));
-   memcpy(&comm->mpid.user_metadata[PAMI_XFER_ALLREDUCE],
-      &comm->mpid.coll_metadata[PAMI_XFER_ALLREDUCE][0][0],
-      sizeof(pami_metadata_t));
-   memcpy(&comm->mpid.user_metadata[PAMI_XFER_ALLGATHER],
-      &comm->mpid.coll_metadata[PAMI_XFER_ALLGATHER][0][0],
-      sizeof(pami_metadata_t));
-   memcpy(&comm->mpid.user_metadata[PAMI_XFER_ALLGATHERV],
-      &comm->mpid.coll_metadata[PAMI_XFER_ALLGATHERV][0][0],
-      sizeof(pami_metadata_t));
-   memcpy(&comm->mpid.user_metadata[PAMI_XFER_GATHER],
-      &comm->mpid.coll_metadata[PAMI_XFER_GATHER][0][0],
-      sizeof(pami_metadata_t));
-   memcpy(&comm->mpid.user_metadata[PAMI_XFER_SCATTERV],
-      &comm->mpid.coll_metadata[PAMI_XFER_SCATTERV][0][0],
-      sizeof(pami_metadata_t));
-   memcpy(&comm->mpid.user_metadata[PAMI_XFER_SCATTER],
-      &comm->mpid.coll_metadata[PAMI_XFER_SCATTER][0][0],
-      sizeof(pami_metadata_t));
-   memcpy(&comm->mpid.user_metadata[PAMI_XFER_BARRIER],
-      &comm->mpid.coll_metadata[PAMI_XFER_BARRIER][0][0],
-      sizeof(pami_metadata_t));
 
-#endif
    TRACE_ERR("Checking env vars\n");
 
-   envopts = getenv("PAMI_BCAST");
-   if(envopts != NULL)
-   {
-      if(MPIDI_Process.verbose >= 1 && comm->rank == 0)
-         fprintf(stderr,"Checking %s against known bcast protocols\n", envopts);
-      /* We could maybe turn off the MPIDO_{} fn ptr instead? */
-      if(strcasecmp(envopts, "MPICH") == 0)
-      {
-         if(MPIDI_Process.verbose >= 1 && comm->rank == 0)
-            fprintf(stderr,"Using MPICH for bcast\n");
-         comm->mpid.user_selectedvar[PAMI_XFER_BROADCAST] = 0;
-      }
+   MPIDI_Check_preallreduce("PAMI_ALLGATHER_PREALLREDUCE", comm, "allgather", 
+         MPID_ALLGATHER_PREALLREDUCE);
 
-      for(i=0; i < comm->mpid.coll_count[PAMI_XFER_BROADCAST][0];i++)
-      {
-         if(strcasecmp(envopts, comm->mpid.coll_metadata[PAMI_XFER_BROADCAST][0][i].name) == 0)
-         {
-            MPIDI_Update_coll(PAMI_XFER_BROADCAST, 0, i, comm);
-            if(MPIDI_Process.verbose >= 1 && comm->rank == 0)
-               fprintf(stderr,"setting %s as default bcast for comm %p\n", envopts, comm);
-            break;
-         }
-         if(strcasecmp(envopts, comm->mpid.coll_metadata[PAMI_XFER_BROADCAST][1][i].name) == 0)
-         {
-            MPIDI_Update_coll(PAMI_XFER_BROADCAST, 1, i, comm);
-            if(MPIDI_Process.verbose >= 1 && comm->rank == 0)
-               fprintf(stderr,"setting (query required protocol) %s as default bcast for comm %p\n", envopts, comm);
-            break;
-         }
-      }
-   }
+   MPIDI_Check_preallreduce("PAMI_ALLGATHERV_PREALLREDUCE", comm, "allgatherv",
+         MPID_ALLGATHERV_PREALLREDUCE);
 
-   envopts = getenv("PAMI_ALLREDUCE");
-   if(envopts != NULL)
-   {
-      if(MPIDI_Process.verbose >= 1 && comm->rank == 0)
-         fprintf(stderr,"Checking %s against known allreduce protocols\n", envopts);
+   MPIDI_Check_preallreduce("PAMI_ALLREDUCE_PREALLREDUCE", comm, "allreduce",
+         MPID_ALLREDUCE_PREALLREDUCE);
 
-      if(strcasecmp(envopts, "MPICH") == 0)
-      {
-         if(MPIDI_Process.verbose >= 1 && comm->rank == 0)
-            fprintf(stderr,"Using MPICH for allreduce\n");
-         comm->mpid.user_selectedvar[PAMI_XFER_ALLREDUCE] = 0;
-      }
+   MPIDI_Check_preallreduce("PAMI_BCAST_PREALLREDUCE", comm, "broadcast",
+         MPID_BCAST_PREALLREDUCE);
 
-      for(i=0; i < comm->mpid.coll_count[PAMI_XFER_ALLREDUCE][0];i++)
-      {
-         if(strcasecmp(envopts, comm->mpid.coll_metadata[PAMI_XFER_ALLREDUCE][0][i].name) == 0)
-         {
-            MPIDI_Update_coll(PAMI_XFER_ALLREDUCE, 0, i, comm);
-            if(MPIDI_Process.verbose >= 1 && comm->rank == 0)
-               fprintf(stderr,"setting %s as default allreduce for comm %p\n", envopts, comm);
-            break;
-         }
-         if(strcasecmp(envopts, comm->mpid.coll_metadata[PAMI_XFER_ALLREDUCE][1][i].name) == 0)
-         {
-            MPIDI_Update_coll(PAMI_XFER_ALLREDUCE, 1, i, comm);
-            if(MPIDI_Process.verbose >= 1 && comm->rank == 0)
-               fprintf(stderr,"setting (query required protocol) %s as default allreduce for comm %p\n", envopts, comm);
-            break;
-         }
-      }
-   }
+   MPIDI_Check_preallreduce("PAMI_SCATTERV_PREALLREDUCE", comm, "scatterv",
+         MPID_SCATTERV_PREALLREDUCE);
 
-   envopts = getenv("PAMI_BARRIER");
-   if(envopts != NULL)
-   {
-      if(MPIDI_Process.verbose >= 1 && comm->rank == 0)
-         fprintf(stderr,"Checking %s against known barrier protocols\n", envopts);
+   MPIDI_Check_protocols("PAMI_BCAST", comm, "broadcast", PAMI_XFER_BROADCAST);
 
-      if(strcasecmp(envopts, "MPICH") == 0)
-      {
-         if(MPIDI_Process.verbose >= 1 && comm->rank == 0)
-            fprintf(stderr,"Using MPICH for barrier\n");
-         comm->mpid.user_selectedvar[PAMI_XFER_BARRIER] = 0;
-      }
-      for(i=0; i < comm->mpid.coll_count[PAMI_XFER_BARRIER][0];i++)
-      {
-         if(strcasecmp(envopts, comm->mpid.coll_metadata[PAMI_XFER_BARRIER][0][i].name) == 0)
-         {
-            MPIDI_Update_coll(PAMI_XFER_BARRIER, 0, i, comm);
-            if(MPIDI_Process.verbose >= 1 && comm->rank == 0)
-               fprintf(stderr,"setting %s as default barrier for comm %p\n", envopts, comm);
-            break;
-         }
-         if(strcasecmp(envopts, comm->mpid.coll_metadata[PAMI_XFER_BARRIER][1][i].name) == 0)
-         {
-            MPIDI_Update_coll(PAMI_XFER_BARRIER, 1, i, comm);
-            if(MPIDI_Process.verbose >= 1 && comm->rank == 0)
-               fprintf(stderr,"setting (query required protocol) %s as default barrier for comm %p\n", envopts, comm);
-            break;
-         }
-      }
-   }
+   MPIDI_Check_protocols("PAMI_ALLREDUCE", comm, "allreduce", PAMI_XFER_ALLREDUCE);
+
+   MPIDI_Check_protocols("PAMI_BARRIER", comm, "barrier", PAMI_XFER_BARRIER);
+
+   MPIDI_Check_protocols("PAMI_ALLTOALL", comm, "alltoall", PAMI_XFER_ALLTOALL);
+
+   MPIDI_Check_protocols("PAMI_ALLTOALLV", comm, "alltoallv", PAMI_XFER_ALLTOALLV_INT);
 
    comm->mpid.scattervs[0] = comm->mpid.scattervs[1] = 0;
-   envopts = getenv("PAMI_SCATTERV");
-   if(envopts != NULL)
+   rc = MPIDI_Check_protocols("PAMI_SCATTERV", comm, "scatterv", PAMI_XFER_SCATTERV_INT);
+   if(rc != 0)
    {
-      if(MPIDI_Process.verbose >= 1 && comm->rank == 0)
-         fprintf(stderr,"Checking %s against known scatterv protocols\n", envopts);
-
-      if(strcasecmp(envopts, "MPICH") == 0)
-      {
-         if(MPIDI_Process.verbose >= 1 && comm->rank == 0)
-            fprintf(stderr,"Using MPICH for scatterv\n");
-         comm->mpid.user_selectedvar[PAMI_XFER_SCATTERV] = 0;
-      }
-
+      envopts = getenv("PAMI_SCATTERV");
       if(strcasecmp(envopts, "GLUE_BCAST") == 0)
       {
          if(MPIDI_Process.verbose >= 1 && comm->rank == 0)
             fprintf(stderr,"Using glue bcast for scatterv\n");
          comm->mpid.scattervs[0] = 1;
       }
-
-      if(strcasecmp(envopts, "GLUE_ALLTOALLV") == 0)
+      else if(strcasecmp(envopts, "GLUE_ALLTOALLV") == 0)
       {
          if(MPIDI_Process.verbose >= 1 && comm->rank == 0)
             fprintf(stderr,"Using glue alltoallv for scatterv\n");
          comm->mpid.scattervs[1] = 1;
       }
-
-      for(i=0; i < comm->mpid.coll_count[PAMI_XFER_SCATTERV][0];i++)
-      {
-         if(strcasecmp(envopts, comm->mpid.coll_metadata[PAMI_XFER_SCATTERV][0][i].name) == 0)
-         {
-            MPIDI_Update_coll(PAMI_XFER_SCATTERV, 0, i, comm);
-            if(MPIDI_Process.verbose >= 1 && comm->rank == 0)
-               fprintf(stderr,"setting %s as default scatterv for comm %p\n", envopts, comm);
-            break;
-         }
-         if(strcasecmp(envopts, comm->mpid.coll_metadata[PAMI_XFER_SCATTERV][1][i].name) == 0)
-         {
-            MPIDI_Update_coll(PAMI_XFER_SCATTERV, 1, i, comm);
-            if(MPIDI_Process.verbose >= 1 && comm->rank == 0)
-               fprintf(stderr,"setting (query required protocol) %s as default scatterv for comm %p\n", envopts, comm);
-            break;
-         }
-      }
    }
-
+      
    comm->mpid.optscatter = 0;
-   envopts = getenv("PAMI_SCATTER");
-   if(envopts != NULL)
+   rc = MPIDI_Check_protocols("PAMI_SCATTERV", comm, "scatter", PAMI_XFER_SCATTER);
+   if(rc != 0)
    {
-      if(MPIDI_Process.verbose >= 1 && comm->rank == 0)
-         fprintf(stderr,"Checking %s against known scatter protocols\n", envopts);
-
-      if(strcasecmp(envopts, "MPICH") == 0)
-      {
-         if(MPIDI_Process.verbose >= 1 && comm->rank == 0)
-            fprintf(stderr,"Using MPICH for scatter\n");
-         comm->mpid.user_selectedvar[PAMI_XFER_SCATTER] = 0;
-      }
-
+      envopts = getenv("PAMI_SCATTER");
       if(strcasecmp(envopts, "GLUE_BCAST") == 0)
       {
          if(MPIDI_Process.verbose >= 1 && comm->rank == 0)
             fprintf(stderr,"Using glue_bcast for scatter\n");
          comm->mpid.optscatter = 1;
       }
-
-      for(i=0; i < comm->mpid.coll_count[PAMI_XFER_SCATTER][0];i++)
-      {
-         if(strcasecmp(envopts, comm->mpid.coll_metadata[PAMI_XFER_SCATTER][0][i].name) == 0)
-         {
-            MPIDI_Update_coll(PAMI_XFER_SCATTER, 0, i, comm);
-            if(MPIDI_Process.verbose >= 1 && comm->rank == 0)
-               fprintf(stderr,"setting %s as default scatter for comm %p\n", envopts, comm);
-            break;
-         }
-         if(strcasecmp(envopts, comm->mpid.coll_metadata[PAMI_XFER_SCATTER][1][i].name) == 0)
-         {
-            MPIDI_Update_coll(PAMI_XFER_SCATTER, 1, i, comm);
-            if(MPIDI_Process.verbose >= 1 && comm->rank == 0)
-               fprintf(stderr,"setting (query required protocol) %s as default scatter for comm %p\n", envopts, comm);
-            break;
-         }
-      }
    }
 
    comm->mpid.allgathers[0] = comm->mpid.allgathers[1] = comm->mpid.allgathers[2] = 0;
-   envopts = getenv("PAMI_ALLGATHER");
-   if(envopts != NULL)
+   rc = MPIDI_Check_protocols("PAMI_ALLGATHER", comm, "allgather", PAMI_XFER_ALLGATHER);
+   if(rc != 0)
    {
-      if(MPIDI_Process.verbose >= 1 && comm->rank == 0)
-         fprintf(stderr,"Checking %s against known allgather protocols\n", envopts);
-
-      if(strcasecmp(envopts, "MPICH") == 0)
-      {
-         if(MPIDI_Process.verbose >= 1 && comm->rank == 0)
-            fprintf(stderr,"Using MPICH for allgather\n");
-         comm->mpid.user_selectedvar[PAMI_XFER_ALLGATHER] = 0;
-      }
-
+      envopts = getenv("PAMI_ALLGATHER");
       if(strcasecmp(envopts, "GLUE_ALLREDUCE") == 0)
       {
          if(MPIDI_Process.verbose >= 1 && comm->rank == 0)
@@ -386,53 +276,26 @@ void MPIDI_Comm_coll_envvars(MPID_Comm *comm)
          comm->mpid.allgathers[0] = 1;
       }
 
-      if(strcasecmp(envopts, "GLUE_BCAST") == 0)
+      else if(strcasecmp(envopts, "GLUE_BCAST") == 0)
       {
          if(MPIDI_Process.verbose >= 1 && comm->rank == 0)
             fprintf(stderr,"Using glue_bcast for allgather\n");
          comm->mpid.allgathers[1] = 1;
       }
 
-      if(strcasecmp(envopts, "GLUE_ALLTOALL") == 0)
+      else if(strcasecmp(envopts, "GLUE_ALLTOALL") == 0)
       {
          if(MPIDI_Process.verbose >= 1 && comm->rank == 0)
             fprintf(stderr,"Using glue_alltoall for allgather\n");
          comm->mpid.allgathers[2] = 1;
       }
-
-      for(i=0; i < comm->mpid.coll_count[PAMI_XFER_ALLGATHER][0];i++)
-      {
-         if(strcasecmp(envopts, comm->mpid.coll_metadata[PAMI_XFER_ALLGATHER][0][i].name) == 0)
-         {
-            MPIDI_Update_coll(PAMI_XFER_ALLGATHER, 0, i, comm);
-            if(MPIDI_Process.verbose >= 1 && comm->rank == 0)
-               fprintf(stderr,"setting %s as default allgather for comm %p\n", envopts, comm);
-            break;
-         }
-         if(strcasecmp(envopts, comm->mpid.coll_metadata[PAMI_XFER_ALLGATHER][1][i].name) == 0)
-         {
-            MPIDI_Update_coll(PAMI_XFER_ALLGATHER, 1, i, comm);
-            if(MPIDI_Process.verbose >= 1 && comm->rank == 0)
-               fprintf(stderr,"setting (query required protocol) %s as default allgather for comm %p\n", envopts, comm);
-            break;
-         }
-      }
    }
 
    comm->mpid.allgathervs[0] = comm->mpid.allgathervs[1] = comm->mpid.allgathervs[2] = 0;
-   envopts = getenv("PAMI_ALLGATHERV");
-   if(envopts != NULL)
+   rc = MPIDI_Check_protocols("PAMI_ALLGATHERV", comm, "allgatherv", PAMI_XFER_ALLGATHERV_INT);
+   if(rc != 0)
    {
-      if(MPIDI_Process.verbose >= 1 && comm->rank == 0)
-         fprintf(stderr,"Checking %s against known allgatherv protocols\n", envopts);
-         
-      if(strcasecmp(envopts, "MPICH") == 0)
-      {
-         if(MPIDI_Process.verbose >= 1 && comm->rank == 0)
-            fprintf(stderr,"Using MPICH for allgatherv\n");
-         comm->mpid.user_selectedvar[PAMI_XFER_ALLGATHERV] = 0;
-      }
-
+      envopts = getenv("PAMI_ALLGATHERV");
       if(strcasecmp(envopts, "GLUE_ALLREDUCE") == 0)
       {
          if(MPIDI_Process.verbose >= 1 && comm->rank == 0)
@@ -440,76 +303,34 @@ void MPIDI_Comm_coll_envvars(MPID_Comm *comm)
          comm->mpid.allgathervs[0] = 1;
       }
 
-      if(strcasecmp(envopts, "GLUE_BCAST") == 0)
+      else if(strcasecmp(envopts, "GLUE_BCAST") == 0)
       {
          if(MPIDI_Process.verbose >= 1 && comm->rank == 0)
             fprintf(stderr,"Using glue_bcast for allgatherv\n");
          comm->mpid.allgathervs[1] = 1;
       }
 
-      if(strcasecmp(envopts, "GLUE_ALLTOALL") == 0)
+      else if(strcasecmp(envopts, "GLUE_ALLTOALL") == 0)
       {
          if(MPIDI_Process.verbose >= 1 && comm->rank == 0)
             fprintf(stderr,"Using glue_alltoall for allgatherv\n");
          comm->mpid.allgathervs[2] = 1;
       }
-
-      for(i=0; i < comm->mpid.coll_count[PAMI_XFER_ALLGATHERV][0];i++)
-      {
-         if(strcasecmp(envopts, comm->mpid.coll_metadata[PAMI_XFER_ALLGATHERV][0][i].name) == 0)
-         {
-            MPIDI_Update_coll(PAMI_XFER_ALLGATHERV, 0, i, comm);
-            if(MPIDI_Process.verbose >= 1 && comm->rank == 0)
-               fprintf(stderr,"setting %s as default allgatherv for comm %p\n", envopts, comm);
-            break;
-         }
-         if(strcasecmp(envopts, comm->mpid.coll_metadata[PAMI_XFER_ALLGATHERV][1][i].name) == 0)
-         {
-            MPIDI_Update_coll(PAMI_XFER_ALLGATHERV, 1, i, comm);
-            if(MPIDI_Process.verbose >= 1 && comm->rank == 0)
-               fprintf(stderr,"setting (query required protocol) %s as default allgatherv for comm %p\n", envopts, comm);
-            break;
-         }
-      }
    }
 
    comm->mpid.optgather = 0;
-   envopts = getenv("PAMI_GATHER");
-   if(envopts != NULL)
+   rc = MPIDI_Check_protocols("PAMI_GATHER", comm, "gather", PAMI_XFER_GATHER);
+   if(rc != 0)
    {
-      if(MPIDI_Process.verbose >= 1 && comm->rank == 0)
-         fprintf(stderr,"Checking %s against known gather protocols\n", envopts);
-
-      if(strcasecmp(envopts, "MPICH") == 0)
-      {
-         if(MPIDI_Process.verbose >= 1 && comm->rank == 0)
-            fprintf(stderr,"Using MPICH for gather\n");
-         comm->mpid.user_selectedvar[PAMI_XFER_GATHER] = 0;
-      }
-
+      envopts = getenv("PAMI_GATHER");
       if(strcasecmp(envopts, "GLUE_REDUCE") == 0)
       {
          if(MPIDI_Process.verbose >= 1 && comm->rank == 0)
             fprintf(stderr,"using glue_reduce for gather\n");
          comm->mpid.optgather = 1;
       }
-
-      for(i=0; i < comm->mpid.coll_count[PAMI_XFER_GATHER][0];i++)
-      {
-         if(strcasecmp(envopts, comm->mpid.coll_metadata[PAMI_XFER_GATHER][0][i].name) == 0)
-         {
-            MPIDI_Update_coll(PAMI_XFER_GATHER, 0, i, comm);
-            if(MPIDI_Process.verbose >= 1 && comm->rank == 0)
-               fprintf(stderr,"setting %s as default gather for comm %p\n", envopts, comm);
-         }
-         if(strcasecmp(envopts, comm->mpid.coll_metadata[PAMI_XFER_GATHER][1][i].name) == 0)
-         {
-            MPIDI_Update_coll(PAMI_XFER_GATHER, 1, i, comm);
-            if(MPIDI_Process.verbose >= 1 && comm->rank == 0)
-               fprintf(stderr,"setting (query required protocol) %s as default gather for comm %p\n", envopts, comm);
-         }
-      }
    }
+
    TRACE_ERR("MPIDI_Comm_coll_envvars exit\n");
 }
 
