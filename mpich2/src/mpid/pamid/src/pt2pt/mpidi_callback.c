@@ -74,6 +74,13 @@ void MPIDI_RecvCB(pami_context_t    context,
     {
       recv->local_fn = MPIDI_RecvDoneCB;
       recv->cookie   = rreq;
+#if ASSERT_LEVEL > 0
+      /* This ensures that the value is set, even to something impossible */
+      recv->addr = NULL;
+#endif
+      /** \todo Remove these two lines when trac #256 is approved, implemented, and integrated into MPICH2 */
+      recv->data_fn  = PAMI_DATA_COPY;
+      recv->type     = PAMI_BYTE;
     }
 
 
@@ -119,8 +126,6 @@ void MPIDI_RecvCB(pami_context_t    context,
               rreq->mpid.uebuf    = MPIU_Malloc(sndlen);
               MPID_assert(rreq->mpid.uebuf != NULL);
 
-              recv->data_fn = PAMI_DATA_COPY;
-              recv->type = PAMI_BYTE;
               recv->addr = rreq->mpid.uebuf;
             }
           else
@@ -152,8 +157,6 @@ void MPIDI_RecvCB(pami_context_t    context,
 
           if (unlikely(recv != NULL))
             {
-              recv->data_fn = PAMI_DATA_COPY;
-              recv->type = PAMI_BYTE;
               recv->addr = rcvbuf;
             }
           else
@@ -209,8 +212,6 @@ void MPIDI_RecvCB(pami_context_t    context,
       /* -------------------------------------------------- */
       /*  Let PAMI know where to put the rest of the data.  */
       /* -------------------------------------------------- */
-      recv->data_fn = PAMI_DATA_COPY;
-      recv->type = PAMI_BYTE;
       recv->addr = rreq->mpid.uebuf;
     }
   else
