@@ -121,6 +121,7 @@ static void MPIDI_Update_coll(pami_algorithm_t coll,
                        int index,
                        MPID_Comm *comm_ptr)
 {
+   comm_ptr->mpid.user_selectedvar[coll] = 1;
    comm_ptr->mpid.user_selected[coll] = 
       comm_ptr->mpid.coll_algorithm[coll][type][index];
    memcpy(&comm_ptr->mpid.user_metadata[coll],
@@ -154,7 +155,6 @@ static int MPIDI_Check_protocols(char *env, MPID_Comm *comm, char *name, int con
       {
          if(MPIDI_Process.verbose >= 1 && comm->rank == 0)
             fprintf(stderr,"Using MPICH for %s\n", name);
-         comm->mpid.user_selectedvar[constant] = 0;
          return 0;
       }
       if(strncasecmp(envopts, "GLUE_", 5) == 0)
@@ -169,6 +169,9 @@ static int MPIDI_Check_protocols(char *env, MPID_Comm *comm, char *name, int con
                fprintf(stderr,"setting %s as default %s for comm %p\n", envopts, name, comm);
             return 0;
          }
+      }
+      for(i=0; i < comm->mpid.coll_count[constant][1];i++)
+      {
          if(strcasecmp(envopts, comm->mpid.coll_metadata[constant][1][i].name) == 0)
          {
             MPIDI_Update_coll(constant, 1, i, comm);
@@ -196,7 +199,7 @@ void MPIDI_Comm_coll_envvars(MPID_Comm *comm)
          i == PAMI_XFER_FENCE)
          continue;
 
-      comm->mpid.user_selectedvar[i] = 1;
+      comm->mpid.user_selectedvar[i] = 0;
          if(MPIDI_Process.verbose >= 1 && comm->rank == 0)
             fprintf(stderr,"Setting up collective %d on comm %p\n", i, comm);
       comm->mpid.user_selected[i] = comm->mpid.coll_algorithm[i][0][0];
