@@ -20,15 +20,18 @@ pthread_mutex_t MPIDI_Mutex_lock;
 MPIDI_Process_t  MPIDI_Process = {
  verbose        : 0,
  statistics     : 0,
+
+ avail_contexts : MAX_CONTEXTS,
+ comm_threads   : 0,
+ context_post   : 1,
  short_limit    : 0,
 #ifdef __BGQ__
  eager_limit    : 1234,
 #else
  eager_limit    : UINT_MAX,
 #endif
- use_interrupts : 0,
+
  rma_pending    : 1000,
- avail_contexts : MAX_CONTEXTS,
 
  optimized : {
   collectives : 0,
@@ -123,7 +126,8 @@ MPIDI_Init_dispath(size_t              dispatch,
                      Recv,
                      proto->options,
                      &im_max);
-  TRACE_ERR("Immediate-max query:  dispatch=%zu  got=%zu  required=%zu\n", dispatch, im_max, proto->immediate_min);
+  TRACE_ERR("Immediate-max query:  dispatch=%zu  got=%zu  required=%zu\n",
+            dispatch, im_max, proto->immediate_min);
   MPID_assert(proto->immediate_min <= im_max);
   if (immediate_max != NULL)
     *immediate_max = im_max;
@@ -157,21 +161,36 @@ MPIDI_Init(int* rank, int* size, int* threading)
   /* ---------------------------------- */
   /*  Figure out the context situation  */
   /* ---------------------------------- */
+  if(MPIDI_Process.avail_contexts > MAX_CONTEXTS)
+    MPIDI_Process.avail_contexts = MAX_CONTEXTS;
   unsigned same  = PAMIX_Client_query(MPIDI_Client, PAMI_CLIENT_CONST_CONTEXTS).value.intval;
   if(same)
     {
       unsigned possible_contexts = PAMIX_Client_query(MPIDI_Client, PAMI_CLIENT_NUM_CONTEXTS).value.intval;
-      TRACE_ERR("PAMI allows up to %u contexts; MPICH2 allows up to %u\n", possible_contexts, MPIDI_Process.avail_contexts);
+      TRACE_ERR("PAMI allows up to %u contexts; MPICH2 allows up to %u\n",
+                possible_contexts, MPIDI_Process.avail_contexts);
       if(MPIDI_Process.avail_contexts > possible_contexts)
         MPIDI_Process.avail_contexts = possible_contexts;
     }
   else
     {
-      MPIDI_Process.avail_contexts = 1; /* If PAMI didn't give all nodes the same number of contexts, all bets are off for now */
+      /* If PAMI didn't give all nodes the same number of contexts, all bets are off for now */
+      MPIDI_Process.avail_contexts = 1;
     }
 
+
+  /* Only use one context when not posting work */
+  if (MPIDI_Process.context_post == 0)
+    MPIDI_Process.avail_contexts = 1;
+
+
+  /* VNM mode imlies MPI_THREAD_SINGLE, 1 context, and no posting. */
   if (PAMIX_Client_query(MPIDI_Client, PAMI_CLIENT_HWTHREADS_AVAILABLE).value.intval == 1)
-    *threading = MPI_THREAD_SINGLE;
+    {
+      *threading = MPI_THREAD_SINGLE;
+      MPIDI_Process.avail_contexts = 1;
+      MPIDI_Process.context_post   = 0;
+    }
   TRACE_ERR("Thread-level=%d\n", *threading);
 
   /* ----------------------------------- */
@@ -203,6 +222,30 @@ MPIDI_Init(int* rank, int* size, int* threading)
   rc = PAMI_Geometry_world(MPIDI_Client, &MPIDI_Process.world_geometry);
   MPID_assert(rc == PAMI_SUCCESS);
 
+  if (MPIDI_Process.verbose > 1)
+    {
+      printf("MPIDI_Process.*\n"
+             "  verbose      : %u\n"
+             "  statistics   : %u\n"
+             "  contexts     : %u\n"
+             "  comm_threads : %u\n"
+             "  context_post : %u\n"
+             "  short_limit  : %u\n"
+             "  eager_limit  : %u\n"
+             "  rma_pending  : %u\n"
+             "  optimized.collectives : %u\n"
+             "  optimized.topology    : %u\n",
+             MPIDI_Process.verbose,
+             MPIDI_Process.statistics,
+             MPIDI_Process.avail_contexts,
+             MPIDI_Process.comm_threads,
+             MPIDI_Process.context_post,
+             MPIDI_Process.short_limit,
+             MPIDI_Process.eager_limit,
+             MPIDI_Process.rma_pending,
+             MPIDI_Process.optimized.collectives,
+             MPIDI_Process.optimized.topology);
+    }
 }
 
 
@@ -211,7 +254,7 @@ MPIDI_Init(int* rank, int* size, int* threading)
  * \param[in,out] argc Unused
  * \param[in,out] argv Unused
  * \param[in]     requested The thread model requested by the user.
- * \param[out]    provided  The thread model provided to user.  This will be the same as requested, except in VNM.
+ * \param[out]    provided  The thread model provided to user.  It is the same as requested, except in VNM.
  * \param[out]    has_args  Set to TRUE
  * \param[out]    has_env   Set to TRUE
  * \return MPI_SUCCESS

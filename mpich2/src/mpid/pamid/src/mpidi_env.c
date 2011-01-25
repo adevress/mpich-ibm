@@ -498,16 +498,38 @@ ENV_Unsigned__(char* name[], unsigned* val, char* string)
 void
 MPIDI_Env_setup()
 {
-  /* Set the verbose level */
+  /* Set the verbosity level.  When set, this will print information at finalize. */
   {
     char* names[] = {"PAMI_VERBOSE", NULL};
     ENV_Unsigned(names, &MPIDI_Process.verbose);
   }
 
-  /* Enable the statistics  */
+  /* Enable statistics collection. */
   {
     char* names[] = {"PAMI_STATISTICS", NULL};
     ENV_Unsigned(names, &MPIDI_Process.statistics);
+  }
+
+  /* Set the upper-limit of number of PAMI Contexts. */
+  {
+    char *names[] = {"PAMI_MAXCONTEXTS", NULL};
+    ENV_Unsigned(names, &MPIDI_Process.avail_contexts);
+    TRACE_ERR("MPIDI_Process.avail_contexts=%u\n", MPIDI_Process.avail_contexts);
+  }
+
+  /* Do not use the PAMI_Context_post interface; call the work function directly.
+   * As coded, this has the side-effect of only using a single context. */
+  {
+    char *names[] = {"PAMI_CONTEXT_POST", NULL};
+    ENV_Unsigned(names, &MPIDI_Process.context_post);
+    TRACE_ERR("MPIDI_Process.context_post=%u\n", MPIDI_Process.context_post);
+  }
+
+  /* Enable/Disable commthreads for asynchronous communication. */
+  {
+    char *names[] = {"PAMI_COMM_THREADS", NULL};
+    ENV_Unsigned(names, &MPIDI_Process.comm_threads);
+    TRACE_ERR("MPIDI_Process.comm_threads=%u\n", MPIDI_Process.comm_threads);
   }
 
   /* Determine eager limit */
@@ -516,10 +538,10 @@ MPIDI_Env_setup()
     ENV_Unsigned(names, &MPIDI_Process.eager_limit);
   }
 
-  /* Determine interrupt mode */
+  /* Set the maximum number of outstanding RDMA requests */
   {
-    char* names[] = {"PAMI_INTERRUPT", "PAMI_INTERRUPTS", NULL};
-    ENV_Unsigned(names, &MPIDI_Process.use_interrupts);
+    char* names[] = {"PAMI_RMA_PENDING", NULL};
+    ENV_Unsigned(names, &MPIDI_Process.rma_pending);
   }
 
   /* Set the status of the optimized topology functions */
@@ -533,16 +555,5 @@ MPIDI_Env_setup()
     char* names[] = {"PAMI_COLLECTIVE", "PAMI_COLLECTIVES", NULL};
     ENV_Unsigned(names, &MPIDI_Process.optimized.collectives);
     TRACE_ERR("MPIDI_Process.optimized.collectives=%u\n", MPIDI_Process.optimized.collectives);
-  }
-
-  {
-    char* names[] = {"PAMI_RMA_PENDING", NULL};
-    ENV_Unsigned(names, &MPIDI_Process.rma_pending);
-  }
-
-  {
-    char *names[] = {"PAMI_MAXCONTEXTS", NULL};
-    ENV_Unsigned(names, &MPIDI_Process.avail_contexts);
-    TRACE_ERR("MPIDI_Process.avail_contexts=%u\n", MPIDI_Process.avail_contexts);
   }
 }

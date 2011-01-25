@@ -20,20 +20,24 @@
  */
 typedef struct
 {
+  unsigned verbose;        /**< The current level of verbosity for end-of-job stats. */
+  unsigned statistics;     /**< The current level of stats collection.               */
+
+  unsigned avail_contexts;
+  unsigned comm_threads;
+  unsigned context_post;
+  unsigned short_limit;
+  unsigned eager_limit;
+
+  unsigned rma_pending;    /**< The max num outstanding requests during an RMA op    */
+
+  pami_geometry_t world_geometry;
   struct
   {
     unsigned topology;     /**< Enable optimized topology functions.   */
     unsigned collectives;  /**< Enable optimized collective functions. */
   }
   optimized;
-  unsigned short_limit;
-  unsigned eager_limit;
-  unsigned rma_pending;    /**< The max num outstanding requests during an RMA op    */
-  unsigned verbose;        /**< The current level of verbosity for end-of-job stats. */
-  unsigned statistics;     /**< The current level of stats collection.               */
-  unsigned use_interrupts; /**< Should interrupts be turned on.                      */
-  pami_geometry_t world_geometry;
-  unsigned avail_contexts;
 } MPIDI_Process_t;
 
 

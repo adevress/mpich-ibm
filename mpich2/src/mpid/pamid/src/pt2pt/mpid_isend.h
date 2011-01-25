@@ -93,17 +93,17 @@ MPID_Isend_inline (const void    * buf,
   sreq->kind = MPID_REQUEST_SEND;
   MPIR_Comm_add_ref(comm);
 
-  /* message type info */
   if (likely(ncontexts > 1))
-  {
-    pami_context_t context = MPIDI_Context[MPIDI_Context_hash(rank, context_id, ncontexts)];
-    pami_result_t rc;
-    rc = PAMI_Context_post(context, &sreq->mpid.post_request, MPIDI_Isend_handoff, sreq);
-    MPID_assert(rc == PAMI_SUCCESS);
-  }
-  else {
-    MPIDI_Isend_handoff(MPIDI_Context[0], sreq);
-  }
+    {
+      pami_context_t context = MPIDI_Context[MPIDI_Context_hash(rank, context_id, ncontexts)];
+      pami_result_t rc;
+      rc = PAMI_Context_post(context, &sreq->mpid.post_request, MPIDI_Isend_handoff, sreq);
+      MPID_assert(rc == PAMI_SUCCESS);
+    }
+  else
+    {
+      MPIDI_Isend_handoff(MPIDI_Context[0], sreq);
+    }
 
   return MPI_SUCCESS;
 }
