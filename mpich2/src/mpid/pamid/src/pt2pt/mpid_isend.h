@@ -93,7 +93,7 @@ MPID_Isend_inline (const void    * buf,
   sreq->kind = MPID_REQUEST_SEND;
   MPIR_Comm_add_ref(comm);
 
-  if (likely(ncontexts > 1))
+  if (likely(MPIDI_Process.context_post > 1))
     {
       pami_context_t context = MPIDI_Context[MPIDI_Context_hash(rank, context_id, ncontexts)];
       pami_result_t rc;

@@ -85,15 +85,20 @@ MPID_Cancel_send(MPID_Request * sreq)
   MPIDI_Request_uncomplete(sreq);
   /* TRACE_ERR("Posting cancel for request=%p   cc(curr)=%d ref(curr)=%d\n", sreq, val+1, MPIU_Object_get_ref(sreq)); */
 
-  {
-    /* This leaks intentionally.  At this time, the amount of work
-     * required to avoid a leak here just isn't worth it.
-     * Hopefully people aren't cancelling sends too much.
-     */
-    pami_work_t  * work    = malloc(sizeof(pami_work_t));
-    pami_context_t context = MPIDI_Context_local(sreq);
-    PAMI_Context_post(context, work, MPIDI_CancelReq_post, sreq);
-  }
+  if (likely(MPIDI_Process.context_post > 1))
+    {
+      /* This leaks intentionally.  At this time, the amount of work
+       * required to avoid a leak here just isn't worth it.
+       * Hopefully people aren't cancelling sends too much.
+       */
+      pami_work_t  * work    = malloc(sizeof(pami_work_t));
+      pami_context_t context = MPIDI_Context_local(sreq);
+      PAMI_Context_post(context, work, MPIDI_CancelReq_post, sreq);
+    }
+  else
+    {
+      MPIDI_CancelReq_post(MPIDI_Context[0], sreq);
+    }
 
-    return MPI_SUCCESS;
+  return MPI_SUCCESS;
 }

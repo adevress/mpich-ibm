@@ -16,7 +16,7 @@
 static inline void
 MPIDI_SendMsg(MPID_Request * sreq)
 {
-  if (likely(MPIDI_Process.avail_contexts > 1))
+  if (likely(MPIDI_Process.context_post > 1))
     {
       pami_context_t context = MPIDI_Context_local(sreq);
 
