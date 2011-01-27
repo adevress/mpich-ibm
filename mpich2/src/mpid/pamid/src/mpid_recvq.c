@@ -33,9 +33,9 @@ static struct MPIDID_Recvq_t
 
 #ifdef HAVE_DEBUGGER_SUPPORT
 struct MPID_Request ** const MPID_Recvq_posted_head_ptr =
-					&recvq.posted_head;
+                                        &recvq.posted_head;
 struct MPID_Request ** const MPID_Recvq_unexpected_head_ptr =
-					&recvq.unexpected_head;
+                                        &recvq.unexpected_head;
 #endif /* HAVE_DEBUGGER_SUPPORT */
 
 

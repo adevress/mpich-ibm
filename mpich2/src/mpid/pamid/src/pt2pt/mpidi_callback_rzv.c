@@ -78,8 +78,8 @@ void MPIDI_RecvRzvCB(pami_context_t    context,
   /* ----------------------------------------------------- */
 #ifdef USE_PAMI_RDMA
   memcpy(&rreq->mpid.envelope.memregion,
-	 &envelope->memregion,
-	 sizeof(pami_memregion_t));
+         &envelope->memregion,
+         sizeof(pami_memregion_t));
 #else
   rreq->mpid.envelope.data   = envelope->data;
 #endif
