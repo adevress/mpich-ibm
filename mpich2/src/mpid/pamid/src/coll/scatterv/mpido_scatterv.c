@@ -221,9 +221,9 @@ int MPIDO_Scatterv(void *sendbuf,
   allred.cookie = (void *)&allred_active;
   allred.algorithm = comm_ptr->mpid.coll_algorithm[PAMI_XFER_ALLREDUCE][0][0];
   allred.cmd.xfer_allreduce.sndbuf = (void *)optscatterv;
-  allred.cmd.xfer_allreduce.stype = PAMI_BYTE;
+  allred.cmd.xfer_allreduce.stype = PAMI_TYPE_CONTIGUOUS;
   allred.cmd.xfer_allreduce.rcvbuf = (void *)optscatterv;
-  allred.cmd.xfer_allreduce.rtype = PAMI_BYTE;
+  allred.cmd.xfer_allreduce.rtype = PAMI_TYPE_CONTIGUOUS;
   allred.cmd.xfer_allreduce.stypecount = 3 * sizeof(int);
   allred.cmd.xfer_allreduce.rtypecount = 3 * sizeof(int);
   allred.cmd.xfer_allreduce.dt = PAMI_SIGNED_INT;

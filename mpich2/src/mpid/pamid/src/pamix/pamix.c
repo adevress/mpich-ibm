@@ -48,7 +48,7 @@ struct
 #define PAMI_EXTENSION_FUNCTION(type, name, ext)        \
 ({                                                      \
   void* fn;                                             \
-  fn = PAMI_Extension_function(ext, name);              \
+  fn = PAMI_Extension_symbol(ext, name);                \
   PAMIX_assert(fn != NULL);                             \
   (type)fn;                                             \
 })

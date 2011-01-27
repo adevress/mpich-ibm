@@ -80,7 +80,7 @@ void MPIDI_RecvCB(pami_context_t    context,
 #endif
       /** \todo Remove these two lines when trac #256 is approved, implemented, and integrated into MPICH2 */
       recv->data_fn  = PAMI_DATA_COPY;
-      recv->type     = PAMI_BYTE;
+      recv->type     = PAMI_TYPE_CONTIGUOUS;
     }
 
 

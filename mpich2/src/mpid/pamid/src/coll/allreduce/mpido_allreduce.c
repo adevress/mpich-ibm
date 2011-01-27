@@ -46,9 +46,9 @@ int MPIDO_Allreduce(void *sendbuf,
       allred.cookie = (void *)&active;
       allred.algorithm = comm_ptr->mpid.user_selected[PAMI_XFER_ALLREDUCE];
       allred.cmd.xfer_allreduce.sndbuf = sendbuf;
-      allred.cmd.xfer_allreduce.stype = PAMI_BYTE;
+      allred.cmd.xfer_allreduce.stype = PAMI_TYPE_CONTIGUOUS;
       allred.cmd.xfer_allreduce.rcvbuf = recvbuf;
-      allred.cmd.xfer_allreduce.rtype = PAMI_BYTE;
+      allred.cmd.xfer_allreduce.rtype = PAMI_TYPE_CONTIGUOUS;
       allred.cmd.xfer_allreduce.stypecount = data_size; // datasize is sizeof()*count
       allred.cmd.xfer_allreduce.rtypecount = data_size;
       allred.cmd.xfer_allreduce.dt = pdt;
