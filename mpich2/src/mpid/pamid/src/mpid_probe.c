@@ -12,8 +12,6 @@ MPID_Probe(int source,
            int context_offset,
            MPI_Status * status)
 {
-  int found;
-  MPID_Progress_state state;
   const int context = comm->recvcontext_id + context_offset;
 
   if (source == MPI_PROC_NULL)
@@ -21,12 +19,6 @@ MPID_Probe(int source,
         MPIR_Status_set_procnull(status);
         return MPI_SUCCESS;
     }
-  for(;;)
-    {
-      found = MPIDI_Recvq_FU(source, tag, context, status);
-      if (found)
-        return MPI_SUCCESS;
-      MPID_Progress_wait(&state);
-    }
+  MPID_PROGRESS_WAIT_WHILE(!MPIDI_Recvq_FU(source, tag, context, status));
   return MPI_SUCCESS;
 }
