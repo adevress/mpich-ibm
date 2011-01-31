@@ -13,24 +13,6 @@
 #define __src_pt2pt_mpidi_send_h__
 
 
-static inline void
-MPIDI_SendMsg(MPID_Request * sreq)
-{
-  if (likely(MPIDI_Process.context_post > 1))
-    {
-      pami_context_t context = MPIDI_Context_local(sreq);
-
-      pami_result_t rc;
-      rc = PAMI_Context_post(context, &sreq->mpid.post_request, MPIDI_SendMsg_handoff, sreq);
-      MPID_assert(rc == PAMI_SUCCESS);
-    }
-  else
-    {
-      MPIDI_SendMsg_handoff(MPIDI_Context[0], sreq);
-    }
-}
-
-
 /**
  * \brief This is a generic inline verion of the various send functions.
  *
@@ -41,9 +23,9 @@ MPIDI_SendMsg(MPID_Request * sreq)
  * code from this function that won't be used in the specific inlined
  * version.
  *
- * The MPIDI_SendMsg function may queue this send operation for later
- * handling and then return to the user.  Therefore, this function has
- * only two goals:
+ * The PAMI_Context_post function may queue this send operation for
+ * later handling and then return to the user.  Therefore, this
+ * function has only two goals:
  *
  *   + Fill in the request oject with all relevant information, and
  *   + Do any reference counting that must be done before the function returns.
@@ -108,7 +90,19 @@ MPIDI_Send(const void    * buf,
   /*      start the message                    */
   /* ----------------------------------------- */
 
-  MPIDI_SendMsg(sreq);
+  if (likely(MPIDI_Process.context_post > 1))
+    {
+      pami_context_t context = MPIDI_Context_local(sreq);
+
+      pami_result_t rc;
+      rc = PAMI_Context_post(context, &sreq->mpid.post_request, MPIDI_SendMsg_handoff, sreq);
+      MPID_assert(rc == PAMI_SUCCESS);
+    }
+  else
+    {
+      MPIDI_SendMsg_handoff(MPIDI_Context[0], sreq);
+    }
+
   return MPI_SUCCESS;
 }
 
