@@ -185,6 +185,12 @@ struct MPIDI_Comm
 };
 
 
+typedef struct
+{
+   pami_work_t state;
+   pami_xfer_t *coll_struct;
+} MPIDI_Post_coll_t;
+
 
 /** \brief Forward declaration of the MPID_Comm structure */
 struct MPID_Comm;

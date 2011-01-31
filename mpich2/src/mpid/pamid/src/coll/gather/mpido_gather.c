@@ -6,6 +6,21 @@
 
 #include <mpidimpl.h>
 
+static void cb_gather(void *ctxt, void *clientdata, pami_result_t err)
+{
+   unsigned *active = (unsigned *)clientdata;
+   TRACE_ERR("cb_gather enter, active: %u\n", (*active));
+   MPIDI_Progress_signal();
+   (*active)--;
+}
+
+static void cb_allred(void *ctxt, void *clientdata, pami_result_t err)
+{
+   unsigned *active = (unsigned *)clientdata;
+   TRACE_ERR("cb_allred preallred enter, active: %u\n", (*active));
+   MPIDI_Progress_signal();
+   (*active)--;
+}
 int MPIDO_Gather_reduce(void * sendbuf,
 			int sendcount,
 			MPI_Datatype sendtype,
@@ -98,6 +113,8 @@ int MPIDO_Gather(void *sendbuf,
 {
   MPID_Datatype * data_ptr;
   MPI_Aint true_lb = 0;
+  pami_xfer_t gather;
+  MPIDI_Post_coll_t gather_post;
   char *sbuf = sendbuf, *rbuf = recvbuf;
   int success = 1, contig, send_bytes=-1, recv_bytes = 0;
   int rank = comm_ptr->rank;
@@ -133,13 +150,57 @@ int MPIDO_Gather(void *sendbuf,
                        root, comm_ptr);
   }
 
+   if(comm_ptr->mpid.preallreduces[MPID_GATHER_PREALLREDUCE])
+   {
+      volatile unsigned allred_active = 1;
+      pami_xfer_t allred;
+      MPIDI_Post_coll_t allred_post;
+      allred.cb_done = cb_allred;
+      allred.cookie = (void *)&allred_active;
+      /* Guaranteed to work allreduce */
+      allred.algorithm = comm_ptr->mpid.coll_algorithm[PAMI_XFER_ALLREDUCE][0][0];
+      allred.cmd.xfer_allreduce.sndbuf = (void *)(size_t)success;
+      allred.cmd.xfer_allreduce.stype = PAMI_TYPE_CONTIGUOUS;
+      allred.cmd.xfer_allreduce.rcvbuf = (void *)(size_t)success;
+      allred.cmd.xfer_allreduce.rtype = PAMI_TYPE_CONTIGUOUS;
+      allred.cmd.xfer_allreduce.stypecount = sizeof(int);
+      allred.cmd.xfer_allreduce.rtypecount = sizeof(int);
+      allred.cmd.xfer_allreduce.dt = PAMI_SIGNED_INT;
+      allred.cmd.xfer_allreduce.op = PAMI_BAND;
+      allred_post.coll_struct = &allred;
+      PAMI_Context_post(MPIDI_Context[0], &allred_post.state,
+                        MPIDI_Pami_post_wrapper, (void *)&allred_post);
+      MPID_PROGRESS_WAIT_WHILE(allred_active);
+   }
 
-  MPIDO_Allreduce(MPI_IN_PLACE, &success, 1, MPI_INT, MPI_BAND, comm_ptr);
-
-  if (!success)
+   if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_GATHER] == 0 || !success)
+   {
     return MPIR_Gather(sendbuf, sendcount, sendtype,
                        recvbuf, recvcount, recvtype,
                        root, comm_ptr);
+   }
+
+   if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_GATHER])
+   {
+      pami_result_t rc;
+      volatile unsigned active = 1;
+      gather.cb_done = cb_gather;
+      gather.cookie = (void *)&active;
+      gather.cmd.xfer_gather.root = MPID_VCR_GET_LPID(comm_ptr->vcr, root);
+      gather.algorithm = comm_ptr->mpid.user_selected[PAMI_XFER_GATHER];
+      gather.cmd.xfer_gather.sndbuf = (void *)sendbuf;
+      gather.cmd.xfer_gather.stype = PAMI_TYPE_CONTIGUOUS;
+      gather.cmd.xfer_gather.stypecount = send_bytes;
+      gather.cmd.xfer_gather.rcvbuf = (void *)recvbuf;
+      gather.cmd.xfer_gather.rtype = PAMI_TYPE_CONTIGUOUS;
+      gather.cmd.xfer_gather.rtypecount = recv_bytes;
+      MPIDI_Update_last_algorithm(comm_ptr,
+               comm_ptr->mpid.user_metadata[PAMI_XFER_GATHER].name);
+      gather_post.coll_struct = &gather;
+      rc = PAMI_Context_post(MPIDI_Context[0], &gather_post.state, 
+                              MPIDI_Pami_post_wrapper, (void *)&gather_post);
+      return rc;
+   }
 
   sbuf = sendbuf + true_lb;
   rbuf = recvbuf + true_lb;

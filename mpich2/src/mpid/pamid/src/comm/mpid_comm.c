@@ -29,12 +29,49 @@ void MPIDI_Comm_destroy (MPID_Comm *comm)
   MPIDI_Coll_comm_destroy(comm);
 }
 
+typedef struct MPIDI_Post_geom
+{
+   pami_work_t state;
+   pami_client_t client;
+   pami_configuration_t *configs;
+   size_t num_configs;
+   pami_geometry_t newgeom;
+   pami_geometry_t parent;
+   unsigned id;
+   pami_geometry_range_t *slices;
+   size_t slice_count;
+   pami_event_function fn;
+   void* cookie;
+} MPIDI_Post_geom_t;
+
+static pami_result_t geom_rangelist_create_wrapper(pami_context_t context, void *cookie)
+{
+   /* I'll need one of these per geometry creation function..... */
+   MPIDI_Post_geom_t *geom_struct = (MPIDI_Post_geom_t *)cookie;
+   TRACE_ERR("In geom create wrapper\n");
+   return PAMI_Geometry_create_taskrange(
+               geom_struct->client,
+               geom_struct->configs,
+               geom_struct->num_configs,
+               geom_struct->newgeom,
+               geom_struct->parent,
+               geom_struct->id,
+               geom_struct->slices,
+               geom_struct->slice_count,
+               context,
+               geom_struct->fn,
+               geom_struct->cookie);
+   TRACE_ERR("Done in geom create wrapper\n");
+}
+
+   
 void MPIDI_Coll_comm_create(MPID_Comm *comm)
 {
-   int rc;
+//   int rc;
    int geom_init = 1;
    int i;
    pami_geometry_range_t *slices;
+   MPIDI_Post_geom_t geom_post;
 
   TRACE_ERR("MPIDI_Coll_comm_create enter\n");
   if (!MPIDI_Process.optimized.collectives)
@@ -71,6 +108,20 @@ void MPIDI_Coll_comm_create(MPID_Comm *comm)
          slices[i].lo = MPID_VCR_GET_LPID(comm->vcr, i);
          slices[i].hi = MPID_VCR_GET_LPID(comm->vcr, i);
       }
+      geom_post.client = MPIDI_Client;
+      geom_post.configs = NULL;
+      geom_post.num_configs = 0;
+      geom_post.newgeom = &comm->mpid.geometry,
+      geom_post.parent = NULL;
+      geom_post.slices = slices;
+      geom_post.slice_count = (size_t)comm->local_size,
+      geom_post.fn = geom_cb_done;
+      geom_post.cookie = &geom_init;
+
+      TRACE_ERR("Posting geom_create\n");
+      PAMI_Context_post(MPIDI_Context[0], &geom_post.state, 
+            geom_rangelist_create_wrapper, (void *)&geom_post);
+   #if 0
       rc = PAMI_Geometry_create_taskrange(MPIDI_Client,
                                          NULL,
                                          0,
@@ -88,6 +139,7 @@ void MPIDI_Coll_comm_create(MPID_Comm *comm)
          fprintf(stderr,"Error creating subcomm geometry. %d\n", rc);
          exit(1);
       }
+      #endif
       TRACE_ERR("Waiting for geom create to finish\n");
       while(geom_init)
          PAMI_Context_advance(MPIDI_Context[0], 1);
@@ -234,6 +286,10 @@ void MPIDI_Comm_coll_envvars(MPID_Comm *comm)
    MPIDI_Check_protocols("PAMI_ALLTOALL", comm, "alltoall", PAMI_XFER_ALLTOALL);
 
    MPIDI_Check_protocols("PAMI_ALLTOALLV", comm, "alltoallv", PAMI_XFER_ALLTOALLV_INT);
+
+   MPIDI_Check_protocols("PAMI_GATHERV", comm, "gatherv", PAMI_XFER_GATHERV_INT);
+
+   MPIDI_Check_protocols("PAMI_REDUCE", comm, "reduce", PAMI_XFER_REDUCE);
 
    comm->mpid.scattervs[0] = comm->mpid.scattervs[1] = 0;
    rc = MPIDI_Check_protocols("PAMI_SCATTERV", comm, "scatterv", PAMI_XFER_SCATTERV_INT);
@@ -413,6 +469,8 @@ void MPIDI_Comm_coll_query(MPID_Comm *comm)
    comm->coll_fns->Scatterv     = MPIDO_Scatterv;
    comm->coll_fns->Scatter      = MPIDO_Scatter;
    comm->coll_fns->Gather       = MPIDO_Gather;
+//   comm->coll_fns->Gatherv      = MPIDO_Gatherv;
+//   comm->coll_fns->Reduce       = MPIDO_Reduce;
 
    TRACE_ERR("MPIDI_Comm_coll_query exit\n");
 }

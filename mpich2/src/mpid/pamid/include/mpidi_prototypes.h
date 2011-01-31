@@ -163,5 +163,6 @@ int MPIDO_Scatterv(void *sendbuf, int *sendcounts, int *displs,
 
 int MPItoPAMI(MPI_Datatype dt, pami_dt *pdt, MPI_Op op, pami_op *pop, int *musupport);
 void MPIopString(MPI_Op op, char *string);
+pami_result_t MPIDI_Pami_post_wrapper(pami_context_t context, void *cookie);
 
 #endif

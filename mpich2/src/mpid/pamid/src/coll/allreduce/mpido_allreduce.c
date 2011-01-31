@@ -24,6 +24,7 @@ int MPIDO_Allreduce(void *sendbuf,
                     MPID_Comm *comm_ptr)
 {
    TRACE_ERR("in mpido_allreduce\n");
+   MPIDI_Post_coll_t allred_post;
    pami_dt pdt;
    pami_op pop;
    int mu;
@@ -36,6 +37,7 @@ int MPIDO_Allreduce(void *sendbuf,
    MPIopString(op, op_str);
    PMPI_Type_get_name(dt, dt_str, &len);
    rc = MPItoPAMI(dt, &pdt, op, &pop, &mu);
+   /* convert to metadata query */
    if(rc == MPI_SUCCESS && mu == 1 && comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLREDUCE] != 0)
    {
       MPI_Aint data_true_lb;
@@ -53,10 +55,11 @@ int MPIDO_Allreduce(void *sendbuf,
       allred.cmd.xfer_allreduce.rtypecount = data_size;
       allred.cmd.xfer_allreduce.dt = pdt;
       allred.cmd.xfer_allreduce.op = pop;
+      allred_post.coll_struct = &allred;
       TRACE_ERR("posting allreduce, context: %d, algoname: %s, dt: %s, op: %s, count: %d\n", 0,
                 comm_ptr->mpid.coll_metadata[PAMI_XFER_ALLREDUCE][0][0].name, dt_str, op_str, count);
       MPIDI_Update_last_algorithm(comm_ptr, comm_ptr->mpid.coll_metadata[PAMI_XFER_ALLREDUCE][0][0].name);
-      rc = PAMI_Collective(MPIDI_Context[0], (pami_xfer_t *)&allred);
+      rc = PAMI_Context_post(MPIDI_Context[0], &allred_post.state, MPIDI_Pami_post_wrapper, (void *)&allred_post);
       TRACE_ERR("allreduce posted, rc: %d\n", rc);
 
       assert(rc == PAMI_SUCCESS);

@@ -213,7 +213,8 @@ MPIDO_Allgather(void *sendbuf,
 
    allred.cb_done = allred_cb_done;
    allred.cookie = (void *)&allred_active;
-   allred.algorithm = comm_ptr->mpid.coll_algorithm[PAMI_XFER_ALLREDUCE][0][0]; // guaranteed to work.
+   /* Pick an algorithm that is guaranteed to work for the pre-allreduce */
+   allred.algorithm = comm_ptr->mpid.coll_algorithm[PAMI_XFER_ALLREDUCE][0][0]; 
    allred.cmd.xfer_allreduce.sndbuf = (void *)config;
    allred.cmd.xfer_allreduce.stype = PAMI_TYPE_CONTIGUOUS;
    allred.cmd.xfer_allreduce.rcvbuf = (void *)config;
@@ -268,14 +269,13 @@ MPIDO_Allgather(void *sendbuf,
             !((long)sendbuf & 0x0F) && !((long)recvbuf & 0x0F);
 
    /* #warning need to determine best allreduce for short messages */
-/*  if(comm_ptr->dcmf.short_allred == NULL)
- *  {
- *      MPIDO_Allreduce(MPI_IN_PLACE, &config, 6, MPI_INT, MPI_BAND, comm_ptr);
- *  }
- * else */
    if(comm_ptr->mpid.preallreduces[MPID_ALLGATHER_PREALLREDUCE])
   {
-      rc = PAMI_Collective(MPIDI_Context[0], (pami_xfer_t *)&allred);
+      MPIDI_Post_coll_t allred_post;
+      allred_post.coll_struct = &allred;
+      /* Post the collective call */
+      PAMI_Context_post(MPIDI_Context[0], &allred_post.state, 
+                        MPIDI_Pami_post_wrapper, (void *)&allred_post);
       MPID_PROGRESS_WAIT_WHILE(allred_active);
   }
 
@@ -297,7 +297,6 @@ MPIDO_Allgather(void *sendbuf,
      rc = MPIDO_Allgather_allreduce(sendbuf, sendcount, sendtype,
                                recvbuf, recvcount, recvtype,
                                send_true_lb, recv_true_lb, send_size, recv_size, comm_ptr);
-//     comm_ptr->dcmf.last_algorithm = MPIDO_USE_ALLREDUCE_ALLGATHER;
       return rc;
    }
    if(use_alltoall)
@@ -306,7 +305,6 @@ MPIDO_Allgather(void *sendbuf,
      rc = MPIDO_Allgather_alltoall(sendbuf, sendcount, sendtype,
                                recvbuf, recvcount, recvtype,
                                send_true_lb, recv_true_lb, send_size, recv_size, comm_ptr);
-//     comm_ptr->dcmf.last_algorithm = MPIDO_USE_ALLTOALL_ALLGATHER;
    return rc;
    }
    if(use_bcast)
@@ -316,10 +314,9 @@ MPIDO_Allgather(void *sendbuf,
                                recvbuf, recvcount, recvtype,
                                send_true_lb, recv_true_lb, send_size, recv_size, comm_ptr);
    return rc;
-//     comm_ptr->dcmf.last_algorithm = MPIDO_USE_BCAST_ALLGATHER;
    }
-      MPIDI_Update_last_algorithm(comm_ptr, "ALLGATHER_MPICH");
 
+      MPIDI_Update_last_algorithm(comm_ptr, "ALLGATHER_MPICH");
       return MPIR_Allgather(sendbuf, sendcount, sendtype,
                             recvbuf, recvcount, recvtype,
                             comm_ptr);

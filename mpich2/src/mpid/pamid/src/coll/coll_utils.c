@@ -4,11 +4,19 @@
  * \brief ???
  */
 
+//#define TRACE_ON
 
 #include <mpidimpl.h>
 
-void MPIopString(MPI_Op op, char *string);
-int MPItoPAMI(MPI_Datatype dt, pami_dt *pdt, MPI_Op op, pami_op *pop, int *musupport);
+pami_result_t MPIDI_Pami_post_wrapper(pami_context_t context, void *cookie)
+{
+   TRACE_ERR("In post wrapper\n");
+   MPIDI_Post_coll_t *coll = (MPIDI_Post_coll_t*)cookie;
+   TRACE_ERR("About to call collecive\n");
+   PAMI_Collective(context, (pami_xfer_t *)coll->coll_struct);
+   TRACE_ERR("Done calling collective\n");
+   return PAMI_SUCCESS;
+}
 
 /* some useful macros to make the comparisons less icky, esp given the */
 /* explosion of datatypes in MPI2.2                                    */

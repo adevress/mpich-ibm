@@ -30,6 +30,8 @@ int MPIDO_Bcast(void *buffer,
    MPI_Aint data_true_lb = 0;
    MPID_Datatype *data_ptr;
    MPID_Segment segment;
+   MPIDI_Post_coll_t bcast_post;
+//   MPIDI_Post_coll_t allred_post; // eventually for preallreduces
    if(count == 0)
    {
       MPIDI_Update_last_algorithm(comm_ptr,"BCAST_NONE");
@@ -80,10 +82,11 @@ int MPIDO_Bcast(void *buffer,
          comm_ptr->mpid.user_metadata[PAMI_XFER_BROADCAST].name);
    MPIDI_Update_last_algorithm(comm_ptr, 
          comm_ptr->mpid.user_metadata[PAMI_XFER_BROADCAST].name);
-   rc = PAMI_Collective(MPIDI_Context[0], (pami_xfer_t *)&bcast);
-   TRACE_ERR("bcast posted, rc: %d\n", rc);
 
-   assert(rc == PAMI_SUCCESS);
+   bcast_post.coll_struct = &bcast;
+   rc = PAMI_Context_post(MPIDI_Context[0], &bcast_post.state, MPIDI_Pami_post_wrapper, (void *)&bcast_post);
+
+   TRACE_ERR("bcast posted, rc: %d\n", rc);
 
    MPID_PROGRESS_WAIT_WHILE(active);
    TRACE_ERR("bcast done\n");
