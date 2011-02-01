@@ -23,30 +23,6 @@
 unsigned MPIDI_Progress_requests;
 
 /**
- * \brief This function blocks until a request completes
- * \param[in] state The previously seen state of advance
- *
- * It does not check what has completed, only that the counter
- * changes.  That happens whenever there is a call to
- * MPIDI_Progress_signal().  It is therefore important that the ADI
- * layer include a call to MPIDI_Progress_signal() whenever something
- * occurs that a node might be waiting on.
- *
- */
-int MPID_Progress_wait(MPID_Progress_state * state)
-{
-  pami_result_t rc;
-  while (state->val == MPIDI_Progress_requests) {
-    rc = PAMI_Context_advancev(MPIDI_Context, MPIDI_Process.avail_contexts, 1);
-    MPID_assert(rc == PAMI_SUCCESS);
-    MPIU_THREAD_CS_YIELD(ALLFUNC,);
-  }
-
-  state->val = MPIDI_Progress_requests;
-  return MPI_SUCCESS;
-}
-
-/**
  * \brief This function advances the connection manager.
  *
  * It gets called when progress is desired (e.g. MPI_Iprobe), but

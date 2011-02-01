@@ -12,20 +12,14 @@
  *
  * \param[in,out] sreq MPI receive request object
  */
-void MPIDI_SendDoneCB(pami_context_t   context,
-                      void           * clientdata,
-                      pami_result_t    result)
+void
+MPIDI_SendDoneCB(pami_context_t   context,
+                 void           * clientdata,
+                 pami_result_t    result)
 {
-  MPID_Request * sreq = (MPID_Request*)clientdata;
-  MPID_assert(sreq != NULL);
-
-  if (sreq->mpid.uebuf != NULL)
-    {
-      MPIU_Free(sreq->mpid.uebuf);
-      sreq->mpid.uebuf = NULL;
-    }
-
-    MPIDI_Request_complete(sreq);
+  MPIDI_SendDoneCB_inline(context,
+                          clientdata,
+                          result);
 }
 
 
@@ -57,9 +51,10 @@ MPIDI_RecvDoneCB_copy(MPID_Request * rreq)
  *
  * \param[in,out] rreq MPI receive request object
  */
-void MPIDI_RecvDoneCB(pami_context_t   context,
-                      void           * clientdata,
-                      pami_result_t    result)
+void
+MPIDI_RecvDoneCB(pami_context_t   context,
+                 void           * clientdata,
+                 pami_result_t    result)
 {
   MPID_Request * rreq = (MPID_Request*)clientdata;
   MPID_assert(rreq != NULL);

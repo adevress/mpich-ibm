@@ -1,13 +1,18 @@
 /*  (C)Copyright IBM Corp.  2007, 2008  */
 /**
- * \file src/pt2pt/mpid_isend.c
- * \brief ADI level implemenation of MPI_Isend()
+ * \file src/pt2pt/mpid_send.h
+ * \brief ADI level implemenation of MPI_Send()
  */
+#ifndef __src_pt2pt_mpid_send_h__
+#define __src_pt2pt_mpid_send_h__
+
 #include <mpidimpl.h>
 #include "mpidi_send.h"
 
+#define MPID_Send     MPID_Send_inline
+
 /**
- * \brief ADI level implemenation of MPI_Isend()
+ * \brief ADI level implemenation of MPI_Send()
  *
  * \param[in]  buf            The buffer to send
  * \param[in]  count          Number of elements in the buffer
@@ -19,19 +24,16 @@
  * \param[out] request        Return a pointer to the new request object
  *
  * \returns An MPI Error code
- *
- * This is a slight variation on mpid_send.c - basically, we *always*
- * want to return a send request even if the request is already
- * complete (as is in the case of sending to a NULL rank).
  */
-int MPID_Isend_outline(const void    * buf,
-                       int             count,
-                       MPI_Datatype    datatype,
-                       int             rank,
-                       int             tag,
-                       MPID_Comm     * comm,
-                       int             context_offset,
-                       MPID_Request ** request)
+static inline int
+MPID_Send_inline(const void    * buf,
+                 int             count,
+                 MPI_Datatype    datatype,
+                 int             rank,
+                 int             tag,
+                 MPID_Comm     * comm,
+                 int             context_offset,
+                 MPID_Request ** request)
 {
   return MPIDI_Send(buf,
                     count,
@@ -40,7 +42,10 @@ int MPID_Isend_outline(const void    * buf,
                     tag,
                     comm,
                     context_offset,
-                    0,
+                    1,
                     0,
                     request);
 }
+
+
+#endif

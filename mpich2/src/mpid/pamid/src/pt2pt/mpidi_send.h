@@ -13,6 +13,24 @@
 #define __src_pt2pt_mpidi_send_h__
 
 
+static inline void
+MPIDI_SendDoneCB_inline(pami_context_t   context,
+                        void           * clientdata,
+                        pami_result_t    result)
+{
+  MPID_Request * sreq = (MPID_Request*)clientdata;
+  MPID_assert(sreq != NULL);
+
+  if (sreq->mpid.uebuf != NULL)
+    {
+      MPIU_Free(sreq->mpid.uebuf);
+      sreq->mpid.uebuf = NULL;
+    }
+
+    MPIDI_Request_complete(sreq);
+}
+
+
 /**
  * \brief This is a generic inline verion of the various send functions.
  *

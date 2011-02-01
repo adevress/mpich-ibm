@@ -2,11 +2,8 @@ SUBDIRS= . persistent
 INCLUDES = -I${master_top_srcdir}/src/include -I${top_builddir}/src/include
 lib${MPILIBNAME}_a_SOURCES =			\
         mpid_cancel.c				\
-        mpid_irecv.c				\
-        mpid_isend.c				\
         mpid_issend.c				\
         mpid_recv.c				\
-        mpid_send.c				\
         mpid_ssend.c				\
         mpidi_callback.c			\
         mpidi_callback_rzv.c			\

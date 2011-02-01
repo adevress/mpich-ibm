@@ -16,7 +16,7 @@ MPIDI_SendMsg_short(pami_context_t    context,
   MPIDI_MsgInfo * msginfo = &sreq->mpid.envelope.msginfo;
 
   pami_send_immediate_t params = {
-  dispatch : MPIDI_Protocols.Send,
+  dispatch : MPIDI_Protocols.SendShort,
   dest     : dest,
   header   : {
     iov_base : msginfo,
@@ -38,11 +38,17 @@ MPIDI_SendMsg_short(pami_context_t    context,
 #endif
   MPID_assert(rc == PAMI_SUCCESS);
 
-  MPIDI_SendDoneCB(context, sreq, PAMI_SUCCESS);
+  MPIDI_SendDoneCB_inline(context, sreq, PAMI_SUCCESS);
 }
 
-
-static inline void
+static void
+MPIDI_SendMsg_eager(pami_context_t    context,
+                    MPID_Request    * sreq,
+                    pami_endpoint_t   dest,
+                    void            * sndbuf,
+                    unsigned          sndlen)
+  __attribute__((__noinline__));
+static void
 MPIDI_SendMsg_eager(pami_context_t    context,
                     MPID_Request    * sreq,
                     pami_endpoint_t   dest,
@@ -67,6 +73,7 @@ MPIDI_SendMsg_eager(pami_context_t    context,
   events : {
     cookie   : sreq,
     local_fn : MPIDI_SendDoneCB,
+    remote_fn: NULL,
   },
   };
 
@@ -76,7 +83,14 @@ MPIDI_SendMsg_eager(pami_context_t    context,
 }
 
 
-static inline void
+static void
+MPIDI_SendMsg_rzv(pami_context_t    context,
+                  MPID_Request    * sreq,
+                  pami_endpoint_t   dest,
+                  void            * sndbuf,
+                  unsigned          sndlen)
+  __attribute__((__noinline__));
+static void
 MPIDI_SendMsg_rzv(pami_context_t    context,
                   MPID_Request    * sreq,
                   pami_endpoint_t   dest,
@@ -142,49 +156,21 @@ MPIDI_SendMsg_rzv(pami_context_t    context,
 }
 
 
-/*
- * \brief Central function for all low-level sends.
- *
- * This is assumed to have been posted to a context, and is now being
- * called from inside advance.  This has (unspecified) locking
- * implications.
- *
- * Prerequisites:
- *    + Not sending to a NULL rank
- *    + Request already allocated
- *
- * \param[in]     context The PAMI context on which to do the send operation
- * \param[in,out] sreq    Structure containing all relevant info about the message.
- */
-pami_result_t
-MPIDI_SendMsg_handoff(pami_context_t   context,
-                      void           * _sreq)
+static void
+MPIDI_process_userdefined_dt(MPID_Request      * sreq,
+                             void             ** sndbuf,
+                             size_t            * data_sz)
+  __attribute__((__noinline__));
+static void
+MPIDI_process_userdefined_dt(MPID_Request      * sreq,
+                             void             ** _sndbuf,
+                             size_t            * _data_sz)
 {
-  MPID_Request * sreq = (MPID_Request*)_sreq;
-  MPID_assert(sreq != NULL);
-
-  int             data_sz;
+  size_t          data_sz;
   int             dt_contig;
   MPI_Aint        dt_true_lb;
   MPID_Datatype * dt_ptr;
   void          * sndbuf;
-
-  MPIDI_Request_setPeerRequest(sreq, sreq);
-
-  /* ------------------------------ */
-  /* special case: NULL destination */
-  /* ------------------------------ */
-  if (unlikely(MPIDI_Request_getPeerRank(sreq) == MPI_PROC_NULL))
-    {
-      MPIDI_Request_complete(sreq);
-      return MPI_SUCCESS;
-    }
-
-  /*
-   * Create the destination endpoint
-   */
-  pami_endpoint_t dest;
-  MPIDI_Context_endpoint(sreq, &dest);
 
   /*
    * Get the datatype info
@@ -233,6 +219,35 @@ MPIDI_SendMsg_handoff(pami_context_t   context,
       MPID_assert(last == data_sz);
     }
 
+  *_sndbuf = sndbuf;
+  *_data_sz = data_sz;
+}
+
+
+static inline void
+MPIDI_SendMsg_general(pami_context_t   context,
+                      MPID_Request   * sreq)
+{
+  MPIDI_Request_setPeerRequest(sreq, sreq);
+
+  /*
+   * Create the destination endpoint
+   */
+  pami_endpoint_t dest;
+  MPIDI_Context_endpoint(sreq, &dest);
+
+  size_t   data_sz;
+  void   * sndbuf;
+  if (likely(HANDLE_GET_KIND(sreq->mpid.datatype) == HANDLE_KIND_BUILTIN))
+    {
+      sndbuf   = sreq->mpid.userbuf;
+      data_sz  = sreq->mpid.userbufcount * MPID_Datatype_get_basic_size(sreq->mpid.datatype);
+    }
+  else
+    {
+      MPIDI_process_userdefined_dt(sreq, &sndbuf, &data_sz);
+    }
+
 
   /*
    * Always use the short protocol when data_sz is small.
@@ -271,7 +286,40 @@ MPIDI_SendMsg_handoff(pami_context_t   context,
                         sndbuf,
                         data_sz);
     }
+}
 
+
+/*
+ * \brief Central function for all low-level sends.
+ *
+ * This is assumed to have been posted to a context, and is now being
+ * called from inside advance.  This has (unspecified) locking
+ * implications.
+ *
+ * Prerequisites:
+ *    + Not sending to a NULL rank
+ *    + Request already allocated
+ *
+ * \param[in]     context The PAMI context on which to do the send operation
+ * \param[in,out] sreq    Structure containing all relevant info about the message.
+ */
+pami_result_t
+MPIDI_SendMsg_handoff(pami_context_t   context,
+                      void           * _sreq)
+{
+  MPID_Request * sreq = (MPID_Request*)_sreq;
+  MPID_assert(sreq != NULL);
+
+  /* ------------------------------ */
+  /* special case: NULL destination */
+  /* ------------------------------ */
+  if (unlikely(MPIDI_Request_getPeerRank(sreq) == MPI_PROC_NULL))
+    {
+      MPIDI_Request_complete(sreq);
+      return MPI_SUCCESS;
+    }
+
+  MPIDI_SendMsg_general(context, sreq);
   return PAMI_SUCCESS;
 }
 
@@ -297,12 +345,19 @@ MPIDI_Isend_handoff(pami_context_t   context,
   MPID_Request * sreq = (MPID_Request*)_sreq;
   MPID_assert(sreq != NULL);
 
+  /* This initializes all the fields not set in MPI_Isend() */
   MPIDI_Request_initialize(sreq);
+  /* Since this is only called from MPI_Isend(), it is not synchronous */
   MPIDI_Request_setSync(sreq, 0);
 
   int rank = MPIDI_Request_getPeerRank(sreq);
   if (likely(rank != MPI_PROC_NULL))
     MPIDI_Request_setPeerRank(sreq, MPID_VCR_GET_LPID(sreq->comm->vcr, rank));
+  else {
+    MPIDI_Request_complete(sreq);
+    return MPI_SUCCESS;
+  }
 
-  return MPIDI_SendMsg_handoff(context, sreq);
+  MPIDI_SendMsg_general(context, sreq);
+  return PAMI_SUCCESS;
 }

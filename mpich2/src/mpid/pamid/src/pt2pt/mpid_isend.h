@@ -56,14 +56,14 @@ MPIDI_Context_local(MPID_Request * req)
  * complete (as is in the case of sending to a NULL rank).
  */
 static inline int
-MPID_Isend_inline (const void    * buf,
-                   int             count,
-                   MPI_Datatype    datatype,
-                   int             rank,
-                   int             tag,
-                   MPID_Comm     * comm,
-                   int             context_offset,
-                   MPID_Request ** request)
+MPID_Isend_inline(const void    * buf,
+                  int             count,
+                  MPI_Datatype    datatype,
+                  int             rank,
+                  int             tag,
+                  MPID_Comm     * comm,
+                  int             context_offset,
+                  MPID_Request ** request)
 {
   /* ---------------------------------------------------- */
   /* special case: PROC null handled by handoff function  */

@@ -130,8 +130,8 @@ MPID_Win_wait(MPID_Win *win)
 
 
 int
-MPID_Win_test (MPID_Win *win,
-               int      *flag)
+MPID_Win_test(MPID_Win *win,
+              int      *flag)
 {
   int mpi_errno = MPI_SUCCESS;
 

@@ -4,6 +4,7 @@
  * \brief The callback for a new RZV RTS
  */
 #include <mpidimpl.h>
+#include "../mpid_recvq.h"
 
 /**
  * \brief The callback for a new RZV RTS

@@ -21,7 +21,6 @@ void MPIDI_Recvq_init();
 void MPIDI_Recvq_finalize();
 int            MPIDI_Recvq_FU        (int s, int t, int c, MPI_Status * status);
 MPID_Request * MPIDI_Recvq_FDUR      (MPID_Request * req, int source, int tag, int context_id);
-MPID_Request * MPIDI_Recvq_FDU_or_AEP(int s, int t, int c, int * foundp);
 int            MPIDI_Recvq_FDPR      (MPID_Request * req);
 MPID_Request * MPIDI_Recvq_FDP_or_AEU(int s, int t, int c, int * foundp);
 void MPIDI_Recvq_DumpQueues          (int verbose);
@@ -37,26 +36,8 @@ void MPIDI_Buffer_copy(const void     * const sbuf,
                        MPIDI_msg_sz_t *       rsz,
                        int            *       rmpi_errno);
 
-int MPID_Isend_outline  (const void      * buf,
-                         int               count,
-                         MPI_Datatype      datatype,
-                         int               rank,
-                         int               tag,
-                         MPID_Comm       * comm,
-                         int               context_offset,
-                         MPID_Request   ** request);
 pami_result_t MPIDI_SendMsg_handoff(pami_context_t context, void * sreq);
 pami_result_t MPIDI_Isend_handoff(pami_context_t context, void * sreq);
-int MPIDI_RecvMsg       (void            * buf,
-                         int               count,
-                         MPI_Datatype      datatype,
-                         int               rank,
-                         int               tag,
-                         MPID_Comm       * comm,
-                         int               context_offset,
-                         MPI_Status      * status,
-                         MPID_Request   ** request);
-
 /**
  * \defgroup MPID_CALLBACKS MPID callbacks for communication
  *

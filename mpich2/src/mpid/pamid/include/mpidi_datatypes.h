@@ -44,6 +44,7 @@ typedef struct
 typedef struct
 {
   unsigned Send;
+  unsigned SendShort;
   unsigned RTS;
   unsigned Cancel;
   unsigned Control;

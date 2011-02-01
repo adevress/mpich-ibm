@@ -13,14 +13,15 @@
  * \{
  */
 
-#define MPID_Request_create MPID_Request_create_inline
+#define MPID_Request_create    MPID_Request_create_inline
+#define MPID_Request_release   MPID_Request_release_inline
+#define MPIDI_Request_complete MPIDI_Request_complete_inline
 
 
 extern MPIU_Object_alloc_t MPID_Request_mem;
 
 
 void    MPIDI_Request_uncomplete(MPID_Request *req);
-void    MPIDI_Request_complete(MPID_Request *req);
 #if MPIU_HANDLE_ALLOCATION_METHOD == MPIU_HANDLE_ALLOCATION_THREAD_LOCAL
 void    MPIDI_Request_allocate_pool();
 #endif
@@ -207,6 +208,40 @@ MPIDI_Request_create2()
   *(_flag) = (_req)->mpid.cancel_pending;               \
   (_req)->mpid.cancel_pending = TRUE;                   \
 })
+
+static inline void
+MPID_Request_release_inline(MPID_Request *req)
+{
+  int count;
+  MPID_assert(HANDLE_GET_MPI_KIND(req->handle) == MPID_REQUEST);
+  MPIU_Object_release_ref(req, &count);
+  MPID_assert(count >= 0);
+
+  if (count == 0)
+  {
+    MPID_assert(MPID_cc_is_complete(&req->cc));
+
+    if (req->comm)              MPIR_Comm_release(req->comm, 0);
+    if (req->mpid.datatype_ptr) MPID_Datatype_release(req->mpid.datatype_ptr);
+    MPIDI_Request_tls_free(req);
+  }
+}
+
+
+static inline void
+MPIDI_Request_complete_inline(MPID_Request *req)
+{
+    int count;
+    MPID_cc_decr(req->cc_ptr, &count);
+    MPID_assert(count >= 0);
+
+    MPID_Request_release(req);
+    if (count == 0) /* decrement completion count; if 0, signal progress engine */
+    {
+      MPIDI_Progress_signal();
+    }
+}
+
 
 /** \} */
 

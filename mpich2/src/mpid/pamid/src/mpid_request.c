@@ -6,7 +6,7 @@
 #include <mpidimpl.h>
 
 #ifndef MPID_REQUEST_PREALLOC
-#define MPID_REQUEST_PREALLOC 8
+#define MPID_REQUEST_PREALLOC 16
 #endif
 
 /**
@@ -17,7 +17,7 @@
 
 
 /* these are referenced by src/mpi/pt2pt/wait.c in PMPI_Wait! */
-MPID_Request MPID_Request_direct[MPID_REQUEST_PREALLOC];
+MPID_Request MPID_Request_direct[MPID_REQUEST_PREALLOC] __attribute__((__aligned__(64)));
 MPIU_Object_alloc_t MPID_Request_mem =
   {
     0, 0, 0, 0, MPID_REQUEST, sizeof(MPID_Request),
@@ -54,45 +54,11 @@ void MPIDI_Request_allocate_pool()
 
 
 void
-MPID_Request_release(MPID_Request *req)
-{
-  int count;
-  MPID_assert(HANDLE_GET_MPI_KIND(req->handle) == MPID_REQUEST);
-  MPIU_Object_release_ref(req, &count);
-  MPID_assert(count >= 0);
-
-  if (count == 0)
-    {
-      MPID_assert(MPID_cc_is_complete(&req->cc));
-
-      if (req->comm)              MPIR_Comm_release(req->comm, 0);
-      if (req->mpid.datatype_ptr) MPID_Datatype_release(req->mpid.datatype_ptr);
-      MPIDI_Request_tls_free(req);
-    }
-}
-
-
-void
 MPIDI_Request_uncomplete(MPID_Request *req)
 {
   int count;
   MPIU_Object_add_ref(req);
   MPID_cc_incr(req->cc_ptr, &count);
-}
-
-
-void
-MPIDI_Request_complete(MPID_Request *req)
-{
-  int count;
-  MPID_cc_decr(req->cc_ptr, &count);
-  MPID_assert(count >= 0);
-
-  MPID_Request_release(req);
-  if (count == 0) /* decrement completion count; if 0, signal progress engine */
-    {
-      MPIDI_Progress_signal();
-    }
 }
 
 
