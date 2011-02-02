@@ -76,7 +76,7 @@ _dt_contig_out, _data_sz_out, _dt_ptr, _dt_true_lb)             \
 
 #define MPIU_TestFree(p)                        \
 ({                                              \
-  if(*(p))                                      \
+  if (*(p) != NULL)                             \
     {                                           \
       MPIU_Free(*(p));                          \
       *(p) = NULL;                              \

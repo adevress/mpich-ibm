@@ -185,11 +185,7 @@ MPIDI_CancelReq_proc(pami_context_t        context,
                         info->MPIctxt);
   if(sreq)
     {
-      if (sreq->mpid.uebuf)
-        {
-          MPIU_Free(sreq->mpid.uebuf);
-          sreq->mpid.uebuf = NULL;
-        }
+      MPIU_TestFree(&sreq->mpid.uebuf);
       MPID_Request_release(sreq);
       type = MPIDI_CONTROL_CANCEL_ACKNOWLEDGE;
     }
