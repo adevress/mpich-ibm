@@ -92,13 +92,11 @@ MPIDI_RecvRzvDoneCB(pami_context_t  context,
  */
 void
 MPIDI_SyncAck_post(pami_context_t   context,
-                   MPID_Request   * req)
+                   MPID_Request   * req,
+                   unsigned         peer)
 {
   MPIDI_Request_setControl(req, MPIDI_CONTROL_SSEND_ACKNOWLEDGE);
-
   MPIDI_MsgInfo * info = &req->mpid.envelope.msginfo;
-  unsigned        peer =  MPIDI_Request_getPeerRank(req);
-
   MPIDI_CtrlSend(context, info, peer);
 }
 

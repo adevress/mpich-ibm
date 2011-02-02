@@ -37,8 +37,6 @@ MPIDI_Recv_process_unexp(pami_context_t        context,
   //Set the rank of the sender if a sync msg.
   if (msginfo->isSync)
     MPIDI_Request_setPeerRank(rreq, PAMIX_Endpoint_query(sender));
-  else
-    MPIDI_Request_setPeerRank(rreq, (size_t)-1);
 
   rreq->mpid.uebuflen = sndlen;
   if (sndlen)
@@ -218,7 +216,6 @@ void MPIDI_RecvShortCB(pami_context_t    context,
   rreq->status.MPI_TAG    = tag;
   rreq->status.count      = sndlen;
   MPIDI_Request_setCA         (rreq, MPIDI_CA_COMPLETE);
-  MPIDI_Request_setPeerRank   (rreq, (size_t)-1);
   MPIDI_Request_cpyPeerRequest(rreq, msginfo);
   MPIDI_Request_setSync       (rreq, msginfo->isSync);
   MPIDI_Request_setRzv        (rreq, 0);
@@ -227,10 +224,7 @@ void MPIDI_RecvShortCB(pami_context_t    context,
   /*  Request was already posted.  */
   /* ----------------------------- */
   if (unlikely(msginfo->isSync))
-    {
-      MPIDI_Request_setPeerRank(rreq, PAMIX_Endpoint_query(sender));
-      MPIDI_SyncAck_post(context, rreq);
-    }
+    MPIDI_SyncAck_post(context, rreq, PAMIX_Endpoint_query(sender));
 
   if (unlikely(HANDLE_GET_KIND(rreq->mpid.datatype) != HANDLE_KIND_BUILTIN))
     {
@@ -326,7 +320,6 @@ void MPIDI_RecvCB(pami_context_t    context,
   rreq->status.MPI_TAG    = tag;
   rreq->status.count      = sndlen;
   MPIDI_Request_setCA         (rreq, MPIDI_CA_COMPLETE);
-  MPIDI_Request_setPeerRank   (rreq, (size_t)-1);
   MPIDI_Request_cpyPeerRequest(rreq, msginfo);
   MPIDI_Request_setSync       (rreq, msginfo->isSync);
   MPIDI_Request_setRzv        (rreq, 0);
@@ -349,10 +342,7 @@ void MPIDI_RecvCB(pami_context_t    context,
   /* ----------------------------- */
 
   if (unlikely(msginfo->isSync))
-    {
-      MPIDI_Request_setPeerRank(rreq, PAMIX_Endpoint_query(sender));
-      MPIDI_SyncAck_post(context, rreq);
-    }
+    MPIDI_SyncAck_post(context, rreq, PAMIX_Endpoint_query(sender));
 
   /* ----------------------------------------- */
   /*  Calculate message length for reception.  */
@@ -509,7 +499,7 @@ void MPIDI_RecvRzvCB(pami_context_t    context,
       /* if synchronized, post ack.  */
       /* --------------------------- */
       if (unlikely(MPIDI_Request_isSync(rreq)))
-        MPIDI_SyncAck_post(context, rreq);
+        MPIDI_SyncAck_post(context, rreq, MPIDI_Request_getPeerRank(rreq));
 
       MPIDI_RendezvousTransfer(context, rreq);
     }

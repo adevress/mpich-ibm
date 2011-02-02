@@ -25,9 +25,7 @@ MPIDI_RecvMsg_Unexp(MPID_Request  * rreq,
   /* if sync request, need to ack it. */
   /* -------------------------------- */
   if (unlikely(MPIDI_Request_isSync(rreq)))
-    {
-      MPIDI_SyncAck_post(MPIDI_Context_local(rreq), rreq);
-    }
+      MPIDI_SyncAck_post(MPIDI_Context_local(rreq), rreq, MPIDI_Request_getPeerRank(rreq));
 
   if (MPIDI_Request_isRzv(rreq))
     {
