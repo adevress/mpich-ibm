@@ -20,6 +20,9 @@
 #if defined(__BGQ__) || defined(__BGP__)
 #define USE_PAMI_RDMA 1
 #endif
+#if defined(__BGQ__) && (MPIU_THREAD_GRANULARITY == MPIU_THREAD_GRANULARITY_PER_OBJECT)
+#define USE_PAMI_COMM_THREADS 1
+#endif
 
 
 #define MPID_abort()    assert(0) /**< \brief Always exit--usually implies missing functionality */

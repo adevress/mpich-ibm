@@ -22,6 +22,7 @@ typedef struct
 {
   unsigned verbose;        /**< The current level of verbosity for end-of-job stats. */
   unsigned statistics;     /**< The current level of stats collection.               */
+  unsigned requested_thread_level;
 
   unsigned avail_contexts;
   unsigned comm_threads;

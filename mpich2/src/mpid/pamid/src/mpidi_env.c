@@ -525,12 +525,15 @@ MPIDI_Env_setup()
     TRACE_ERR("MPIDI_Process.context_post=%u\n", MPIDI_Process.context_post);
   }
 
+#ifdef USE_PAMI_COMM_THREADS
   /* Enable/Disable commthreads for asynchronous communication. */
   {
+    MPIDI_Process.comm_threads = 1;
     char *names[] = {"PAMI_COMM_THREADS", NULL};
     ENV_Unsigned(names, &MPIDI_Process.comm_threads);
     TRACE_ERR("MPIDI_Process.comm_threads=%u\n", MPIDI_Process.comm_threads);
   }
+#endif
 
   /* Determine eager limit */
   {

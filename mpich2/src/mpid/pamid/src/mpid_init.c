@@ -190,15 +190,15 @@ MPIDI_Init(int* rank, int* size, int* threading)
   /* ---------------------------------- */
   /*  Figure out the context situation  */
   /* ---------------------------------- */
-  if(MPIDI_Process.avail_contexts > MAX_CONTEXTS)
+  if (MPIDI_Process.avail_contexts > MAX_CONTEXTS)
     MPIDI_Process.avail_contexts = MAX_CONTEXTS;
   unsigned same  = PAMIX_Client_query(MPIDI_Client, PAMI_CLIENT_CONST_CONTEXTS).value.intval;
-  if(same)
+  if (same)
     {
       unsigned possible_contexts = PAMIX_Client_query(MPIDI_Client, PAMI_CLIENT_NUM_CONTEXTS).value.intval;
       TRACE_ERR("PAMI allows up to %u contexts; MPICH2 allows up to %u\n",
                 possible_contexts, MPIDI_Process.avail_contexts);
-      if(MPIDI_Process.avail_contexts > possible_contexts)
+      if (MPIDI_Process.avail_contexts > possible_contexts)
         MPIDI_Process.avail_contexts = possible_contexts;
     }
   else
@@ -210,17 +210,26 @@ MPIDI_Init(int* rank, int* size, int* threading)
 
   /* Only use one context when not posting work */
   if (MPIDI_Process.context_post == 0)
-    MPIDI_Process.avail_contexts = 1;
+    {
+      MPIDI_Process.avail_contexts = 1;
+      MPIDI_Process.comm_threads   = 0;
+    }
 
 
+  MPIDI_Process.requested_thread_level = *threading;
   /* VNM mode imlies MPI_THREAD_SINGLE, 1 context, and no posting. */
   if (PAMIX_Client_query(MPIDI_Client, PAMI_CLIENT_HWTHREADS_AVAILABLE).value.intval == 1)
     {
-      *threading = MPI_THREAD_SINGLE;
+      *threading = MPIDI_Process.requested_thread_level = MPI_THREAD_SINGLE;
       MPIDI_Process.avail_contexts = 1;
       MPIDI_Process.context_post   = 0;
+      MPIDI_Process.comm_threads   = 0;
     }
-  TRACE_ERR("Thread-level=%d\n", *threading);
+#ifdef USE_PAMI_COMM_THREADS
+  if (MPIDI_Process.comm_threads == 1)
+    *threading = MPI_THREAD_MULTIPLE;
+#endif
+  TRACE_ERR("Thread-level=%d, requested=%d\n", *threading, MPIDI_Process.requested_thread_level);
 
   /* ----------------------------------- */
   /*  Create the communication contexts  */
@@ -378,9 +387,28 @@ int MPID_Init(int * argc,
 
 /*
  * \brief This is called by MPI to let us know that MPI_Init is done.
- * We don't care.
  */
 int MPID_InitCompleted(void)
 {
+#if USE_PAMI_COMM_THREADS
+  if (MPIDI_Process.comm_threads)
+    {
+      TRACE_ERR("Async advance beginning...\n");
+
+      extern pami_result_t
+        PAMI_Client_add_commthread_context(pami_client_t client,
+                                           pami_context_t context);
+      unsigned i;
+      pami_result_t rc;
+
+      for (i=0; i<MPIDI_Process.avail_contexts; ++i) {
+        rc = PAMI_Client_add_commthread_context(MPIDI_Client, MPIDI_Context[i]);
+        assert(rc == PAMI_SUCCESS);
+      }
+
+      TRACE_ERR("Async advance enabled\n");
+    }
+#endif
+
   return MPI_SUCCESS;
 }

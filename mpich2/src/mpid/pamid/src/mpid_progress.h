@@ -86,8 +86,27 @@ static inline int MPID_Progress_wait_inline(MPID_Progress_state * state)
 {
   pami_result_t rc;
   while (state->val == MPIDI_Progress_requests) {
-    rc = PAMI_Context_advancev(MPIDI_Context, MPIDI_Process.avail_contexts, 100);
-    MPID_assert(rc == PAMI_SUCCESS);
+#ifdef USE_PAMI_COMM_THREADS
+    if (likely(MPIDI_Process.comm_threads))
+      {
+        /** \todo Remove this hack when ticket #235 is finished */
+        unsigned i;
+        for (i=0; i<MPIDI_Process.avail_contexts; ++i) {
+          if (unlikely(PAMI_Context_trylock(MPIDI_Context[i]) == PAMI_SUCCESS))
+            {
+              rc = PAMI_Context_advance(MPIDI_Context[i], 1);
+              MPID_assert(rc == PAMI_SUCCESS);
+              rc = PAMI_Context_unlock(MPIDI_Context[i]);
+              MPID_assert(rc == PAMI_SUCCESS);
+            }
+        }
+      }
+    else
+#endif
+      {
+        rc = PAMI_Context_advancev(MPIDI_Context, MPIDI_Process.avail_contexts, 100);
+        MPID_assert(rc == PAMI_SUCCESS);
+      }
     MPIU_THREAD_CS_YIELD(ALLFUNC,);
   }
 
