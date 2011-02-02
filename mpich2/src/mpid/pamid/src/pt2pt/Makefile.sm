@@ -6,7 +6,6 @@ lib${MPILIBNAME}_a_SOURCES =			\
         mpid_recv.c				\
         mpid_ssend.c				\
         mpidi_callback.c			\
-        mpidi_callback_rzv.c			\
         mpidi_control.c				\
         mpidi_done.c				\
         mpidi_recvmsg.c				\
