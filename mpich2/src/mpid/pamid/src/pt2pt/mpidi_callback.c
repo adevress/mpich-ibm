@@ -6,6 +6,7 @@
 #include <mpidimpl.h>
 #include "../mpid_recvq.h"
 
+
 void
 MPIDI_Recv_process_unexp(pami_context_t        context,
                          const MPIDI_MsgInfo * msginfo,
@@ -18,19 +19,11 @@ void
 MPIDI_Recv_process_unexp(pami_context_t        context,
                          const MPIDI_MsgInfo * msginfo,
                          size_t                sndlen,
-                         pami_endpoint_t       senderendpoint,
+                         pami_endpoint_t       sender,
                          const void          * sndbuf,
                          pami_recv_t         * recv)
 {
-  pami_task_t senderrank = (unsigned)-1;
-  size_t      sendercontext;
   MPID_Request *rreq = NULL;
-
-  //Set the rank of the sender if a sync msg.
-  if (msginfo->isSync) {
-    PAMI_Endpoint_query(senderendpoint, &senderrank, &sendercontext);
-    MPIDI_Request_setPeerRank   (rreq, senderrank);
-  }
 
   /* ---------------------------------------------------- */
   /*  Fallback position:                                  */
@@ -39,7 +32,13 @@ MPIDI_Recv_process_unexp(pami_context_t        context,
   /*  We must allocate enough space to hold the message.  */
   /*  The temporary buffer will be unpacked later.        */
   /* ---------------------------------------------------- */
-  rreq = MPIDI_Recvq_AEU(sndlen, senderrank, msginfo);
+  rreq = MPIDI_Recvq_AEU(sndlen, msginfo);
+
+  //Set the rank of the sender if a sync msg.
+  if (msginfo->isSync)
+    MPIDI_Request_setPeerRank(rreq, PAMIX_Endpoint_query(sender));
+  else
+    MPIDI_Request_setPeerRank(rreq, (size_t)-1);
 
   rreq->mpid.uebuflen = sndlen;
   if (sndlen)
@@ -132,28 +131,30 @@ MPIDI_Recv_process_userdefined_dt(pami_context_t      context,
   /* ----------------------------- */
   /*  Test for truncated message.  */
   /* ----------------------------- */
-  if (unlikely(sndlen > dt_size)) {
+  if (unlikely(sndlen > dt_size))
+    {
 #if ASSERT_LEVEL > 0
-    MPIDI_Recv_process_trunc(context, rreq, NULL, sndbuf);
-    return;
+      MPIDI_Recv_process_trunc(context, rreq, NULL, sndbuf);
+      return;
 #else
-    sndlen = dt_size;
+      sndlen = dt_size;
 #endif
-  }
+    }
 
   /*
    * This is to test that the fields don't need to be
    * initialized.  Remove after this doesn't fail for a while.
    */
-  if (likely (dt_contig)) {
-    MPID_assert(rreq->mpid.uebuf    == NULL);
-    MPID_assert(rreq->mpid.uebuflen == 0);
-    void* rcvbuf = rreq->mpid.userbuf +  dt_true_lb;;
+  if (likely (dt_contig))
+    {
+      MPID_assert(rreq->mpid.uebuf    == NULL);
+      MPID_assert(rreq->mpid.uebuflen == 0);
+      void* rcvbuf = rreq->mpid.userbuf +  dt_true_lb;;
 
-    memcpy(rcvbuf, sndbuf, sndlen);
-    MPIDI_Request_complete(rreq);
-    return;
-  }
+      memcpy(rcvbuf, sndbuf, sndlen);
+      MPIDI_Request_complete(rreq);
+      return;
+    }
 
   MPIDI_Request_setCA(rreq, MPIDI_CA_UNPACK_UEBUF_AND_COMPLETE_NOFREE);
   rreq->mpid.uebuflen = sndlen;
@@ -165,8 +166,8 @@ MPIDI_Recv_process_userdefined_dt(pami_context_t      context,
 /**
  * \brief The standard callback for a new message
  *
- * \param[in]   context     The context on which the message is being received.
- * \param[in]  _contextid   The numerical index of the context
+ * \param[in]  context      The context on which the message is being received.
+ * \param[in]  cookie       Unused
  * \param[in]  _msginfo     The header information
  * \param[in]  msginfo_size The size of the header information
  * \param[in]  sndbuf       If the message is short, this is the data
@@ -174,7 +175,7 @@ MPIDI_Recv_process_userdefined_dt(pami_context_t      context,
  * \param[out] recv         If the message is long, this tells the message layer how to handle the data.
  */
 void MPIDI_RecvShortCB(pami_context_t    context,
-                       void            * _contextid,
+                       void            * cookie,
                        const void      * _msginfo,
                        size_t            msginfo_size,
                        const void      * sndbuf,
@@ -187,9 +188,6 @@ void MPIDI_RecvShortCB(pami_context_t    context,
   MPID_assert(msginfo_size == sizeof(MPIDI_MsgInfo));
 
   const MPIDI_MsgInfo *msginfo = (const MPIDI_MsgInfo *)_msginfo;
-  pami_task_t senderrank = (unsigned) -1;
-  size_t      sendercontext;
-
   MPID_Request * rreq = NULL;
 
   /* -------------------- */
@@ -200,19 +198,15 @@ void MPIDI_RecvShortCB(pami_context_t    context,
   unsigned context_id = msginfo->MPIctxt;
 
   MPIU_THREAD_CS_ENTER(MSGQUEUE,0);
-  /* ---------------------------------------- */
-  /*  Signal that the recv has been started.  */
-  /* ---------------------------------------- */
-  MPIDI_Progress_signal();
-
   rreq = MPIDI_Recvq_FDP(rank, tag, context_id);
 
   //Match not found
-  if (unlikely(rreq == NULL)) {
-    MPIDI_Recv_process_unexp(context, msginfo, sndlen, sender, sndbuf, NULL);
-    MPIU_THREAD_CS_EXIT(MSGQUEUE,0);
-    return;
-  }
+  if (unlikely(rreq == NULL))
+    {
+      MPIDI_Recv_process_unexp(context, msginfo, sndlen, sender, sndbuf, NULL);
+      MPIU_THREAD_CS_EXIT(MSGQUEUE,0);
+      goto fn_exit_short;
+    }
 
   /* the receive queue processing has been completed and we found match*/
   MPIU_THREAD_CS_EXIT(MSGQUEUE,0);
@@ -224,7 +218,7 @@ void MPIDI_RecvShortCB(pami_context_t    context,
   rreq->status.MPI_TAG    = tag;
   rreq->status.count      = sndlen;
   MPIDI_Request_setCA         (rreq, MPIDI_CA_COMPLETE);
-  MPIDI_Request_setPeerRank   (rreq, senderrank);
+  MPIDI_Request_setPeerRank   (rreq, (size_t)-1);
   MPIDI_Request_cpyPeerRequest(rreq, msginfo);
   MPIDI_Request_setSync       (rreq, msginfo->isSync);
   MPIDI_Request_setRzv        (rreq, 0);
@@ -232,30 +226,32 @@ void MPIDI_RecvShortCB(pami_context_t    context,
   /* ----------------------------- */
   /*  Request was already posted.  */
   /* ----------------------------- */
-  if (unlikely(msginfo->isSync)) {
-    PAMI_Endpoint_query(sender, &senderrank, &sendercontext);
-    MPIDI_Request_setPeerRank   (rreq, senderrank);
-    MPIDI_SyncAck_post(context, rreq);
-  }
+  if (unlikely(msginfo->isSync))
+    {
+      MPIDI_Request_setPeerRank(rreq, PAMIX_Endpoint_query(sender));
+      MPIDI_SyncAck_post(context, rreq);
+    }
 
-  if (unlikely(HANDLE_GET_KIND(rreq->mpid.datatype) != HANDLE_KIND_BUILTIN)) {
-    MPIDI_Recv_process_userdefined_dt(context, sndbuf, sndlen, rreq);
-    return;
-  }
+  if (unlikely(HANDLE_GET_KIND(rreq->mpid.datatype) != HANDLE_KIND_BUILTIN))
+    {
+      MPIDI_Recv_process_userdefined_dt(context, sndbuf, sndlen, rreq);
+      goto fn_exit_short;
+    }
 
-  unsigned dt_size = rreq->mpid.userbufcount * MPID_Datatype_get_basic_size(rreq->mpid.datatype);
+  size_t dt_size = rreq->mpid.userbufcount * MPID_Datatype_get_basic_size(rreq->mpid.datatype);
 
   /* ----------------------------- */
   /*  Test for truncated message.  */
   /* ----------------------------- */
-  if (unlikely(sndlen > dt_size)) {
+  if (unlikely(sndlen > dt_size))
+    {
 #if ASSERT_LEVEL > 0
-    MPIDI_Recv_process_trunc(context, rreq, NULL, sndbuf);
-    return;
+      MPIDI_Recv_process_trunc(context, rreq, NULL, sndbuf);
+      goto fn_exit_short;
 #else
-    sndlen = dt_size;
+      sndlen = dt_size;
 #endif
-  }
+    }
 
   MPID_assert(rreq->mpid.uebuf    == NULL);
   MPID_assert(rreq->mpid.uebuflen == 0);
@@ -264,14 +260,20 @@ void MPIDI_RecvShortCB(pami_context_t    context,
   if (sndlen > 0)
     memcpy(rcvbuf, sndbuf, sndlen);
   MPIDI_Request_complete(rreq);
+
+ fn_exit_short:
+  /* ---------------------------------------- */
+  /*  Signal that the recv has been started.  */
+  /* ---------------------------------------- */
+  MPIDI_Progress_signal();
 }
 
 
 /**
  * \brief The standard callback for a new message
  *
- * \param[in]   context     The context on which the message is being received.
- * \param[in]  _contextid   The numerical index of the context
+ * \param[in]  context      The context on which the message is being received.
+ * \param[in]  cookie       Unused
  * \param[in]  _msginfo     The header information
  * \param[in]  msginfo_size The size of the header information
  * \param[in]  sndbuf       If the message is short, this is the data
@@ -279,7 +281,7 @@ void MPIDI_RecvShortCB(pami_context_t    context,
  * \param[out] recv         If the message is long, this tells the message layer how to handle the data.
  */
 void MPIDI_RecvCB(pami_context_t    context,
-                  void            * _contextid,
+                  void            * cookie,
                   const void      * _msginfo,
                   size_t            msginfo_size,
                   const void      * sndbuf,
@@ -293,9 +295,6 @@ void MPIDI_RecvCB(pami_context_t    context,
   MPID_assert(msginfo_size == sizeof(MPIDI_MsgInfo));
 
   const MPIDI_MsgInfo *msginfo = (const MPIDI_MsgInfo *)_msginfo;
-  pami_task_t senderrank = (unsigned)-1;
-  size_t      sendercontext;
-
   MPID_Request * rreq = NULL;
 
   /* -------------------- */
@@ -306,19 +305,15 @@ void MPIDI_RecvCB(pami_context_t    context,
   unsigned context_id = msginfo->MPIctxt;
 
   MPIU_THREAD_CS_ENTER(MSGQUEUE,0);
-  /* ---------------------------------------- */
-  /*  Signal that the recv has been started.  */
-  /* ---------------------------------------- */
-  MPIDI_Progress_signal();
-
   rreq = MPIDI_Recvq_FDP(rank, tag, context_id);
 
   //Match not found
-  if (unlikely(rreq == NULL)) {
-    MPIDI_Recv_process_unexp(context, msginfo, sndlen, sender, sndbuf, recv);
-    MPIU_THREAD_CS_EXIT(MSGQUEUE,0);
-    return;
-  }
+  if (unlikely(rreq == NULL))
+    {
+      MPIDI_Recv_process_unexp(context, msginfo, sndlen, sender, sndbuf, recv);
+      MPIU_THREAD_CS_EXIT(MSGQUEUE,0);
+      goto fn_exit_eager;
+    }
 
   /* -------------------------------------------- */
   /*  Figure out target buffer for request data.  */
@@ -331,7 +326,7 @@ void MPIDI_RecvCB(pami_context_t    context,
   rreq->status.MPI_TAG    = tag;
   rreq->status.count      = sndlen;
   MPIDI_Request_setCA         (rreq, MPIDI_CA_COMPLETE);
-  MPIDI_Request_setPeerRank   (rreq, senderrank);
+  MPIDI_Request_setPeerRank   (rreq, (size_t)-1);
   MPIDI_Request_cpyPeerRequest(rreq, msginfo);
   MPIDI_Request_setSync       (rreq, msginfo->isSync);
   MPIDI_Request_setRzv        (rreq, 0);
@@ -353,11 +348,11 @@ void MPIDI_RecvCB(pami_context_t    context,
   /*  Request was already posted.  */
   /* ----------------------------- */
 
-  if (unlikely(msginfo->isSync)) {
-    PAMI_Endpoint_query(sender, &senderrank, &sendercontext);
-    MPIDI_Request_setPeerRank   (rreq, senderrank);
-    MPIDI_SyncAck_post(context, rreq);
-  }
+  if (unlikely(msginfo->isSync))
+    {
+      MPIDI_Request_setPeerRank(rreq, PAMIX_Endpoint_query(sender));
+      MPIDI_SyncAck_post(context, rreq);
+    }
 
   /* ----------------------------------------- */
   /*  Calculate message length for reception.  */
@@ -378,7 +373,7 @@ void MPIDI_RecvCB(pami_context_t    context,
   if (unlikely(sndlen > dt_size))
     {
       MPIDI_Recv_process_trunc(context, rreq, recv, sndbuf);
-      return;
+      goto fn_exit_eager;
     }
 
   /* --------------------------------------- */
@@ -411,23 +406,30 @@ void MPIDI_RecvCB(pami_context_t    context,
       /* ----------------------------------------------- */
       MPIDI_Request_setCA(rreq, MPIDI_CA_UNPACK_UEBUF_AND_COMPLETE);
       rreq->mpid.uebuflen = sndlen;
-      if (sndlen) {
-        rreq->mpid.uebuf    = MPIU_Malloc(sndlen);
-        MPID_assert(rreq->mpid.uebuf != NULL);
-      }
+      if (sndlen)
+        {
+          rreq->mpid.uebuf    = MPIU_Malloc(sndlen);
+          MPID_assert(rreq->mpid.uebuf != NULL);
+        }
       /* -------------------------------------------------- */
       /*  Let PAMI know where to put the rest of the data.  */
       /* -------------------------------------------------- */
       recv->addr = rreq->mpid.uebuf;
     }
+
+ fn_exit_eager:
+  /* ---------------------------------------- */
+  /*  Signal that the recv has been started.  */
+  /* ---------------------------------------- */
+  MPIDI_Progress_signal();
 }
 
 
 /**
  * \brief The callback for a new RZV RTS
  * \note  Because this is a short message, the data is already received
- * \param[in]   context     The context on which the message is being received.
- * \param[in]  _contextid   The numerical index of the context
+ * \param[in]  context      The context on which the message is being received.
+ * \param[in]  cookie       Unused
  * \param[in]  _msginfo     The extended header information
  * \param[in]  msginfo_size The size of the extended header information
  * \param[in]  sndbuf       Unused
@@ -435,7 +437,7 @@ void MPIDI_RecvCB(pami_context_t    context,
  * \param[out] recv         Unused
  */
 void MPIDI_RecvRzvCB(pami_context_t    context,
-                     void            * _contextid,
+                     void            * cookie,
                      const void      * _msginfo,
                      size_t            msginfo_size,
                      const void      * sndbuf,
@@ -449,10 +451,6 @@ void MPIDI_RecvRzvCB(pami_context_t    context,
   MPID_assert(msginfo_size == sizeof(MPIDI_MsgEnvelope));
   const MPIDI_MsgEnvelope * envelope = (const MPIDI_MsgEnvelope *)_msginfo;
   const MPIDI_MsgInfo * msginfo = (const MPIDI_MsgInfo *)&envelope->msginfo;
-  pami_task_t senderrank;
-  size_t      sendercontext;
-  PAMI_Endpoint_query(sender, &senderrank, &sendercontext);
-  /* size_t               contextid = (size_t)_contextid; */
 
   MPID_Request * rreq = NULL;
   int found;
@@ -460,13 +458,12 @@ void MPIDI_RecvRzvCB(pami_context_t    context,
   /* -------------------- */
   /*  Match the request.  */
   /* -------------------- */
-  MPIDI_Message_match match;
-  match.rank       = msginfo->MPIrank;
-  match.tag        = msginfo->MPItag;
-  match.context_id = msginfo->MPIctxt;
+  unsigned rank       = msginfo->MPIrank;
+  unsigned tag        = msginfo->MPItag;
+  unsigned context_id = msginfo->MPIctxt;
 
   MPIU_THREAD_CS_ENTER(MSGQUEUE,0);
-  rreq = MPIDI_Recvq_FDP_or_AEU(match.rank, match.tag, match.context_id, &found);
+  rreq = MPIDI_Recvq_FDP_or_AEU(rank, tag, context_id, &found);
   TRACE_ERR("RZV CB for req=%p remote-mr=0x%llx bytes=%zu (%sfound)\n",
             rreq,
             *(unsigned long long*)&envelope->envelope.memregion,
@@ -481,10 +478,10 @@ void MPIDI_RecvRzvCB(pami_context_t    context,
   /* ---------------------- */
   /*  Copy in information.  */
   /* ---------------------- */
-  rreq->status.MPI_SOURCE = match.rank;
-  rreq->status.MPI_TAG    = match.tag;
+  rreq->status.MPI_SOURCE = rank;
+  rreq->status.MPI_TAG    = tag;
   rreq->status.count      = envelope->length;
-  MPIDI_Request_setPeerRank   (rreq, senderrank);
+  MPIDI_Request_setPeerRank   (rreq, PAMIX_Endpoint_query(sender));
   MPIDI_Request_cpyPeerRequest(rreq, msginfo);
   MPIDI_Request_setSync       (rreq, msginfo->isSync);
   MPIDI_Request_setRzv        (rreq, 1);

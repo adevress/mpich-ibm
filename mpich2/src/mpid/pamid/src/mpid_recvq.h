@@ -8,6 +8,7 @@
 
 #include <mpidimpl.h>
 
+
 struct MPIDID_Recvq_t
 {
   struct MPID_Request * posted_head;      /**< \brief The Head of the Posted queue */
@@ -15,10 +16,11 @@ struct MPIDID_Recvq_t
   struct MPID_Request * unexpected_head;  /**< \brief The Head of the Unexpected queue */
   struct MPID_Request * unexpected_tail;  /**< \brief The Tail of the Unexpected queue */
 };
-
 extern struct MPIDID_Recvq_t recvq;
 
-MPID_Request * _MPIDI_Recvq_FDU_OB(int source, int tag, int context_id, int * foundp);
+MPID_Request * MPIDI_Recvq_FDU_outofline(int source, int tag, int context_id, int * foundp);
+MPID_Request * MPIDI_Recvq_AEU(int sndlen, const MPIDI_MsgInfo *msginfo);
+
 
 /**
  * \brief Find a request in the unexpected queue and dequeue it, or allocate a new request and enqueue it in the posted queue
@@ -28,13 +30,14 @@ MPID_Request * _MPIDI_Recvq_FDU_OB(int source, int tag, int context_id, int * fo
  * \param[out] foundp    TRUE iff the request was found
  * \return     The matching UE request or the new posted request
  */
-static inline MPID_Request * MPIDI_Recvq_FDU_or_AEP(int source, int tag, int context_id, int * foundp)
+static inline MPID_Request *
+MPIDI_Recvq_FDU_or_AEP(int source, int tag, int context_id, int * foundp)
 {
     MPID_Request * rreq = NULL;
     *foundp = FALSE;
     //We have unexpected messages, so search unexpected queue
     if (unlikely(recvq.unexpected_head != NULL)) {
-      rreq = _MPIDI_Recvq_FDU_OB (source, tag, context_id, foundp);
+      rreq = MPIDI_Recvq_FDU_outofline(source, tag, context_id, foundp);
       if (*foundp == TRUE)
         return rreq;
     }
@@ -78,7 +81,8 @@ static inline MPID_Request * MPIDI_Recvq_FDU_or_AEP(int source, int tag, int con
  * \param[in]  context_id Find by Context ID (communicator)
  * \return     The matching posted request or the new UE request
  */
-static inline MPID_Request * MPIDI_Recvq_FDP(int source, int tag, int context_id)
+static inline MPID_Request *
+MPIDI_Recvq_FDP(int source, int tag, int context_id)
 {
     MPID_Request * rreq;
     MPID_Request * prev_rreq = NULL;
@@ -126,6 +130,5 @@ static inline MPID_Request * MPIDI_Recvq_FDP(int source, int tag, int context_id
     return NULL;
 }
 
-MPID_Request * MPIDI_Recvq_AEU(int sndlen, int senderrank, const MPIDI_MsgInfo *msginfo);
 
 #endif

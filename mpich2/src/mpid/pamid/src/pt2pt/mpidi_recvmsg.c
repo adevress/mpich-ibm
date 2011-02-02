@@ -6,7 +6,7 @@
 #include <mpidimpl.h>
 #include "../mpid_recvq.h"
 
-int
+void
 MPIDI_RecvMsg_Unexp(MPID_Request  * rreq,
                     void          * buf,
                     int             count,
@@ -90,6 +90,4 @@ MPIDI_RecvMsg_Unexp(MPID_Request  * rreq,
           MPID_Datatype_add_ref(rreq->mpid.datatype_ptr);
         }
     }
-
-  return 0;
 }

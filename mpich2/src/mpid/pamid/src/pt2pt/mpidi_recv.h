@@ -10,11 +10,6 @@
 
 #include "../mpid_recvq.h"
 
-int
-MPIDI_RecvMsg_Unexp(MPID_Request  * rreq,
-                    void          * buf,
-                    int             count,
-                    MPI_Datatype    datatype);
 
 /**
  * \brief ADI level implemenation of MPI_Irecv()

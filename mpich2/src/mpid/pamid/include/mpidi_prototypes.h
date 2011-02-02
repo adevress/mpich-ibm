@@ -38,6 +38,9 @@ void MPIDI_Buffer_copy(const void     * const sbuf,
 
 pami_result_t MPIDI_SendMsg_handoff(pami_context_t context, void * sreq);
 pami_result_t MPIDI_Isend_handoff(pami_context_t context, void * sreq);
+
+void MPIDI_RecvMsg_Unexp(MPID_Request * rreq, void * buf, int count, MPI_Datatype datatype);
+
 /**
  * \defgroup MPID_CALLBACKS MPID callbacks for communication
  *
@@ -49,8 +52,16 @@ pami_result_t MPIDI_Isend_handoff(pami_context_t context, void * sreq);
 void MPIDI_SendDoneCB   (pami_context_t    context,
                          void            * clientdata,
                          pami_result_t     result);
+void MPIDI_RecvShortCB  (pami_context_t    context,
+                         void            * cookie,
+                         const void      * _msginfo,
+                         size_t            msginfo_size,
+                         const void      * sndbuf,
+                         size_t            sndlen,
+                         pami_endpoint_t   sender,
+                         pami_recv_t     * recv);
 void MPIDI_RecvCB       (pami_context_t    context,
-                         void            * _contextid,
+                         void            * cookie,
                          const void      * _msginfo,
                          size_t            msginfo_size,
                          const void      * sndbuf,
@@ -58,7 +69,7 @@ void MPIDI_RecvCB       (pami_context_t    context,
                          pami_endpoint_t   sender,
                          pami_recv_t     * recv);
 void MPIDI_RecvRzvCB    (pami_context_t    context,
-                         void            * _contextid,
+                         void            * cookie,
                          const void      * _msginfo,
                          size_t            msginfo_size,
                          const void      * sndbuf,
@@ -78,7 +89,7 @@ void MPIDI_RecvRzvDoneCB(pami_context_t    context,
 void MPIDI_SyncAck_post(pami_context_t context, MPID_Request * req);
 /** \brief This is the general PT2PT control message call-back */
 void MPIDI_ControlCB(pami_context_t    context,
-                     void            * _contextid,
+                     void            * cookie,
                      const void      * _msginfo,
                      size_t            msginfo_size,
                      const void      * sndbuf,
@@ -87,7 +98,7 @@ void MPIDI_ControlCB(pami_context_t    context,
                      pami_recv_t     * recv);
 void
 MPIDI_WinControlCB(pami_context_t    context,
-                   void            * _contextid,
+                   void            * cookie,
                    const void      * _control,
                    size_t            size,
                    const void      * sndbuf,

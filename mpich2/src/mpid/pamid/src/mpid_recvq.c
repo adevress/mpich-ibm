@@ -228,7 +228,7 @@ MPID_Request * MPIDI_Recvq_FDUR(MPID_Request * req, int source, int tag, int con
  * \param[out] foundp    TRUE iff the request was found
  * \return     The matching UE request or the new posted request
  */
-MPID_Request * _MPIDI_Recvq_FDU_OB(int source, int tag, int context_id, int * foundp)
+MPID_Request * MPIDI_Recvq_FDU_outofline(int source, int tag, int context_id, int * foundp)
 {
     int found;
     MPID_Request * rreq = NULL;
@@ -473,7 +473,7 @@ MPID_Request * MPIDI_Recvq_FDP_or_AEU(int source, int tag, int context_id, int *
 }
 
 
-MPID_Request * MPIDI_Recvq_AEU(int sndlen, int senderrank, const MPIDI_MsgInfo *msginfo) {
+MPID_Request * MPIDI_Recvq_AEU(int sndlen, const MPIDI_MsgInfo *msginfo) {
     /* A matching request was not found in the posted queue, so we
        need to allocate a new request and add it to the unexpected
        queue */
@@ -492,7 +492,6 @@ MPID_Request * MPIDI_Recvq_AEU(int sndlen, int senderrank, const MPIDI_MsgInfo *
     rreq->status.MPI_TAG    = tag;
     rreq->status.count      = sndlen;
     MPIDI_Request_setCA         (rreq, MPIDI_CA_COMPLETE);
-    MPIDI_Request_setPeerRank   (rreq, senderrank);
     MPIDI_Request_cpyPeerRequest(rreq, msginfo);
     MPIDI_Request_setSync       (rreq, msginfo->isSync);
 

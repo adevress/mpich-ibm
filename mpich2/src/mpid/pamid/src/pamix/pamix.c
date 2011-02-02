@@ -135,6 +135,20 @@ PAMIX_Dispatch_set(pami_context_t                  context[],
 }
 
 
+pami_task_t
+PAMIX_Endpoint_query(pami_endpoint_t endpoint)
+{
+  pami_task_t rank;
+  size_t      offset;
+
+  pami_result_t rc;
+  rc = PAMI_Endpoint_query(endpoint, &rank, &offset);
+  PAMIX_assert(rc == PAMI_SUCCESS);
+
+  return rank;
+}
+
+
 #if defined(__BGQ__) || defined(__BGP__)
 
 const pamix_torus_info_t *

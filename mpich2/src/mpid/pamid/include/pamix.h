@@ -33,6 +33,9 @@ PAMIX_Dispatch_set(pami_context_t                  context[],
                    pami_send_hint_t                options,
                    size_t                        * immediate_max);
 
+pami_task_t
+PAMIX_Endpoint_query(pami_endpoint_t endpoint);
+
 #if defined(__BGQ__) || defined(__BGP__)
 
 typedef struct

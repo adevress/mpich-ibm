@@ -6,15 +6,6 @@
 #include <mpidimpl.h>
 #include "onesided/mpidi_onesided.h"
 
-extern void MPIDI_RecvShortCB(pami_context_t    context,
-                              void            * _contextid,
-                              const void      * _msginfo,
-                              size_t            msginfo_size,
-                              const void      * sndbuf,
-                              size_t            sndlen,
-                              pami_endpoint_t   sender,
-                              pami_recv_t     * recv);
-
 pami_client_t   MPIDI_Client;
 #define MAX_CONTEXTS 16
 pami_context_t MPIDI_Context[MAX_CONTEXTS];
@@ -72,8 +63,8 @@ static struct
     options: {
       consistency:    PAMI_HINT2_ON,
       no_long_header: PAMI_HINT2_ON,
-      recv_immediate: PAMI_HINT2_ON,
-      use_rdma:       PAMI_HINT3_FORCE_OFF,
+      /** \todo Turn off immediate recvs when ticket #46 is finished */
+      /* recv_immediate: PAMI_HINT3_FORCE_OFF */
       },
     immediate_min : sizeof(MPIDI_MsgInfo),
   },
@@ -83,6 +74,8 @@ static struct
     options: {
       consistency:    PAMI_HINT2_ON,
       no_long_header: PAMI_HINT2_ON,
+      recv_immediate: PAMI_HINT2_ON,
+      use_rdma:       PAMI_HINT3_FORCE_OFF,
       },
     immediate_min : sizeof(MPIDI_MsgInfo),
   },
@@ -112,7 +105,6 @@ static struct
     func: MPIDI_ControlCB,
     dispatch: 4,
     options: {
-      use_rdma:       PAMI_HINT3_FORCE_OFF,
       no_long_header: PAMI_HINT2_ON,
       recv_immediate: PAMI_HINT2_ON,
       use_rdma:       PAMI_HINT3_FORCE_OFF,
