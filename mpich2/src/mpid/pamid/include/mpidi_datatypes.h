@@ -102,28 +102,27 @@ MPIDI_CA;
  */
 typedef struct
 {
-  int   tag;        /**< match tag     */
-  int   rank;       /**< match rank    */
-  int   context_id; /**< match context */
+  int tag;        /**< match tag     */
+  int rank;       /**< match rank    */
+  int context_id; /**< match context */
 }
 MPIDI_Message_match;
 
 
 /**
- * \brief Message Info (has to be exactly 128 bits long) and associated data types
- * \note sizeof(MPIDI_MsgInfo) == 16
+ * \brief MPID pt2pt message header
  */
 typedef struct
 {
-  unsigned   MPItag;      /**< match tag              */
-  unsigned   MPIrank;     /**< match rank             */
-  unsigned   MPIctxt;     /**< match context          */
+  unsigned  MPItag;  /**< match tag              */
+  unsigned  MPIrank; /**< match rank             */
+  unsigned  MPIctxt; /**< match context          */
   struct {
-    uint16_t   control:3;   /**< message type for control protocols */
-    uint16_t   isSync:1;    /**< set for sync sends     */
-    uint16_t   isRzv :1;    /**< use pt2pt rendezvous   */
+    uint8_t control; /**< message type for control protocols (3 bits) */
+    uint8_t isSync;  /**< set for sync sends (1 bit)                  */
+    uint8_t isRzv;   /**< use pt2pt rendezvous (1 bit)                */
   } flags;
-  void       * req;         /**< peer's request pointer */
+  void    * req;     /**< peer's request pointer */
 } MPIDI_MsgInfo;
 
 /** \brief Full Rendezvous msg info to be set as two quads of unexpected data. */
@@ -191,8 +190,8 @@ struct MPIDI_Comm
 
 typedef struct
 {
-   pami_work_t state;
-   pami_xfer_t *coll_struct;
+  pami_work_t state;
+  pami_xfer_t *coll_struct;
 } MPIDI_Post_coll_t;
 
 
