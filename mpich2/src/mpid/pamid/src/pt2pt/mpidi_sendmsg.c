@@ -16,7 +16,7 @@ MPIDI_SendMsg_short(pami_context_t    context,
   MPIDI_MsgInfo * msginfo = &sreq->mpid.envelope.msginfo;
 
   pami_send_immediate_t params = {
-  dispatch : MPIDI_Protocols.SendShort,
+  dispatch : MPIDI_Protocols_Short,
   dest     : dest,
   header   : {
     iov_base : msginfo,
@@ -59,7 +59,7 @@ MPIDI_SendMsg_eager(pami_context_t    context,
 
   pami_send_t params = {
   send   : {
-    dispatch : MPIDI_Protocols.Send,
+    dispatch : MPIDI_Protocols_Eager,
     dest     : dest,
     header   : {
       iov_base : msginfo,
@@ -139,7 +139,7 @@ MPIDI_SendMsg_rzv(pami_context_t    context,
    * case.
    */
   pami_send_immediate_t params = {
-  dispatch : MPIDI_Protocols.RTS,
+  dispatch : MPIDI_Protocols_RVZ,
   dest     : dest,
   header   : {
     iov_base : &sreq->mpid.envelope,

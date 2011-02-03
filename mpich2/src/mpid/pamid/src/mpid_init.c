@@ -50,28 +50,17 @@ struct protocol_t
 };
 static struct
 {
-  struct protocol_t Send;
-  struct protocol_t SendShort;
-  struct protocol_t RTS;
+  struct protocol_t Short;
+  struct protocol_t Eager;
+  struct protocol_t RVZ;
   struct protocol_t Cancel;
   struct protocol_t Control;
   struct protocol_t WinCtrl;
 } proto_list =
   {
-  Send: {
-    func: MPIDI_RecvCB,
-    dispatch: 0,
-    options: {
-      consistency:    PAMI_HINT2_ON,
-      no_long_header: PAMI_HINT2_ON,
-      /** \todo Turn off immediate recvs when ticket #46 is finished */
-      /* recv_immediate: PAMI_HINT3_FORCE_OFF */
-      },
-    immediate_min : sizeof(MPIDI_MsgInfo),
-  },
-  SendShort: {
+  Short: {
     func: MPIDI_RecvShortCB,
-    dispatch: 1,
+    dispatch: MPIDI_Protocols_Short,
     options: {
       consistency:    PAMI_HINT2_ON,
       no_long_header: PAMI_HINT2_ON,
@@ -80,9 +69,20 @@ static struct
       },
     immediate_min : sizeof(MPIDI_MsgInfo),
   },
-  RTS: {
+  Eager: {
+    func: MPIDI_RecvCB,
+    dispatch: MPIDI_Protocols_Eager,
+    options: {
+      consistency:    PAMI_HINT2_ON,
+      no_long_header: PAMI_HINT2_ON,
+      /** \todo Turn off immediate recvs when ticket #46 is finished */
+      /* recv_immediate: PAMI_HINT3_FORCE_OFF */
+      },
+    immediate_min : sizeof(MPIDI_MsgInfo),
+  },
+  RVZ: {
     func: MPIDI_RecvRzvCB,
-    dispatch: 2,
+    dispatch: MPIDI_Protocols_RVZ,
     options: {
       consistency:    PAMI_HINT2_ON,
       no_long_header: PAMI_HINT2_ON,
@@ -93,7 +93,7 @@ static struct
   },
   Cancel: {
     func: MPIDI_ControlCB,
-    dispatch: 3,
+    dispatch: MPIDI_Protocols_Cancel,
     options: {
       consistency:    PAMI_HINT2_ON,
       no_long_header: PAMI_HINT2_ON,
@@ -104,7 +104,7 @@ static struct
   },
   Control: {
     func: MPIDI_ControlCB,
-    dispatch: 4,
+    dispatch: MPIDI_Protocols_Control,
     options: {
       no_long_header: PAMI_HINT2_ON,
       recv_immediate: PAMI_HINT2_ON,
@@ -114,7 +114,7 @@ static struct
   },
   WinCtrl: {
     func: MPIDI_WinControlCB,
-    dispatch: 5,
+    dispatch: MPIDI_Protocols_WinCtrl,
     options: {
       no_long_header: PAMI_HINT2_ON,
       recv_immediate: PAMI_HINT2_ON,
@@ -122,15 +122,6 @@ static struct
       },
     immediate_min : sizeof(MPIDI_Win_control_t),
   },
-  };
-MPIDI_Protocol_t MPIDI_Protocols =
-  {
-  Send      : 0,
-  SendShort : 1,
-  RTS       : 2,
-  Cancel    : 3,
-  Control   : 4,
-  WinCtrl   : 5,
   };
 
 
@@ -239,14 +230,14 @@ MPIDI_Init(int* rank, int* size, int* threading)
   /* ------------------------------------ */
   /*  Set up the communication protocols  */
   /* ------------------------------------ */
-  MPIDI_Init_dispath(MPIDI_Protocols.Send,    &proto_list.Send, &MPIDI_Process.short_limit);
+  MPIDI_Init_dispath(MPIDI_Protocols_Short,   &proto_list.Short,   &MPIDI_Process.short_limit);
   MPIDI_Process.short_limit -= sizeof(MPIDI_MsgInfo);
   TRACE_ERR("short_limit = %u\n", MPIDI_Process.short_limit);
-  MPIDI_Init_dispath(MPIDI_Protocols.RTS,       &proto_list.RTS, NULL);
-  MPIDI_Init_dispath(MPIDI_Protocols.Cancel,    &proto_list.Cancel, NULL);
-  MPIDI_Init_dispath(MPIDI_Protocols.Control,   &proto_list.Control, NULL);
-  MPIDI_Init_dispath(MPIDI_Protocols.WinCtrl,   &proto_list.WinCtrl, NULL);
-  MPIDI_Init_dispath(MPIDI_Protocols.SendShort, &proto_list.SendShort,  NULL);
+  MPIDI_Init_dispath(MPIDI_Protocols_Eager,   &proto_list.Eager,   NULL);
+  MPIDI_Init_dispath(MPIDI_Protocols_RVZ,     &proto_list.RVZ,     NULL);
+  MPIDI_Init_dispath(MPIDI_Protocols_Cancel,  &proto_list.Cancel,  NULL);
+  MPIDI_Init_dispath(MPIDI_Protocols_Control, &proto_list.Control, NULL);
+  MPIDI_Init_dispath(MPIDI_Protocols_WinCtrl, &proto_list.WinCtrl, NULL);
 
 
   /* Fill in the world geometry */
@@ -388,6 +379,7 @@ int MPID_InitCompleted(void)
     {
       TRACE_ERR("Async advance beginning...\n");
 
+      /** \todo Change this to the official version when #344 is done */
       extern pami_result_t
         PAMI_Client_add_commthread_context(pami_client_t client,
                                            pami_context_t context);

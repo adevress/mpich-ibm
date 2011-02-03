@@ -21,7 +21,7 @@ MPIDI_CtrlSend(pami_context_t  context,
   PAMI_Endpoint_create(MPIDI_Client, peerrank, 0, &dest);
 
   pami_send_immediate_t params = {
-  dispatch : MPIDI_Protocols.Control,
+  dispatch : MPIDI_Protocols_Control,
   dest     : dest,
   header   : {
     iov_base : msginfo,

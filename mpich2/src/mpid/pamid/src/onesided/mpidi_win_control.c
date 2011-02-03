@@ -20,7 +20,7 @@ MPIDI_WinCtrlSend(pami_context_t       context,
   MPID_assert(rc == PAMI_SUCCESS);
 
   pami_send_immediate_t params = {
-  dispatch : MPIDI_Protocols.WinCtrl,
+  dispatch : MPIDI_Protocols_WinCtrl,
   dest     : dest,
   header   : {
     iov_base : control,

@@ -57,7 +57,7 @@ MPIDI_CancelReq_post(pami_context_t context, void * _req)
   MPIDI_Context_endpoint(req, &dest);
 
   pami_send_immediate_t params = {
-  dispatch : MPIDI_Protocols.Cancel,
+  dispatch : MPIDI_Protocols_Cancel,
   dest     : dest,
   header   : {
     iov_base: &cancel,

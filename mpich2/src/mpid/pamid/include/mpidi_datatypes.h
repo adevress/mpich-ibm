@@ -43,20 +43,16 @@ typedef struct
 } MPIDI_Process_t;
 
 
-typedef struct
-{
-  unsigned Send;
-  unsigned SendShort;
-  unsigned RTS;
-  unsigned Cancel;
-  unsigned Control;
-  unsigned WinCtrl;
-}      MPIDI_Protocol_t;
-
-typedef struct
-{
-}      MPIDI_CollectiveProtocol_t;
-
+enum
+  {
+    MPIDI_Protocols_Short,
+    MPIDI_Protocols_Eager,
+    MPIDI_Protocols_RVZ,
+    MPIDI_Protocols_Cancel,
+    MPIDI_Protocols_Control,
+    MPIDI_Protocols_WinCtrl,
+    MPIDI_Protocols_COUNT,
+  };
 
 
 /**
