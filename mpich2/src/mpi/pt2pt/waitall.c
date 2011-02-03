@@ -97,6 +97,8 @@ int MPIR_Waitall_impl(int count, MPI_Request array_of_requests[],
 	goto fn_exit;
     }
 
+    MPID_Progress_start(&progress_state);
+
     /* NOTE-O1: high-message-rate optimization.  For simple send and recv
      * operations and MPI_STATUSES_IGNORE we use a fastpath approach that strips
      * out as many unnecessary jumps and error handling as possible.
@@ -134,8 +136,6 @@ int MPIR_Waitall_impl(int count, MPI_Request array_of_requests[],
         if (mpi_errno) MPIU_ERR_POP(mpi_errno);
     }
     
-    MPID_Progress_start(&progress_state);
-
     for (i = 0; i < count; i++)
     {
         if (request_ptrs[i] == NULL)
