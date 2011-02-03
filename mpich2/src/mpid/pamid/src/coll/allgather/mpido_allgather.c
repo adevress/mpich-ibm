@@ -270,12 +270,20 @@ MPIDO_Allgather(void *sendbuf,
 
    /* #warning need to determine best allreduce for short messages */
    if(comm_ptr->mpid.preallreduces[MPID_ALLGATHER_PREALLREDUCE])
-  {
-      MPIDI_Post_coll_t allred_post;
-      allred_post.coll_struct = &allred;
-      /* Post the collective call */
-      PAMI_Context_post(MPIDI_Context[0], &allred_post.state, 
-                        MPIDI_Pami_post_wrapper, (void *)&allred_post);
+   {
+      if(MPIDI_Process.context_post)
+      {
+         MPIDI_Post_coll_t allred_post;
+         allred_post.coll_struct = &allred;
+         /* Post the collective call */
+         PAMI_Context_post(MPIDI_Context[0], &allred_post.state, 
+                           MPIDI_Pami_post_wrapper, (void *)&allred_post);
+      }
+      else
+      {
+         rc = PAMI_Collective(MPIDI_Context[0], (pami_xfer_t *)&allred);
+      }
+
       MPID_PROGRESS_WAIT_WHILE(allred_active);
   }
 

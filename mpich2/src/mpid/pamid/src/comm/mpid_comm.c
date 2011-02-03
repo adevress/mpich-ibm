@@ -4,7 +4,7 @@
  * \brief ???
  */
 
-//#define TRACE_ON
+#define TRACE_ON
 
 #include <mpidimpl.h>
 
@@ -67,7 +67,7 @@ static pami_result_t geom_rangelist_create_wrapper(pami_context_t context, void 
    
 void MPIDI_Coll_comm_create(MPID_Comm *comm)
 {
-//   int rc;
+   int rc;
    int geom_init = 1;
    int i;
    pami_geometry_range_t *slices;
@@ -108,23 +108,40 @@ void MPIDI_Coll_comm_create(MPID_Comm *comm)
          slices[i].lo = MPID_VCR_GET_LPID(comm->vcr, i);
          slices[i].hi = MPID_VCR_GET_LPID(comm->vcr, i);
       }
-      geom_post.client = MPIDI_Client;
-      geom_post.configs = NULL;
-      geom_post.num_configs = 0;
-      geom_post.newgeom = &comm->mpid.geometry,
-      geom_post.parent = NULL;
-      geom_post.slices = slices;
-      geom_post.slice_count = (size_t)comm->local_size,
-      geom_post.fn = geom_cb_done;
-      geom_post.cookie = &geom_init;
+      pami_configuration_t config;
+      size_t numconfigs = 0;
 
-      TRACE_ERR("Posting geom_create\n");
-      PAMI_Context_post(MPIDI_Context[0], &geom_post.state, 
-            geom_rangelist_create_wrapper, (void *)&geom_post);
-   #if 0
-      rc = PAMI_Geometry_create_taskrange(MPIDI_Client,
-                                         NULL,
-                                         0,
+      if(MPIDI_Process.optimized_subcomms)
+      {
+         config.name = PAMI_GEOMETRY_OPTIMIZE;
+         numconfigs = 1;
+      }
+      else
+      {
+         numconfigs = 0;
+      }
+
+      if(MPIDI_Process.context_post)
+      {
+         geom_post.client = MPIDI_Client;
+         geom_post.configs = &config;
+         geom_post.num_configs = numconfigs;
+         geom_post.newgeom = &comm->mpid.geometry,
+         geom_post.parent = NULL;
+         geom_post.slices = slices;
+         geom_post.slice_count = (size_t)comm->local_size,
+         geom_post.fn = geom_cb_done;
+         geom_post.cookie = &geom_init;
+
+         TRACE_ERR("Posting geom_create\n");
+         rc = PAMI_Context_post(MPIDI_Context[0], &geom_post.state, 
+                  geom_rangelist_create_wrapper, (void *)&geom_post);
+      }
+      else
+      {
+         rc = PAMI_Geometry_create_taskrange(MPIDI_Client,
+                                         &config,
+                                         numconfigs,
                                          &comm->mpid.geometry,
                                          NULL, /*MPIDI_Process.world_geometry,*/
                                          comm->context_id,
@@ -134,12 +151,14 @@ void MPIDI_Coll_comm_create(MPID_Comm *comm)
                                          geom_cb_done,
                                          &geom_init);
 
+      }
+
       if(rc != PAMI_SUCCESS)
       {
          fprintf(stderr,"Error creating subcomm geometry. %d\n", rc);
          exit(1);
       }
-      #endif
+
       TRACE_ERR("Waiting for geom create to finish\n");
       while(geom_init)
          PAMI_Context_advance(MPIDI_Context[0], 1);

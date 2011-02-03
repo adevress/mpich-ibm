@@ -289,12 +289,21 @@ MPIDO_Allgatherv(void *sendbuf,
 
    /* disable with "safe allgatherv" env var */
    if(comm_ptr->mpid.preallreduces[MPID_ALLGATHERV_PREALLREDUCE])
+   {
+      if(MPIDI_Process.context_post)
       {
          MPIDI_Post_coll_t allred_post;
          allred_post.coll_struct = &allred;
-         PAMI_Context_post(MPIDI_Context[0], &allred_post.state, MPIDI_Pami_post_wrapper, (void *)&allred_post);
-         MPID_PROGRESS_WAIT_WHILE(allred_active);
+         PAMI_Context_post(MPIDI_Context[0], &allred_post.state, 
+            MPIDI_Pami_post_wrapper, (void *)&allred_post);
       }
+      else
+      {
+         PAMI_Collective(MPIDI_Context[0], (pami_xfer_t *)&allred);
+      }
+
+      MPID_PROGRESS_WAIT_WHILE(allred_active);
+   }
 
    use_tree_reduce = comm_ptr->mpid.allgathervs[0] &&
       config[MPID_RECV_CONTIG] && config[MPID_SEND_CONTIG] &&

@@ -55,12 +55,20 @@ int MPIDO_Allreduce(void *sendbuf,
       allred.cmd.xfer_allreduce.rtypecount = data_size;
       allred.cmd.xfer_allreduce.dt = pdt;
       allred.cmd.xfer_allreduce.op = pop;
-      allred_post.coll_struct = &allred;
-      TRACE_ERR("posting allreduce, context: %d, algoname: %s, dt: %s, op: %s, count: %d\n", 0,
-                comm_ptr->mpid.coll_metadata[PAMI_XFER_ALLREDUCE][0][0].name, dt_str, op_str, count);
       MPIDI_Update_last_algorithm(comm_ptr, comm_ptr->mpid.coll_metadata[PAMI_XFER_ALLREDUCE][0][0].name);
-      rc = PAMI_Context_post(MPIDI_Context[0], &allred_post.state, MPIDI_Pami_post_wrapper, (void *)&allred_post);
-      TRACE_ERR("allreduce posted, rc: %d\n", rc);
+      if(MPIDI_Process.context_post)
+      {
+         allred_post.coll_struct = &allred;
+         TRACE_ERR("posting allreduce, context: %d, algoname: %s, dt: %s, op: %s, count: %d\n", 0,
+                   comm_ptr->mpid.coll_metadata[PAMI_XFER_ALLREDUCE][0][0].name, dt_str, op_str, count);
+         rc = PAMI_Context_post(MPIDI_Context[0], &allred_post.state, 
+                  MPIDI_Pami_post_wrapper, (void *)&allred_post);
+         TRACE_ERR("allreduce posted, rc: %d\n", rc);
+      }
+      else
+      {
+         rc = PAMI_Collective(MPIDI_Context[0], (pami_xfer_t *)&allred);
+      }
 
       assert(rc == PAMI_SUCCESS);
       MPID_PROGRESS_WAIT_WHILE(active);

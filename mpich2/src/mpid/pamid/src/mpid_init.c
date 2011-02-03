@@ -23,7 +23,8 @@ MPIDI_Process_t  MPIDI_Process = {
 
  avail_contexts : MAX_CONTEXTS,
  comm_threads   : 0,
- context_post   : 1,
+ context_post   : 0,
+ optimized_subcomms: 1,
  short_limit    : 0,
 #ifdef __BGQ__
  eager_limit    : 1234,

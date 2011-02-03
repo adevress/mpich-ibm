@@ -167,9 +167,16 @@ int MPIDO_Gather(void *sendbuf,
       allred.cmd.xfer_allreduce.rtypecount = sizeof(int);
       allred.cmd.xfer_allreduce.dt = PAMI_SIGNED_INT;
       allred.cmd.xfer_allreduce.op = PAMI_BAND;
-      allred_post.coll_struct = &allred;
-      PAMI_Context_post(MPIDI_Context[0], &allred_post.state,
-                        MPIDI_Pami_post_wrapper, (void *)&allred_post);
+      if(MPIDI_Process.context_post)
+      {
+         allred_post.coll_struct = &allred;
+         PAMI_Context_post(MPIDI_Context[0], &allred_post.state,
+                           MPIDI_Pami_post_wrapper, (void *)&allred_post);
+      }
+      else
+      {
+         PAMI_Collective(MPIDI_Context[0], (pami_xfer_t *)&allred);
+      }
       MPID_PROGRESS_WAIT_WHILE(allred_active);
    }
 
@@ -196,16 +203,23 @@ int MPIDO_Gather(void *sendbuf,
       gather.cmd.xfer_gather.rtypecount = recv_bytes;
       MPIDI_Update_last_algorithm(comm_ptr,
                comm_ptr->mpid.user_metadata[PAMI_XFER_GATHER].name);
-      gather_post.coll_struct = &gather;
-      rc = PAMI_Context_post(MPIDI_Context[0], &gather_post.state, 
-                              MPIDI_Pami_post_wrapper, (void *)&gather_post);
+      if(MPIDI_Process.context_post)
+      {
+         gather_post.coll_struct = &gather;
+         rc = PAMI_Context_post(MPIDI_Context[0], &gather_post.state, 
+                                 MPIDI_Pami_post_wrapper, (void *)&gather_post);
+      }
+      else
+      {
+         rc = PAMI_Collective(MPIDI_Context[0], (pami_xfer_t *)&gather);
+      }
       return rc;
    }
 
-  sbuf = sendbuf + true_lb;
-  rbuf = recvbuf + true_lb;
+   sbuf = sendbuf + true_lb;
+   rbuf = recvbuf + true_lb;
 
-  MPIDI_Update_last_algorithm(comm_ptr, "GATHER_OPT_REDUCE");
+   MPIDI_Update_last_algorithm(comm_ptr, "GATHER_OPT_REDUCE");
    return MPIDO_Gather_reduce(sbuf, sendcount, sendtype,
                               rbuf, recvcount, recvtype,
                               root, comm_ptr);

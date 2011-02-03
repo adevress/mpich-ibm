@@ -29,6 +29,7 @@ typedef struct
   unsigned context_post;
   unsigned short_limit;
   unsigned eager_limit;
+  unsigned optimized_subcomms;
 
   unsigned rma_pending;    /**< The max num outstanding requests during an RMA op    */
 

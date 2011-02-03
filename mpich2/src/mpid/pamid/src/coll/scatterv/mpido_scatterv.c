@@ -215,6 +215,7 @@ int MPIDO_Scatterv(void *sendbuf,
   MPI_Aint true_lb=0;
   volatile unsigned allred_active = 1;
   pami_xfer_t allred;
+  int rc;
   int optscatterv[3];
 
   allred.cb_done = allred_cb_done;
@@ -297,11 +298,18 @@ int MPIDO_Scatterv(void *sendbuf,
   /* specifically, noncontig on the receive */
   /* set the internal control flow to disable internal star tuning */
    if(comm_ptr->mpid.preallreduces[MPID_SCATTERV_PREALLREDUCE])
-  {
-      MPIDI_Post_coll_t allred_post;
-      allred_post.coll_struct = &allred;
-      PAMI_Context_post(MPIDI_Context[0], &allred_post.state, MPIDI_Pami_post_wrapper, (void *)&allred_post);
-//      PAMI_Collective(MPIDI_Context[0], (pami_xfer_t *)&allred);
+   {
+      if(MPIDI_Process.context_post)
+      {
+         MPIDI_Post_coll_t allred_post;
+         allred_post.coll_struct = &allred;
+         rc = PAMI_Context_post(MPIDI_Context[0], &allred_post.state, 
+                  MPIDI_Pami_post_wrapper, (void *)&allred_post);
+      }
+      else
+      {
+         rc = PAMI_Collective(MPIDI_Context[0], (pami_xfer_t *)&allred);
+      }
       MPID_PROGRESS_WAIT_WHILE(allred_active);
    }
   /* reset flag */
