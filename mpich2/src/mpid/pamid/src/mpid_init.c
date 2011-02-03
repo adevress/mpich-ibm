@@ -254,7 +254,7 @@ MPIDI_Init(int* rank, int* size, int* threading)
   rc = PAMI_Geometry_world(MPIDI_Client, &MPIDI_Process.world_geometry);
   MPID_assert(rc == PAMI_SUCCESS);
 
-  if (MPIDI_Process.verbose > 1)
+  if (MPIDI_Process.verbose > 0)
     {
       printf("MPIDI_Process.*\n"
              "  verbose      : %u\n"
