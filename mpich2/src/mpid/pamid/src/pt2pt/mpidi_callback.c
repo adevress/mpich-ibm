@@ -35,7 +35,7 @@ MPIDI_Recv_process_unexp(pami_context_t        context,
   rreq = MPIDI_Recvq_AEU(sndlen, msginfo);
 
   //Set the rank of the sender if a sync msg.
-  if (msginfo->isSync)
+  if (msginfo->flags.isSync)
     MPIDI_Request_setPeerRank(rreq, PAMIX_Endpoint_query(sender));
 
   rreq->mpid.uebuflen = sndlen;
@@ -217,13 +217,13 @@ void MPIDI_RecvShortCB(pami_context_t    context,
   rreq->status.count      = sndlen;
   MPIDI_Request_setCA         (rreq, MPIDI_CA_COMPLETE);
   MPIDI_Request_cpyPeerRequest(rreq, msginfo);
-  MPIDI_Request_setSync       (rreq, msginfo->isSync);
+  MPIDI_Request_setSync       (rreq, msginfo->flags.isSync);
   MPIDI_Request_setRzv        (rreq, 0);
 
   /* ----------------------------- */
   /*  Request was already posted.  */
   /* ----------------------------- */
-  if (unlikely(msginfo->isSync))
+  if (unlikely(msginfo->flags.isSync))
     MPIDI_SyncAck_post(context, rreq, PAMIX_Endpoint_query(sender));
 
   if (unlikely(HANDLE_GET_KIND(rreq->mpid.datatype) != HANDLE_KIND_BUILTIN))
@@ -321,7 +321,7 @@ void MPIDI_RecvCB(pami_context_t    context,
   rreq->status.count      = sndlen;
   MPIDI_Request_setCA         (rreq, MPIDI_CA_COMPLETE);
   MPIDI_Request_cpyPeerRequest(rreq, msginfo);
-  MPIDI_Request_setSync       (rreq, msginfo->isSync);
+  MPIDI_Request_setSync       (rreq, msginfo->flags.isSync);
   MPIDI_Request_setRzv        (rreq, 0);
 
   /* --------------------------------------- */
@@ -341,7 +341,7 @@ void MPIDI_RecvCB(pami_context_t    context,
   /*  Request was already posted.  */
   /* ----------------------------- */
 
-  if (unlikely(msginfo->isSync))
+  if (unlikely(msginfo->flags.isSync))
     MPIDI_SyncAck_post(context, rreq, PAMIX_Endpoint_query(sender));
 
   /* ----------------------------------------- */
@@ -473,7 +473,7 @@ void MPIDI_RecvRzvCB(pami_context_t    context,
   rreq->status.count      = envelope->length;
   MPIDI_Request_setPeerRank   (rreq, PAMIX_Endpoint_query(sender));
   MPIDI_Request_cpyPeerRequest(rreq, msginfo);
-  MPIDI_Request_setSync       (rreq, msginfo->isSync);
+  MPIDI_Request_setSync       (rreq, msginfo->flags.isSync);
   MPIDI_Request_setRzv        (rreq, 1);
 
   /* ----------------------------------------------------- */

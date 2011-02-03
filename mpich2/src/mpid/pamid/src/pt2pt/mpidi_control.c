@@ -200,7 +200,7 @@ MPIDI_CancelReq_proc(pami_context_t        context,
             sreq,
             (type==MPIDI_CONTROL_CANCEL_ACKNOWLEDGE) ? "ACK" : "NAK");
 
-  ackinfo.control = type;
+  ackinfo.flags.control = type;
   MPIDI_Msginfo_cpyPeerRequest(&ackinfo, info);
   MPIDI_CtrlSend(context, &ackinfo, peer);
 }
@@ -223,15 +223,15 @@ MPIDI_CancelAck_proc(pami_context_t        context,
 
   TRACE_ERR("Cancel result: my_request=%p  result=%s\n",
             req,
-            (info->control==MPIDI_CONTROL_CANCEL_ACKNOWLEDGE) ? "ACK" : "NAK");
+            (info->flags.control==MPIDI_CONTROL_CANCEL_ACKNOWLEDGE) ? "ACK" : "NAK");
 
-  if(info->control == MPIDI_CONTROL_CANCEL_NOT_ACKNOWLEDGE)
+  if(info->flags.control == MPIDI_CONTROL_CANCEL_NOT_ACKNOWLEDGE)
     {
       req->mpid.cancel_pending = FALSE;
     }
   else
     {
-      MPID_assert(info->control == MPIDI_CONTROL_CANCEL_ACKNOWLEDGE);
+      MPID_assert(info->flags.control == MPIDI_CONTROL_CANCEL_ACKNOWLEDGE);
       MPID_assert(req->mpid.cancel_pending == TRUE);
 
       req->status.cancelled = TRUE;
@@ -292,7 +292,7 @@ MPIDI_ControlCB(pami_context_t    context,
   const MPIDI_MsgInfo *msginfo = (const MPIDI_MsgInfo *)_msginfo;
   pami_task_t senderrank = PAMIX_Endpoint_query(sender);
 
-  switch (msginfo->control)
+  switch (msginfo->flags.control)
     {
     case MPIDI_CONTROL_SSEND_ACKNOWLEDGE:
       MPIDI_SyncAck_proc(context, msginfo, senderrank);
@@ -309,8 +309,8 @@ MPIDI_ControlCB(pami_context_t    context,
       break;
     default:
       fprintf(stderr, "Bad msginfo type: 0x%08x  %d\n",
-              msginfo->control,
-              msginfo->control);
+              msginfo->flags.control,
+              msginfo->flags.control);
       MPID_abort();
     }
   MPIDI_Progress_signal();

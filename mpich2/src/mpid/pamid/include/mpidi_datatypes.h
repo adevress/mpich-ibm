@@ -114,15 +114,16 @@ MPIDI_Message_match;
  * \note sizeof(MPIDI_MsgInfo) == 16
  */
 typedef struct
-  {
-    void     * req;         /**< peer's request pointer */
-    unsigned   MPItag;      /**< match tag              */
-    unsigned   MPIrank;     /**< match rank             */
-    uint16_t   MPIctxt;     /**< match context          */
-
+{
+  unsigned   MPItag;      /**< match tag              */
+  unsigned   MPIrank;     /**< match rank             */
+  unsigned   MPIctxt;     /**< match context          */
+  struct {
     uint16_t   control:3;   /**< message type for control protocols */
     uint16_t   isSync:1;    /**< set for sync sends     */
     uint16_t   isRzv :1;    /**< use pt2pt rendezvous   */
+  } flags;
+  void       * req;         /**< peer's request pointer */
 } MPIDI_MsgInfo;
 
 /** \brief Full Rendezvous msg info to be set as two quads of unexpected data. */

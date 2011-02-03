@@ -493,7 +493,7 @@ MPID_Request * MPIDI_Recvq_AEU(int sndlen, const MPIDI_MsgInfo *msginfo) {
     rreq->status.count      = sndlen;
     MPIDI_Request_setCA         (rreq, MPIDI_CA_COMPLETE);
     MPIDI_Request_cpyPeerRequest(rreq, msginfo);
-    MPIDI_Request_setSync       (rreq, msginfo->isSync);
+    MPIDI_Request_setSync       (rreq, msginfo->flags.isSync);
 
     if (recvq.unexpected_tail != NULL)
       {
