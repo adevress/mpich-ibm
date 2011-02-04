@@ -107,12 +107,12 @@ MPIDI_Send(const void    * buf,
       pami_context_t context = MPIDI_Context_local(sreq);
 
       pami_result_t rc;
-      rc = PAMI_Context_post(context, &sreq->mpid.post_request, MPIDI_SendMsg_handoff, sreq);
+      rc = PAMI_Context_post(context, &sreq->mpid.post_request, MPIDI_Send_handoff, sreq);
       MPID_assert(rc == PAMI_SUCCESS);
     }
   else
     {
-      MPIDI_SendMsg_handoff(MPIDI_Context[0], sreq);
+      MPIDI_Send_handoff(MPIDI_Context[0], sreq);
     }
 
   return MPI_SUCCESS;

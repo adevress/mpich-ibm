@@ -36,7 +36,7 @@ void MPIDI_Buffer_copy(const void     * const sbuf,
                        MPIDI_msg_sz_t *       rsz,
                        int            *       rmpi_errno);
 
-pami_result_t MPIDI_SendMsg_handoff(pami_context_t context, void * sreq);
+pami_result_t MPIDI_Send_handoff (pami_context_t context, void * sreq);
 pami_result_t MPIDI_Isend_handoff(pami_context_t context, void * sreq);
 
 void MPIDI_RecvMsg_Unexp(MPID_Request * rreq, void * buf, int count, MPI_Datatype datatype);

@@ -157,14 +157,14 @@ MPIDI_SendMsg_rzv(pami_context_t    context,
 
 
 static void
-MPIDI_process_userdefined_dt(MPID_Request      * sreq,
-                             void             ** sndbuf,
-                             size_t            * data_sz)
+MPIDI_SendMsg_process_userdefined_dt(MPID_Request      * sreq,
+                                     void             ** sndbuf,
+                                     size_t            * data_sz)
   __attribute__((__noinline__));
 static void
-MPIDI_process_userdefined_dt(MPID_Request      * sreq,
-                             void             ** _sndbuf,
-                             size_t            * _data_sz)
+MPIDI_SendMsg_process_userdefined_dt(MPID_Request      * sreq,
+                                     void             ** _sndbuf,
+                                     size_t            * _data_sz)
 {
   size_t          data_sz;
   int             dt_contig;
@@ -225,8 +225,8 @@ MPIDI_process_userdefined_dt(MPID_Request      * sreq,
 
 
 static inline void
-MPIDI_SendMsg_general(pami_context_t   context,
-                      MPID_Request   * sreq)
+MPIDI_SendMsg(pami_context_t   context,
+              MPID_Request   * sreq)
 {
   MPIDI_Request_setPeerRequest(sreq, sreq);
 
@@ -245,7 +245,7 @@ MPIDI_SendMsg_general(pami_context_t   context,
     }
   else
     {
-      MPIDI_process_userdefined_dt(sreq, &sndbuf, &data_sz);
+      MPIDI_SendMsg_process_userdefined_dt(sreq, &sndbuf, &data_sz);
     }
 
 
@@ -304,8 +304,8 @@ MPIDI_SendMsg_general(pami_context_t   context,
  * \param[in,out] sreq    Structure containing all relevant info about the message.
  */
 pami_result_t
-MPIDI_SendMsg_handoff(pami_context_t   context,
-                      void           * _sreq)
+MPIDI_Send_handoff(pami_context_t   context,
+                   void           * _sreq)
 {
   MPID_Request * sreq = (MPID_Request*)_sreq;
   MPID_assert(sreq != NULL);
@@ -319,7 +319,7 @@ MPIDI_SendMsg_handoff(pami_context_t   context,
       return MPI_SUCCESS;
     }
 
-  MPIDI_SendMsg_general(context, sreq);
+  MPIDI_SendMsg(context, sreq);
   return PAMI_SUCCESS;
 }
 
@@ -358,6 +358,6 @@ MPIDI_Isend_handoff(pami_context_t   context,
     return MPI_SUCCESS;
   }
 
-  MPIDI_SendMsg_general(context, sreq);
+  MPIDI_SendMsg(context, sreq);
   return PAMI_SUCCESS;
 }
