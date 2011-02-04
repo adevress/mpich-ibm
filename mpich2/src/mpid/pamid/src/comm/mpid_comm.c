@@ -85,6 +85,7 @@ void MPIDI_Coll_comm_create(MPID_Comm *comm)
    
    if(comm->mpid.geometry != MPIDI_Process.world_geometry)
    {
+     if(MPIDI_Process.verbose >= 1)
       fprintf(stderr,"world geom: %p parent geom: %p\n", MPIDI_Process.world_geometry, comm->mpid.parent);
       TRACE_ERR("Creating subgeom\n");
       /* Change to this at some point */
@@ -128,6 +129,7 @@ void MPIDI_Coll_comm_create(MPID_Comm *comm)
          geom_post.num_configs = numconfigs;
          geom_post.newgeom = &comm->mpid.geometry,
          geom_post.parent = NULL;
+         geom_post.id     = comm->context_id;
          geom_post.slices = slices;
          geom_post.slice_count = (size_t)comm->local_size,
          geom_post.fn = geom_cb_done;
