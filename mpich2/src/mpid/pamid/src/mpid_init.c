@@ -125,7 +125,7 @@ static struct
   };
 
 
-static inline void
+static void
 MPIDI_Init_dispath(size_t              dispatch,
                    struct protocol_t * proto,
                    unsigned          * immediate_max)
@@ -147,7 +147,7 @@ MPIDI_Init_dispath(size_t              dispatch,
 }
 
 
-static inline void
+static void
 MPIDI_Init(int* rank, int* size, int* threading)
 {
   pami_result_t rc;
