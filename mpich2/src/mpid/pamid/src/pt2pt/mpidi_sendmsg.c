@@ -11,7 +11,8 @@ MPIDI_SendMsg_short(pami_context_t    context,
                     MPID_Request    * sreq,
                     pami_endpoint_t   dest,
                     void            * sndbuf,
-                    unsigned          sndlen)
+                    unsigned          sndlen,
+                    unsigned          isSync)
 {
   MPIDI_MsgInfo * msginfo = &sreq->mpid.envelope.msginfo;
 
@@ -27,6 +28,8 @@ MPIDI_SendMsg_short(pami_context_t    context,
     iov_len  : sndlen,
   },
   };
+  if (isSync)
+    params.dispatch = MPIDI_Protocols_ShortSync;
 
   pami_result_t rc;
   rc = PAMI_Send_immediate(context, &params);
@@ -226,8 +229,10 @@ MPIDI_SendMsg_process_userdefined_dt(MPID_Request      * sreq,
 
 static inline void
 MPIDI_SendMsg(pami_context_t   context,
-              MPID_Request   * sreq)
+              MPID_Request   * sreq,
+              unsigned         isSync)
 {
+  MPIDI_Request_setSync(sreq, isSync);
   MPIDI_Request_setPeerRequest(sreq, sreq);
 
   /*
@@ -259,7 +264,8 @@ MPIDI_SendMsg(pami_context_t   context,
                           sreq,
                           dest,
                           sndbuf,
-                          data_sz);
+                          data_sz,
+                          isSync);
     }
   /*
    * Use the eager protocol when data_sz is less than the eager limit.
@@ -319,7 +325,28 @@ MPIDI_Send_handoff(pami_context_t   context,
       return MPI_SUCCESS;
     }
 
-  MPIDI_SendMsg(context, sreq);
+  MPIDI_SendMsg(context, sreq, 0);
+  return PAMI_SUCCESS;
+}
+
+
+pami_result_t
+MPIDI_Ssend_handoff(pami_context_t   context,
+                   void           * _sreq)
+{
+  MPID_Request * sreq = (MPID_Request*)_sreq;
+  MPID_assert(sreq != NULL);
+
+  /* ------------------------------ */
+  /* special case: NULL destination */
+  /* ------------------------------ */
+  if (unlikely(MPIDI_Request_getPeerRank(sreq) == MPI_PROC_NULL))
+    {
+      MPIDI_Request_complete(sreq);
+      return MPI_SUCCESS;
+    }
+
+  MPIDI_SendMsg(context, sreq, 1);
   return PAMI_SUCCESS;
 }
 
@@ -348,7 +375,6 @@ MPIDI_Isend_handoff(pami_context_t   context,
   /* This initializes all the fields not set in MPI_Isend() */
   MPIDI_Request_initialize(sreq);
   /* Since this is only called from MPI_Isend(), it is not synchronous */
-  MPIDI_Request_setSync(sreq, 0);
 
   int rank = MPIDI_Request_getPeerRank(sreq);
   if (likely(rank != MPI_PROC_NULL))
@@ -358,6 +384,6 @@ MPIDI_Isend_handoff(pami_context_t   context,
     return MPI_SUCCESS;
   }
 
-  MPIDI_SendMsg(context, sreq);
+  MPIDI_SendMsg(context, sreq, 0);
   return PAMI_SUCCESS;
 }

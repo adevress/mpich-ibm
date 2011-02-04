@@ -25,6 +25,26 @@ MPIDI_SendDoneCB_inline(pami_context_t   context,
 }
 
 
+#define MPIDI_Send_post(__func, __req)                          \
+({                                                              \
+  if (likely(MPIDI_Process.context_post > 1))                   \
+    {                                                           \
+      pami_context_t context = MPIDI_Context_local(__req);      \
+                                                                \
+      pami_result_t rc;                                         \
+      rc = PAMI_Context_post(context,                           \
+                             &(__req)->mpid.post_request,       \
+                             __func,                            \
+                             __req);                            \
+      MPID_assert(rc == PAMI_SUCCESS);                          \
+    }                                                           \
+  else                                                          \
+    {                                                           \
+      __func(MPIDI_Context[0], __req);                          \
+    }                                                           \
+})
+
+
 /**
  * \brief This is a generic inline verion of the various send functions.
  *
@@ -94,29 +114,25 @@ MPIDI_Send(const void    * buf,
 
   /* message type info */
   sreq->kind = MPID_REQUEST_SEND;
-  MPIDI_Request_setSync(sreq, is_sync);
-  if (is_sync)
-    MPIDI_Request_uncomplete(sreq);
 
   /* ----------------------------------------- */
   /*      start the message                    */
   /* ----------------------------------------- */
-
-  if (likely(MPIDI_Process.context_post > 1))
+  if (is_sync)
     {
-      pami_context_t context = MPIDI_Context_local(sreq);
-
-      pami_result_t rc;
-      rc = PAMI_Context_post(context, &sreq->mpid.post_request, MPIDI_Send_handoff, sreq);
-      MPID_assert(rc == PAMI_SUCCESS);
+      MPIDI_Request_uncomplete(sreq);
+      MPIDI_Send_post(MPIDI_Ssend_handoff, sreq);
     }
   else
     {
-      MPIDI_Send_handoff(MPIDI_Context[0], sreq);
+      MPIDI_Send_post(MPIDI_Send_handoff, sreq);
     }
 
   return MPI_SUCCESS;
 }
+
+
+#undef MPIDI_Send_post
 
 
 #endif

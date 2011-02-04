@@ -51,6 +51,7 @@ struct protocol_t
 static struct
 {
   struct protocol_t Short;
+  struct protocol_t ShortSync;
   struct protocol_t Eager;
   struct protocol_t RVZ;
   struct protocol_t Cancel;
@@ -59,8 +60,19 @@ static struct
 } proto_list =
   {
   Short: {
-    func: MPIDI_RecvShortCB,
+    func: MPIDI_RecvShortAsyncCB,
     dispatch: MPIDI_Protocols_Short,
+    options: {
+      consistency:    PAMI_HINT2_ON,
+      no_long_header: PAMI_HINT2_ON,
+      recv_immediate: PAMI_HINT2_ON,
+      use_rdma:       PAMI_HINT3_FORCE_OFF,
+      },
+    immediate_min : sizeof(MPIDI_MsgInfo),
+  },
+  ShortSync: {
+    func: MPIDI_RecvShortSyncCB,
+    dispatch: MPIDI_Protocols_ShortSync,
     options: {
       consistency:    PAMI_HINT2_ON,
       no_long_header: PAMI_HINT2_ON,
@@ -230,14 +242,15 @@ MPIDI_Init(int* rank, int* size, int* threading)
   /* ------------------------------------ */
   /*  Set up the communication protocols  */
   /* ------------------------------------ */
-  MPIDI_Init_dispath(MPIDI_Protocols_Short,   &proto_list.Short,   &MPIDI_Process.short_limit);
+  MPIDI_Init_dispath(MPIDI_Protocols_Short,     &proto_list.Short,     &MPIDI_Process.short_limit);
   MPIDI_Process.short_limit -= sizeof(MPIDI_MsgInfo);
   TRACE_ERR("short_limit = %u\n", MPIDI_Process.short_limit);
-  MPIDI_Init_dispath(MPIDI_Protocols_Eager,   &proto_list.Eager,   NULL);
-  MPIDI_Init_dispath(MPIDI_Protocols_RVZ,     &proto_list.RVZ,     NULL);
-  MPIDI_Init_dispath(MPIDI_Protocols_Cancel,  &proto_list.Cancel,  NULL);
-  MPIDI_Init_dispath(MPIDI_Protocols_Control, &proto_list.Control, NULL);
-  MPIDI_Init_dispath(MPIDI_Protocols_WinCtrl, &proto_list.WinCtrl, NULL);
+  MPIDI_Init_dispath(MPIDI_Protocols_ShortSync, &proto_list.ShortSync, NULL);
+  MPIDI_Init_dispath(MPIDI_Protocols_Eager,     &proto_list.Eager,     NULL);
+  MPIDI_Init_dispath(MPIDI_Protocols_RVZ,       &proto_list.RVZ,       NULL);
+  MPIDI_Init_dispath(MPIDI_Protocols_Cancel,    &proto_list.Cancel,    NULL);
+  MPIDI_Init_dispath(MPIDI_Protocols_Control,   &proto_list.Control,   NULL);
+  MPIDI_Init_dispath(MPIDI_Protocols_WinCtrl,   &proto_list.WinCtrl,   NULL);
 
 
   /* Fill in the world geometry */

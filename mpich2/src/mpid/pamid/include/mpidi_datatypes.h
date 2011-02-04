@@ -46,6 +46,7 @@ typedef struct
 enum
   {
     MPIDI_Protocols_Short,
+    MPIDI_Protocols_ShortSync,
     MPIDI_Protocols_Eager,
     MPIDI_Protocols_RVZ,
     MPIDI_Protocols_Cancel,

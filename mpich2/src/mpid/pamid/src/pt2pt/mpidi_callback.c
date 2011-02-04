@@ -13,7 +13,8 @@ MPIDI_Recv_process_unexp(pami_context_t        context,
                          size_t                sndlen,
                          pami_endpoint_t       senderendpoint,
                          const void          * sndbuf,
-                         pami_recv_t         * recv)
+                         pami_recv_t         * recv,
+                         unsigned              isSync)
   __attribute__((__noinline__));
 void
 MPIDI_Recv_process_unexp(pami_context_t        context,
@@ -21,7 +22,8 @@ MPIDI_Recv_process_unexp(pami_context_t        context,
                          size_t                sndlen,
                          pami_endpoint_t       sender,
                          const void          * sndbuf,
-                         pami_recv_t         * recv)
+                         pami_recv_t         * recv,
+                         unsigned              isSync)
 {
   MPID_Request *rreq = NULL;
 
@@ -35,7 +37,7 @@ MPIDI_Recv_process_unexp(pami_context_t        context,
   rreq = MPIDI_Recvq_AEU(sndlen, msginfo);
 
   //Set the rank of the sender if a sync msg.
-  if (msginfo->flags.isSync)
+  if (isSync)
     MPIDI_Request_setPeerRank(rreq, PAMIX_Endpoint_query(sender));
 
   rreq->mpid.uebuflen = sndlen;
@@ -172,18 +174,23 @@ MPIDI_Recv_process_userdefined_dt(pami_context_t      context,
  * \param[in]  sndlen       The size of the incoming data
  * \param[out] recv         If the message is long, this tells the message layer how to handle the data.
  */
-void MPIDI_RecvShortCB(pami_context_t    context,
-                       void            * cookie,
-                       const void      * _msginfo,
-                       size_t            msginfo_size,
-                       const void      * sndbuf,
-                       size_t            sndlen,
-                       pami_endpoint_t   sender,
-                       pami_recv_t     * recv)
+static inline void
+MPIDI_RecvShortCB(pami_context_t    context,
+                  const void      * _msginfo,
+                  const void      * sndbuf,
+                  size_t            sndlen,
+                  pami_endpoint_t   sender,
+                  unsigned          isSync)
+  __attribute__((__always_inline__));
+static inline void
+MPIDI_RecvShortCB(pami_context_t    context,
+                  const void      * _msginfo,
+                  const void      * sndbuf,
+                  size_t            sndlen,
+                  pami_endpoint_t   sender,
+                  unsigned          isSync)
 {
-  MPID_assert(recv == NULL);
   MPID_assert(_msginfo != NULL);
-  MPID_assert(msginfo_size == sizeof(MPIDI_MsgInfo));
 
   const MPIDI_MsgInfo *msginfo = (const MPIDI_MsgInfo *)_msginfo;
   MPID_Request * rreq = NULL;
@@ -201,7 +208,7 @@ void MPIDI_RecvShortCB(pami_context_t    context,
   //Match not found
   if (unlikely(rreq == NULL))
     {
-      MPIDI_Recv_process_unexp(context, msginfo, sndlen, sender, sndbuf, NULL);
+      MPIDI_Recv_process_unexp(context, msginfo, sndlen, sender, sndbuf, NULL, isSync);
       MPIU_THREAD_CS_EXIT(MSGQUEUE,0);
       goto fn_exit_short;
     }
@@ -217,13 +224,13 @@ void MPIDI_RecvShortCB(pami_context_t    context,
   rreq->status.count      = sndlen;
   MPIDI_Request_setCA         (rreq, MPIDI_CA_COMPLETE);
   MPIDI_Request_cpyPeerRequest(rreq, msginfo);
-  MPIDI_Request_setSync       (rreq, msginfo->flags.isSync);
+  MPIDI_Request_setSync       (rreq, isSync);
   MPIDI_Request_setRzv        (rreq, 0);
 
   /* ----------------------------- */
   /*  Request was already posted.  */
   /* ----------------------------- */
-  if (unlikely(msginfo->flags.isSync))
+  if (unlikely(isSync))
     MPIDI_SyncAck_post(context, rreq, PAMIX_Endpoint_query(sender));
 
   if (unlikely(HANDLE_GET_KIND(rreq->mpid.datatype) != HANDLE_KIND_BUILTIN))
@@ -263,6 +270,48 @@ void MPIDI_RecvShortCB(pami_context_t    context,
 }
 
 
+void
+MPIDI_RecvShortAsyncCB(pami_context_t    context,
+                       void            * cookie,
+                       const void      * _msginfo,
+                       size_t            msginfo_size,
+                       const void      * sndbuf,
+                       size_t            sndlen,
+                       pami_endpoint_t   sender,
+                       pami_recv_t     * recv)
+{
+  MPID_assert(recv == NULL);
+  MPID_assert(msginfo_size == sizeof(MPIDI_MsgInfo));
+  MPIDI_RecvShortCB(context,
+                    _msginfo,
+                    sndbuf,
+                    sndlen,
+                    sender,
+                    0);
+}
+
+
+void
+MPIDI_RecvShortSyncCB(pami_context_t    context,
+                      void            * cookie,
+                      const void      * _msginfo,
+                      size_t            msginfo_size,
+                      const void      * sndbuf,
+                      size_t            sndlen,
+                      pami_endpoint_t   sender,
+                      pami_recv_t     * recv)
+{
+  MPID_assert(recv == NULL);
+  MPID_assert(msginfo_size == sizeof(MPIDI_MsgInfo));
+  MPIDI_RecvShortCB(context,
+                    _msginfo,
+                    sndbuf,
+                    sndlen,
+                    sender,
+                    1);
+}
+
+
 /**
  * \brief The standard callback for a new message
  *
@@ -274,14 +323,15 @@ void MPIDI_RecvShortCB(pami_context_t    context,
  * \param[in]  sndlen       The size of the incoming data
  * \param[out] recv         If the message is long, this tells the message layer how to handle the data.
  */
-void MPIDI_RecvCB(pami_context_t    context,
-                  void            * cookie,
-                  const void      * _msginfo,
-                  size_t            msginfo_size,
-                  const void      * sndbuf,
-                  size_t            sndlen,
-                  pami_endpoint_t   sender,
-                  pami_recv_t     * recv)
+void
+MPIDI_RecvCB(pami_context_t    context,
+             void            * cookie,
+             const void      * _msginfo,
+             size_t            msginfo_size,
+             const void      * sndbuf,
+             size_t            sndlen,
+             pami_endpoint_t   sender,
+             pami_recv_t     * recv)
 {
   MPID_assert(sndbuf == NULL);
   MPID_assert(recv != NULL);
@@ -304,7 +354,7 @@ void MPIDI_RecvCB(pami_context_t    context,
   //Match not found
   if (unlikely(rreq == NULL))
     {
-      MPIDI_Recv_process_unexp(context, msginfo, sndlen, sender, sndbuf, recv);
+      MPIDI_Recv_process_unexp(context, msginfo, sndlen, sender, sndbuf, recv, msginfo->flags.isSync);
       MPIU_THREAD_CS_EXIT(MSGQUEUE,0);
       goto fn_exit_eager;
     }
@@ -426,14 +476,15 @@ void MPIDI_RecvCB(pami_context_t    context,
  * \param[in]  sndlen       Unused
  * \param[out] recv         Unused
  */
-void MPIDI_RecvRzvCB(pami_context_t    context,
-                     void            * cookie,
-                     const void      * _msginfo,
-                     size_t            msginfo_size,
-                     const void      * sndbuf,
-                     size_t            sndlen,
-                     pami_endpoint_t   sender,
-                     pami_recv_t     * recv)
+void
+MPIDI_RecvRzvCB(pami_context_t    context,
+                void            * cookie,
+                const void      * _msginfo,
+                size_t            msginfo_size,
+                const void      * sndbuf,
+                size_t            sndlen,
+                pami_endpoint_t   sender,
+                pami_recv_t     * recv)
 {
   MPID_assert(recv == NULL);
   MPID_assert(sndlen == 0);

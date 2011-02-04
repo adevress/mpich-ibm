@@ -37,6 +37,7 @@ void MPIDI_Buffer_copy(const void     * const sbuf,
                        int            *       rmpi_errno);
 
 pami_result_t MPIDI_Send_handoff (pami_context_t context, void * sreq);
+pami_result_t MPIDI_Ssend_handoff(pami_context_t context, void * sreq);
 pami_result_t MPIDI_Isend_handoff(pami_context_t context, void * sreq);
 
 void MPIDI_RecvMsg_Unexp(MPID_Request * rreq, void * buf, int count, MPI_Datatype datatype);
@@ -49,39 +50,49 @@ void MPIDI_RecvMsg_Unexp(MPID_Request * rreq, void * buf, int count, MPI_Datatyp
  * \addtogroup MPID_CALLBACKS
  * \{
  */
-void MPIDI_SendDoneCB   (pami_context_t    context,
-                         void            * clientdata,
-                         pami_result_t     result);
-void MPIDI_RecvShortCB  (pami_context_t    context,
-                         void            * cookie,
-                         const void      * _msginfo,
-                         size_t            msginfo_size,
-                         const void      * sndbuf,
-                         size_t            sndlen,
-                         pami_endpoint_t   sender,
-                         pami_recv_t     * recv);
-void MPIDI_RecvCB       (pami_context_t    context,
-                         void            * cookie,
-                         const void      * _msginfo,
-                         size_t            msginfo_size,
-                         const void      * sndbuf,
-                         size_t            sndlen,
-                         pami_endpoint_t   sender,
-                         pami_recv_t     * recv);
-void MPIDI_RecvRzvCB    (pami_context_t    context,
-                         void            * cookie,
-                         const void      * _msginfo,
-                         size_t            msginfo_size,
-                         const void      * sndbuf,
-                         size_t            sndlen,
-                         pami_endpoint_t   sender,
-                         pami_recv_t     * recv);
-void MPIDI_RecvDoneCB   (pami_context_t    context,
-                         void            * clientdata,
-                         pami_result_t     result);
-void MPIDI_RecvRzvDoneCB(pami_context_t    context,
-                         void            * cookie,
-                         pami_result_t     result);
+void MPIDI_SendDoneCB      (pami_context_t    context,
+                            void            * clientdata,
+                            pami_result_t     result);
+
+void MPIDI_RecvShortAsyncCB(pami_context_t    context,
+                            void            * cookie,
+                            const void      * _msginfo,
+                            size_t            msginfo_size,
+                            const void      * sndbuf,
+                            size_t            sndlen,
+                            pami_endpoint_t   sender,
+                            pami_recv_t     * recv);
+void MPIDI_RecvShortSyncCB (pami_context_t    context,
+                            void            * cookie,
+                            const void      * _msginfo,
+                            size_t            msginfo_size,
+                            const void      * sndbuf,
+                            size_t            sndlen,
+                            pami_endpoint_t   sender,
+                            pami_recv_t     * recv);
+void MPIDI_RecvCB          (pami_context_t    context,
+                            void            * cookie,
+                            const void      * _msginfo,
+                            size_t            msginfo_size,
+                            const void      * sndbuf,
+                            size_t            sndlen,
+                            pami_endpoint_t   sender,
+                            pami_recv_t     * recv);
+void MPIDI_RecvRzvCB       (pami_context_t    context,
+                            void            * cookie,
+                            const void      * _msginfo,
+                            size_t            msginfo_size,
+                            const void      * sndbuf,
+                            size_t            sndlen,
+                            pami_endpoint_t   sender,
+                            pami_recv_t     * recv);
+
+void MPIDI_RecvDoneCB      (pami_context_t    context,
+                            void            * clientdata,
+                            pami_result_t     result);
+void MPIDI_RecvRzvDoneCB   (pami_context_t    context,
+                            void            * cookie,
+                            pami_result_t     result);
 /** \} */
 
 
