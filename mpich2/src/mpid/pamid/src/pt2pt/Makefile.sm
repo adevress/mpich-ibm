@@ -5,7 +5,10 @@ lib${MPILIBNAME}_a_SOURCES =			\
         mpid_issend.c				\
         mpid_recv.c				\
         mpid_ssend.c				\
-        mpidi_callback.c			\
+        mpidi_callback_eager.c			\
+        mpidi_callback_rzv.c			\
+        mpidi_callback_short.c			\
+        mpidi_callback_util.c			\
         mpidi_control.c				\
         mpidi_done.c				\
         mpidi_recvmsg.c				\
