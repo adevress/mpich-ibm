@@ -1191,7 +1191,6 @@ static inline int MPIR_Comm_release(MPID_Comm * comm_ptr, int isDisconnect)
          * still report the error from the comm_delete level. */
     }
 
- fn_exit:
     return mpi_errno;
 }
 #undef FUNCNAME
