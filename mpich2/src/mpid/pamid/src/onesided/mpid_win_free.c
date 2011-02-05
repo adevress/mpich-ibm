@@ -36,8 +36,7 @@ MPID_Win_free(MPID_Win **win_ptr)
 
   MPIU_Free(win->mpid.info);
 
-  int count = 0;
-  MPIR_Comm_release_ref(win->comm_ptr, &count);
+  MPIR_Comm_release(win->comm_ptr, 0);
 
   MPIU_Handle_obj_free(&MPID_Win_mem, win);
 
