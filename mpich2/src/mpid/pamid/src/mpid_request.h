@@ -149,6 +149,8 @@ MPIDI_Request_create2_fast()
 static inline void
 MPIDI_Request_initialize(MPID_Request * req)
 {
+  req->greq_fns          = NULL;
+
   req->status.count      = 0;
   req->status.cancelled  = FALSE;
   req->status.MPI_SOURCE = MPI_UNDEFINED;
@@ -222,6 +224,7 @@ MPID_Request_release_inline(MPID_Request *req)
     MPID_assert(MPID_cc_is_complete(&req->cc));
 
     if (req->comm)              MPIR_Comm_release(req->comm, 0);
+    if (req->greq_fns)          MPIU_Free(req->greq_fns);
     if (req->mpid.datatype_ptr) MPID_Datatype_release(req->mpid.datatype_ptr);
     MPIDI_Request_tls_free(req);
   }
