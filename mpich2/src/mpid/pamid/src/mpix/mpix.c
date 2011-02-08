@@ -48,10 +48,28 @@ MPIX_Init()
 }
 
 
-/**
- * \brief Fill in an MPIX_Hardware_t structure
- * \param[in] hw A pointer to an MPIX_Hardware_t structure to be filled in
- */
+extern int backtrace(void **buffer, int size);                  /**< GlibC backtrace support */
+extern char **backtrace_symbols(void *const *buffer, int size); /**< GlibC backtrace support */
+void MPIX_Dump_stacks()
+{
+  const size_t SIZE=32;
+  void *array[SIZE];
+  size_t i;
+  size_t size    = backtrace(array, SIZE);
+  char **strings = backtrace_symbols(array, size);
+  fprintf(stderr, "Dumping %zd frames:\n", size - 1);
+  for (i = 1; i < size; i++)
+    {
+      if (strings != NULL)
+        fprintf(stderr, "\tFrame %zd: %p: %s\n", i, array[i], strings[i]);
+      else
+        fprintf(stderr, "\tFrame %zd: %p\n", i, array[i]);
+    }
+
+  free(strings); /* Since this is not allocated by MPIU_Malloc, do not use MPIU_Free */
+}
+
+
 int
 MPIX_Hardware(MPIX_Hardware_t *hw)
 {
@@ -67,13 +85,6 @@ MPIX_Hardware(MPIX_Hardware_t *hw)
 
 #if defined(__BGQ__) || defined(__BGP__)
 
-/**
- * \brief Determine the number of physical hardware dimensions
- * \param[out] numdimensions The number of torus dimensions
- * \note This does NOT include the core+thread ID, so if you plan on
- *       allocating an array based on this information, you'll need to
- *       add 1 to the value returned here
- */
 int
 MPIX_Torus_ndims(int *numdimensions)
 {
@@ -83,12 +94,6 @@ MPIX_Torus_ndims(int *numdimensions)
 }
 
 
-/**
- * \brief Convert an MPI rank into physical coordinates plus core ID
- * \param[in] rank The MPI Rank
- * \param[out] coords An array of size hw.torus_dimensions+1. The last
- *                   element of the returned array is the core+thread ID
- */
 int
 MPIX_Rank2torus(int rank, int *coords)
 {
@@ -104,12 +109,6 @@ MPIX_Rank2torus(int rank, int *coords)
 }
 
 
-/**
- * \brief Convert a set of coordinates (physical+core/thread) to an MPI rank
- * \param[in] coords An array of size hw.torus_dimensions+1. The last element
- *                   should be the core+thread ID (0..63).
- * \param[out] rank The MPI rank cooresponding to the coords array passed in
- */
 int
 MPIX_Torus2rank(int *coords, int *rank)
 {
