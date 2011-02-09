@@ -28,9 +28,6 @@ MPIDI_RecvDoneCB_copy(MPID_Request * rreq)
 {
   int smpi_errno;
   MPID_assert(rreq->mpid.uebuf != NULL);
-  // It is unsafe to check the user buffer against NULL.
-  // Believe it or not, an IRECV can legally be posted with a NULL buffer.
-  // MPID_assert(rreq->mpid.userbuf != NULL);
   MPIDI_msg_sz_t _count=0;
   MPIDI_Buffer_copy(rreq->mpid.uebuf,        /* source buffer */
                     rreq->mpid.uebuflen,

@@ -59,15 +59,15 @@ MPIDI_Mutex_try_acquire(unsigned m)
 
   old_val = OPA_LL_int(&MPIDI_Mutex_vector[m]);
   if (old_val != 0)
-    return 1;  //Lock failed
+    return 1;  /* Lock failed */
 
-  int rc = OPA_SC_int(&MPIDI_Mutex_vector[m], 1);  //returns 0 when SC fails
+  int rc = OPA_SC_int(&MPIDI_Mutex_vector[m], 1);  /* returns 0 when SC fails */
 
   if (rc == 0)
-    return 1; //Lock failed
+    return 1; /* Lock failed */
 
   MPIDI_Mutex_counter[m] =  1;
-  return 0;   //Lock succeeded
+  return 0;   /* Lock succeeded */
 }
 
 
@@ -111,7 +111,7 @@ static inline int
 MPIDI_Mutex_release(unsigned m)
 {
   MPID_assert(m < MPIDI_MAX_MUTEXES);
-  //Verify this thread is the owner of this lock
+  /* Verify this thread is the owner of this lock */
   MPID_assert(MPIDI_Mutex_counter[m] > 0);
 
   MPIDI_Mutex_counter[m]--;

@@ -49,7 +49,7 @@ MPIDI_RecvShortCB(pami_context_t    context,
   MPIU_THREAD_CS_ENTER(MSGQUEUE,0);
   rreq = MPIDI_Recvq_FDP(rank, tag, context_id);
 
-  //Match not found
+  /* Match not found */
   if (unlikely(rreq == NULL))
     {
       MPIDI_Callback_process_unexp(context, msginfo, sndlen, sender, sndbuf, NULL, isSync);
