@@ -25,7 +25,19 @@ MPIDI_Callback_process_unexp(pami_context_t        context,
   /*  We must allocate enough space to hold the message.  */
   /*  The temporary buffer will be unpacked later.        */
   /* ---------------------------------------------------- */
-  rreq = MPIDI_Recvq_AEU(sndlen, msginfo);
+  unsigned rank       = msginfo->MPIrank;
+  unsigned tag        = msginfo->MPItag;
+  unsigned context_id = msginfo->MPIctxt;
+  rreq = MPIDI_Recvq_AEU(rank, tag, context_id);
+  /* ---------------------- */
+  /*  Copy in information.  */
+  /* ---------------------- */
+  rreq->status.MPI_SOURCE = rank;
+  rreq->status.MPI_TAG    = tag;
+  rreq->status.count      = sndlen;
+  MPIDI_Request_setCA         (rreq, MPIDI_CA_COMPLETE);
+  MPIDI_Request_cpyPeerRequest(rreq, msginfo);
+  MPIDI_Request_setSync       (rreq, isSync);
 
   //Set the rank of the sender if a sync msg.
   if (isSync)

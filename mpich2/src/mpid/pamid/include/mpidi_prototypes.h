@@ -23,6 +23,8 @@ int            MPIDI_Recvq_FU        (int s, int t, int c, MPI_Status * status);
 MPID_Request * MPIDI_Recvq_FDUR      (MPID_Request * req, int source, int tag, int context_id);
 int            MPIDI_Recvq_FDPR      (MPID_Request * req);
 MPID_Request * MPIDI_Recvq_FDP_or_AEU(int s, int t, int c, int * foundp);
+MPID_Request * MPIDI_Recvq_FDU       (int source, int tag, int context_id, int * foundp);
+MPID_Request * MPIDI_Recvq_AEU       (int source, int tag, int context_id);
 void MPIDI_Recvq_DumpQueues          (int verbose);
 /** \} */
 
