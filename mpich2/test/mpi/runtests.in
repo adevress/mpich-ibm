@@ -997,18 +997,20 @@ sub TestStatus {
 
     my $inline = "";
     while (<$MPIOUT>) {
-        #print STDOUT $_ if $verbose;
-        # Skip FORTRAN STOP
-        if (/FORTRAN STOP/) { next; }
-        $inline .= $_;
-        # ANY output is an error.
-        if (! /^\s*$/) {
-            print STDERR "Unexpected output in $programname: $_" if !$verbose;
-            if (!$found_error) {
-                $found_error = 1;
-                $err_count ++;
-            }
-        }
+	#print STDOUT $_ if $verbose;
+	# Skip FORTRAN STOP
+	if (/FORTRAN STOP/) { next; }
+	$inline .= $_;
+	# ANY output is an error. We have the following output
+	# exception for the Hydra process manager.
+	if (/\[mpiexec@.*\] ONE OF THE PROCESSES TERMINATED BADLY: CLEANING UP/) { next; }
+	if (! /^\s*$/) {
+	    print STDERR "Unexpected output in $programname: $_" if !$verbose;
+	    if (!$found_error) {
+		$found_error = 1;
+		$err_count ++;
+	    }
+	}
     }
     $rc = close ( MPIOUT );
     if ($rc == 0) {
@@ -1035,25 +1037,25 @@ sub TestTimeout {
 
     my $inline = "";
     while (<$MPIOUT>) {
-        #print STDOUT $_ if $verbose;
-        # Skip FORTRAN STOP
-        if (/FORTRAN STOP/) { next; }
-        $inline .= $_;
-        if (/[Tt]imeout/) { next; }
-        # Allow 'signaled with Interrupt' (see gforker mpiexec)
-        if (/signaled with Interrupt/) { next; }
-        # Allow 'job ending due to env var MPIEXEC_TIMEOUT' (mpd)
-        if (/job ending due to env var MPIEXEC_TIMEOUT/) { next; }
-        # Allow 'EXIT STRING: Terminated \(signal 15\)' (hydra)
-        if (/APPLICATION TERMINATED WITH THE EXIT STRING: Hangup \(signal 1\)/) { next; }
-        # ANY output is an error (other than timeout)
-        if (! /^\s*$/) {
-            print STDERR "Unexpected output in $programname: $_";
-            if (!$found_error) {
-                $found_error = 1;
-                $err_count ++;
-            }
-        }
+	#print STDOUT $_ if $verbose;
+	# Skip FORTRAN STOP
+	if (/FORTRAN STOP/) { next; }
+	$inline .= $_;
+	if (/[Tt]imeout/) { next; }
+	# Allow 'signaled with Interrupt' (see gforker mpiexec)
+	if (/signaled with Interrupt/) { next; }
+	# Allow 'job ending due to env var MPIEXEC_TIMEOUT' (mpd)
+	if (/job ending due to env var MPIEXEC_TIMEOUT/) { next; }
+	# Allow 'EXIT STRING: Terminated \(signal 15\)' (hydra)
+	if (/\[mpiexec@.*\] APPLICATION TIMED OUT/) { last; }
+	# ANY output is an error (other than timeout) 
+	if (! /^\s*$/) {
+	    print STDERR "Unexpected output in $programname: $_";
+	    if (!$found_error) {
+		$found_error = 1;
+		$err_count ++;
+	    }
+	}
     }
     $rc = close ( MPIOUT );
     if ($rc == 0) {
