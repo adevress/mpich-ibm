@@ -26,7 +26,8 @@ int MPIDO_Allgather_allreduce(void *sendbuf,
 			      MPI_Aint recv_true_lb,
 			      size_t send_size,
 			      size_t recv_size,
-			      MPID_Comm * comm_ptr)
+			      MPID_Comm * comm_ptr,
+                              int *mpierrno)
 
 {
   int rc, rank;
@@ -51,7 +52,8 @@ int MPIDO_Allgather_allreduce(void *sendbuf,
 		       recv_size/sizeof(int),
 		       MPI_INT,
 		       MPI_BOR,
-		       comm_ptr);
+		       comm_ptr,
+                       mpierrno);
 
   return rc;
 }
@@ -75,7 +77,8 @@ int MPIDO_Allgather_bcast(void *sendbuf,
 			  MPI_Aint recv_true_lb,
 			  size_t send_size,
 			  size_t recv_size,
-			  MPID_Comm * comm_ptr)
+			  MPID_Comm * comm_ptr,
+                          int *mpierrno)
 {
   int i, np, rc = 0;
   MPI_Aint extent;
@@ -105,7 +108,8 @@ int MPIDO_Allgather_bcast(void *sendbuf,
                      recvcount,
                      recvtype,
                      i,
-                     comm_ptr);
+                     comm_ptr,
+                     mpierrno);
   }
 
   return rc;
@@ -131,7 +135,8 @@ int MPIDO_Allgather_alltoall(void *sendbuf,
 			     MPI_Aint recv_true_lb,
 			     size_t send_size,
 			     size_t recv_size,
-			     MPID_Comm * comm_ptr)
+			     MPID_Comm * comm_ptr,
+                             int *mpierrno)
 {
   int i, rc;
   void *a2a_sendbuf = NULL;
@@ -172,7 +177,8 @@ int MPIDO_Allgather_alltoall(void *sendbuf,
 		       a2a_recvcounts,
 		       a2a_recvdispls,
 		       recvtype,
-		       comm_ptr);
+		       comm_ptr,
+		       mpierrno);
 
   return rc;
 }
@@ -193,7 +199,8 @@ MPIDO_Allgather(void *sendbuf,
                 void *recvbuf,
                 int recvcount,
                 MPI_Datatype recvtype,
-                MPID_Comm * comm_ptr)
+                MPID_Comm * comm_ptr,
+                int *mpierrno)
 {
   /* *********************************
    * Check the nature of the buffers
@@ -236,7 +243,7 @@ MPIDO_Allgather(void *sendbuf,
       MPIDI_Update_last_algorithm(comm_ptr, "ALLGATHER_MPICH");
       return MPIR_Allgather(sendbuf, sendcount, sendtype,
                             recvbuf, recvcount, recvtype,
-                            comm_ptr);
+                            comm_ptr, mpierrno);
    }
   if ((sendcount < 1 && sendbuf != MPI_IN_PLACE) || recvcount < 1)
     return MPI_SUCCESS;
@@ -304,7 +311,7 @@ MPIDO_Allgather(void *sendbuf,
       MPIDI_Update_last_algorithm(comm_ptr, "ALLGATHER_OPT_ALLREDUCE");
      rc = MPIDO_Allgather_allreduce(sendbuf, sendcount, sendtype,
                                recvbuf, recvcount, recvtype,
-                               send_true_lb, recv_true_lb, send_size, recv_size, comm_ptr);
+                               send_true_lb, recv_true_lb, send_size, recv_size, comm_ptr, mpierrno);
       return rc;
    }
    if(use_alltoall)
@@ -312,7 +319,7 @@ MPIDO_Allgather(void *sendbuf,
       MPIDI_Update_last_algorithm(comm_ptr, "ALLGATHER_OPT_ALLTOALL");
      rc = MPIDO_Allgather_alltoall(sendbuf, sendcount, sendtype,
                                recvbuf, recvcount, recvtype,
-                               send_true_lb, recv_true_lb, send_size, recv_size, comm_ptr);
+                               send_true_lb, recv_true_lb, send_size, recv_size, comm_ptr, mpierrno);
    return rc;
    }
    if(use_bcast)
@@ -320,12 +327,12 @@ MPIDO_Allgather(void *sendbuf,
       MPIDI_Update_last_algorithm(comm_ptr, "ALLGATHER_OPT_BCAST");
      rc = MPIDO_Allgather_bcast(sendbuf, sendcount, sendtype,
                                recvbuf, recvcount, recvtype,
-                               send_true_lb, recv_true_lb, send_size, recv_size, comm_ptr);
+                               send_true_lb, recv_true_lb, send_size, recv_size, comm_ptr, mpierrno);
    return rc;
    }
 
       MPIDI_Update_last_algorithm(comm_ptr, "ALLGATHER_MPICH");
       return MPIR_Allgather(sendbuf, sendcount, sendtype,
                             recvbuf, recvcount, recvtype,
-                            comm_ptr);
+                            comm_ptr, mpierrno);
 }

@@ -171,7 +171,8 @@ void MPIDI_Coll_comm_create(MPID_Comm *comm)
   MPIDI_Comm_coll_query(comm);
   MPIDI_Comm_coll_envvars(comm);
    TRACE_ERR("mpir barrier\n");
-   MPIR_Barrier(comm);
+   int mpierrno;
+   MPIR_Barrier(comm, &mpierrno);
 
 
   TRACE_ERR("MPIDI_Coll_comm_create exit\n");

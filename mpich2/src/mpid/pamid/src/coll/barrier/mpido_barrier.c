@@ -16,7 +16,7 @@ static void cb_barrier(void *ctxt, void *clientdata, pami_result_t err)
    (*active)--;
 }
 
-int MPIDO_Barrier(MPID_Comm *comm_ptr)
+int MPIDO_Barrier(MPID_Comm *comm_ptr, int *mpierrno)
 {
    TRACE_ERR("in mpido_barrier\n");
    int rc;
@@ -25,7 +25,7 @@ int MPIDO_Barrier(MPID_Comm *comm_ptr)
    pami_xfer_t barrier;
 
    if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_BARRIER] == 0)
-      return MPIR_Barrier(comm_ptr);
+     return MPIR_Barrier(comm_ptr, mpierrno);
 
    barrier.cb_done = cb_barrier;
    barrier.cookie = (void *)&active;

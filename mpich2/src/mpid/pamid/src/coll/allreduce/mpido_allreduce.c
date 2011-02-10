@@ -21,7 +21,8 @@ int MPIDO_Allreduce(void *sendbuf,
                     int count,
                     MPI_Datatype dt,
                     MPI_Op op,
-                    MPID_Comm *comm_ptr)
+                    MPID_Comm *comm_ptr,
+                    int *mpierrno)
 {
    TRACE_ERR("in mpido_allreduce\n");
    MPIDI_Post_coll_t allred_post;
@@ -78,6 +79,6 @@ int MPIDO_Allreduce(void *sendbuf,
    else
    {
       MPIDI_Update_last_algorithm(comm_ptr, "ALLREDUCE_MPICH");
-      return MPIR_Allreduce(sendbuf, recvbuf, count, dt, op, comm_ptr);
+      return MPIR_Allreduce(sendbuf, recvbuf, count, dt, op, comm_ptr, mpierrno);
    }
 }

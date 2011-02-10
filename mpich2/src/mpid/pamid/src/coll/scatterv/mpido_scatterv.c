@@ -17,7 +17,8 @@ int MPIDO_Scatterv_bcast(void *sendbuf,
                          int recvcount,
                          MPI_Datatype recvtype,
                          int root,
-                         MPID_Comm *comm_ptr)
+                         MPID_Comm *comm_ptr,
+                         int *mpierrno)
 {
   int rank = comm_ptr->rank;
   int np = comm_ptr->local_size;
@@ -51,7 +52,7 @@ int MPIDO_Scatterv_bcast(void *sendbuf,
   else
     tempbuf = sendbuf;
 
-  rc = MPIDO_Bcast(tempbuf, sum, sendtype, root, comm_ptr);
+  rc = MPIDO_Bcast(tempbuf, sum, sendtype, root, comm_ptr, mpierrno);
 
   if(rank == root && recvbuf == MPI_IN_PLACE)
     return rc;
@@ -74,7 +75,8 @@ int MPIDO_Scatterv_alltoallv(void * sendbuf,
                              int recvcount,
                              MPI_Datatype recvtype,
                              int root,
-                             MPID_Comm * comm_ptr)
+                             MPID_Comm * comm_ptr,
+                             int *mpierrno)
 {
   int rank = comm_ptr->rank;
   int size = comm_ptr->local_size;
@@ -166,7 +168,8 @@ int MPIDO_Scatterv_alltoallv(void * sendbuf,
                   rcounts,
                   rdispls,
                   MPI_CHAR,
-                  comm_ptr);
+                  comm_ptr,
+                  mpierrno);
 
   if(rank == root && recvbuf == MPI_IN_PLACE)
   {
@@ -207,7 +210,8 @@ int MPIDO_Scatterv(void *sendbuf,
                    int recvcount,
                    MPI_Datatype recvtype,
                    int root,
-                   MPID_Comm *comm_ptr)
+                   MPID_Comm *comm_ptr,
+                   int *mpierrno)
 {
   int rank = comm_ptr->rank, size = comm_ptr->local_size;
   int i, nbytes, sum=0, contig;
@@ -237,7 +241,7 @@ int MPIDO_Scatterv(void *sendbuf,
    MPIDI_Update_last_algorithm(comm_ptr, "SCATTERV_MPICH");
     return MPIR_Scatterv(sendbuf, sendcounts, displs, sendtype,
                          recvbuf, recvcount, recvtype,
-                         root, comm_ptr);
+                         root, comm_ptr, mpierrno);
   }
 
 
@@ -337,7 +341,8 @@ int MPIDO_Scatterv(void *sendbuf,
                                         recvcount,
                                         recvtype,
                                         root,
-                                        comm_ptr);
+                                        comm_ptr,
+                                        mpierrno);
 
       }
       else
@@ -351,7 +356,8 @@ int MPIDO_Scatterv(void *sendbuf,
                                     recvcount,
                                     recvtype,
                                     root,
-                                    comm_ptr);
+                                    comm_ptr,
+                                    mpierrno);
       }
    } /* nothing valid to try, go to mpich */
    else
@@ -359,6 +365,6 @@ int MPIDO_Scatterv(void *sendbuf,
       MPIDI_Update_last_algorithm(comm_ptr, "SCATTERV_MPICH");
       return MPIR_Scatterv(sendbuf, sendcounts, displs, sendtype,
                            recvbuf, recvcount, recvtype,
-                           root, comm_ptr);
+                           root, comm_ptr, mpierrno);
    }
 }
