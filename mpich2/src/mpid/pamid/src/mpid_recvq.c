@@ -402,8 +402,8 @@ MPIDI_Recvq_DumpQueues(int verbose)
   unsigned i=0, numposted=0, numue=0;
   unsigned postedbytes=0, uebytes=0;
 
-  fprintf(stderr,"Posted Queue:\n");
-  fprintf(stderr,"-------------\n");
+  if(verbose >= 2)
+    fprintf(stderr,"Posted Queue:\n-------------\n");
   while (rreq != NULL) {
     if(verbose >= 2)
       fprintf(stderr, "P %d: MPItag=%d MPIrank=%d ctxt=%d count=%d\n",
@@ -424,8 +424,8 @@ MPIDI_Recvq_DumpQueues(int verbose)
 
   i=0;
   rreq = MPIDI_Recvq.unexpected_head;
-  fprintf(stderr, "Unexpected Queue:\n");
-  fprintf(stderr, "-----------------\n");
+  if(verbose >= 2)
+    fprintf(stderr, "Unexpected Queue:\n-----------------\n");
   while (rreq != NULL) {
     if(verbose >= 2)
       fprintf(stderr, "UE %d: MPItag=%d MPIrank=%d ctxt=%d uebuf=%p uebuflen=%u\n",
