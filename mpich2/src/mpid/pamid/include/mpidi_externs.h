@@ -12,12 +12,11 @@
 #ifndef __include_mpidi_externs_h__
 #define __include_mpidi_externs_h__
 
+
 extern pami_client_t  MPIDI_Client;
 extern pami_context_t MPIDI_Context[];
 
 extern MPIDI_Process_t MPIDI_Process;
-
-extern unsigned MPIDI_Progress_requests;
 
 
 #endif
