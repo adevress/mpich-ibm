@@ -64,10 +64,10 @@ MPIDI_RecvCB(pami_context_t    context,
   rreq->status.MPI_SOURCE = rank;
   rreq->status.MPI_TAG    = tag;
   rreq->status.count      = sndlen;
-  MPIDI_Request_setCA         (rreq, MPIDI_CA_COMPLETE);
-  MPIDI_Request_cpyPeerRequest(rreq, msginfo);
-  MPIDI_Request_setSync       (rreq, msginfo->isSync);
-  MPIDI_Request_setRzv        (rreq, 0);
+  MPIDI_Request_setCA          (rreq, MPIDI_CA_COMPLETE);
+  MPIDI_Request_cpyPeerRequestH(rreq, msginfo);
+  MPIDI_Request_setSync        (rreq, msginfo->isSync);
+  MPIDI_Request_setRzv         (rreq, 0);
 
   /* --------------------------------------- */
   /*  We have to fill in the callback info.  */

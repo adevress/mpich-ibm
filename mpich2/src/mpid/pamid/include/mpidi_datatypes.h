@@ -107,14 +107,14 @@ typedef struct
  */
 typedef struct
 {
-  void     * req;         /**< peer's request pointer */
-  unsigned   MPItag;      /**< match tag              */
-  unsigned   MPIrank;     /**< match rank             */
-  uint16_t   MPIctxt;     /**< match context          */
+  MPI_Request req;         /**< peer's request handle  */
+  unsigned    MPItag;      /**< match tag              */
+  unsigned    MPIrank;     /**< match rank             */
+  uint16_t    MPIctxt;     /**< match context          */
 
-  uint16_t   control:3;   /**< message type for control protocols */
-  uint16_t   isSync:1;    /**< set for sync sends     */
-  uint16_t   isRzv :1;    /**< use pt2pt rendezvous   */
+  uint16_t    control:3;   /**< message type for control protocols */
+  uint16_t    isSync:1;    /**< set for sync sends     */
+  uint16_t    isRzv :1;    /**< use pt2pt rendezvous   */
 } MPIDI_MsgInfo;
 
 /** \brief Full Rendezvous msg info to be set as two quads of unexpected data. */

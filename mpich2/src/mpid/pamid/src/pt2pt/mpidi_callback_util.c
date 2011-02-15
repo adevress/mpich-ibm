@@ -35,9 +35,9 @@ MPIDI_Callback_process_unexp(pami_context_t        context,
   rreq->status.MPI_SOURCE = rank;
   rreq->status.MPI_TAG    = tag;
   rreq->status.count      = sndlen;
-  MPIDI_Request_setCA         (rreq, MPIDI_CA_COMPLETE);
-  MPIDI_Request_cpyPeerRequest(rreq, msginfo);
-  MPIDI_Request_setSync       (rreq, isSync);
+  MPIDI_Request_setCA          (rreq, MPIDI_CA_COMPLETE);
+  MPIDI_Request_cpyPeerRequestH(rreq, msginfo);
+  MPIDI_Request_setSync        (rreq, isSync);
 
   /* Set the rank of the sender if a sync msg. */
   if (isSync)

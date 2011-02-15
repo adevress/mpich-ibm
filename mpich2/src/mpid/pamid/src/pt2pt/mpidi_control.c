@@ -175,9 +175,8 @@ MPIDI_CancelReq_proc(pami_context_t        context,
   MPID_Request  * sreq;
 
   MPID_assert(info != NULL);
-  MPID_assert(MPIDI_Msginfo_getPeerRequest(info) != NULL);
 
-  sreq=MPIDI_Recvq_FDUR(MPIDI_Msginfo_getPeerRequest(info),
+  sreq=MPIDI_Recvq_FDUR(MPIDI_Msginfo_getPeerRequestH(info),
                         info->MPIrank,
                         info->MPItag,
                         info->MPIctxt);
@@ -196,12 +195,12 @@ MPIDI_CancelReq_proc(pami_context_t        context,
             info->MPIrank,
             info->MPItag,
             info->MPIctxt,
-            MPIDI_Msginfo_getPeerRequest(info),
+            MPIDI_Msginfo_getPeerRequestH(info),
             sreq,
             (type==MPIDI_CONTROL_CANCEL_ACKNOWLEDGE) ? "ACK" : "NAK");
 
   ackinfo.control = type;
-  MPIDI_Msginfo_cpyPeerRequest(&ackinfo, info);
+  MPIDI_Msginfo_cpyPeerRequestH(&ackinfo, info);
   MPIDI_CtrlSend(context, &ackinfo, peer);
 }
 

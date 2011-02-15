@@ -155,7 +155,7 @@ MPIDI_Recvq_FU(int source, int tag, int context_id, MPI_Status * status)
  * \return     The matching UE request or NULL
  */
 MPID_Request *
-MPIDI_Recvq_FDUR(MPID_Request * req, int source, int tag, int context_id)
+MPIDI_Recvq_FDUR(MPI_Request req, int source, int tag, int context_id)
 {
   MPID_Request * prev_rreq          = NULL; /* previous request in queue */
   MPID_Request * cur_rreq           = NULL; /* current request in queue */
@@ -173,10 +173,10 @@ MPIDI_Recvq_FDUR(MPID_Request * req, int source, int tag, int context_id)
 #ifdef USE_STATISTICS
     ++search_length;
 #endif
-    if (MPIDI_Request_getPeerRequest(cur_rreq) == req        &&
-        MPIDI_Request_getMatchCtxt(cur_rreq)   == context_id &&
-        MPIDI_Request_getMatchRank(cur_rreq)   == source     &&
-        MPIDI_Request_getMatchTag(cur_rreq)    == tag)
+    if (MPIDI_Request_getPeerRequestH(cur_rreq) == req        &&
+        MPIDI_Request_getMatchCtxt(cur_rreq)    == context_id &&
+        MPIDI_Request_getMatchRank(cur_rreq)    == source     &&
+        MPIDI_Request_getMatchTag(cur_rreq)     == tag)
       {
         matching_prev_rreq = prev_rreq;
         matching_cur_rreq  = cur_rreq;

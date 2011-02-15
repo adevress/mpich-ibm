@@ -49,11 +49,13 @@ void    MPIDI_Request_allocate_pool();
   (_req)->mpid.envelope.msginfo.MPIctxt=(_ctxtid);      \
 })
 
-#define MPIDI_Request_getPeerRequest(_req)      ({ (_req)->mpid.envelope.msginfo.req;                     })
-#define MPIDI_Msginfo_getPeerRequest(_msg)      ({                       (_msg)->req;                     })
-#define MPIDI_Request_setPeerRequest(_req,_r)   ({ (_req)->mpid.envelope.msginfo.req = (_r); MPI_SUCCESS; })
-#define MPIDI_Msginfo_cpyPeerRequest(_dst,_src) ({                (_dst)->req = (_src)->req; MPI_SUCCESS; })
-#define MPIDI_Request_cpyPeerRequest(_dst,_src) MPIDI_Msginfo_cpyPeerRequest(&(_dst)->mpid.envelope.msginfo,_src)
+#define MPIDI_Msginfo_getPeerRequest(_msg)       ({ MPID_Request *req=NULL; MPID_Request_get_ptr((_msg)->req, req); MPID_assert(req != NULL); req; })
+#define MPIDI_Msginfo_getPeerRequestH(_msg)      ({                       (_msg)->req;                               })
+#define MPIDI_Msginfo_cpyPeerRequestH(_dst,_src) ({                       (_dst)->req = (_src)->req;    MPI_SUCCESS; })
+#define MPIDI_Request_getPeerRequest(_req)       MPIDI_Msginfo_getPeerRequest(&(_req)->mpid.envelope.msginfo)
+#define MPIDI_Request_getPeerRequestH(_req)      ({ (_req)->mpid.envelope.msginfo.req;                               })
+#define MPIDI_Request_setPeerRequestH(_req)      ({ (_req)->mpid.envelope.msginfo.req = (_req)->handle; MPI_SUCCESS; })
+#define MPIDI_Request_cpyPeerRequestH(_dst,_src) MPIDI_Msginfo_cpyPeerRequestH(&(_dst)->mpid.envelope.msginfo,_src)
 
 
 #define MPIU_HANDLE_ALLOCATION_MUTEX         0
