@@ -49,7 +49,7 @@ MPIDI_RecvCB(pami_context_t    context,
   /* Match not found */
   if (unlikely(rreq == NULL))
     {
-      MPIDI_Callback_process_unexp(context, msginfo, sndlen, sender, sndbuf, recv, msginfo->flags.isSync);
+      MPIDI_Callback_process_unexp(context, msginfo, sndlen, sender, sndbuf, recv, msginfo->isSync);
       MPIU_THREAD_CS_EXIT(MSGQUEUE,0);
       goto fn_exit_eager;
     }
@@ -66,7 +66,7 @@ MPIDI_RecvCB(pami_context_t    context,
   rreq->status.count      = sndlen;
   MPIDI_Request_setCA         (rreq, MPIDI_CA_COMPLETE);
   MPIDI_Request_cpyPeerRequest(rreq, msginfo);
-  MPIDI_Request_setSync       (rreq, msginfo->flags.isSync);
+  MPIDI_Request_setSync       (rreq, msginfo->isSync);
   MPIDI_Request_setRzv        (rreq, 0);
 
   /* --------------------------------------- */
@@ -86,7 +86,7 @@ MPIDI_RecvCB(pami_context_t    context,
   /*  Request was already posted.  */
   /* ----------------------------- */
 
-  if (unlikely(msginfo->flags.isSync))
+  if (unlikely(msginfo->isSync))
     MPIDI_SyncAck_post(context, rreq, PAMIX_Endpoint_query(sender));
 
   /* ----------------------------------------- */
