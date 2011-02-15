@@ -410,3 +410,18 @@ int MPID_InitCompleted(void)
 
   return MPI_SUCCESS;
 }
+
+
+static inline void
+static_assertions()
+{
+  MPID_assert_static(sizeof(void*) == sizeof(size_t));
+  MPID_assert_static(sizeof(uintptr_t) == sizeof(size_t));
+#ifdef __BGP__
+  MPID_assert_static(sizeof(MPIDI_MsgInfo) == 16);
+#endif
+#ifdef __BGQ__
+  MPID_assert_static(sizeof(MPIDI_MsgInfo) == 16);
+  MPID_assert_static(sizeof(uint64_t) == sizeof(size_t));
+#endif
+}
