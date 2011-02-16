@@ -6,7 +6,6 @@ lib${MPILIBNAME}_a_SOURCES =			\
         mpid_init.c				\
         mpid_iprobe.c				\
         mpid_probe.c				\
-        mpid_progress.c				\
         mpid_recvq.c				\
         mpid_request.c				\
         mpid_time.c				\

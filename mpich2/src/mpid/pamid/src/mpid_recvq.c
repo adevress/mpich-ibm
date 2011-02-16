@@ -155,7 +155,7 @@ MPIDI_Recvq_FU(int source, int tag, int context_id, MPI_Status * status)
  * \return     The matching UE request or NULL
  */
 MPID_Request *
-MPIDI_Recvq_FDUR(MPID_Request * req, int source, int tag, int context_id)
+MPIDI_Recvq_FDUR(MPI_Request req, int source, int tag, int context_id)
 {
   MPID_Request * prev_rreq          = NULL; /* previous request in queue */
   MPID_Request * cur_rreq           = NULL; /* current request in queue */
@@ -173,10 +173,10 @@ MPIDI_Recvq_FDUR(MPID_Request * req, int source, int tag, int context_id)
 #ifdef USE_STATISTICS
     ++search_length;
 #endif
-    if (MPIDI_Request_getPeerRequest(cur_rreq) == req        &&
-        MPIDI_Request_getMatchCtxt(cur_rreq)   == context_id &&
-        MPIDI_Request_getMatchRank(cur_rreq)   == source     &&
-        MPIDI_Request_getMatchTag(cur_rreq)    == tag)
+    if (MPIDI_Request_getPeerRequestH(cur_rreq) == req        &&
+        MPIDI_Request_getMatchCtxt(cur_rreq)    == context_id &&
+        MPIDI_Request_getMatchRank(cur_rreq)    == source     &&
+        MPIDI_Request_getMatchTag(cur_rreq)     == tag)
       {
         matching_prev_rreq = prev_rreq;
         matching_cur_rreq  = cur_rreq;
@@ -402,8 +402,8 @@ MPIDI_Recvq_DumpQueues(int verbose)
   unsigned i=0, numposted=0, numue=0;
   unsigned postedbytes=0, uebytes=0;
 
-  fprintf(stderr,"Posted Queue:\n");
-  fprintf(stderr,"-------------\n");
+  if(verbose >= 2)
+    fprintf(stderr,"Posted Queue:\n-------------\n");
   while (rreq != NULL) {
     if(verbose >= 2)
       fprintf(stderr, "P %d: MPItag=%d MPIrank=%d ctxt=%d count=%d\n",
@@ -424,8 +424,8 @@ MPIDI_Recvq_DumpQueues(int verbose)
 
   i=0;
   rreq = MPIDI_Recvq.unexpected_head;
-  fprintf(stderr, "Unexpected Queue:\n");
-  fprintf(stderr, "-----------------\n");
+  if(verbose >= 2)
+    fprintf(stderr, "Unexpected Queue:\n-----------------\n");
   while (rreq != NULL) {
     if(verbose >= 2)
       fprintf(stderr, "UE %d: MPItag=%d MPIrank=%d ctxt=%d uebuf=%p uebuflen=%u\n",

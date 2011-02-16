@@ -233,7 +233,7 @@ MPIDI_SendMsg(pami_context_t   context,
               unsigned         isSync)
 {
   MPIDI_Request_setSync(sreq, isSync);
-  MPIDI_Request_setPeerRequest(sreq, sreq);
+  MPIDI_Request_setPeerRequestH(sreq);
 
   /*
    * Create the destination endpoint

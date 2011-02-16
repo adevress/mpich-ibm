@@ -64,10 +64,10 @@ MPIDI_RecvRzvCB(pami_context_t    context,
   rreq->status.MPI_SOURCE = rank;
   rreq->status.MPI_TAG    = tag;
   rreq->status.count      = envelope->length;
-  MPIDI_Request_setPeerRank   (rreq, PAMIX_Endpoint_query(sender));
-  MPIDI_Request_cpyPeerRequest(rreq, msginfo);
-  MPIDI_Request_setSync       (rreq, msginfo->flags.isSync);
-  MPIDI_Request_setRzv        (rreq, 1);
+  MPIDI_Request_setPeerRank    (rreq, PAMIX_Endpoint_query(sender));
+  MPIDI_Request_cpyPeerRequestH(rreq, msginfo);
+  MPIDI_Request_setSync        (rreq, msginfo->isSync);
+  MPIDI_Request_setRzv         (rreq, 1);
 
   /* ----------------------------------------------------- */
   /* Save the rendezvous information for when the target   */
