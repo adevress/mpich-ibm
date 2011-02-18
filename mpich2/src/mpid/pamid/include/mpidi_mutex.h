@@ -141,8 +141,8 @@ MPIDI_Mutex_initialize()
   pthread_mutexattr_t attr;
   rc = pthread_mutexattr_init(&attr);
   MPID_assert(rc == 0);
-  extern int pthread_mutexattr_settype (pthread_mutexattr_t *__attr, int __kind) __THROW __nonnull ((1));
-  rc = pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE_NP);
+  extern int pthread_mutexattr_settype(pthread_mutexattr_t *__attr, int __kind) __THROW __nonnull ((1));
+  rc = pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_ERRORCHECK_NP);
   MPID_assert(rc == 0);
 
   rc = pthread_mutex_init(&MPIDI_Mutex_lock, &attr);
@@ -155,21 +155,34 @@ MPIDI_Mutex_initialize()
 static inline int
 MPIDI_Mutex_try_acquire(unsigned m)
 {
-  return pthread_mutex_trylock(&MPIDI_Mutex_lock);
+  int rc;
+  rc = pthread_mutex_trylock(&MPIDI_Mutex_lock);
+  assert( (rc == 0) || (rc == EBUSY) );
+  /* fprintf(stderr, "%s:%u (rc=%d)\n", __FUNCTION__, __LINE__, rc); */
+  return rc;
 }
 
 
 static inline int
 MPIDI_Mutex_acquire(unsigned m)
 {
-  return pthread_mutex_lock(&MPIDI_Mutex_lock);
+  int rc;
+  /* fprintf(stderr, "%s:%u\n", __FUNCTION__, __LINE__); */
+  rc = pthread_mutex_lock(&MPIDI_Mutex_lock);
+  /* fprintf(stderr, "%s:%u (rc=%d)\n", __FUNCTION__, __LINE__, rc); */
+  assert(rc == 0);
+  return rc;
 }
 
 
 static inline int
 MPIDI_Mutex_release(unsigned m)
 {
-  return pthread_mutex_unlock(&MPIDI_Mutex_lock);
+  int rc;
+  rc = pthread_mutex_unlock(&MPIDI_Mutex_lock);
+  /* fprintf(stderr, "%s:%u (rc=%d)\n", __FUNCTION__, __LINE__, rc); */
+  assert(rc == 0);
+  return rc;
 }
 
 #endif
