@@ -4,7 +4,7 @@
  * \brief ???
  */
 
-//#define TRACE_ON
+#define TRACE_ON
 
 #include <mpidimpl.h>
 
@@ -76,8 +76,22 @@ int MPIDO_Bcast(void *buffer,
    bcast.cmd.xfer_broadcast.type = PAMI_TYPE_CONTIGUOUS;
    /* Needs to be sizeof(type)*count since we are using bytes as * the generic type */
    bcast.cmd.xfer_broadcast.typecount = data_size;
+   if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_BROADCAST] >= MPID_COLL_QUERY)
+   {
+      metadata_result_t result = {0};
+      TRACE_ERR("querying bcast protocol %s, type was: %d\n",
+         comm_ptr->mpid.user_metadata[PAMI_XFER_BROADCAST].name, 
+         comm_ptr->mpid.user_selectedvar[PAMI_XFER_BROADCAST]);
+      result = comm_ptr->mpid.user_metadata[PAMI_XFER_BROADCAST].check_fn(&bcast);
+      TRACE_ERR("bitmask: %#X\n", result.bitmask);
+      if(!result.bitmask)
+      {
+         fprintf(stderr,"query failed for %s.\n",
+         comm_ptr->mpid.user_metadata[PAMI_XFER_BROADCAST].name);
+      }
+   }
 
-   /* TODO name is messed up */
+
    TRACE_ERR("posting bcast, context: %d, algoname: %s\n",0, 
          comm_ptr->mpid.user_metadata[PAMI_XFER_BROADCAST].name);
    MPIDI_Update_last_algorithm(comm_ptr, 

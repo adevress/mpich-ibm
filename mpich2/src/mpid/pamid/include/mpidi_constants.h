@@ -32,6 +32,10 @@
 #define MPID_GATHER_PREALLREDUCE 5
 #define MPID_NUM_PREALLREDUCES 6
 
+#define MPID_COLL_NOQUERY 1
+#define MPID_COLL_QUERY 2
+/* Can we cache stuff? If not set to ALWAYS_QUERY */
+#define MPID_COLL_ALWAYS_QUERY 3
 /** \} */
 
 #endif

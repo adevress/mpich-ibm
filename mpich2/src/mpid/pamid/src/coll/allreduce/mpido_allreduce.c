@@ -55,6 +55,20 @@ int MPIDO_Allreduce(void *sendbuf,
       allred.cmd.xfer_allreduce.rtypecount = data_size;
       allred.cmd.xfer_allreduce.dt = pdt;
       allred.cmd.xfer_allreduce.op = pop;
+      if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLREDUCE] >= MPID_COLL_QUERY)
+      {
+         metadata_result_t result = {0};
+         TRACE_ERR("querying allreduce algorithm %s, typewwas %d\n",
+            comm_ptr->mpid.user_metadata[PAMI_XFER_ALLREDUCE].name,
+            comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLREDUCE]);
+         result = comm_ptr->mpid.user_metadata[PAMI_XFER_ALLREDUCE].check_fn(&allred);
+         TRACE_ERR("bitmask: %#X\n", result.bitmask);
+         if(!result.bitmask)
+         {
+            fprintf(stderr,"query failed for %s.\n",
+               comm_ptr->mpid.user_metadata[PAMI_XFER_ALLREDUCE].name);
+         }
+      }
       MPIDI_Update_last_algorithm(comm_ptr, comm_ptr->mpid.coll_metadata[PAMI_XFER_ALLREDUCE][0][0].name);
       if(MPIDI_Process.context_post)
       {
