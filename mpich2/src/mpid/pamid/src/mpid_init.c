@@ -46,7 +46,7 @@ struct protocol_t
   pami_dispatch_p2p_function func;
   size_t                     dispatch;
   size_t                     immediate_min;
-  pami_send_hint_t           options;
+  pami_dispatch_hint_t       options;
 };
 static struct
 {
@@ -63,10 +63,14 @@ static struct
     func: MPIDI_RecvShortAsyncCB,
     dispatch: MPIDI_Protocols_Short,
     options: {
-      consistency:    PAMI_HINT2_ON,
-      no_long_header: PAMI_HINT2_ON,
-      recv_immediate: PAMI_HINT2_ON,
-      use_rdma:       PAMI_HINT3_FORCE_OFF,
+      consistency:     PAMI_HINT_ENABLE,
+      long_header:     PAMI_HINT_DISABLE,
+      recv_contiguous: PAMI_HINT_ENABLE,
+      recv_copy:       PAMI_HINT_ENABLE,
+      recv_contiguous: PAMI_HINT_ENABLE,
+      recv_copy:       PAMI_HINT_ENABLE,
+      recv_immediate:  PAMI_HINT_ENABLE,
+      use_rdma:        PAMI_HINT_DISABLE,
       },
     immediate_min : sizeof(MPIDI_MsgInfo),
   },
@@ -74,10 +78,12 @@ static struct
     func: MPIDI_RecvShortSyncCB,
     dispatch: MPIDI_Protocols_ShortSync,
     options: {
-      consistency:    PAMI_HINT2_ON,
-      no_long_header: PAMI_HINT2_ON,
-      recv_immediate: PAMI_HINT2_ON,
-      use_rdma:       PAMI_HINT3_FORCE_OFF,
+      consistency:     PAMI_HINT_ENABLE,
+      long_header:     PAMI_HINT_DISABLE,
+      recv_contiguous: PAMI_HINT_ENABLE,
+      recv_copy:       PAMI_HINT_ENABLE,
+      recv_immediate:  PAMI_HINT_ENABLE,
+      use_rdma:        PAMI_HINT_DISABLE,
       },
     immediate_min : sizeof(MPIDI_MsgInfo),
   },
@@ -85,10 +91,11 @@ static struct
     func: MPIDI_RecvCB,
     dispatch: MPIDI_Protocols_Eager,
     options: {
-      consistency:    PAMI_HINT2_ON,
-      no_long_header: PAMI_HINT2_ON,
-      /** \todo Turn off immediate recvs when ticket #46 is finished */
-      /* recv_immediate: PAMI_HINT3_FORCE_OFF */
+      consistency:     PAMI_HINT_ENABLE,
+      long_header:     PAMI_HINT_DISABLE,
+      recv_contiguous: PAMI_HINT_ENABLE,
+      recv_copy:       PAMI_HINT_ENABLE,
+      recv_immediate:  PAMI_HINT_DISABLE
       },
     immediate_min : sizeof(MPIDI_MsgInfo),
   },
@@ -96,10 +103,12 @@ static struct
     func: MPIDI_RecvRzvCB,
     dispatch: MPIDI_Protocols_RVZ,
     options: {
-      consistency:    PAMI_HINT2_ON,
-      no_long_header: PAMI_HINT2_ON,
-      recv_immediate: PAMI_HINT2_ON,
-      use_rdma:       PAMI_HINT3_FORCE_OFF,
+      consistency:     PAMI_HINT_ENABLE,
+      long_header:     PAMI_HINT_DISABLE,
+      recv_contiguous: PAMI_HINT_ENABLE,
+      recv_copy:       PAMI_HINT_ENABLE,
+      recv_immediate:  PAMI_HINT_ENABLE,
+      use_rdma:        PAMI_HINT_DISABLE,
       },
     immediate_min : sizeof(MPIDI_MsgEnvelope),
   },
@@ -107,10 +116,12 @@ static struct
     func: MPIDI_ControlCB,
     dispatch: MPIDI_Protocols_Cancel,
     options: {
-      consistency:    PAMI_HINT2_ON,
-      no_long_header: PAMI_HINT2_ON,
-      recv_immediate: PAMI_HINT2_ON,
-      use_rdma:       PAMI_HINT3_FORCE_OFF,
+      consistency:     PAMI_HINT_ENABLE,
+      long_header:     PAMI_HINT_DISABLE,
+      recv_contiguous: PAMI_HINT_ENABLE,
+      recv_copy:       PAMI_HINT_ENABLE,
+      recv_immediate:  PAMI_HINT_ENABLE,
+      use_rdma:        PAMI_HINT_DISABLE,
       },
     immediate_min : sizeof(MPIDI_MsgInfo),
   },
@@ -118,9 +129,11 @@ static struct
     func: MPIDI_ControlCB,
     dispatch: MPIDI_Protocols_Control,
     options: {
-      no_long_header: PAMI_HINT2_ON,
-      recv_immediate: PAMI_HINT2_ON,
-      use_rdma:       PAMI_HINT3_FORCE_OFF,
+      long_header:     PAMI_HINT_DISABLE,
+      recv_contiguous: PAMI_HINT_ENABLE,
+      recv_copy:       PAMI_HINT_ENABLE,
+      recv_immediate:  PAMI_HINT_ENABLE,
+      use_rdma:        PAMI_HINT_DISABLE,
       },
     immediate_min : sizeof(MPIDI_MsgInfo),
   },
@@ -128,9 +141,11 @@ static struct
     func: MPIDI_WinControlCB,
     dispatch: MPIDI_Protocols_WinCtrl,
     options: {
-      no_long_header: PAMI_HINT2_ON,
-      recv_immediate: PAMI_HINT2_ON,
-      use_rdma:       PAMI_HINT3_FORCE_OFF,
+      long_header:     PAMI_HINT_DISABLE,
+      recv_contiguous: PAMI_HINT_ENABLE,
+      recv_copy:       PAMI_HINT_ENABLE,
+      recv_immediate:  PAMI_HINT_ENABLE,
+      use_rdma:        PAMI_HINT_DISABLE,
       },
     immediate_min : sizeof(MPIDI_Win_control_t),
   },

@@ -113,7 +113,8 @@ MPID_Get(void         *origin_addr,
   rma  : {
     dest    : req->dest,
     hints   : {
-      no_long_header: PAMI_HINT2_ON,
+      buffer_registered: PAMI_HINT_ENABLE,
+      use_rdma:          PAMI_HINT_ENABLE,
       },
     bytes   : 0,
     cookie  : req,

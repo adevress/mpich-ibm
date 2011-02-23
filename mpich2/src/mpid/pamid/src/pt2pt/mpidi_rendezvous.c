@@ -92,8 +92,8 @@ MPIDI_RendezvousTransfer(pami_context_t context,
   rma  : {
     dest    : dest,
     hints   : {
-      use_rdma:       1,
-      no_long_header: 1,
+      buffer_registered: PAMI_HINT_ENABLE,
+      use_rdma:          PAMI_HINT_ENABLE,
       },
     bytes   : rreq->mpid.envelope.length,
     cookie  : rreq,

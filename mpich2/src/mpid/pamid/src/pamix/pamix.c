@@ -109,7 +109,7 @@ PAMIX_Dispatch_set(pami_context_t                  context[],
                    size_t                          num_contexts,
                    size_t                          dispatch,
                    pami_dispatch_callback_function fn,
-                   pami_send_hint_t                options,
+                   pami_dispatch_hint_t            options,
                    size_t                        * immediate_max)
 {
   pami_result_t rc;
