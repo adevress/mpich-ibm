@@ -235,21 +235,21 @@ static int MPIDI_Check_protocols(char *env, MPID_Comm *comm, char *name, int con
 
       for(i=0; i < comm->mpid.coll_count[constant][0];i++)
       {
-         if(strcasecmp(envopts, comm->mpid.coll_metadata[constant][0][i].name) == 0)
+         if(strncasecmp(envopts, comm->mpid.coll_metadata[constant][0][i].name,strlen(envopts)) == 0)
          {
             MPIDI_Update_coll(constant, 0, i, comm);
             if(MPIDI_Process.verbose >= 1 && comm->rank == 0)
-               fprintf(stderr,"setting %s as default %s for comm %p\n", envopts, name, comm);
+               fprintf(stderr,"setting %s as default %s for comm %p\n", comm->mpid.coll_metadata[constant][0][i].name, name, comm);
             return 0;
          }
       }
       for(i=0; i < comm->mpid.coll_count[constant][1];i++)
       {
-         if(strcasecmp(envopts, comm->mpid.coll_metadata[constant][1][i].name) == 0)
+         if(strncasecmp(envopts, comm->mpid.coll_metadata[constant][1][i].name,strlen(envopts)) == 0)
          {
             MPIDI_Update_coll(constant, 1, i, comm);
             if(MPIDI_Process.verbose >= 1 && comm->rank == 0)
-               fprintf(stderr,"setting (query required protocol) %s as default %s for comm %p\n", envopts, name, comm);
+               fprintf(stderr,"setting (query required protocol) %s as default %s for comm %p\n", comm->mpid.coll_metadata[constant][1][i].name, name, comm);
             return 0;
          }
       }
