@@ -7,8 +7,10 @@
 #ifndef OPA_GCC_PPC_H_INCLUDED
 #define OPA_GCC_PPC_H_INCLUDED
 
+#include <stdint.h>
+
 /* these need to be aligned on an 8-byte boundary to work on a BG/P */
-typedef struct { volatile int v; int dummy;  } OPA_int_t;
+typedef struct { volatile uint32_t v; uint32_t dummy;  } OPA_int_t;
 typedef struct { void * volatile v ;         } OPA_ptr_t;
 
 #define OPA_INT_T_INITIALIZER(val_) { (val_) }
@@ -44,27 +46,27 @@ static _opa_inline void OPA_store_ptr(OPA_ptr_t *ptr, void *val)
    these here, which are arch-specific, then use the generic
    implementations from opa_emulated.h */
 
-static _opa_inline int OPA_LL_int(OPA_int_t *ptr)
+static _opa_inline int OPA_LL_int(OPA_int_t *p)
 {
-    int val;
+    register uint32_t val;
     __asm__ __volatile__ ("lwarx %[val],0,%[ptr]"
-                          : [val] "=r" (val)
-                          : [ptr] "r" (&ptr->v)
-                          : "cc");
+                          : [val] "=&b" (val)
+                          : [ptr] "b" (&p->v)
+                          : "memory");
 
     return val;
 }
 
 /* Returns non-zero if the store was successful, zero otherwise. */
-static _opa_inline int OPA_SC_int(OPA_int_t *ptr, int val)
+static _opa_inline int OPA_SC_int(OPA_int_t *p, uint32_t val)
 {
-    int ret = 1; /* init to non-zero, will be reset to 0 if SC was successful */
+    register int ret = 1; /* init to non-zero, will be reset to 0 if SC was successful */
     __asm__ __volatile__ ("stwcx. %[val],0,%[ptr];\n"
                           "beq 1f;\n"
                           "li %[ret], 0;\n"
                           "1: ;\n"
-                          : [ret] "=r" (ret)
-                          : [ptr] "r" (&ptr->v), [val] "r" (val), "0" (ret)
+                          : [ret] "=b" (ret)
+                          : [ptr] "b" (&p->v), [val] "b" (val), "0" (ret)
                           : "cc", "memory");
     return ret;
 }
@@ -129,9 +131,9 @@ static _opa_inline int OPA_SC_ptr(OPA_ptr_t *ptr, void *val)
 /* FIXME: "sync" is a full memory barrier, we should look into using
    less costly barriers (like lwsync or eieio) where appropriate
    whenever they're available */
-#define OPA_write_barrier()      __asm__ __volatile__  ("sync" ::: "memory" )
-#define OPA_read_barrier()       __asm__ __volatile__  ("sync" ::: "memory" )
-#define OPA_read_write_barrier() __asm__ __volatile__  ("sync" ::: "memory" )
+#define OPA_write_barrier()      ({ __asm__ __volatile__ ("msync" : : : "memory"); })
+#define OPA_read_barrier()       ({ __asm__ __volatile__ ("msync" : : : "memory"); })
+#define OPA_read_write_barrier() ({ __asm__ __volatile__ ("msync" : : : "memory"); })
 
 
 #include "opa_emulated.h"

@@ -26,10 +26,7 @@ MPIU_Object_alloc_t MPID_Request_mem =
   };
 
 
-#if MPIU_HANDLE_ALLOCATION_METHOD == MPIU_HANDLE_ALLOCATION_THREAD_LOCAL
-__thread MPID_Request * MPID_PAMID_Thread_request_handles;
-__thread int MPID_PAMID_Thread_request_handle_count;
-
+#if (MPIU_HANDLE_ALLOCATION_METHOD == MPIU_HANDLE_ALLOCATION_THREAD_LOCAL) && defined(MPIDI_USE_OPA)
 void MPIDI_Request_allocate_pool()
 {
   int i;
@@ -46,10 +43,9 @@ void MPIDI_Request_allocate_pool()
     prev = cur;
   }
   MPIU_THREAD_CS_EXIT(HANDLEALLOC,);
-  MPID_PAMID_Thread_request_handles = cur;
-  MPID_PAMID_Thread_request_handle_count += MPID_REQUEST_TLS_MAX;
+  MPIDI_Process.request_handles[MPIDI_THREAD_ID()].head = cur;
+  MPIDI_Process.request_handles[MPIDI_THREAD_ID()].count += MPID_REQUEST_TLS_MAX;
 }
-
 #endif
 
 

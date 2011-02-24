@@ -88,12 +88,13 @@ MPID_Isend_inline(const void    * buf,
   MPIDI_Request_setPeerRank(sreq, rank);
 
   unsigned ncontexts = MPIDI_Process.avail_contexts;
+  unsigned context_post = MPIDI_Process.context_post;
   /* communicator & destination info */
   sreq->comm = comm;
   sreq->kind = MPID_REQUEST_SEND;
   MPIR_Comm_add_ref(comm);
 
-  if (likely(MPIDI_Process.context_post > 0))
+  if (likely(context_post > 0))
     {
       pami_context_t context = MPIDI_Context[MPIDI_Context_hash(rank, context_id, 0, ncontexts)];
       pami_result_t rc;

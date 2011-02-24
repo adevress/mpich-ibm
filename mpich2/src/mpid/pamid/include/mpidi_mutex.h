@@ -11,23 +11,17 @@
 #define __include_mpidi_mutex_h__
 
 #include <opa_primitives.h>
+#include <mpiutil.h>
 
 
 #ifdef MPIDI_USE_OPA
 
 #include <kernel/location.h>
-
-#define MPIDI_MUTEX_THREAD_ID()                                         \
-({                                                                      \
-  assert(MPIDI_Mutex_threadID[Kernel_ProcessorID()] != (uint8_t)-1);    \
-  MPIDI_Mutex_threadID[Kernel_ProcessorID()];                           \
-})
+#define MPIDI_THREAD_ID() Kernel_ProcessorID()
 
 #define  MPIDI_MAX_MUTEXES 16
-#define  MPIDI_MAX_THREADS 64
-extern OPA_int_t  MPIDI_Mutex_vector  [MPIDI_MAX_MUTEXES];
-extern int        MPIDI_Mutex_counter [MPIDI_MAX_THREADS][MPIDI_MAX_MUTEXES];
-extern uint8_t    MPIDI_Mutex_threadID[MPIDI_MAX_THREADS];
+extern OPA_int_t MPIDI_Mutex_vector [MPIDI_MAX_MUTEXES];
+extern uint32_t  MPIDI_Mutex_counter[MPIDI_MAX_THREADS][MPIDI_MAX_MUTEXES];
 
 /**
  *  \brief Initialize a mutex.
@@ -38,43 +32,16 @@ extern uint8_t    MPIDI_Mutex_threadID[MPIDI_MAX_THREADS];
 static inline int
 MPIDI_Mutex_initialize()
 {
-  size_t i;
-
-  uint64_t ThreadMask = Kernel_ThreadMask(Kernel_MyTcoord());
-  uint8_t  ThreadCount = 0;
-#if 0
-    fprintf(stderr,
-            ">>> 1 I am process (Kernel_MyTcoord=%u) out of (Kernel_ProcessCount=%u) processes.\n"
-            ">>> 2 I am Running on (HWThread Kernel_ProcessorID=%u).\n"
-            ">>> 3 (Kernel_ThreadMask=%016"PRIx64")\n",
-            Kernel_MyTcoord(),
-            Kernel_ProcessCount(),
-            Kernel_ProcessorID(),
-            ThreadMask);
-#endif
-  i=MPIDI_MAX_THREADS;
-  do {
-    --i;
-    MPIDI_Mutex_threadID[i] = (ThreadMask & 1) ? ThreadCount++ : (uint8_t)-1;
-    ThreadMask >>= 1;
-  } while (i != 0);
-  for (i=0; i<MPIDI_MAX_THREADS; ++i)
-    if (MPIDI_Mutex_threadID[i] != (uint8_t)-1)
-      MPIDI_Mutex_threadID[i] = ThreadCount-MPIDI_Mutex_threadID[i]-1;
-#if 0
-  {
-    char buf[6*MPIDI_MAX_THREADS] = {0};
-    for (i=0; i<MPIDI_MAX_THREADS; ++i)
-      snprintf(buf+3*i, 4, "|%2d", (int)(int8_t)MPIDI_Mutex_threadID[i]);
-    buf[0] = '[';
-    fprintf(stderr, ">>> 4 %s]\n", buf);
-    fprintf(stderr, ">>> 5 MPIDI_MUTEX_THREAD_ID=%"PRIu8"\n", MPIDI_MUTEX_THREAD_ID());
+  size_t i, j;
+  for (i=0; i<MPIDI_MAX_MUTEXES; ++i) {
+    OPA_store_int(&(MPIDI_Mutex_vector[i]), 0);
   }
-#endif
-  MPID_assert(MPIDI_MUTEX_THREAD_ID() == 0);
 
-  for (i=0; i<MPIDI_MAX_MUTEXES; ++i)
-    OPA_store_int(&MPIDI_Mutex_vector[i], 0);
+  for (i=0; i<MPIDI_MAX_MUTEXES; ++i) {
+    for (j=0; j<MPIDI_MAX_THREADS; ++j) {
+      MPIDI_Mutex_counter[j][i] = 0;
+    }
+  }
 
   return 0;
 }
@@ -90,24 +57,25 @@ static inline int
 MPIDI_Mutex_try_acquire(unsigned m)
 {
   register int old_val;
+  size_t tid = MPIDI_THREAD_ID();
 
   MPID_assert(m < MPIDI_MAX_MUTEXES);
 
-  if (MPIDI_Mutex_counter[MPIDI_MUTEX_THREAD_ID()][m] >= 1) {
-    MPIDI_Mutex_counter[MPIDI_MUTEX_THREAD_ID()][m]++;
+  if (MPIDI_Mutex_counter[tid][m] >= 1) {
+    ++MPIDI_Mutex_counter[tid][m];
     return 0;
   }
 
-  old_val = OPA_LL_int(&MPIDI_Mutex_vector[m]);
+  old_val = OPA_LL_int(&(MPIDI_Mutex_vector[m]));
   if (old_val != 0)
     return 1;  /* Lock failed */
 
-  int rc = OPA_SC_int(&MPIDI_Mutex_vector[m], 1);  /* returns 0 when SC fails */
+  int rc = OPA_SC_int(&(MPIDI_Mutex_vector[m]), 1);  /* returns 0 when SC fails */
 
   if (rc == 0)
     return 1; /* Lock failed */
 
-  MPIDI_Mutex_counter[MPIDI_MUTEX_THREAD_ID()][m] =  1;
+  MPIDI_Mutex_counter[tid][m] =  1;
   return 0;   /* Lock succeeded */
 }
 
@@ -122,22 +90,23 @@ static inline int
 MPIDI_Mutex_acquire(unsigned m)
 {
   register int old_val;
+  size_t tid = MPIDI_THREAD_ID();
 
   MPID_assert(m < MPIDI_MAX_MUTEXES);
 
-  if (MPIDI_Mutex_counter[MPIDI_MUTEX_THREAD_ID()][m] >= 1) {
-    MPIDI_Mutex_counter[MPIDI_MUTEX_THREAD_ID()][m]++;
+  if (unlikely(MPIDI_Mutex_counter[tid][m] >= 1)) {
+    ++MPIDI_Mutex_counter[tid][m];
     return 0;
   }
 
   do {
-    old_val = OPA_LL_int(&MPIDI_Mutex_vector[m]);
-    if (old_val != 0)
-      continue;
+    do {
+      old_val = OPA_LL_int(&(MPIDI_Mutex_vector[m]));
+    } while (old_val != 0);
 
-  } while (!OPA_SC_int(&MPIDI_Mutex_vector[m], 1));
+  } while (!OPA_SC_int(&(MPIDI_Mutex_vector[m]), 1));
 
-  MPIDI_Mutex_counter[MPIDI_MUTEX_THREAD_ID()][m] =  1;
+  MPIDI_Mutex_counter[tid][m] =  1;
   return 0;
 }
 
@@ -151,21 +120,22 @@ MPIDI_Mutex_acquire(unsigned m)
 static inline int
 MPIDI_Mutex_release(unsigned m)
 {
+  size_t tid = MPIDI_THREAD_ID();
   MPID_assert(m < MPIDI_MAX_MUTEXES);
   /* Verify this thread is the owner of this lock */
-  MPID_assert(MPIDI_Mutex_counter[MPIDI_MUTEX_THREAD_ID()][m] > 0);
+  MPID_assert(MPIDI_Mutex_counter[tid][m] > 0);
 
-  MPIDI_Mutex_counter[MPIDI_MUTEX_THREAD_ID()][m]--;
-  MPID_assert(MPIDI_Mutex_counter[MPIDI_MUTEX_THREAD_ID()][m] >= 0);
-  if (MPIDI_Mutex_counter[MPIDI_MUTEX_THREAD_ID()][m] > 0)
+  --MPIDI_Mutex_counter[tid][m];
+  MPID_assert(MPIDI_Mutex_counter[tid][m] >= 0);
+  if (unlikely(MPIDI_Mutex_counter[tid][m] > 0))
     return 0;    /* Future calls will release the lock to other threads */
 
   /* Wait till all the writes in the critical sections from this
-     thread have completed and invalidates have been delivered*/
+     thread have completed and invalidates have been delivered */
   OPA_read_write_barrier();
 
   /* Release the lock */
-  OPA_store_int(&MPIDI_Mutex_vector[m], 0);
+  OPA_store_int(&(MPIDI_Mutex_vector[m]), 0);
 
   return 0;
 }

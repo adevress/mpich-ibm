@@ -30,6 +30,7 @@
 #endif
 
 #ifdef __BGQ__
+#define MPIDI_MAX_THREADS 64
 #define MPIDI_USE_OPA
 #endif
 
@@ -44,11 +45,11 @@
 #define MPID_assert_static(expr) ({ switch(0){case 0:case expr:;} })
 
 
-#include "mpidi_thread.h"
 #include "mpidi_constants.h"
 #include "mpidi_datatypes.h"
 #include "mpidi_externs.h"
 #include "mpidi_hooks.h"
+#include "mpidi_thread.h"
 
 
 #endif

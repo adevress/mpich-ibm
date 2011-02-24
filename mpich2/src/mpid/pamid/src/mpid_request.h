@@ -66,33 +66,36 @@ void    MPIDI_Request_allocate_pool();
 
 #if MPIU_HANDLE_ALLOCATION_METHOD == MPIU_HANDLE_ALLOCATION_THREAD_LOCAL
 
-extern __thread MPID_Request * MPID_PAMID_Thread_request_handles;
-extern __thread int MPID_PAMID_Thread_request_handle_count;
-
 #  define MPIDI_Request_tls_alloc(req)                                  \
 ({                                                                      \
-  if (unlikely(!MPID_PAMID_Thread_request_handles)) {                   \
+  size_t tid = MPIDI_THREAD_ID();                                       \
+  MPIDI_RequestHandle_t *rh = &MPIDI_Process.request_handles[tid];      \
+  if (unlikely(rh->head == NULL))                                       \
     MPIDI_Request_allocate_pool();                                      \
-  }                                                                     \
-  (req) = MPID_PAMID_Thread_request_handles;                            \
-  MPID_PAMID_Thread_request_handles = req->mpid.next;                   \
-  MPID_PAMID_Thread_request_handle_count -= 1;                          \
+  (req) = rh->head;                                                     \
+  rh->head = req->mpid.next;                                            \
+  rh->count --;                                                         \
 })
 
 #  define MPIDI_Request_tls_free(req)                                   \
 ({                                                                      \
-  if (MPID_PAMID_Thread_request_handle_count < MPID_REQUEST_TLS_MAX) {  \
-    /* push request onto the top of the stack */                        \
-    req->mpid.next = MPID_PAMID_Thread_request_handles;                 \
-    MPID_PAMID_Thread_request_handles = req;                            \
-    MPID_PAMID_Thread_request_handle_count += 1;                        \
-  }                                                                     \
-  else {                                                                \
-    MPIU_Handle_obj_free(&MPID_Request_mem, req);                       \
-  }                                                                     \
+  size_t tid = MPIDI_THREAD_ID();                                       \
+  MPIDI_RequestHandle_t *rh = &MPIDI_Process.request_handles[tid];      \
+  if (rh->count < MPID_REQUEST_TLS_MAX)                                 \
+    {                                                                   \
+      /* push request onto the top of the stack */                      \
+      req->mpid.next = rh->head;                                        \
+      rh->head = req;                                                   \
+      rh->count ++;                                                     \
+    }                                                                   \
+  else                                                                  \
+    {                                                                   \
+      MPIU_Handle_obj_free(&MPID_Request_mem, req);                     \
+    }                                                                   \
 })
 
 #elif MPIU_HANDLE_ALLOCATION_METHOD == MPIU_HANDLE_ALLOCATION_MUTEX
+
 #  define MPIDI_Request_tls_alloc(req)                                  \
 ({                                                                      \
   (req) = MPIU_Handle_obj_alloc(&MPID_Request_mem);                     \
@@ -101,6 +104,7 @@ extern __thread int MPID_PAMID_Thread_request_handle_count;
 })
 
 #  define MPIDI_Request_tls_free(req) MPIU_Handle_obj_free(&MPID_Request_mem, (req))
+
 #else
 #  error MPIU_HANDLE_ALLOCATION_METHOD not defined
 #endif

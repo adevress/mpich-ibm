@@ -13,6 +13,16 @@
 #define __include_mpidi_datatypes_h__
 
 
+#ifdef MPIDI_USE_OPA
+struct MPID_Request;
+typedef struct
+{
+  struct MPID_Request  * head;
+  size_t                 count;
+} MPIDI_RequestHandle_t;
+#endif
+
+
 /**
  * \brief MPI Process descriptor
  *
@@ -41,6 +51,10 @@ typedef struct
     unsigned collectives;  /**< Enable optimized collective functions. */
   }
   optimized;
+
+#if (MPIU_HANDLE_ALLOCATION_METHOD == MPIU_HANDLE_ALLOCATION_THREAD_LOCAL) && defined(MPIDI_USE_OPA)
+  MPIDI_RequestHandle_t request_handles[MPIDI_MAX_THREADS];
+#endif
 } MPIDI_Process_t;
 
 

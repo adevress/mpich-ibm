@@ -12,9 +12,8 @@ pami_client_t   MPIDI_Client;
 pami_context_t MPIDI_Context[MAX_CONTEXTS];
 
 #ifdef MPIDI_USE_OPA
-OPA_int_t MPIDI_Mutex_vector  [MPIDI_MAX_MUTEXES];
-int       MPIDI_Mutex_counter [MPIDI_MAX_THREADS][MPIDI_MAX_MUTEXES] = {{0}};
-uint8_t   MPIDI_Mutex_threadID[MPIDI_MAX_THREADS] __attribute__((__aligned__(64)));
+OPA_int_t MPIDI_Mutex_vector [MPIDI_MAX_MUTEXES];
+uint32_t  MPIDI_Mutex_counter[MPIDI_MAX_THREADS][MPIDI_MAX_MUTEXES];
 #else
 pthread_mutex_t MPIDI_Mutex_lock;
 #endif
