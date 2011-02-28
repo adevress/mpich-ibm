@@ -189,11 +189,18 @@ void MPIDI_Coll_comm_destroy(MPID_Comm *comm)
 
 
 static void MPIDI_Update_coll(pami_algorithm_t coll, 
-                       int type, 
+                       int type,  /* must query vs always works */
                        int index,
                        MPID_Comm *comm_ptr)
 {
-   comm_ptr->mpid.user_selectedvar[coll] = 1;
+   if(type == MPID_COLL_QUERY)
+   {
+      if(comm_ptr->mpid.coll_metadata[coll][type][index].check_correct.values.mustquery)
+         comm_ptr->mpid.user_selectedvar[coll] = MPID_COLL_ALWAYS_QUERY;
+   }
+   else
+      comm_ptr->mpid.user_selectedvar[coll] = type;
+
    comm_ptr->mpid.user_selected[coll] = 
       comm_ptr->mpid.coll_algorithm[coll][type][index];
    memcpy(&comm_ptr->mpid.user_metadata[coll],
@@ -236,7 +243,7 @@ static int MPIDI_Check_protocols(char *env, MPID_Comm *comm, char *name, int con
       {
          if(strncasecmp(envopts, comm->mpid.coll_metadata[constant][0][i].name,strlen(envopts)) == 0)
          {
-            MPIDI_Update_coll(constant, 0, i, comm);
+            MPIDI_Update_coll(constant, MPID_COLL_NOQUERY, i, comm);
             if(MPIDI_Process.verbose >= 1 && comm->rank == 0)
                fprintf(stderr,"setting %s as default %s for comm %p\n", comm->mpid.coll_metadata[constant][0][i].name, name, comm);
             return 0;
@@ -246,7 +253,7 @@ static int MPIDI_Check_protocols(char *env, MPID_Comm *comm, char *name, int con
       {
          if(strncasecmp(envopts, comm->mpid.coll_metadata[constant][1][i].name,strlen(envopts)) == 0)
          {
-            MPIDI_Update_coll(constant, 1, i, comm);
+            MPIDI_Update_coll(constant, MPID_COLL_QUERY, i, comm);
             if(MPIDI_Process.verbose >= 1 && comm->rank == 0)
                fprintf(stderr,"setting (query required protocol) %s as default %s for comm %p\n", comm->mpid.coll_metadata[constant][1][i].name, name, comm);
             return 0;
