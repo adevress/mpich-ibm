@@ -229,10 +229,12 @@ MPIDI_Init(int* rank, int* size, int* threading)
 
   MPIDI_Process.requested_thread_level = *threading;
   /* VNM mode imlies MPI_THREAD_SINGLE, 1 context, and no posting. */
-  if (PAMIX_Client_query(MPIDI_Client, PAMI_CLIENT_HWTHREADS_AVAILABLE).value.intval == 1)
+  unsigned hwthreads = PAMIX_Client_query(MPIDI_Client, PAMI_CLIENT_HWTHREADS_AVAILABLE).value.intval;
+  if (MPIDI_Process.avail_contexts > hwthreads)
+    MPIDI_Process.avail_contexts = hwthreads;
+  if (hwthreads == 1)
     {
       *threading = MPIDI_Process.requested_thread_level = MPI_THREAD_SINGLE;
-      MPIDI_Process.avail_contexts = 1;
       MPIDI_Process.context_post   = 0;
       MPIDI_Process.comm_threads   = 0;
     }
