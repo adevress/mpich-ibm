@@ -65,11 +65,11 @@ static struct
     options: {
       consistency:     PAMI_HINT_ENABLE,
       long_header:     PAMI_HINT_DISABLE,
-      recv_contiguous: PAMI_HINT_ENABLE,
-      recv_copy:       PAMI_HINT_ENABLE,
-      recv_contiguous: PAMI_HINT_ENABLE,
-      recv_copy:       PAMI_HINT_ENABLE,
-      recv_immediate:  PAMI_HINT_ENABLE,
+      /** \todo Uncomment this (and all the others) when Trac #392 is
+                resolved and/or these hints are implemented. */
+      /* recv_contiguous: PAMI_HINT_ENABLE, */
+      /* recv_copy:       PAMI_HINT_ENABLE, */
+      /* recv_immediate:  PAMI_HINT_ENABLE, */
       use_rdma:        PAMI_HINT_DISABLE,
       },
     immediate_min : sizeof(MPIDI_MsgInfo),
@@ -80,9 +80,9 @@ static struct
     options: {
       consistency:     PAMI_HINT_ENABLE,
       long_header:     PAMI_HINT_DISABLE,
-      recv_contiguous: PAMI_HINT_ENABLE,
-      recv_copy:       PAMI_HINT_ENABLE,
-      recv_immediate:  PAMI_HINT_ENABLE,
+      /* recv_contiguous: PAMI_HINT_ENABLE, */
+      /* recv_copy:       PAMI_HINT_ENABLE, */
+      /* recv_immediate:  PAMI_HINT_ENABLE, */
       use_rdma:        PAMI_HINT_DISABLE,
       },
     immediate_min : sizeof(MPIDI_MsgInfo),
@@ -93,9 +93,9 @@ static struct
     options: {
       consistency:     PAMI_HINT_ENABLE,
       long_header:     PAMI_HINT_DISABLE,
-      recv_contiguous: PAMI_HINT_ENABLE,
-      recv_copy:       PAMI_HINT_ENABLE,
-      recv_immediate:  PAMI_HINT_DISABLE
+      /* recv_contiguous: PAMI_HINT_ENABLE, */
+      /* recv_copy:       PAMI_HINT_ENABLE, */
+      /* recv_immediate:  PAMI_HINT_DISABLE */
       },
     immediate_min : sizeof(MPIDI_MsgInfo),
   },
@@ -105,9 +105,9 @@ static struct
     options: {
       consistency:     PAMI_HINT_ENABLE,
       long_header:     PAMI_HINT_DISABLE,
-      recv_contiguous: PAMI_HINT_ENABLE,
-      recv_copy:       PAMI_HINT_ENABLE,
-      recv_immediate:  PAMI_HINT_ENABLE,
+      /* recv_contiguous: PAMI_HINT_ENABLE, */
+      /* recv_copy:       PAMI_HINT_ENABLE, */
+      /* recv_immediate:  PAMI_HINT_ENABLE, */
       use_rdma:        PAMI_HINT_DISABLE,
       },
     immediate_min : sizeof(MPIDI_MsgEnvelope),
@@ -118,9 +118,9 @@ static struct
     options: {
       consistency:     PAMI_HINT_ENABLE,
       long_header:     PAMI_HINT_DISABLE,
-      recv_contiguous: PAMI_HINT_ENABLE,
-      recv_copy:       PAMI_HINT_ENABLE,
-      recv_immediate:  PAMI_HINT_ENABLE,
+      /* recv_contiguous: PAMI_HINT_ENABLE, */
+      /* recv_copy:       PAMI_HINT_ENABLE, */
+      /* recv_immediate:  PAMI_HINT_ENABLE, */
       use_rdma:        PAMI_HINT_DISABLE,
       },
     immediate_min : sizeof(MPIDI_MsgInfo),
@@ -130,9 +130,9 @@ static struct
     dispatch: MPIDI_Protocols_Control,
     options: {
       long_header:     PAMI_HINT_DISABLE,
-      recv_contiguous: PAMI_HINT_ENABLE,
-      recv_copy:       PAMI_HINT_ENABLE,
-      recv_immediate:  PAMI_HINT_ENABLE,
+      /* recv_contiguous: PAMI_HINT_ENABLE, */
+      /* recv_copy:       PAMI_HINT_ENABLE, */
+      /* recv_immediate:  PAMI_HINT_ENABLE, */
       use_rdma:        PAMI_HINT_DISABLE,
       },
     immediate_min : sizeof(MPIDI_MsgInfo),
@@ -142,9 +142,9 @@ static struct
     dispatch: MPIDI_Protocols_WinCtrl,
     options: {
       long_header:     PAMI_HINT_DISABLE,
-      recv_contiguous: PAMI_HINT_ENABLE,
-      recv_copy:       PAMI_HINT_ENABLE,
-      recv_immediate:  PAMI_HINT_ENABLE,
+      /* recv_contiguous: PAMI_HINT_ENABLE, */
+      /* recv_copy:       PAMI_HINT_ENABLE, */
+      /* recv_immediate:  PAMI_HINT_ENABLE, */
       use_rdma:        PAMI_HINT_DISABLE,
       },
     immediate_min : sizeof(MPIDI_Win_control_t),
