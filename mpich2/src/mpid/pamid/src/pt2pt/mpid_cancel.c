@@ -85,7 +85,7 @@ MPID_Cancel_send(MPID_Request * sreq)
   MPIDI_Request_uncomplete(sreq);
   /* TRACE_ERR("Posting cancel for request=%p   cc(curr)=%d ref(curr)=%d\n", sreq, val+1, MPIU_Object_get_ref(sreq)); */
 
-  if (likely(MPIDI_Process.context_post > 1))
+  if (likely(MPIDI_Process.context_post > 0))
     {
       /* This leaks intentionally.  At this time, the amount of work
        * required to avoid a leak here just isn't worth it.
