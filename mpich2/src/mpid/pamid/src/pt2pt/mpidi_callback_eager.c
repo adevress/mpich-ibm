@@ -28,12 +28,34 @@ MPIDI_RecvCB(pami_context_t    context,
              pami_endpoint_t   sender,
              pami_recv_t     * recv)
 {
+  const MPIDI_MsgInfo *msginfo = (const MPIDI_MsgInfo *)_msginfo;
+  if (recv == NULL)
+    {
+      if (msginfo->isSync)
+        MPIDI_RecvShortSyncCB(context,
+                              cookie,
+                              _msginfo,
+                              msginfo_size,
+                              sndbuf,
+                              sndlen,
+                              sender,
+                              recv);
+      else
+        MPIDI_RecvShortAsyncCB(context,
+                               cookie,
+                               _msginfo,
+                               msginfo_size,
+                               sndbuf,
+                               sndlen,
+                               sender,
+                               recv);
+      return;
+    }
+
   MPID_assert(sndbuf == NULL);
-  MPID_assert(recv != NULL);
   MPID_assert(_msginfo != NULL);
   MPID_assert(msginfo_size == sizeof(MPIDI_MsgInfo));
 
-  const MPIDI_MsgInfo *msginfo = (const MPIDI_MsgInfo *)_msginfo;
   MPID_Request * rreq = NULL;
 
   /* -------------------- */
