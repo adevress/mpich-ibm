@@ -69,7 +69,7 @@ static struct
                 resolved and/or these hints are implemented. */
       /* recv_contiguous: PAMI_HINT_ENABLE, */
       /* recv_copy:       PAMI_HINT_ENABLE, */
-      /* recv_immediate:  PAMI_HINT_ENABLE, */
+      recv_immediate:  PAMI_HINT_ENABLE,
       use_rdma:        PAMI_HINT_DISABLE,
       },
     immediate_min : sizeof(MPIDI_MsgInfo),
@@ -82,7 +82,7 @@ static struct
       long_header:     PAMI_HINT_DISABLE,
       /* recv_contiguous: PAMI_HINT_ENABLE, */
       /* recv_copy:       PAMI_HINT_ENABLE, */
-      /* recv_immediate:  PAMI_HINT_ENABLE, */
+      recv_immediate:  PAMI_HINT_ENABLE,
       use_rdma:        PAMI_HINT_DISABLE,
       },
     immediate_min : sizeof(MPIDI_MsgInfo),
@@ -95,7 +95,6 @@ static struct
       long_header:     PAMI_HINT_DISABLE,
       /* recv_contiguous: PAMI_HINT_ENABLE, */
       /* recv_copy:       PAMI_HINT_ENABLE, */
-      /* recv_immediate:  PAMI_HINT_DISABLE */
       },
     immediate_min : sizeof(MPIDI_MsgInfo),
   },
@@ -107,7 +106,7 @@ static struct
       long_header:     PAMI_HINT_DISABLE,
       /* recv_contiguous: PAMI_HINT_ENABLE, */
       /* recv_copy:       PAMI_HINT_ENABLE, */
-      /* recv_immediate:  PAMI_HINT_ENABLE, */
+      recv_immediate:  PAMI_HINT_ENABLE,
       use_rdma:        PAMI_HINT_DISABLE,
       },
     immediate_min : sizeof(MPIDI_MsgEnvelope),
@@ -120,7 +119,7 @@ static struct
       long_header:     PAMI_HINT_DISABLE,
       /* recv_contiguous: PAMI_HINT_ENABLE, */
       /* recv_copy:       PAMI_HINT_ENABLE, */
-      /* recv_immediate:  PAMI_HINT_ENABLE, */
+      recv_immediate:  PAMI_HINT_ENABLE,
       use_rdma:        PAMI_HINT_DISABLE,
       },
     immediate_min : sizeof(MPIDI_MsgInfo),
@@ -132,7 +131,7 @@ static struct
       long_header:     PAMI_HINT_DISABLE,
       /* recv_contiguous: PAMI_HINT_ENABLE, */
       /* recv_copy:       PAMI_HINT_ENABLE, */
-      /* recv_immediate:  PAMI_HINT_ENABLE, */
+      recv_immediate:  PAMI_HINT_ENABLE,
       use_rdma:        PAMI_HINT_DISABLE,
       },
     immediate_min : sizeof(MPIDI_MsgInfo),
@@ -144,7 +143,7 @@ static struct
       long_header:     PAMI_HINT_DISABLE,
       /* recv_contiguous: PAMI_HINT_ENABLE, */
       /* recv_copy:       PAMI_HINT_ENABLE, */
-      /* recv_immediate:  PAMI_HINT_ENABLE, */
+      recv_immediate:  PAMI_HINT_ENABLE,
       use_rdma:        PAMI_HINT_DISABLE,
       },
     immediate_min : sizeof(MPIDI_Win_control_t),
