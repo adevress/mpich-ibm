@@ -118,7 +118,7 @@ MPID_Get(void         *origin_addr,
       },
     bytes   : 0,
     cookie  : req,
-    done_fn : MPIDI_DoneCB,
+    done_fn : MPIDI_Win_DoneCB,
   },
   rdma : {
     local  : {

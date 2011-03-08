@@ -135,7 +135,7 @@ MPID_Put(void         *origin_addr,
     },
   },
   put : {
-    rdone_fn : MPIDI_DoneCB,
+    rdone_fn : MPIDI_Win_DoneCB,
   },
   };
 

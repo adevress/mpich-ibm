@@ -25,7 +25,7 @@
  * \param[in] comm_ptr	Communicator
  * \param[out] win_ptr	Window
  * \return MPI_SUCCESS, MPI_ERR_OTHER, or error returned from
- *	PMPI_Comm_dup or PMPI_Allgather.
+ *	MPI_Comm_dup or MPI_Allgather.
  */
 int
 MPID_Win_create(void       * base,
@@ -79,17 +79,18 @@ MPID_Win_create(void       * base,
   winfo->win        = win;
   winfo->disp_unit  = disp_unit;
 
-  mpi_errno = PMPI_Allgather(MPI_IN_PLACE,
-                             0,
-                             MPI_DATATYPE_NULL,
-                             win->mpid.info,
-                             sizeof(struct MPIDI_Win_info),
-                             MPI_BYTE,
-                             comm_ptr->handle);
+  mpi_errno = MPIR_Allgather_impl(MPI_IN_PLACE,
+                                  0,
+                                  MPI_DATATYPE_NULL,
+                                  win->mpid.info,
+                                  sizeof(struct MPIDI_Win_info),
+                                  MPI_BYTE,
+                                  comm_ptr,
+                                  &mpi_errno);
   if (mpi_errno != MPI_SUCCESS)
     return mpi_errno;
 
-  mpi_errno = PMPI_Barrier(comm_ptr->handle);
+  mpi_errno = MPIR_Barrier_impl(comm_ptr, &mpi_errno);
   if (mpi_errno != MPI_SUCCESS)
     return mpi_errno;
 

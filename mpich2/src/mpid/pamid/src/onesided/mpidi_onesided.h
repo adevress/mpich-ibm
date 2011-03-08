@@ -73,6 +73,7 @@ typedef struct
   } origin;
 
   pami_memregion_t memregion;
+  /** \todo: use this to conditionally destroy the memregion */
   /* uint32_t         memregion_used; */
 
   uint32_t ops_started;
@@ -126,9 +127,9 @@ MPIDI_WinPost_proc(pami_context_t              context,
                    unsigned                    peer);
 
 void
-MPIDI_DoneCB(pami_context_t  context,
-             void          * cookie,
-             pami_result_t   result);
+MPIDI_Win_DoneCB(pami_context_t  context,
+                 void          * cookie,
+                 pami_result_t   result);
 
 
 #endif

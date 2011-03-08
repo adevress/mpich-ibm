@@ -12,7 +12,7 @@
  * Release all references and free memory associated with window.
  *
  * \param[in,out] win  Window
- * \return MPI_SUCCESS or error returned from PMPI_Barrier.
+ * \return MPI_SUCCESS or error returned from MPI_Barrier.
  */
 int
 MPID_Win_free(MPID_Win **win_ptr)
@@ -22,7 +22,7 @@ MPID_Win_free(MPID_Win **win_ptr)
   MPID_Win *win = *win_ptr;
   size_t rank = win->comm_ptr->rank;
 
-  mpi_errno = PMPI_Barrier(win->comm_ptr->handle);
+  mpi_errno = MPIR_Barrier_impl(win->comm_ptr, &mpi_errno);
   if (mpi_errno != MPI_SUCCESS)
     return mpi_errno;
 

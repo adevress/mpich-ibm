@@ -230,15 +230,12 @@ struct MPIDI_Win
   struct MPIDI_Win_info  *info;    /**< allocated array of collective info             */
   struct MPIDI_Win_sync
   {
-    uint32_t  type;   /**< current epoch type                                   */
-    uint32_t  assert; /**< MPI_MODE_* bits asserted at epoch start              */
+    uint32_t type;   /**< current epoch type                                   */
+    uint32_t assert; /**< MPI_MODE_* bits asserted at epoch start              */
 
     uint32_t started;
     uint32_t complete;
 
-    struct MPIDI_Win_sync_fence
-    {
-    } fence;
     struct MPIDI_Win_sync_pscw
     {
       struct MPID_Group *group;

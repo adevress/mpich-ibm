@@ -7,9 +7,9 @@
 
 
 void
-MPIDI_DoneCB(pami_context_t  context,
-             void          * cookie,
-             pami_result_t   result)
+MPIDI_Win_DoneCB(pami_context_t  context,
+                 void          * cookie,
+                 pami_result_t   result)
 {
   MPIDI_Win_request *req = (MPIDI_Win_request*)cookie;
   ++req->ops_complete;
@@ -22,7 +22,7 @@ MPIDI_DoneCB(pami_context_t  context,
         {
           if (req->type == MPIDI_WIN_REQUEST_GET)
             {
-              int mpi_errno = 0;
+              int mpi_errno;
               mpi_errno = MPIR_Localcopy(req->pack_buffer,
                                          req->origin_dt.size,
                                          MPI_CHAR,
