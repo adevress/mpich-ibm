@@ -4,6 +4,21 @@
  * \brief ???
  */
 #include "mpidi_onesided.h"
+
+
+void
+MPIDI_WinAccumCB(pami_context_t    context,
+                 void            * cookie,
+                 const void      * _msginfo,
+                 size_t            msginfo_size,
+                 const void      * sndbuf,
+                 size_t            sndlen,
+                 pami_endpoint_t   sender,
+                 pami_recv_t     * recv)
+{
+}
+
+
 /**
  * \brief MPI-PAMI glue for MPI_ACCUMULATE function
  *

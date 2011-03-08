@@ -67,6 +67,7 @@ enum
     MPIDI_Protocols_Cancel,
     MPIDI_Protocols_Control,
     MPIDI_Protocols_WinCtrl,
+    MPIDI_Protocols_WinAccum,
     MPIDI_Protocols_COUNT,
   };
 

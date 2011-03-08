@@ -52,6 +52,7 @@ static struct
   struct protocol_t Cancel;
   struct protocol_t Control;
   struct protocol_t WinCtrl;
+  struct protocol_t WinAccum;
 } proto_list =
   {
   Short: {
@@ -142,6 +143,15 @@ static struct
       use_rdma:        PAMI_HINT_DISABLE,
       },
     immediate_min : sizeof(MPIDI_Win_control_t),
+  },
+  WinAccum: {
+    func: MPIDI_WinAccumCB,
+    dispatch: MPIDI_Protocols_WinAccum,
+    options: {
+      consistency:     PAMI_HINT_ENABLE,
+      long_header:     PAMI_HINT_DISABLE,
+      },
+    immediate_min : sizeof(MPIDI_MsgInfo),
   },
   };
 
@@ -270,6 +280,7 @@ MPIDI_Init(int* rank, int* size, int* threading)
   MPIDI_Init_dispath(MPIDI_Protocols_Cancel,    &proto_list.Cancel,    NULL);
   MPIDI_Init_dispath(MPIDI_Protocols_Control,   &proto_list.Control,   NULL);
   MPIDI_Init_dispath(MPIDI_Protocols_WinCtrl,   &proto_list.WinCtrl,   NULL);
+  MPIDI_Init_dispath(MPIDI_Protocols_WinAccum,  &proto_list.WinAccum,  NULL);
 
   pami_short_limit[0] -= (sizeof(MPIDI_MsgInfo) - 1);
   if (MPIDI_Process.short_limit > pami_short_limit[0])
