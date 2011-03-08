@@ -89,27 +89,23 @@ MPID_Progress_wait_inline(unsigned loop_count)
 {
   pami_result_t rc;
 #ifdef USE_PAMI_COMM_THREADS
-  if (likely(MPIDI_Process.comm_threads))
-    {
-      /** \todo Remove this hack when ticket #235 is finished */
-      unsigned i;
-      for (i=0; i<MPIDI_Process.avail_contexts; ++i) {
-        if (unlikely(PAMI_Context_trylock(MPIDI_Context[i]) == PAMI_SUCCESS))
-          {
-            rc = PAMI_Context_advance(MPIDI_Context[i], 1);
-            MPID_assert(rc == PAMI_SUCCESS);
-            rc = PAMI_Context_unlock(MPIDI_Context[i]);
-            MPID_assert(rc == PAMI_SUCCESS);
-          }
+  /* This just assumes that people will want the thread-safe version when using the per-obj code. */
+  /** \todo Remove this hack when ticket #235 is finished (or some other thread-safe multi-advance). */
+  unsigned i;
+  for (i=0; i<MPIDI_Process.avail_contexts; ++i) {
+    if (unlikely(PAMI_Context_trylock(MPIDI_Context[i]) == PAMI_SUCCESS))
+      {
+        rc = PAMI_Context_advance(MPIDI_Context[i], 1);
+        MPID_assert(rc == PAMI_SUCCESS);
+        rc = PAMI_Context_unlock(MPIDI_Context[i]);
+        MPID_assert(rc == PAMI_SUCCESS);
       }
-    }
-  else
-#endif
-    {
-      rc = PAMI_Context_advancev(MPIDI_Context, MPIDI_Process.avail_contexts, loop_count);
-      MPID_assert(rc == PAMI_SUCCESS);
-    }
+  }
+#else
+  rc = PAMI_Context_advancev(MPIDI_Context, MPIDI_Process.avail_contexts, loop_count);
+  MPID_assert(rc == PAMI_SUCCESS);
   MPIU_THREAD_CS_YIELD(ALLFUNC,);
+#endif
 
   return MPI_SUCCESS;
 }
