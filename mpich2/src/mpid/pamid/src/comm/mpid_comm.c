@@ -162,8 +162,7 @@ void MPIDI_Coll_comm_create(MPID_Comm *comm)
       }
 
       TRACE_ERR("Waiting for geom create to finish\n");
-      while(geom_init)
-         PAMI_Context_advance(MPIDI_Context[0], 1);
+      MPID_PROGRESS_WAIT_WHILE(geom_init);
    }
 
    TRACE_ERR("Querying protocols\n");
