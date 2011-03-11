@@ -6,16 +6,34 @@
 #include "mpidi_onesided.h"
 
 
-static inline void
-MPIDI_WinPost_post(pami_context_t   context,
-                   unsigned         peer,
-                   MPID_Win       * win)
+typedef struct
 {
-  MPIDI_Win_control_t info = {
+  MPID_Win    * win;
+
+  unsigned      done;
+  pami_work_t   work;
+} MPIDI_WinPSCW_info;
+
+
+static pami_result_t
+MPIDI_WinPost_post(pami_context_t   context,
+                   void           * _info)
+{
+  MPIDI_WinPSCW_info * info = (MPIDI_WinPSCW_info*)_info;
+  unsigned peer, index;
+  MPID_Group *group = info->win->mpid.sync.pw.group;
+  MPID_assert(group != NULL);
+  MPIDI_Win_control_t msg = {
   type : MPIDI_WIN_MSGTYPE_POST,
   };
 
-  MPIDI_WinCtrlSend(context, &info, peer, win);
+  for (index=0; index < group->size; ++index) {
+    peer = group->lrank_to_lpid[index].lpid;
+    MPIDI_WinCtrlSend(context, &msg, peer, info->win);
+  }
+
+  info->done = 1;
+  return PAMI_SUCCESS;
 }
 
 
@@ -28,16 +46,25 @@ MPIDI_WinPost_proc(pami_context_t              context,
 }
 
 
-static inline void
+static pami_result_t
 MPIDI_WinComplete_post(pami_context_t   context,
-                       unsigned         peer,
-                       MPID_Win       * win)
+                       void           * _info)
 {
-  MPIDI_Win_control_t info = {
+  MPIDI_WinPSCW_info * info = (MPIDI_WinPSCW_info*)_info;
+  unsigned peer, index;
+  MPID_Group *group = info->win->mpid.sync.sc.group;
+  MPID_assert(group != NULL);
+  MPIDI_Win_control_t msg = {
   type : MPIDI_WIN_MSGTYPE_COMPLETE,
   };
 
-  MPIDI_WinCtrlSend(context, &info, peer, win);
+  for (index=0; index < group->size; ++index) {
+    peer = group->lrank_to_lpid[index].lpid;
+    MPIDI_WinCtrlSend(context, &msg, peer, info->win);
+  }
+
+  info->done = 1;
+  return PAMI_SUCCESS;
 }
 
 
@@ -79,15 +106,15 @@ MPID_Win_complete(MPID_Win *win)
   sync->started  = 0;
   sync->complete = 0;
 
-  unsigned rank, index;
-  MPID_Group *group = sync->sc.group;
-  sync->sc.group = NULL;
-  for (index=0; index < group->size; ++index) {
-    rank = group->lrank_to_lpid[index].lpid;
-    MPIDI_WinComplete_post(MPIDI_Context[0], rank, win);
-  }
+  MPIDI_WinPSCW_info info = {
+  done : 0,
+  win  : win,
+  };
+  MPIDI_Context_post(MPIDI_Context[0], &info.work, MPIDI_WinComplete_post, &info);
+  MPID_PROGRESS_WAIT_WHILE(!info.done);
 
-  MPIR_Group_release(group);
+  MPIR_Group_release(sync->sc.group);
+  sync->sc.group = NULL;
   return mpi_errno;
 }
 
@@ -103,11 +130,12 @@ MPID_Win_post(MPID_Group *group,
   MPID_assert(win->mpid.sync.pw.group == NULL);
   win->mpid.sync.pw.group = group;
 
-  unsigned rank, index;
-  for (index=0; index < group->size; ++index) {
-    rank = group->lrank_to_lpid[index].lpid;
-    MPIDI_WinPost_post(MPIDI_Context[0], rank, win);
-  }
+  MPIDI_WinPSCW_info info = {
+  done : 0,
+  win  : win,
+  };
+  MPIDI_Context_post(MPIDI_Context[0], &info.work, MPIDI_WinPost_post, &info);
+  MPID_PROGRESS_WAIT_WHILE(!info.done);
 
   return mpi_errno;
 }

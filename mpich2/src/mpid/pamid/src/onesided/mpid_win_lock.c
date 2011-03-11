@@ -6,6 +6,17 @@
 #include "mpidi_onesided.h"
 
 
+typedef struct
+{
+  unsigned      peer;
+  int           lock_type;
+  MPID_Win    * win;
+
+  unsigned      done;
+  pami_work_t   work;
+} MPIDI_WinLock_info;
+
+
 static inline void
 MPIDI_WinLockAck_post(pami_context_t   context,
                       unsigned         peer,
@@ -44,22 +55,22 @@ MPIDI_WinLockAdvance(pami_context_t   context,
 }
 
 
-static inline void
+static pami_result_t
 MPIDI_WinLockReq_post(pami_context_t   context,
-                      unsigned         peer,
-                      int              lock_type,
-                      MPID_Win       * win)
+                      void           * _info)
 {
-  MPIDI_Win_control_t info = {
+  MPIDI_WinLock_info* info = (MPIDI_WinLock_info*)_info;
+  MPIDI_Win_control_t msg = {
   type       : MPIDI_WIN_MSGTYPE_LOCKREQ,
   data       : {
     lock       : {
-      type : lock_type,
+      type : info->lock_type,
     },
     },
   };
 
-  MPIDI_WinCtrlSend(context, &info, peer, win);
+  MPIDI_WinCtrlSend(context, &msg, info->peer, info->win);
+  return PAMI_SUCCESS;
 }
 
 
@@ -106,15 +117,17 @@ MPIDI_WinLockAck_proc(pami_context_t              context,
 }
 
 
-static inline void
+static pami_result_t
 MPIDI_WinUnlock_post(pami_context_t   context,
-                     unsigned         peer,
-                     MPID_Win       * win)
+                     void           * _info)
 {
-  MPIDI_Win_control_t info = {
+  MPIDI_WinLock_info* info = (MPIDI_WinLock_info*)_info;
+  MPIDI_Win_control_t msg = {
   type       : MPIDI_WIN_MSGTYPE_UNLOCK,
   };
-  MPIDI_WinCtrlSend(context, &info, peer, win);
+  MPIDI_WinCtrlSend(context, &msg, info->peer, info->win);
+  info->done = 1;
+  return PAMI_SUCCESS;
 }
 
 
@@ -139,7 +152,14 @@ MPID_Win_lock(int       lock_type,
   int mpi_errno = MPI_SUCCESS;
   struct MPIDI_Win_sync_lock* slock = &win->mpid.sync.lock;
 
-  MPIDI_WinLockReq_post(MPIDI_Context[0], rank, lock_type, win);
+  MPIDI_WinLock_info info = {
+  done : 0,
+  peer : rank,
+  win  : win,
+  lock_type : lock_type
+  };
+
+  MPIDI_Context_post(MPIDI_Context[0], &info.work, MPIDI_WinLockReq_post, &info);
   MPID_PROGRESS_WAIT_WHILE(!slock->remote.locked);
 
   return mpi_errno;
@@ -157,7 +177,13 @@ MPID_Win_unlock(int       rank,
   sync->started  = 0;
   sync->complete = 0;
 
-  MPIDI_WinUnlock_post(MPIDI_Context[0], rank, win);
+  MPIDI_WinLock_info info = {
+  done : 0,
+  peer : rank,
+  win  : win,
+  };
+  MPIDI_Context_post(MPIDI_Context[0], &info.work, MPIDI_WinUnlock_post, &info);
+  MPID_PROGRESS_WAIT_WHILE(!info.done);
   sync->lock.remote.locked   = 0;
   return mpi_errno;
 }
