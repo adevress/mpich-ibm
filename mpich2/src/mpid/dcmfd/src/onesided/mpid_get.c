@@ -125,6 +125,8 @@ int MPID_Get(void *origin_addr, int origin_count,
                 int lpid;
                 MPIDU_Onesided_xtra_t xtra = {0};
 
+		origin_addr += dt_true_lb;
+
                 lpid = MPIDU_world_rank(win_ptr, target_rank);
                 MPIDI_Datatype_get_info(target_count, target_datatype,
                         t_dt_contig, t_data_sz, t_dtp, t_dt_true_lb);
