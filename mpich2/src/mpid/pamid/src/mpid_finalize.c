@@ -13,7 +13,8 @@
 */
 int MPID_Finalize()
 {
-  MPIR_Barrier_impl(MPIR_Process.comm_world);
+  int mpierrno = MPI_SUCCESS;
+  MPIR_Barrier_impl(MPIR_Process.comm_world, &mpierrno);
 
   /* ------------------------- */
   /* shutdown request queues   */

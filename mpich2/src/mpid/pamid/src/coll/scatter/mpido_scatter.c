@@ -14,7 +14,8 @@ int MPIDO_Scatter_bcast(void * sendbuf,
 			int recvcount,
 			MPI_Datatype recvtype,
 			int root,
-			MPID_Comm * comm_ptr)
+			MPID_Comm *comm_ptr,
+                        int *mpierrno)
 {
   /* Pretty simple - bcast a temp buffer and copy our little chunk out */
   int contig, nbytes, rc;
@@ -56,7 +57,7 @@ int MPIDO_Scatter_bcast(void * sendbuf,
     }
   }
 
-  rc = MPIDO_Bcast(tempbuf, nbytes*size, MPI_CHAR, root, comm_ptr);
+  rc = MPIDO_Bcast(tempbuf, nbytes*size, MPI_CHAR, root, comm_ptr, mpierrno);
 
   if(rank == root && recvbuf == MPI_IN_PLACE)
     return rc;
@@ -77,7 +78,8 @@ int MPIDO_Scatter(void *sendbuf,
                   int recvcount,
                   MPI_Datatype recvtype,
                   int root,
-                  MPID_Comm * comm_ptr)
+                  MPID_Comm *comm_ptr,
+                  int *mpierrno)
 {
   MPID_Datatype * data_ptr;
   MPI_Aint true_lb = 0;
@@ -127,22 +129,22 @@ int MPIDO_Scatter(void *sendbuf,
   {
     return MPIR_Scatter(sendbuf, sendcount, sendtype,
                         recvbuf, recvcount, recvtype,
-                        root, comm_ptr);
+                        root, comm_ptr, mpierrno);
   }
 
   /* see if we all agree to use bcast scatter */
-  MPIDO_Allreduce(MPI_IN_PLACE, &success, 1, MPI_INT, MPI_BAND, comm_ptr);
+  MPIDO_Allreduce(MPI_IN_PLACE, &success, 1, MPI_INT, MPI_BAND, comm_ptr, mpierrno);
 
   if (!success)
     return MPIR_Scatter(sendbuf, sendcount, sendtype,
                         recvbuf, recvcount, recvtype,
-                        root, comm_ptr);
+                        root, comm_ptr, mpierrno);
 
    sbuf = sendbuf+true_lb;
    rbuf = recvbuf+true_lb;
 
    MPIDI_Update_last_algorithm(comm_ptr, "SCATTER_OPT_BCAST");
    return MPIDO_Scatter_bcast(sbuf, sendcount, sendtype,
-                                 rbuf, recvcount, recvtype,
-                                 root, comm_ptr);
+                              rbuf, recvcount, recvtype,
+                              root, comm_ptr, mpierrno);
 }

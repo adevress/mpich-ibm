@@ -28,7 +28,8 @@ int MPIDO_Gather_reduce(void * sendbuf,
 			int recvcount,
 			MPI_Datatype recvtype,
 			int root,
-			MPID_Comm * comm_ptr)
+			MPID_Comm * comm_ptr,
+			int *mpierrno)
 {
   MPID_Datatype * data_ptr;
   MPI_Aint true_lb;
@@ -92,7 +93,8 @@ int MPIDO_Gather_reduce(void * sendbuf,
                     MPI_INT,
                     MPI_BOR,
                     root,
-                    comm_ptr);
+                    comm_ptr,
+                    mpierrno);
 
   if(rank != root)
     MPIU_Free(tempbuf);
@@ -109,7 +111,8 @@ int MPIDO_Gather(void *sendbuf,
                  int recvcount,
                  MPI_Datatype recvtype,
                  int root,
-                 MPID_Comm *comm_ptr)
+                 MPID_Comm *comm_ptr,
+		 int *mpierrno)
 {
   MPID_Datatype * data_ptr;
   MPI_Aint true_lb = 0;
@@ -147,7 +150,7 @@ int MPIDO_Gather(void *sendbuf,
   {
     return MPIR_Gather(sendbuf, sendcount, sendtype,
                        recvbuf, recvcount, recvtype,
-                       root, comm_ptr);
+                       root, comm_ptr, mpierrno);
   }
 
    if(comm_ptr->mpid.preallreduces[MPID_GATHER_PREALLREDUCE])
@@ -184,7 +187,7 @@ int MPIDO_Gather(void *sendbuf,
    {
     return MPIR_Gather(sendbuf, sendcount, sendtype,
                        recvbuf, recvcount, recvtype,
-                       root, comm_ptr);
+                       root, comm_ptr, mpierrno);
    }
 
    if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_GATHER])
@@ -222,5 +225,5 @@ int MPIDO_Gather(void *sendbuf,
    MPIDI_Update_last_algorithm(comm_ptr, "GATHER_OPT_REDUCE");
    return MPIDO_Gather_reduce(sbuf, sendcount, sendtype,
                               rbuf, recvcount, recvtype,
-                              root, comm_ptr);
+                              root, comm_ptr, mpierrno);
 }

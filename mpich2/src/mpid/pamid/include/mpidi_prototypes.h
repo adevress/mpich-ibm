@@ -156,30 +156,30 @@ void MPIDI_Comm_coll_query  (MPID_Comm *comm);
 void MPIDI_Comm_coll_envvars(MPID_Comm *comm);
 void MPIDI_Coll_register    (void);
 
-int MPIDO_Bcast(void *buffer, int count, MPI_Datatype dt, int root, MPID_Comm *comm_ptr);
-int MPIDO_Barrier(MPID_Comm *comm_ptr);
+int MPIDO_Bcast(void *buffer, int count, MPI_Datatype dt, int root, MPID_Comm *comm_ptr, int *mpierrno);
+int MPIDO_Barrier(MPID_Comm *comm_ptr, int *mpierrno);
 int MPIDO_Allreduce(void *sbuffer, void *rbuffer, int count,
-                    MPI_Datatype datatype, MPI_Op op, MPID_Comm *comm_ptr);
+                    MPI_Datatype datatype, MPI_Op op, MPID_Comm *comm_ptr, int *mpierrno);
 int MPIDO_Allgather(void *sendbuf, int sendcount, MPI_Datatype sendtype,
                     void *recvbuf, int recvcount, MPI_Datatype recvtype,
-                    MPID_Comm *comm_ptr);
+                    MPID_Comm *comm_ptr, int *mpierrno);
 
 int MPIDO_Allgatherv(void *sendbuf, int sendcount, MPI_Datatype sendtype,
                      void *recvbuf, int *recvcounts, int *displs,
-                     MPI_Datatype recvtype, MPID_Comm * comm_ptr);
+                     MPI_Datatype recvtype, MPID_Comm * comm_ptr, int *mpierrno);
 
 int MPIDO_Gather(void *sendbuf, int sendcount, MPI_Datatype sendtype,
                  void *recvbuf, int recvcount, MPI_Datatype recvtype,
-                 int root, MPID_Comm * comm_ptr);
+                 int root, MPID_Comm * comm_ptr, int *mpierrno);
 
 int MPIDO_Scatter(void *sendbuf, int sendcount, MPI_Datatype sendtype,
                   void *recvbuf, int recvcount, MPI_Datatype recvtype,
-                  int root, MPID_Comm * comm_ptr);
+                  int root, MPID_Comm * comm_ptr, int *mpierrno);
 
 int MPIDO_Scatterv(void *sendbuf, int *sendcounts, int *displs,
                    MPI_Datatype sendtype,
                    void *recvbuf, int recvcount, MPI_Datatype recvtype,
-                   int root, MPID_Comm * comm_ptr);
+                   int root, MPID_Comm * comm_ptr, int *mpierrno);
 
 
 int MPItoPAMI(MPI_Datatype dt, pami_dt *pdt, MPI_Op op, pami_op *pop, int *musupport);

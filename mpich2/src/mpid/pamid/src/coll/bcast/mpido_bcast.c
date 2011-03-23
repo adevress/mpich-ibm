@@ -20,7 +20,8 @@ int MPIDO_Bcast(void *buffer,
                 int count,
                 MPI_Datatype datatype,
                 int root,
-                MPID_Comm *comm_ptr)
+                MPID_Comm *comm_ptr,
+                int *mpierrno)
 {
    TRACE_ERR("in mpido_bcast\n");
    int data_size, data_contig, rc;
@@ -38,7 +39,7 @@ int MPIDO_Bcast(void *buffer,
       return MPI_SUCCESS;
    }
    if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_BROADCAST] == 0)
-      return MPIR_Bcast_intra(buffer, count, datatype, root, comm_ptr);
+     return MPIR_Bcast_intra(buffer, count, datatype, root, comm_ptr, mpierrno);
 
    MPIDI_Datatype_get_info(count, datatype,
                data_contig, data_size, data_ptr, data_true_lb);
