@@ -125,4 +125,70 @@ MPIX_Torus2rank(int *coords, int *rank)
   return MPI_SUCCESS;
 }
 
+typedef struct
+{
+  pami_geometry_t geometry;
+  pami_work_t state;
+  pami_configuration_t *configs;
+  size_t num_configs;
+  pami_event_function fn;
+  void* cookie;
+} MPIX_Data_t;
+
+void _cb_done(void *ctxt, void *data, pami_result_t err)
+{
+   int *active = (int *)data;
+   (*active)--;
+}
+
+pami_result_t
+update_comm_geometry(pami_context_t context, void *cookie)
+{
+  MPIX_Data_t *data = (MPIX_Data_t *)cookie;
+  
+  return PAMI_Geometry_update(data->geometry,
+                              data->configs,
+                              data->num_configs,
+                              context,
+                              data->fn,
+                              data->cookie);
+}
+
+int
+MPIX_Comm_Update(MPI_Comm comm, int optimize)
+{
+  MPID_Comm * comm_ptr;
+  pami_result_t res;
+  pami_configuration_t configuration;
+  size_t numconfigs = 0;
+  int geom_update = 1;
+  MPIX_Data_t data;
+  
+  MPID_Comm_get_ptr(comm, comm_ptr);
+  if (!comm_ptr || comm == MPI_COMM_NULL)
+    return MPI_ERR_COMM;
+  
+  configuration.name = PAMI_GEOMETRY_OPTIMIZE;
+  configuration.value.intval = 0;
+  if (optimize)
+    configuration.value.intval = 1;
+  data.configs = &configuration;
+  data.num_configs = numconfigs;
+  data.fn = _cb_done;
+  data.cookie = &geom_update;
+  data.geometry = comm_ptr->mpid.geometry;
+  
+  res = PAMI_Context_post(MPIDI_Context[0], &data.state, 
+                          update_comm_geometry, (void *)&data);
+  
+  if (res != PAMI_SUCCESS)
+    return MPI_ERR_COMM;
+  
+  /* Determine what protocols are available for this comm/geom */
+  MPIDI_Comm_coll_query(comm_ptr);
+  MPIDI_Comm_coll_envvars(comm_ptr);
+  
+  return MPI_SUCCESS;
+}
+
 #endif

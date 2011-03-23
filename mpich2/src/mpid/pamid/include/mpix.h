@@ -73,6 +73,14 @@ extern "C" {
    */
   int MPIX_Torus2rank(int *coords, int *rank);
 
+   /**
+   * \brief Optimize/Deoptimize a communicator by stripping/adding
+   *        platform specific optimizations (i.e. class routes support for
+   *        efficient bcast/reductions).
+   * \param[in] MPI communicator.
+   * \param[in] boolean optimize (0 or 1)
+   */
+  int MPIX_Comm_Update(MPI_Comm comm, int optimize);
 
   /**
    * \brief Print the current system stack
