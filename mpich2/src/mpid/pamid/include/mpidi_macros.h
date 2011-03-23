@@ -95,4 +95,23 @@ _dt_contig_out, _data_sz_out, _dt_ptr, _dt_true_lb)             \
 }
 
 
+static inline void
+MPIDI_Context_post(pami_context_t       context,
+                   pami_work_t        * work,
+                   pami_work_function   fn,
+                   void               * cookie)
+{
+  if(MPIDI_Process.context_post)
+    {
+      pami_result_t rc;
+      rc = PAMI_Context_post(context, work, fn, cookie);
+      MPID_assert(rc == PAMI_SUCCESS);
+    }
+  else
+    {
+      fn(context, cookie);
+    }
+}
+
+
 #endif
