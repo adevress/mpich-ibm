@@ -189,5 +189,19 @@ MPIX_Comm_update(MPI_Comm comm, int optimize)
   return MPI_SUCCESS;
 }
 
+int
+MPIX_Get_last_algorithm_name(MPI_Comm comm, char *protocol, int length)
+{
+   MPID_Comm *comm_ptr;
+   MPID_Comm_get_ptr(comm, comm_ptr);
+
+   if(!comm_ptr || comm == MPI_COMM_NULL)
+      return MPI_ERR_COMM;
+   if(!protocol || length <= 0)
+      return MPI_ERR_ARG;
+   strncpy(protocol, comm_ptr->mpid.last_algorithm, length);
+   return MPI_SUCCESS;
+}
+
 
 #endif
