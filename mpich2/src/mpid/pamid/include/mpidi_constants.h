@@ -36,6 +36,7 @@
 #define MPID_COLL_QUERY 2
 /* Can we cache stuff? If not set to ALWAYS_QUERY */
 #define MPID_COLL_ALWAYS_QUERY 3
+#define MPID_COLL_CHECK_FN_REQUIRED 4
 /** \} */
 
 #endif
