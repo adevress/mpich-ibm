@@ -93,7 +93,7 @@ extern "C" {
     * \brief Return the most recently used collective protocol name
     * param[in] comm The communicator that collective was issued on
     * param[out] protocol Storage space for the string name
-    * param[in] length Length available for the string name. 
+    * param[in] length Length available for the string name.
     * Note: Max internal length is 100
     */
   int MPIX_Get_last_algorithm_name(MPI_Comm comm, char *protocol, int length);

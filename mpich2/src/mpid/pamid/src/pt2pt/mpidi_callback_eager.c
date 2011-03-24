@@ -1,6 +1,6 @@
 /*  (C)Copyright IBM Corp.  2007, 2011  */
 /**
- * \file src/pt2pt/mpidi_callback.c
+ * \file src/pt2pt/mpidi_callback_eager.c
  * \brief The callback for a new eager message
  */
 #include <mpidimpl.h>

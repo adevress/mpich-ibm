@@ -169,7 +169,7 @@ struct MPIDI_Comm
   /* could probably union these two though? */
   char user_selectedvar[PAMI_XFER_COUNT];
   pami_metadata_t user_metadata[PAMI_XFER_COUNT];
-  char last_algorithm[100]; 
+  char last_algorithm[100];
   char preallreduces[MPID_NUM_PREALLREDUCES];
   /* \todo Need to figure out how to deal with algorithms above the pami level */
   char allgathers[4];
