@@ -7,7 +7,7 @@
 #include "onesided/mpidi_onesided.h"
 
 pami_client_t   MPIDI_Client;
-#define MAX_CONTEXTS 16
+#define MAX_CONTEXTS 64
 pami_context_t MPIDI_Context[MAX_CONTEXTS];
 
 #ifdef MPIDI_USE_OPA
