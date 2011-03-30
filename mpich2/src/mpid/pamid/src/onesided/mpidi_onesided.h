@@ -64,6 +64,7 @@ typedef struct
   MPID_Win *win;
   MPIDI_Win_requesttype_t type;
   pami_endpoint_t dest;
+  size_t offset;
 
   struct
   {
@@ -80,6 +81,7 @@ typedef struct
 
   MPIDI_Datatype origin_dt;
   MPIDI_Datatype target_dt;
+  pami_task_t    target_rank;
 
   void     *buffer;
   uint32_t  buffer_free;
