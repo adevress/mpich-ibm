@@ -13,7 +13,7 @@ MPIDI_Put(pami_context_t   context,
   MPIDI_Win_request *req = (MPIDI_Win_request*)_req;
   pami_result_t rc;
 
-  pami_task_t task = MPID_VCR_GET_LPID(req->win->comm_ptr->vcr, req->target_rank);
+  pami_task_t task = MPID_VCR_GET_LPID(req->win->comm_ptr->vcr, req->target.rank);
   rc = PAMI_Endpoint_create(MPIDI_Client, task, 0, &req->dest);
   MPID_assert(rc == PAMI_SUCCESS);
 
@@ -30,11 +30,11 @@ MPIDI_Put(pami_context_t   context,
   },
   rdma : {
     local  : {
-      mr     : &req->memregion,
+      mr     : &req->origin.memregion,
       offset : 0,
     },
     remote : {
-      mr     : &req->win->mpid.info[req->target_rank].memregion,
+      mr     : &req->win->mpid.info[req->target.rank].memregion,
       offset : req->offset,
     },
   },
@@ -45,13 +45,13 @@ MPIDI_Put(pami_context_t   context,
 
   int index;
   TRACE_ERR("Start       num=%d  l-addr=%p  r-base=%p  r-offset=%zu\n",
-            req->target_dt.num_contig, req->buffer, req->win->mpid.info[req->target_rank].base_addr, req->offset);
-  for (index=0; index < req->target_dt.num_contig; ++index) {
+            req->target.dt.num_contig, req->buffer, req->win->mpid.info[req->target.rank].base_addr, req->offset);
+  for (index=0; index < req->target.dt.num_contig; ++index) {
     MPID_PROGRESS_WAIT_WHILE(index > req->win->mpid.sync.started - req->win->mpid.sync.complete + MPIDI_Process.rma_pending);
     ++req->win->mpid.sync.started;
 
-    params.rma.bytes          = req->target_dt.map[index].DLOOP_VECTOR_LEN;
-    params.rdma.remote.offset = req->offset + (size_t)req->target_dt.map[index].DLOOP_VECTOR_BUF;
+    params.rma.bytes          = req->target.dt.map[index].DLOOP_VECTOR_LEN;
+    params.rdma.remote.offset = req->offset + (size_t)req->target.dt.map[index].DLOOP_VECTOR_BUF;
 
 #ifdef TRACE_ON
     unsigned* buf = (unsigned*)(req->buffer + params.rdma.local.offset);
@@ -64,7 +64,7 @@ MPIDI_Put(pami_context_t   context,
     params.rdma.local.offset += params.rma.bytes;
   }
 
-  MPIDI_Win_datatype_unmap(&req->target_dt);
+  MPIDI_Win_datatype_unmap(&req->target.dt);
 
   return PAMI_SUCCESS;
 }
@@ -105,13 +105,13 @@ MPID_Put(void         *origin_addr,
 
   MPIDI_Win_datatype_basic(origin_count,
                            origin_datatype,
-                           &req->origin_dt);
+                           &req->origin.dt);
   MPIDI_Win_datatype_basic(target_count,
                            target_datatype,
-                           &req->target_dt);
-  MPID_assert(req->origin_dt.size == req->target_dt.size);
+                           &req->target.dt);
+  MPID_assert(req->origin.dt.size == req->target.dt.size);
 
-  if ( (req->origin_dt.size == 0) ||
+  if ( (req->origin.dt.size == 0) ||
        (target_rank == MPI_PROC_NULL))
     {
       MPIU_Free(req);
@@ -129,18 +129,18 @@ MPID_Put(void         *origin_addr,
                             target_count,
                             target_datatype);
     }
-  req->target_rank = target_rank;
+  req->target.rank = target_rank;
 
 
-  if (req->origin_dt.contig)
+  if (req->origin.dt.contig)
     {
       req->buffer_free = 0;
-      req->buffer      = origin_addr + req->origin_dt.true_lb;
+      req->buffer      = origin_addr + req->origin.dt.true_lb;
     }
   else
     {
       req->buffer_free = 1;
-      req->buffer      = MPIU_Malloc(req->origin_dt.size);
+      req->buffer      = MPIU_Malloc(req->origin.dt.size);
       MPID_assert(req->buffer != NULL);
 
       int mpi_errno = 0;
@@ -148,7 +148,7 @@ MPID_Put(void         *origin_addr,
                                  origin_count,
                                  origin_datatype,
                                  req->buffer,
-                                 req->origin_dt.size,
+                                 req->origin.dt.size,
                                  MPI_CHAR);
       MPID_assert(mpi_errno == MPI_SUCCESS);
     }
@@ -158,15 +158,15 @@ MPID_Put(void         *origin_addr,
   pami_result_t rc;
   rc = PAMI_Memregion_create(MPIDI_Context[0],
                              req->buffer,
-                             req->origin_dt.size,
+                             req->origin.dt.size,
                              &length_out,
-                             &req->memregion);
+                             &req->origin.memregion);
   MPID_assert(rc == PAMI_SUCCESS);
-  MPID_assert(req->origin_dt.size == length_out);
+  MPID_assert(req->origin.dt.size == length_out);
 
 
-  MPIDI_Win_datatype_map(&req->target_dt);
-  win->mpid.sync.total += req->target_dt.num_contig;
+  MPIDI_Win_datatype_map(&req->target.dt);
+  win->mpid.sync.total += req->target.dt.num_contig;
 
 
   MPIDI_Put(MPIDI_Context[0], req);

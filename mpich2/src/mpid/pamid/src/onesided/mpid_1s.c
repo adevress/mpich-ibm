@@ -22,13 +22,13 @@ MPIDI_Win_DoneCB(pami_context_t  context,
             {
               int mpi_errno;
               mpi_errno = MPIR_Localcopy(req->buffer,
-                                         req->origin_dt.size,
+                                         req->origin.dt.size,
                                          MPI_CHAR,
                                          req->origin.addr,
                                          req->origin.count,
                                          req->origin.datatype);
               MPID_assert(mpi_errno == MPI_SUCCESS);
-              MPID_Datatype_release(req->origin_dt.pointer);
+              MPID_Datatype_release(req->origin.dt.pointer);
             }
           MPIU_Free(req->buffer);
         }

@@ -68,20 +68,22 @@ typedef struct
 
   struct
   {
-    void * addr;
-    int    count;
-    MPI_Datatype datatype;
+    pami_memregion_t memregion;
+#if 0
+    /** \todo: use this to conditionally destroy the memregion */
+    uint32_t         memregion_used;
+#endif
+    void            *addr;
+    int              count;
+    MPI_Datatype     datatype;
+    MPIDI_Datatype   dt;
   } origin;
 
-  pami_memregion_t memregion;
-#if 0
-  /** \todo: use this to conditionally destroy the memregion */
-  uint32_t         memregion_used;
-#endif
-
-  MPIDI_Datatype origin_dt;
-  MPIDI_Datatype target_dt;
-  pami_task_t    target_rank;
+  struct
+  {
+    pami_task_t      rank; /**< Comm-local rank */
+    MPIDI_Datatype   dt;
+  } target;
 
   void     *buffer;
   uint32_t  buffer_free;
