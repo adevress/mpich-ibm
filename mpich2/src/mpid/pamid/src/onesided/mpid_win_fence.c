@@ -14,6 +14,7 @@ MPID_Win_fence(int       assert,
 
   struct MPIDI_Win_sync* sync = &win->mpid.sync;
   MPID_PROGRESS_WAIT_WHILE(sync->started != sync->complete);
+  sync->total    = 0;
   sync->started  = 0;
   sync->complete = 0;
 

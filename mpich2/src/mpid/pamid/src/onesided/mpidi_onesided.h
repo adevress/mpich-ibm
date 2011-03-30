@@ -73,18 +73,16 @@ typedef struct
   } origin;
 
   pami_memregion_t memregion;
+#if 0
   /** \todo: use this to conditionally destroy the memregion */
-  /* uint32_t         memregion_used; */
-
-  uint32_t ops_started;
-  uint32_t ops_complete;
+  uint32_t         memregion_used;
+#endif
 
   MPIDI_Datatype origin_dt;
   MPIDI_Datatype target_dt;
 
-  void * pack_buffer;
-  /* size_t pack_length; */
-  uint32_t pack_free;
+  void     *buffer;
+  uint32_t  buffer_free;
 } MPIDI_Win_request;
 
 

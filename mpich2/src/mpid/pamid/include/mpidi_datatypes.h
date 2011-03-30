@@ -230,11 +230,15 @@ struct MPIDI_Win
   struct MPIDI_Win_info  *info;    /**< allocated array of collective info             */
   struct MPIDI_Win_sync
   {
-    uint32_t type;   /**< current epoch type                                   */
+#if 0
+    /** \todo optimize some of the synchronization assertion */
     uint32_t assert; /**< MPI_MODE_* bits asserted at epoch start              */
+#endif
 
-    uint32_t started;
-    uint32_t complete;
+    /* These fields are reset by the sync functions */
+    uint32_t total;    /**< The number of PAMI requests that we know about (updated only by calling thread) */
+    uint32_t started;  /**< The number of PAMI requests made (updated only in the context_post callback) */
+    uint32_t complete; /**< The number of completed PAMI requests (only updated by the done callbacks) */
 
     struct MPIDI_Win_sync_pscw
     {

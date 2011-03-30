@@ -12,18 +12,16 @@ MPIDI_Win_DoneCB(pami_context_t  context,
                  pami_result_t   result)
 {
   MPIDI_Win_request *req = (MPIDI_Win_request*)cookie;
-  ++req->ops_complete;
+  ++req->win->mpid.sync.complete;
 
-  if (req->ops_started == req->ops_complete)
+  if (req->win->mpid.sync.total == req->win->mpid.sync.complete)
     {
-      ++req->win->mpid.sync.complete;
-
-      if (req->pack_free)
+      if (req->buffer_free)
         {
           if (req->type == MPIDI_WIN_REQUEST_GET)
             {
               int mpi_errno;
-              mpi_errno = MPIR_Localcopy(req->pack_buffer,
+              mpi_errno = MPIR_Localcopy(req->buffer,
                                          req->origin_dt.size,
                                          MPI_CHAR,
                                          req->origin.addr,
@@ -32,9 +30,8 @@ MPIDI_Win_DoneCB(pami_context_t  context,
               MPID_assert(mpi_errno == MPI_SUCCESS);
               MPID_Datatype_release(req->origin_dt.pointer);
             }
-          MPIU_Free(req->pack_buffer);
+          MPIU_Free(req->buffer);
         }
-
       MPIU_Free(req);
     }
   MPIDI_Progress_signal();

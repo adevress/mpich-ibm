@@ -33,14 +33,11 @@ MPID_Put(void         *origin_addr,
          MPI_Datatype  target_datatype,
          MPID_Win     *win)
 {
-  int mpi_errno = MPI_SUCCESS;
   pami_result_t rc;
 
   MPIDI_Win_request *req = MPIU_Calloc0(1, MPIDI_Win_request);
   req->win          = win;
   req->type         = MPIDI_WIN_REQUEST_PUT;
-  req->ops_complete = 0;
-  req->ops_started  = 1;
 
   size_t offset = target_disp * win->mpid.info[target_rank].disp_unit;
 
@@ -56,7 +53,7 @@ MPID_Put(void         *origin_addr,
        (target_rank == MPI_PROC_NULL))
     {
       MPIU_Free(req);
-      return mpi_errno;
+      return MPI_SUCCESS;
     }
 
   /* If the get is a local operation, do it here */
@@ -76,24 +73,22 @@ MPID_Put(void         *origin_addr,
   rc = PAMI_Endpoint_create(MPIDI_Client, task, 0, &req->dest);
   MPID_assert(rc == PAMI_SUCCESS);
 
-  ++win->mpid.sync.started;
-
   if (req->origin_dt.contig)
     {
-      req->pack_buffer = origin_addr + req->origin_dt.true_lb;
-      req->pack_free = 0;
+      req->buffer_free = 0;
+      req->buffer      = origin_addr + req->origin_dt.true_lb;
     }
   else
     {
-      req->pack_free = 1;
-      req->pack_buffer = MPIU_Malloc(req->origin_dt.size);
-      MPID_assert(req->pack_buffer != NULL);
+      req->buffer_free = 1;
+      req->buffer      = MPIU_Malloc(req->origin_dt.size);
+      MPID_assert(req->buffer != NULL);
 
       int mpi_errno = 0;
       mpi_errno = MPIR_Localcopy(origin_addr,
                                  origin_count,
                                  origin_datatype,
-                                 req->pack_buffer,
+                                 req->buffer,
                                  req->origin_dt.size,
                                  MPI_CHAR);
       MPID_assert(mpi_errno == MPI_SUCCESS);
@@ -102,7 +97,7 @@ MPID_Put(void         *origin_addr,
 
   size_t length_out;
   rc = PAMI_Memregion_create(MPIDI_Context[0],
-                             req->pack_buffer,
+                             req->buffer,
                              req->origin_dt.size,
                              &length_out,
                              &req->memregion);
@@ -111,7 +106,7 @@ MPID_Put(void         *origin_addr,
 
 
   MPIDI_Win_datatype_map(&req->target_dt);
-  req->ops_started = req->target_dt.num_contig;
+  win->mpid.sync.total += req->target_dt.num_contig;
 
   pami_rput_simple_t params = {
   rma  : {
@@ -141,15 +136,16 @@ MPID_Put(void         *origin_addr,
 
   int index;
   TRACE_ERR("Start       num=%d  l-addr=%p  r-base=%p  r-offset=%zu\n",
-            req->ops_started, req->pack_buffer, win->mpid.info[target_rank].base_addr, offset);
-  for (index=0; index < req->ops_started; ++index) {
-    MPID_PROGRESS_WAIT_WHILE(index > req->ops_complete + MPIDI_Process.rma_pending);
+            req->target_dt.num_contig, req->buffer, win->mpid.info[target_rank].base_addr, offset);
+  for (index=0; index < req->target_dt.num_contig; ++index) {
+    MPID_PROGRESS_WAIT_WHILE(index > win->mpid.sync.started - win->mpid.sync.complete + MPIDI_Process.rma_pending);
+    ++win->mpid.sync.started;
 
     params.rma.bytes          = req->target_dt.map[index].DLOOP_VECTOR_LEN;
     params.rdma.remote.offset = offset + (size_t)req->target_dt.map[index].DLOOP_VECTOR_BUF;
 
 #ifdef TRACE_ON
-    unsigned* buf = (unsigned*)(req->pack_buffer + params.rdma.local.offset);
+    unsigned* buf = (unsigned*)(req->buffer + params.rdma.local.offset);
 #endif
     TRACE_ERR("  Sub     index=%d  bytes=%zu  l-offset=%zu  r-offset=%zu  buf=%p  *(int*)buf=0x%08x\n",
               index, params.rma.bytes, params.rdma.local.offset, params.rdma.remote.offset, buf, *buf);
@@ -162,5 +158,5 @@ MPID_Put(void         *origin_addr,
   MPIDI_Win_datatype_unmap(&req->target_dt);
 
 
-  return mpi_errno;
+  return MPI_SUCCESS;
 }
