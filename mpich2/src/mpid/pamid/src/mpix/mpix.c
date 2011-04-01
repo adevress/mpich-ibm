@@ -70,6 +70,13 @@ void MPIX_Dump_stacks()
 }
 
 
+void
+MPIX_Progress_poke()
+{
+  MPID_Progress_poke();
+}
+
+
 int
 MPIX_Hardware(MPIX_Hardware_t *hw)
 {

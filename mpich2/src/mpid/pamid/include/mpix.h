@@ -17,6 +17,15 @@ extern "C" {
 #endif
 
 
+  /**
+   * \brief Print the current system stack
+   *
+   * The first frame (this function) is discarded to make the trace look nicer.
+   */
+  void MPIX_Dump_stacks();
+
+  void MPIX_Progress_poke();
+
 #define MPIX_TORUS_MAX_DIMS 5 /* This is the maximum physical size of the torus */
   typedef struct
   {
@@ -82,13 +91,6 @@ extern "C" {
    */
   int MPIX_Comm_update(MPI_Comm comm, int optimize);
 
-  /**
-   * \brief Print the current system stack
-   *
-   * The first frame (this function) is discarded to make the trace look nicer.
-   */
-  void MPIX_Dump_stacks();
-
    /**
     * \brief Return the most recently used collective protocol name
     * param[in] comm The communicator that collective was issued on
@@ -97,7 +99,6 @@ extern "C" {
     * Note: Max internal length is 100
     */
   int MPIX_Get_last_algorithm_name(MPI_Comm comm, char *protocol, int length);
-
 
 
 #if defined(__cplusplus)
