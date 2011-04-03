@@ -1,77 +1,11 @@
 SUBDIRS_otherlangs = f77 cxx f90
 SUBDIRS_threadsdir = threads
 SUBDIRS = util attr basic datatype coll comm errhan group info init pt2pt rma spawn topo io @otherlangs@ @threadsdir@ errors manual perf .
-ROPTS =
-
-# This target is like the "testing*" ones, except that it has
-# the following format:
-#
-#	"testrun"[<tag>][+<id>][_<option>[_<option>...]]
-#
-# Where <tag> will be appended to "testlist" and used as the list
-# of tests to run. Each _<option> will be added to the "runtests"
-# commandline as "-<option>" (i.e. the underscore changed to dash).
-# Additional (more complex) options may be passed using "ROPTS",
-# or environment variables specific to the system. +<id> is used
-# to make the summary file distinct from other runs, it is removed from
-# potential options as well as testlist suffix.
-#
-# For example, 1) To run the standard "testlist" in VN mode:
-#
-#	make testrun_virtualNodeMode
-#
-# 2) To use mpirun in DUAL mode:
-#
-#	make testrun_dualMode ROPTS="-usempirun \
-#		-partition=R00-M0-N03-J00 -nofree"
-#
-# 3) To use TXYZ mapping for VN mode:
-#
-#	CIORUNOPTIONS="--nodeRankMap TXYZ" make testrun_virtualNodeMode
-#
-# The XML summary file will have the entire target string appended,
-# for example #1 it would be "summary-testrun_virtualNodeMode.xml".
-#
-testrun testrun%:
-	targ="$@";\
-	list="$${targ%%_*}";\
-	opts="$${targ#$${list}}"; opts="$${opts//_/ -}";\
-	list="$${list#testrun}"; list="$${list%+*}";\
-	./runtests -srcdir=$(srcdir) -tests=testlist$$list \
-		-xmlfile=summary-$$targ.xml \
-		$$opts $(ROPTS) -nospawn -datestamp
 
 testing:
 	./runtests -srcdir=$(srcdir) -tests=testlist \
-		-xmlfile=summary.xml -nospawn -datestamp
-testingvnm:
-	./runtests -srcdir=$(srcdir) -tests=testlist \
-		-virtualNodeMode -xmlfile=summaryvnm.xml -nospawn -datestamp \
-		-nodemap=TXYZ
-testingdual:
-	./runtests -srcdir=$(srcdir) -tests=testlist \
-		-dualMode -xmlfile=summarydual.xml -nospawn -datestamp \
-		-nodemap=TXYZ
-testingio:
-	./runtests -srcdir=$(srcdir) -tests=iotestlist -datestamp \
-		-xmlfile=summaryio.xml -norma -nospawn
-
-testing-mpirun:
-	./runtests -srcdir=$(srcdir) -tests=testlist \
-		-xmlfile=summary.xml -nospawn -datestamp \
-		-usempirun -nofree -verbose
-testingvnm-mpirun:
-	./runtests -srcdir=$(srcdir) -tests=testlist \
-		-virtualNodeMode -xmlfile=summaryvnm.xml -nospawn -datestamp \
-		-usempirun -nofree -verbose -nodemap=TXYZ
-testingdual-mpirun:
-	./runtests -srcdir=$(srcdir) -tests=testlist \
-		-dualMode -xmlfile=summarydual.xml -nospawn -datestamp \
-		-usempirun -nofree -verbose -nodemap=TXYZ
-testingio-mpirun:
-	./runtests -srcdir=$(srcdir) -tests=iotestlist -datestamp \
-         -xmlfile=summaryio.xml -norma -nospawn  \
-         -usempirun -nofree -verbose
+		   -nospawn \
+		   -xmlfile=summary.xml
 clean-local:
 	-rm -f summary.xml
 
