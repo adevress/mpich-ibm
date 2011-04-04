@@ -12,16 +12,163 @@
 
 #include <opa_primitives.h>
 #include <mpiutil.h>
+#include <malloc.h>
 
+#define MPIDI_THREAD_ID()       Kernel_ProcessorID()
 
-#ifdef MPIDI_USE_OPA
+#define MPIDI_MUTEX_L2_ATOMIC   1
 
-#include <kernel/location.h>
-#define MPIDI_THREAD_ID() Kernel_ProcessorID()
+#if   MPIDI_MUTEX_L2_ATOMIC
+
+#define MUTEX_FAIL 0x8000000000000000UL
+
+#include "kernel/location.h"
+#include "kernel/memory.h"
+#include "l2/atomic.h"
+
 
 #define  MPIDI_MAX_MUTEXES 16
-extern OPA_int_t MPIDI_Mutex_vector [MPIDI_MAX_MUTEXES];
-extern uint32_t  MPIDI_Mutex_counter[MPIDI_MAX_THREADS][MPIDI_MAX_MUTEXES];
+typedef struct _mpidi_mutex
+{
+  uint64_t     counter;
+  uint64_t     bound;
+} MPIDI_Mutex_t;
+
+extern  MPIDI_Mutex_t *   MPIDI_Mutex_vector;
+extern  uint32_t          MPIDI_Mutex_counter[MPIDI_MAX_THREADS][MPIDI_MAX_MUTEXES];
+
+/**
+ *  \brief Initialize a mutex.
+ *
+ *  In this API, mutexes are acessed via indices from
+ *  0..MPIDI_MAX_MUTEXES. The mutexes are recursive
+ */
+static inline int
+MPIDI_Mutex_initialize()
+{
+  size_t i, j;
+
+  MPIDI_Mutex_vector = (MPIDI_Mutex_t *) memalign(4096, 4096 /*sizeof (MPIDI_Mutex_t) * MPIDI_MAX_MUTEXES*/);
+  int rc = Kernel_L2AtomicsAllocate(MPIDI_Mutex_vector, 4096 /*sizeof(MPIDI_Mutex_t) * MPIDI_MAX_MUTEXES*/);
+
+  if (rc != 0) {
+    fprintf(stderr, "L2 Atomic Allocation Failed\n");
+    MPID_abort ();
+  }
+
+  for (i=0; i<MPIDI_MAX_MUTEXES; ++i) {
+    L2_AtomicStore(&(MPIDI_Mutex_vector[i].counter), 0);
+    L2_AtomicStore(&(MPIDI_Mutex_vector[i].bound), 1);
+  }
+
+  for (i=0; i<MPIDI_MAX_MUTEXES; ++i) {
+    for (j=0; j<MPIDI_MAX_THREADS; ++j) {
+      MPIDI_Mutex_counter[j][i] = 0;
+    }
+  }
+
+  return 0;
+}
+
+/**
+ *  \brief Try to acquire a mutex identified by an index.
+ *  \param[in] m Index of the mutex
+ *  \return 0    Lock successfully acquired
+ *  \return 1    Lock was not acquired
+ */
+static inline int
+MPIDI_Mutex_try_acquire(unsigned m)
+{
+  size_t tid = MPIDI_THREAD_ID();
+
+  MPID_assert(m < MPIDI_MAX_MUTEXES);
+
+  if (MPIDI_Mutex_counter[tid][m] >= 1) {
+    ++MPIDI_Mutex_counter[tid][m];
+    return 0;
+  }
+
+  MPIDI_Mutex_t *mutex  = &(MPIDI_Mutex_vector[m]);
+  size_t rc = L2_AtomicLoadIncrementBounded(&mutex->counter);
+
+  if (rc == MUTEX_FAIL)
+    return 1;
+
+  MPIDI_Mutex_counter[tid][m] =  1;
+  return 0;   /* Lock succeeded */
+}
+
+
+/**
+ *  \brief Acquire a mutex identified by an index.
+ *  \param[in] m Index of the mutex
+ *  \return 0    Lock successfully acquired
+ *  \return 1    Fail
+ */
+static inline int
+MPIDI_Mutex_acquire(unsigned m)
+{
+  size_t tid = MPIDI_THREAD_ID();
+
+  MPID_assert(m < MPIDI_MAX_MUTEXES);
+
+  if (unlikely(MPIDI_Mutex_counter[tid][m] >= 1)) {
+    ++MPIDI_Mutex_counter[tid][m];
+    return 0;
+  }
+
+  MPIDI_Mutex_t *mutex  = &(MPIDI_Mutex_vector[m]);
+  size_t rc = 0;
+  do {
+    rc = L2_AtomicLoadIncrementBounded(&mutex->counter);
+  } while (rc == MUTEX_FAIL);
+
+  MPIDI_Mutex_counter[tid][m] =  1;
+  return 0;
+}
+
+
+/**
+ *  \brief Release a mutex identified by an index.
+ *  \param[in] m Index of the mutex
+ *  \return 0    Lock successfully released
+ *  \return 1    Fail
+ */
+static inline int
+MPIDI_Mutex_release(unsigned m)
+{
+  size_t tid = MPIDI_THREAD_ID();
+  MPID_assert(m < MPIDI_MAX_MUTEXES);
+  /* Verify this thread is the owner of this lock */
+  MPID_assert(MPIDI_Mutex_counter[tid][m] > 0);
+
+  --MPIDI_Mutex_counter[tid][m];
+  MPID_assert(MPIDI_Mutex_counter[tid][m] >= 0);
+  if (unlikely(MPIDI_Mutex_counter[tid][m] > 0))
+    return 0;    /* Future calls will release the lock to other threads */
+
+  /* Wait till all the writes in the critical sections from this
+     thread have completed and invalidates have been delivered */
+  //OPA_read_write_barrier();
+
+  /* Release the lock */
+  L2_AtomicStore(&(MPIDI_Mutex_vector[m].counter), 0);
+
+  return 0;
+}
+
+static inline void MPIDI_Mutex_sync () {
+  OPA_read_write_barrier();
+}
+
+#elif MPIDI_MUTEX_LLSC
+
+#include <kernel/location.h>
+
+#define  MPIDI_MAX_MUTEXES 16
+typedef OPA_int_t MPIDI_Mutex_t;
+extern  MPIDI_Mutex_t MPIDI_Mutex_vector [MPIDI_MAX_MUTEXES];
+extern  uint32_t      MPIDI_Mutex_counter[MPIDI_MAX_THREADS][MPIDI_MAX_MUTEXES];
 
 /**
  *  \brief Initialize a mutex.
@@ -66,11 +213,12 @@ MPIDI_Mutex_try_acquire(unsigned m)
     return 0;
   }
 
-  old_val = OPA_LL_int(&(MPIDI_Mutex_vector[m]));
+  MPIDI_Mutex_t *mutex  = &(MPIDI_Mutex_vector[m]);
+  old_val = OPA_LL_int(mutex);
   if (old_val != 0)
     return 1;  /* Lock failed */
 
-  int rc = OPA_SC_int(&(MPIDI_Mutex_vector[m]), 1);  /* returns 0 when SC fails */
+  int rc = OPA_SC_int(mutex, 1);  /* returns 0 when SC fails */
 
   if (rc == 0)
     return 1; /* Lock failed */
@@ -99,12 +247,13 @@ MPIDI_Mutex_acquire(unsigned m)
     return 0;
   }
 
+  MPIDI_Mutex_t *mutex  = &(MPIDI_Mutex_vector[m]);
   do {
     do {
-      old_val = OPA_LL_int(&(MPIDI_Mutex_vector[m]));
+      old_val = OPA_LL_int(mutex);
     } while (old_val != 0);
 
-  } while (!OPA_SC_int(&(MPIDI_Mutex_vector[m]), 1));
+  } while (!OPA_SC_int(mutex, 1));
 
   MPIDI_Mutex_counter[tid][m] =  1;
   return 0;
@@ -132,12 +281,16 @@ MPIDI_Mutex_release(unsigned m)
 
   /* Wait till all the writes in the critical sections from this
      thread have completed and invalidates have been delivered */
-  OPA_read_write_barrier();
+  //OPA_read_write_barrier();
 
   /* Release the lock */
   OPA_store_int(&(MPIDI_Mutex_vector[m]), 0);
 
   return 0;
+}
+
+static inline void MPIDI_Mutex_sync () {
+  OPA_read_write_barrier();
 }
 
 #else
@@ -199,6 +352,8 @@ MPIDI_Mutex_release(unsigned m)
   assert(rc == 0);
   return rc;
 }
+
+#define MPIDI_Mutex_sync ()
 
 #endif
 

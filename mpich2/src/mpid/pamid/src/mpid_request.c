@@ -6,7 +6,11 @@
 #include <mpidimpl.h>
 
 #ifndef MPID_REQUEST_PREALLOC
-#define MPID_REQUEST_PREALLOC 16
+#if (MPIU_THREAD_GRANULARITY == MPIU_THREAD_GRANULARITY_GLOBAL)
+#define  MPID_REQUEST_PREALLOC 16
+#elif (MPIU_HANDLE_ALLOCATION_METHOD == MPIU_HANDLE_ALLOCATION_THREAD_LOCAL)
+#define  MPID_REQUEST_PREALLOC 512  //Have direct more reqyests for all threads
+#endif
 #endif
 
 /**
@@ -34,11 +38,11 @@ void MPIDI_Request_allocate_pool()
   /* batch allocate a linked list of requests */
   MPIU_THREAD_CS_ENTER(HANDLEALLOC,);
   prev = MPIU_Handle_obj_alloc_unsafe(&MPID_Request_mem);
+  MPID_assert(prev != NULL);
   prev->mpid.next = NULL;
-  assert(prev);
   for (i = 1; i < MPID_REQUEST_TLS_MAX; ++i) {
     cur = MPIU_Handle_obj_alloc_unsafe(&MPID_Request_mem);
-    assert(cur);
+    MPID_assert(cur != NULL);
     cur->mpid.next = prev;
     prev = cur;
   }

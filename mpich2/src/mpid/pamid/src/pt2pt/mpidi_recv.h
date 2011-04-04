@@ -40,6 +40,8 @@ MPIDI_RecvMsg(void          * buf,
   int found;
   MPID_Request * rreq;
 
+  MPIR_Comm_add_ref(comm);
+
   MPIU_THREAD_CS_ENTER(MSGQUEUE,0);
   /* ---------------------------------------- */
   /* find our request in the unexpected queue */
@@ -55,7 +57,6 @@ MPIDI_RecvMsg(void          * buf,
   /* We can do this because this is not a multithreaded implementation */
   /* ----------------------------------------------------------------- */
 
-  MPIR_Comm_add_ref(comm);
   rreq->comm              = comm;
   rreq->mpid.userbuf      = buf;
   rreq->mpid.userbufcount = count;

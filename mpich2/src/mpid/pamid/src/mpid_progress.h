@@ -87,11 +87,13 @@
 static inline int
 MPID_Progress_wait_inline(unsigned loop_count)
 {
-  pami_result_t rc;
+  pami_result_t rc = 0;
 #ifdef USE_PAMI_COMM_THREADS
-  /* This just assumes that people will want the thread-safe version when using the per-obj code. */
-  rc = PAMI_Context_trylock_advancev(MPIDI_Context, MPIDI_Process.avail_contexts, 1);
-  MPID_assert(rc == PAMI_SUCCESS);
+  if (unlikely(MPIDI_Process.comm_threads == 0)) {
+    /* This just assumes that people will want the thread-safe version when using the per-obj code. */
+    rc = PAMI_Context_trylock_advancev(MPIDI_Context, MPIDI_Process.avail_contexts, 1);
+    MPID_assert(rc == PAMI_SUCCESS);
+  }
 #else
   rc = PAMI_Context_advancev(MPIDI_Context, MPIDI_Process.avail_contexts, loop_count);
   MPID_assert(rc == PAMI_SUCCESS);

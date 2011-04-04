@@ -71,6 +71,7 @@ MPIDI_RecvCB(pami_context_t    context,
   /* Match not found */
   if (unlikely(rreq == NULL))
     {
+      /* No request was found and hence no sync needed */
       MPIDI_Callback_process_unexp(context, msginfo, sndlen, sender, sndbuf, recv, msginfo->isSync);
       MPIU_THREAD_CS_EXIT(MSGQUEUE,0);
       goto fn_exit_eager;
@@ -80,6 +81,7 @@ MPIDI_RecvCB(pami_context_t    context,
   /*  Figure out target buffer for request data.  */
   /* -------------------------------------------- */
   MPIU_THREAD_CS_EXIT(MSGQUEUE,0);
+
   /* ---------------------- */
   /*  Copy in information.  */
   /* ---------------------- */

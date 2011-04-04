@@ -9,8 +9,8 @@
 
 #include <stdint.h>
 
-/* these need to be aligned on an 8-byte boundary to work on a BG/P */
-typedef struct { volatile uint32_t v; uint32_t dummy;  } OPA_int_t;
+/* these need to be aligned on an 4-byte boundary to work on a BG/P and BG/Q*/
+typedef struct { volatile uint32_t v; } OPA_int_t;
 typedef struct { void * volatile v ;         } OPA_ptr_t;
 
 #define OPA_INT_T_INITIALIZER(val_) { (val_) }
@@ -132,7 +132,10 @@ static _opa_inline int OPA_SC_ptr(OPA_ptr_t *ptr, void *val)
    less costly barriers (like lwsync or eieio) where appropriate
    whenever they're available */
 #define OPA_write_barrier()      ({ __asm__ __volatile__ ("msync" : : : "memory"); })
-#define OPA_read_barrier()       ({ __asm__ __volatile__ ("msync" : : : "memory"); })
+/*We assume with an asm volatile the compiler will not move loads
+  above an asm volatile nop. We also assume the hardware does not
+  reorder instructions. If either of these is not true this must be changed to an isync*/
+#define OPA_read_barrier()       ({ __asm__ __volatile__ ("nop"); })
 #define OPA_read_write_barrier() ({ __asm__ __volatile__ ("msync" : : : "memory"); })
 
 

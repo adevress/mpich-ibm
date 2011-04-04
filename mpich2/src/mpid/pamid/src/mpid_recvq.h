@@ -92,7 +92,7 @@ MPIDI_Recvq_FDU_or_AEP(int source, int tag, int context_id, int * foundp)
  * \return     The matching posted request or the new UE request
  */
 static inline MPID_Request *
-MPIDI_Recvq_FDP(int source, int tag, int context_id)
+MPIDI_Recvq_FDP(size_t source, size_t tag, size_t context_id)
 {
   MPID_Request * rreq;
   MPID_Request * prev_rreq = NULL;
@@ -101,15 +101,31 @@ MPIDI_Recvq_FDP(int source, int tag, int context_id)
 #endif
 
   rreq = MPIDI_Recvq.posted_head;
+  MPIDI_Mutex_sync(); //We may be retriving data stored by another thread
   while (rreq != NULL) {
 #ifdef USE_STATISTICS
     ++search_length;
 #endif
 
-    if ((MPIDI_Request_getMatchRank(rreq)==source || MPIDI_Request_getMatchRank(rreq)==MPI_ANY_SOURCE) &&
-        (MPIDI_Request_getMatchCtxt(rreq)==context_id) &&
-        (MPIDI_Request_getMatchTag(rreq)  == tag  || MPIDI_Request_getMatchTag(rreq)  == MPI_ANY_TAG)
-        )
+    int match_src = MPIDI_Request_getMatchRank(rreq);
+    int match_tag = MPIDI_Request_getMatchTag(rreq);
+    int match_ctx = MPIDI_Request_getMatchCtxt(rreq);
+
+    int flag0  = (source == match_src);
+    flag0     |= (match_src == MPI_ANY_SOURCE);
+    int flag1  = (context_id == match_ctx);
+    int flag2  = (tag == match_tag);
+    flag2     |= (match_tag == MPI_ANY_TAG);
+    int flag   = flag0 & flag1 & flag2;
+
+#if 0
+  if ((MPIDI_Request_getMatchRank(rreq)==source || MPIDI_Request_getMatchRank(rreq)==MPI_ANY_SOURCE) &&
+      (MPIDI_Request_getMatchCtxt(rreq)==context_id) &&
+      (MPIDI_Request_getMatchTag(rreq)  == tag  || MPIDI_Request_getMatchTag(rreq)  == MPI_ANY_TAG)
+      )
+#else
+    if (flag)
+#endif
       {
         MPIDI_Recvq_remove(MPIDI_Recvq.posted, rreq, prev_rreq);
 #ifdef USE_STATISTICS

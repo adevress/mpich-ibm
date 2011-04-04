@@ -62,7 +62,7 @@ void    MPIDI_Request_allocate_pool();
 #define MPIU_HANDLE_ALLOCATION_THREAD_LOCAL  1
 
 /* XXX DJG for TLS hack */
-#define MPID_REQUEST_TLS_MAX 128
+#define MPID_REQUEST_TLS_MAX 256
 
 #if MPIU_HANDLE_ALLOCATION_METHOD == MPIU_HANDLE_ALLOCATION_THREAD_LOCAL
 
@@ -81,7 +81,7 @@ void    MPIDI_Request_allocate_pool();
 ({                                                                      \
   size_t tid = MPIDI_THREAD_ID();                                       \
   MPIDI_RequestHandle_t *rh = &MPIDI_Process.request_handles[tid];      \
-  if (rh->count < MPID_REQUEST_TLS_MAX)                                 \
+  if (likely(rh->count < MPID_REQUEST_TLS_MAX))				\
     {                                                                   \
       /* push request onto the top of the stack */                      \
       req->mpid.next = rh->head;                                        \

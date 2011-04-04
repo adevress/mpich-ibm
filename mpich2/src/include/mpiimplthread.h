@@ -966,31 +966,8 @@ static inline void MPID_cc_set(MPID_cc_t *cc_ptr, int val)
     OPA_store_int(cc_ptr, val);
 #endif
 }
-
-ATTRIBUTE((unused))
-static MPIU_DBG_INLINE_KEYWORD int MPID_cc_is_complete(MPID_cc_t *cc_ptr)
-{
-    int complete;
-    complete = (0 == OPA_load_int(cc_ptr));
-    if (complete) {
-        MPL_VG_ANNOTATE_HAPPENS_AFTER(cc_ptr);
-        OPA_read_barrier();
-    }
-    return complete;
-}
-
-/* incomplete_==TRUE iff the cc > 0 after the decr */
-#define MPID_cc_decr(cc_ptr_, incomplete_)                                  \
-    do {                                                                    \
-        OPA_write_barrier();                                                \
-        MPL_VG_ANNOTATE_HAPPENS_BEFORE(cc_ptr_);                            \
-        *(incomplete_) = !OPA_decr_and_test_int(cc_ptr_);                   \
-        /* TODO check if this HA is actually necessary */                   \
-        if (!*(incomplete_)) {                                              \
-            MPL_VG_ANNOTATE_HAPPENS_AFTER(cc_ptr_);                         \
-        }                                                                   \
-    } while (0)
-
+#define MPID_cc_is_complete(cc_ptr_)       ({ (0 == ((cc_ptr_)->v)); })
+#define MPID_cc_decr(cc_ptr_, incomplete_) ({ *(incomplete_) = --((cc_ptr_)->v); })
 /* MT FIXME does this need a HB/HA annotation?  This macro is only used for
  * cancel_send right now. */
 /* was_incomplete_==TRUE iff the cc==0 before the decr */
