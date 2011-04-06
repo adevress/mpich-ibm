@@ -142,7 +142,7 @@ MPIDI_Mutex_initialize()
   rc = pthread_mutexattr_init(&attr);
   MPID_assert(rc == 0);
   extern int pthread_mutexattr_settype(pthread_mutexattr_t *__attr, int __kind) __THROW __nonnull ((1));
-  rc = pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_ERRORCHECK_NP);
+  rc = pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_ERRORCHECK);
   MPID_assert(rc == 0);
 
   rc = pthread_mutex_init(&MPIDI_Mutex_lock, &attr);
