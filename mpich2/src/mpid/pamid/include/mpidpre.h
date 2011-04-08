@@ -11,7 +11,6 @@
 #ifndef __include_mpidpre_h__
 #define __include_mpidpre_h__
 
-#define _XOPEN_SOURCE 999
 #include <errno.h>
 #include <stdio.h>
 #include <assert.h>
