@@ -57,7 +57,8 @@ $curdir = ".";           # used to track the relative current directory
 
 # Output forms
 $xmloutput = 0;          # Set to true to get xml output (also specify file)
-$closeXMLOutput = 1;     # Set to false to leave XML output file open to accept additional data
+$closeXMLOutput = 1;     # Set to false to leave XML output file open to
+                         # accept additional data
 $verbose = 0;            # Set to true to get more output
 $showProgress = 0;       # Set to true to get a "." with each run program.
 $newline = "\n";         # Set to \r\n for Windows-friendly, \n for Unix only
@@ -72,6 +73,14 @@ $clean_pgms      = 1;
 
 $resume          = 0;      # 1 = do not remake existing binaries
 $preserve        = 0;      # 1 = do not erase binaries after running
+$romio               = 1;
+$rma                 = 1; # these are reset in the makefile, so not too concerned...
+$spawn               = 1; # these are reset in the makefile, so not too concerned...
+$stagingdirflag      = 0;
+$machineflag         = 0;
+$etime               = 0;
+$totaltime           = time();
+
 my $program_wrapper = '';
 
 #---------------------------------------------------------------------------
@@ -82,10 +91,8 @@ my $program_wrapper = '';
 #                      reserve VERBOSE)
 #   RUNTESTS_SHOWPROGRESS
 #   MPITEST_STOPTEST
-#   BLOCK block name
-#   DRVPATH driver path
 #   STAGINGDIR path to temporary staging directory to copy executables
-#   MPITEST_TIMEOUTtimeout value (seconds)
+#   MPITEST_TIMEOUT
 #   MPITEST_PROGRAM_WRAPPER (Value is added after -np but before test
 #                            executable.  Tools like valgrind may be inserted
 #                            this way.)
@@ -93,16 +100,6 @@ my $program_wrapper = '';
 if ( defined($ENV{"VERBOSE"}) || defined($ENV{"RUNTESTS_VERBOSE"}) ) {
     $verbose = 1;
 }
-$romio               = 1;
-$rma                 = 1; # these are reset in the makefile, so not too concerned...
-$spawn               = 1; # these are reset in the makefile, so not too concerned...
-$stagingdirflag      = 0;
-$machineflag         = 0;
-$blockflag           = 0;
-$driverpathflag      = 0;
-$etime               = 0;
-$totaltime           = time();
-
 if ( defined($ENV{"RUNTESTS_SHOWPROGRESS"} ) ) {
     $showProgress = 1;       
 }
@@ -120,20 +117,6 @@ if(defined($ENV{"RUNONLY"})) {
 
 if(defined($ENV{"COMPILEONLY"})) {
     $compileonly = 1;
-}
-
-if(defined($ENV{"BLOCK"})) {
-    $block=$ENV{BLOCK};
-    $blockflag=1;
-}
-
-if(defined($ENV{"DRVPATH"})) {
-    $driverpath=$ENV{DRVPATH};
-    $driverpathflag=1;
-}
-
-if(defined($ENV{"MPIEXEC"})) {
-    $mpiexec=$ENV{"MPIEXEC"};
 }
 
 if(defined($ENV{"STAGINGDIR"})) {
@@ -191,27 +174,22 @@ foreach $_ (@ARGV) {
 	}
     }
     elsif (/-np=(.*)/)   { $np_default = $1; }
-    elsif (/-stagingdir=(.*)/) { $stagingdir = $1; $stagingdirflag=1;}
-    elsif (/-block=(.*)/)      { $block = $1; $blockflag=1;}
-    elsif (/-timeout=(.*)/)    { $defaultTimeLimit = $1; }
-    elsif (/-driverpath=(.*)/) { $driverpath=$1; $driverpath=1;}
-    elsif (/-nodemap=(.*)/)    { $nodemapflag=1; $nodemap=$1;}
     elsif (/-maxnp=(.*)/) { $np_max = $1; }
     elsif (/-tests=(.*)/) { $listfiles = $1; }
     elsif (/-srcdir=(.*)/) { $srcdir = $1; }
+    elsif (/-verbose/) { $verbose = 1; }
+    elsif (/-showprogress/) { $showProgress = 1; }
+    elsif (/-debug/) { $debug = 1; }
+    elsif (/-stagingdir=(.*)/) { $stagingdir = $1; $stagingdirflag=1;}
+    elsif (/-timeout=(.*)/)    { $defaultTimeLimit = $1; }
     elsif (/-compileonly/)     { $compileonly = 1; }
     elsif (/-runonly/)         { $runonly = 1;}
     elsif (/-nostagingdir/)    { $stagingdirflag=0;}
     elsif (/-noromio/)         { $romio=0;}
     elsif (/-norma/)           { $rma=0; }
     elsif (/-nospawn/)         { $spawn=0;}
-    elsif (/-verbose/) { $verbose = 1; }
-    elsif (/-nofree/)          { $nofree=1; $mpifree="mpirun -free wait";}
-    elsif (/-usempirun/)       { $mpirunflag=1;}
     elsif (/-resume/)          { $resume=1;}
     elsif (/-preserve/)        { $preserve=1;}
-    elsif (/-showprogress/) { $showProgress = 1; }
-    elsif (/-debug/) { $debug = 1; }
     elsif (/-xmlfile=(.*)/) {
 	$xmlfile   = $1;
 	if (! ($xmlfile =~ /^\//)) {
@@ -243,15 +221,9 @@ foreach $_ (@ARGV) {
         [-maxnp=max-nprocesses] [-srcdir=location-of-tests] \
         [-xmlfile=filename ] [-noxmlclose] \
         [-stagingdir=directory] [-nostagingdir] \
-        [-block=block] [-driverpath=driverpath] \
         [-timeout=time] [-noromio] [-norma] [-nospawn] \
-        [-nodemap=mapping or file] [-usempirun] [-nofree] \
         [-verbose] [-showprogress] [-debug]\n";
     }
-}
-
-if($driverpathflag==0) {
-    $driverpath="/bgsys/drivers/ppcfloor";
 }
 
 # now construct things
@@ -260,15 +232,6 @@ if(defined($ENV{'MPI_RMA'})) {
 }
 if(defined($ENV{'MPI_IO'})) {
     $romio = $ENV{'MPI_IO'};
-}
-
-if($nofree==1) {
-    $mpirunflags.=" -nofree";
-}
-
-if(defined($ENV{"NODEMAP"})) {
-    $nodemapflag=1;
-    $nodemap=$ENV{"NODEMAP"};
 }
 
 if($resume == 1) {
@@ -311,28 +274,10 @@ else {
     &RunList( $listfiles );
 }
 
-#If we ran in nofree mode we now need to free the block
-if (($nofree==1) && !$compileonly) {
-    print STDOUT "\nFreeing $partition:  $mpifree\n" if $verbose;
-
-    system($mpifree);
-
-    $run_status = $?;
-    $signal_num = $run_status & 127;
-    $exit_code = $run_status;
-    if ($exit_code > 255) { $exit_code >>= 8; }
-    if ($exit_code != 0) {
-	print STDERR "$mpifree exited with non-zero exit code: $exit_code\n";
-    }
-    if ($signal_num != 0) {
-	print STDERR "$mpifree exited with signal $signal_num\n";
-    }
-}
-
 if (!$compileonly) {
 if ($xmloutput && $closeXMLOutput) { 
-	$ttime = time() - $totaltime;
-	print XMLOUT "<TOTALTIME>$ttime</TOTALTIME>$newline";
+    $ttime = time() - $totaltime;
+    print XMLOUT "<TOTALTIME>$ttime</TOTALTIME>$newline";
     print XMLOUT "</MPITESTRESULTS>$newline";
     close XMLOUT; 
 }
@@ -713,7 +658,7 @@ sub RunMPIProgram {
 	    }
 	}
 	if ($found_noerror == 0) {
-	    print STDERR "Program $programname exited with Errors\n";
+	    print STDERR "Program $programname exited without No Errors\n";
 	    if (!$found_error) {
 		$found_error = 1;
 		$err_count ++;

@@ -1,0 +1,54 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+
+my $e            = ($ENV{ENVS} or '');
+$ENV{ENVS}       = 'BG_APPAGENT1=/bgsys/drivers/ppcfloor/agents/bin/comm.elf BG_SHAREDMEMSIZE=32 ';
+$ENV{ENVS}      .= join(" " => map { "$_=$ENV{$_} " } grep { m/^(BG|PAMI)_/ } keys %ENV);
+$ENV{ENVS}      .= $e;
+
+$ENV{MPI_IO}     = defined $ENV{MPI_IO}  ? $ENV{MPI_IO}  : 0;
+$ENV{MPI_RMA}    = defined $ENV{MPI_RMA} ? $ENV{MPI_RMA} : 0;
+$ENV{PPN}        = ($ENV{PPN}         or 1);
+$ENV{RUNJOB}     = ($ENV{RUNJOB}      or '/bgsys/drivers/ppcfloor/bin/runjob');
+$ENV{STAGINGDIR} = ($ENV{STAGINGDIR}  or sprintf('/bgusr/%s/bvt.ppn=%02d/', $ENV{USER}, $ENV{PPN}));
+$ENV{TIMEOUT}    = ($ENV{TIMEOUT}     or 234);
+$ENV{XMLFILE}    = ($ENV{XMLFILE}     or sprintf('summary.ppn=%02d.xml', $ENV{PPN}));
+
+$ENV{BLOCK}      = ($ENV{BLOCK}       or die "\$BLOCK must be set\n");
+$ENV{SRCDIR}     = ($ENV{SRCDIR}      or die "\$SRCDIR must be set\n");
+
+
+$ENV{VERBOSE}    = 1;
+$ENV{PRESERVE}   = 1;
+$ENV{RESUME}     = 1;
+
+$ENV{MPITEST_PROGRAM_WRAPPER} =
+    "--block          $ENV{BLOCK} "      .
+    "--cwd            $ENV{STAGINGDIR} " .
+    "--timeout        $ENV{TIMEOUT} "    .
+    "--ranks-per-node $ENV{PPN} "        .
+    "--envs           $ENV{ENVS} :";
+$ENV{MPITEST_PROGRAM_WRAPPER} =~ s/ +/ /g;
+
+
+for my $env ("ENVS",
+             "MPI_IO",
+             "MPI_RMA",
+             "PPN",
+             "RUNJOB",
+             "STAGINGDIR",
+             "TIMEOUT",
+             "XMLFILE",
+             "BLOCK",
+             "SRCDIR",
+             "VERBOSE",
+             "PRESERVE",
+             "RESUME",
+             "MPITEST_PROGRAM_WRAPPER") {
+    print "\$ENV{$env} \t = \t $ENV{$env}\n";
+}
+my @cmd = ("./runtests", "-mpiexec=$ENV{RUNJOB}", "-srcdir=$ENV{SRCDIR}", "-tests=testlist", "-nospawn", "-xmlfile=$ENV{XMLFILE}");
+#exec("echo", @cmd);
+exec(@cmd);

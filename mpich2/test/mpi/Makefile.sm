@@ -6,6 +6,9 @@ testing:
 	./runtests -srcdir=$(srcdir) -tests=testlist \
 		   -nospawn \
 		   -xmlfile=summary.xml
+bgq-testing:
+	SRCDIR=$(srcdir) $(srcdir)/bgq-runtests
+
 clean-local:
 	-rm -f summary.xml
 
