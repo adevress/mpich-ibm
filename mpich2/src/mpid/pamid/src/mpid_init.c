@@ -403,7 +403,7 @@ int MPID_Init(int * argc,
  */
 int MPID_InitCompleted(void)
 {
-#if USE_PAMI_COMM_THREADS
+#ifdef USE_PAMI_COMM_THREADS
   if (MPIDI_Process.comm_threads)
     {
       TRACE_ERR("Async advance beginning...\n");

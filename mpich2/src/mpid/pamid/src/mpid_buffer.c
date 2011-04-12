@@ -10,7 +10,7 @@
 
 #include <mpidimpl.h>
 
-#if !defined(MPIDI_COPY_BUFFER_SZ)
+#ifndef MPIDI_COPY_BUFFER_SZ
 #define MPIDI_COPY_BUFFER_SZ 16384
 #endif
 
