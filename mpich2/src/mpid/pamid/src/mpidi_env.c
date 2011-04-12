@@ -44,6 +44,9 @@
  *   Limits number of PAMI_Request objects allocated by MPI Onesided operations.
  *   - Default is 1000.
  *
+ * - PAMI_SHMEM_PT2PT - Determines if intranode point-to-point communication will
+ *   use the optimized shared memory protocols.
+ *   - Default is 1.
  ***************************************************************************
  *                               High-level Options                        *
  ***************************************************************************
@@ -567,5 +570,11 @@ MPIDI_Env_setup()
     char* names[] = {"PAMI_COLLECTIVE", "PAMI_COLLECTIVES", NULL};
     ENV_Unsigned(names, &MPIDI_Process.optimized.collectives);
     TRACE_ERR("MPIDI_Process.optimized.collectives=%u\n", MPIDI_Process.optimized.collectives);
+  }
+
+  /* Set the status of the optimized shared memory point-to-point functions */
+  {
+    char* names[] = {"PAMI_SHMEM_PT2PT", NULL};
+    ENV_Unsigned(names, &MPIDI_Process.shmem_pt2pt);
   }
 }

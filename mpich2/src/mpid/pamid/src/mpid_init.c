@@ -33,6 +33,7 @@ MPIDI_Process_t  MPIDI_Process = {
 #endif
 
  rma_pending    : 1000,
+ shmem_pt2pt    : 1,
 
  optimized : {
   collectives : 0,
@@ -159,6 +160,10 @@ MPIDI_Init_dispath(size_t              dispatch,
   size_t im_max = 0;
   pami_dispatch_callback_function Recv = {p2p:proto->func};
   MPID_assert(dispatch == proto->dispatch);
+
+  if (MPIDI_Process.shmem_pt2pt == 0)
+    proto->options.use_shmem = PAMI_HINT_DISABLE;
+
   PAMIX_Dispatch_set(MPIDI_Context,
                      MPIDI_Process.avail_contexts,
                      proto->dispatch,
@@ -285,6 +290,7 @@ MPIDI_Init(int* rank, int* size, int* threading)
              "  short_limit  : %u\n"
              "  eager_limit  : %u\n"
              "  rma_pending  : %u\n"
+             "  shmem_pt2pt  : %u\n"
              "  optimized.collectives : %u\n"
              "  optimized.topology    : %u\n",
              MPIDI_Process.verbose,
@@ -295,6 +301,7 @@ MPIDI_Init(int* rank, int* size, int* threading)
              MPIDI_Process.short_limit,
              MPIDI_Process.eager_limit,
              MPIDI_Process.rma_pending,
+             MPIDI_Process.shmem_pt2pt,
              MPIDI_Process.optimized.collectives,
              MPIDI_Process.optimized.topology);
     }

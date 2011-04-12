@@ -32,6 +32,7 @@ typedef struct
   unsigned optimized_subcomms;
 
   unsigned rma_pending;    /**< The max num outstanding requests during an RMA op    */
+  unsigned shmem_pt2pt;    /**< Enable optimized shared memory point-to-point functions. */
 
   pami_geometry_t world_geometry;
   struct
