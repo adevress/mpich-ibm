@@ -12,16 +12,16 @@
 
 
 static inline unsigned
-MPIDI_Context_hash(pami_task_t rank, unsigned ctxt, unsigned ncontexts)
+MPIDI_Context_hash(pami_task_t rank, unsigned ctxt, unsigned bias, unsigned ncontexts)
 {
-  return (( rank + ctxt ) & (ncontexts-1));
+  return (( rank + ctxt + bias ) & (ncontexts-1));
 }
 static inline void
 MPIDI_Context_endpoint(MPID_Request * req, pami_endpoint_t * e)
 {
   pami_task_t remote = MPIDI_Request_getPeerRank(req);
   pami_task_t local  = MPIR_Process.comm_world->rank;
-  unsigned    rctxt  = MPIDI_Context_hash(local, req->comm->context_id, MPIDI_Process.avail_contexts);
+  unsigned    rctxt  = MPIDI_Context_hash(local, req->comm->context_id, MPIDI_Process.avail_contexts>>1, MPIDI_Process.avail_contexts);
 
   pami_result_t rc;
   rc = PAMI_ENDPOINT_CREATE(MPIDI_Client, remote, rctxt, e);
@@ -31,7 +31,7 @@ static inline pami_context_t
 MPIDI_Context_local(MPID_Request * req)
 {
   pami_task_t remote = MPIDI_Request_getPeerRank(req);
-  unsigned    lctxt  = MPIDI_Context_hash(remote, req->comm->context_id, MPIDI_Process.avail_contexts);
+  unsigned    lctxt  = MPIDI_Context_hash(remote, req->comm->context_id, 0, MPIDI_Process.avail_contexts);
   MPID_assert(lctxt < MPIDI_Process.avail_contexts);
   return MPIDI_Context[lctxt];
 }
@@ -95,7 +95,7 @@ MPID_Isend_inline(const void    * buf,
 
   if (likely(MPIDI_Process.context_post > 0))
     {
-      pami_context_t context = MPIDI_Context[MPIDI_Context_hash(rank, context_id, ncontexts)];
+      pami_context_t context = MPIDI_Context[MPIDI_Context_hash(rank, context_id, 0, ncontexts)];
       pami_result_t rc;
       rc = PAMI_Context_post(context, &sreq->mpid.post_request, MPIDI_Isend_handoff, sreq);
       MPID_assert(rc == PAMI_SUCCESS);
