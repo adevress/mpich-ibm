@@ -236,6 +236,11 @@ MPIDI_Init(int* rank, int* size, int* threading)
   unsigned hwthreads = PAMIX_Client_query(MPIDI_Client, PAMI_CLIENT_HWTHREADS_AVAILABLE).value.intval;
   if (MPIDI_Process.avail_contexts > hwthreads)
     MPIDI_Process.avail_contexts = hwthreads;
+
+  while(MPIDI_Process.avail_contexts & (MPIDI_Process.avail_contexts-1))
+    --MPIDI_Process.avail_contexts;
+  MPID_assert(MPIDI_Process.avail_contexts);
+
   if (hwthreads == 1)
     {
       *threading = MPIDI_Process.requested_thread_level = MPI_THREAD_SINGLE;

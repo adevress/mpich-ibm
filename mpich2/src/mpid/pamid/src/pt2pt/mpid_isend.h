@@ -12,9 +12,9 @@
 
 
 static inline unsigned
-MPIDI_Context_hash(pami_task_t rank, unsigned ctxt, int ncontexts)
+MPIDI_Context_hash(pami_task_t rank, unsigned ctxt, unsigned ncontexts)
 {
-  return (( rank + ctxt ) % ncontexts);
+  return (( rank + ctxt ) & (ncontexts-1));
 }
 static inline void
 MPIDI_Context_endpoint(MPID_Request * req, pami_endpoint_t * e)
