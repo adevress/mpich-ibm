@@ -39,7 +39,7 @@ int MPIDO_Allreduce(void *sendbuf,
    PMPI_Type_get_name(dt, dt_str, &len);
    rc = MPItoPAMI(dt, &pdt, op, &pop, &mu);
    /* convert to metadata query */
-   if(rc == MPI_SUCCESS && mu == 1 && comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLREDUCE] != 0)
+   if(rc == MPI_SUCCESS && mu == 1 && comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLREDUCE] != MPID_COLL_USE_MPICH)
    {
       MPI_Aint data_true_lb;
       MPID_Datatype *data_ptr;

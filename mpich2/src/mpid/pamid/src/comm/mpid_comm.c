@@ -247,6 +247,7 @@ static int MPIDI_Check_protocols(char *env, MPID_Comm *comm, char *name, int con
       {
          if(MPIDI_Process.verbose >= 1 && comm->rank == 0)
             fprintf(stderr,"Using MPICH for %s\n", name);
+         comm->mpid.user_selectedvar[constant] = MPID_COLL_USE_MPICH;
          return 0;
       }
       if(strncasecmp(envopts, "GLUE_", 5) == 0)
@@ -292,13 +293,14 @@ void MPIDI_Comm_coll_envvars(MPID_Comm *comm)
          i == PAMI_XFER_FENCE)
          continue;
 
-      comm->mpid.user_selectedvar[i] = 0;
+      comm->mpid.user_selectedvar[i] = MPID_COLL_NOQUERY;
          if(MPIDI_Process.verbose >= 1 && comm->rank == 0)
             fprintf(stderr,"Setting up collective %d on comm %p\n", i, comm);
       if(comm->mpid.coll_count[i][0] == 0 && comm->mpid.coll_count[i][1] == 0)
       {
          if(MPIDI_Process.verbose >= 1 && comm->rank == 0)
             fprintf(stderr,"There are no 'always works' protocols of type %d. This could be a problem later in your app\n", i);
+         comm->mpid.user_selectedvar[i] = MPID_COLL_USE_MPICH;
       }
       else
       {

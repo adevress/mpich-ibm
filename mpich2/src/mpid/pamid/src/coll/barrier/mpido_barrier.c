@@ -24,7 +24,7 @@ int MPIDO_Barrier(MPID_Comm *comm_ptr, int *mpierrno)
    MPIDI_Post_coll_t barrier_post;
    pami_xfer_t barrier;
 
-   if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_BARRIER] == 0)
+   if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_BARRIER] == MPID_COLL_USE_MPICH)
      return MPIR_Barrier(comm_ptr, mpierrno);
 
    barrier.cb_done = cb_barrier;

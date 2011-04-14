@@ -238,7 +238,7 @@ MPIDO_Allgather(void *sendbuf,
    use_tree_reduce = comm_ptr->mpid.allgathers[0];
    use_bcast = comm_ptr->mpid.allgathers[1];
    if(!( use_alltoall || use_tree_reduce || use_bcast) || 
-      comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLGATHER] == 0)
+      comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLGATHER] == MPID_COLL_USE_MPICH)
    {
       MPIDI_Update_last_algorithm(comm_ptr, "ALLGATHER_MPICH");
       return MPIR_Allgather(sendbuf, sendcount, sendtype,

@@ -146,7 +146,7 @@ int MPIDO_Gather(void *sendbuf,
 
   MPIDI_Update_last_algorithm(comm_ptr, "GATHER_MPICH");
   if(!comm_ptr->mpid.optgather ||
-   comm_ptr->mpid.user_selectedvar[PAMI_XFER_GATHER] == 0)
+   comm_ptr->mpid.user_selectedvar[PAMI_XFER_GATHER] == MPID_COLL_USE_MPICH)
   {
     return MPIR_Gather(sendbuf, sendcount, sendtype,
                        recvbuf, recvcount, recvtype,
@@ -183,14 +183,14 @@ int MPIDO_Gather(void *sendbuf,
       MPID_PROGRESS_WAIT_WHILE(allred_active);
    }
 
-   if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_GATHER] == 0 || !success)
+   if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_GATHER] == MPID_COLL_USE_MPICH || !success)
    {
     return MPIR_Gather(sendbuf, sendcount, sendtype,
                        recvbuf, recvcount, recvtype,
                        root, comm_ptr, mpierrno);
    }
 
-   if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_GATHER])
+/*   if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_GATHER])  ? SEEMS WRONG ? */
    {
       pami_result_t rc;
       volatile unsigned active = 1;

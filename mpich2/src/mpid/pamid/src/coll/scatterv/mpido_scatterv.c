@@ -236,7 +236,7 @@ int MPIDO_Scatterv(void *sendbuf,
 
 
    if(!(comm_ptr->mpid.scattervs[0] || comm_ptr->mpid.scattervs[1]) ||
-      comm_ptr->mpid.user_selectedvar[PAMI_XFER_SCATTERV] == 0)
+      comm_ptr->mpid.user_selectedvar[PAMI_XFER_SCATTERV] == MPID_COLL_USE_MPICH)
   {
    MPIDI_Update_last_algorithm(comm_ptr, "SCATTERV_MPICH");
     return MPIR_Scatterv(sendbuf, sendcounts, displs, sendtype,

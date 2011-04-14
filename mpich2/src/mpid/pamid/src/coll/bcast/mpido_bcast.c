@@ -38,7 +38,7 @@ int MPIDO_Bcast(void *buffer,
       MPIDI_Update_last_algorithm(comm_ptr,"BCAST_NONE");
       return MPI_SUCCESS;
    }
-   if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_BROADCAST] == 0)
+   if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_BROADCAST] == MPID_COLL_USE_MPICH)
      return MPIR_Bcast_intra(buffer, count, datatype, root, comm_ptr, mpierrno);
 
    MPIDI_Datatype_get_info(count, datatype,

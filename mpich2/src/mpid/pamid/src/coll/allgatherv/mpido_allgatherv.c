@@ -247,7 +247,7 @@ MPIDO_Allgatherv(void *sendbuf,
   use_tree_reduce = comm_ptr->mpid.allgathervs[0];
   use_bcast = comm_ptr->mpid.allgathervs[1];
   if(!(use_alltoall || use_tree_reduce || use_bcast) ||
-   comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLGATHERV] == 0)
+   comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLGATHERV] == MPID_COLL_USE_MPICH)
   {
    MPIDI_Update_last_algorithm(comm_ptr, "ALLGATHERV_MPICH");
    return MPIR_Allgatherv(sendbuf, sendcount, sendtype,
