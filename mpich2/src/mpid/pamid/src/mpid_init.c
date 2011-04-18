@@ -354,6 +354,20 @@ int MPID_Init(int * argc,
   if (MPIDI_Process.optimized.topology)
     MPIR_Process.dimsCreate = MPID_Dims_create;
 
+
+  /* ------------------------------- */
+  /* Initialize MPI_COMM_SELF object */
+  /* ------------------------------- */
+  comm = MPIR_Process.comm_self;
+  comm->rank = 0;
+  comm->remote_size = comm->local_size = 1;
+  rc = MPID_VCRT_Create(comm->remote_size, &comm->vcrt);
+  MPID_assert(rc == MPI_SUCCESS);
+  rc = MPID_VCRT_Get_ptr(comm->vcrt, &comm->vcr);
+  MPID_assert(rc == MPI_SUCCESS);
+  comm->vcr[0] = rank;
+
+
   /* -------------------------------- */
   /* Initialize MPI_COMM_WORLD object */
   /* -------------------------------- */
@@ -369,23 +383,17 @@ int MPID_Init(int * argc,
   for (i=0; i<size; i++)
     comm->vcr[i] = i;
 
+
+  /* ------------------------------- */
+  /* Setup optimized communicators   */
+  /* ------------------------------- */
+  /** \todo remove this temp hack to work around the lack of progress threads. */
+  unsigned comm_threads = MPIDI_Process.comm_threads;
+  MPIDI_Process.comm_threads = 0;
+  TRACE_ERR("calling comm_create on comm world %p\n", comm);
   MPIDI_Comm_create(comm);
-
-  /* basically a noop for now */
   MPIDI_Comm_world_setup();
-
-
-  /* ------------------------------- */
-  /* Initialize MPI_COMM_SELF object */
-  /* ------------------------------- */
-  comm = MPIR_Process.comm_self;
-  comm->rank = 0;
-  comm->remote_size = comm->local_size = 1;
-  rc = MPID_VCRT_Create(comm->remote_size, &comm->vcrt);
-  MPID_assert(rc == MPI_SUCCESS);
-  rc = MPID_VCRT_Get_ptr(comm->vcrt, &comm->vcr);
-  MPID_assert(rc == MPI_SUCCESS);
-  comm->vcr[0] = rank;
+  MPIDI_Process.comm_threads = comm_threads;
 
 
   /* ------------------------------- */
