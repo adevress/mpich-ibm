@@ -31,6 +31,7 @@
 
 #ifdef __BGQ__
 #define MPIDI_MAX_THREADS 64
+#define MPIDI_MUTEX_L2_ATOMIC 1
 #define MPIDI_USE_OPA
 #endif
 

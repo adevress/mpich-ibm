@@ -16,9 +16,9 @@
 
 #define MPIDI_THREAD_ID()       Kernel_ProcessorID()
 
-#define MPIDI_MUTEX_L2_ATOMIC   1
+#if MPIDI_MUTEX_L2_ATOMIC
 
-#if   MPIDI_MUTEX_L2_ATOMIC
+
 
 #define MUTEX_FAIL 0x8000000000000000UL
 
@@ -28,7 +28,7 @@
 
 
 #define  MPIDI_MAX_MUTEXES 16
-typedef struct _mpidi_mutex
+typedef struct
 {
   uint64_t     counter;
   uint64_t     bound;
@@ -36,39 +36,8 @@ typedef struct _mpidi_mutex
 
 extern  MPIDI_Mutex_t *   MPIDI_Mutex_vector;
 extern  uint32_t          MPIDI_Mutex_counter[MPIDI_MAX_THREADS][MPIDI_MAX_MUTEXES];
+int MPIDI_Mutex_initialize();
 
-/**
- *  \brief Initialize a mutex.
- *
- *  In this API, mutexes are acessed via indices from
- *  0..MPIDI_MAX_MUTEXES. The mutexes are recursive
- */
-static inline int
-MPIDI_Mutex_initialize()
-{
-  size_t i, j;
-
-  MPIDI_Mutex_vector = (MPIDI_Mutex_t *) memalign(4096, 4096 /*sizeof (MPIDI_Mutex_t) * MPIDI_MAX_MUTEXES*/);
-  int rc = Kernel_L2AtomicsAllocate(MPIDI_Mutex_vector, 4096 /*sizeof(MPIDI_Mutex_t) * MPIDI_MAX_MUTEXES*/);
-
-  if (rc != 0) {
-    fprintf(stderr, "L2 Atomic Allocation Failed\n");
-    MPID_abort ();
-  }
-
-  for (i=0; i<MPIDI_MAX_MUTEXES; ++i) {
-    L2_AtomicStore(&(MPIDI_Mutex_vector[i].counter), 0);
-    L2_AtomicStore(&(MPIDI_Mutex_vector[i].bound), 1);
-  }
-
-  for (i=0; i<MPIDI_MAX_MUTEXES; ++i) {
-    for (j=0; j<MPIDI_MAX_THREADS; ++j) {
-      MPIDI_Mutex_counter[j][i] = 0;
-    }
-  }
-
-  return 0;
-}
 
 /**
  *  \brief Try to acquire a mutex identified by an index.
@@ -165,11 +134,16 @@ MPIDI_Mutex_release(unsigned m)
   return 0;
 }
 
+
 static inline void MPIDI_Mutex_sync () {
   OPA_read_write_barrier();
 }
 
+
+
 #elif MPIDI_MUTEX_LLSC
+
+
 
 #include <kernel/location.h>
 
@@ -297,11 +271,16 @@ MPIDI_Mutex_release(unsigned m)
   return 0;
 }
 
+
 static inline void MPIDI_Mutex_sync () {
   OPA_read_write_barrier();
 }
 
+
+
 #else
+
+
 
 extern pthread_mutex_t MPIDI_Mutex_lock;
 
@@ -361,7 +340,9 @@ MPIDI_Mutex_release(unsigned m)
   return rc;
 }
 
+
 #define MPIDI_Mutex_sync ()
+
 
 #endif
 

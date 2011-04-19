@@ -11,16 +11,6 @@ pami_client_t   MPIDI_Client;
 #define MAX_CONTEXTS 64
 pami_context_t MPIDI_Context[MAX_CONTEXTS];
 
-#if    MPIDI_MUTEX_L2_ATOMIC
-MPIDI_Mutex_t * MPIDI_Mutex_vector;
-uint32_t      MPIDI_Mutex_counter[MPIDI_MAX_THREADS][MPIDI_MAX_MUTEXES];
-#elif  MPIDI_MUTEX_LLSC
-MPIDI_Mutex_t MPIDI_Mutex_vector [MPIDI_MAX_MUTEXES];
-uint32_t      MPIDI_Mutex_counter[MPIDI_MAX_THREADS][MPIDI_MAX_MUTEXES];
-#else
-pthread_mutex_t MPIDI_Mutex_lock;
-#endif
-
 MPIDI_Process_t  MPIDI_Process = {
  verbose        : 0,
  statistics     : 0,
@@ -457,3 +447,53 @@ static_assertions()
   MPID_assert_static(sizeof(uint64_t) == sizeof(size_t));
 #endif
 }
+
+
+#if    MPIDI_MUTEX_L2_ATOMIC
+
+MPIDI_Mutex_t * MPIDI_Mutex_vector;
+uint32_t        MPIDI_Mutex_counter[MPIDI_MAX_THREADS][MPIDI_MAX_MUTEXES];
+
+/**
+ *  \brief Initialize a mutex.
+ *
+ *  In this API, mutexes are acessed via indices from
+ *  0..MPIDI_MAX_MUTEXES. The mutexes are recursive
+ */
+int
+MPIDI_Mutex_initialize()
+{
+  size_t i, j;
+
+  MPIDI_Mutex_vector = (MPIDI_Mutex_t *) memalign(4096, 4096 /*sizeof (MPIDI_Mutex_t) * MPIDI_MAX_MUTEXES*/);
+  int rc = Kernel_L2AtomicsAllocate(MPIDI_Mutex_vector, 4096 /*sizeof(MPIDI_Mutex_t) * MPIDI_MAX_MUTEXES*/);
+
+  if (rc != 0) {
+    fprintf(stderr, "L2 Atomic Allocation Failed\n");
+    MPID_abort ();
+  }
+
+  for (i=0; i<MPIDI_MAX_MUTEXES; ++i) {
+    L2_AtomicStore(&(MPIDI_Mutex_vector[i].counter), 0);
+    L2_AtomicStore(&(MPIDI_Mutex_vector[i].bound), 1);
+  }
+
+  for (i=0; i<MPIDI_MAX_MUTEXES; ++i) {
+    for (j=0; j<MPIDI_MAX_THREADS; ++j) {
+      MPIDI_Mutex_counter[j][i] = 0;
+    }
+  }
+
+  return 0;
+}
+
+#elif  MPIDI_MUTEX_LLSC
+
+MPIDI_Mutex_t MPIDI_Mutex_vector [MPIDI_MAX_MUTEXES];
+uint32_t      MPIDI_Mutex_counter[MPIDI_MAX_THREADS][MPIDI_MAX_MUTEXES];
+
+#else
+
+pthread_mutex_t MPIDI_Mutex_lock;
+
+#endif
