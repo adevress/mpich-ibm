@@ -451,6 +451,28 @@ static_assertions()
 
 #if    MPIDI_MUTEX_L2_ATOMIC
 
+static inline void*
+MPIDI_Mutex_initialize_l2atomics(size_t size)
+{
+  typedef pami_result_t (*pamix_proc_memalign_fn) (void**, size_t, size_t, const char*);
+
+  pami_result_t rc;
+  pami_extension_t l2;
+  pamix_proc_memalign_fn PAMIX_L2_proc_memalign;
+  void* l2atomics = NULL;
+
+  rc = PAMI_Extension_open(NULL, "EXT_bgq_l2atomic", &l2);
+  assert(rc == PAMI_SUCCESS);
+  PAMIX_L2_proc_memalign = (pamix_proc_memalign_fn)PAMI_Extension_symbol(l2, "proc_memalign");
+  assert(PAMIX_L2_proc_memalign != NULL);
+  rc = PAMIX_L2_proc_memalign(&l2atomics, 4096, size, NULL);
+  assert(rc == PAMI_SUCCESS);
+  assert(l2atomics != NULL);
+  /* printf("MPID L2 space: virt=%p  HW=%p  L2BaseAddress=%"PRIu64"\n", l2atomics, __l2_op_ptr(l2atomics, 0), Kernel_L2AtomicsBaseAddress()); */
+
+  return l2atomics;
+}
+
 MPIDI_Mutex_t * MPIDI_Mutex_vector;
 uint32_t        MPIDI_Mutex_counter[MPIDI_MAX_THREADS][MPIDI_MAX_MUTEXES];
 
@@ -465,17 +487,11 @@ MPIDI_Mutex_initialize()
 {
   size_t i, j;
 
-  MPIDI_Mutex_vector = (MPIDI_Mutex_t *) memalign(4096, 4096 /*sizeof (MPIDI_Mutex_t) * MPIDI_MAX_MUTEXES*/);
-  int rc = Kernel_L2AtomicsAllocate(MPIDI_Mutex_vector, 4096 /*sizeof(MPIDI_Mutex_t) * MPIDI_MAX_MUTEXES*/);
-
-  if (rc != 0) {
-    fprintf(stderr, "L2 Atomic Allocation Failed\n");
-    MPID_abort ();
-  }
+  MPIDI_Mutex_vector = (MPIDI_Mutex_t*)MPIDI_Mutex_initialize_l2atomics(sizeof (MPIDI_Mutex_t) * MPIDI_MAX_MUTEXES);
 
   for (i=0; i<MPIDI_MAX_MUTEXES; ++i) {
     L2_AtomicStore(&(MPIDI_Mutex_vector[i].counter), 0);
-    L2_AtomicStore(&(MPIDI_Mutex_vector[i].bound), 1);
+    L2_AtomicStore(&(MPIDI_Mutex_vector[i].bound),   1);
   }
 
   for (i=0; i<MPIDI_MAX_MUTEXES; ++i) {
