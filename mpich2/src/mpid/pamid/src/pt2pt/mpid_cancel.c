@@ -49,9 +49,9 @@ MPIDI_CancelReq_post(pami_context_t context, void * _req)
   MPItag   : MPIDI_Request_getMatchTag(req),
   MPIrank  : MPIDI_Request_getMatchRank(req),
   MPIctxt  : MPIDI_Request_getMatchCtxt(req),
-  control  : MPIDI_CONTROL_CANCEL_REQUEST,
   req      : req->handle,
   };
+  cancel.control = MPIDI_CONTROL_CANCEL_REQUEST;
 
   pami_endpoint_t dest;
   MPIDI_Context_endpoint(req, &dest);

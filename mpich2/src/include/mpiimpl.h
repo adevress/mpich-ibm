@@ -1387,13 +1387,14 @@ typedef struct MPID_Request {
     MPID_cc_t cc;
     /* Status is needed for wait/test/recv */
     MPI_Status status;
-    /* Persistent requests have their own "real" requests.  Receive requests
-       have partnering send requests when src=dest. etc. */
-    struct MPID_Request *partner_request;
 
     /* User-defined request support via a "vtable".  Saves space in the already
      * bloated request for regular pt2pt and NBC requests. */
     struct MPID_Grequest_fns *greq_fns;
+
+    /* Persistent requests have their own "real" requests.  Receive requests
+       have partnering send requests when src=dest. etc. */
+    struct MPID_Request *partner_request;
 
     /* Other, device-specific information */
 #ifdef MPID_DEV_REQUEST_DECL

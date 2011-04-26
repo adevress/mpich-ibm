@@ -62,7 +62,7 @@ void    MPIDI_Request_allocate_pool();
 #define MPIU_HANDLE_ALLOCATION_THREAD_LOCAL  1
 
 /* XXX DJG for TLS hack */
-#define MPID_REQUEST_TLS_MAX 256
+#define MPID_REQUEST_TLS_MAX 128
 
 #if MPIU_HANDLE_ALLOCATION_METHOD == MPIU_HANDLE_ALLOCATION_THREAD_LOCAL
 
@@ -164,14 +164,13 @@ MPIDI_Request_initialize(MPID_Request * req)
   req->status.MPI_ERROR  = MPI_SUCCESS;
 
   struct MPIDI_Request* mpid = &req->mpid;
-  mpid->cancel_pending   = FALSE;
   mpid->next             = NULL;
+  mpid->envelope.msginfo.flags = 0;
+  mpid->cancel_pending   = FALSE;
   mpid->datatype_ptr     = NULL;
   mpid->uebuf            = NULL;
   mpid->uebuflen         = 0;
   MPIDI_Request_setCA(req, MPIDI_CA_COMPLETE);
-
-  MPIDI_Request_setRzv(req, 0);
 }
 
 
@@ -216,6 +215,7 @@ MPIDI_Request_create2()
   *(_flag) = (_req)->mpid.cancel_pending;               \
   (_req)->mpid.cancel_pending = TRUE;                   \
 })
+
 
 static inline void
 MPID_Request_release_inline(MPID_Request *req)

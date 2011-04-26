@@ -42,6 +42,10 @@ pami_result_t MPIDI_Send_handoff (pami_context_t context, void * sreq);
 pami_result_t MPIDI_Ssend_handoff(pami_context_t context, void * sreq);
 pami_result_t MPIDI_Isend_handoff(pami_context_t context, void * sreq);
 
+void MPIDI_RecvMsg_procnull(MPID_Comm     * comm,
+                            unsigned        is_blocking,
+                            MPI_Status    * status,
+                            MPID_Request ** request);
 void MPIDI_RecvMsg_Unexp(MPID_Request * rreq, void * buf, int count, MPI_Datatype datatype);
 
 /**

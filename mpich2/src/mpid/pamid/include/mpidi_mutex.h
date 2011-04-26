@@ -79,14 +79,15 @@ MPIDI_Mutex_initialize()
 static inline int
 MPIDI_Mutex_try_acquire(unsigned m)
 {
+
+#if MPIDI_MUTEX_RECURSIVE
   size_t tid = MPIDI_THREAD_ID();
-
   MPID_assert(m < MPIDI_MAX_MUTEXES);
-
   if (MPIDI_Mutex_counter[tid][m] >= 1) {
     ++MPIDI_Mutex_counter[tid][m];
     return 0;
   }
+#endif
 
   MPIDI_Mutex_t *mutex  = &(MPIDI_Mutex_vector[m]);
   size_t rc = L2_AtomicLoadIncrementBounded(&mutex->counter);
@@ -94,7 +95,9 @@ MPIDI_Mutex_try_acquire(unsigned m)
   if (rc == MUTEX_FAIL)
     return 1;
 
+#if MPIDI_MUTEX_RECURSIVE
   MPIDI_Mutex_counter[tid][m] =  1;
+#endif
   return 0;   /* Lock succeeded */
 }
 
@@ -108,14 +111,15 @@ MPIDI_Mutex_try_acquire(unsigned m)
 static inline int
 MPIDI_Mutex_acquire(unsigned m)
 {
+#if MPIDI_MUTEX_RECURSIVE
   size_t tid = MPIDI_THREAD_ID();
-
   MPID_assert(m < MPIDI_MAX_MUTEXES);
 
   if (unlikely(MPIDI_Mutex_counter[tid][m] >= 1)) {
     ++MPIDI_Mutex_counter[tid][m];
     return 0;
   }
+#endif
 
   MPIDI_Mutex_t *mutex  = &(MPIDI_Mutex_vector[m]);
   size_t rc = 0;
@@ -123,7 +127,9 @@ MPIDI_Mutex_acquire(unsigned m)
     rc = L2_AtomicLoadIncrementBounded(&mutex->counter);
   } while (rc == MUTEX_FAIL);
 
+#if MPIDI_MUTEX_RECURSIVE
   MPIDI_Mutex_counter[tid][m] =  1;
+#endif
   return 0;
 }
 
@@ -137,6 +143,7 @@ MPIDI_Mutex_acquire(unsigned m)
 static inline int
 MPIDI_Mutex_release(unsigned m)
 {
+#if MPIDI_MUTEX_RECURSIVE
   size_t tid = MPIDI_THREAD_ID();
   MPID_assert(m < MPIDI_MAX_MUTEXES);
   /* Verify this thread is the owner of this lock */
@@ -146,6 +153,7 @@ MPIDI_Mutex_release(unsigned m)
   MPID_assert(MPIDI_Mutex_counter[tid][m] >= 0);
   if (unlikely(MPIDI_Mutex_counter[tid][m] > 0))
     return 0;    /* Future calls will release the lock to other threads */
+#endif
 
   /* Wait till all the writes in the critical sections from this
      thread have completed and invalidates have been delivered */

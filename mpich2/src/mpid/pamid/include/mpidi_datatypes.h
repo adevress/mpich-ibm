@@ -30,10 +30,6 @@ typedef struct
  */
 typedef struct
 {
-  unsigned verbose;        /**< The current level of verbosity for end-of-job stats. */
-  unsigned statistics;     /**< The current level of stats collection.               */
-  unsigned requested_thread_level;
-
   unsigned avail_contexts;
   unsigned comm_threads;
   unsigned context_post;
@@ -41,6 +37,13 @@ typedef struct
   unsigned eager_limit;
   unsigned optimized_subcomms;
 
+#if (MPIU_HANDLE_ALLOCATION_METHOD == MPIU_HANDLE_ALLOCATION_THREAD_LOCAL) && defined(MPIDI_USE_OPA)
+  MPIDI_RequestHandle_t request_handles[MPIDI_MAX_THREADS];
+#endif
+
+  unsigned verbose;        /**< The current level of verbosity for end-of-job stats. */
+  unsigned statistics;     /**< The current level of stats collection.               */
+  unsigned requested_thread_level;
   unsigned rma_pending;    /**< The max num outstanding requests during an RMA op    */
   unsigned shmem_pt2pt;    /**< Enable optimized shared memory point-to-point functions. */
 
@@ -52,9 +55,6 @@ typedef struct
   }
   optimized;
 
-#if (MPIU_HANDLE_ALLOCATION_METHOD == MPIU_HANDLE_ALLOCATION_THREAD_LOCAL) && defined(MPIDI_USE_OPA)
-  MPIDI_RequestHandle_t request_handles[MPIDI_MAX_THREADS];
-#endif
 } MPIDI_Process_t;
 
 
@@ -127,9 +127,15 @@ typedef struct
   unsigned    MPIrank;     /**< match rank             */
   uint16_t    MPIctxt;     /**< match context          */
 
-  uint16_t    control:3;   /**< message type for control protocols */
-  uint16_t    isSync:1;    /**< set for sync sends     */
-  uint16_t    isRzv :1;    /**< use pt2pt rendezvous   */
+  union {
+    uint16_t  flags;
+    struct {
+      uint16_t    control:3;   /**< message type for control protocols */
+      uint16_t    isSync:1;    /**< set for sync sends     */
+      uint16_t    isRzv :1;    /**< use pt2pt rendezvous   */
+    };
+  };
+
 } MPIDI_MsgInfo;
 
 /** \brief Full Rendezvous msg info to be set as two quads of unexpected data. */
@@ -147,10 +153,11 @@ typedef struct
 /** \brief This defines the portion of MPID_Request that is specific to the Device */
 struct MPIDI_Request
 {
-  MPIDI_MsgEnvelope     envelope;
   struct MPID_Request  *next;         /**< Link to next req. in queue */
-
+  struct MPID_Datatype *datatype_ptr; /**< Info about the datatype    */
   pami_work_t           post_request; /**<                            */
+
+  MPIDI_MsgEnvelope     envelope;
 
   void                 *userbuf;      /**< User buffer                */
   unsigned              userbufcount; /**< Userbuf data count         */
@@ -160,8 +167,6 @@ struct MPIDI_Request
 
   void                 *uebuf;        /**< Unexpected buffer          */
   unsigned              uebuflen;     /**< Length (bytes) of uebuf    */
-
-  struct MPID_Datatype *datatype_ptr; /**< Info about the datatype    */
 
   MPIDI_REQUEST_PTYPE   ptype;        /**< The persistent msg type    */
   MPIDI_CA              ca;           /**< Completion action          */

@@ -89,3 +89,28 @@ MPIDI_RecvMsg_Unexp(MPID_Request  * rreq,
         }
     }
 }
+
+
+void
+MPIDI_RecvMsg_procnull(MPID_Comm     * comm,
+                       unsigned        is_blocking,
+                       MPI_Status    * status,
+                       MPID_Request ** request)
+{
+  if (is_blocking)
+    {
+      MPIR_Status_set_procnull(status);
+      *request = NULL;
+    }
+  else
+    {
+      MPID_Request * rreq;
+      rreq = MPIDI_Request_create2();
+      MPIR_Status_set_procnull(&rreq->status);
+      rreq->kind = MPID_REQUEST_RECV;
+      rreq->comm = comm;
+      MPIR_Comm_add_ref(comm);
+      MPIDI_Request_complete(rreq);
+      *request = rreq;
+    }
+}

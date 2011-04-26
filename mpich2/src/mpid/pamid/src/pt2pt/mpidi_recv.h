@@ -37,8 +37,9 @@ MPIDI_RecvMsg(void          * buf,
               MPI_Status    * status,
               MPID_Request ** request)
 {
-  int found;
   MPID_Request * rreq;
+  int found;
+  int mpi_errno = MPI_SUCCESS;
 
   MPIR_Comm_add_ref(comm);
 
@@ -61,11 +62,13 @@ MPIDI_RecvMsg(void          * buf,
   rreq->mpid.userbuf      = buf;
   rreq->mpid.userbufcount = count;
   rreq->mpid.datatype     = datatype;
-  MPIDI_Request_setCA(rreq, MPIDI_CA_COMPLETE);
+  /* We don't need this because MPIDI_CA_COMPLETE is the initialized default */
+  /* MPIDI_Request_setCA(rreq, MPIDI_CA_COMPLETE); */
 
   if (found)
     {
       MPIDI_RecvMsg_Unexp(rreq, buf, count, datatype);
+      mpi_errno = rreq->status.MPI_ERROR;
     }
   else
     {
@@ -84,7 +87,7 @@ MPIDI_RecvMsg(void          * buf,
     *status = rreq->status;
 
   MPIU_THREAD_CS_EXIT(MSGQUEUE,0);
-  return rreq->status.MPI_ERROR;
+  return mpi_errno;
 }
 
 
@@ -122,22 +125,7 @@ MPIDI_Recv(void          * buf,
   /* ---------------------------------------- */
   if (unlikely(rank == MPI_PROC_NULL))
     {
-      if (is_blocking)
-        {
-          MPIR_Status_set_procnull(status);
-          *request = NULL;
-        }
-      else
-        {
-          MPID_Request * rreq;
-          rreq = MPIDI_Request_create2();
-          MPIR_Status_set_procnull(&rreq->status);
-          rreq->kind = MPID_REQUEST_RECV;
-          rreq->comm = comm;
-          MPIR_Comm_add_ref(comm);
-          MPIDI_Request_complete(rreq);
-          *request = rreq;
-        }
+      MPIDI_RecvMsg_procnull(comm, is_blocking, status, request);
       return MPI_SUCCESS;
     }
 
