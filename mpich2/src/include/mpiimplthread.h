@@ -915,9 +915,12 @@ enum MPIU_Nest_mutexes {
 /* memory barriers aren't needed in this impl, because all access to completion
  * counters is done while holding the ALLFUNC critical section */
 typedef volatile int MPID_cc_t;
+typedef size_t MPID_cc_prefetch_t;
 #  define MPID_cc_set(cc_ptr_, val_) (*(cc_ptr_)) = (val_)
 #  define MPID_cc_set_1(cc_ptr_)     (*(cc_ptr_)) = (1)
 #  define MPID_cc_is_complete(cc_ptr_) (0 == *(cc_ptr_))
+#  define MPID_cc_prefetch(cc_ptr_)  (*(cc_ptr_))
+#  define MPID_cc_prefetch_is_complete(pf)  (0 == pf)
 #define MPID_cc_decr(cc_ptr_, incomplete_)     \
 do {                                           \
     *(incomplete_) = --(*(cc_ptr_));           \
@@ -932,6 +935,7 @@ do {                                           \
 #include "opa_primitives.h"
 
 typedef OPA_int_t MPID_cc_t;
+typedef size_t MPID_cc_prefetch_t;
 
 /* implies no barrier, since this routine should only be used for request
  * initialization */
@@ -967,6 +971,8 @@ static inline void MPID_cc_set(MPID_cc_t *cc_ptr, int val)
 #endif
 }
 #define MPID_cc_is_complete(cc_ptr_)       ({ (0 == ((cc_ptr_)->v)); })
+#define MPID_cc_prefetch(cc_ptr_)          ((cc_ptr_)->v)
+#define MPID_cc_prefetch_is_complete(pf)   (0 == pf)
 #define MPID_cc_decr(cc_ptr_, incomplete_) ({ *(incomplete_) = --((cc_ptr_)->v); })
 /* MT FIXME does this need a HB/HA annotation?  This macro is only used for
  * cancel_send right now. */
