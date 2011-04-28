@@ -58,12 +58,17 @@ int MPIR_Waitall_impl(int count, MPI_Request array_of_requests[],
         MPIU_CHKLMEM_MALLOC(idx_vec, uint32_t*, count * sizeof(uint32_t *), mpi_errno, "request pointers");
     }
 
-    size_t k = 0;
     n_greqs = 0;
     n_completed = 0;
-    MPID_Request *r0 = NULL, *r1 = NULL;
-    MPID_cc_prefetch_t v0 = 1, v1 = 1;
-    size_t rk0 = 0, rk1 = 0;
+    size_t count_notdone = 0;
+    struct request_info {
+        MPID_Request       *req;
+        MPID_cc_prefetch_t  pre_cc;
+        size_t              kind;
+    };
+    struct request_info info0 = { .req=NULL, .pre_cc=1, .kind=0 };
+    struct request_info info1 = { .req=NULL, .pre_cc=1, .kind=0 };
+
 
     if (likely(optimize))
     {
@@ -73,64 +78,64 @@ int MPIR_Waitall_impl(int count, MPI_Request array_of_requests[],
                 n_completed ++;
             else
             {
-                MPID_Request_get_ptr(array_of_requests[i+0], r0);
-                v0  = MPID_cc_prefetch(&r0->cc);
-                rk0 = r0->kind;
+                MPID_Request_get_ptr(array_of_requests[i+0], info0.req);
+                info0.pre_cc  = MPID_cc_prefetch(&info0.req->cc);
+                info0.kind = info0.req->kind;
             }
 
             if (unlikely(array_of_requests[i+1] == MPI_REQUEST_NULL))
                 n_completed ++;
             else
             {
-                MPID_Request_get_ptr(array_of_requests[i+1], r1);
-                rk1 = r1->kind;
-                v1  = MPID_cc_prefetch(&r1->cc);
+                MPID_Request_get_ptr(array_of_requests[i+1], info1.req);
+                info1.kind = info1.req->kind;
+                info1.pre_cc  = MPID_cc_prefetch(&info1.req->cc);
             }
 
-            if ( likely((r0!=NULL) & ((rk0 == MPID_REQUEST_SEND) | (rk0 == MPID_REQUEST_RECV)) & MPID_cc_prefetch_is_complete(v0)) )
+            if ( likely((info0.req!=NULL) & ((info0.kind == MPID_REQUEST_SEND) | (info0.kind == MPID_REQUEST_RECV)) & MPID_cc_prefetch_is_complete(info0.pre_cc)) )
             {
-                MPIR_Request_complete_fastpath(&array_of_requests[i+0], r0);
+                MPIR_Request_complete_fastpath(&array_of_requests[i+0], info0.req);
                 n_completed ++;
-                r0 = NULL;
+                info0.req = NULL;
             }
             else
             {
-                request_ptrs[k] = r0;
-                idx_vec[k++] = i;
+                request_ptrs[count_notdone] = info0.req;
+                idx_vec[count_notdone++] = i;
             }
 
-            if ( likely((r1!=NULL) & ((rk1 == MPID_REQUEST_SEND) | (rk1 == MPID_REQUEST_RECV)) & MPID_cc_prefetch_is_complete(v1)) )
+            if ( likely((info1.req!=NULL) & ((info1.kind == MPID_REQUEST_SEND) | (info1.kind == MPID_REQUEST_RECV)) & MPID_cc_prefetch_is_complete(info1.pre_cc)) )
             {
-                MPIR_Request_complete_fastpath(&array_of_requests[i+1], r1);
+                MPIR_Request_complete_fastpath(&array_of_requests[i+1], info1.req);
                 n_completed ++;
-                r1 = NULL;
+                info1.req = NULL;
             }
             else
             {
-                request_ptrs[k] = r1;
-                idx_vec[k++] = i+1;
+                request_ptrs[count_notdone] = info1.req;
+                idx_vec[count_notdone++] = i+1;
             }
         }
 
         if (unlikely(i == count - 1))
         {
-            r0 = NULL;
+            info0.req = NULL;
             if (array_of_requests[i] == MPI_REQUEST_NULL)
                 n_completed ++;
             else {
-                MPID_Request_get_ptr(array_of_requests[i], r0);
-                v0  = MPID_cc_prefetch(&r0->cc);
-                rk0 = r0->kind;
+                MPID_Request_get_ptr(array_of_requests[i], info0.req);
+                info0.pre_cc  = MPID_cc_prefetch(&info0.req->cc);
+                info0.kind = info0.req->kind;
 
-                if ( ((rk0 == MPID_REQUEST_SEND) | (rk0 == MPID_REQUEST_RECV)) && MPID_cc_prefetch_is_complete(v0) )
+                if ( ((info0.kind == MPID_REQUEST_SEND) | (info0.kind == MPID_REQUEST_RECV)) && MPID_cc_prefetch_is_complete(info0.pre_cc) )
                 {
-                    MPIR_Request_complete_fastpath(&array_of_requests[i], r0);
+                    MPIR_Request_complete_fastpath(&array_of_requests[i], info0.req);
                     n_completed ++;
-                    r0 = NULL;
+                    info0.req = NULL;
                 }
                 else {
-                    request_ptrs[k] = r0;
-                    idx_vec[k++] = i;
+                    request_ptrs[count_notdone] = info0.req;
+                    idx_vec[count_notdone++] = i;
                 }
             }
         }
@@ -141,8 +146,8 @@ int MPIR_Waitall_impl(int count, MPI_Request array_of_requests[],
         {
             if (array_of_requests[i] != MPI_REQUEST_NULL)
             {
-                MPID_Request_get_ptr(array_of_requests[i], request_ptrs[k]);
-                idx_vec[k++] = i;
+                MPID_Request_get_ptr(array_of_requests[i], request_ptrs[count_notdone]);
+                idx_vec[count_notdone++] = i;
                 /* Validate object pointers if error checking is enabled */
             }
             else
@@ -170,7 +175,7 @@ int MPIR_Waitall_impl(int count, MPI_Request array_of_requests[],
     {
         MPID_Progress_start(&progress_state);
 
-        for (i = 0; i < k; ++i) {
+        for (i = 0; i < count_notdone; ++i) {
             if ( unlikely((request_ptrs[i]->kind != MPID_REQUEST_SEND) && (request_ptrs[i]->kind != MPID_REQUEST_RECV)) )
                 goto fn_noopt;
 
@@ -188,7 +193,7 @@ int MPIR_Waitall_impl(int count, MPI_Request array_of_requests[],
 
  fn_noopt:
 
-    for (i = 0; i < k; i++)
+    for (i = 0; i < count_notdone; i++)
     {
         if (request_ptrs[i] != NULL)
         {
@@ -205,13 +210,13 @@ int MPIR_Waitall_impl(int count, MPI_Request array_of_requests[],
     /* first, complete any generalized requests */
     if (n_greqs)
     {
-        mpi_errno = MPIR_Grequest_waitall(k, request_ptrs);
+        mpi_errno = MPIR_Grequest_waitall(count_notdone, request_ptrs);
         if (mpi_errno) MPIU_ERR_POP(mpi_errno);
     }
 
     MPID_Progress_start(&progress_state);
 
-    for (i = 0; i < k; i++)
+    for (i = 0; i < count_notdone; i++)
     {
         if (request_ptrs[i] == NULL)
         {
@@ -255,7 +260,7 @@ int MPIR_Waitall_impl(int count, MPI_Request array_of_requests[],
                 status_ptr->MPI_ERROR = rc;
 
                 /* set the error codes for the rest of the uncompleted requests to PENDING */
-                for (j = i+1; j < k; ++j)
+                for (j = i+1; j < count_notdone; ++j)
                 {
                     if (!ignoring_statuses)
                     {
@@ -277,7 +282,7 @@ int MPIR_Waitall_impl(int count, MPI_Request array_of_requests[],
     MPID_Progress_end(&progress_state);
 
  fn_exit:
-    if (k > MPID_REQUEST_PTR_ARRAY_SIZE)
+    if (count > MPID_REQUEST_PTR_ARRAY_SIZE)
     {
         MPIU_CHKLMEM_FREEALL();
     }
