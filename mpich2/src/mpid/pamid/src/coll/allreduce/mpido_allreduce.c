@@ -30,13 +30,13 @@ int MPIDO_Allreduce(void *sendbuf,
    pami_op pop;
    int mu;
    int rc;
-   int len;
-   char op_str[255];
-   char dt_str[255];
+   /* int len; */
+   /* char op_str[255]; */
+   /* char dt_str[255]; */
    volatile unsigned active = 1;
    pami_xfer_t allred;
-   MPIopString(op, op_str);
-   PMPI_Type_get_name(dt, dt_str, &len);
+   /* MPIopString(op, op_str); */
+   /* PMPI_Type_get_name(dt, dt_str, &len); */
    rc = MPItoPAMI(dt, &pdt, op, &pop, &mu);
    /* convert to metadata query */
    if(rc == MPI_SUCCESS && mu == 1 && comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLREDUCE] != MPID_COLL_USE_MPICH)
@@ -70,7 +70,7 @@ int MPIDO_Allreduce(void *sendbuf,
                comm_ptr->mpid.user_metadata[PAMI_XFER_ALLREDUCE].name);
          }
       }
-      MPIDI_Update_last_algorithm(comm_ptr, comm_ptr->mpid.coll_metadata[PAMI_XFER_ALLREDUCE][0][0].name);
+      /* MPIDI_Update_last_algorithm(comm_ptr, comm_ptr->mpid.coll_metadata[PAMI_XFER_ALLREDUCE][0][0].name); */
       if(MPIDI_Process.context_post)
       {
          allred_post.coll_struct = &allred;
