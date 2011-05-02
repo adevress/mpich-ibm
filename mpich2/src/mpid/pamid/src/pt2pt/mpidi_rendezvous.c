@@ -5,10 +5,12 @@
  */
 #include <mpidimpl.h>
 
-void
-MPIDI_RendezvousTransfer(pami_context_t context,
-                         MPID_Request * rreq)
+pami_result_t
+MPIDI_RendezvousTransfer(pami_context_t   context,
+                         void           * _rreq)
 {
+  MPID_Request * rreq = (MPID_Request*) _rreq;
+
   void *rcvbuf;
   unsigned rcvlen;
 
@@ -134,4 +136,6 @@ MPIDI_RendezvousTransfer(pami_context_t context,
   rc = PAMI_Get(context, &params);
   MPID_assert(rc == PAMI_SUCCESS);
 #endif
+
+  return PAMI_SUCCESS;
 }

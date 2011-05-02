@@ -140,7 +140,7 @@ MPIDI_WinControlCB(pami_context_t    context,
                    pami_recv_t     * recv);
 
 /** \brief Helper function to complete a rendevous transfer */
-void MPIDI_RendezvousTransfer(pami_context_t context, MPID_Request * rreq);
+pami_result_t MPIDI_RendezvousTransfer(pami_context_t context, void* rreq);
 
 
 void MPIDI_Comm_create      (MPID_Comm *comm);

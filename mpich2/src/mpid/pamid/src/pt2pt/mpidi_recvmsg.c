@@ -39,7 +39,7 @@ MPIDI_RecvMsg_Unexp(MPID_Request  * rreq,
           MPID_Datatype_add_ref(rreq->mpid.datatype_ptr);
         }
 
-      MPIDI_RendezvousTransfer(MPIDI_Context_local(rreq), rreq);
+      MPIDI_Context_post(MPIDI_Context_local(rreq), &rreq->mpid.post_request, MPIDI_RendezvousTransfer, rreq);
     }
   else if (MPID_cc_is_complete(&rreq->cc))
     {
