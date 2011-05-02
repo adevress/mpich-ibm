@@ -74,6 +74,7 @@ int MPIR_Waitall_impl(int count, MPI_Request array_of_requests[],
     {
         for (i = 0; i < count-1; i += 2)
         {
+            info0.req = NULL;
             if (unlikely(array_of_requests[i+0] == MPI_REQUEST_NULL))
                 n_completed ++;
             else
@@ -83,6 +84,7 @@ int MPIR_Waitall_impl(int count, MPI_Request array_of_requests[],
                 info0.kind = info0.req->kind;
             }
 
+            info1.req = NULL;
             if (unlikely(array_of_requests[i+1] == MPI_REQUEST_NULL))
                 n_completed ++;
             else
@@ -94,7 +96,12 @@ int MPIR_Waitall_impl(int count, MPI_Request array_of_requests[],
 
             if ( likely((info0.req!=NULL) & ((info0.kind == MPID_REQUEST_SEND) | (info0.kind == MPID_REQUEST_RECV)) & MPID_cc_prefetch_is_complete(info0.pre_cc)) )
             {
-                MPIR_Request_complete_fastpath(&array_of_requests[i+0], info0.req);
+                mpi_errno = MPIR_Request_complete_fastpath(&array_of_requests[i+0], info0.req);
+#               ifdef HAVE_ERROR_CHECKING
+                {
+                    if (mpi_errno) MPIU_ERR_POP(mpi_errno);
+                }
+#               endif
                 n_completed ++;
                 info0.req = NULL;
             }
@@ -106,7 +113,12 @@ int MPIR_Waitall_impl(int count, MPI_Request array_of_requests[],
 
             if ( likely((info1.req!=NULL) & ((info1.kind == MPID_REQUEST_SEND) | (info1.kind == MPID_REQUEST_RECV)) & MPID_cc_prefetch_is_complete(info1.pre_cc)) )
             {
-                MPIR_Request_complete_fastpath(&array_of_requests[i+1], info1.req);
+                mpi_errno = MPIR_Request_complete_fastpath(&array_of_requests[i+1], info1.req);
+#               ifdef HAVE_ERROR_CHECKING
+                {
+                    if (mpi_errno) MPIU_ERR_POP(mpi_errno);
+                }
+#               endif
                 n_completed ++;
                 info1.req = NULL;
             }
@@ -133,7 +145,8 @@ int MPIR_Waitall_impl(int count, MPI_Request array_of_requests[],
                     n_completed ++;
                     info0.req = NULL;
                 }
-                else {
+                else
+                {
                     request_ptrs[count_notdone] = info0.req;
                     idx_vec[count_notdone++] = i;
                 }
@@ -177,11 +190,25 @@ int MPIR_Waitall_impl(int count, MPI_Request array_of_requests[],
 
         for (i = 0; i < count_notdone; ++i) {
             if ( unlikely((request_ptrs[i]->kind != MPID_REQUEST_SEND) && (request_ptrs[i]->kind != MPID_REQUEST_RECV)) )
-                goto fn_noopt;
+                goto fn_general;
 
-            while(!MPID_Request_is_complete(request_ptrs[i]))
+            while(!MPID_Request_is_complete(request_ptrs[i])) {
                 mpi_errno = MPID_Progress_wait(&progress_state);
-            MPIR_Request_complete_fastpath(&array_of_requests[idx_vec[i]], request_ptrs[i]);
+                /* must check and handle the error, can't guard with HAVE_ERROR_CHECKING, but it's
+                 * OK for the error case to be slower */
+                if (unlikely(mpi_errno)) {
+                    /* --BEGIN ERROR HANDLING-- */
+                    MPID_Progress_end(&progress_state);
+                    MPIU_ERR_POP(mpi_errno);
+                    /* --END ERROR HANDLING-- */
+                }
+            }
+            mpi_errno = MPIR_Request_complete_fastpath(&array_of_requests[idx_vec[i]], request_ptrs[i]);
+#           ifdef HAVE_ERROR_CHECKING
+            {
+                if (mpi_errno) MPIU_ERR_POP(mpi_errno);
+            }
+#           endif
             request_ptrs[i] = NULL;
         }
 
@@ -191,7 +218,7 @@ int MPIR_Waitall_impl(int count, MPI_Request array_of_requests[],
     }
 
 
- fn_noopt:
+ fn_general:
 
     for (i = 0; i < count_notdone; i++)
     {
