@@ -291,8 +291,16 @@ typedef OPA_int_t MPIU_Handle_ref_count;
     } while (0)
 #define MPIU_Object_release_ref_always(objptr_,inuse_ptr)               \
     do {                                                                \
-        int got_zero_ = OPA_decr_and_test_int(&((objptr_)->ref_count)); \
-        *(inuse_ptr) = got_zero_ ? 0 : 1;                               \
+        if (likely((objptr_)->ref_count.v == 1))                        \
+        {                                                               \
+            (objptr_)->ref_count.v = 0;                                 \
+            *(inuse_ptr) = 0;                                           \
+        }                                                               \
+        else                                                            \
+        {                                                               \
+            int got_zero_ = OPA_decr_and_test_int(&((objptr_)->ref_count)); \
+            *(inuse_ptr) = got_zero_ ? 0 : 1;                           \
+        }                                                               \
         MPIU_HANDLE_LOG_REFCOUNT_CHANGE(objptr_, "decr");               \
         MPIU_HANDLE_CHECK_REFCOUNT(objptr_,"decr");                     \
     } while (0)
