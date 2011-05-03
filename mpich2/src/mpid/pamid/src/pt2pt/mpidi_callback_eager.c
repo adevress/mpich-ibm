@@ -80,6 +80,7 @@ MPIDI_RecvCB(pami_context_t    context,
   /* -------------------------------------------- */
   /*  Figure out target buffer for request data.  */
   /* -------------------------------------------- */
+  MPIDI_Mutex_sync();
   MPIU_THREAD_CS_EXIT(MSGQUEUE,0);
 
   /* ---------------------- */

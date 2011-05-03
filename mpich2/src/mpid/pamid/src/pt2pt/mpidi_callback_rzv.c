@@ -53,11 +53,6 @@ MPIDI_RecvRzvCB(pami_context_t    context,
             envelope->envelope.length,
             found?"":"not ");
 
-  /* ---------------------------------------- */
-  /*  Signal that the recv has been started.  */
-  /* ---------------------------------------- */
-  MPIDI_Progress_signal();
-
   /* ---------------------- */
   /*  Copy in information.  */
   /* ---------------------- */
@@ -112,5 +107,11 @@ MPIDI_RecvRzvCB(pami_context_t    context,
       /* rreq->mpid.uebuflen = 0; */
     }
 
+  /* ---------------------------------------- */
+  /*  Signal that the recv has been started.  */
+  /* ---------------------------------------- */
+  MPIDI_Progress_signal();
+
+  MPIDI_Mutex_sync();
   MPIU_THREAD_CS_EXIT(MSGQUEUE,0);
 }
