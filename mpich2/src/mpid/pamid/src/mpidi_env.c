@@ -515,7 +515,7 @@ MPIDI_Env_setup()
 
   /* Set the upper-limit of number of PAMI Contexts. */
   {
-    char *names[] = {"PAMI_MAXCONTEXTS", NULL};
+    char *names[] = {"PAMI_MAXCONTEXTS", "PAMI_MAXCONTEXT", "PAMI_MAX_CONTEXTS", "PAMI_MAX_CONTEXT", NULL};
     ENV_Unsigned(names, &MPIDI_Process.avail_contexts);
     TRACE_ERR("MPIDI_Process.avail_contexts=%u\n", MPIDI_Process.avail_contexts);
   }
@@ -546,6 +546,12 @@ MPIDI_Env_setup()
     TRACE_ERR("MPIDI_Process.comm_threads=%u\n", MPIDI_Process.comm_threads);
   }
 #endif
+
+  /* Determine short limit */
+  {
+    char* names[] = {"PAMI_SHORT", NULL};
+    ENV_Unsigned(names, &MPIDI_Process.short_limit);
+  }
 
   /* Determine eager limit */
   {

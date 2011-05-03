@@ -257,7 +257,7 @@ MPIDI_SendMsg(pami_context_t   context,
   /*
    * Always use the short protocol when data_sz is small.
    */
-  if (likely(data_sz <= MPIDI_Process.short_limit))
+  if (likely(data_sz < MPIDI_Process.short_limit))
     {
       TRACE_ERR("Sending(short) bytes=%u (eager_limit=%u)\n", data_sz, MPIDI_Process.eager_limit);
       MPIDI_SendMsg_short(context,

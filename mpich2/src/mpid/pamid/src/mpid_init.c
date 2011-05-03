@@ -19,7 +19,7 @@ MPIDI_Process_t  MPIDI_Process = {
  comm_threads   : 0,
  context_post   : 1,
  optimized_subcomms: 1,
- short_limit    : 0,
+ short_limit    : 555,
 #ifdef __BGQ__
  eager_limit    : 1234,
 #else
@@ -262,15 +262,22 @@ MPIDI_Init(int* rank, int* size, int* threading)
   /* ------------------------------------ */
   /*  Set up the communication protocols  */
   /* ------------------------------------ */
-  MPIDI_Init_dispath(MPIDI_Protocols_Short,     &proto_list.Short,     &MPIDI_Process.short_limit);
-  MPIDI_Process.short_limit -= sizeof(MPIDI_MsgInfo);
-  TRACE_ERR("short_limit = %u\n", MPIDI_Process.short_limit);
-  MPIDI_Init_dispath(MPIDI_Protocols_ShortSync, &proto_list.ShortSync, NULL);
+  unsigned pami_short_limit[2] = {MPIDI_Process.short_limit, MPIDI_Process.short_limit};
+  MPIDI_Init_dispath(MPIDI_Protocols_Short,     &proto_list.Short,     pami_short_limit+0);
+  MPIDI_Init_dispath(MPIDI_Protocols_ShortSync, &proto_list.ShortSync, pami_short_limit+1);
   MPIDI_Init_dispath(MPIDI_Protocols_Eager,     &proto_list.Eager,     NULL);
   MPIDI_Init_dispath(MPIDI_Protocols_RVZ,       &proto_list.RVZ,       NULL);
   MPIDI_Init_dispath(MPIDI_Protocols_Cancel,    &proto_list.Cancel,    NULL);
   MPIDI_Init_dispath(MPIDI_Protocols_Control,   &proto_list.Control,   NULL);
   MPIDI_Init_dispath(MPIDI_Protocols_WinCtrl,   &proto_list.WinCtrl,   NULL);
+
+  pami_short_limit[0] -= (sizeof(MPIDI_MsgInfo) - 1);
+  if (MPIDI_Process.short_limit > pami_short_limit[0])
+    MPIDI_Process.short_limit = pami_short_limit[0];
+  pami_short_limit[1] -= (sizeof(MPIDI_MsgInfo) - 1);
+  if (MPIDI_Process.short_limit > pami_short_limit[1])
+    MPIDI_Process.short_limit = pami_short_limit[1];
+  TRACE_ERR("pami_short_limit[2] = [%u,%u]\n", pami_short_limit[0], pami_short_limit[1]);
 
 
   /* Fill in the world geometry */
