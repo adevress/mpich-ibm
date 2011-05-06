@@ -49,7 +49,7 @@ int MPIR_Waitall_impl(int count, MPI_Request array_of_requests[],
     int n_greqs;
     const int ignoring_statuses = (array_of_statuses == MPI_STATUSES_IGNORE);
     int optimize = ignoring_statuses; /* see NOTE-1 */
-    MPIU_CHKLMEM_DECL(1);
+    MPIU_CHKLMEM_DECL(2);
 
     /* Convert MPI request handles to a request object pointers */
     if (count > MPID_REQUEST_PTR_ARRAY_SIZE)
