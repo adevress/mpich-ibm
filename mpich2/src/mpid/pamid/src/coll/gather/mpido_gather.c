@@ -163,13 +163,12 @@ int MPIDO_Gather(void *sendbuf,
       /* Guaranteed to work allreduce */
       allred.algorithm = comm_ptr->mpid.coll_algorithm[PAMI_XFER_ALLREDUCE][0][0];
       allred.cmd.xfer_allreduce.sndbuf = (void *)(size_t)success;
-      allred.cmd.xfer_allreduce.stype = PAMI_TYPE_CONTIGUOUS;
+      allred.cmd.xfer_allreduce.stype = PAMI_TYPE_SIGNED_INT;
       allred.cmd.xfer_allreduce.rcvbuf = (void *)(size_t)success;
-      allred.cmd.xfer_allreduce.rtype = PAMI_TYPE_CONTIGUOUS;
+      allred.cmd.xfer_allreduce.rtype = PAMI_TYPE_SIGNED_INT;
       allred.cmd.xfer_allreduce.stypecount = sizeof(int);
       allred.cmd.xfer_allreduce.rtypecount = sizeof(int);
-      allred.cmd.xfer_allreduce.dt = PAMI_SIGNED_INT;
-      allred.cmd.xfer_allreduce.op = PAMI_BAND;
+      allred.cmd.xfer_allreduce.op = PAMI_DATA_BAND;
       if(MPIDI_Process.context_post)
       {
          allred_post.coll_struct = &allred;
@@ -199,10 +198,10 @@ int MPIDO_Gather(void *sendbuf,
       gather.cmd.xfer_gather.root = MPID_VCR_GET_LPID(comm_ptr->vcr, root);
       gather.algorithm = comm_ptr->mpid.user_selected[PAMI_XFER_GATHER];
       gather.cmd.xfer_gather.sndbuf = (void *)sendbuf;
-      gather.cmd.xfer_gather.stype = PAMI_TYPE_CONTIGUOUS;
+      gather.cmd.xfer_gather.stype = PAMI_TYPE_BYTE;
       gather.cmd.xfer_gather.stypecount = send_bytes;
       gather.cmd.xfer_gather.rcvbuf = (void *)recvbuf;
-      gather.cmd.xfer_gather.rtype = PAMI_TYPE_CONTIGUOUS;
+      gather.cmd.xfer_gather.rtype = PAMI_TYPE_BYTE;
       gather.cmd.xfer_gather.rtypecount = recv_bytes;
       MPIDI_Update_last_algorithm(comm_ptr,
                comm_ptr->mpid.user_metadata[PAMI_XFER_GATHER].name);

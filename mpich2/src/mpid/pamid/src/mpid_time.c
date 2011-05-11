@@ -14,7 +14,7 @@
 
 void MPID_Wtime( MPID_Time_t *tval )
 {
-  *tval = PAMI_Wtime();
+  *tval = PAMI_Wtime(MPIDI_Client);
 }
 double MPID_Wtick()
 {

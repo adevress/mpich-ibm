@@ -90,73 +90,73 @@ void MPIopString(MPI_Op op, char *string)
 }
 
 
-int MPItoPAMI(MPI_Datatype dt, pami_dt *pdt, MPI_Op op, pami_op *pop, int *musupport)
+int MPItoPAMI(MPI_Datatype dt, pami_type_t *pdt, MPI_Op op, pami_data_function *pop, int *musupport)
 {
    *musupport = MUSUPPORTED;
-   *pdt = PAMI_UNDEFINED_DT;
-   *pop = PAMI_UNDEFINED_OP;
+   *pdt = PAMI_TYPE_NULL;
+   *pop = PAMI_DATA_NOOP;
    if(isS_INT(dt))
    {
-      *pdt = PAMI_SIGNED_INT;
+      *pdt = PAMI_TYPE_SIGNED_INT;
       /* #warning FIXME : signed int + Band/bor/bxor doesn't work at the lower level */
       /* For some reason, signed int+B* ops doesn't work */
       if(op == MPI_BOR || op == MPI_BAND || op == MPI_BXOR)
          return -1;
    }
-   else if(isUS_INT(dt)) *pdt = PAMI_UNSIGNED_INT;
-   else if(isFLOAT(dt)) *pdt = PAMI_FLOAT;
-   else if(isDOUBLE(dt)) *pdt = PAMI_DOUBLE;
+   else if(isUS_INT(dt)) *pdt = PAMI_TYPE_UNSIGNED_INT;
+   else if(isFLOAT(dt)) *pdt = PAMI_TYPE_FLOAT;
+   else if(isDOUBLE(dt)) *pdt = PAMI_TYPE_DOUBLE;
    else
    {
       *musupport = MUUNSUPPORTED;
-      if(isS_CHAR(dt)) *pdt = PAMI_SIGNED_CHAR;
-      else if(isUS_CHAR(dt)) *pdt = PAMI_UNSIGNED_CHAR;
-      else if(isS_SHORT(dt)) *pdt = PAMI_SIGNED_SHORT;
-      else if(isUS_SHORT(dt)) *pdt = PAMI_UNSIGNED_SHORT;
-      else if(isS_LONG(dt)) *pdt = PAMI_SIGNED_LONG_LONG;
-      else if(isUS_LONG(dt)) *pdt = PAMI_UNSIGNED_LONG_LONG;
-      else if(isSINGLE_COMPLEX(dt)) *pdt = PAMI_SINGLE_COMPLEX;
-      else if(isDOUBLE_COMPLEX(dt)) *pdt = PAMI_DOUBLE_COMPLEX;
+      if(isS_CHAR(dt)) *pdt = PAMI_TYPE_SIGNED_CHAR;
+      else if(isUS_CHAR(dt)) *pdt = PAMI_TYPE_UNSIGNED_CHAR;
+      else if(isS_SHORT(dt)) *pdt = PAMI_TYPE_SIGNED_SHORT;
+      else if(isUS_SHORT(dt)) *pdt = PAMI_TYPE_UNSIGNED_SHORT;
+      else if(isS_LONG(dt)) *pdt = PAMI_TYPE_SIGNED_LONG_LONG;
+      else if(isUS_LONG(dt)) *pdt = PAMI_TYPE_UNSIGNED_LONG_LONG;
+      else if(isSINGLE_COMPLEX(dt)) *pdt = PAMI_TYPE_SINGLE_COMPLEX;
+      else if(isDOUBLE_COMPLEX(dt)) *pdt = PAMI_TYPE_DOUBLE_COMPLEX;
       else if(isLOC_TYPE(dt))
       {
          switch(dt)
          {
-            case MPI_2REAL: *pdt = PAMI_LOC_2FLOAT; break;
-            case MPI_2DOUBLE_PRECISION: *pdt = PAMI_LOC_2DOUBLE; break;
+            case MPI_2REAL: *pdt = PAMI_TYPE_LOC_2FLOAT; break;
+            case MPI_2DOUBLE_PRECISION: *pdt = PAMI_TYPE_LOC_2DOUBLE; break;
             case MPI_2INTEGER:
-            case MPI_2INT: *pdt = PAMI_LOC_2INT; break;
-            case MPI_FLOAT_INT: *pdt = PAMI_LOC_FLOAT_INT; break;
-            case MPI_DOUBLE_INT: *pdt = PAMI_LOC_DOUBLE_INT; break;
-            case MPI_SHORT_INT: *pdt = PAMI_LOC_SHORT_INT; break;
+            case MPI_2INT: *pdt = PAMI_TYPE_LOC_2INT; break;
+            case MPI_FLOAT_INT: *pdt = PAMI_TYPE_LOC_FLOAT_INT; break;
+            case MPI_DOUBLE_INT: *pdt = PAMI_TYPE_LOC_DOUBLE_INT; break;
+            case MPI_SHORT_INT: *pdt = PAMI_TYPE_LOC_SHORT_INT; break;
          }
-         if(op == MPI_MINLOC) *pop = PAMI_MINLOC;
-         if(op == MPI_MAXLOC) *pop = PAMI_MAXLOC;
+         if(op == MPI_MINLOC) *pop = PAMI_DATA_MINLOC;
+         if(op == MPI_MAXLOC) *pop = PAMI_DATA_MAXLOC;
          return MPI_SUCCESS;
       }
       else if(isLOGICAL(dt))
       {
-         *pdt = PAMI_LOGICAL;
-         if(op == MPI_LOR) *pop = PAMI_LOR;
-         if(op == MPI_LAND) *pop = PAMI_LAND;
-         if(op == MPI_LXOR) *pop = PAMI_LXOR;
+         *pdt = PAMI_TYPE_LOGICAL;
+         if(op == MPI_LOR) *pop = PAMI_DATA_LOR;
+         if(op == MPI_LAND) *pop = PAMI_DATA_LAND;
+         if(op == MPI_LXOR) *pop = PAMI_DATA_LXOR;
          return MPI_SUCCESS;
       }
    }
 
-   if(*pdt == PAMI_UNDEFINED_DT) return -1;
+   if(*pdt == PAMI_TYPE_NULL) return -1;
 
-   *pop = PAMI_UNDEFINED_OP;
+   *pop = PAMI_DATA_NOOP;
    switch(op)
    {
-      case MPI_SUM: *pop = PAMI_SUM; return MPI_SUCCESS; break;
-      case MPI_PROD: *pop = PAMI_PROD; return MPI_SUCCESS; break;
-      case MPI_MAX: *pop = PAMI_MAX; return MPI_SUCCESS; break;
-      case MPI_MIN: *pop = PAMI_MIN; return MPI_SUCCESS; break;
-      case MPI_BAND: *pop = PAMI_BAND; return MPI_SUCCESS; break;
-      case MPI_BOR: *pop = PAMI_BOR; return MPI_SUCCESS; break;
-      case MPI_BXOR: *pop = PAMI_BXOR; return MPI_SUCCESS; break;
+      case MPI_SUM: *pop = PAMI_DATA_SUM; return MPI_SUCCESS; break;
+      case MPI_PROD: *pop = PAMI_DATA_PROD; return MPI_SUCCESS; break;
+      case MPI_MAX: *pop = PAMI_DATA_MAX; return MPI_SUCCESS; break;
+      case MPI_MIN: *pop = PAMI_DATA_MIN; return MPI_SUCCESS; break;
+      case MPI_BAND: *pop = PAMI_DATA_BAND; return MPI_SUCCESS; break;
+      case MPI_BOR: *pop = PAMI_DATA_BOR; return MPI_SUCCESS; break;
+      case MPI_BXOR: *pop = PAMI_DATA_BXOR; return MPI_SUCCESS; break;
    }
-   if(*pop == PAMI_UNDEFINED_OP) return -1;
+   if(*pop == PAMI_DATA_NOOP) return -1;
 
    return MPI_SUCCESS;
 }

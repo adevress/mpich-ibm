@@ -56,7 +56,7 @@ MPIDI_Callback_process_unexp(pami_context_t        context,
       recv->cookie   = rreq;
       /** \todo Remove these two lines when trac #256 is approved, implemented, and integrated into MPICH2 */
       recv->data_fn  = PAMI_DATA_COPY;
-      recv->type     = PAMI_TYPE_CONTIGUOUS;
+      recv->type     = PAMI_TYPE_BYTE;
       /* -------------------------------------------------- */
       /*  Let PAMI know where to put the rest of the data.  */
       /* -------------------------------------------------- */

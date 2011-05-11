@@ -223,13 +223,12 @@ MPIDO_Allgather(void *sendbuf,
    /* Pick an algorithm that is guaranteed to work for the pre-allreduce */
    allred.algorithm = comm_ptr->mpid.coll_algorithm[PAMI_XFER_ALLREDUCE][0][0]; 
    allred.cmd.xfer_allreduce.sndbuf = (void *)config;
-   allred.cmd.xfer_allreduce.stype = PAMI_TYPE_CONTIGUOUS;
+   allred.cmd.xfer_allreduce.stype = PAMI_TYPE_SIGNED_INT;
    allred.cmd.xfer_allreduce.rcvbuf = (void *)config;
-   allred.cmd.xfer_allreduce.rtype = PAMI_TYPE_CONTIGUOUS;
+   allred.cmd.xfer_allreduce.rtype = PAMI_TYPE_SIGNED_INT;
    allred.cmd.xfer_allreduce.stypecount = 6*sizeof(int);
    allred.cmd.xfer_allreduce.rtypecount = 6*sizeof(int);
-   allred.cmd.xfer_allreduce.dt = PAMI_SIGNED_INT;
-   allred.cmd.xfer_allreduce.op = PAMI_BAND;
+   allred.cmd.xfer_allreduce.op = PAMI_DATA_BAND;
 
   char use_tree_reduce, use_alltoall, use_bcast;
   char *sbuf, *rbuf;

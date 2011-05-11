@@ -32,6 +32,7 @@ void MPIDI_Comm_destroy (MPID_Comm *comm)
 typedef struct MPIDI_Post_geom
 {
    pami_work_t state;
+   size_t context_offset;
    pami_client_t client;
    pami_configuration_t *configs;
    size_t num_configs;
@@ -51,6 +52,7 @@ static pami_result_t geom_rangelist_create_wrapper(pami_context_t context, void 
    TRACE_ERR("In geom create wrapper\n");
    return PAMI_Geometry_create_taskrange(
                geom_struct->client,
+               geom_struct->context_offset,
                geom_struct->configs,
                geom_struct->num_configs,
                geom_struct->newgeom,
@@ -126,6 +128,7 @@ void MPIDI_Coll_comm_create(MPID_Comm *comm)
       {
          geom_post.client = MPIDI_Client;
          geom_post.configs = &config;
+         geom_post.context_offset = 0; /* TODO BES investigate */
          geom_post.num_configs = numconfigs;
          geom_post.newgeom = &comm->mpid.geometry,
          geom_post.parent = NULL;
@@ -142,6 +145,7 @@ void MPIDI_Coll_comm_create(MPID_Comm *comm)
       else
       {
          rc = PAMI_Geometry_create_taskrange(MPIDI_Client,
+                                          0, /* TODO BES need to investigate */
                                          &config,
                                          numconfigs,
                                          &comm->mpid.geometry,
@@ -289,8 +293,7 @@ void MPIDI_Comm_coll_envvars(MPID_Comm *comm)
    for(i = 0; i < PAMI_XFER_COUNT; i++)
    {
       if(i == PAMI_XFER_AMBROADCAST || i == PAMI_XFER_AMSCATTER ||
-         i == PAMI_XFER_AMGATHER || i == PAMI_XFER_AMREDUCE ||
-         i == PAMI_XFER_FENCE)
+         i == PAMI_XFER_AMGATHER || i == PAMI_XFER_AMREDUCE)
          continue;
 
       comm->mpid.user_selectedvar[i] = MPID_COLL_NOQUERY;
@@ -456,11 +459,9 @@ void MPIDI_Comm_coll_query(MPID_Comm *comm)
    for(i = 0; i < PAMI_XFER_COUNT; i++)
    {
       if(i == PAMI_XFER_AMBROADCAST || i == PAMI_XFER_AMSCATTER ||
-         i == PAMI_XFER_AMGATHER || i == PAMI_XFER_AMREDUCE ||
-         i == PAMI_XFER_FENCE)
+         i == PAMI_XFER_AMGATHER || i == PAMI_XFER_AMREDUCE)
          continue;
-      rc = PAMI_Geometry_algorithms_num(MPIDI_Context[0],
-                                        geom,
+      rc = PAMI_Geometry_algorithms_num(geom,
                                         i,
                                         num_algorithms);
       TRACE_ERR("Num algorithms of type %d: %zd %zd\n", i, num_algorithms[0], num_algorithms[1]);
@@ -487,8 +488,11 @@ void MPIDI_Comm_coll_query(MPID_Comm *comm)
 
          /* Despite the bad name, this looks at algorithms associated with
           * the geometry, NOT inherent physical properties of the geometry*/
-         rc = PAMI_Geometry_algorithms_query(MPIDI_Context[0],
-                                             geom,
+
+         /* BES TODO I am assuming all contexts have the same algorithms. Probably
+          * need to investigate that assumption
+          */
+         rc = PAMI_Geometry_algorithms_query(geom,
                                              i,
                                              comm->mpid.coll_algorithm[i][0],
                                              comm->mpid.coll_metadata[i][0],

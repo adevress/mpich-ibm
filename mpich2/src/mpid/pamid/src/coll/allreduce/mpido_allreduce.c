@@ -26,8 +26,8 @@ int MPIDO_Allreduce(void *sendbuf,
 {
    TRACE_ERR("in mpido_allreduce\n");
    MPIDI_Post_coll_t allred_post;
-   pami_dt pdt;
-   pami_op pop;
+   pami_type_t pdt;
+   pami_data_function pop;
    int mu;
    int rc;
    /* int len; */
@@ -49,12 +49,11 @@ int MPIDO_Allreduce(void *sendbuf,
       allred.cookie = (void *)&active;
       allred.algorithm = comm_ptr->mpid.user_selected[PAMI_XFER_ALLREDUCE];
       allred.cmd.xfer_allreduce.sndbuf = sendbuf;
-      allred.cmd.xfer_allreduce.stype = PAMI_TYPE_CONTIGUOUS;
+      allred.cmd.xfer_allreduce.stype = pdt;
       allred.cmd.xfer_allreduce.rcvbuf = recvbuf;
-      allred.cmd.xfer_allreduce.rtype = PAMI_TYPE_CONTIGUOUS;
+      allred.cmd.xfer_allreduce.rtype = pdt;
       allred.cmd.xfer_allreduce.stypecount = data_size; // datasize is sizeof()*count
       allred.cmd.xfer_allreduce.rtypecount = data_size;
-      allred.cmd.xfer_allreduce.dt = pdt;
       allred.cmd.xfer_allreduce.op = pop;
       if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLREDUCE] >= MPID_COLL_QUERY)
       {
