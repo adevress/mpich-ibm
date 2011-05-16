@@ -129,6 +129,8 @@ int MPID_Put(void *origin_addr, int origin_count,
 		struct mpid_put_cb_data *put;
 		DCMF_Memregion_t *bufmr;
 
+		origin_addr += dt_true_lb;
+
                 lpid = MPIDU_world_rank(win_ptr, target_rank);
                 MPIDI_Datatype_get_info(target_count, target_datatype,
                         t_dt_contig, t_data_sz, t_dtp, t_dt_true_lb);
