@@ -41,10 +41,10 @@ int MPIDO_Allreduce(void *sendbuf,
    /* convert to metadata query */
    if(rc == MPI_SUCCESS && mu == 1 && comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLREDUCE] != MPID_COLL_USE_MPICH)
    {
-      MPI_Aint data_true_lb;
+     /*      MPI_Aint data_true_lb;
       MPID_Datatype *data_ptr;
       int data_size, data_contig;
-      MPIDI_Datatype_get_info(count, dt, data_contig, data_size, data_ptr, data_true_lb);
+      MPIDI_Datatype_get_info(count, dt, data_contig, data_size, data_ptr, data_true_lb); */
       allred.cb_done = cb_allreduce;
       allred.cookie = (void *)&active;
       allred.algorithm = comm_ptr->mpid.user_selected[PAMI_XFER_ALLREDUCE];
@@ -52,8 +52,8 @@ int MPIDO_Allreduce(void *sendbuf,
       allred.cmd.xfer_allreduce.stype = pdt;
       allred.cmd.xfer_allreduce.rcvbuf = recvbuf;
       allred.cmd.xfer_allreduce.rtype = pdt;
-      allred.cmd.xfer_allreduce.stypecount = data_size; // datasize is sizeof()*count
-      allred.cmd.xfer_allreduce.rtypecount = data_size;
+      allred.cmd.xfer_allreduce.stypecount = count;//data_size; // datasize is sizeof()*count
+      allred.cmd.xfer_allreduce.rtypecount = count;//data_size;
       allred.cmd.xfer_allreduce.op = pop;
       if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLREDUCE] >= MPID_COLL_QUERY)
       {
