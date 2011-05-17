@@ -229,8 +229,8 @@ int MPIDO_Scatterv(void *sendbuf,
   allred.cmd.xfer_allreduce.stype = PAMI_TYPE_SIGNED_INT;
   allred.cmd.xfer_allreduce.rcvbuf = (void *)optscatterv;
   allred.cmd.xfer_allreduce.rtype = PAMI_TYPE_SIGNED_INT;
-  allred.cmd.xfer_allreduce.stypecount = 3 * sizeof(int);
-  allred.cmd.xfer_allreduce.rtypecount = 3 * sizeof(int);
+  allred.cmd.xfer_allreduce.stypecount = 3;
+  allred.cmd.xfer_allreduce.rtypecount = 3; 
   allred.cmd.xfer_allreduce.op = PAMI_DATA_BAND;
 
 

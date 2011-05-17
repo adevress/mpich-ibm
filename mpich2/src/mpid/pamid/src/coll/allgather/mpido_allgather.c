@@ -47,6 +47,7 @@ int MPIDO_Allgather_allreduce(void *sendbuf,
     char *outputbuf = (char *) sendbuf + send_true_lb;
     memcpy(destbuf, outputbuf, send_size);
   }
+  /* TODO: Change to PAMI */
   rc = MPIDO_Allreduce(MPI_IN_PLACE,
 		       startbuf,
 		       recv_size/sizeof(int),
@@ -104,6 +105,7 @@ int MPIDO_Allgather_bcast(void *sendbuf,
   for (i = 0; i < np; i++)
   {
     void *destbuf = recvbuf + i * recvcount * extent;
+    /* TODO: Change to PAMI */
     rc = MPIDO_Bcast(destbuf,
                      recvcount,
                      recvtype,
@@ -169,6 +171,7 @@ int MPIDO_Allgather_alltoall(void *sendbuf,
     a2a_recvcounts[comm_ptr->rank] = 0;
   }
 
+/* TODO: Change to PAMI */
   rc = MPIR_Alltoallv(a2a_sendbuf,
 		       a2a_sendcounts,
 		       a2a_senddispls,
@@ -226,8 +229,8 @@ MPIDO_Allgather(void *sendbuf,
    allred.cmd.xfer_allreduce.stype = PAMI_TYPE_SIGNED_INT;
    allred.cmd.xfer_allreduce.rcvbuf = (void *)config;
    allred.cmd.xfer_allreduce.rtype = PAMI_TYPE_SIGNED_INT;
-   allred.cmd.xfer_allreduce.stypecount = 6*sizeof(int);
-   allred.cmd.xfer_allreduce.rtypecount = 6*sizeof(int);
+   allred.cmd.xfer_allreduce.stypecount = 6;
+   allred.cmd.xfer_allreduce.rtypecount = 6;
    allred.cmd.xfer_allreduce.op = PAMI_DATA_BAND;
 
   char use_tree_reduce, use_alltoall, use_bcast;

@@ -57,6 +57,7 @@ int MPIDO_Scatter_bcast(void * sendbuf,
     }
   }
 
+   /* TODO: Needs to be a PAMI bcast */
   rc = MPIDO_Bcast(tempbuf, nbytes*size, MPI_CHAR, root, comm_ptr, mpierrno);
 
   if(rank == root && recvbuf == MPI_IN_PLACE)

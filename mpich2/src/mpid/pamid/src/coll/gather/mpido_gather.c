@@ -86,7 +86,7 @@ int MPIDO_Gather_reduce(void * sendbuf,
     memset(tempbuf, 0, sbytes * size * sizeof(char));
     memcpy(tempbuf+(rank*sbytes), sendbuf, sbytes);
   }
-  /* #warning need an optimal reduce */
+  /* #warning TODO need an optimal reduce */
   rc = MPIR_Reduce(MPI_IN_PLACE,
                     tempbuf,
                     (sbytes * size)/4,
@@ -166,8 +166,8 @@ int MPIDO_Gather(void *sendbuf,
       allred.cmd.xfer_allreduce.stype = PAMI_TYPE_SIGNED_INT;
       allred.cmd.xfer_allreduce.rcvbuf = (void *)(size_t)success;
       allred.cmd.xfer_allreduce.rtype = PAMI_TYPE_SIGNED_INT;
-      allred.cmd.xfer_allreduce.stypecount = sizeof(int);
-      allred.cmd.xfer_allreduce.rtypecount = sizeof(int);
+      allred.cmd.xfer_allreduce.stypecount = 1;
+      allred.cmd.xfer_allreduce.rtypecount = 1;
       allred.cmd.xfer_allreduce.op = PAMI_DATA_BAND;
       if(MPIDI_Process.context_post)
       {

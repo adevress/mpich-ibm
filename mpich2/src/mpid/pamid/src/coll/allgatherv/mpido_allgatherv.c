@@ -57,6 +57,7 @@ int MPIDO_Allgatherv_allreduce(void *sendbuf,
 
   //if (0==comm_ptr->rank) puts("allreduce allgatherv");
 
+   /* TODO: Change to PAMI allreduce */
   rc = MPIDO_Allreduce(MPI_IN_PLACE,
 		       startbuf,
 		       buffer_sum/sizeof(int),
@@ -111,6 +112,7 @@ int MPIDO_Allgatherv_bcast(void *sendbuf,
   for (i = 0; i < comm_ptr->local_size; i++)
   {
     void *destbuffer = recvbuf + displs[i] * extent;
+    /* TODO: Change to PAMI */
     rc = MPIDO_Bcast(destbuffer,
                      recvcounts[i],
                      recvtype,
@@ -177,6 +179,7 @@ int MPIDO_Allgatherv_alltoall(void *sendbuf,
     recvcounts[comm_ptr->rank] = 0;
   }
 
+   /* TODO: Change to PAMI alltoallv */
   //if (0==comm_ptr->rank) puts("all2all allgatherv");
   rc = MPIR_Alltoallv(a2a_sendbuf,
 		       a2a_sendcounts,
@@ -238,8 +241,8 @@ MPIDO_Allgatherv(void *sendbuf,
   allred.cmd.xfer_allreduce.stype = PAMI_TYPE_SIGNED_INT;
   allred.cmd.xfer_allreduce.rcvbuf = (void *)config;
   allred.cmd.xfer_allreduce.rtype = PAMI_TYPE_SIGNED_INT;
-  allred.cmd.xfer_allreduce.stypecount = 6*sizeof(int);
-  allred.cmd.xfer_allreduce.rtypecount = 6*sizeof(int);
+  allred.cmd.xfer_allreduce.stypecount = 6;
+  allred.cmd.xfer_allreduce.rtypecount = 6;
   allred.cmd.xfer_allreduce.op = PAMI_DATA_BAND;
 
   use_alltoall = comm_ptr->mpid.allgathervs[2];
