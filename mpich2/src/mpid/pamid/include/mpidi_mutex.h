@@ -135,7 +135,7 @@ MPIDI_Mutex_release(unsigned m)
 }
 
 
-static inline void MPIDI_Mutex_sync () {
+static inline void MPIDI_Mutex_sync() {
   OPA_read_write_barrier();
 }
 
@@ -272,7 +272,7 @@ MPIDI_Mutex_release(unsigned m)
 }
 
 
-static inline void MPIDI_Mutex_sync () {
+static inline void MPIDI_Mutex_sync() {
   OPA_read_write_barrier();
 }
 
@@ -341,7 +341,7 @@ MPIDI_Mutex_release(unsigned m)
 }
 
 
-#define MPIDI_Mutex_sync ()
+#define MPIDI_Mutex_sync()
 
 
 #endif

@@ -64,7 +64,7 @@ void    MPIDI_Request_allocate_pool();
 /* XXX DJG for TLS hack */
 #define MPID_REQUEST_TLS_MAX 128
 
-#if MPIU_HANDLE_ALLOCATION_METHOD == MPIU_HANDLE_ALLOCATION_THREAD_LOCAL
+#if (MPIU_HANDLE_ALLOCATION_METHOD == MPIU_HANDLE_ALLOCATION_THREAD_LOCAL) && defined(__BGQ__)
 
 #  define MPIDI_Request_tls_alloc(req)                                  \
 ({                                                                      \
@@ -94,7 +94,7 @@ void    MPIDI_Request_allocate_pool();
     }                                                                   \
 })
 
-#elif MPIU_HANDLE_ALLOCATION_METHOD == MPIU_HANDLE_ALLOCATION_MUTEX
+#else
 
 #  define MPIDI_Request_tls_alloc(req)                                  \
 ({                                                                      \
@@ -105,8 +105,6 @@ void    MPIDI_Request_allocate_pool();
 
 #  define MPIDI_Request_tls_free(req) MPIU_Handle_obj_free(&MPID_Request_mem, (req))
 
-#else
-#  error MPIU_HANDLE_ALLOCATION_METHOD not defined
 #endif
 
 
