@@ -4,7 +4,8 @@ use strict;
 use warnings;
 
 my $e            = ($ENV{ENVS} or '');
-$ENV{ENVS}       = 'BG_APPAGENT1=/bgsys/drivers/ppcfloor/agents/bin/comm.elf BG_SHAREDMEMSIZE=32 ';
+#$ENV{ENVS}       = 'BG_APPAGENT1=/bgsys/drivers/ppcfloor/agents/bin/comm.elf BG_SHAREDMEMSIZE=32 ';
+$ENV{ENVS}       = 'BG_SHAREDMEMSIZE=64 ';
 $ENV{ENVS}      .= join(" " => map { "$_=$ENV{$_} " } grep { m/^(BG|PAMI)_/ } keys %ENV);
 $ENV{ENVS}      .= $e;
 
