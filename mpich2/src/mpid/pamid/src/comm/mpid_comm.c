@@ -70,7 +70,7 @@ static pami_result_t geom_rangelist_create_wrapper(pami_context_t context, void 
 void MPIDI_Coll_comm_create(MPID_Comm *comm)
 {
    int rc;
-   int geom_init = 1;
+   volatile int geom_init = 1;
    int i;
    pami_geometry_range_t *slices;
    MPIDI_Post_geom_t geom_post;
@@ -136,7 +136,7 @@ void MPIDI_Coll_comm_create(MPID_Comm *comm)
          geom_post.slices = slices;
          geom_post.slice_count = (size_t)comm->local_size,
          geom_post.fn = geom_cb_done;
-         geom_post.cookie = &geom_init;
+         geom_post.cookie = (void*)&geom_init;
 
          TRACE_ERR("Posting geom_create\n");
          rc = PAMI_Context_post(MPIDI_Context[0], &geom_post.state, 
@@ -155,7 +155,7 @@ void MPIDI_Coll_comm_create(MPID_Comm *comm)
                                          (size_t)comm->local_size,
                                          MPIDI_Context[0],
                                          geom_cb_done,
-                                         &geom_init);
+                                         (void*)&geom_init);
 
       }
 
