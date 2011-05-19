@@ -167,7 +167,7 @@ int
 MPIX_Comm_update(MPI_Comm comm, int optimize)
 {
   MPID_Comm * comm_ptr;
-  int geom_update = 1;
+  volatile int geom_update = 1;
   MPIX_Comm_update_data_t data;
 
   MPID_Comm_get_ptr(comm, comm_ptr);
