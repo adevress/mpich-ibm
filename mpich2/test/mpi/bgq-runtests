@@ -1,16 +1,16 @@
 #!/usr/bin/perl
 
+# for dir in $(find -type d \! -name .deps); do mkdir -p $dir/.deps && touch $dir/.deps/alldeps; done
 use strict;
 use warnings;
 
 my $e            = ($ENV{ENVS} or '');
-#$ENV{ENVS}       = 'BG_APPAGENT1=/bgsys/drivers/ppcfloor/agents/bin/comm.elf BG_SHAREDMEMSIZE=32 ';
-$ENV{ENVS}       = 'BG_SHAREDMEMSIZE=64 ';
+$ENV{ENVS}       = 'BG_APPAGENT1=/bgsys/drivers/ppcfloor/agents/bin/comm.elf BG_SHAREDMEMSIZE=64 ';
 $ENV{ENVS}      .= join(" " => map { "$_=$ENV{$_} " } grep { m/^(BG|PAMI)_/ } keys %ENV);
 $ENV{ENVS}      .= $e;
 
 $ENV{MPI_IO}     = defined $ENV{MPI_IO}  ? $ENV{MPI_IO}  : 0;
-$ENV{MPI_RMA}    = defined $ENV{MPI_RMA} ? $ENV{MPI_RMA} : 0;
+$ENV{MPI_RMA}    = defined $ENV{MPI_RMA} ? $ENV{MPI_RMA} : 1;
 $ENV{PPN}        = ($ENV{PPN}         or 1);
 $ENV{RUNJOB}     = ($ENV{RUNJOB}      or '/bgsys/drivers/ppcfloor/bin/runjob');
 $ENV{STAGINGDIR} = ($ENV{STAGINGDIR}  or sprintf('/bgusr/%s/bvt.ppn=%02d/', $ENV{USER}, $ENV{PPN}));
