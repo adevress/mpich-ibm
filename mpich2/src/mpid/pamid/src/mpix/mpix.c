@@ -178,7 +178,7 @@ MPIX_Comm_update(MPI_Comm comm, int optimize)
   data.config.name = PAMI_GEOMETRY_OPTIMIZE;
   data.config.value.intval = !!optimize;
   data.fn = MPIX_Comm_update_done;
-  data.cookie = &geom_update;
+  data.cookie = (void *)&geom_update;
   data.geometry = comm_ptr->mpid.geometry;
 
   pami_result_t rc;
