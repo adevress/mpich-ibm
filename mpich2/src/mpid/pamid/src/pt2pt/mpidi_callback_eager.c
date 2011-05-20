@@ -103,9 +103,6 @@ MPIDI_RecvCB(pami_context_t    context,
   /* This ensures that the value is set, even to something impossible */
   recv->addr = NULL;
 #endif
-  /** \todo Remove these two lines when trac #256 is approved, implemented, and integrated into MPICH2 */
-  recv->data_fn  = PAMI_DATA_COPY;
-  recv->type     = PAMI_TYPE_BYTE;
 
   /* ----------------------------- */
   /*  Request was already posted.  */
