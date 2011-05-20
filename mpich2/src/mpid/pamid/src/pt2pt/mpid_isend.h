@@ -24,7 +24,7 @@ MPIDI_Context_endpoint(MPID_Request * req, pami_endpoint_t * e)
   unsigned    rctxt  = MPIDI_Context_hash(local, req->comm->context_id, MPIDI_Process.avail_contexts>>1, MPIDI_Process.avail_contexts);
 
   pami_result_t rc;
-  rc = PAMI_ENDPOINT_CREATE(MPIDI_Client, remote, rctxt, e);
+  rc = PAMI_Endpoint_create(MPIDI_Client, remote, rctxt, e);
   MPID_assert(rc == PAMI_SUCCESS);
 }
 static inline pami_context_t
