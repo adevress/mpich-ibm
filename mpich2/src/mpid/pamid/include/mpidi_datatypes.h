@@ -238,17 +238,17 @@ struct MPIDI_Win_queue
  */
 struct MPIDI_Win_info
 {
-  void             *base_addr;     /**< Node's exposure window base address                  */
-  struct MPID_Win  *win;
-  uint32_t          disp_unit;     /**< Node's exposure window displacement units            */
-  pami_memregion_t  memregion;     /**< Memory region descriptor for each node               */
+  void             * base_addr;     /**< Node's exposure window base address                  */
+  struct MPID_Win  * win;
+  uint32_t           disp_unit;     /**< Node's exposure window displacement units            */
+  pami_memregion_t   memregion;     /**< Memory region descriptor for each node               */
 };
 /**
  * \brief Structure of PAMI extensions to MPID_Win structure
  */
 struct MPIDI_Win
 {
-  struct MPIDI_Win_info  *info;    /**< allocated array of collective info             */
+  struct MPIDI_Win_info * info;    /**< allocated array of collective info             */
   struct MPIDI_Win_sync
   {
 #if 0
@@ -257,20 +257,20 @@ struct MPIDI_Win
 #endif
 
     /* These fields are reset by the sync functions */
-    uint32_t total;    /**< The number of PAMI requests that we know about (updated only by calling thread) */
-    uint32_t started;  /**< The number of PAMI requests made (updated only in the context_post callback) */
-    uint32_t complete; /**< The number of completed PAMI requests (only updated by the done callbacks) */
+    uint32_t          total;    /**< The number of PAMI requests that we know about (updated only by calling thread) */
+    volatile uint32_t started;  /**< The number of PAMI requests made (updated only in the context_post callback) */
+    volatile uint32_t complete; /**< The number of completed PAMI requests (only updated by the done callbacks) */
 
     struct MPIDI_Win_sync_pscw
     {
-      struct MPID_Group *group;
-      unsigned           count;
+      struct MPID_Group * group;
+      volatile unsigned   count;
     } sc, pw;
     struct MPIDI_Win_sync_lock
     {
       struct
       {
-        unsigned locked;
+        volatile unsigned locked;
       } remote;
       struct
       {

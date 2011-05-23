@@ -8,10 +8,10 @@
 
 typedef struct
 {
-  MPID_Win    * win;
+  MPID_Win          * win;
 
-  unsigned      done;
-  pami_work_t   work;
+  volatile unsigned   done;
+  pami_work_t         work;
 } MPIDI_WinPSCW_info;
 
 

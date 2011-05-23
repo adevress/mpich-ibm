@@ -8,12 +8,12 @@
 
 typedef struct
 {
-  unsigned      peer;
-  int           lock_type;
-  MPID_Win    * win;
+  unsigned            peer;
+  int                 lock_type;
+  MPID_Win          * win;
 
-  unsigned      done;
-  pami_work_t   work;
+  volatile unsigned   done;
+  pami_work_t         work;
 } MPIDI_WinLock_info;
 
 
@@ -185,6 +185,6 @@ MPID_Win_unlock(int       rank,
   };
   MPIDI_Context_post(MPIDI_Context[0], &info.work, MPIDI_WinUnlock_post, &info);
   MPID_PROGRESS_WAIT_WHILE(!info.done);
-  sync->lock.remote.locked   = 0;
+  sync->lock.remote.locked = 0;
   return mpi_errno;
 }

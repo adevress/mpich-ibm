@@ -44,11 +44,12 @@ MPIDI_Get(pami_context_t   context,
   };
 
   int index;
+  struct MPIDI_Win_sync* sync = &req->win->mpid.sync;
   TRACE_ERR("Start       num=%d  l-addr=%p  r-base=%p  r-offset=%zu\n",
             req->target.dt.num_contig, req->buffer, req->win->mpid.info[req->target.rank].base_addr, req->offset);
   for (index=0; index < req->target.dt.num_contig; ++index) {
-    MPID_PROGRESS_WAIT_WHILE(index > req->win->mpid.sync.started - req->win->mpid.sync.complete + MPIDI_Process.rma_pending);
-    ++req->win->mpid.sync.started;
+    MPID_PROGRESS_WAIT_WHILE(index > sync->started - sync->complete + MPIDI_Process.rma_pending);
+    ++sync->started;
 
     params.rma.bytes          = req->target.dt.map[index].DLOOP_VECTOR_LEN;
     params.rdma.remote.offset = req->offset + (size_t)req->target.dt.map[index].DLOOP_VECTOR_BUF;
