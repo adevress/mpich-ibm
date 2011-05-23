@@ -65,7 +65,8 @@ MPIDI_CancelReq_post(pami_context_t context, void * _req)
     },
   };
 
-  TRACE_ERR("Running posted cancel for request=%p\n", req);
+  TRACE_ERR("Running posted cancel for request=%p  local=%u  remote=%u\n",
+            req, MPIR_Process.comm_world->rank, MPIDI_Request_getPeerRank(req));
   pami_result_t rc;
   rc = PAMI_Send_immediate(context, &params);
   MPID_assert(rc == PAMI_SUCCESS);

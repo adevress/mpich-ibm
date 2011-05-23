@@ -20,6 +20,7 @@ MPIDI_CtrlSend(pami_context_t  context,
   pami_endpoint_t dest;
   PAMI_Endpoint_create(MPIDI_Client, peerrank, 0, &dest);
 
+  TRACE_ERR("CtrlSend:  type=%d  local=%u  remote=%u\n", msginfo->control, MPIR_Process.comm_world->rank, peerrank);
   pami_send_immediate_t params = {
   dispatch : MPIDI_Protocols_Control,
   dest     : dest,
@@ -191,7 +192,7 @@ MPIDI_CancelReq_proc(pami_context_t        context,
       type = MPIDI_CONTROL_CANCEL_NOT_ACKNOWLEDGE;
     }
 
-  TRACE_ERR("Cancel search: {rank=%d:tag=%d:ctxt=%d:req=%p}  my_request=%p  result=%s\n",
+  TRACE_ERR("Cancel search: {rank=%d:tag=%d:ctxt=%d:req=%d}  my_request=%p  result=%s\n",
             info->MPIrank,
             info->MPItag,
             info->MPIctxt,
@@ -291,6 +292,7 @@ MPIDI_ControlCB(pami_context_t    context,
   const MPIDI_MsgInfo *msginfo = (const MPIDI_MsgInfo *)_msginfo;
   pami_task_t senderrank = PAMIX_Endpoint_query(sender);
 
+  TRACE_ERR("CtrlRecv:  type=%d  local=%u  remote=%u\n", msginfo->control, MPIR_Process.comm_world->rank, senderrank);
   switch (msginfo->control)
     {
     case MPIDI_CONTROL_SSEND_ACKNOWLEDGE:
