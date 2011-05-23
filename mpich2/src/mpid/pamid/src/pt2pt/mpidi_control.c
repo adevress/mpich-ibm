@@ -22,16 +22,16 @@ MPIDI_CtrlSend(pami_context_t  context,
 
   TRACE_ERR("CtrlSend:  type=%d  local=%u  remote=%u\n", msginfo->control, MPIR_Process.comm_world->rank, peerrank);
   pami_send_immediate_t params = {
-  dispatch : MPIDI_Protocols_Control,
-  dest     : dest,
-  header   : {
-    iov_base : msginfo,
-    iov_len  : sizeof(MPIDI_MsgInfo),
+    .dispatch = MPIDI_Protocols_Control,
+    .dest     = dest,
+    .header   = {
+      .iov_base = msginfo,
+      .iov_len  = sizeof(MPIDI_MsgInfo),
     },
-  data     : {
-    iov_base : NULL,
-    iov_len  : 0,
-  },
+    .data     = {
+      .iov_base = NULL,
+      .iov_len  = 0,
+    },
   };
 
   pami_result_t rc;

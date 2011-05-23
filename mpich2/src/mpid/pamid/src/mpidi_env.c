@@ -289,7 +289,7 @@
  ***************************************************************************
  *
  * - PAMI_ALLGATHER - Controls the protocol used for allgather.
- Possible values:
+ *   Possible values:
  *   - MPICH - Turn off all optimizations for allgather and use the MPICH
  *     point-to-point protocol. This can be very bad on larger partitions.
  *   - ALLREDUCE - Use a collective network based allreduce.  This is the
@@ -311,7 +311,7 @@
  *   based allgathers.
  *
  * - PAMI_ALLGATHERV - Controls the protocol used for allgatherv.
- Possible values:
+ *   Possible values:
  *   - MPICH - Turn off all optimizations for allgather and use the MPICH
  *     point-to-point protocol. This can be very bad on larger partitions.
  *   - ALLREDUCE - Use a collective network based allreduce.  This is the

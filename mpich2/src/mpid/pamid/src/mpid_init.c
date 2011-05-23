@@ -12,26 +12,26 @@ pami_client_t   MPIDI_Client;
 pami_context_t MPIDI_Context[MAX_CONTEXTS];
 
 MPIDI_Process_t  MPIDI_Process = {
- verbose        : 0,
- statistics     : 0,
+  .verbose        = 0,
+  .statistics     = 0,
 
- avail_contexts : MAX_CONTEXTS,
- comm_threads   : 0,
- context_post   : 1,
- short_limit    : 555,
+  .avail_contexts = MAX_CONTEXTS,
+  .comm_threads   = 0,
+  .context_post   = 1,
+  .short_limit    = 555,
 #ifdef __BGQ__
- eager_limit    : 1234,
+  .eager_limit    = 1234,
 #else
- eager_limit    : UINT_MAX,
+  .eager_limit    = UINT_MAX,
 #endif
 
- rma_pending    : 1000,
- shmem_pt2pt    : 1,
+  .rma_pending    = 1000,
+  .shmem_pt2pt    = 1,
 
- optimized : {
-  collectives : 0,
-  subcomms    : 1,
-  topology    : 0,
+  .optimized = {
+    .collectives  = 0,
+    .subcomms     = 1,
+    .topology     = 0,
   },
 };
 
@@ -53,93 +53,92 @@ static struct
   struct protocol_t Control;
   struct protocol_t WinCtrl;
   struct protocol_t WinAccum;
-} proto_list =
-  {
-  Short: {
-    func: MPIDI_RecvShortAsyncCB,
-    dispatch: MPIDI_Protocols_Short,
-    options: {
-      consistency:     PAMI_HINT_ENABLE,
-      long_header:     PAMI_HINT_DISABLE,
-      recv_immediate:  PAMI_HINT_ENABLE,
-      use_rdma:        PAMI_HINT_DISABLE,
-      },
-    immediate_min : sizeof(MPIDI_MsgInfo),
+} proto_list = {
+  .Short = {
+    .func = MPIDI_RecvShortAsyncCB,
+    .dispatch = MPIDI_Protocols_Short,
+    .options = {
+      .consistency     = PAMI_HINT_ENABLE,
+      .long_header     = PAMI_HINT_DISABLE,
+      .recv_immediate  = PAMI_HINT_ENABLE,
+      .use_rdma        = PAMI_HINT_DISABLE,
+    },
+    .immediate_min     = sizeof(MPIDI_MsgInfo),
   },
-  ShortSync: {
-    func: MPIDI_RecvShortSyncCB,
-    dispatch: MPIDI_Protocols_ShortSync,
-    options: {
-      consistency:     PAMI_HINT_ENABLE,
-      long_header:     PAMI_HINT_DISABLE,
-      recv_immediate:  PAMI_HINT_ENABLE,
-      use_rdma:        PAMI_HINT_DISABLE,
-      },
-    immediate_min : sizeof(MPIDI_MsgInfo),
+  .ShortSync = {
+    .func = MPIDI_RecvShortSyncCB,
+    .dispatch = MPIDI_Protocols_ShortSync,
+    .options = {
+      .consistency     = PAMI_HINT_ENABLE,
+      .long_header     = PAMI_HINT_DISABLE,
+      .recv_immediate  = PAMI_HINT_ENABLE,
+      .use_rdma        = PAMI_HINT_DISABLE,
+    },
+    .immediate_min     = sizeof(MPIDI_MsgInfo),
   },
-  Eager: {
-    func: MPIDI_RecvCB,
-    dispatch: MPIDI_Protocols_Eager,
-    options: {
-      consistency:     PAMI_HINT_ENABLE,
-      long_header:     PAMI_HINT_DISABLE,
-      recv_contiguous: PAMI_HINT_ENABLE,
-      recv_copy:       PAMI_HINT_ENABLE,
-      },
-    immediate_min : sizeof(MPIDI_MsgInfo),
+  .Eager = {
+    .func = MPIDI_RecvCB,
+    .dispatch = MPIDI_Protocols_Eager,
+    .options = {
+      .consistency     = PAMI_HINT_ENABLE,
+      .long_header     = PAMI_HINT_DISABLE,
+      .recv_contiguous = PAMI_HINT_ENABLE,
+      .recv_copy =       PAMI_HINT_ENABLE,
+    },
+    .immediate_min     = sizeof(MPIDI_MsgInfo),
   },
-  RVZ: {
-    func: MPIDI_RecvRzvCB,
-    dispatch: MPIDI_Protocols_RVZ,
-    options: {
-      consistency:     PAMI_HINT_ENABLE,
-      long_header:     PAMI_HINT_DISABLE,
-      recv_immediate:  PAMI_HINT_ENABLE,
-      use_rdma:        PAMI_HINT_DISABLE,
-      },
-    immediate_min : sizeof(MPIDI_MsgEnvelope),
+  .RVZ = {
+    .func = MPIDI_RecvRzvCB,
+    .dispatch = MPIDI_Protocols_RVZ,
+    .options = {
+      .consistency     = PAMI_HINT_ENABLE,
+      .long_header     = PAMI_HINT_DISABLE,
+      .recv_immediate  = PAMI_HINT_ENABLE,
+      .use_rdma        = PAMI_HINT_DISABLE,
+    },
+    .immediate_min     = sizeof(MPIDI_MsgEnvelope),
   },
-  Cancel: {
-    func: MPIDI_ControlCB,
-    dispatch: MPIDI_Protocols_Cancel,
-    options: {
-      consistency:     PAMI_HINT_ENABLE,
-      long_header:     PAMI_HINT_DISABLE,
-      recv_immediate:  PAMI_HINT_ENABLE,
-      use_rdma:        PAMI_HINT_DISABLE,
-      },
-    immediate_min : sizeof(MPIDI_MsgInfo),
+  .Cancel = {
+    .func = MPIDI_ControlCB,
+    .dispatch = MPIDI_Protocols_Cancel,
+    .options = {
+      .consistency     = PAMI_HINT_ENABLE,
+      .long_header     = PAMI_HINT_DISABLE,
+      .recv_immediate  = PAMI_HINT_ENABLE,
+      .use_rdma        = PAMI_HINT_DISABLE,
+    },
+    .immediate_min     = sizeof(MPIDI_MsgInfo),
   },
-  Control: {
-    func: MPIDI_ControlCB,
-    dispatch: MPIDI_Protocols_Control,
-    options: {
-      long_header:     PAMI_HINT_DISABLE,
-      recv_immediate:  PAMI_HINT_ENABLE,
-      use_rdma:        PAMI_HINT_DISABLE,
-      },
-    immediate_min : sizeof(MPIDI_MsgInfo),
+  .Control = {
+    .func = MPIDI_ControlCB,
+    .dispatch = MPIDI_Protocols_Control,
+    .options = {
+      .long_header     = PAMI_HINT_DISABLE,
+      .recv_immediate  = PAMI_HINT_ENABLE,
+      .use_rdma        = PAMI_HINT_DISABLE,
+    },
+    .immediate_min     = sizeof(MPIDI_MsgInfo),
   },
-  WinCtrl: {
-    func: MPIDI_WinControlCB,
-    dispatch: MPIDI_Protocols_WinCtrl,
-    options: {
-      long_header:     PAMI_HINT_DISABLE,
-      recv_immediate:  PAMI_HINT_ENABLE,
-      use_rdma:        PAMI_HINT_DISABLE,
-      },
-    immediate_min : sizeof(MPIDI_Win_control_t),
+  .WinCtrl = {
+    .func = MPIDI_WinControlCB,
+    .dispatch = MPIDI_Protocols_WinCtrl,
+    .options = {
+      .long_header     = PAMI_HINT_DISABLE,
+      .recv_immediate  = PAMI_HINT_ENABLE,
+      .use_rdma        = PAMI_HINT_DISABLE,
+    },
+    .immediate_min     = sizeof(MPIDI_Win_control_t),
   },
-  WinAccum: {
-    func: MPIDI_WinAccumCB,
-    dispatch: MPIDI_Protocols_WinAccum,
-    options: {
-      consistency:     PAMI_HINT_ENABLE,
-      long_header:     PAMI_HINT_DISABLE,
-      },
-    immediate_min : sizeof(MPIDI_MsgInfo),
+  .WinAccum = {
+    .func = MPIDI_WinAccumCB,
+    .dispatch = MPIDI_Protocols_WinAccum,
+    .options = {
+      .consistency     = PAMI_HINT_ENABLE,
+      .long_header     = PAMI_HINT_DISABLE,
+    },
+    .immediate_min     = sizeof(MPIDI_MsgInfo),
   },
-  };
+};
 
 
 static void
@@ -148,7 +147,7 @@ MPIDI_Init_dispath(size_t              dispatch,
                    unsigned          * immediate_max)
 {
   size_t im_max = 0;
-  pami_dispatch_callback_function Recv = {p2p:proto->func};
+  pami_dispatch_callback_function Recv = {.p2p = proto->func};
   MPID_assert(dispatch == proto->dispatch);
 
   if (MPIDI_Process.shmem_pt2pt == 0)
@@ -247,8 +246,8 @@ MPIDI_Init(int* rank, int* size, int* threading)
   /*  Create the communication contexts  */
   /* ----------------------------------- */
   pami_configuration_t config ={
-  name  : PAMI_CLIENT_CONST_CONTEXTS,
-  value : { intval : 1, },
+    .name  = PAMI_CLIENT_CONST_CONTEXTS,
+    .value = { .intval = 1, },
   };
   TRACE_ERR("Creating %d contexts\n", MPIDI_Process.avail_contexts);
   rc = PAMI_Context_createv(MPIDI_Client, &config, 1, MPIDI_Context, MPIDI_Process.avail_contexts);

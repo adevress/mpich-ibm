@@ -20,16 +20,16 @@ MPIDI_WinCtrlSend(pami_context_t       context,
   MPID_assert(rc == PAMI_SUCCESS);
 
   pami_send_immediate_t params = {
-  dispatch : MPIDI_Protocols_WinCtrl,
-  dest     : dest,
-  header   : {
-    iov_base : control,
-    iov_len  : sizeof(MPIDI_Win_control_t),
+    .dispatch = MPIDI_Protocols_WinCtrl,
+    .dest     = dest,
+    .header   = {
+      .iov_base = control,
+      .iov_len  = sizeof(MPIDI_Win_control_t),
     },
-  data     : {
-    iov_base : NULL,
-    iov_len  : 0,
-  },
+    .data     = {
+      .iov_base = NULL,
+      .iov_len  = 0,
+    },
   };
 
   rc = PAMI_Send_immediate(context, &params);

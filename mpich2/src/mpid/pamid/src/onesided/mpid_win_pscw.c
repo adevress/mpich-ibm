@@ -24,7 +24,7 @@ MPIDI_WinPost_post(pami_context_t   context,
   MPID_Group *group = info->win->mpid.sync.pw.group;
   MPID_assert(group != NULL);
   MPIDI_Win_control_t msg = {
-  type : MPIDI_WIN_MSGTYPE_POST,
+    .type = MPIDI_WIN_MSGTYPE_POST,
   };
 
   for (index=0; index < group->size; ++index) {
@@ -55,7 +55,7 @@ MPIDI_WinComplete_post(pami_context_t   context,
   MPID_Group *group = info->win->mpid.sync.sc.group;
   MPID_assert(group != NULL);
   MPIDI_Win_control_t msg = {
-  type : MPIDI_WIN_MSGTYPE_COMPLETE,
+    .type = MPIDI_WIN_MSGTYPE_COMPLETE,
   };
 
   for (index=0; index < group->size; ++index) {
@@ -108,8 +108,8 @@ MPID_Win_complete(MPID_Win *win)
   sync->complete = 0;
 
   MPIDI_WinPSCW_info info = {
-  done : 0,
-  win  : win,
+    .done = 0,
+    .win  = win,
   };
   MPIDI_Context_post(MPIDI_Context[0], &info.work, MPIDI_WinComplete_post, &info);
   MPID_PROGRESS_WAIT_WHILE(!info.done);
@@ -132,8 +132,8 @@ MPID_Win_post(MPID_Group *group,
   win->mpid.sync.pw.group = group;
 
   MPIDI_WinPSCW_info info = {
-  done : 0,
-  win  : win,
+    .done = 0,
+    .win  = win,
   };
   MPIDI_Context_post(MPIDI_Context[0], &info.work, MPIDI_WinPost_post, &info);
   MPID_PROGRESS_WAIT_WHILE(!info.done);

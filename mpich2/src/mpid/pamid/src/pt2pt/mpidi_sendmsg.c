@@ -17,16 +17,16 @@ MPIDI_SendMsg_short(pami_context_t    context,
   MPIDI_MsgInfo * msginfo = &sreq->mpid.envelope.msginfo;
 
   pami_send_immediate_t params = {
-  dispatch : MPIDI_Protocols_Short,
-  dest     : dest,
-  header   : {
-    iov_base : msginfo,
-    iov_len  : sizeof(MPIDI_MsgInfo),
+    .dispatch = MPIDI_Protocols_Short,
+    .dest     = dest,
+    .header   = {
+      .iov_base = msginfo,
+      .iov_len  = sizeof(MPIDI_MsgInfo),
     },
-  data     : {
-    iov_base : sndbuf,
-    iov_len  : sndlen,
-  },
+    .data     = {
+      .iov_base = sndbuf,
+      .iov_len  = sndlen,
+    },
   };
   if (isSync)
     params.dispatch = MPIDI_Protocols_ShortSync;
@@ -61,23 +61,23 @@ MPIDI_SendMsg_eager(pami_context_t    context,
   MPIDI_MsgInfo * msginfo = &sreq->mpid.envelope.msginfo;
 
   pami_send_t params = {
-  send   : {
-    dispatch : MPIDI_Protocols_Eager,
-    dest     : dest,
-    header   : {
-      iov_base : msginfo,
-      iov_len  : sizeof(MPIDI_MsgInfo),
+    .send   = {
+      .dispatch = MPIDI_Protocols_Eager,
+      .dest     = dest,
+      .header   = {
+        .iov_base = msginfo,
+        .iov_len  = sizeof(MPIDI_MsgInfo),
       },
-    data     : {
-      iov_base : sndbuf,
-      iov_len  : sndlen,
+      .data     = {
+        .iov_base = sndbuf,
+        .iov_len  = sndlen,
+      },
     },
-  },
-  events : {
-    cookie   : sreq,
-    local_fn : MPIDI_SendDoneCB,
-    remote_fn: NULL,
-  },
+    .events = {
+      .cookie   = sreq,
+      .local_fn = MPIDI_SendDoneCB,
+      .remote_fn= NULL,
+    },
   };
 
   pami_result_t rc;
@@ -142,16 +142,16 @@ MPIDI_SendMsg_rzv(pami_context_t    context,
    * case.
    */
   pami_send_immediate_t params = {
-  dispatch : MPIDI_Protocols_RVZ,
-  dest     : dest,
-  header   : {
-    iov_base : &sreq->mpid.envelope,
-    iov_len  : sizeof(MPIDI_MsgEnvelope),
+    .dispatch = MPIDI_Protocols_RVZ,
+    .dest     = dest,
+    .header   = {
+      .iov_base = &sreq->mpid.envelope,
+      .iov_len  = sizeof(MPIDI_MsgEnvelope),
     },
-  data     : {
-    iov_base : NULL,
-    iov_len  : 0,
-  },
+    .data     = {
+      .iov_base = NULL,
+      .iov_len  = 0,
+    },
   };
 
   rc = PAMI_Send_immediate(context, &params);

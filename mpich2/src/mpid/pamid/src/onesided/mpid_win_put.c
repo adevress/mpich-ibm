@@ -18,29 +18,29 @@ MPIDI_Put(pami_context_t   context,
   MPID_assert(rc == PAMI_SUCCESS);
 
   pami_rput_simple_t params = {
-  rma  : {
-    dest    : req->dest,
-    hints   : {
-      buffer_registered: PAMI_HINT_ENABLE,
-      use_rdma:          PAMI_HINT_ENABLE,
+    .rma  = {
+      .dest    = req->dest,
+      .hints   = {
+        .buffer_registered= PAMI_HINT_ENABLE,
+        .use_rdma=          PAMI_HINT_ENABLE,
       },
-    bytes   : 0,
-    cookie  : req,
-    done_fn : NULL,
-  },
-  rdma : {
-    local  : {
-      mr     : &req->origin.memregion,
-      offset : 0,
+      .bytes   = 0,
+      .cookie  = req,
+      .done_fn = NULL,
     },
-    remote : {
-      mr     : &req->win->mpid.info[req->target.rank].memregion,
-      offset : req->offset,
+    .rdma = {
+      .local  = {
+        .mr     = &req->origin.memregion,
+        .offset = 0,
+      },
+      .remote = {
+        .mr     = &req->win->mpid.info[req->target.rank].memregion,
+        .offset = req->offset,
+      },
     },
-  },
-  put : {
-    rdone_fn : MPIDI_Win_DoneCB,
-  },
+    .put = {
+      .rdone_fn = MPIDI_Win_DoneCB,
+    },
   };
 
   int index;

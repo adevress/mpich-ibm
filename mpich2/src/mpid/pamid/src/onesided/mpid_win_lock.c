@@ -61,11 +61,11 @@ MPIDI_WinLockReq_post(pami_context_t   context,
 {
   MPIDI_WinLock_info* info = (MPIDI_WinLock_info*)_info;
   MPIDI_Win_control_t msg = {
-  type       : MPIDI_WIN_MSGTYPE_LOCKREQ,
-  data       : {
-    lock       : {
-      type : info->lock_type,
-    },
+    .type       = MPIDI_WIN_MSGTYPE_LOCKREQ,
+    .data       = {
+      .lock       = {
+        .type = info->lock_type,
+      },
     },
   };
 
@@ -102,7 +102,7 @@ MPIDI_WinLockAck_post(pami_context_t   context,
                       MPID_Win       * win)
 {
   MPIDI_Win_control_t info = {
-  type       : MPIDI_WIN_MSGTYPE_LOCKACK,
+  .type       = MPIDI_WIN_MSGTYPE_LOCKACK,
   };
   MPIDI_WinCtrlSend(context, &info, peer, win);
 }
@@ -123,7 +123,7 @@ MPIDI_WinUnlock_post(pami_context_t   context,
 {
   MPIDI_WinLock_info* info = (MPIDI_WinLock_info*)_info;
   MPIDI_Win_control_t msg = {
-  type       : MPIDI_WIN_MSGTYPE_UNLOCK,
+  .type       = MPIDI_WIN_MSGTYPE_UNLOCK,
   };
   MPIDI_WinCtrlSend(context, &msg, info->peer, info->win);
   info->done = 1;
@@ -153,10 +153,10 @@ MPID_Win_lock(int       lock_type,
   struct MPIDI_Win_sync_lock* slock = &win->mpid.sync.lock;
 
   MPIDI_WinLock_info info = {
-  done : 0,
-  peer : rank,
-  win  : win,
-  lock_type : lock_type
+  .done = 0,
+  .peer = rank,
+  .win  = win,
+  .lock_type = lock_type
   };
 
   MPIDI_Context_post(MPIDI_Context[0], &info.work, MPIDI_WinLockReq_post, &info);
@@ -179,9 +179,9 @@ MPID_Win_unlock(int       rank,
   sync->complete = 0;
 
   MPIDI_WinLock_info info = {
-  done : 0,
-  peer : rank,
-  win  : win,
+  .done = 0,
+  .peer = rank,
+  .win  = win,
   };
   MPIDI_Context_post(MPIDI_Context[0], &info.work, MPIDI_WinUnlock_post, &info);
   MPID_PROGRESS_WAIT_WHILE(!info.done);

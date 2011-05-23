@@ -46,10 +46,10 @@ MPIDI_CancelReq_post(pami_context_t context, void * _req)
     }
 
   MPIDI_MsgInfo cancel = {
-  MPItag   : MPIDI_Request_getMatchTag(req),
-  MPIrank  : MPIDI_Request_getMatchRank(req),
-  MPIctxt  : MPIDI_Request_getMatchCtxt(req),
-  req      : req->handle,
+    .MPItag   = MPIDI_Request_getMatchTag(req),
+    .MPIrank  = MPIDI_Request_getMatchRank(req),
+    .MPIctxt  = MPIDI_Request_getMatchCtxt(req),
+    .req      = req->handle,
   };
   cancel.control = MPIDI_CONTROL_CANCEL_REQUEST;
 
@@ -57,11 +57,11 @@ MPIDI_CancelReq_post(pami_context_t context, void * _req)
   MPIDI_Context_endpoint(req, &dest);
 
   pami_send_immediate_t params = {
-  dispatch : MPIDI_Protocols_Cancel,
-  dest     : dest,
-  header   : {
-    iov_base: &cancel,
-    iov_len: sizeof(MPIDI_MsgInfo),
+    .dispatch = MPIDI_Protocols_Cancel,
+    .dest     = dest,
+    .header   = {
+      .iov_base= &cancel,
+      .iov_len= sizeof(MPIDI_MsgInfo),
     },
   };
 

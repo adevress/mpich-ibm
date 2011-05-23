@@ -91,46 +91,46 @@ MPIDI_RendezvousTransfer(pami_context_t   context,
             *(((unsigned long long*)rcvbuf)+1));
 
   pami_rget_simple_t params = {
-  rma  : {
-    dest    : dest,
-    hints   : {
-      buffer_registered: PAMI_HINT_ENABLE,
-      use_rdma:          PAMI_HINT_ENABLE,
+    .rma  = {
+      .dest    = dest,
+      .hints   = {
+        .buffer_registered= PAMI_HINT_ENABLE,
+        .use_rdma=          PAMI_HINT_ENABLE,
       },
-    bytes   : rreq->mpid.envelope.length,
-    cookie  : rreq,
-    done_fn : MPIDI_RecvRzvDoneCB,
-  },
-  rdma : {
-    local  : {
-      mr     : &rreq->mpid.memregion,
-      offset : 0,
+      .bytes   = rreq->mpid.envelope.length,
+      .cookie  = rreq,
+      .done_fn = MPIDI_RecvRzvDoneCB,
     },
-    remote : {
-      mr     : &rreq->mpid.envelope.memregion,
-      offset : 0,
+    .rdma = {
+      .local  = {
+        .mr     = &rreq->mpid.memregion,
+        .offset = 0,
+      },
+      .remote = {
+        .mr     = &rreq->mpid.envelope.memregion,
+        .offset = 0,
+      },
     },
-  },
   };
 
   rc = PAMI_Rget(context, &params);
   MPID_assert(rc == PAMI_SUCCESS);
 #else
   pami_get_simple_t params = {
-  rma  : {
-    dest    : dest,
-    hints   : {
-      use_rdma:       1,
-      no_long_header: 1,
+    .rma  = {
+      .dest    = dest,
+      .hints   = {
+        .use_rdma=       1,
+        .no_long_header= 1,
       },
-    bytes   : rreq->mpid.envelope.length,
-    cookie  : rreq,
-    done_fn : MPIDI_RecvRzvDoneCB,
-  },
-  addr : {
-    local   : rcvbuf,
-    remote  : rreq->mpid.envelope.data,
-  },
+      .bytes   = rreq->mpid.envelope.length,
+      .cookie  = rreq,
+      .done_fn = MPIDI_RecvRzvDoneCB,
+    },
+    .addr = {
+      .local   = rcvbuf,
+      .remote  = rreq->mpid.envelope.data,
+    },
   };
 
   rc = PAMI_Get(context, &params);

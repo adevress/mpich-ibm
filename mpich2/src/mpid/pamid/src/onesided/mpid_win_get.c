@@ -18,26 +18,26 @@ MPIDI_Get(pami_context_t   context,
   MPID_assert(rc == PAMI_SUCCESS);
 
   pami_rget_simple_t params = {
-  rma  : {
-    dest    : req->dest,
-    hints   : {
-      buffer_registered: PAMI_HINT_ENABLE,
-      use_rdma:          PAMI_HINT_ENABLE,
+    .rma  = {
+      .dest    = req->dest,
+      .hints   = {
+        .buffer_registered= PAMI_HINT_ENABLE,
+        .use_rdma=          PAMI_HINT_ENABLE,
       },
-    bytes   : 0,
-    cookie  : req,
-    done_fn : MPIDI_Win_DoneCB,
-  },
-  rdma : {
-    local  : {
-      mr     : &req->origin.memregion,
-      offset : 0,
+      .bytes   = 0,
+      .cookie  = req,
+      .done_fn = MPIDI_Win_DoneCB,
     },
-    remote : {
-      mr     : &req->win->mpid.info[req->target.rank].memregion,
-      offset : req->offset,
+    .rdma = {
+      .local  = {
+        .mr     = &req->origin.memregion,
+        .offset = 0,
+      },
+      .remote = {
+        .mr     = &req->win->mpid.info[req->target.rank].memregion,
+        .offset = req->offset,
+      },
     },
-  },
 
 
 
