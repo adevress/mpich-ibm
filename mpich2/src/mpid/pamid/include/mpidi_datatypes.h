@@ -35,7 +35,6 @@ typedef struct
   unsigned context_post;
   unsigned short_limit;
   unsigned eager_limit;
-  unsigned optimized_subcomms;
 
 #if (MPIU_HANDLE_ALLOCATION_METHOD == MPIU_HANDLE_ALLOCATION_THREAD_LOCAL) && defined(MPIDI_USE_OPA)
   MPIDI_RequestHandle_t request_handles[MPIDI_MAX_THREADS];
@@ -50,8 +49,9 @@ typedef struct
   pami_geometry_t world_geometry;
   struct
   {
-    unsigned topology;     /**< Enable optimized topology functions.   */
     unsigned collectives;  /**< Enable optimized collective functions. */
+    unsigned subcomms;
+    unsigned topology;     /**< Enable optimized topology functions.   */
   }
   optimized;
 
@@ -98,9 +98,7 @@ typedef enum
 /** \brief Request completion actions */
 typedef enum
   {
-    /** Just complete the request (this must be 0, since new requests
-        are memset to 0). */
-    MPIDI_CA_COMPLETE = 0,
+    MPIDI_CA_COMPLETE,
     MPIDI_CA_UNPACK_UEBUF_AND_COMPLETE,         /**< Unpack uebuf, then complete. */
     MPIDI_CA_UNPACK_UEBUF_AND_COMPLETE_NOFREE,  /**< Unpack uebuf (do not free), then complete. */
   } MPIDI_CA;

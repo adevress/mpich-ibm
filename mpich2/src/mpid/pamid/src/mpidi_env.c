@@ -533,8 +533,8 @@ MPIDI_Env_setup()
    */
   {
     char *names[] = {"PAMI_OPTIMIZED_SUBCOMMS", NULL};
-    ENV_Unsigned(names, &MPIDI_Process.optimized_subcomms);
-    TRACE_ERR("MPIDI_Process.optimized_subcomms=%u\n", MPIDI_Process.optimized_subcomms);
+    ENV_Unsigned(names, &MPIDI_Process.optimized.subcomms);
+    TRACE_ERR("MPIDI_Process.optimized.subcomms=%u\n", MPIDI_Process.optimized.subcomms);
   }
 
 #ifdef USE_PAMI_COMM_THREADS

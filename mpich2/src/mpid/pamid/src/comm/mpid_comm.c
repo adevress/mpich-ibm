@@ -114,7 +114,7 @@ void MPIDI_Coll_comm_create(MPID_Comm *comm)
       pami_configuration_t config;
       size_t numconfigs = 0;
 
-      if(MPIDI_Process.optimized_subcomms)
+      if(MPIDI_Process.optimized.subcomms)
       {
          config.name = PAMI_GEOMETRY_OPTIMIZE;
          numconfigs = 1;

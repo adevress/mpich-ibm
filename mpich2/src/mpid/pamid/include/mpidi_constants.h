@@ -17,27 +17,36 @@
  * \defgroup Allgather(v) optimization datatype info
  * \{
  */
-#define MPID_SEND_CONTIG        0 /**< Contiguous send buffer */
-#define MPID_RECV_CONTIG        1 /**< Contiguous recv buffer */
-#define MPID_RECV_CONTINUOUS    2 /**< Continuous recv buffer */
-#define MPID_LARGECOUNT         3 /**< Total send count is "large" */
-#define MPID_MEDIUMCOUNT        4 /**< Total send count is "medium" */
-#define MPID_ALIGNEDBUFFER      5 /**< Buffers are 16b aligned */
+enum
+  {
+    MPID_SEND_CONTIG     = 0, /**< Contiguous send buffer */
+    MPID_RECV_CONTIG     = 1, /**< Contiguous recv buffer */
+    MPID_RECV_CONTINUOUS = 2, /**< Continuous recv buffer */
+    MPID_LARGECOUNT      = 3, /**< Total send count is "large" */
+    MPID_MEDIUMCOUNT     = 4, /**< Total send count is "medium" */
+    MPID_ALIGNEDBUFFER   = 5, /**< Buffers are 16b aligned */
+  };
 
-#define MPID_ALLGATHER_PREALLREDUCE 0
-#define MPID_ALLGATHERV_PREALLREDUCE 1
-#define MPID_ALLREDUCE_PREALLREDUCE 2
-#define MPID_BCAST_PREALLREDUCE 3
-#define MPID_SCATTERV_PREALLREDUCE 4
-#define MPID_GATHER_PREALLREDUCE 5
-#define MPID_NUM_PREALLREDUCES 6
+enum
+  {
+    MPID_ALLGATHER_PREALLREDUCE  = 0,
+    MPID_ALLGATHERV_PREALLREDUCE = 1,
+    MPID_ALLREDUCE_PREALLREDUCE  = 2,
+    MPID_BCAST_PREALLREDUCE      = 3,
+    MPID_SCATTERV_PREALLREDUCE   = 4,
+    MPID_GATHER_PREALLREDUCE     = 5,
+    MPID_NUM_PREALLREDUCES       = 6,
+  };
 
-#define MPID_COLL_NOQUERY 0
-#define MPID_COLL_QUERY 1
-/* Can we cache stuff? If not set to ALWAYS_QUERY */
-#define MPID_COLL_ALWAYS_QUERY 2
-#define MPID_COLL_CHECK_FN_REQUIRED 3
-#define MPID_COLL_USE_MPICH 4
+enum
+  {
+    MPID_COLL_NOQUERY           = 0,
+    MPID_COLL_QUERY             = 1,
+    /* Can we cache stuff? If not set to ALWAYS_QUERY */
+    MPID_COLL_ALWAYS_QUERY      = 2,
+    MPID_COLL_CHECK_FN_REQUIRED = 3,
+    MPID_COLL_USE_MPICH         = 4,
+  };
 /** \} */
 
 #endif

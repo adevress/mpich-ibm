@@ -18,7 +18,6 @@ MPIDI_Process_t  MPIDI_Process = {
  avail_contexts : MAX_CONTEXTS,
  comm_threads   : 0,
  context_post   : 1,
- optimized_subcomms: 1,
  short_limit    : 555,
 #ifdef __BGQ__
  eager_limit    : 1234,
@@ -31,6 +30,7 @@ MPIDI_Process_t  MPIDI_Process = {
 
  optimized : {
   collectives : 0,
+  subcomms    : 1,
   topology    : 0,
   },
 };
@@ -197,7 +197,7 @@ MPIDI_Init(int* rank, int* size, int* threading)
   /* ---------------------------------- */
   if (MPIDI_Process.avail_contexts > MAX_CONTEXTS)
     MPIDI_Process.avail_contexts = MAX_CONTEXTS;
-  unsigned same  = PAMIX_Client_query(MPIDI_Client, PAMI_CLIENT_CONST_CONTEXTS).value.intval;
+  unsigned same = PAMIX_Client_query(MPIDI_Client, PAMI_CLIENT_CONST_CONTEXTS).value.intval;
   if (same)
     {
       unsigned possible_contexts = PAMIX_Client_query(MPIDI_Client, PAMI_CLIENT_NUM_CONTEXTS).value.intval;
@@ -295,6 +295,7 @@ MPIDI_Init(int* rank, int* size, int* threading)
              "  rma_pending  : %u\n"
              "  shmem_pt2pt  : %u\n"
              "  optimized.collectives : %u\n"
+             "  optimized.subcomms    : %u\n"
              "  optimized.topology    : %u\n",
              MPIDI_Process.verbose,
              MPIDI_Process.statistics,
@@ -306,6 +307,7 @@ MPIDI_Init(int* rank, int* size, int* threading)
              MPIDI_Process.rma_pending,
              MPIDI_Process.shmem_pt2pt,
              MPIDI_Process.optimized.collectives,
+             MPIDI_Process.optimized.subcomms,
              MPIDI_Process.optimized.topology);
     }
 }
