@@ -36,6 +36,30 @@ PAMIX_Dispatch_set(pami_context_t                  context[],
 pami_task_t
 PAMIX_Endpoint_query(pami_endpoint_t endpoint);
 
+
+typedef void (*pamix_progress_function) (pami_context_t context, void *cookie);
+#define PAMIX_CLIENT_ASYNC_GUARANTEE 1016
+typedef enum
+{
+  PAMIX_PROGRESS_ALL =    0,
+  PAMIX_PROGRESS_EXT = 1000
+} pamix_progress_t;
+
+void
+PAMIX_progress_register(pami_context_t            context,
+                        pamix_progress_function   progress_fn,
+                        pamix_progress_function   suspend_fn,
+                        pamix_progress_function   resume_fn,
+                        void                    * cookie);
+void
+PAMIX_progress_enable(pami_context_t   context,
+                      pamix_progress_t event_type);
+
+void
+PAMIX_progress_disable(pami_context_t   context,
+                       pamix_progress_t event_type);
+
+
 #if defined(__BGQ__) || defined(__BGP__)
 
 typedef struct
