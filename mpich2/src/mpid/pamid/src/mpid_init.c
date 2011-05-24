@@ -31,7 +31,6 @@ MPIDI_Process_t  MPIDI_Process = {
   .optimized = {
     .collectives  = 0,
     .subcomms     = 1,
-    .topology     = 0,
   },
 };
 
@@ -294,8 +293,7 @@ MPIDI_Init(int* rank, int* size, int* threading)
              "  rma_pending  : %u\n"
              "  shmem_pt2pt  : %u\n"
              "  optimized.collectives : %u\n"
-             "  optimized.subcomms    : %u\n"
-             "  optimized.topology    : %u\n",
+             "  optimized.subcomms    : %u\n",
              MPIDI_Process.verbose,
              MPIDI_Process.statistics,
              MPIDI_Process.avail_contexts,
@@ -306,8 +304,7 @@ MPIDI_Init(int* rank, int* size, int* threading)
              MPIDI_Process.rma_pending,
              MPIDI_Process.shmem_pt2pt,
              MPIDI_Process.optimized.collectives,
-             MPIDI_Process.optimized.subcomms,
-             MPIDI_Process.optimized.topology);
+             MPIDI_Process.optimized.subcomms);
     }
 }
 
@@ -356,8 +353,6 @@ int MPID_Init(int * argc,
   /* ------------------------------------------------------ */
   MPIR_Process.attrs.tag_ub = INT_MAX;
   MPIR_Process.attrs.wtime_is_global = 1;
-  if (MPIDI_Process.optimized.topology)
-    MPIR_Process.dimsCreate = MPID_Dims_create;
 
 
   /* ------------------------------- */

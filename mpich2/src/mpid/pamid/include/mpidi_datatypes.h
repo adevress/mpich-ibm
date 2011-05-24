@@ -51,7 +51,6 @@ typedef struct
   {
     unsigned collectives;  /**< Enable optimized collective functions. */
     unsigned subcomms;
-    unsigned topology;     /**< Enable optimized topology functions.   */
   }
   optimized;
 

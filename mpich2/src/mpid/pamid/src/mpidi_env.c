@@ -51,15 +51,6 @@
  *                               High-level Options                        *
  ***************************************************************************
  *
- * - PAMI_TOPOLOGY - Turns on optimized topology
- *   creation functions when using MPI_Cart_create with the
- *   reorder flag.  We attempt to create communicators similar
- *   to those requested, that match physical hardware as much
- *   as possible.  Possible values:
- *   - 0 - Optimized topology creation functions are not used.
- *   - 1 - Optimized topology creation functions are used.
- *   - Default is 1.
- *
  * - PAMI_COLLECTIVE -
  * - PAMI_COLLECTIVES - Controls whether optimized collectives are used.
  *   Possible values:
@@ -563,12 +554,6 @@ MPIDI_Env_setup()
   {
     char* names[] = {"PAMI_RMA_PENDING", NULL};
     ENV_Unsigned(names, &MPIDI_Process.rma_pending);
-  }
-
-  /* Set the status of the optimized topology functions */
-  {
-    char* names[] = {"PAMI_TOPOLOGY", NULL};
-    ENV_Unsigned(names, &MPIDI_Process.optimized.topology);
   }
 
   /* Set the status of the optimized collectives */
