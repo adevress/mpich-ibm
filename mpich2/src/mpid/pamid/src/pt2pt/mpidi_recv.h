@@ -12,7 +12,7 @@
 
 
 /**
- * \brief ADI level implemenation of MPI_Irecv()
+ * \brief ADI level implemenation of MPI_(I)Recv()
  *
  * \param[in]  buf            The buffer to receive into
  * \param[in]  count          Number of expected elements in the buffer
@@ -27,19 +27,29 @@
  * \returns An MPI Error code
  */
 static inline int
-MPIDI_RecvMsg(void          * buf,
-              int             count,
-              MPI_Datatype    datatype,
-              int             rank,
-              int             tag,
-              MPID_Comm     * comm,
-              int             context_offset,
-              MPI_Status    * status,
-              MPID_Request ** request)
+MPIDI_Recv(void          * buf,
+           int             count,
+           MPI_Datatype    datatype,
+           int             rank,
+           int             tag,
+           MPID_Comm     * comm,
+           int             context_offset,
+           unsigned        is_blocking,
+           MPI_Status    * status,
+           MPID_Request ** request)
 {
   MPID_Request * rreq;
   int found;
   int mpi_errno = MPI_SUCCESS;
+
+  /* ---------------------------------------- */
+  /* NULL rank means empty request            */
+  /* ---------------------------------------- */
+  if (unlikely(rank == MPI_PROC_NULL))
+    {
+      MPIDI_RecvMsg_procnull(comm, is_blocking, status, request);
+      return MPI_SUCCESS;
+    }
 
   MPIR_Comm_add_ref(comm);
 
@@ -87,58 +97,6 @@ MPIDI_RecvMsg(void          * buf,
     *status = rreq->status;
 
   MPIU_THREAD_CS_EXIT(MSGQUEUE,0);
-  return mpi_errno;
-}
-
-
-/**
- * \brief ADI level implemenation of MPI_Irecv()
- *
- * \param[in]  buf            The buffer to receive into
- * \param[in]  count          Number of expected elements in the buffer
- * \param[in]  datatype       The datatype of each element
- * \param[in]  rank           The sending rank
- * \param[in]  tag            The message tag
- * \param[in]  comm           Pointer to the communicator
- * \param[in]  context_offset Offset from the communicator context ID
- *
- * \param[out] request        Return a pointer to the new request object
- *
- * \returns An MPI Error code
- */
-static inline int
-MPIDI_Recv(void          * buf,
-           int             count,
-           MPI_Datatype    datatype,
-           int             rank,
-           int             tag,
-           MPID_Comm     * comm,
-           int             context_offset,
-           unsigned        is_blocking,
-           MPI_Status    * status,
-           MPID_Request ** request)
-{
-  int mpi_errno;
-
-  /* ---------------------------------------- */
-  /* NULL rank means empty request            */
-  /* ---------------------------------------- */
-  if (unlikely(rank == MPI_PROC_NULL))
-    {
-      MPIDI_RecvMsg_procnull(comm, is_blocking, status, request);
-      return MPI_SUCCESS;
-    }
-
-  mpi_errno = MPIDI_RecvMsg(buf,
-                            count,
-                            datatype,
-                            rank,
-                            tag,
-                            comm,
-                            context_offset,
-                            status,
-                            request);
-
   return mpi_errno;
 }
 
