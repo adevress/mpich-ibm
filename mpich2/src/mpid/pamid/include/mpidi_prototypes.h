@@ -93,12 +93,15 @@ void MPIDI_RecvRzvCB       (pami_context_t    context,
                             pami_endpoint_t   sender,
                             pami_recv_t     * recv);
 
-void MPIDI_RecvDoneCB      (pami_context_t    context,
-                            void            * clientdata,
-                            pami_result_t     result);
-void MPIDI_RecvRzvDoneCB   (pami_context_t    context,
-                            void            * cookie,
-                            pami_result_t     result);
+void MPIDI_RecvDoneCB        (pami_context_t    context,
+                              void            * clientdata,
+                              pami_result_t     result);
+void MPIDI_RecvDoneCB_mutexed(pami_context_t    context,
+                              void            * clientdata,
+                              pami_result_t     result);
+void MPIDI_RecvRzvDoneCB     (pami_context_t    context,
+                              void            * cookie,
+                              pami_result_t     result);
 
 void MPIDI_Callback_process_unexp(pami_context_t        context,
                                   const MPIDI_MsgInfo * msginfo,

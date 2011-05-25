@@ -52,7 +52,7 @@ MPIDI_Callback_process_unexp(pami_context_t        context,
 
   if (recv != NULL)
     {
-      recv->local_fn = MPIDI_RecvDoneCB;
+      recv->local_fn = MPIDI_RecvDoneCB_mutexed;
       recv->cookie   = rreq;
       /* -------------------------------------------------- */
       /*  Let PAMI know where to put the rest of the data.  */

@@ -82,3 +82,22 @@ MPIDI_RecvDoneCB(pami_context_t   context,
     }
   MPIDI_Request_complete(rreq);
 }
+
+
+/**
+ * \brief Thread-safe message layer callback which is invoked on the
+ * target node when the incoming message is complete.
+ *
+ * \param[in,out] rreq MPI receive request object
+ */
+void
+MPIDI_RecvDoneCB_mutexed(pami_context_t   context,
+			 void           * clientdata,
+			 pami_result_t    result)
+{
+  MPIU_THREAD_CS_ENTER(MSGQUEUE, 0);
+
+  MPIDI_RecvDoneCB(context, clientdata, result);
+
+  MPIU_THREAD_CS_EXIT(MSGQUEUE, 0);
+}

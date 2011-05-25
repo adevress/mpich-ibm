@@ -97,7 +97,7 @@ MPIDI_RecvCB(pami_context_t    context,
   /* --------------------------------------- */
   /*  We have to fill in the callback info.  */
   /* --------------------------------------- */
-  recv->local_fn = MPIDI_RecvDoneCB;
+  recv->local_fn = MPIDI_RecvDoneCB_mutexed;
   recv->cookie   = rreq;
 #if ASSERT_LEVEL > 0
   /* This ensures that the value is set, even to something impossible */
