@@ -473,7 +473,7 @@ MPIDI_Mutex_initialize_l2atomics(size_t size)
   assert(rc == PAMI_SUCCESS);
   PAMIX_L2_proc_memalign = (pamix_proc_memalign_fn)PAMI_Extension_symbol(l2, "proc_memalign");
   assert(PAMIX_L2_proc_memalign != NULL);
-  rc = PAMIX_L2_proc_memalign(&l2atomics, 4096, size, NULL);
+  rc = PAMIX_L2_proc_memalign(&l2atomics, 64, size, NULL);
   assert(rc == PAMI_SUCCESS);
   assert(l2atomics != NULL);
   /* printf("MPID L2 space: virt=%p  HW=%p  L2BaseAddress=%"PRIu64"\n", l2atomics, __l2_op_ptr(l2atomics, 0), Kernel_L2AtomicsBaseAddress()); */
