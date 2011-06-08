@@ -31,7 +31,7 @@ typedef struct
 typedef struct
 {
   unsigned avail_contexts;
-  unsigned comm_threads;
+  volatile unsigned commthreads_active;
   unsigned context_post;
   unsigned short_limit;
   unsigned eager_limit;
@@ -40,9 +40,9 @@ typedef struct
   MPIDI_RequestHandle_t request_handles[MPIDI_MAX_THREADS];
 #endif
 
+  unsigned commthreads_enabled;
   unsigned verbose;        /**< The current level of verbosity for end-of-job stats. */
   unsigned statistics;     /**< The current level of stats collection.               */
-  unsigned requested_thread_level;
   unsigned rma_pending;    /**< The max num outstanding requests during an RMA op    */
   unsigned shmem_pt2pt;    /**< Enable optimized shared memory point-to-point functions. */
 

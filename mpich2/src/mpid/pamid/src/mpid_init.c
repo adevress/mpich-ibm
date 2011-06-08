@@ -12,25 +12,30 @@ pami_client_t   MPIDI_Client;
 pami_context_t MPIDI_Context[MAX_CONTEXTS];
 
 MPIDI_Process_t  MPIDI_Process = {
-  .verbose        = 0,
-  .statistics     = 0,
+  .verbose             = 0,
+  .statistics          = 0,
 
-  .avail_contexts = MAX_CONTEXTS,
-  .comm_threads   = 0,
-  .context_post   = 1,
-  .short_limit    = 555,
-#ifdef __BGQ__
-  .eager_limit    = 1234,
+  .avail_contexts      = MAX_CONTEXTS,
+  .commthreads_active  = 0,
+#ifdef USE_PAMI_COMM_THREADS
+  .commthreads_enabled = 1,
 #else
-  .eager_limit    = UINT_MAX,
+  .commthreads_enabled = 0,
+#endif
+  .context_post        = 1,
+  .short_limit         = 555,
+#ifdef __BGQ__
+  .eager_limit         = 1234,
+#else
+  .eager_limit         = UINT_MAX,
 #endif
 
-  .rma_pending    = 1000,
-  .shmem_pt2pt    = 1,
+  .rma_pending         = 1000,
+  .shmem_pt2pt         = 1,
 
   .optimized = {
-    .collectives  = 0,
-    .subcomms     = 1,
+    .collectives       = 0,
+    .subcomms          = 1,
   },
 };
 
@@ -141,9 +146,124 @@ static struct
 
 
 static void
-MPIDI_Init_dispath(size_t              dispatch,
-                   struct protocol_t * proto,
-                   unsigned          * immediate_max)
+MPIDI_PAMI_client_init(int* rank, int* size)
+{
+  /* ------------------------------------ */
+  /*  Initialize the MPICH2->PAMI Client  */
+  /* ------------------------------------ */
+  pami_result_t rc;
+  rc = PAMI_Client_create("MPICH2", &MPIDI_Client, NULL, 0);
+  MPID_assert(rc == PAMI_SUCCESS);
+  PAMIX_Initialize(MPIDI_Client);
+
+
+  /* ---------------------------------- */
+  /*  Get my rank and the process size  */
+  /* ---------------------------------- */
+  *rank = PAMIX_Client_query(MPIDI_Client, PAMI_CLIENT_TASK_ID  ).value.intval;
+  MPIR_Process.comm_world->rank = *rank; /* Set the rank early to make tracing better */
+  *size = PAMIX_Client_query(MPIDI_Client, PAMI_CLIENT_NUM_TASKS).value.intval;
+}
+
+
+static void
+MPIDI_PAMI_context_init(int* threading)
+{
+  int requested_thread_level;
+  requested_thread_level = *threading;
+
+
+  unsigned hwthreads = PAMIX_Client_query(MPIDI_Client, PAMI_CLIENT_HWTHREADS_AVAILABLE).value.intval;
+  if (hwthreads == 1)
+    {
+      /* VNM mode imlies MPI_THREAD_SINGLE, 1 context, and no posting or commthreads. */
+      MPIDI_Process.avail_contexts      = 1;
+      MPIDI_Process.context_post        = 0;
+      MPIDI_Process.commthreads_enabled = 0;
+      *threading = MPI_THREAD_SINGLE;
+    }
+  else if (MPIDI_Process.context_post == 0)
+    {
+      /* If we aren't posting, so just use 1 context and no commthreads. */
+      MPIDI_Process.avail_contexts      = 1;
+      MPIDI_Process.commthreads_enabled = 0;
+#ifdef USE_PAMI_COMM_THREADS
+      /* Pre-obj builds require post & hwthreads for MPI_THREAD_MULTIPLE */
+      if (*threading == MPI_THREAD_MULTIPLE)
+        *threading = MPI_THREAD_SERIALIZED;
+#endif
+    }
+  else
+    {
+      /* ---------------------------------- */
+      /*  Figure out the context situation  */
+      /* ---------------------------------- */
+      /*
+       * avail_contexts = MIN(getenv("PAMI_MAXCONTEXTS"), MAX_CONTEXTS, PAMI_CONTEXTS, PAMI_HWTHREADS);
+       *
+       */
+
+
+      if (MPIDI_Process.avail_contexts > MAX_CONTEXTS)
+        MPIDI_Process.avail_contexts = MAX_CONTEXTS;
+
+
+      unsigned same = PAMIX_Client_query(MPIDI_Client, PAMI_CLIENT_CONST_CONTEXTS).value.intval;
+      if (same)
+        {
+          unsigned possible_contexts = PAMIX_Client_query(MPIDI_Client, PAMI_CLIENT_NUM_CONTEXTS).value.intval;
+          TRACE_ERR("PAMI allows up to %u contexts; MPICH2 allows up to %u\n",
+                    possible_contexts, MPIDI_Process.avail_contexts);
+          if (MPIDI_Process.avail_contexts > possible_contexts)
+            MPIDI_Process.avail_contexts = possible_contexts;
+        }
+      else
+        {
+          /* If PAMI didn't give all nodes the same number of contexts, all bets are off for now */
+          MPIDI_Process.avail_contexts = 1;
+        }
+
+
+      if (MPIDI_Process.avail_contexts > hwthreads)
+        MPIDI_Process.avail_contexts = hwthreads;
+
+
+      /* The number of contexts must be a power-of-two, so decrement until we hit a power-of-two */
+      while(MPIDI_Process.avail_contexts & (MPIDI_Process.avail_contexts-1))
+        --MPIDI_Process.avail_contexts;
+      MPID_assert(MPIDI_Process.avail_contexts);
+
+
+#ifdef USE_PAMI_COMM_THREADS
+      /* Help a user who REALLY wants comm-threads by enabling them, irrespective of thread mode, when commthreads_enabled is set to 2 */
+      if (MPIDI_Process.commthreads_enabled >= 2)
+          *threading = MPI_THREAD_MULTIPLE;
+      /* In the per-obj builds, async progress defaults to always ON, so turn it off if not in MPI_THREAD_MULTIPLE */
+      if (*threading != MPI_THREAD_MULTIPLE)
+        MPIDI_Process.commthreads_enabled = 0;
+#endif
+    }
+  TRACE_ERR("Thread-level=%d, requested=%d\n", *threading, requested_thread_level);
+
+
+  /* ----------------------------------- */
+  /*  Create the communication contexts  */
+  /* ----------------------------------- */
+  pami_configuration_t config ={
+    .name  = PAMI_CLIENT_CONST_CONTEXTS,
+    .value = { .intval = 1, },
+  };
+  TRACE_ERR("Creating %d contexts\n", MPIDI_Process.avail_contexts);
+  pami_result_t rc;
+  rc = PAMI_Context_createv(MPIDI_Client, &config, 1, MPIDI_Context, MPIDI_Process.avail_contexts);
+  MPID_assert(rc == PAMI_SUCCESS);
+}
+
+
+static void
+MPIDI_PAMI_dispath_set(size_t              dispatch,
+                       struct protocol_t * proto,
+                       unsigned          * immediate_max)
 {
   size_t im_max = 0;
   pami_dispatch_callback_function Recv = {.p2p = proto->func};
@@ -167,105 +287,34 @@ MPIDI_Init_dispath(size_t              dispatch,
 
 
 static void
-MPIDI_Init(int* rank, int* size, int* threading)
+MPIDI_PAMI_dispath_init()
 {
-  pami_result_t rc;
-
-  /* ------------------------------------ */
-  /*  Get new defaults from the Env Vars  */
-  /* ------------------------------------ */
-  MPIDI_Env_setup();
-
-  /* ------------------------------------ */
-  /*  Initialize the MPICH2->PAMI Client  */
-  /* ------------------------------------ */
-  rc = PAMI_Client_create("MPICH2", &MPIDI_Client, NULL, 0);
-  MPID_assert(rc == PAMI_SUCCESS);
-  PAMIX_Initialize(MPIDI_Client);
-
-  /* ---------------------------------- */
-  /*  Get my rank and the process size  */
-  /* ---------------------------------- */
-  *rank = PAMIX_Client_query(MPIDI_Client, PAMI_CLIENT_TASK_ID  ).value.intval;
-  MPIR_Process.comm_world->rank = *rank; /* Set the rank early to make tracing better */
-  *size = PAMIX_Client_query(MPIDI_Client, PAMI_CLIENT_NUM_TASKS).value.intval;
-
-  /* ---------------------------------- */
-  /*  Figure out the context situation  */
-  /* ---------------------------------- */
-  if (MPIDI_Process.avail_contexts > MAX_CONTEXTS)
-    MPIDI_Process.avail_contexts = MAX_CONTEXTS;
-  unsigned same = PAMIX_Client_query(MPIDI_Client, PAMI_CLIENT_CONST_CONTEXTS).value.intval;
-  if (same)
-    {
-      unsigned possible_contexts = PAMIX_Client_query(MPIDI_Client, PAMI_CLIENT_NUM_CONTEXTS).value.intval;
-      TRACE_ERR("PAMI allows up to %u contexts; MPICH2 allows up to %u\n",
-                possible_contexts, MPIDI_Process.avail_contexts);
-      if (MPIDI_Process.avail_contexts > possible_contexts)
-        MPIDI_Process.avail_contexts = possible_contexts;
-    }
-  else
-    {
-      /* If PAMI didn't give all nodes the same number of contexts, all bets are off for now */
-      MPIDI_Process.avail_contexts = 1;
-    }
-
-
-  /* Only use one context when not posting work */
-  if (MPIDI_Process.context_post == 0)
-    {
-      MPIDI_Process.avail_contexts = 1;
-      MPIDI_Process.comm_threads   = 0;
-    }
-
-
-  MPIDI_Process.requested_thread_level = *threading;
-  /* VNM mode imlies MPI_THREAD_SINGLE, 1 context, and no posting. */
-  unsigned hwthreads = PAMIX_Client_query(MPIDI_Client, PAMI_CLIENT_HWTHREADS_AVAILABLE).value.intval;
-  if (MPIDI_Process.avail_contexts > hwthreads)
-    MPIDI_Process.avail_contexts = hwthreads;
-
-  while(MPIDI_Process.avail_contexts & (MPIDI_Process.avail_contexts-1))
-    --MPIDI_Process.avail_contexts;
-  MPID_assert(MPIDI_Process.avail_contexts);
-
-  if (hwthreads == 1)
-    {
-      *threading = MPIDI_Process.requested_thread_level = MPI_THREAD_SINGLE;
-      MPIDI_Process.context_post   = 0;
-      MPIDI_Process.comm_threads   = 0;
-    }
-#ifdef USE_PAMI_COMM_THREADS
-  if (MPIDI_Process.comm_threads == 1)
-    *threading = MPI_THREAD_MULTIPLE;
-#endif
-  TRACE_ERR("Thread-level=%d, requested=%d\n", *threading, MPIDI_Process.requested_thread_level);
-
-  /* ----------------------------------- */
-  /*  Create the communication contexts  */
-  /* ----------------------------------- */
-  pami_configuration_t config ={
-    .name  = PAMI_CLIENT_CONST_CONTEXTS,
-    .value = { .intval = 1, },
-  };
-  TRACE_ERR("Creating %d contexts\n", MPIDI_Process.avail_contexts);
-  rc = PAMI_Context_createv(MPIDI_Client, &config, 1, MPIDI_Context, MPIDI_Process.avail_contexts);
-  MPID_assert(rc == PAMI_SUCCESS);
-
-
   /* ------------------------------------ */
   /*  Set up the communication protocols  */
   /* ------------------------------------ */
   unsigned pami_short_limit[2] = {MPIDI_Process.short_limit, MPIDI_Process.short_limit};
-  MPIDI_Init_dispath(MPIDI_Protocols_Short,     &proto_list.Short,     pami_short_limit+0);
-  MPIDI_Init_dispath(MPIDI_Protocols_ShortSync, &proto_list.ShortSync, pami_short_limit+1);
-  MPIDI_Init_dispath(MPIDI_Protocols_Eager,     &proto_list.Eager,     NULL);
-  MPIDI_Init_dispath(MPIDI_Protocols_RVZ,       &proto_list.RVZ,       NULL);
-  MPIDI_Init_dispath(MPIDI_Protocols_Cancel,    &proto_list.Cancel,    NULL);
-  MPIDI_Init_dispath(MPIDI_Protocols_Control,   &proto_list.Control,   NULL);
-  MPIDI_Init_dispath(MPIDI_Protocols_WinCtrl,   &proto_list.WinCtrl,   NULL);
-  MPIDI_Init_dispath(MPIDI_Protocols_WinAccum,  &proto_list.WinAccum,  NULL);
+  MPIDI_PAMI_dispath_set(MPIDI_Protocols_Short,     &proto_list.Short,     pami_short_limit+0);
+  MPIDI_PAMI_dispath_set(MPIDI_Protocols_ShortSync, &proto_list.ShortSync, pami_short_limit+1);
+  MPIDI_PAMI_dispath_set(MPIDI_Protocols_Eager,     &proto_list.Eager,     NULL);
+  MPIDI_PAMI_dispath_set(MPIDI_Protocols_RVZ,       &proto_list.RVZ,       NULL);
+  MPIDI_PAMI_dispath_set(MPIDI_Protocols_Cancel,    &proto_list.Cancel,    NULL);
+  MPIDI_PAMI_dispath_set(MPIDI_Protocols_Control,   &proto_list.Control,   NULL);
+  MPIDI_PAMI_dispath_set(MPIDI_Protocols_WinCtrl,   &proto_list.WinCtrl,   NULL);
+  MPIDI_PAMI_dispath_set(MPIDI_Protocols_WinAccum,  &proto_list.WinAccum,  NULL);
 
+  /*
+   * The first two protocols are our short protocols: they use
+   * PAMI_Send_immediate() exclusively.  We get the short limit twice
+   * because they could be different.
+   *
+   * - The returned value is the max amount of header+data.  We have
+   *     to remove the header size.
+   *
+   * - We need to add one back, since we don't use "=" in the
+   *     comparison.  We use "if (size < short_limit) ...".
+   *
+   * - We use the min of the results just to be safe.
+   */
   pami_short_limit[0] -= (sizeof(MPIDI_MsgInfo) - 1);
   if (MPIDI_Process.short_limit > pami_short_limit[0])
     MPIDI_Process.short_limit = pami_short_limit[0];
@@ -273,12 +322,20 @@ MPIDI_Init(int* rank, int* size, int* threading)
   if (MPIDI_Process.short_limit > pami_short_limit[1])
     MPIDI_Process.short_limit = pami_short_limit[1];
   TRACE_ERR("pami_short_limit[2] = [%u,%u]\n", pami_short_limit[0], pami_short_limit[1]);
+}
 
 
-  /* Fill in the world geometry */
-  TRACE_ERR("creating world geometry\n");
-  rc = PAMI_Geometry_world(MPIDI_Client, &MPIDI_Process.world_geometry);
-  MPID_assert(rc == PAMI_SUCCESS);
+static void
+MPIDI_PAMI_init(int* rank, int* size, int* threading)
+{
+  MPIDI_PAMI_client_init(rank, size);
+
+
+  MPIDI_PAMI_context_init(threading);
+
+
+  MPIDI_PAMI_dispath_init();
+
 
   if ( (*rank == 0) && (MPIDI_Process.verbose > 0) )
     {
@@ -286,7 +343,7 @@ MPIDI_Init(int* rank, int* size, int* threading)
              "  verbose      : %u\n"
              "  statistics   : %u\n"
              "  contexts     : %u\n"
-             "  comm_threads : %u\n"
+             "  commthreads  : %u\n"
              "  context_post : %u\n"
              "  short_limit  : %u\n"
              "  eager_limit  : %u\n"
@@ -297,7 +354,7 @@ MPIDI_Init(int* rank, int* size, int* threading)
              MPIDI_Process.verbose,
              MPIDI_Process.statistics,
              MPIDI_Process.avail_contexts,
-             MPIDI_Process.comm_threads,
+             MPIDI_Process.commthreads_enabled,
              MPIDI_Process.context_post,
              MPIDI_Process.short_limit,
              MPIDI_Process.eager_limit,
@@ -309,51 +366,11 @@ MPIDI_Init(int* rank, int* size, int* threading)
 }
 
 
-/**
- * \brief Initialize MPICH2 at ADI level.
- * \param[in,out] argc Unused
- * \param[in,out] argv Unused
- * \param[in]     requested The thread model requested by the user.
- * \param[out]    provided  The thread model provided to user.  It is the same as requested, except in VNM.
- * \param[out]    has_args  Set to TRUE
- * \param[out]    has_env   Set to TRUE
- * \return MPI_SUCCESS
- */
-int MPID_Init(int * argc,
-              char *** argv,
-              int   requested,
-              int * provided,
-              int * has_args,
-              int * has_env)
+static void
+MPIDI_VCRT_init(int rank, int size)
 {
-  int rank, size, i, rc;
+  int i, rc;
   MPID_Comm * comm;
-
-
-  /* ----------------------------- */
-  /* Initialize messager           */
-  /* ----------------------------- */
-  *provided = requested;
-  MPIDI_Init(&rank, &size, provided);
-
-
-  /* ------------------------- */
-  /* initialize request queues */
-  /* ------------------------- */
-  MPIDI_Recvq_init();
-
-  /* -------------------------------------- */
-  /* FIll in some hardware structure fields */
-  /* -------------------------------------- */
-  extern void MPIX_Init();
-  MPIX_Init();
-
-  /* ------------------------------------------------------ */
-  /* Set process attributes.                                */
-  /* ------------------------------------------------------ */
-  MPIR_Process.attrs.tag_ub = INT_MAX;
-  MPIR_Process.attrs.wtime_is_global = 1;
-
 
   /* ------------------------------- */
   /* Initialize MPI_COMM_SELF object */
@@ -382,18 +399,76 @@ int MPID_Init(int * argc,
   MPID_assert(rc == MPI_SUCCESS);
   for (i=0; i<size; i++)
     comm->vcr[i] = i;
+}
+
+
+/**
+ * \brief Initialize MPICH2 at ADI level.
+ * \param[in,out] argc Unused
+ * \param[in,out] argv Unused
+ * \param[in]     requested The thread model requested by the user.
+ * \param[out]    provided  The thread model provided to user.  It is the same as requested, except in VNM.
+ * \param[out]    has_args  Set to TRUE
+ * \param[out]    has_env   Set to TRUE
+ * \return MPI_SUCCESS
+ */
+int MPID_Init(int * argc,
+              char *** argv,
+              int   requested,
+              int * provided,
+              int * has_args,
+              int * has_env)
+{
+  int rank, size;
+
+
+  /* ------------------------------------ */
+  /*  Get new defaults from the Env Vars  */
+  /* ------------------------------------ */
+  MPIDI_Env_setup();
+
+
+  /* ----------------------------- */
+  /* Initialize messager           */
+  /* ----------------------------- */
+  *provided = requested;
+  MPIDI_PAMI_init(&rank, &size, provided);
+
+
+  /* ------------------------- */
+  /* initialize request queues */
+  /* ------------------------- */
+  MPIDI_Recvq_init();
+
+  /* -------------------------------------- */
+  /* Fill in some hardware structure fields */
+  /* -------------------------------------- */
+  extern void MPIX_Init();
+  MPIX_Init();
+
+  /* ------------------------------- */
+  /* Set process attributes          */
+  /* ------------------------------- */
+  MPIR_Process.attrs.tag_ub = INT_MAX;
+  MPIR_Process.attrs.wtime_is_global = 1;
+
+
+  /* ------------------------------- */
+  /* Initialize communicator objects */
+  /* ------------------------------- */
+  MPIDI_VCRT_init(rank, size);
 
 
   /* ------------------------------- */
   /* Setup optimized communicators   */
   /* ------------------------------- */
-  /** \todo remove this temp hack to work around the lack of progress threads. */
-  unsigned comm_threads = MPIDI_Process.comm_threads;
-  MPIDI_Process.comm_threads = 0;
+  TRACE_ERR("creating world geometry\n");
+  pami_result_t rc;
+  rc = PAMI_Geometry_world(MPIDI_Client, &MPIDI_Process.world_geometry);
+  MPID_assert(rc == PAMI_SUCCESS);
   TRACE_ERR("calling comm_create on comm world %p\n", comm);
-  MPIDI_Comm_create(comm);
+  MPIDI_Comm_create(MPIR_Process.comm_world);
   MPIDI_Comm_world_setup();
-  MPIDI_Process.comm_threads = comm_threads;
 
 
   /* ------------------------------- */
@@ -412,32 +487,13 @@ int MPID_Init(int * argc,
   return MPI_SUCCESS;
 }
 
+
 /*
  * \brief This is called by MPI to let us know that MPI_Init is done.
  */
-int MPID_InitCompleted(void)
+int MPID_InitCompleted()
 {
-#ifdef USE_PAMI_COMM_THREADS
-  if (MPIDI_Process.comm_threads)
-    {
-      TRACE_ERR("Async advance beginning...\n");
-
-      /** \todo Change this to the official version when #344 is done */
-      extern pami_result_t
-        PAMI_Client_add_commthread_context(pami_client_t client,
-                                           pami_context_t context);
-      unsigned i;
-      pami_result_t rc;
-
-      for (i=0; i<MPIDI_Process.avail_contexts; ++i) {
-        rc = PAMI_Client_add_commthread_context(MPIDI_Client, MPIDI_Context[i]);
-        assert(rc == PAMI_SUCCESS);
-      }
-
-      TRACE_ERR("Async advance enabled\n");
-    }
-#endif
-
+  MPIDI_Progress_init();
   return MPI_SUCCESS;
 }
 
@@ -455,69 +511,3 @@ static_assertions()
   MPID_assert_static(sizeof(uint64_t) == sizeof(size_t));
 #endif
 }
-
-
-#if    MPIDI_MUTEX_L2_ATOMIC
-
-static inline void*
-MPIDI_Mutex_initialize_l2atomics(size_t size)
-{
-  typedef pami_result_t (*pamix_proc_memalign_fn) (void**, size_t, size_t, const char*);
-
-  pami_result_t rc;
-  pami_extension_t l2;
-  pamix_proc_memalign_fn PAMIX_L2_proc_memalign;
-  void* l2atomics = NULL;
-
-  rc = PAMI_Extension_open(NULL, "EXT_bgq_l2atomic", &l2);
-  assert(rc == PAMI_SUCCESS);
-  PAMIX_L2_proc_memalign = (pamix_proc_memalign_fn)PAMI_Extension_symbol(l2, "proc_memalign");
-  assert(PAMIX_L2_proc_memalign != NULL);
-  rc = PAMIX_L2_proc_memalign(&l2atomics, 64, size, NULL);
-  assert(rc == PAMI_SUCCESS);
-  assert(l2atomics != NULL);
-  /* printf("MPID L2 space: virt=%p  HW=%p  L2BaseAddress=%"PRIu64"\n", l2atomics, __l2_op_ptr(l2atomics, 0), Kernel_L2AtomicsBaseAddress()); */
-
-  return l2atomics;
-}
-
-MPIDI_Mutex_t * MPIDI_Mutex_vector;
-uint32_t        MPIDI_Mutex_counter[MPIDI_MAX_THREADS][MPIDI_MAX_MUTEXES];
-
-/**
- *  \brief Initialize a mutex.
- *
- *  In this API, mutexes are acessed via indices from
- *  0..MPIDI_MAX_MUTEXES. The mutexes are recursive
- */
-int
-MPIDI_Mutex_initialize()
-{
-  size_t i, j;
-
-  MPIDI_Mutex_vector = (MPIDI_Mutex_t*)MPIDI_Mutex_initialize_l2atomics(sizeof (MPIDI_Mutex_t) * MPIDI_MAX_MUTEXES);
-
-  for (i=0; i<MPIDI_MAX_MUTEXES; ++i) {
-    L2_AtomicStore(&(MPIDI_Mutex_vector[i].counter), 0);
-    L2_AtomicStore(&(MPIDI_Mutex_vector[i].bound),   1);
-  }
-
-  for (i=0; i<MPIDI_MAX_MUTEXES; ++i) {
-    for (j=0; j<MPIDI_MAX_THREADS; ++j) {
-      MPIDI_Mutex_counter[j][i] = 0;
-    }
-  }
-
-  return 0;
-}
-
-#elif  MPIDI_MUTEX_LLSC
-
-MPIDI_Mutex_t MPIDI_Mutex_vector [MPIDI_MAX_MUTEXES];
-uint32_t      MPIDI_Mutex_counter[MPIDI_MAX_THREADS][MPIDI_MAX_MUTEXES];
-
-#else
-
-pthread_mutex_t MPIDI_Mutex_lock;
-
-#endif

@@ -73,6 +73,12 @@
 
 #define MPID_Progress_wait(state) MPID_Progress_wait_inline(100)
 
+
+void MPIDI_Progress_init();
+void MPIDI_Progress_async_start(pami_context_t context, void *cookie);
+void MPIDI_Progress_async_end  (pami_context_t context, void *cookie);
+
+
 /**
  * \brief This function blocks until a request completes
  * \param[in] state The previously seen state of advance
@@ -89,7 +95,7 @@ MPID_Progress_wait_inline(unsigned loop_count)
 {
   pami_result_t rc = 0;
 #ifdef USE_PAMI_COMM_THREADS
-  if (unlikely(MPIDI_Process.comm_threads == 0)) {
+  if (unlikely(MPIDI_Process.commthreads_active == 0)) {
     /* This just assumes that people will want the thread-safe version when using the per-obj code. */
     rc = PAMI_Context_trylock_advancev(MPIDI_Context, MPIDI_Process.avail_contexts, 1);
     MPID_assert(rc == PAMI_SUCCESS);

@@ -506,7 +506,7 @@ MPIDI_Env_setup()
 
   /* Set the upper-limit of number of PAMI Contexts. */
   {
-    char *names[] = {"PAMI_MAXCONTEXTS", "PAMI_MAXCONTEXT", "PAMI_MAX_CONTEXTS", "PAMI_MAX_CONTEXT", NULL};
+    char *names[] = {"PAMI_MAXCONTEXT", "PAMI_MAXCONTEXTS", "PAMI_MAX_CONTEXT", "PAMI_MAX_CONTEXTS", NULL};
     ENV_Unsigned(names, &MPIDI_Process.avail_contexts);
     TRACE_ERR("MPIDI_Process.avail_contexts=%u\n", MPIDI_Process.avail_contexts);
   }
@@ -531,10 +531,9 @@ MPIDI_Env_setup()
 #ifdef USE_PAMI_COMM_THREADS
   /* Enable/Disable commthreads for asynchronous communication. */
   {
-    MPIDI_Process.comm_threads = 1;
-    char *names[] = {"PAMI_COMM_THREADS", NULL};
-    ENV_Unsigned(names, &MPIDI_Process.comm_threads);
-    TRACE_ERR("MPIDI_Process.comm_threads=%u\n", MPIDI_Process.comm_threads);
+    char *names[] = {"PAMI_COMMTHREAD", "PAMI_COMMTHREADS", "PAMI_COMM_THREAD", "PAMI_COMM_THREADS", NULL};
+    ENV_Unsigned(names, &MPIDI_Process.commthreads_enabled);
+    TRACE_ERR("MPIDI_Process.commthreads_enabled=%u\n", MPIDI_Process.commthreads_enabled);
   }
 #endif
 
