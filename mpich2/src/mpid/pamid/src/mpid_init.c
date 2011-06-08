@@ -389,8 +389,6 @@ MPIDI_VCRT_init(int rank, int size)
   /* Initialize MPI_COMM_WORLD object */
   /* -------------------------------- */
   comm = MPIR_Process.comm_world;
-  comm->mpid.geometry = MPIDI_Process.world_geometry;
-  comm->mpid.parent = PAMI_GEOMETRY_NULL;
   comm->rank = rank;
   comm->remote_size = comm->local_size = size;
   rc = MPID_VCRT_Create(comm->remote_size, &comm->vcrt);
@@ -467,6 +465,8 @@ int MPID_Init(int * argc,
   rc = PAMI_Geometry_world(MPIDI_Client, &MPIDI_Process.world_geometry);
   MPID_assert(rc == PAMI_SUCCESS);
   TRACE_ERR("calling comm_create on comm world %p\n", comm);
+  MPIR_Process.comm_world->mpid.geometry = MPIDI_Process.world_geometry;
+  MPIR_Process.comm_world->mpid.parent   = PAMI_GEOMETRY_NULL;
   MPIDI_Comm_create(MPIR_Process.comm_world);
   MPIDI_Comm_world_setup();
 
