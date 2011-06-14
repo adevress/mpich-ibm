@@ -337,10 +337,9 @@ int MPID_Accumulate(void *origin_addr, int origin_count,
                         "**opnotpredefined %d", op );
         }
 
-	origin_addr += dt_true_lb;
+	buf = origin_addr + dt_true_lb;
 
         if (dt_contig) { /* all builtin datatypes are also contig */
-                buf = origin_addr;
                 cb_send.function = done_rqc_cb;
         } else {
                 MPID_Segment segment;
