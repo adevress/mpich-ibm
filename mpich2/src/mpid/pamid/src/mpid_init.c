@@ -139,6 +139,7 @@ static struct
     .options = {
       .consistency     = PAMI_HINT_ENABLE,
       .long_header     = PAMI_HINT_DISABLE,
+      .recv_immediate  = PAMI_HINT_DISABLE,
     },
     .immediate_min     = sizeof(MPIDI_MsgInfo),
   },

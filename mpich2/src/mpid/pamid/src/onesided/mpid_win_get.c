@@ -43,7 +43,7 @@ MPIDI_Get(pami_context_t   context,
 
   };
 
-  int index;
+  unsigned index;
   struct MPIDI_Win_sync* sync = &req->win->mpid.sync;
   TRACE_ERR("Start       num=%d  l-addr=%p  r-base=%p  r-offset=%zu\n",
             req->target.dt.num_contig, req->buffer, req->win->mpid.info[req->target.rank].base_addr, req->offset);

@@ -58,6 +58,16 @@ typedef struct
 } MPIDI_Datatype;
 
 
+typedef struct
+{
+  void         * addr;
+  void         * req;
+  MPID_Win     * win;
+  MPI_Datatype   type;
+  MPI_Op         op;
+} MPIDI_Win_MsgInfo;
+
+
 /** \todo make sure that the extra fields are removed */
 typedef struct
 {
@@ -66,12 +76,14 @@ typedef struct
   pami_endpoint_t dest;
   size_t offset;
 
+  MPIDI_Win_MsgInfo * accum_headers;
+
   struct
   {
     pami_memregion_t memregion;
 #if 0
     /** \todo: use this to conditionally destroy the memregion */
-    uint32_t         memregion_used;
+    uint32_t         memregion_used;    /**<  */
 #endif
     void            *addr;
     int              count;
@@ -81,7 +93,7 @@ typedef struct
 
   struct
   {
-    pami_task_t      rank; /**< Comm-local rank */
+    pami_task_t      rank;              /**< Comm-local rank */
     MPIDI_Datatype   dt;
   } target;
 

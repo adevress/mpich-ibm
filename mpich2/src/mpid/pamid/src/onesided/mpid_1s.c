@@ -32,6 +32,8 @@ MPIDI_Win_DoneCB(pami_context_t  context,
             }
           MPIU_Free(req->buffer);
         }
+      if (req->accum_headers)
+        MPIU_Free(req->accum_headers);
       MPIU_Free(req);
     }
   MPIDI_Progress_signal();
