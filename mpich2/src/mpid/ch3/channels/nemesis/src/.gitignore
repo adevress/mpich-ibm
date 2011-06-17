@@ -12,6 +12,7 @@
 /*.bbg
 /*.da
 /*.gcov
+/*.gcno
 /*Debug*
 /*Release*
 /*.cache

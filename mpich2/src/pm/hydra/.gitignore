@@ -3,10 +3,17 @@
 /configure
 /configure.lineno
 /config.*
+/hydra-doxygen.cfg
 /autom4te*
 /mpiexec
+/mpiexec.hydra
+/libtool
+/hydra_pmi_proxy
+/hydra_persist
+/hydra_nameserver
 /aclocal.m4
 /.deps
 /confdefs.h
 /pmi_proxy
 /TAGS
+/*.gcno

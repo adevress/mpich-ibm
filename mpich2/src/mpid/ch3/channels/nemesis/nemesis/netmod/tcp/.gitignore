@@ -3,3 +3,4 @@
 /.state-cache
 /.deps
 /.libstamp*
+/*.gcno

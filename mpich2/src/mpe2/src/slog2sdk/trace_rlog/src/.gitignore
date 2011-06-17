@@ -2,3 +2,4 @@
 /Makefile
 /*.la
 /*.lo
+/*.gcno

@@ -6,6 +6,7 @@
 /mpicxx
 /mpicxx.bash
 /mpicxx.conf
+/mpixxx_opts.conf
 /mpif77
 /mpif77.bash
 /mpif77.conf
@@ -13,5 +14,7 @@
 /mpif90.bash
 /mpif90.conf
 /mpich2version
+/*.gcno
+/*.orig
 /parkill
 /.deps

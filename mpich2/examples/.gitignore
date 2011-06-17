@@ -18,6 +18,7 @@
 /*.bbg
 /*.da
 /*.gcov
+/*.gcno
 /icpi
 /child
 /parent
