@@ -122,8 +122,9 @@ MPID_Get(void         *origin_addr,
   /* If the get is a local operation, do it here */
   if (target_rank == win->comm_ptr->rank)
     {
+      size_t offset = req->offset;
       MPIU_Free(req);
-      return MPIR_Localcopy(win->base + req->offset,
+      return MPIR_Localcopy(win->base + offset,
                             target_count,
                             target_datatype,
                             origin_addr,
