@@ -129,17 +129,16 @@ int MPID_Put(void *origin_addr, int origin_count,
 		struct mpid_put_cb_data *put;
 		DCMF_Memregion_t *bufmr;
 
-		origin_addr += dt_true_lb;
+		buf = origin_addr + dt_true_lb;
 
                 lpid = MPIDU_world_rank(win_ptr, target_rank);
                 MPIDI_Datatype_get_info(target_count, target_datatype,
                         t_dt_contig, t_data_sz, t_dtp, t_dt_true_lb);
                 /* NOTE! t_data_sz already is adjusted for target_count */
 
-                if (dt_contig && origin_addr >= win_ptr->base &&
-				origin_addr < win_ptr->base + win_ptr->size) {
+                if (dt_contig && (void *)buf >= win_ptr->base &&
+				(void *)buf < win_ptr->base + win_ptr->size) {
 			// put from inside origin window, re-use origin window memregion.
-                        buf = origin_addr;
                        	cb_send.function = done_rqc_cb;
 			bufmr = &win_ptr->_dev.coll_info[rank].mem_region;
 			s = (char *)((char *)buf -
@@ -148,7 +147,6 @@ int MPID_Put(void *origin_addr, int origin_count,
                 } else {
 			// need memregion, also may need to pack
 			if (dt_contig) {
-                        	buf = origin_addr;
                         	MPIDU_MALLOC(put, struct mpid_put_cb_data,
 					sizeof(struct mpid_put_cb_data),
 					mpi_errno, "MPID_Put");
@@ -219,7 +217,7 @@ int MPID_Put(void *origin_addr, int origin_count,
 				bufmr,
 				&win_ptr->_dev.coll_info[target_rank].mem_region,
 				(size_t)s,
-				(size_t)b,
+				(size_t)b + t_dt_true_lb,
 				(DCMF_Callback_t){NULL, NULL});
 #else /* ! USE_DCMF_PUT */
                         mpi_errno = DCMF_Send(&bg1s_sn_proto, reqp,

@@ -122,7 +122,7 @@ int MPID_Get(void *origin_addr, int origin_count,
                 int lpid;
                 MPIDU_Onesided_xtra_t xtra = {0};
 
-		origin_addr += dt_true_lb;
+		buf = origin_addr + dt_true_lb;
 
                 lpid = MPIDU_world_rank(win_ptr, target_rank);
                 MPIDI_Datatype_get_info(target_count, target_datatype,
@@ -132,10 +132,9 @@ int MPID_Get(void *origin_addr, int origin_count,
                 get_len = (data_sz < t_data_sz ? data_sz : t_data_sz);
 
                 xtra.mpid_xtra_w0 = (size_t)&win_ptr->_dev.my_get_pends;
-                if (dt_contig && origin_addr >= win_ptr->base &&
-				origin_addr < win_ptr->base + win_ptr->size) {
+                if (dt_contig && (void *)buf >= win_ptr->base &&
+				(void *)buf < win_ptr->base + win_ptr->size) {
 			// get to inside origin window, re-use origin window memregion.
-                        buf = origin_addr;
                         cb_send.function = done_rqc_cb;
 			bufmr = &win_ptr->_dev.coll_info[rank].mem_region;
 			s = (char *)((char *)buf -
@@ -145,7 +144,6 @@ int MPID_Get(void *origin_addr, int origin_count,
 			// need memregion, also may need to unpack
 			struct mpid_get_cb_data *get;
 			if (dt_contig) {
-				buf = origin_addr;
                         	MPIDU_MALLOC(get, struct mpid_get_cb_data,
 					sizeof(struct mpid_get_cb_data),
 					mpi_errno, "MPID_Get");
@@ -197,7 +195,7 @@ int MPID_Get(void *origin_addr, int origin_count,
                                 t_data_sz,
 				&win_ptr->_dev.coll_info[target_rank].mem_region,
 				bufmr,
-				(size_t)t,
+				(size_t)t + t_dt_true_lb,
 				(size_t)s);
                         if (mpi_errno) { MPIU_ERR_POP(mpi_errno); }
                 } else {
