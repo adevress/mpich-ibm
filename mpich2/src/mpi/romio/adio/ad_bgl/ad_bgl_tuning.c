@@ -3,7 +3,7 @@
 /* ---------------------------------------------------------------- */
 /**
  * \file ad_bgl_tuning.c
- * \brief Defines ad_bgl performance tuning
+ * \brief defines ad_bgl performance tuning
  */
 
 /* -*- Mode: C; c-basic-offset:4 ; -*- */
@@ -25,7 +25,6 @@
 #if !defined(PVFS2_SUPER_MAGIC)
   #define PVFS2_SUPER_MAGIC (0x20030528)
 #endif
-
 
 int 	bglmpio_timing;
 int 	bglmpio_timing2;
@@ -71,7 +70,7 @@ double	bglmpio_prof_cr    [BGLMPIO_CIO_LAST];
  *   - 1 - Align file domains with the underlying file system's block size.  Also use 
  *   MPI_Alltoallv to exchange domain information.
  *   - Default is 1.
- *
+ * 
  * - BGLOCKLESSMPIO_F_TYPE - Specify a filesystem type that should run
  *   the ad_bglockless driver.   NOTE: Using romio prefixes (such as
  *   "bgl:" or "bglockless:") on a file name will override this environment
@@ -97,8 +96,8 @@ void ad_bgl_get_env_vars() {
 	x = getenv( "BGLMPIO_TUNEGATHER"   ); 
 	if (x) bglmpio_tunegather   = atoi(x);
     bglmpio_tuneblocking = 1;
-    x = getenv( "BGLMPIO_TUNEBLOCKING" ); 
-    if (x) bglmpio_tuneblocking = atoi(x);
+	x = getenv( "BGLMPIO_TUNEBLOCKING" ); 
+	if (x) bglmpio_tuneblocking = atoi(x);
     bglocklessmpio_f_type = PVFS2_SUPER_MAGIC;
     x = getenv( "BGLOCKLESSMPIO_F_TYPE" ); 
     if (x) bglocklessmpio_f_type = strtol(x,&dummy,0);

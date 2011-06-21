@@ -231,7 +231,6 @@ void ADIOI_BGL_Open(ADIO_File fd, int *error_code)
 
     if(fd->fd_sys != -1)
     {
-
         /* Initialize the ad_bgl file system specific information */
         AD_BGL_assert(fd->fs_ptr == NULL);
         fd->fs_ptr = (ADIOI_BGL_fs*) ADIOI_Malloc(sizeof(ADIOI_BGL_fs));

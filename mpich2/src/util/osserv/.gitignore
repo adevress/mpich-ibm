@@ -8,6 +8,7 @@
 /*.bb
 /*.bbg
 /*.da
+/*.gcno
 /.libs
 /.libstamp*
 /*.user

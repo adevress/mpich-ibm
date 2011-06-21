@@ -12,6 +12,7 @@
 /* Test sent in by Avery Ching to report a bug in MPICH2. 
    Adding it as a regression test. */
 
+/*
 static void print_char_buf(char *buf_name, char *buf, int buf_len)
 {
     int i;
@@ -27,6 +28,7 @@ static void print_char_buf(char *buf_name, char *buf, int buf_len)
     }
     printf("\n");
 }
+*/
 
 char correct_buf[] = {'a', '_', 'b', 'c', '_', '_', '_', '_', 'd', '_', 
 		      'e', 'f', 'g', '_', 'h', 'i', 'j', '_', 'k', 'l',

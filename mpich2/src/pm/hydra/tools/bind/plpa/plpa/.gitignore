@@ -2,3 +2,5 @@
 /Makefile.in
 /autom4te.cache
 /aclocal.m4
+/config.log
+/Makefile

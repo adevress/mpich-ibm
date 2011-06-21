@@ -1,5 +1,7 @@
 /mpe_graphics.h
 /mpe_graphicsf.h
+/mpe_callstack.h
+/mpe_log_thread.h
 /mpe_log.h
 /mpe_logf.h
 /mpe_misc.h

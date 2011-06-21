@@ -5,6 +5,7 @@
 /statusesf90.f90
 /greqf90.f90
 /greqf90
+/dummyf90.f90
 /statusesf90
 /*.gcda
 /*.gcno

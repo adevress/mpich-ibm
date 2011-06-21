@@ -3,5 +3,7 @@
 /Makefile
 /testlist
 /cartcrf90.f90
+/dgraph_wgtf90.f90
+/dgraph_unwgtf90.f90
 /*.gcda
 /*.gcno

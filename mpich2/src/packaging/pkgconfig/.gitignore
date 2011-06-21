@@ -1,3 +1,7 @@
 /Makefile
 /Makefile.in
 /mpich2-ch3.pc
+/mpich2-c.pc
+/mpich2-cxx.pc
+/mpich2-f77.pc
+/mpich2-f90.pc
