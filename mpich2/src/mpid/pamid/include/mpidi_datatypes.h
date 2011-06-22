@@ -13,7 +13,7 @@
 #define __include_mpidi_datatypes_h__
 
 
-#ifdef MPIDI_USE_OPA
+#if (MPIU_HANDLE_ALLOCATION_METHOD == MPIU_HANDLE_ALLOCATION_THREAD_LOCAL) && defined(__BGQ__)
 struct MPID_Request;
 typedef struct
 {
@@ -36,7 +36,7 @@ typedef struct
   unsigned short_limit;
   unsigned eager_limit;
 
-#if (MPIU_HANDLE_ALLOCATION_METHOD == MPIU_HANDLE_ALLOCATION_THREAD_LOCAL) && defined(MPIDI_USE_OPA)
+#if (MPIU_HANDLE_ALLOCATION_METHOD == MPIU_HANDLE_ALLOCATION_THREAD_LOCAL) && defined(__BGQ__)
   MPIDI_RequestHandle_t request_handles[MPIDI_MAX_THREADS];
 #endif
 

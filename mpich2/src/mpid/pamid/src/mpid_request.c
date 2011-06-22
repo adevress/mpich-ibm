@@ -30,7 +30,7 @@ MPIU_Object_alloc_t MPID_Request_mem =
   };
 
 
-#if (MPIU_HANDLE_ALLOCATION_METHOD == MPIU_HANDLE_ALLOCATION_THREAD_LOCAL) && defined(MPIDI_USE_OPA)
+#if (MPIU_HANDLE_ALLOCATION_METHOD == MPIU_HANDLE_ALLOCATION_THREAD_LOCAL) && defined(__BGQ__)
 void MPIDI_Request_allocate_pool()
 {
   int i;

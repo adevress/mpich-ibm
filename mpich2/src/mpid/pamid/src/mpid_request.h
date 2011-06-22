@@ -22,7 +22,7 @@ extern MPIU_Object_alloc_t MPID_Request_mem;
 
 
 void    MPIDI_Request_uncomplete(MPID_Request *req);
-#if MPIU_HANDLE_ALLOCATION_METHOD == MPIU_HANDLE_ALLOCATION_THREAD_LOCAL
+#if (MPIU_HANDLE_ALLOCATION_METHOD == MPIU_HANDLE_ALLOCATION_THREAD_LOCAL) && defined(__BGQ__)
 void    MPIDI_Request_allocate_pool();
 #endif
 
