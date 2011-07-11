@@ -92,7 +92,7 @@ MPIO_REQ_REAL_POBJECTS="_iotest.o _iowait.o _iowaitall.o _iowaitany.o _iotestall
 #
 have_aio=no
 #
-known_filesystems="nfs ufs pfs pvfs pvfs2 testfs xfs panfs gridftp lustre bgl bglockless zoidfs"
+known_filesystems="nfs ufs pfs pvfs pvfs2 testfs xfs panfs gridftp lustre bgl bglockless zoidfs bg"
 known_mpi_impls="mpich2_mpi mpich_mpi sgi_mpi hp_mpi cray_mpi lam_mpi"
 #
 # Defaults
@@ -1124,11 +1124,14 @@ fi
 if test -n "$file_system_bgl"; then	
     AC_DEFINE(ROMIO_BGL,1,[Define for ROMIO with BGL])
 fi
+if test -n "$file_system_bg"; then
+    AC_DEFINE(ROMIO_BG,1,[Define for ROMIO with BG])
+fi
 if test -n "$file_system_bglockless"; then
-    if test x"$file_system_bgl" = x ; then
-	    AC_MSG_ERROR("bglockless requested without bgl")
+    if test x"$file_system_bg" = x -a test x"$file_system_bgl" = x; then
+	    AC_MSG_ERROR("bglockless requested without bgl or bg")
     fi
-    AC_DEFINE(ROMIO_BGLOCKLESS,1,[Define for lock-free ROMIO with BGL])
+    AC_DEFINE(ROMIO_BGLOCKLESS,1,[Define for lock-free ROMIO with BG])
 fi
 if test -n "$file_system_hfs"; then
     AC_DEFINE(ROMIO_HFS,1,[Define for ROMIO with HFS])
@@ -2137,6 +2140,7 @@ AC_OUTPUT(Makefile localdefs mpi-io/Makefile mpi2-other/info/Makefile \
 		   adio/ad_nfs/Makefile adio/ad_ufs/Makefile \
 		   adio/ad_bgl/Makefile \
 		   adio/ad_bglockless/Makefile \
+       adio/ad_bg/Makefile\
 		   adio/ad_panfs/Makefile \
 		   adio/ad_xfs/Makefile \
 		   adio/ad_sfs/Makefile adio/ad_pfs/Makefile \

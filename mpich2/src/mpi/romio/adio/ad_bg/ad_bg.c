@@ -1,30 +1,46 @@
+/* ---------------------------------------------------------------- */
+/* (C)Copyright IBM Corp.  2007, 2008                               */
+/* ---------------------------------------------------------------- */
+/**
+ * \file ad_bg.c
+ * \brief ???
+ */
+
 /* -*- Mode: C; c-basic-offset:4 ; -*- */
 /* 
- *
  *   Copyright (C) 2001 University of Chicago. 
  *   See COPYRIGHT notice in top-level directory.
  */
-
-#include "../ad_bg/ad_bg.h"
-#include "ad_bglockless.h"
+#define BG_OPTIM_STEP1_1 1
+#include "ad_bg.h"
 
 /* adioi.h has the ADIOI_Fns_struct define */
 #include "adioi.h"
 
-struct ADIOI_Fns_struct ADIO_BGLOCKLESS_operations = {
+struct ADIOI_Fns_struct ADIO_BG_operations = {
     ADIOI_BG_Open, /* Open */
     ADIOI_GEN_OpenColl, /* Collective open */
-    ADIOI_GEN_ReadContig, /* ReadContig */
-    ADIOI_GEN_WriteContig, /* WriteContig */
+    ADIOI_BG_ReadContig, /* ReadContig */
+    ADIOI_BG_WriteContig, /* WriteContig */
+#if BG_OPTIM_STEP1_2
     ADIOI_BG_ReadStridedColl, /* ReadStridedColl */
     ADIOI_BG_WriteStridedColl, /* WriteStridedColl */
+#else
+    ADIOI_GEN_ReadStridedColl, /* ReadStridedColl */
+    ADIOI_GEN_WriteStridedColl, /* WriteStridedColl */
+#endif
     ADIOI_GEN_SeekIndividual, /* SeekIndividual */
-    ADIOI_GEN_Fcntl, /* Fcntl */
+    ADIOI_BG_Fcntl, /* Fcntl */
+#if BG_OPTIM_STEP1_1
     ADIOI_BG_SetInfo, /* SetInfo */
-    ADIOI_GEN_ReadStrided, /* ReadStrided */
-    ADIOI_NOLOCK_WriteStrided, /* WriteStrided */
+#else
+    ADIOI_GEN_SetInfo, /* SetInfo */
+#endif
+    ADIOI_BG_ReadStrided, /* ReadStrided */
+    ADIOI_BG_WriteStrided, /* WriteStrided */
     ADIOI_BG_Close, /* Close */
 #ifdef ROMIO_HAVE_WORKING_AIO
+#warning Consider BG support for NFS before enabling this.
     ADIOI_GEN_IreadContig, /* IreadContig */
     ADIOI_GEN_IwriteContig, /* IwriteContig */
 #else
@@ -40,6 +56,5 @@ struct ADIOI_Fns_struct ADIO_BGLOCKLESS_operations = {
     ADIOI_BG_Flush, /* Flush */
     ADIOI_GEN_Resize, /* Resize */
     ADIOI_GEN_Delete, /* Delete */
-    ADIOI_BGLOCKLESS_Feature  /* Features */
+    ADIOI_GEN_Feature, /* Features */
 };
-

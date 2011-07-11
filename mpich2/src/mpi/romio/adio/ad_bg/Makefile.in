@@ -1,0 +1,47 @@
+CC          = @CC@
+AR          = @AR@
+LIBNAME     = @LIBNAME@
+srcdir      = @srcdir@
+CC_SHL      = @CC_SHL@
+SHLIBNAME   = @SHLIBNAME@
+
+INCLUDES = -I@MPI_INCLUDE_DIR@ -I${srcdir}/../include -I../include -I../../include  -I${srcdir}/../../../../include -I../../../../include @CPPFLAGS@
+CFLAGS      = @CFLAGS@ $(INCLUDES) -DBGL_OPTIM_STEP1_2=1 -DBGL_OPTIM_STEP1_1=1
+
+C_COMPILE_SHL = $(CC_SHL) @CFLAGS@ $(INCLUDES)
+
+@VPATH@
+
+AD_BG_OBJECTS = \
+      ad_bg_open.o ad_bg_close.o \
+      ad_bg_fcntl.o ad_bg_flush.o \
+      ad_bg_read.o ad_bg_write.o ad_bg_getsh.o ad_bg_setsh.o \
+      ad_bg.o ad_bg_aggrs.o ad_bg_pset.o ad_bg_hints.o \
+      ad_bg_rdcoll.o ad_bg_wrcoll.o ad_bg_tuning.o
+
+default: $(LIBNAME)
+	@if [ "@ENABLE_SHLIB@" != "none" ] ; then \
+	    $(MAKE) $(SHLIBNAME).la ;\
+	fi
+
+.SUFFIXES: $(SUFFIXES) .p .lo
+
+.c.o:
+	$(CC) $(CFLAGS) -c $<
+.c.lo:
+	$(C_COMPILE_SHL) $(CFLAGS) -c $<
+	@mv -f $*.o $*.lo
+
+$(LIBNAME): $(AD_BG_OBJECTS)
+	$(AR) $(LIBNAME) $(AD_BG_OBJECTS)
+
+AD_BG_LOOBJECTS=$(AD_BG_OBJECTS:.o=.lo)
+$(SHLIBNAME).la: $(AD_BG_LOOBJECTS)
+	$(AR) $(SHLIBNAME).la $(AD_BG_LOOBJECTS)
+
+coverage:
+	-@for file in  ${AD_BG_OBJECTS:.o=.c} ; do \
+		gcov -b -f $$file ; done
+
+clean:
+	@rm -f *.o *.lo

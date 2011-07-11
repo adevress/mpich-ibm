@@ -204,12 +204,17 @@ static void ADIO_FileSysType_parentdir(char *filename, char **dirnamep)
 }
 #endif /* ROMIO_NTFS */
 
-#ifdef ROMIO_BGL   /* BlueGene support for lockless i/o (necessary for PVFS.
+#if defined(ROMIO_BGL) || defined(ROMIO_BG)
+		    /* BlueGene support for lockless i/o (necessary for PVFS.
 		      possibly beneficial for others, unless data sieving
 		      writes desired) */
 
 /* BlueGene environment variables can override lockless selection.*/
+#ifdef ROMIO_BG
+extern void ad_bg_get_env_vars();
+#else
 extern void ad_bgl_get_env_vars();
+#endif
 extern long bglocklessmpio_f_type;
 
 static void check_for_lockless_exceptions(long stat_type, int *fstype)
@@ -336,6 +341,16 @@ static void ADIO_FileSysType_fncall(char *filename, int *fstype, int *error_code
 	return;
     }
 # endif
+
+#ifdef ROMIO_BG
+/* The BlueGene generic ADIO is also a special case. */
+    ad_bg_get_env_vars();
+
+    *fstype = ADIO_BG;
+    check_for_lockless_exceptions(fsbuf.f_type, fstype);
+    *error_code = MPI_SUCCESS;
+    return;
+#endif
 
 #  ifdef ROMIO_BGL 
     /* BlueGene is a special case: all file systems are AD_BGL, except for
@@ -558,6 +573,9 @@ static void ADIO_FileSysType_prefix(char *filename, int *fstype, int *error_code
     }
     else if (!strncmp(filename, "bgl:", 4) || !strncmp(filename, "BGL:", 4)) {
 	*fstype = ADIO_BGL;
+    }
+    else if (!strncmp(filename, "bg:", 3) || !strncmp(filename, "BG:", 3)) {
+	*fstype = ADIO_BG;
     }
     else if (!strncmp(filename, "bglockless:", 11) || 
 	    !strncmp(filename, "BGLOCKLESS:", 11)) {
@@ -806,6 +824,16 @@ void ADIO_ResolveFileType(MPI_Comm comm, char *filename, int *fstype,
 	return;
 #else
 	*ops = &ADIO_BGL_operations;
+#endif
+    }
+    if (file_system == ADIO_BG) {
+#ifndef ROMIO_BG
+	*error_code = MPIO_Err_create_code(MPI_SUCCESS, MPIR_ERR_RECOVERABLE,
+					myname, __LINE__, MPI_ERR_IO,
+					"**iofstypeunsupported", 0);
+	return;
+#else
+	*ops = &ADIO_BG_operations;
 #endif
     }
     if (file_system == ADIO_BGLOCKLESS) {
