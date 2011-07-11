@@ -43,7 +43,7 @@ MPIDI_Get(pami_context_t   context,
             req->target.dt.num_contig, req->buffer, req->win->mpid.info[req->target.rank].base_addr, req->offset);
   for (; req->state.index < req->target.dt.num_contig; ++req->state.index) {
     params.rdma.local.offset = req->state.local_offset;
-    MPID_PROGRESS_WAIT_WHILE(req->state.index > sync->started - sync->complete + MPIDI_Process.rma_pending);
+    MPID_PROGRESS_WAIT_WHILE(sync->started > sync->complete + MPIDI_Process.rma_pending);
     ++sync->started;
 
     params.rma.bytes          = req->target.dt.map[req->state.index].DLOOP_VECTOR_LEN;

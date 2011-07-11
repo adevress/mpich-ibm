@@ -65,7 +65,7 @@ MPIDI_Accumulate(pami_context_t   context,
   TRACE_ERR("Start       num=%d  l-addr=%p  r-base=%p  r-offset=%zu\n",
             req->target.dt.num_contig, req->buffer, req->win->mpid.info[req->target.rank].base_addr, req->offset);
   for (; req->state.index < req->target.dt.num_contig; ++req->state.index) {
-    MPID_PROGRESS_WAIT_WHILE(req->state.index > sync->started - sync->complete + MPIDI_Process.rma_pending);
+    MPID_PROGRESS_WAIT_WHILE(sync->started > sync->complete + MPIDI_Process.rma_pending);
     ++sync->started;
 
     params.send.header.iov_base = &req->accum_headers[req->state.index];
