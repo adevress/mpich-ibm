@@ -13,25 +13,20 @@ MPIDI_Put(pami_context_t   context,
   MPIDI_Win_request *req = (MPIDI_Win_request*)_req;
   pami_result_t rc;
 
-  pami_task_t task = MPID_VCR_GET_LPID(req->win->comm_ptr->vcr, req->target.rank);
-  rc = PAMI_Endpoint_create(MPIDI_Client, task, 0, &req->dest);
-  MPID_assert(rc == PAMI_SUCCESS);
-
   pami_rput_simple_t params = {
-    .rma  = {
-      .dest    = req->dest,
-      .hints   = {
-        .buffer_registered= PAMI_HINT_ENABLE,
-        .use_rdma=          PAMI_HINT_ENABLE,
+    .rma = {
+      .dest = req->dest,
+      .hints = {
+        .buffer_registered = PAMI_HINT_ENABLE,
+        .use_rdma          = PAMI_HINT_ENABLE,
       },
       .bytes   = 0,
       .cookie  = req,
       .done_fn = NULL,
     },
     .rdma = {
-      .local  = {
-        .mr     = &req->origin.memregion,
-        .offset = 0,
+      .local = {
+        .mr = &req->origin.memregion,
       },
       .remote = {
         .mr     = &req->win->mpid.info[req->target.rank].memregion,
@@ -43,26 +38,26 @@ MPIDI_Put(pami_context_t   context,
     },
   };
 
-  unsigned index;
   struct MPIDI_Win_sync* sync = &req->win->mpid.sync;
   TRACE_ERR("Start       num=%d  l-addr=%p  r-base=%p  r-offset=%zu\n",
             req->target.dt.num_contig, req->buffer, req->win->mpid.info[req->target.rank].base_addr, req->offset);
-  for (index=0; index < req->target.dt.num_contig; ++index) {
-    MPID_PROGRESS_WAIT_WHILE(index > sync->started - sync->complete + MPIDI_Process.rma_pending);
+  for (; req->state.index < req->target.dt.num_contig; ++req->state.index) {
+    params.rdma.local.offset = req->state.local_offset;
+    MPID_PROGRESS_WAIT_WHILE(req->state.index > sync->started - sync->complete + MPIDI_Process.rma_pending);
     ++sync->started;
 
-    params.rma.bytes          = req->target.dt.map[index].DLOOP_VECTOR_LEN;
-    params.rdma.remote.offset = req->offset + (size_t)req->target.dt.map[index].DLOOP_VECTOR_BUF;
+    params.rma.bytes          = req->target.dt.map[req->state.index].DLOOP_VECTOR_LEN;
+    params.rdma.remote.offset = req->offset + (size_t)req->target.dt.map[req->state.index].DLOOP_VECTOR_BUF;
 
 #ifdef TRACE_ON
     unsigned* buf = (unsigned*)(req->buffer + params.rdma.local.offset);
 #endif
-    TRACE_ERR("  Sub     index=%d  bytes=%zu  l-offset=%zu  r-offset=%zu  buf=%p  *(int*)buf=0x%08x\n",
-              index, params.rma.bytes, params.rdma.local.offset, params.rdma.remote.offset, buf, *buf);
+    TRACE_ERR("  Sub     index=%zu  bytes=%zu  l-offset=%zu  r-offset=%zu  buf=%p  *(int*)buf=0x%08x\n",
+              req->state.index, params.rma.bytes, params.rdma.local.offset, params.rdma.remote.offset, buf, *buf);
     rc = PAMI_Rput(context, &params);
     MPID_assert(rc == PAMI_SUCCESS);
 
-    params.rdma.local.offset += params.rma.bytes;
+    req->state.local_offset += params.rma.bytes;
   }
 
   MPIDI_Win_datatype_unmap(&req->target.dt);
@@ -165,6 +160,10 @@ MPID_Put(void         *origin_addr,
                              &req->origin.memregion);
   MPID_assert(rc == PAMI_SUCCESS);
   MPID_assert(req->origin.dt.size == length_out);
+
+  pami_task_t task = MPID_VCR_GET_LPID(win->comm_ptr->vcr, target_rank);
+  rc = PAMI_Endpoint_create(MPIDI_Client, task, 0, &req->dest);
+  MPID_assert(rc == PAMI_SUCCESS);
 
 
   MPIDI_Win_datatype_map(&req->target.dt);

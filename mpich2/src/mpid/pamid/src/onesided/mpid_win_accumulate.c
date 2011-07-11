@@ -47,14 +47,10 @@ MPIDI_Accumulate(pami_context_t   context,
   MPIDI_Win_request *req = (MPIDI_Win_request*)_req;
   pami_result_t rc;
 
-  pami_task_t task = MPID_VCR_GET_LPID(req->win->comm_ptr->vcr, req->target.rank);
-  rc = PAMI_Endpoint_create(MPIDI_Client, task, 0, &req->dest);
-  MPID_assert(rc == PAMI_SUCCESS);
-
   pami_send_t params = {
-    .send  = {
-      .header   = {
-        .iov_len  = sizeof(MPIDI_Win_MsgInfo),
+    .send = {
+      .header = {
+        .iov_len = sizeof(MPIDI_Win_MsgInfo),
       },
       .dispatch = MPIDI_Protocols_WinAccum,
       .dest     = req->dest,
@@ -65,28 +61,26 @@ MPIDI_Accumulate(pami_context_t   context,
     },
   };
 
-  unsigned index;
-  size_t local_offset = 0;
   struct MPIDI_Win_sync* sync = &req->win->mpid.sync;
   TRACE_ERR("Start       num=%d  l-addr=%p  r-base=%p  r-offset=%zu\n",
             req->target.dt.num_contig, req->buffer, req->win->mpid.info[req->target.rank].base_addr, req->offset);
-  for (index=0; index < req->target.dt.num_contig; ++index) {
-    MPID_PROGRESS_WAIT_WHILE(index > sync->started - sync->complete + MPIDI_Process.rma_pending);
+  for (; req->state.index < req->target.dt.num_contig; ++req->state.index) {
+    MPID_PROGRESS_WAIT_WHILE(req->state.index > sync->started - sync->complete + MPIDI_Process.rma_pending);
     ++sync->started;
 
-    params.send.header.iov_base = &req->accum_headers[index];
-    params.send.data.iov_len    = req->target.dt.map[index].DLOOP_VECTOR_LEN;
-    params.send.data.iov_base   = req->buffer + local_offset;
+    params.send.header.iov_base = &req->accum_headers[req->state.index];
+    params.send.data.iov_len    = req->target.dt.map[req->state.index].DLOOP_VECTOR_LEN;
+    params.send.data.iov_base   = req->buffer + req->state.local_offset;
 
 #ifdef TRACE_ON
     unsigned* buf = (unsigned*)params.send.data.iov_base;
 #endif
-    TRACE_ERR("  Sub     index=%d  bytes=%zu  l-offset=%zu  r-addr=%p  l-buf=%p  *(int*)buf=0x%08x\n",
-              index, params.send.data.iov_len, local_offset, req->accum_headers[index].addr, buf, *buf);
+    TRACE_ERR("  Sub     index=%zu  bytes=%zu  l-offset=%zu  r-addr=%p  l-buf=%p  *(int*)buf=0x%08x\n",
+              req->state.index, params.send.data.iov_len, req->state.local_offset, req->accum_headers[req->state.index].addr, buf, *buf);
     rc = PAMI_Send(context, &params);
     MPID_assert(rc == PAMI_SUCCESS);
 
-    local_offset += params.send.data.iov_len;
+    req->state.local_offset += params.send.data.iov_len;
   }
 
   MPIDI_Win_datatype_unmap(&req->target.dt);
@@ -198,10 +192,14 @@ MPID_Accumulate(void         *origin_addr,
      headers[index].win  = win;
      headers[index].type = basic_type;
      headers[index].op   = op;
-      ;
     }
 
   }
+
+  pami_task_t task = MPID_VCR_GET_LPID(win->comm_ptr->vcr, target_rank);
+  pami_result_t rc;
+  rc = PAMI_Endpoint_create(MPIDI_Client, task, 0, &req->dest);
+  MPID_assert(rc == PAMI_SUCCESS);
 
 
   MPIDI_Accumulate(MPIDI_Context[0], req);

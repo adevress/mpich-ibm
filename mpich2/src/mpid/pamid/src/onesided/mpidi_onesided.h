@@ -76,6 +76,12 @@ typedef struct
   pami_endpoint_t dest;
   size_t offset;
 
+  struct
+  {
+    size_t index;
+    size_t local_offset;
+  } state;
+
   MPIDI_Win_MsgInfo * accum_headers;
 
   struct
