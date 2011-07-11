@@ -39,23 +39,24 @@ MPIDI_Put(pami_context_t   context,
   };
 
   struct MPIDI_Win_sync* sync = &req->win->mpid.sync;
-  TRACE_ERR("Start       num=%d  l-addr=%p  r-base=%p  r-offset=%zu\n",
-            req->target.dt.num_contig, req->buffer, req->win->mpid.info[req->target.rank].base_addr, req->offset);
+  TRACE_ERR("Start       index=%u/%d  l-addr=%p  r-base=%p  r-offset=%zu (sync->started=%u  sync->complete=%u)\n",
+            req->state.index, req->target.dt.num_contig, req->buffer, req->win->mpid.info[req->target.rank].base_addr, req->offset, sync->started, sync->complete);
   for (; req->state.index < req->target.dt.num_contig; ++req->state.index) {
-    params.rdma.local.offset = req->state.local_offset;
     MPID_PROGRESS_WAIT_WHILE(sync->started > sync->complete + MPIDI_Process.rma_pending);
     ++sync->started;
 
-    params.rma.bytes          = req->target.dt.map[req->state.index].DLOOP_VECTOR_LEN;
+    params.rma.bytes          =                       req->target.dt.map[req->state.index].DLOOP_VECTOR_LEN;
     params.rdma.remote.offset = req->offset + (size_t)req->target.dt.map[req->state.index].DLOOP_VECTOR_BUF;
+    params.rdma.local.offset  = req->state.local_offset;
 
 #ifdef TRACE_ON
     unsigned* buf = (unsigned*)(req->buffer + params.rdma.local.offset);
 #endif
-    TRACE_ERR("  Sub     index=%zu  bytes=%zu  l-offset=%zu  r-offset=%zu  buf=%p  *(int*)buf=0x%08x\n",
+    TRACE_ERR("  Sub     index=%u  bytes=%zu  l-offset=%zu  r-offset=%zu  buf=%p  *(int*)buf=0x%08x\n",
               req->state.index, params.rma.bytes, params.rdma.local.offset, params.rdma.remote.offset, buf, *buf);
     rc = PAMI_Rput(context, &params);
     MPID_assert(rc == PAMI_SUCCESS);
+
 
     req->state.local_offset += params.rma.bytes;
   }
@@ -69,10 +70,6 @@ MPIDI_Put(pami_context_t   context,
 /**
  * \brief MPI-PAMI glue for MPI_PUT function
  *
- * Put \e origin_count number of \e origin_datatype from \e origin_addr
- * to node \e target_rank into \e target_count number of \e target_datatype
- * into window location \e target_disp offset (window displacement units)
- *
  * \param[in] origin_addr      Source buffer
  * \param[in] origin_count     Number of datatype elements
  * \param[in] origin_datatype  Source datatype
@@ -81,7 +78,7 @@ MPIDI_Put(pami_context_t   context,
  * \param[in] target_count     Number of target datatype elements
  * \param[in] target_datatype  Destination datatype
  * \param[in] win              Window
- * \return MPI_SUCCESS or error returned from MPIR_Localcopy
+ * \return MPI_SUCCESS
  */
 int
 MPID_Put(void         *origin_addr,
@@ -151,8 +148,12 @@ MPID_Put(void         *origin_addr,
     }
 
 
-  size_t length_out;
   pami_result_t rc;
+  pami_task_t task = MPID_VCR_GET_LPID(win->comm_ptr->vcr, target_rank);
+  rc = PAMI_Endpoint_create(MPIDI_Client, task, 0, &req->dest);
+  MPID_assert(rc == PAMI_SUCCESS);
+
+  size_t length_out;
   rc = PAMI_Memregion_create(MPIDI_Context[0],
                              req->buffer,
                              req->origin.dt.size,
@@ -160,10 +161,6 @@ MPID_Put(void         *origin_addr,
                              &req->origin.memregion);
   MPID_assert(rc == PAMI_SUCCESS);
   MPID_assert(req->origin.dt.size == length_out);
-
-  pami_task_t task = MPID_VCR_GET_LPID(win->comm_ptr->vcr, target_rank);
-  rc = PAMI_Endpoint_create(MPIDI_Client, task, 0, &req->dest);
-  MPID_assert(rc == PAMI_SUCCESS);
 
 
   MPIDI_Win_datatype_map(&req->target.dt);

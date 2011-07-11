@@ -71,15 +71,16 @@ typedef struct
 /** \todo make sure that the extra fields are removed */
 typedef struct
 {
-  MPID_Win *win;
+  MPID_Win               *win;
   MPIDI_Win_requesttype_t type;
-  pami_endpoint_t dest;
-  size_t offset;
+  pami_endpoint_t         dest;
+  size_t                  offset;
+  pami_work_t             post_request;
 
   struct
   {
-    size_t index;
-    size_t local_offset;
+    unsigned index;
+    size_t   local_offset;
   } state;
 
   MPIDI_Win_MsgInfo * accum_headers;

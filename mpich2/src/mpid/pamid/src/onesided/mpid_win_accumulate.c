@@ -62,8 +62,8 @@ MPIDI_Accumulate(pami_context_t   context,
   };
 
   struct MPIDI_Win_sync* sync = &req->win->mpid.sync;
-  TRACE_ERR("Start       num=%d  l-addr=%p  r-base=%p  r-offset=%zu\n",
-            req->target.dt.num_contig, req->buffer, req->win->mpid.info[req->target.rank].base_addr, req->offset);
+  TRACE_ERR("Start       index=%u/%d  l-addr=%p  r-base=%p  r-offset=%zu (sync->started=%u  sync->complete=%u)\n",
+            req->state.index, req->target.dt.num_contig, req->buffer, req->win->mpid.info[req->target.rank].base_addr, req->offset, sync->started, sync->complete);
   for (; req->state.index < req->target.dt.num_contig; ++req->state.index) {
     MPID_PROGRESS_WAIT_WHILE(sync->started > sync->complete + MPIDI_Process.rma_pending);
     ++sync->started;
@@ -75,7 +75,7 @@ MPIDI_Accumulate(pami_context_t   context,
 #ifdef TRACE_ON
     unsigned* buf = (unsigned*)params.send.data.iov_base;
 #endif
-    TRACE_ERR("  Sub     index=%zu  bytes=%zu  l-offset=%zu  r-addr=%p  l-buf=%p  *(int*)buf=0x%08x\n",
+    TRACE_ERR("  Sub     index=%u  bytes=%zu  l-offset=%zu  r-addr=%p  l-buf=%p  *(int*)buf=0x%08x\n",
               req->state.index, params.send.data.iov_len, req->state.local_offset, req->accum_headers[req->state.index].addr, buf, *buf);
     rc = PAMI_Send(context, &params);
     MPID_assert(rc == PAMI_SUCCESS);
@@ -91,11 +91,6 @@ MPIDI_Accumulate(pami_context_t   context,
 
 /**
  * \brief MPI-PAMI glue for MPI_ACCUMULATE function
- *
- * Perform DEST = DEST (op) SOURCE for \e origin_count number of
- * \e origin_datatype at \e origin_addr
- * to node \e target_rank into \e target_count number of \e target_datatype
- * into window location \e target_disp offset (window displacement units)
  *
  * According to the MPI Specification:
  *
@@ -113,10 +108,7 @@ MPIDI_Accumulate(pami_context_t   context,
  * \param[in] target_datatype  Destination datatype
  * \param[in] op               Operand to perform
  * \param[in] win              Window
- * \return MPI_SUCCES
- *
- * \ref msginfo_usage\n
- * \ref accum_design
+ * \return MPI_SUCCESS
  */
 int
 MPID_Accumulate(void         *origin_addr,
@@ -152,6 +144,7 @@ MPID_Accumulate(void         *origin_addr,
 
   req->target.rank = target_rank;
 
+
   if (req->origin.dt.contig)
     {
       req->buffer_free = 0;
@@ -172,6 +165,12 @@ MPID_Accumulate(void         *origin_addr,
                                  MPI_CHAR);
       MPID_assert(mpi_errno == MPI_SUCCESS);
     }
+
+
+  pami_result_t rc;
+  pami_task_t task = MPID_VCR_GET_LPID(win->comm_ptr->vcr, target_rank);
+  rc = PAMI_Endpoint_create(MPIDI_Client, task, 0, &req->dest);
+  MPID_assert(rc == PAMI_SUCCESS);
 
 
   MPIDI_Win_datatype_map(&req->target.dt);
@@ -195,11 +194,6 @@ MPID_Accumulate(void         *origin_addr,
     }
 
   }
-
-  pami_task_t task = MPID_VCR_GET_LPID(win->comm_ptr->vcr, target_rank);
-  pami_result_t rc;
-  rc = PAMI_Endpoint_create(MPIDI_Client, task, 0, &req->dest);
-  MPID_assert(rc == PAMI_SUCCESS);
 
 
   MPIDI_Accumulate(MPIDI_Context[0], req);
