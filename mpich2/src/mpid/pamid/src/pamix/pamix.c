@@ -225,25 +225,34 @@ PAMIX_Torus_info()
 }
 
 
-void
+int
 PAMIX_Task2torus(pami_task_t task_id,
                  size_t      coords[])
 {
   PAMIX_assert(PAMIX_Functions.task2torus != NULL);
   pami_result_t rc;
   rc = PAMIX_Functions.task2torus(task_id, coords);
-  PAMIX_assert(rc == PAMI_SUCCESS);
+  return rc;
 }
 
 
-void
+#include <stdio.h>
+int
 PAMIX_Torus2task(size_t        coords[],
                  pami_task_t * task_id)
 {
   PAMIX_assert(PAMIX_Functions.torus2task != NULL);
   pami_result_t rc;
   rc = PAMIX_Functions.torus2task(coords, task_id);
-  PAMIX_assert(rc == PAMI_SUCCESS);
+  return rc;
+#if 0
+  if(rc != PAMI_SUCCESS)
+  {
+   fprintf(stderr,"coords in: %zu %zu %zu %zu %zu, rc: %d\n", coords[0], coords[1], coords[2],coords[3],coords[4], rc);
+     PAMIX_assert(rc == PAMI_SUCCESS);
+   }
+   else return rc;
+#endif
 }
 
 #endif

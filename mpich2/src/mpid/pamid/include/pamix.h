@@ -71,8 +71,8 @@ typedef struct
 } pamix_torus_info_t;
 
 const pamix_torus_info_t * PAMIX_Torus_info();
-void PAMIX_Task2torus(pami_task_t task_id, size_t coords[]);
-void PAMIX_Torus2task(size_t coords[], pami_task_t* task_id);
+int PAMIX_Task2torus(pami_task_t task_id, size_t coords[]);
+int PAMIX_Torus2task(size_t coords[], pami_task_t* task_id);
 
 #endif
 
