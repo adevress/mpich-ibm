@@ -69,9 +69,15 @@ MPIDI_Accumulate(pami_context_t   context,
   struct MPIDI_Win_sync* sync = &req->win->mpid.sync;
   TRACE_ERR("Start       index=%u/%d  l-addr=%p  r-base=%p  r-offset=%zu (sync->started=%u  sync->complete=%u)\n",
             req->state.index, req->target.dt.num_contig, req->buffer, req->win->mpid.info[req->target.rank].base_addr, req->offset, sync->started, sync->complete);
-  for (; req->state.index < req->target.dt.num_contig; ++req->state.index) {
-    MPID_PROGRESS_WAIT_WHILE(sync->started > sync->complete + MPIDI_Process.rma_pending);
+  while (req->state.index < req->target.dt.num_contig) {
+    if (sync->started > sync->complete + MPIDI_Process.rma_pending)
+      {
+        TRACE_ERR("Bailing out;  index=%u/%d  sync->started=%u  sync->complete=%u\n",
+                req->state.index, req->target.dt.num_contig, sync->started, sync->complete);
+        return PAMI_EAGAIN;
+      }
     ++sync->started;
+
 
     params.send.header.iov_base = &req->accum_headers[req->state.index];
     params.send.data.iov_len    = req->target.dt.map[req->state.index].DLOOP_VECTOR_LEN;
@@ -87,7 +93,9 @@ MPIDI_Accumulate(pami_context_t   context,
     rc = PAMI_Send(context, &params);
     MPID_assert(rc == PAMI_SUCCESS);
 
+
     req->state.local_offset += params.send.data.iov_len;
+    ++req->state.index;
   }
 
   MPIDI_Win_datatype_unmap(&req->target.dt);
@@ -203,7 +211,7 @@ MPID_Accumulate(void         *origin_addr,
   }
 
 
-  MPIDI_Accumulate(MPIDI_Context[0], req);
+  PAMI_Context_post(MPIDI_Context[0], &req->post_request, MPIDI_Accumulate, req);
 
 
   return MPI_SUCCESS;
