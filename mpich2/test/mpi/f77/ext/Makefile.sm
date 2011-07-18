@@ -7,8 +7,8 @@ INCLUDES = -I../../include -I${srcdir}/../../include
 DEPADD = @MPILIBLOC@ ../util/mtestf.o ../../util/mtest.o
 smvar_do_sharedlibs = 0
 
-# allocmemf is an "extra" program because it requires a Fortran extension
-EXTRA_PROGRAMS = allocmemf
+# # allocmemf is an "extra" program because it requires a Fortran extension
+# EXTRA_PROGRAMS = allocmemf
 
 allocmemf_SOURCES = allocmemf.f
 allocmemf_LDADD = ../util/mtestf.o
