@@ -362,7 +362,7 @@ int MPIDI_ConvertMPItoDCMF(MPI_Op op, DCMF_Op *dcmf_op,
     break;
 
   case MPI_LONG_LONG:
-    *dcmf_dt = DCMF_UNSIGNED_LONG_LONG;
+    *dcmf_dt = DCMF_SIGNED_LONG_LONG;
     break;
 
   case MPI_DOUBLE_COMPLEX:
