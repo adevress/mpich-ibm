@@ -198,25 +198,27 @@ static void MPIDI_Update_coll(pami_algorithm_t coll,
                        int index,
                        MPID_Comm *comm_ptr)
 {
+
+   comm_ptr->mpid.user_selectedvar[coll] = type;
+
    /* Are we in the 'must query' list? If so determine how "bad" it is */
    if(type == MPID_COLL_QUERY)
    {
       /* First, is a check always required? */
       if(comm_ptr->mpid.coll_metadata[coll][type][index].check_correct.values.checkrequired)
       {
-         /* Second, do we have to call a check_fn? */
-         if(comm_ptr->mpid.coll_metadata[coll][type][index].check_fn != NULL)
-         {
-            comm_ptr->mpid.user_selectedvar[coll] = MPID_COLL_CHECK_FN_REQUIRED;
-         }
-         else
-         {
-            comm_ptr->mpid.user_selectedvar[coll] = MPID_COLL_ALWAYS_QUERY;
-         }
+         /* We must have a check_fn */
+         MPID_assert_always(comm_ptr->mpid.coll_metadata[coll][type][index].check_fn !=NULL);
+         comm_ptr->mpid.user_selectedvar[coll] = MPID_COLL_CHECK_FN_REQUIRED;
       }
+      else if(comm_ptr->mpid.coll_metadata[coll][type][index].check_fn != NULL)
+      {
+         /* For now, if there's a check_fn we will always call it and not cache.
+            We *could* be smarter about this eventually.                        */
+         comm_ptr->mpid.user_selectedvar[coll] = MPID_COLL_ALWAYS_QUERY;
+      }
+
    }
-   else
-      comm_ptr->mpid.user_selectedvar[coll] = type;
 
    comm_ptr->mpid.user_selected[coll] = 
       comm_ptr->mpid.coll_algorithm[coll][type][index];
@@ -256,6 +258,9 @@ static int MPIDI_Check_protocols(char *env, MPID_Comm *comm, char *name, int con
       }
       if(strncasecmp(envopts, "GLUE_", 5) == 0)
          return -1;
+
+      /* Default to MPICH if we don't find a match for the specific protocol specified */
+      comm->mpid.user_selectedvar[constant] = MPID_COLL_USE_MPICH;
 
       for(i=0; i < comm->mpid.coll_count[constant][0];i++)
       {

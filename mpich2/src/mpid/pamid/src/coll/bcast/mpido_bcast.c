@@ -107,6 +107,8 @@ int MPIDO_Bcast(void *buffer,
    }
    else
    {
+      if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL)
+         fprintf(stderr,"Using protocol %s.\n",comm_ptr->mpid.user_metadata[PAMI_XFER_BROADCAST].name);
       rc = PAMI_Collective(MPIDI_Context[0], (pami_xfer_t *)&bcast);
    }
 

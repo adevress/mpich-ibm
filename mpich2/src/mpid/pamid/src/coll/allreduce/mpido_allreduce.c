@@ -41,13 +41,18 @@ int MPIDO_Allreduce(void *sendbuf,
    /* MPIopString(op, op_str); */
    /* PMPI_Type_get_name(dt, dt_str, &len); */
    rc = MPItoPAMI(dt, &pdt, op, &pop, &mu);
-   /* convert to metadata query */
+   if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm_ptr->rank == 0)
+      fprintf(stderr,"rc %u, Datatype %p, op %p, mu %u, selectedvar %u != %u\n",
+              rc, pdt, pop, mu, 
+              (unsigned)comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLREDUCE],MPID_COLL_USE_MPICH);
+   /*fprintf(stderr,"type %u >= %u, fn %p\n",
+           comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLREDUCE],
+           MPID_COLL_QUERY,
+           comm_ptr->mpid.user_metadata[PAMI_XFER_ALLREDUCE].check_fn);
+   */
+      /* convert to metadata query */
    if(rc == MPI_SUCCESS && mu == 1 && comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLREDUCE] != MPID_COLL_USE_MPICH)
    {
-     /*      MPI_Aint data_true_lb;
-      MPID_Datatype *data_ptr;
-      int data_size, data_contig;
-      MPIDI_Datatype_get_info(count, dt, data_contig, data_size, data_ptr, data_true_lb); */
       allred.cb_done = cb_allreduce;
       allred.cookie = (void *)&active;
       allred.algorithm = comm_ptr->mpid.user_selected[PAMI_XFER_ALLREDUCE];
@@ -55,35 +60,82 @@ int MPIDO_Allreduce(void *sendbuf,
       allred.cmd.xfer_allreduce.stype = pdt;
       allred.cmd.xfer_allreduce.rcvbuf = recvbuf;
       allred.cmd.xfer_allreduce.rtype = pdt;
-      allred.cmd.xfer_allreduce.stypecount = count;//data_size; // datasize is sizeof()*count
-      allred.cmd.xfer_allreduce.rtypecount = count;//data_size;
+      allred.cmd.xfer_allreduce.stypecount = count;
+      allred.cmd.xfer_allreduce.rtypecount = count;
       allred.cmd.xfer_allreduce.op = pop;
       if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLREDUCE] >= MPID_COLL_QUERY)
       {
-         metadata_result_t result = {0};
-         TRACE_ERR("querying allreduce algorithm %s, typewwas %d\n",
-            comm_ptr->mpid.user_metadata[PAMI_XFER_ALLREDUCE].name,
-            comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLREDUCE]);
-         result = comm_ptr->mpid.user_metadata[PAMI_XFER_ALLREDUCE].check_fn(&allred);
-         TRACE_ERR("bitmask: %#X\n", result.bitmask);
-         if(!result.bitmask)
+         if(comm_ptr->mpid.user_metadata[PAMI_XFER_ALLREDUCE].check_fn != NULL)
          {
-            fprintf(stderr,"query failed for %s.\n",
-               comm_ptr->mpid.user_metadata[PAMI_XFER_ALLREDUCE].name);
+            /* For now, we don't distinguish between MPID_COLL_ALWAYS_QUERY &
+               MPID_COLL_CHECK_FN_REQUIRED, we just call the fn                */
+            metadata_result_t result = {0};
+            TRACE_ERR("querying allreduce algorithm %s, typewwas %d\n",
+               comm_ptr->mpid.user_metadata[PAMI_XFER_ALLREDUCE].name,
+               comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLREDUCE]);
+            result = comm_ptr->mpid.user_metadata[PAMI_XFER_ALLREDUCE].check_fn(&allred);
+            TRACE_ERR("bitmask: %#X\n", result.bitmask);
+            if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm_ptr->rank == 0)
+               fprintf(stderr,"check_fn result %#X\n",result.bitmask);
+            if(result.bitmask)
+            {
+               if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm_ptr->rank == 0)
+                  fprintf(stderr,"check_fn failed for %s.\n",
+                          comm_ptr->mpid.user_metadata[PAMI_XFER_ALLREDUCE].name);
+               MPIDI_Update_last_algorithm(comm_ptr, "ALLREDUCE_MPICH");
+               return MPIR_Allreduce(sendbuf, recvbuf, count, dt, op, comm_ptr, mpierrno);
+            }
+         }
+         else /* no check_fn, manually look at the metadata fields */
+         {
+            /* Check if the message range if restricted */
+            if(comm_ptr->mpid.user_metadata[PAMI_XFER_ALLREDUCE].check_correct.values.rangeminmax)
+            {
+               MPI_Aint data_true_lb;
+               MPID_Datatype *data_ptr;
+               int data_size, data_contig;
+               MPIDI_Datatype_get_info(count, dt, data_contig, data_size, data_ptr, data_true_lb); 
+
+               if((comm_ptr->mpid.user_metadata[PAMI_XFER_ALLREDUCE].range_lo <= data_size) &&
+                  (comm_ptr->mpid.user_metadata[PAMI_XFER_ALLREDUCE].range_hi >= data_size))
+                  ;
+               else
+               {
+                  if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm_ptr->rank == 0)
+                     fprintf(stderr,"message size (%u) outside range (%zu<->%zu) for %s.\n",
+                             data_size,
+                             comm_ptr->mpid.user_metadata[PAMI_XFER_ALLREDUCE].range_lo,
+                             comm_ptr->mpid.user_metadata[PAMI_XFER_ALLREDUCE].range_hi,
+                             comm_ptr->mpid.user_metadata[PAMI_XFER_ALLREDUCE].name);
+                  MPIDI_Update_last_algorithm(comm_ptr, "ALLREDUCE_MPICH");
+                  return MPIR_Allreduce(sendbuf, recvbuf, count, dt, op, comm_ptr, mpierrno);
+               }
+            }
+            /* \todo check the rest of the metadata */
          }
       }
-      /* MPIDI_Update_last_algorithm(comm_ptr, comm_ptr->mpid.coll_metadata[PAMI_XFER_ALLREDUCE][0][0].name); */
+      /* MPIDI_Update_last_algorithm(comm_ptr, comm_ptr->mpid.user_metadata[PAMI_XFER_ALLREDUCE].name); */
       if(MPIDI_Process.context_post)
       {
          allred_post.coll_struct = &allred;
+         if((MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm_ptr->rank == 0) ||
+            (MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL))
+            fprintf(stderr,"Using protocol %s, type %u.\n",
+                    comm_ptr->mpid.user_metadata[PAMI_XFER_ALLREDUCE].name,
+                    comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLREDUCE]);
          TRACE_ERR("posting allreduce, context: %d, algoname: %s, dt: %s, op: %s, count: %d\n", 0,
-                   comm_ptr->mpid.coll_metadata[PAMI_XFER_ALLREDUCE][0][0].name, dt_str, op_str, count);
+                   comm_ptr->mpid.user_metadata[PAMI_XFER_ALLREDUCE].name, dt_str, op_str, count);
          rc = PAMI_Context_post(MPIDI_Context[0], &allred_post.state, 
-                  MPIDI_Pami_post_wrapper, (void *)&allred_post);
+                                MPIDI_Pami_post_wrapper, (void *)&allred_post);
          TRACE_ERR("allreduce posted, rc: %d\n", rc);
       }
       else
       {
+         if((MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm_ptr->rank == 0) ||
+            (MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL))
+            fprintf(stderr,"Using protocol %s, type %u.\n",
+                    comm_ptr->mpid.user_metadata[PAMI_XFER_ALLREDUCE].name,
+                    comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLREDUCE]);
          rc = PAMI_Collective(MPIDI_Context[0], (pami_xfer_t *)&allred);
       }
 
@@ -94,6 +146,11 @@ int MPIDO_Allreduce(void *sendbuf,
    }
    else
    {
+      if((MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm_ptr->rank == 0) ||
+         (MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL))
+         fprintf(stderr,"Using protocol %s, type %u.\n",
+                 "ALLREDUCE_MPICH",
+                 comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLREDUCE]);
       MPIDI_Update_last_algorithm(comm_ptr, "ALLREDUCE_MPICH");
       return MPIR_Allreduce(sendbuf, recvbuf, count, dt, op, comm_ptr, mpierrno);
    }
