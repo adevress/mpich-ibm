@@ -24,6 +24,9 @@ int MPIDO_Allreduce(void *sendbuf,
                     MPID_Comm *comm_ptr,
                     int *mpierrno)
 {
+  if (sendbuf == MPI_IN_PLACE)
+    return MPIR_Allreduce(sendbuf, recvbuf, count, dt, op, comm_ptr, mpierrno);
+
    TRACE_ERR("in mpido_allreduce\n");
    MPIDI_Post_coll_t allred_post;
    pami_type_t pdt;
