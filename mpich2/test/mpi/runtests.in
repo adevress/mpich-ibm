@@ -38,6 +38,8 @@
 #
 
 use Cwd;
+use File::Copy;
+use File::Path qw(make_path);
 
 # Global variables
 $MPIMajorVersion = "@MPI_SUBVERSION@";
@@ -682,10 +684,15 @@ sub RunMPIProgram {
 	}
     }
     if ($found_error) {
-	foreach my $core (<$mpi_cwd/core.*>) {
-	    $core =~ s|$mpi_cwd/||;
-	    rename("$mpi_cwd/$core", "$mpi_cwd/$programname.$core");
-	}
+        my @cores = <$mpi_cwd/core.*>;
+        if (scalar @cores) {
+            my $core_dir = "$mpi_cwd/$programname.$np.cores/";
+            make_path($core_dir);
+            copy("$mpi_cwd/$programname", $core_dir);
+            foreach my $core (@cores) {
+                move($core, $core_dir);
+            }
+        }
 	&RunTestFailed( $inline );
     }
     else { 
