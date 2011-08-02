@@ -87,8 +87,8 @@ void MPIDI_Coll_comm_create(MPID_Comm *comm)
    
    if(comm->mpid.geometry != MPIDI_Process.world_geometry)
    {
-     if(MPIDI_Process.verbose >= 2)
-      fprintf(stderr,"world geom: %p parent geom: %p\n", MPIDI_Process.world_geometry, comm->mpid.parent);
+      if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL)
+         fprintf(stderr,"world geom: %p parent geom: %p\n", MPIDI_Process.world_geometry, comm->mpid.parent);
       TRACE_ERR("Creating subgeom\n");
       /* Change to this at some point */
       #if 0
@@ -232,7 +232,7 @@ static void MPIDI_Check_preallreduce(char *env, MPID_Comm *comm, char *name, int
    {
       if(strncasecmp(env, "N", 1) == 0)
       {
-         if(MPIDI_Process.verbose >= 2 && comm->rank == 0)
+         if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm->rank == 0)
             fprintf(stderr,"Bypassing breallreduce for %s\n", name);
          comm->mpid.preallreduces[constant] = 0;
       }
@@ -244,12 +244,12 @@ static int MPIDI_Check_protocols(char *env, MPID_Comm *comm, char *name, int con
    char *envopts = getenv(env);
    if(envopts != NULL)
    {
-      if(MPIDI_Process.verbose >= 2 && comm->rank == 0)
+      if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm->rank == 0)
          fprintf(stderr,"Checking %s against known %s protocols\n", envopts, name);
       /* We could maybe turn off the MPIDO_{} fn ptr instead? */
       if(strcasecmp(envopts, "MPICH") == 0)
       {
-         if(MPIDI_Process.verbose >= 2 && comm->rank == 0)
+         if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm->rank == 0)
             fprintf(stderr,"Using MPICH for %s\n", name);
          comm->mpid.user_selectedvar[constant] = MPID_COLL_USE_MPICH;
          return 0;
@@ -262,7 +262,7 @@ static int MPIDI_Check_protocols(char *env, MPID_Comm *comm, char *name, int con
          if(strncasecmp(envopts, comm->mpid.coll_metadata[constant][0][i].name,strlen(envopts)) == 0)
          {
             MPIDI_Update_coll(constant, MPID_COLL_NOQUERY, i, comm);
-            if(MPIDI_Process.verbose >= 2 && comm->rank == 0)
+            if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm->rank == 0)
                fprintf(stderr,"setting %s as default %s for comm %p\n", comm->mpid.coll_metadata[constant][0][i].name, name, comm);
             return 0;
          }
@@ -272,7 +272,7 @@ static int MPIDI_Check_protocols(char *env, MPID_Comm *comm, char *name, int con
          if(strncasecmp(envopts, comm->mpid.coll_metadata[constant][1][i].name,strlen(envopts)) == 0)
          {
             MPIDI_Update_coll(constant, MPID_COLL_QUERY, i, comm);
-            if(MPIDI_Process.verbose >= 2 && comm->rank == 0)
+            if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm->rank == 0)
                fprintf(stderr,"setting (query required protocol) %s as default %s for comm %p\n", comm->mpid.coll_metadata[constant][1][i].name, name, comm);
             return 0;
          }
@@ -297,11 +297,11 @@ void MPIDI_Comm_coll_envvars(MPID_Comm *comm)
          continue;
 
       comm->mpid.user_selectedvar[i] = MPID_COLL_NOQUERY;
-         if(MPIDI_Process.verbose >= 2 && comm->rank == 0)
+         if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm->rank == 0)
             fprintf(stderr,"Setting up collective %d on comm %p\n", i, comm);
       if(comm->mpid.coll_count[i][0] == 0 && comm->mpid.coll_count[i][1] == 0)
       {
-         if(MPIDI_Process.verbose >= 2 && comm->rank == 0)
+         if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm->rank == 0)
             fprintf(stderr,"There are no 'always works' protocols of type %d. This could be a problem later in your app\n", i);
          comm->mpid.user_selectedvar[i] = MPID_COLL_USE_MPICH;
       }
@@ -352,13 +352,13 @@ void MPIDI_Comm_coll_envvars(MPID_Comm *comm)
       envopts = getenv("PAMI_SCATTERV");
       if(strcasecmp(envopts, "GLUE_BCAST") == 0)
       {
-         if(MPIDI_Process.verbose >= 2 && comm->rank == 0)
+         if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm->rank == 0)
             fprintf(stderr,"Using glue bcast for scatterv\n");
          comm->mpid.scattervs[0] = 1;
       }
       else if(strcasecmp(envopts, "GLUE_ALLTOALLV") == 0)
       {
-         if(MPIDI_Process.verbose >= 2 && comm->rank == 0)
+         if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm->rank == 0)
             fprintf(stderr,"Using glue alltoallv for scatterv\n");
          comm->mpid.scattervs[1] = 1;
       }
@@ -371,7 +371,7 @@ void MPIDI_Comm_coll_envvars(MPID_Comm *comm)
       envopts = getenv("PAMI_SCATTER");
       if(strcasecmp(envopts, "GLUE_BCAST") == 0)
       {
-         if(MPIDI_Process.verbose >= 2 && comm->rank == 0)
+         if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm->rank == 0)
             fprintf(stderr,"Using glue_bcast for scatter\n");
          comm->mpid.optscatter = 1;
       }
@@ -384,21 +384,21 @@ void MPIDI_Comm_coll_envvars(MPID_Comm *comm)
       envopts = getenv("PAMI_ALLGATHER");
       if(strcasecmp(envopts, "GLUE_ALLREDUCE") == 0)
       {
-         if(MPIDI_Process.verbose >= 2 && comm->rank == 0)
+         if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm->rank == 0)
             fprintf(stderr,"Using glue_allreduce for allgather\n");
          comm->mpid.allgathers[0] = 1;
       }
 
       else if(strcasecmp(envopts, "GLUE_BCAST") == 0)
       {
-         if(MPIDI_Process.verbose >= 2 && comm->rank == 0)
+         if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm->rank == 0)
             fprintf(stderr,"Using glue_bcast for allgather\n");
          comm->mpid.allgathers[1] = 1;
       }
 
       else if(strcasecmp(envopts, "GLUE_ALLTOALL") == 0)
       {
-         if(MPIDI_Process.verbose >= 2 && comm->rank == 0)
+         if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm->rank == 0)
             fprintf(stderr,"Using glue_alltoall for allgather\n");
          comm->mpid.allgathers[2] = 1;
       }
@@ -411,21 +411,21 @@ void MPIDI_Comm_coll_envvars(MPID_Comm *comm)
       envopts = getenv("PAMI_ALLGATHERV");
       if(strcasecmp(envopts, "GLUE_ALLREDUCE") == 0)
       {
-         if(MPIDI_Process.verbose >= 2 && comm->rank == 0)
+         if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm->rank == 0)
             fprintf(stderr,"Using glue_allreduce for allgatherv\n");
          comm->mpid.allgathervs[0] = 1;
       }
 
       else if(strcasecmp(envopts, "GLUE_BCAST") == 0)
       {
-         if(MPIDI_Process.verbose >= 2 && comm->rank == 0)
+         if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm->rank == 0)
             fprintf(stderr,"Using glue_bcast for allgatherv\n");
          comm->mpid.allgathervs[1] = 1;
       }
 
       else if(strcasecmp(envopts, "GLUE_ALLTOALL") == 0)
       {
-         if(MPIDI_Process.verbose >= 2 && comm->rank == 0)
+         if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm->rank == 0)
             fprintf(stderr,"Using glue_alltoall for allgatherv\n");
          comm->mpid.allgathervs[2] = 1;
       }
@@ -438,7 +438,7 @@ void MPIDI_Comm_coll_envvars(MPID_Comm *comm)
       envopts = getenv("PAMI_GATHER");
       if(strcasecmp(envopts, "GLUE_REDUCE") == 0)
       {
-         if(MPIDI_Process.verbose >= 2 && comm->rank == 0)
+         if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm->rank == 0)
             fprintf(stderr,"using glue_reduce for gather\n");
          comm->mpid.optgather = 1;
       }
@@ -506,7 +506,7 @@ void MPIDI_Comm_coll_query(MPID_Comm *comm)
             continue;
          }
 
-         if(MPIDI_Process.verbose >= 2 && comm->rank == 0)
+         if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm->rank == 0)
          {
             for(j = 0; j < num_algorithms[0]; j++)
                fprintf(stderr,"comm[%p] coll type %d, algorithm %d[0]: %s\n", comm, i, j, comm->mpid.coll_metadata[i][0][j].name);

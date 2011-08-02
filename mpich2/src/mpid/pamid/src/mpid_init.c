@@ -338,7 +338,7 @@ MPIDI_PAMI_init(int* rank, int* size, int* threading)
   MPIDI_PAMI_dispath_init();
 
 
-  if ( (*rank == 0) && (MPIDI_Process.verbose > 0) )
+  if ( (*rank == 0) && (MPIDI_Process.verbose >= MPIDI_VERBOSE_SUMMARY_0) )
     {
       printf("MPIDI_Process.*\n"
              "  verbose      : %u\n"

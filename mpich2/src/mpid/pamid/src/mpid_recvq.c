@@ -398,7 +398,7 @@ MPIDI_Recvq_AEU(int source, int tag, int context_id)
 void
 MPIDI_Recvq_DumpQueues(int verbose)
 {
-  if(verbose <= 1)
+  if(verbose < MPIDI_VERBOSE_SUMMARY_ALL)
     return;
 
   MPID_Request * rreq = MPIDI_Recvq.posted_head;
@@ -406,10 +406,10 @@ MPIDI_Recvq_DumpQueues(int verbose)
   unsigned i=0, numposted=0, numue=0;
   unsigned postedbytes=0, uebytes=0;
 
-  if(verbose >= 3)
+  if(verbose >= MPIDI_VERBOSE_DETAILS_ALL)
     fprintf(stderr,"Posted Queue:\n-------------\n");
   while (rreq != NULL) {
-    if(verbose >= 3)
+    if(verbose >= MPIDI_VERBOSE_DETAILS_ALL)
       fprintf(stderr, "P %d: MPItag=%d MPIrank=%d ctxt=%d count=%d\n",
               i++,
               MPIDI_Request_getMatchTag(rreq),
@@ -428,10 +428,10 @@ MPIDI_Recvq_DumpQueues(int verbose)
 
   i=0;
   rreq = MPIDI_Recvq.unexpected_head;
-  if(verbose >= 3)
+  if(verbose >= MPIDI_VERBOSE_DETAILS_ALL)
     fprintf(stderr, "Unexpected Queue:\n-----------------\n");
   while (rreq != NULL) {
-    if(verbose >= 3)
+    if(verbose >= MPIDI_VERBOSE_DETAILS_ALL)
       fprintf(stderr, "UE %d: MPItag=%d MPIrank=%d ctxt=%d uebuf=%p uebuflen=%u\n",
               i++,
               MPIDI_Request_getMatchTag(rreq),

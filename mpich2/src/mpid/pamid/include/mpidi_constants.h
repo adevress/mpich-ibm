@@ -12,6 +12,16 @@
 #ifndef __include_mpidi_constants_h__
 #define __include_mpidi_constants_h__
 
+enum
+  {
+    /* N is "number of operations" and P is number of ranks */
+    MPIDI_VERBOSE_NONE        = 0, /**< Do not print any verbose information */
+    MPIDI_VERBOSE_SUMMARY_0   = 1, /**< Print summary information on rank 0.     O(1) lines printed. */
+    MPIDI_VERBOSE_SUMMARY_ALL = 2, /**< Print summary information on all ranks.  O(P) lines printed. */
+    MPIDI_VERBOSE_DETAILS_0   = 2, /**< Print detailed information on rank 0.    O(N) lines printed. */
+    MPIDI_VERBOSE_DETAILS_ALL = 3, /**< Print detailed information on all ranks. O(P*N) lines printed. */
+  };
+
 
 /**
  * \defgroup Allgather(v) optimization datatype info

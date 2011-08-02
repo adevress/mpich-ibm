@@ -484,7 +484,7 @@ ENV_Unsigned__(char* name[], unsigned* val, char* string)
   }
 
   *val = atoi(env);
-  if (MPIDI_Process.verbose >= 2)
+  if (MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL)
     fprintf(stderr, "%s = %u\n", string, *val);
 }
 
