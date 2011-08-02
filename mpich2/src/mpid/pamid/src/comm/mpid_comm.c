@@ -286,7 +286,7 @@ void MPIDI_Comm_coll_envvars(MPID_Comm *comm)
    char *envopts;
    int i;
    int rc;
-   assert(comm!=NULL);
+   MPID_assert_always(comm!=NULL);
    TRACE_ERR("MPIDI_Comm_coll_envvars enter\n");
 
    /* Set up always-works defaults */

@@ -34,15 +34,15 @@
 #define MPIDI_MUTEX_L2_ATOMIC 1
 #endif
 
-#define MPID_abort()    assert(0) /**< \brief Always exit--usually implies missing functionality */
+/** \brief Creates a compile error if the condition is false. */
+#define MPID_assert_static(expr) ({ switch(0){case 0:case expr:;} })
+#define MPID_assert_always(x) assert(x) /**< \brief Tests for likely problems--always active */
+#define MPID_abort()          assert(0) /**< \brief Always exit--usually implies missing functionality */
 #if ASSERT_LEVEL==0
 #define MPID_assert(x)
 #else
-#define MPID_assert(x)  assert(x) /**< \brief Tests for likely problems--may not be active in performance code  */
+#define MPID_assert(x)        assert(x) /**< \brief Tests for likely problems--may not be active in performance code */
 #endif
-
-/** \brief Creates a compile error if the condition is false. */
-#define MPID_assert_static(expr) ({ switch(0){case 0:case expr:;} })
 
 
 #include "mpidi_constants.h"

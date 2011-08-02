@@ -80,7 +80,7 @@ MPIX_Progress_poke()
 int
 MPIX_Hardware(MPIX_Hardware_t *hw)
 {
-  MPID_assert(hw != NULL);
+  MPID_assert_always(hw != NULL);
   /*
    * We've already initialized the hw structure in MPID_Init,
    * so just copy it to the users buffer

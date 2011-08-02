@@ -46,7 +46,7 @@ int MPIDO_Barrier(MPID_Comm *comm_ptr, int *mpierrno)
    {
       rc = PAMI_Collective(MPIDI_Context[0], (pami_xfer_t *)&barrier);
    }
-   assert(rc == PAMI_SUCCESS);
+   MPID_assert_always(rc == PAMI_SUCCESS);
 
    TRACE_ERR("advance spinning\n");
    MPID_PROGRESS_WAIT_WHILE(active);

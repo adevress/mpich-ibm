@@ -87,7 +87,7 @@ int MPIDO_Allreduce(void *sendbuf,
          rc = PAMI_Collective(MPIDI_Context[0], (pami_xfer_t *)&allred);
       }
 
-      assert(rc == PAMI_SUCCESS);
+      MPID_assert_always(rc == PAMI_SUCCESS);
       MPID_PROGRESS_WAIT_WHILE(active);
       TRACE_ERR("allreduce done\n");
       return MPI_SUCCESS;

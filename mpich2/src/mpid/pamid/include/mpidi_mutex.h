@@ -312,7 +312,7 @@ MPIDI_Mutex_try_acquire(unsigned m)
 {
   int rc;
   rc = pthread_mutex_trylock(&MPIDI_Mutex_lock);
-  assert( (rc == 0) || (rc == EBUSY) );
+  MPID_assert( (rc == 0) || (rc == EBUSY) );
   /* fprintf(stderr, "%s:%u (rc=%d)\n", __FUNCTION__, __LINE__, rc); */
   return rc;
 }
@@ -325,7 +325,7 @@ MPIDI_Mutex_acquire(unsigned m)
   /* fprintf(stderr, "%s:%u\n", __FUNCTION__, __LINE__); */
   rc = pthread_mutex_lock(&MPIDI_Mutex_lock);
   /* fprintf(stderr, "%s:%u (rc=%d)\n", __FUNCTION__, __LINE__, rc); */
-  assert(rc == 0);
+  MPID_assert(rc == 0);
   return rc;
 }
 
@@ -336,7 +336,7 @@ MPIDI_Mutex_release(unsigned m)
   int rc;
   rc = pthread_mutex_unlock(&MPIDI_Mutex_lock);
   /* fprintf(stderr, "%s:%u (rc=%d)\n", __FUNCTION__, __LINE__, rc); */
-  assert(rc == 0);
+  MPID_assert(rc == 0);
   return rc;
 }
 

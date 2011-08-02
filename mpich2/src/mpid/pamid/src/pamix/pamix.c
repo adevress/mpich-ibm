@@ -10,10 +10,11 @@
 #include <pamix.h>
 
 #include <mpid_config.h>
+#define PAMIX_assert_always(x) assert(x)
 #if ASSERT_LEVEL==0
 #define PAMIX_assert(x)
 #elif ASSERT_LEVEL>=1
-#define PAMIX_assert(x)  assert(x)
+#define PAMIX_assert(x)        assert(x)
 #endif
 
 #define MIN(a,b) ((a<b)?a:b)
@@ -66,13 +67,13 @@ struct
 ({                                              \
   pami_result_t rc;                             \
   rc = PAMI_Extension_open(client, name, ext);  \
-  PAMIX_assert(rc == PAMI_SUCCESS);             \
+  PAMIX_assert_always(rc == PAMI_SUCCESS);             \
 })
 #define PAMI_EXTENSION_FUNCTION(type, name, ext)        \
 ({                                                      \
   void* fn;                                             \
   fn = PAMI_Extension_symbol(ext, name);                \
-  PAMIX_assert(fn != NULL);                             \
+  PAMIX_assert_always(fn != NULL);                             \
   (type)fn;                                             \
 })
 void
@@ -98,11 +99,11 @@ PAMIX_Finalize(pami_client_t client)
   pami_result_t rc;
 
   rc = PAMI_Extension_close(PAMIX_Extensions.progress);
-  PAMIX_assert(rc == PAMI_SUCCESS);
+  PAMIX_assert_always(rc == PAMI_SUCCESS);
 
 #if defined(__BG__)
   rc = PAMI_Extension_close(PAMIX_Extensions.torus);
-  PAMIX_assert(rc == PAMI_SUCCESS);
+  PAMIX_assert_always(rc == PAMI_SUCCESS);
 #endif
 }
 
@@ -115,7 +116,7 @@ PAMIX_Client_query(pami_client_t         client,
   pami_configuration_t query;
   query.name = name;
   rc = PAMI_Client_query(client, &query, 1);
-  PAMIX_assert(rc == PAMI_SUCCESS);
+  PAMIX_assert_always(rc == PAMI_SUCCESS);
   return query;
 }
 
@@ -129,7 +130,7 @@ PAMIX_Dispatch_query(pami_context_t        context,
   pami_configuration_t query;
   query.name = name;
   rc = PAMI_Dispatch_query(context, dispatch, &query, 1);
-  PAMIX_assert(rc == PAMI_SUCCESS);
+  PAMIX_assert_always(rc == PAMI_SUCCESS);
   return query;
 }
 
@@ -151,7 +152,7 @@ PAMIX_Dispatch_set(pami_context_t                  context[],
                            fn,
                            (void*)i,
                            options);
-    PAMIX_assert(rc == PAMI_SUCCESS);
+    PAMIX_assert_always(rc == PAMI_SUCCESS);
 
     size_t size;
     size = PAMIX_Dispatch_query(context[i], dispatch, PAMI_DISPATCH_SEND_IMMEDIATE_MAX).value.intval;
@@ -186,10 +187,10 @@ PAMIX_progress_register(pami_context_t            context,
                         pamix_progress_function   resume_fn,
                         void                    * cookie)
 {
-  PAMIX_assert(PAMIX_Functions.progress_register != NULL);
+  PAMIX_assert_always(PAMIX_Functions.progress_register != NULL);
   pami_result_t rc;
   rc = PAMIX_Functions.progress_register(context, progress_fn,suspend_fn, resume_fn, cookie);
-  PAMIX_assert(rc == PAMI_SUCCESS);
+  PAMIX_assert_always(rc == PAMI_SUCCESS);
 }
 
 

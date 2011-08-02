@@ -154,7 +154,7 @@ MPIDI_PAMI_client_init(int* rank, int* size)
   /* ------------------------------------ */
   pami_result_t rc;
   rc = PAMI_Client_create("MPICH2", &MPIDI_Client, NULL, 0);
-  MPID_assert(rc == PAMI_SUCCESS);
+  MPID_assert_always(rc == PAMI_SUCCESS);
   PAMIX_Initialize(MPIDI_Client);
 
 
@@ -232,7 +232,7 @@ MPIDI_PAMI_context_init(int* threading)
       /* The number of contexts must be a power-of-two, so decrement until we hit a power-of-two */
       while(MPIDI_Process.avail_contexts & (MPIDI_Process.avail_contexts-1))
         --MPIDI_Process.avail_contexts;
-      MPID_assert(MPIDI_Process.avail_contexts);
+      MPID_assert_always(MPIDI_Process.avail_contexts);
 
 
 #ifdef USE_PAMI_COMM_THREADS
@@ -257,7 +257,7 @@ MPIDI_PAMI_context_init(int* threading)
   TRACE_ERR("Creating %d contexts\n", MPIDI_Process.avail_contexts);
   pami_result_t rc;
   rc = PAMI_Context_createv(MPIDI_Client, &config, 1, MPIDI_Context, MPIDI_Process.avail_contexts);
-  MPID_assert(rc == PAMI_SUCCESS);
+  MPID_assert_always(rc == PAMI_SUCCESS);
 }
 
 
@@ -268,7 +268,7 @@ MPIDI_PAMI_dispath_set(size_t              dispatch,
 {
   size_t im_max = 0;
   pami_dispatch_callback_function Recv = {.p2p = proto->func};
-  MPID_assert(dispatch == proto->dispatch);
+  MPID_assert_always(dispatch == proto->dispatch);
 
   if (MPIDI_Process.shmem_pt2pt == 0)
     proto->options.use_shmem = PAMI_HINT_DISABLE;
@@ -281,7 +281,7 @@ MPIDI_PAMI_dispath_set(size_t              dispatch,
                      &im_max);
   TRACE_ERR("Immediate-max query:  dispatch=%zu  got=%zu  required=%zu\n",
             dispatch, im_max, proto->immediate_min);
-  MPID_assert(proto->immediate_min <= im_max);
+  MPID_assert_always(proto->immediate_min <= im_max);
   if (immediate_max != NULL)
     *immediate_max = im_max;
 }
@@ -380,9 +380,9 @@ MPIDI_VCRT_init(int rank, int size)
   comm->rank = 0;
   comm->remote_size = comm->local_size = 1;
   rc = MPID_VCRT_Create(comm->remote_size, &comm->vcrt);
-  MPID_assert(rc == MPI_SUCCESS);
+  MPID_assert_always(rc == MPI_SUCCESS);
   rc = MPID_VCRT_Get_ptr(comm->vcrt, &comm->vcr);
-  MPID_assert(rc == MPI_SUCCESS);
+  MPID_assert_always(rc == MPI_SUCCESS);
   comm->vcr[0] = rank;
 
 
@@ -393,9 +393,9 @@ MPIDI_VCRT_init(int rank, int size)
   comm->rank = rank;
   comm->remote_size = comm->local_size = size;
   rc = MPID_VCRT_Create(comm->remote_size, &comm->vcrt);
-  MPID_assert(rc == MPI_SUCCESS);
+  MPID_assert_always(rc == MPI_SUCCESS);
   rc = MPID_VCRT_Get_ptr(comm->vcrt, &comm->vcr);
-  MPID_assert(rc == MPI_SUCCESS);
+  MPID_assert_always(rc == MPI_SUCCESS);
   for (i=0; i<size; i++)
     comm->vcr[i] = i;
 }
@@ -464,7 +464,7 @@ int MPID_Init(int * argc,
   TRACE_ERR("creating world geometry\n");
   pami_result_t rc;
   rc = PAMI_Geometry_world(MPIDI_Client, &MPIDI_Process.world_geometry);
-  MPID_assert(rc == PAMI_SUCCESS);
+  MPID_assert_always(rc == PAMI_SUCCESS);
   TRACE_ERR("calling comm_create on comm world %p\n", comm);
   MPIR_Process.comm_world->mpid.geometry = MPIDI_Process.world_geometry;
   MPIR_Process.comm_world->mpid.parent   = PAMI_GEOMETRY_NULL;

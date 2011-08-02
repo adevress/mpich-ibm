@@ -13,6 +13,7 @@
 */
 int MPID_Finalize()
 {
+  pami_result_t rc;
   int mpierrno = MPI_SUCCESS;
   MPIR_Barrier_impl(MPIR_Process.comm_world, &mpierrno);
 
@@ -23,11 +24,11 @@ int MPID_Finalize()
 
   PAMIX_Finalize(MPIDI_Client);
 
-  PAMI_Context_destroyv(MPIDI_Context, MPIDI_Process.avail_contexts);
+  rc = PAMI_Context_destroyv(MPIDI_Context, MPIDI_Process.avail_contexts);
+  MPID_assert_always(rc == PAMI_SUCCESS);
 
-  pami_result_t rc;
   rc = PAMI_Client_destroy(&MPIDI_Client);
-  MPID_assert(rc == PAMI_SUCCESS);
+  MPID_assert_always(rc == PAMI_SUCCESS);
 
   return MPI_SUCCESS;
 }
