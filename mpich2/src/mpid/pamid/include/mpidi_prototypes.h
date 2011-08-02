@@ -184,6 +184,15 @@ int MPIDO_Scatterv(void *sendbuf, int *sendcounts, int *displs,
                    void *recvbuf, int recvcount, MPI_Datatype recvtype,
                    int root, MPID_Comm * comm_ptr, int *mpierrno);
 
+int MPIDO_Alltoallv(void *sendbuf, int *sendcounts, int *senddispls,
+                    MPI_Datatype sendtype,
+                    void *recvbuf, int *recvcounts, int *recvdispls,
+                    MPI_Datatype recvtype,
+                    MPID_Comm *comm_ptr, int *mpierrno);
+
+int MPIDO_Alltoall(void *sendbuf, int sendcount, MPI_Datatype sendtype,
+                   void *recvbuf, int recvcount, MPI_Datatype recvtype,
+                   MPID_Comm *comm_ptr, int *mpierrno);
 
 int MPItoPAMI(MPI_Datatype dt, pami_type_t *pdt, MPI_Op op, pami_data_function *pop, int *musupport);
 void MPIopString(MPI_Op op, char *string);

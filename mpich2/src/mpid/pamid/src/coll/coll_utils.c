@@ -32,7 +32,7 @@ pami_result_t MPIDI_Pami_post_wrapper(pami_context_t context, void *cookie)
 #define isUS_SHORT(x) ( (x) == MPI_UNSIGNED_SHORT || (x) == MPI_UINT16_T)
 
 #define isS_CHAR(x) ( (x) == MPI_SIGNED_CHAR || (x) == MPI_INT8_T || \
-                      (x) == MPI_INTEGER1)
+                      (x) == MPI_INTEGER1 || (x) == MPI_CHAR)
 
 #define isUS_CHAR(x) ( (x) == MPI_UNSIGNED_CHAR || (x) == MPI_UINT8_T)
 
@@ -94,10 +94,12 @@ int MPItoPAMI(MPI_Datatype dt, pami_type_t *pdt, MPI_Op op, pami_data_function *
 {
    *musupport = MUSUPPORTED;
    *pdt = PAMI_TYPE_NULL;
-   *pop = PAMI_DATA_NOOP;
+   if(op != -1)
+      *pop = PAMI_DATA_NOOP;
    if(isS_INT(dt))
    {
       *pdt = PAMI_TYPE_SIGNED_INT;
+      if(op == -1) return MPI_SUCCESS;
       /* #warning FIXME : signed int + Band/bor/bxor doesn't work at the lower level */
       /* For some reason, signed int+B* ops doesn't work */
       if(op == MPI_BOR || op == MPI_BAND || op == MPI_BXOR)
@@ -129,6 +131,7 @@ int MPItoPAMI(MPI_Datatype dt, pami_type_t *pdt, MPI_Op op, pami_data_function *
             case MPI_DOUBLE_INT: *pdt = PAMI_TYPE_LOC_DOUBLE_INT; break;
             case MPI_SHORT_INT: *pdt = PAMI_TYPE_LOC_SHORT_INT; break;
          }
+         if(op == -1) return MPI_SUCCESS;
          if(op == MPI_MINLOC) *pop = PAMI_DATA_MINLOC;
          if(op == MPI_MAXLOC) *pop = PAMI_DATA_MAXLOC;
          return MPI_SUCCESS;
@@ -136,6 +139,7 @@ int MPItoPAMI(MPI_Datatype dt, pami_type_t *pdt, MPI_Op op, pami_data_function *
       else if(isLOGICAL(dt))
       {
          *pdt = PAMI_TYPE_LOGICAL;
+         if(op == -1) return MPI_SUCCESS;
          if(op == MPI_LOR) *pop = PAMI_DATA_LOR;
          if(op == MPI_LAND) *pop = PAMI_DATA_LAND;
          if(op == MPI_LXOR) *pop = PAMI_DATA_LXOR;
@@ -144,6 +148,8 @@ int MPItoPAMI(MPI_Datatype dt, pami_type_t *pdt, MPI_Op op, pami_data_function *
    }
 
    if(*pdt == PAMI_TYPE_NULL) return -1;
+
+   if(op == -1) return MPI_SUCCESS; /* just doing DT conversion */
 
    *pop = PAMI_DATA_NOOP;
    switch(op)

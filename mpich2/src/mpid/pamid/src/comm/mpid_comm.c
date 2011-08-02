@@ -344,11 +344,13 @@ void MPIDI_Comm_coll_envvars(MPID_Comm *comm)
 
    MPIDI_Check_protocols("PAMI_ALLTOALL", comm, "alltoall", PAMI_XFER_ALLTOALL);
 
+   MPIDI_Check_protocols("PAMI_REDUCE", comm, "reduce", PAMI_XFER_REDUCE);
+
+   /* Assume MPI will use _INT protocols but no need to make user know that */
    MPIDI_Check_protocols("PAMI_ALLTOALLV", comm, "alltoallv", PAMI_XFER_ALLTOALLV_INT);
+   MPIDI_Check_protocols("PAMI_ALLTOALLV_INT", comm, "alltoallv", PAMI_XFER_ALLTOALLV_INT);
 
    MPIDI_Check_protocols("PAMI_GATHERV", comm, "gatherv", PAMI_XFER_GATHERV_INT);
-
-   MPIDI_Check_protocols("PAMI_REDUCE", comm, "reduce", PAMI_XFER_REDUCE);
 
    comm->mpid.scattervs[0] = comm->mpid.scattervs[1] = 0;
    rc = MPIDI_Check_protocols("PAMI_SCATTERV", comm, "scatterv", PAMI_XFER_SCATTERV_INT);
@@ -529,6 +531,8 @@ void MPIDI_Comm_coll_query(MPID_Comm *comm)
    comm->coll_fns->Scatterv     = MPIDO_Scatterv;
    comm->coll_fns->Scatter      = MPIDO_Scatter;
    comm->coll_fns->Gather       = MPIDO_Gather;
+   comm->coll_fns->Alltoallv    = MPIDO_Alltoallv;
+   comm->coll_fns->Alltoall     = MPIDO_Alltoall;
 //   comm->coll_fns->Gatherv      = MPIDO_Gatherv;
 //   comm->coll_fns->Reduce       = MPIDO_Reduce;
 
