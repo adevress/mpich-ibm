@@ -37,7 +37,8 @@
 # can specify a different file name.
 #
 
-use Cwd;
+use Cwd qw(abs_path);
+use File::Basename; #req for fileparse(), basename(), dirname()
 use File::Copy;
 use File::Path qw(make_path);
 
@@ -73,15 +74,15 @@ $depth = 0;              # This is used to manage multiple open list files
 $remove_this_pgm = 0;
 $clean_pgms      = 1;
 
-$resume          = 0;      # 1 = do not remake existing binaries
-$preserve        = 0;      # 1 = do not erase binaries after running
-$romio               = 1;
-$rma                 = 1; # these are reset in the makefile, so not too concerned...
-$spawn               = 1; # these are reset in the makefile, so not too concerned...
-$stagingdirflag      = 0;
-$machineflag         = 0;
-$etime               = 0;
-$totaltime           = time();
+$resume          = 0; # 1 = do not remake existing binaries
+$preserve        = 0; # 1 = do not erase binaries after running
+$romio           = 1;
+$rma             = 1; # these are reset in the makefile, so not too concerned...
+$spawn           = 1; # these are reset in the makefile, so not too concerned...
+$stagingdirflag  = 0;
+$machineflag     = 0;
+$etime           = 0;
+$totaltime       = time();
 
 my $program_wrapper = '';
 
@@ -93,7 +94,6 @@ my $program_wrapper = '';
 #                      reserve VERBOSE)
 #   RUNTESTS_SHOWPROGRESS
 #   MPITEST_STOPTEST
-#   STAGINGDIR path to temporary staging directory to copy executables
 #   MPITEST_TIMEOUT
 #   MPITEST_PROGRAM_WRAPPER (Value is added after -np but before test
 #                            executable.  Tools like valgrind may be inserted
@@ -116,40 +116,49 @@ else {
 if(defined($ENV{"RUNONLY"})) {
     $runonly = 1;
 }
-
 if(defined($ENV{"COMPILEONLY"})) {
     $compileonly = 1;
 }
-
 if(defined($ENV{"STAGINGDIR"})) {
     $stagingdir=$ENV{STAGINGDIR};
     $stagingdirflag=1;
 }
 else {
     $username=getlogin;
-    $stagingdir="/bgusr/$username/mpitests";
+    $stagingdir="/bgusr/$username/bvt";
     $stagingdirflag=1;
 }
-if (defined($ENV{"MPITEST_TIMEOUT"})) {
-    $defaultTimeLimit = $ENV{"MPITEST_TIMEOUT"};
+if($stagingdirflag==1) {
+    print "Using $stagingdir for holding/running executables\n" if $verbose;
+    make_path($stagingdir);
 }
 if (defined($ENV{"NP_MAX"})) {
     $np_max = $ENV{"NP_MAX"};
+}
+# do not remake existing binaries
+if($ENV{'RESUME'} == 1) {
+    print "\nWARNING:  Resume flag set, not remaking existing binaries\n\n";
+    $resume = 1;
+}
+# do not erase binaries after running
+if($ENV{'PRESERVE'} == 1) {
+    print "\nWARNING:  Preserve flag set, not removing binaries after running\n\n";
+    $preserve = 1;
+}
+if(defined($ENV{'MPI_RMA'})) {
+    $rma = $ENV{'MPI_RMA'};
+}
+if(defined($ENV{'MPI_IO'})) {
+    $romio = $ENV{'MPI_IO'};
+}
+
+if (defined($ENV{"MPITEST_TIMEOUT"})) {
+    $defaultTimeLimit = $ENV{"MPITEST_TIMEOUT"};
 }
  
 # Define this to leave the XML output file open to receive additional data
 if (defined($ENV{'NOXMLCLOSE'}) && $ENV{'NOXMLCLOSE'} eq 'YES') {
     $closeXMLOutput = 0;
-}
-
-# do not remake existing binaries
-if($ENV{'RESUME'} == 1) {
-    $resume = 1;
-}
-
-# do not erase binaries after running
-if($ENV{'PRESERVE'} == 1) {
-    $preserve = 1;
 }
 
 if (defined($ENV{'MPITEST_PROGRAM_WRAPPER'})) {
@@ -182,16 +191,7 @@ foreach $_ (@ARGV) {
     elsif (/-verbose/) { $verbose = 1; }
     elsif (/-showprogress/) { $showProgress = 1; }
     elsif (/-debug/) { $debug = 1; }
-    elsif (/-stagingdir=(.*)/) { $stagingdir = $1; $stagingdirflag=1;}
-    elsif (/-timeout=(.*)/)    { $defaultTimeLimit = $1; }
-    elsif (/-compileonly/)     { $compileonly = 1; }
-    elsif (/-runonly/)         { $runonly = 1;}
-    elsif (/-nostagingdir/)    { $stagingdirflag=0;}
-    elsif (/-noromio/)         { $romio=0;}
-    elsif (/-norma/)           { $rma=0; }
     elsif (/-nospawn/)         { $spawn=0;}
-    elsif (/-resume/)          { $resume=1;}
-    elsif (/-preserve/)        { $preserve=1;}
     elsif (/-xmlfile=(.*)/) {
 	$xmlfile   = $1;
 	if (! ($xmlfile =~ /^\//)) {
@@ -222,46 +222,8 @@ foreach $_ (@ARGV) {
 	print STDERR "runtests [-tests=testfile] [-np=nprocesses] \
         [-maxnp=max-nprocesses] [-srcdir=location-of-tests] \
         [-xmlfile=filename ] [-noxmlclose] \
-        [-stagingdir=directory] [-nostagingdir] \
-        [-timeout=time] [-noromio] [-norma] [-nospawn] \
         [-verbose] [-showprogress] [-debug]\n";
     }
-}
-
-# now construct things
-if(defined($ENV{'MPI_RMA'})) {
-    $rma = $ENV{'MPI_RMA'};
-}
-if(defined($ENV{'MPI_IO'})) {
-    $romio = $ENV{'MPI_IO'};
-}
-
-if($resume == 1) {
-    print "\nWARNING:  Resume flag set, not remaking existing binaries\n\n";
-}
-
-if($preserve == 1) {
-    print "\nWARNING:  Preserve flag set, not removing binaries after running\n\n";
-}
-
-
-
-if($stagingdirflag==1) {
-    $cwd=getcwd();
-    if(! chdir $stagingdir) {
-	mkdir $stagingdir;
-    }
-    chdir $cwd;
-}
-
-print "Using $stagingdir for holding/running executables\n" if $verbose;
-
-# need unique cwd for each mpirun when running multiple runtests in parallel
-if(defined($ENV{'MPI_CWD'})) {
-    $mpi_cwd = $ENV{'MPI_CWD'};
-}
-else {
-    $mpi_cwd = $stagingdir;
 }
 
 #
@@ -338,7 +300,6 @@ sub ProcessDir {
 # If the second value is not given, the default value is used.
 # 
 sub RunList { 
-    use File::Basename; #req for fileparse(), basename(), dirname()
     my $LIST = "LIST$depth"; $depth++;
     my $listfile = $_[0];
     my $ResultTest = "";
@@ -437,28 +398,28 @@ sub RunList {
 	# skip empty lines
 	if ($programname eq "") { next; }
 
-        next if defined $program_list{$programname}{$np};
-        $program_list{$programname}{$np} = 1;
+	next if defined $program_list{$programname}{$np};
+	$program_list{$programname}{$np} = 1;
 
 	if (-d $programname) {
-            $execpath=`pwd`;
-            chop($execpath);
-            if ($romio==0 && $programname eq "io") {
-                print "Skipping IO tests is $execpath\n" if $verbose;
-                next;
-            }
-            if ($rma==0 && $programname eq "rma") {
-                print "Skipping RMA tests in $execpath\n" if $verbose;
-                next;
-            }
-            if ($spawn==0 && $programname eq "spawn") {
-                print "Skipping comm spawn tests in $execpath\n" if $verbose;
-                next;
-            }
-            if($virtualnodemodeflag==1 && $programname eq "threads") {
-                print "Skipping threaded tests in VNM\n" if $verbose;
-                next;
-            }
+	    $execpath=`pwd`;
+	    chop($execpath);
+	    if ($romio==0 && $programname eq "io") {
+		print "Skipping IO tests is $execpath\n" if $verbose;
+		next;
+	    }
+	    if ($rma==0 && $programname eq "rma") {
+		print "Skipping RMA tests in $execpath\n" if $verbose;
+		next;
+	    }
+	    if ($spawn==0 && $programname eq "spawn") {
+		print "Skipping comm spawn tests in $execpath\n" if $verbose;
+		next;
+	    }
+	    if($virtualnodemodeflag==1 && $programname eq "threads") {
+		print "Skipping threaded tests in VNM\n" if $verbose;
+		next;
+	    }
 
 	    # If a directory, go into the that directory and 
 	    # look for a new list file
@@ -467,19 +428,19 @@ sub RunList {
 	else {
 	    $total_count++;
 
-            # Save these so we can restore them later
-            my $savedir = `pwd`; chop $savedir;
-            my $savecurdir = $curdir;
-            my $savesrcdir = $srcdir;
+	    # Save these so we can restore them later
+	    my $savedir = `pwd`; chop $savedir;
+	    my $savecurdir = $curdir;
+	    my $savesrcdir = $srcdir;
 
-            # Separate programname into directory path & filename
-            my $path = dirname($programname);
-            my $programname = basename($programname);
+	    # Separate programname into directory path & filename
+	    my $path = dirname($programname);
+	    my $programname = basename($programname);
 
-            # Change to last dir in path
-            if (-d $path) {
-                chdir $path;
-            }
+	    # Change to last dir in path
+	    if (-d $path) {
+		chdir $path;
+	    }
 
 	    if (&BuildMPIProgram( $programname ) == 0) {
 		&RunMPIProgram( $programname, $np, $ResultTest, $InitForRun, 
@@ -493,10 +454,10 @@ sub RunList {
 	    }
 	    &CleanUpAfterRun( $programname );
 
-            # Restore saved dirs
-            chdir $savedir;
-            $curdir = $savecurdir;
-            $srcdir = $savesrcdir;
+	    # Restore saved dirs
+	    chdir $savedir;
+	    $curdir = $savecurdir;
+	    $srcdir = $savesrcdir;
 	}
     }
     close( $LIST );
@@ -559,6 +520,12 @@ sub ProcessImplicitList {
 	    if (&BuildMPIProgram( $programname ) == 0) {
 		&RunMPIProgram( $programname, $np_default, "", "", "", "", "", "" );
 	    }
+	    else {
+		# We expected to run this program, so failure to build
+		# is an error
+		$found_error = 1;
+		$err_count++;
+	    }
 	    &CleanUpAfterRun( $programname );
 	}
 	close PGMS;
@@ -579,20 +546,11 @@ sub RunMPIProgram {
 
     &RunPreMsg( $programname, $np, $curdir );
 
-    if($stagingdirflag==1) {
-        $executablepath=`pwd`;
-        if($runonly != 1) {
-            # Don't recopy if resume option is set
-            unless($resume && -e "$stagingdir/$programname") {
-                chop($executablepath);
-                print "Linking or Copying $executablepath/$programname to $stagingdir..." if $verbose;
-                system("ln $executablepath/$programname $stagingdir/ 2>/dev/null || cp $executablepath/$programname $stagingdir/");
-                print "done\n" if $verbose;
-            }
-        }
-    }
-    else {
-        $stagingdir="./";
+    unless ($runonly == 1) {
+        $programname_full = abs_path($programname);
+        print "Linking or Copying $programname_full to $stagingdir\n" if $verbose;
+        unlink("$stagingdir/$programname");
+        system("ln $programname $stagingdir/ 2>/dev/null || cp $programname $stagingdir/");
     }
 
     if($compileonly == 1) {
@@ -652,7 +610,7 @@ sub RunMPIProgram {
 		$found_noerror = 1;
 	    }
 	    if (! /^\s*No [Ee]rrors\s*$/ && !/^\s*Test Passed\s*$/) {
-		print STDERR "Unexpected output in $programname: $_" if !$verbose;
+		print STDERR "Unexpected output in $programname: $_";
 		if (!$found_error) {
 		    $found_error = 1;
 		    $err_count ++;
@@ -684,11 +642,11 @@ sub RunMPIProgram {
 	}
     }
     if ($found_error) {
-        my @cores = <$mpi_cwd/core.*>;
+        my @cores = <$stagingdir/core.*>;
         if (scalar @cores) {
-            my $core_dir = "$mpi_cwd/$programname.$np.cores/";
+            my $core_dir = "$stagingdir/$programname.$np.cores/";
             make_path($core_dir);
-            copy("$mpi_cwd/$programname", $core_dir);
+            copy("$stagingdir/$programname", $core_dir);
             foreach my $core (@cores) {
                 move($core, $core_dir);
             }
@@ -818,7 +776,7 @@ sub TestStatus {
 	# exception for the Hydra process manager.
 	if (/=*/) { last; }
 	if (! /^\s*$/) {
-	    print STDERR "Unexpected output in $programname: $_" if !$verbose;
+	    print STDERR "Unexpected output in $programname: $_";
 	    if (!$found_error) {
 		$found_error = 1;
 		$err_count ++;
@@ -833,8 +791,10 @@ sub TestStatus {
     }
     else {
 	# This test *requires* non-zero return codes
+        if (!$found_error) {
 	    $found_error = 1;
 	    $err_count ++;
+        }
 	$inline .= "$mpiexec returned a zero status but the program returned a nonzero status\n";
     }
     return ($found_error,$inline);
@@ -878,8 +838,10 @@ sub TestTimeout {
     }
     else {
 	# This test *requires* non-zero return codes
+	if (!$found_error) {
 	    $found_error = 1;
 	    $err_count ++;
+        }
 	$inline .= "$mpiexec returned a zero status but the program returned a nonzero status\n";
     }
     #
@@ -915,8 +877,10 @@ sub TestErrFatal {
     }
     else {
 	# This test *requires* non-zero return codes
+	if (!$found_error) {
 	    $found_error = 1;
 	    $err_count ++;
+	}
 	$inline .= "$mpiexec returned a zero status but the program returned a nonzero status\n";
     }
     return ($found_error,$inline);
