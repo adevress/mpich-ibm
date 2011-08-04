@@ -107,10 +107,7 @@ MPIDI_Send(const void    * buf,
 
   /* communicator & destination info */
   sreq->comm              = comm;  MPIR_Comm_add_ref(comm);
-  if (likely(rank != MPI_PROC_NULL))
-    MPIDI_Request_setPeerRank(sreq, MPID_VCR_GET_LPID(comm->vcr, rank));
-  else
-    MPIDI_Request_setPeerRank(sreq, MPI_PROC_NULL);
+  MPIDI_Request_setPeerRank(sreq, rank);
 
   /* message type info */
   sreq->kind = MPID_REQUEST_SEND;

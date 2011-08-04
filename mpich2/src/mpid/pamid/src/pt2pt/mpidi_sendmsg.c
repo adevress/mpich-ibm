@@ -232,6 +232,22 @@ MPIDI_SendMsg(pami_context_t   context,
               MPID_Request   * sreq,
               unsigned         isSync)
 {
+  /* ------------------------------ */
+  /* special case: NULL destination */
+  /* ------------------------------ */
+  int rank = MPIDI_Request_getPeerRank(sreq);
+  if (unlikely(rank == MPI_PROC_NULL))
+    {
+      if (isSync)
+        MPIDI_Request_complete(sreq);
+      MPIDI_Request_complete(sreq);
+      return;
+    }
+  else
+    {
+      MPIDI_Request_setPeerRank(sreq, MPID_VCR_GET_LPID(sreq->comm->vcr, rank));
+    }
+
   MPIDI_Request_setSync(sreq, isSync);
   MPIDI_Request_setPeerRequestH(sreq);
 
@@ -316,15 +332,6 @@ MPIDI_Send_handoff(pami_context_t   context,
   MPID_Request * sreq = (MPID_Request*)_sreq;
   MPID_assert(sreq != NULL);
 
-  /* ------------------------------ */
-  /* special case: NULL destination */
-  /* ------------------------------ */
-  if (unlikely(MPIDI_Request_getPeerRank(sreq) == MPI_PROC_NULL))
-    {
-      MPIDI_Request_complete(sreq);
-      return MPI_SUCCESS;
-    }
-
   MPIDI_SendMsg(context, sreq, 0);
   return PAMI_SUCCESS;
 }
@@ -336,15 +343,6 @@ MPIDI_Ssend_handoff(pami_context_t   context,
 {
   MPID_Request * sreq = (MPID_Request*)_sreq;
   MPID_assert(sreq != NULL);
-
-  /* ------------------------------ */
-  /* special case: NULL destination */
-  /* ------------------------------ */
-  if (unlikely(MPIDI_Request_getPeerRank(sreq) == MPI_PROC_NULL))
-    {
-      MPIDI_Request_complete(sreq);
-      return MPI_SUCCESS;
-    }
 
   MPIDI_SendMsg(context, sreq, 1);
   return PAMI_SUCCESS;
@@ -374,16 +372,8 @@ MPIDI_Isend_handoff(pami_context_t   context,
 
   /* This initializes all the fields not set in MPI_Isend() */
   MPIDI_Request_initialize(sreq);
+
   /* Since this is only called from MPI_Isend(), it is not synchronous */
-
-  int rank = MPIDI_Request_getPeerRank(sreq);
-  if (likely(rank != MPI_PROC_NULL))
-    MPIDI_Request_setPeerRank(sreq, MPID_VCR_GET_LPID(sreq->comm->vcr, rank));
-  else {
-    MPIDI_Request_complete(sreq);
-    return MPI_SUCCESS;
-  }
-
   MPIDI_SendMsg(context, sreq, 0);
   return PAMI_SUCCESS;
 }
