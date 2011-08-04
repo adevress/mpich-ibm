@@ -235,7 +235,7 @@ MPIDI_SendMsg(pami_context_t   context,
   /* ------------------------------ */
   /* special case: NULL destination */
   /* ------------------------------ */
-  int rank = MPIDI_Request_getPeerRank(sreq);
+  int rank = MPIDI_Request_getPeerRank_comm(sreq);
   if (unlikely(rank == MPI_PROC_NULL))
     {
       if (isSync)
@@ -245,7 +245,7 @@ MPIDI_SendMsg(pami_context_t   context,
     }
   else
     {
-      MPIDI_Request_setPeerRank(sreq, MPID_VCR_GET_LPID(sreq->comm->vcr, rank));
+      MPIDI_Request_setPeerRank_pami(sreq, MPID_VCR_GET_LPID(sreq->comm->vcr, rank));
     }
 
   MPIDI_Request_setSync(sreq, isSync);

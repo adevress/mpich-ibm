@@ -71,7 +71,7 @@ MPIDI_RecvRzvDoneCB(pami_context_t  context,
   MPIDI_Request_setControl(rreq, MPIDI_CONTROL_RENDEZVOUS_ACKNOWLEDGE);
   MPIDI_CtrlSend(context,
                  &rreq->mpid.envelope.msginfo,
-                 MPIDI_Request_getPeerRank(rreq));
+                 MPIDI_Request_getPeerRank_pami(rreq));
   MPIDI_Request_setControl(rreq, original_value);
 
 #ifdef USE_PAMI_RDMA

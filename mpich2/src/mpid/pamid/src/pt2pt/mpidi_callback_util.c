@@ -41,7 +41,10 @@ MPIDI_Callback_process_unexp(pami_context_t        context,
 
   /* Set the rank of the sender if a sync msg. */
   if (isSync)
-    MPIDI_Request_setPeerRank(rreq, PAMIX_Endpoint_query(sender));
+    {
+      MPIDI_Request_setPeerRank_comm(rreq, rank);
+      MPIDI_Request_setPeerRank_pami(rreq, PAMIX_Endpoint_query(sender));
+    }
 
   rreq->mpid.uebuflen = sndlen;
   if (sndlen)

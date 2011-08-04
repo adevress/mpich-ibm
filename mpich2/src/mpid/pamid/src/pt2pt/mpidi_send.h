@@ -107,7 +107,7 @@ MPIDI_Send(const void    * buf,
 
   /* communicator & destination info */
   sreq->comm              = comm;  MPIR_Comm_add_ref(comm);
-  MPIDI_Request_setPeerRank(sreq, rank);
+  MPIDI_Request_setPeerRank_comm(sreq, rank);
 
   /* message type info */
   sreq->kind = MPID_REQUEST_SEND;

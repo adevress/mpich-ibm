@@ -19,7 +19,7 @@ MPIDI_Context_hash(pami_task_t rank, unsigned ctxt, unsigned bias, unsigned ncon
 static inline void
 MPIDI_Context_endpoint(MPID_Request * req, pami_endpoint_t * e)
 {
-  pami_task_t remote = MPIDI_Request_getPeerRank(req);
+  pami_task_t remote = MPIDI_Request_getPeerRank_pami(req);
   pami_task_t local  = MPIR_Process.comm_world->rank;
   unsigned    rctxt  = MPIDI_Context_hash(local, req->comm->context_id, MPIDI_Process.avail_contexts>>1, MPIDI_Process.avail_contexts);
 
@@ -30,7 +30,7 @@ MPIDI_Context_endpoint(MPID_Request * req, pami_endpoint_t * e)
 static inline pami_context_t
 MPIDI_Context_local(MPID_Request * req)
 {
-  pami_task_t remote = MPIDI_Request_getPeerRank(req);
+  pami_task_t remote = MPIDI_Request_getPeerRank_comm(req);
   unsigned    lctxt  = MPIDI_Context_hash(remote, req->comm->context_id, 0, MPIDI_Process.avail_contexts);
   MPID_assert(lctxt < MPIDI_Process.avail_contexts);
   return MPIDI_Context[lctxt];
@@ -85,7 +85,7 @@ MPID_Isend_inline(const void    * buf,
 
   /* Enable passing in MPI_PROC_NULL, do the translation in the
      handoff function */
-  MPIDI_Request_setPeerRank(sreq, rank);
+  MPIDI_Request_setPeerRank_comm(sreq, rank);
 
   unsigned ncontexts = MPIDI_Process.avail_contexts;
   unsigned context_post = MPIDI_Process.context_post;

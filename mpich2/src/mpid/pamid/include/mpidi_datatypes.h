@@ -160,11 +160,12 @@ struct MPIDI_Request
   void                 *userbuf;      /**< User buffer                */
   unsigned              userbufcount; /**< Userbuf data count         */
   MPI_Datatype          datatype;     /**< Data type of message       */
-  pami_task_t           peerrank;     /**< The other guy's rank       */
+  pami_task_t           peer_pami;    /**< The other guy's rank (in PAMI) */
+  unsigned              peer_comm;    /**< The other guy's rank (in the orig communicator) */
   unsigned            cancel_pending; /**< Cancel status              */
 
-  void                 *uebuf;        /**< Unexpected buffer          */
   unsigned              uebuflen;     /**< Length (bytes) of uebuf    */
+  void                 *uebuf;        /**< Unexpected buffer          */
 
   MPIDI_REQUEST_PTYPE   ptype;        /**< The persistent msg type    */
   MPIDI_CA              ca;           /**< Completion action          */

@@ -27,7 +27,8 @@ void    MPIDI_Request_allocate_pool();
 #endif
 
 #define MPIDI_Request_getCA(_req)                ({ (_req)->mpid.ca;                                })
-#define MPIDI_Request_getPeerRank(_req)          ({ (_req)->mpid.peerrank;                          })
+#define MPIDI_Request_getPeerRank_pami(_req)     ({ (_req)->mpid.peer_pami;                         })
+#define MPIDI_Request_getPeerRank_comm(_req)     ({ (_req)->mpid.peer_comm;                         })
 #define MPIDI_Request_getPType(_req)             ({ (_req)->mpid.ptype;                             })
 #define MPIDI_Request_getControl(_req)           ({ (_req)->mpid.envelope.msginfo.control;          })
 #define MPIDI_Request_isSync(_req)               ({ (_req)->mpid.envelope.msginfo.isSync;           })
@@ -37,7 +38,8 @@ void    MPIDI_Request_allocate_pool();
 #define MPIDI_Request_getMatchCtxt(_req)         ({ (_req)->mpid.envelope.msginfo.MPIctxt;          })
 
 #define MPIDI_Request_setCA(_req, _ca)           ({ (_req)->mpid.ca                        = (_ca); })
-#define MPIDI_Request_setPeerRank(_req,_r)       ({ (_req)->mpid.peerrank                  = (_r);  })
+#define MPIDI_Request_setPeerRank_pami(_req,_r)  ({ (_req)->mpid.peer_pami                 = (_r);  })
+#define MPIDI_Request_setPeerRank_comm(_req,_r)  ({ (_req)->mpid.peer_comm                 = (_r);  })
 #define MPIDI_Request_setPType(_req,_t)          ({ (_req)->mpid.ptype                     = (_t);  })
 #define MPIDI_Request_setControl(_req,_t)        ({ (_req)->mpid.envelope.msginfo.control  = (_t);  })
 #define MPIDI_Request_setSync(_req,_t)           ({ (_req)->mpid.envelope.msginfo.isSync   = (_t);  })
