@@ -37,19 +37,17 @@ MPIDI_CancelReq_post(pami_context_t context, void * _req)
   /* ------------------------------------------------- */
   /* Check if we already have a cancel request pending */
   /* ------------------------------------------------- */
-  int flag;
-  MPIDI_Request_cancel_pending(req, &flag);
-  if (flag)
+  if (MPIDI_Request_cancel_pending(req))
     {
       MPIDI_Request_complete(req);
       return PAMI_SUCCESS;
     }
 
   MPIDI_MsgInfo cancel = {
-    .MPItag   = MPIDI_Request_getMatchTag(req),
-    .MPIrank  = MPIDI_Request_getMatchRank(req),
-    .MPIctxt  = MPIDI_Request_getMatchCtxt(req),
-    .req      = req->handle,
+    .MPItag  = MPIDI_Request_getMatchTag(req),
+    .MPIrank = MPIDI_Request_getMatchRank(req),
+    .MPIctxt = MPIDI_Request_getMatchCtxt(req),
+    .req     = req->handle,
   };
   cancel.control = MPIDI_CONTROL_CANCEL_REQUEST;
 

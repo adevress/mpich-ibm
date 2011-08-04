@@ -206,12 +206,13 @@ MPIDI_Request_create2()
 /**
  * \brief Mark a request as cancel-pending
  * \param[in]  _req  The request to cancel
- * \param[out] _flag The previous state
+ * \return           The previous state
  */
-#define MPIDI_Request_cancel_pending(_req, _flag)       \
-({                                                      \
-  *(_flag) = (_req)->mpid.cancel_pending;               \
-  (_req)->mpid.cancel_pending = TRUE;                   \
+#define MPIDI_Request_cancel_pending(_req)      \
+({                                              \
+  int _flag = (_req)->mpid.cancel_pending;      \
+  (_req)->mpid.cancel_pending = TRUE;           \
+  _flag;                                        \
 })
 
 
