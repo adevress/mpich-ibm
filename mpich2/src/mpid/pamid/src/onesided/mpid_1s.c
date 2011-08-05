@@ -45,12 +45,14 @@ MPIDI_Win_datatype_basic(int              count,
                          MPI_Datatype     datatype,
                          MPIDI_Datatype * dt)
 {
-  MPIDI_Datatype_get_info(count,
-                          dt->type = datatype,
+  MPIDI_Datatype_get_info(dt->count = count,
+                          dt->type  = datatype,
                           dt->contig,
                           dt->size,
                           dt->pointer,
                           dt->true_lb);
+  TRACE_ERR("DT=%08x  DTp=%p  count=%d  contig=%d  size=%zu  true_lb=%zu\n",
+            dt->type, dt->pointer, dt->count, dt->contig, (size_t)dt->size, (size_t)dt->true_lb);
 }
 
 
@@ -66,15 +68,22 @@ MPIDI_Win_datatype_map(MPIDI_Datatype * dt)
     }
   else
     {
-      dt->num_contig = dt->pointer->max_contig_blocks + 1;
-      dt->map = (DLOOP_VECTOR*)MPIU_Malloc(dt->num_contig * sizeof(DLOOP_VECTOR));
+      unsigned map_size = dt->pointer->max_contig_blocks*dt->count + 1;
+      dt->num_contig = map_size;
+      dt->map = (DLOOP_VECTOR*)MPIU_Malloc(map_size * sizeof(DLOOP_VECTOR));
       MPID_assert(dt->map != NULL);
 
-      DLOOP_Offset last = dt->pointer->size;
+      DLOOP_Offset last = dt->pointer->size*dt->count;
       MPID_Segment seg;
-      MPID_Segment_init(NULL, 1, dt->type, &seg, 0);
+      MPID_Segment_init(NULL, dt->count, dt->type, &seg, 0);
       MPID_Segment_pack_vector(&seg, 0, &last, dt->map, &dt->num_contig);
-      MPID_assert(dt->num_contig <= dt->pointer->max_contig_blocks);
+      MPID_assert((unsigned)dt->num_contig <= map_size);
+#ifdef TRACE_ON
+      TRACE_ERR("dt->pointer->size=%d  num_contig:  orig=%u  new=%d\n", dt->pointer->size, map_size, dt->num_contig);
+      int i;
+      for(i=0; i<dt->num_contig; ++i)
+        TRACE_ERR("     %d:  BUF=%zu  LEN=%zu\n", i, (size_t)dt->map[i].DLOOP_VECTOR_BUF, (size_t)dt->map[i].DLOOP_VECTOR_LEN);
+#endif
     }
 }
 

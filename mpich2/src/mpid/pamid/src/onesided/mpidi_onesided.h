@@ -46,8 +46,9 @@ typedef struct
 
 typedef struct
 {
-  MPI_Datatype    type;
   MPID_Datatype * pointer;
+  MPI_Datatype    type;
+  int             count;
   int             contig;
   MPI_Aint        true_lb;
   MPIDI_msg_sz_t  size;
