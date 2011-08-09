@@ -27,8 +27,13 @@ MPIDI_WinAccumCB(pami_context_t    context,
   pami_data_function  pami_op;
   MPItoPAMI(msginfo->type, &pami_type, msginfo->op, &pami_op, &null);
 
-  TRACE_ERR("New accum msg:  addr=%p  len=%zu  type=%d  op=%d\n", msginfo->addr, sndlen, msginfo->type, msginfo->op);
-  TRACE_ERR("                         PAMI:    type=%p  op=%p\n", pami_type, pami_op);
+#ifdef TRACE_ON
+  void    *  buf = msginfo->addr;
+  unsigned* ibuf = (unsigned*)buf;
+  double  * dbuf = (double  *)buf;
+  TRACE_ERR("New accum msg:  len=%zu  type=%d  op=%d  l-buf=%p  *(int*)buf=0x%08x  *(double*)buf=%g\n", sndlen, msginfo->type, msginfo->op, buf, *ibuf, *dbuf);
+  TRACE_ERR("                PAMI:    type=%p  op=%p\n", pami_type, pami_op);
+#endif
 
   recv->cookie      = NULL;
   recv->local_fn    = NULL;
@@ -73,10 +78,12 @@ MPIDI_Accumulate(pami_context_t   context,
     params.send.data.iov_base   = req->buffer + req->state.local_offset;
 
 #ifdef TRACE_ON
-    unsigned* buf = (unsigned*)params.send.data.iov_base;
+    void    *  buf = params.send.data.iov_base;
+    unsigned* ibuf = (unsigned*)buf;
+    double  * dbuf = (double  *)buf;
+    TRACE_ERR("  Sub     index=%u  bytes=%zu  l-offset=%zu  r-addr=%p  l-buf=%p  *(int*)buf=0x%08x  *(double*)buf=%g\n",
+              req->state.index, params.send.data.iov_len, req->state.local_offset, req->accum_headers[req->state.index].addr, buf, *ibuf, *dbuf);
 #endif
-    TRACE_ERR("  Sub     index=%u  bytes=%zu  l-offset=%zu  r-addr=%p  l-buf=%p  *(int*)buf=0x%08x\n",
-              req->state.index, params.send.data.iov_len, req->state.local_offset, req->accum_headers[req->state.index].addr, buf, *buf);
     rc = PAMI_Send(context, &params);
     MPID_assert(rc == PAMI_SUCCESS);
 
