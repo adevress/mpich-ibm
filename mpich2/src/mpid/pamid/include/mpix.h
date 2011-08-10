@@ -51,6 +51,15 @@ extern "C" {
   } MPIX_Hardware_t;
 
   /**
+   * \brief Determine the rank-in-COMM_WORLD of the process associated with rank-in-comm
+   * \param[in]  comm  The communicator associated with the input rank
+   * \param[in]  crank The rank-in-comm
+   * \param[out] grank The rank-in-COMM_WORLD (AKA Global rank)
+   * \return MPI_SUCCESS on success, an error on failure detection.
+   */
+  int MPIX_Comm_rank2global(MPI_Comm comm, int crank, int *grank);
+
+  /**
    * \brief Fill in an MPIX_Hardware_t structure
    * \param[in] hw A pointer to an MPIX_Hardware_t structure to be filled in
    */

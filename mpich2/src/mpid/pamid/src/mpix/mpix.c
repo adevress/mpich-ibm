@@ -78,9 +78,30 @@ MPIX_Progress_poke()
 
 
 int
+MPIX_Comm_rank2global(MPI_Comm comm, int crank, int *grank)
+{
+  if (grank == NULL)
+    return MPI_ERR_ARG;
+
+  MPID_Comm *comm_ptr = NULL;
+  MPID_Comm_get_ptr(comm, comm_ptr);
+  if (comm_ptr == NULL)
+    return MPI_ERR_COMM;
+
+  if (crank >= comm_ptr->local_size)
+    return MPI_ERR_RANK;
+
+  *grank = MPID_VCR_GET_LPID(comm_ptr->vcr, crank);
+  return MPI_SUCCESS;
+}
+
+
+int
 MPIX_Hardware(MPIX_Hardware_t *hw)
 {
-  MPID_assert_always(hw != NULL);
+  if (hw == NULL)
+    return MPI_ERR_ARG;
+
   /*
    * We've already initialized the hw structure in MPID_Init,
    * so just copy it to the users buffer
