@@ -37,6 +37,7 @@
 # can specify a different file name.
 #
 
+use warnings;
 use Cwd qw(abs_path);
 use File::Basename; #req for fileparse(), basename(), dirname()
 use File::Copy;
@@ -74,15 +75,16 @@ $depth = 0;              # This is used to manage multiple open list files
 $remove_this_pgm = 0;
 $clean_pgms      = 1;
 
-$resume          = 0; # 1 = do not remake existing binaries
-$preserve        = 0; # 1 = do not erase binaries after running
-$romio           = 1;
-$rma             = 1; # these are reset in the makefile, so not too concerned...
-$spawn           = 1; # these are reset in the makefile, so not too concerned...
-$stagingdirflag  = 0;
-$machineflag     = 0;
-$etime           = 0;
-$totaltime       = time();
+my $compileonly     = 0;
+my $etime           = 0;
+my $preserve        = 0; # 1 = do not erase binaries after running
+my $resume          = 0; # 1 = do not remake existing binaries
+my $rma             = 1; # these are reset in the makefile, so not too concerned...
+my $romio           = 1;
+my $runonly         = 0;
+my $spawn           = 1; # these are reset in the makefile, so not too concerned...
+my $stagingdirflag  = 0;
+my $totaltime       = time();
 
 my $program_wrapper = '';
 
@@ -396,14 +398,13 @@ sub RunList {
 	if ($np eq "") { $np = $np_default; }
 	if ($np_max > 0 && $np > $np_max) { $np = $np_max; }
 	# skip empty lines
-	if ($programname eq "") { next; }
+	next unless defined $programname;
 
 	next if defined $program_list{$programname}{$np};
 	$program_list{$programname}{$np} = 1;
 
 	if (-d $programname) {
-	    $execpath=`pwd`;
-	    chop($execpath);
+	    my $execpath = Cwd::getcwd();
 	    if ($romio==0 && $programname eq "io") {
 		print "Skipping IO tests is $execpath\n" if $verbose;
 		next;
@@ -416,10 +417,10 @@ sub RunList {
 		print "Skipping comm spawn tests in $execpath\n" if $verbose;
 		next;
 	    }
-	    if($virtualnodemodeflag==1 && $programname eq "threads") {
-		print "Skipping threaded tests in VNM\n" if $verbose;
-		next;
-	    }
+	    # if($virtualnodemodeflag==1 && $programname eq "threads") {
+	    #     print "Skipping threaded tests in VNM\n" if $verbose;
+	    #     next;
+	    # }
 
 	    # If a directory, go into the that directory and 
 	    # look for a new list file
@@ -429,7 +430,7 @@ sub RunList {
 	    $total_count++;
 
 	    # Save these so we can restore them later
-	    my $savedir = `pwd`; chop $savedir;
+	    my $savedir = Cwd::getcwd();
 	    my $savecurdir = $curdir;
 	    my $savesrcdir = $srcdir;
 
@@ -689,7 +690,7 @@ sub BuildMPIProgram {
 	# This will ensure that failures to build will end up 
 	# in the summary file (which is otherwise written by the
 	# RunMPIProgram step)
-	&RunPreMsg( $programname, $np, $curdir );
+	&RunPreMsg( $programname, 0, $curdir );
 	&RunTestFailed( "Failed to build $programname; $output" );
 	&RunPostMsg;
     }
