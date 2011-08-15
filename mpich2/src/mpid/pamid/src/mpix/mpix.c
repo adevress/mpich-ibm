@@ -187,34 +187,61 @@ MPIX_Comm_update_post(pami_context_t context, void *cookie)
 int
 MPIX_Comm_update(MPI_Comm comm, int optimize)
 {
-  MPID_Comm * comm_ptr;
-  volatile int geom_update = 1;
-  MPIX_Comm_update_data_t data;
+   MPID_Comm * comm_ptr;
+   volatile int geom_update = 1;
+   MPIX_Comm_update_data_t data;
+   pami_configuration_t config;
+   pami_result_t rc;
 
-  MPID_Comm_get_ptr(comm, comm_ptr);
-  if (!comm_ptr || comm == MPI_COMM_NULL)
-    return MPI_ERR_COMM;
+   MPID_Comm_get_ptr(comm, comm_ptr);
+   if (!comm_ptr || comm == MPI_COMM_NULL)
+      return MPI_ERR_COMM;
 
-  data.num_configs = 1;
-  data.config.name = PAMI_GEOMETRY_OPTIMIZE;
-  data.config.value.intval = !!optimize;
-  data.fn = MPIX_Comm_update_done;
-  data.cookie = (void *)&geom_update;
-  data.geometry = comm_ptr->mpid.geometry;
+   /* First, check if there is a geometry. When optimized collectives
+    * are disabled, no geometry is created */
+   if(comm_ptr->mpid.geometry == NULL)
+      return MPI_ERR_COMM;
 
-  pami_result_t rc;
-  rc = PAMI_Context_post(MPIDI_Context[0],
-                         &data.state,
-                         MPIX_Comm_update_post,
-                         &data);
-  MPID_assert(rc == PAMI_SUCCESS);
-  MPID_PROGRESS_WAIT_WHILE(geom_update);
+   config.name = PAMI_GEOMETRY_OPTIMIZE;
+   config.value.intval = !!optimize;
 
-  /* Determine what protocols are available for this comm/geom */
-  MPIDI_Comm_coll_query(comm_ptr);
-  MPIDI_Comm_coll_envvars(comm_ptr);
+   if(MPIDI_Process.context_post)
+   {
+      TRACE_ERR("About to post geometry update function\n");
+      data.num_configs = 1;
+      data.config.name = config.name;
+      data.config.value.intval = config.value.intval;
+      data.fn = MPIX_Comm_update_done;
+      data.cookie = (void *)&geom_update;
+      data.geometry = comm_ptr->mpid.geometry;
+      rc = PAMI_Context_post(MPIDI_Context[0],
+                             &data.state,
+                             MPIX_Comm_update_post,
+                             &data);
+      TRACE_ERR("Geometry update function posted\n");
+   }
 
-  return MPI_SUCCESS;
+   else
+   {
+      TRACE_ERR("Not posting geometry_update call\n");
+      rc = PAMI_Geometry_update(comm_ptr->mpid.geometry,
+                                &config,
+                                1,
+                                MPIDI_Context[0],
+                                MPIX_Comm_update_done,
+                                (void *)&geom_update);
+   }
+
+   MPID_assert(rc == PAMI_SUCCESS);
+   TRACE_ERR("Waiting for geometry update to finish\n");
+
+   MPID_PROGRESS_WAIT_WHILE(geom_update);
+
+   /* Determine what protocols are available for this comm/geom */
+   MPIDI_Comm_coll_query(comm_ptr);
+   MPIDI_Comm_coll_envvars(comm_ptr);
+
+   return MPI_SUCCESS;
 }
 
 int
