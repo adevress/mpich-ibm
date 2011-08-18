@@ -26,6 +26,16 @@ extern "C" {
 
   void MPIX_Progress_poke();
 
+  /**
+   * \brief Wait for network to quiesce
+   *
+   * \praram[in] timeout	Maximum time, Seconds, to wait. 0 for internal default
+   * \retval	MPI_SUCCESS	Network appears to be quiesced
+   * \retval	MPI_ERR_PENDING	Network did not quiesce
+   * \retval	MPI_ERR_OTHER	Encounter error(s), network state unknown
+   */
+  int MPIX_Progress_quiesce(double timeout);
+
 #define MPIX_TORUS_MAX_DIMS 5 /* This is the maximum physical size of the torus */
   typedef struct
   {

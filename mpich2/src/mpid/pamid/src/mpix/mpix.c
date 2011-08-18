@@ -78,6 +78,24 @@ MPIX_Progress_poke()
 
 
 int
+MPIX_Progress_quiesce(double timeout)
+{
+  int rc;
+  timeout *= 1.0e6;	/* convert to uSec */
+  unsigned long long cycles = timeout; /* convert to long long */
+  /* default to 10mS */
+  cycles = (cycles ? cycles : 10000) * MPIDI_HW.clockMHz;
+  unsigned long long t0;
+  t0 = PAMI_Wtimebase(MPIDI_Client);
+  while (PAMI_Wtimebase(MPIDI_Client) - t0 < cycles) {
+	rc = MPID_Progress_wait_inline(1);
+	if (rc != MPI_SUCCESS) return rc;
+  }
+  return MPI_SUCCESS;
+}
+
+
+int
 MPIX_Comm_rank2global(MPI_Comm comm, int crank, int *grank)
 {
   if (grank == NULL)
