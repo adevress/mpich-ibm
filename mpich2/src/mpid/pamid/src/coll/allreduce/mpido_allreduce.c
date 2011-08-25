@@ -77,6 +77,11 @@ int MPIDO_Allreduce(void *sendbuf,
             TRACE_ERR("bitmask: %#X\n", result.bitmask);
             if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm_ptr->rank == 0)
                fprintf(stderr,"check_fn result %#X\n",result.bitmask);
+            /* \todo Ignore check_correct.values.nonlocal until we implement the
+               'pre-allreduce allreduce' or the 'safe' environment flag.
+               We will basically assume 'safe' -- that all ranks are aligned (or not).
+            */
+            result.check.nonlocal = 0; /* #warning REMOVE THIS WHEN IMPLEMENTED */
             if(result.bitmask)
             {
                if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm_ptr->rank == 0)
