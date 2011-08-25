@@ -77,10 +77,7 @@ int MPIDO_Allreduce(void *sendbuf,
             TRACE_ERR("bitmask: %#X\n", result.bitmask);
             if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm_ptr->rank == 0)
                fprintf(stderr,"check_fn result %#X\n",result.bitmask);
-            /* #warning THIS NEEDS CHANGED BACK. 
-             * Why does the protocol require nonlocal knowledge in the first place?
-             */
-            if(!result.bitmask)
+            if(result.bitmask)
             {
                if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm_ptr->rank == 0)
                   fprintf(stderr,"check_fn failed for %s.\n",
