@@ -128,6 +128,7 @@ ADIOI_BG_persInfo_init(ADIOI_BG_ConfInfo_t *conf,
    sortstruct *array;
    sortstruct *bridges;
 
+
    Personality_t pers;
    MPIX_Hardware_t hw;
    MPIX_Hardware(&hw);
@@ -149,43 +150,53 @@ ADIOI_BG_persInfo_init(ADIOI_BG_ConfInfo_t *conf,
    rc = MPIX_Torus2rank(bridgeCoords, &bridgerank);
    if(rc != MPI_SUCCESS)
    {
-      /* Perhaps we are in the -np case and the bridge node
-       * is not part of our job 
-       */
-      proc->bridgeRank = 0;
-      fprintf(stderr,"Bridge node not part of job, setting 0 as the bridgenode\n");
+      fprintf(stderr,"Tours2Rank failed for finding bridgenode rank\n");
+      ADIOI_BG_assert((rc == MPI_SUCCESS));
    }
-   else
-      proc->bridgeRank = bridgerank;
-
-   if(size == 1)
+   /* Some special cases first */
+   if(bridgerank == -1 || size == 1)
    {
-      iambridge = 1;
-      proc ->iamBridgenode = 1;
-      proc->myIOSize = 1;
-      proc->ioNodeIndex = 1;
-      conf->ioMinSize = 1;
-      conf->ioMaxSize = 1;
+      if(bridgerank == -1) /* Bridge node not part of job */
+      {
+         TRACE_ERR("Bridge node not part of job, setting 0 as the bridgenode\n");
+
+         proc->bridgeRank = 0; /* Rank zero will be the bridge node */
+         if(rank == 0)
+         {
+            iambridge = 1;
+            proc->iamBridgenode = 1;
+         }
+         else
+         {
+            iambridge = 0;
+            proc->iamBridgenode = 0;
+         }
+      }
+      else
+      {
+         iambridge = 1;
+         proc->iamBridgenode = 1;
+      }
+
+      /* Set up the other parameters */
+      proc->myIOSize = size;
+      proc->ioNodeIndex = 0;
+      conf->ioMinSize = size;
+      conf->ioMaxSize = size;
       conf->numBridgeNodes = 1;
       conf->nProcs = size;
       conf->cpuIDsize = hw.ppn;
       conf->virtualPsetSize = conf->ioMaxSize * conf->cpuIDsize;
-      conf->nAggrs = n_aggrs;
-      if(conf->nAggrs <=0 || 
-            MIN(conf->nProcs, conf->virtualPsetSize) < conf->nAggrs) 
-         conf->nAggrs = ADIOI_BG_NAGG_PSET_DFLT;
-      if(conf->nAggrs > conf->virtualPsetSize) 
-         conf->nAggrs = conf->virtualPsetSize;
-
+      conf->nAggrs = 1;
       conf->aggRatio = 1. * conf->nAggrs / conf->virtualPsetSize;
       if(conf->aggRatio > 1) conf->aggRatio = 1.;
    }
    else
    {
-
-
       /* Determine how many bridge nodes there are */
       iambridge = (rank == bridgerank)? 1 : 0;
+
+      proc->bridgeRank = bridgerank;
 
       proc->iamBridgenode = iambridge;
 
@@ -202,7 +213,6 @@ ADIOI_BG_persInfo_init(ADIOI_BG_ConfInfo_t *conf,
       /* TODO: At some point, create a communicator of just core 0s to make this
        * faster? */
       MPI_Allgather(MPI_IN_PLACE, 2, MPI_INT, array, 2, MPI_INT, comm);
-
 
       proc->myIOSize = count;
             
@@ -246,9 +256,8 @@ ADIOI_BG_persInfo_init(ADIOI_BG_ConfInfo_t *conf,
          for(i=0;i<numbridge;i++)
          {
             TRACE_ERR("Bridge node %d (%d) has %d compute nodes\n",
-               i, bridges[i].rank, bridges[i].bridge)
+               i, bridges[i].rank, bridges[i].bridge);
          }
-         TRACE_ERR("Maximum nodes under a bridgenode: %d, minimum: %d\n", maxcompute, mincompute);
 
          /* Only rank 0 has a conf structure, fill in stuff as appropriate */
          conf->ioMinSize = mincompute;
@@ -259,16 +268,20 @@ ADIOI_BG_persInfo_init(ADIOI_BG_ConfInfo_t *conf,
          conf->virtualPsetSize = maxcompute * conf->cpuIDsize;
 
          conf->nAggrs = n_aggrs;
+         /* First pass gets nAggrs = -1 */
          if(conf->nAggrs <=0 || 
                MIN(conf->nProcs, conf->virtualPsetSize) < conf->nAggrs) 
             conf->nAggrs = ADIOI_BG_NAGG_PSET_DFLT;
-         if(conf->nAggrs > conf->virtualPsetSize) 
-            conf->nAggrs = conf->virtualPsetSize;
+         if(conf->nAggrs > conf->numBridgeNodes) // maybe? * conf->cpuIDsize)
+            conf->nAggrs = conf->numBridgeNodes; // * conf->cpuIDsize;
 
          conf->aggRatio = 1. * conf->nAggrs / conf->virtualPsetSize;
          if(conf->aggRatio > 1) conf->aggRatio = 1.;
+         TRACE_ERR("Maximum nodes under a bridgenode: %d, minimum: %d, nAggrs: %d, vps: %d, numbridge: %d pset dflt: %d naggrs: %d ratio: %f\n", maxcompute, mincompute, conf->nAggrs, conf->virtualPsetSize, conf->numBridgeNodes, ADIOI_BG_NAGG_PSET_DFLT, conf->nAggrs, conf->aggRatio);
 
       }
+
+      /* Broadcast the bridges array to everyone else */
       MPI_Bcast(bridges, 2 * numbridge, MPI_INT, 0, comm);
       for(i=0;i<numbridge;i++)
       {
@@ -278,6 +291,7 @@ ADIOI_BG_persInfo_init(ADIOI_BG_ConfInfo_t *conf,
             proc->ioNodeIndex = i;
          }
       }
+      TRACE_ERR("%d has bridge node %d (rank: %d) with %d other nodes, ioNodeIndex: %d\n", rank,  proc->ioNodeIndex, bridgerank, proc->myIOSize, proc->ioNodeIndex);
 
       ADIOI_Free(array);
       ADIOI_Free(bridges);

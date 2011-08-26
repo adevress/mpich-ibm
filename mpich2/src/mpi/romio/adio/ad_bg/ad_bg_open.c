@@ -170,26 +170,25 @@ static void scaleable_stat(ADIO_File fd)
     ((ADIOI_BG_fs*)fd->fs_ptr)->blksize = bg_stat.st_blksize;
 
     /* data from statfs */
-    assert(bg_statfs.f_type != GPFS_SUPER_MAGIC);
-    #if 0
-    if ((bg_statfs.f_type == GPFS_SUPER_MAGIC) ||
-	    (bg_statfs.f_type == bglocklessmpio_f_type))
-    {
-	((ADIOI_BG_fs*)fd->fs_ptr)->fsync_aggr = 
-	    ADIOI_BG_FSYNC_AGGREGATION_ENABLED;
+   if ((bg_statfs.f_type == GPFS_SUPER_MAGIC) ||
+       (bg_statfs.f_type == bglocklessmpio_f_type))
+   {
+      ((ADIOI_BG_fs*)fd->fs_ptr)->fsync_aggr = 
+            ADIOI_BG_FSYNC_AGGREGATION_ENABLED;
 
-	/* Only one rank is an "fsync aggregator" because only one 
-	 * fsync is needed */
-	if (rank == 0)
-	{
-	    ((ADIOI_BG_fs*)fd->fs_ptr)->fsync_aggr |= 
-		ADIOI_BG_FSYNC_AGGREGATOR;
-	    DBG_FPRINTF(stderr,"fsync aggregator %d\n",rank);
-	}
-	else ; /* aggregation enabled but this rank is not an aggregator*/
-    }
-    else; /* Other filesystems default to no fsync aggregation */
-    #endif
+      /* Only one rank is an "fsync aggregator" because only one 
+      * fsync is needed */
+      if (rank == 0)
+      {
+         ((ADIOI_BG_fs*)fd->fs_ptr)->fsync_aggr |= 
+            ADIOI_BG_FSYNC_AGGREGATOR;
+         DBG_FPRINTF(stderr,"fsync aggregator %d\n",rank);
+      }
+      else 
+         ; /* aggregation enabled but this rank is not an aggregator*/
+   }
+   else
+      ; /* Other filesystems default to no fsync aggregation */
 }
 
 

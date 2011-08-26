@@ -12,6 +12,8 @@
  *   See COPYRIGHT notice in top-level directory.
  */
 
+//#define TRACE_ON
+
 #include "adio.h"
 #include "adio_cb_config_list.h"
 #include "ad_bg.h"
@@ -24,7 +26,6 @@
 #ifdef USE_DBG_LOGGING
   #define AGG_DEBUG 1
 #endif
-
 
 
 static int aggrsInPsetSize=0;
@@ -142,7 +143,7 @@ ADIOI_BG_select_agg_in_pset (const ADIOI_BG_ConfInfo_t *confInfo,
     int i, j, k; 
 
     /* The number of aggregators in the PSET is proportional to the CNs in the PSET */
-    int nAggrs = nCN_in_pset * confInfo->aggRatio;	
+    int nAggrs = nCN_in_pset * confInfo->aggRatio;
     if (nAggrs < ADIOI_BG_NAGG_PSET_MIN) nAggrs = ADIOI_BG_NAGG_PSET_MIN;
 
     /* for not virtual-node-mode, pick aggregators in this PSET based on the order of the global rank */
@@ -169,86 +170,98 @@ ADIOI_BG_select_agg_in_pset (const ADIOI_BG_ConfInfo_t *confInfo,
     return nAggrs;
 }
 
+/* There are some number of bridge nodes (randomly) distributed through the job
+ * We need to split the nodes among the bridge nodes */
+/* Maybe find which bridge node is closer (manhattan distance) and try to
+ * distribute evenly.
+ */
 /* 
  * Pick IO aggregators based on the under PSET organization and stores the ranks of the proxy CNs in tmp_ranklist.
  * The first order of tmp_ranklist is : PSET number
  * The secondary order of the list is determined in ADIOI_BG_select_agg_in_pset() and thus adjustable.
  */
+typedef struct
+{
+   int rank;
+   int bridge;
+} sortstruct;
+
+static int intsort(const void *p1, const void *p2)
+{
+   sortstruct *i1, *i2;
+   i1 = (sortstruct *)p1;
+   i2 = (sortstruct *)p2;
+   return(i1->bridge - i2->bridge);
+}
+
 static int 
 ADIOI_BG_compute_agg_ranklist_serial_do (const ADIOI_BG_ConfInfo_t *confInfo, 
 					  ADIOI_BG_ProcInfo_t       *all_procInfo, 
 					  int *aggrsInPset, 
 					  int *tmp_ranklist)
 {
+   /* BES: This should be done in the init routines probably. */
     int i, j;
+    int aggTotal;
+    int distance, numAggs;
+    int *aggList;
+    /* Aggregators will be midpoints between sorted MPI rank lists of who shares a given
+     * bridge node */
 
-    /* a list of the numbers of all the PSETS */
-    int *psetNumList = (int *) ADIOI_Malloc ( confInfo->nProcs * sizeof(int) );
+   sortstruct *bridgelist = (sortstruct *)ADIOI_Malloc(confInfo->nProcs * sizeof(sortstruct));
+   for(i=0; i < confInfo->nProcs; i++)
+   {
+      bridgelist[i].bridge = all_procInfo[i].bridgeRank;
+      bridgelist[i].rank = i;
+      TRACE_ERR(stderr,"bridgelist[%d].bridge: %d .rank: %d\n", i, bridgelist[i].bridge, i);
+   }
+   
+   /* This list contains rank->bridge info. Now, we need to sort this list. */
+   qsort(bridgelist, confInfo->nProcs, sizeof(sortstruct), intsort);
 
-  /* sweep through all processes' records, collect the numbers of all the PSETS. 
-   * The reason for not doing MIN, MAX is that the owned PSETs may not have contiguous numbers */
-    int n_psets=0;
-    for (i=0; i<confInfo->nProcs; i++) {
+   /* In this array, we can pick an appropriate number of midpoints based on
+    * our bridgenode index and the number of aggregators */
 
-	ADIOI_BG_ProcInfo_t *info_p = all_procInfo+i;
+   numAggs = confInfo->aggRatio * confInfo->virtualPsetSize;
+   if(numAggs == 1)
+      aggTotal = 1;
+   else
+      aggTotal = numAggs * confInfo->numBridgeNodes + numAggs; 
 
-	int exist = 0;
-	for (j=n_psets-1; j>=0; j--) 
-	    if (info_p->ioNodeIndex == psetNumList[j]) { exist=1; break; }
+   distance = (confInfo->virtualPsetSize / numAggs);
+   aggList = (int *)ADIOI_Malloc(aggTotal * sizeof(int));
 
-	if (!exist) {
-	    psetNumList [n_psets] = info_p->ioNodeIndex;
-	    n_psets ++;
-	}
-    }
-    if(n_psets == 0) n_psets++;
+   TRACE_ERR("numAggs: %d distance: %d, aggTotal: %d\n", numAggs, distance, aggTotal);
 
-  /* bucket sort:  put the CN nodes into ordered buckets, each of which represents a PSET */
+   /* For each bridge node, determine who the aggregators will be */
+   /* basically, the n*distance and bridge node */
+   if(aggTotal == 1) /* special case when we only have one bridge node */
+      aggList[0] = bridgelist[0].bridge;
+   else
+   {
+      for(i=0; i < confInfo->numBridgeNodes; i++)
+      {
+         aggList[i]=bridgelist[i*confInfo->virtualPsetSize].bridge;
 
-    /* bucket space for bucket sort */
-    ADIOI_BG_ProcInfo_t *sorted_procInfo = ADIOI_BG_ProcInfo_new_n ( n_psets * confInfo->virtualPsetSize );
-    int *PsetIdx = (int *) ADIOI_Malloc ( n_psets * sizeof(int) );
-    ADIOI_BG_assert ( (PsetIdx != NULL) );
+         for(j = 0; j < numAggs; j++)
+         {
+            aggList[confInfo->numBridgeNodes + i*numAggs + j] = bridgelist[i*confInfo->virtualPsetSize + j*distance].rank;
+         }
+      }
+   }
 
-    /* initialize bucket pointer */
-    for (i=0; i<n_psets; i++) {
-        PsetIdx[i] = i*confInfo->virtualPsetSize;
-    }
+   memcpy(tmp_ranklist, aggList, (numAggs*confInfo->numBridgeNodes+numAggs)*sizeof(int));
+   for(i=0;i<aggTotal;i++)
+   {
+      TRACE_ERR("tmp_ranklist[%d]: %d\n", i, tmp_ranklist[i]);
+   }
 
-    /* sort */
-    for (i=0; i<confInfo->nProcs; i++) {
-        int pset_id = all_procInfo[i].ioNodeIndex;
 
-	for (j=n_psets-1; j>=0; j--) if (pset_id == psetNumList[j]) break;
-	ADIOI_BG_assert ( (j >= 0) ); 				/* got to find a PSET bucket */
+   ADIOI_Free (bridgelist);
+   ADIOI_Free (aggList);
 
-        sorted_procInfo[ PsetIdx[j] ++ ] = all_procInfo[i];
-    }
+   return aggTotal;
 
-    ADIOI_Free(psetNumList);
-
-  /* select a number of CN aggregators from each Pset */
-    int naggs = 0;
-    for (i=0; i<n_psets; i++) {
-
-	/* the number of CN in this PSET -- may not be a full PSET */
-        int nCN_in_pset = PsetIdx[i] - i*confInfo->virtualPsetSize;	
-
-	/* select aggregators and put them into tmp_ranklist contiguously. */
-	int local_naggs = ADIOI_BG_select_agg_in_pset( confInfo, 
-				      sorted_procInfo + i*confInfo->virtualPsetSize, 
-				      nCN_in_pset, 
-				      tmp_ranklist + naggs);
-	aggrsInPset[i+1] = local_naggs;
-
-        naggs += local_naggs;
-    }
-        aggrsInPset[0] = n_psets;
-
-  /* leave */
-    ADIOI_Free ( PsetIdx );
-    ADIOI_BG_ProcInfo_free ( sorted_procInfo );
-    return naggs;
 }
 
 /* 
@@ -271,7 +284,7 @@ ADIOI_BG_compute_agg_ranklist_serial ( ADIO_File fd,
 
 #   if AGG_DEBUG
     for (i=0; i<confInfo->nProcs; i++) {
-      DBG_FPRINTF(stderr, "\tcpuid %1d, rank = %6d\n", all_procInfo[i].cpuid, all_procInfo[i].rank );
+      DBG_FPRINTF(stderr, "\tcpuid %1d, rank = %6d\n", all_procInfo[i].coreID, all_procInfo[i].rank );
     }
 #   endif
 
@@ -280,7 +293,7 @@ ADIOI_BG_compute_agg_ranklist_serial ( ADIO_File fd,
 
 #   define VERIFY 1
 #   if VERIFY
-    DBG_FPRINTF(stderr, "\tconfInfo = %3d,%3d,%3d,%3d,%3d,%3d,%3d,%.4f; naggs = %d\n", 
+    DBG_FPRINTF(stderr, "\tconfInfo = min: %3d, max: %3d, naggrs: %3d, bridge: %3d, nprocs: %3d, vpset: %3d, tsize: %3d, ratio: %.4f; naggs = %d\n", 
 	    confInfo->ioMinSize        ,
 	    confInfo->ioMaxSize        ,
 	    confInfo->nAggrs           ,
@@ -623,6 +636,7 @@ void ADIOI_BG_Calc_my_req(ADIO_File fd, ADIO_Offset *offset_list, ADIO_Offset *l
 	 * amount that was available from the file domain that holds the
 	 * first part of the access.
 	 */
+  /* BES */
 	proc = ADIOI_BG_Calc_aggregator(fd, off, min_st_offset, &fd_len, fd_size, 
 				     fd_start, fd_end);
 	count_my_req_per_proc[proc]++;
@@ -720,6 +734,8 @@ void ADIOI_BG_Calc_my_req(ADIO_File fd, ADIO_Offset *offset_list, ADIO_Offset *l
 	}
     }
 
+
+
 #ifdef AGG_DEBUG
     for (i=0; i<nprocs; i++) {
 	if (count_my_req_per_proc[i] > 0) {
@@ -785,10 +801,10 @@ void ADIOI_BG_Calc_others_req(ADIO_File fd, int count_my_req_procs,
      * to be sent/received for offsets and lengths.  Initialize to
      * the highest possible address which is the current minimum.
      */
-    void *sendBufForOffsets=(void*)0xFFFFFFFF, 
-	 *sendBufForLens   =(void*)0xFFFFFFFF, 
-	 *recvBufForOffsets=(void*)0xFFFFFFFF, 
-	 *recvBufForLens   =(void*)0xFFFFFFFF; 
+    void *sendBufForOffsets=(void*)0xFFFFFFFFFFFFFFFF, 
+	 *sendBufForLens   =(void*)0xFFFFFFFFFFFFFFFF, 
+	 *recvBufForOffsets=(void*)0xFFFFFFFFFFFFFFFF, 
+	 *recvBufForLens   =(void*)0xFFFFFFFFFFFFFFFF; 
 
 /* first find out how much to send/recv and from/to whom */
 #ifdef AGGREGATION_PROFILE
@@ -801,8 +817,10 @@ void ADIOI_BG_Calc_others_req(ADIO_File fd, int count_my_req_procs,
      */
     count_others_req_per_proc = (int *) ADIOI_Malloc(nprocs*sizeof(int));
 /*     cora2a1=timebase(); */
+for(i=0;i<nprocs;i++)
     MPI_Alltoall(count_my_req_per_proc, 1, MPI_INT,
 		 count_others_req_per_proc, 1, MPI_INT, fd->comm);
+
 /*     total_cora2a+=timebase()-cora2a1; */
 
     /* Allocate storage for an array of other nodes' accesses of our
@@ -825,7 +843,8 @@ void ADIOI_BG_Calc_others_req(ADIO_File fd, int count_my_req_procs,
      */
     count_others_req_procs = 0;
     for (i=0; i<nprocs; i++) {
-	if (count_others_req_per_proc[i]) {
+	if (count_others_req_per_proc[i]) 
+  {
 	    others_req[i].count = count_others_req_per_proc[i];
 
 	    others_req[i].offsets = (ADIO_Offset *)
@@ -851,8 +870,8 @@ void ADIOI_BG_Calc_others_req(ADIO_File fd, int count_my_req_procs,
 	}
     }
     /* If no recv buffer was allocated in the loop above, make it NULL */
-    if ( recvBufForOffsets == (void*)0xFFFFFFFF) recvBufForOffsets = NULL;
-    if ( recvBufForLens    == (void*)0xFFFFFFFF) recvBufForLens    = NULL;
+    if ( recvBufForOffsets == (void*)0xFFFFFFFFFFFFFFFF) recvBufForOffsets = NULL;
+    if ( recvBufForLens    == (void*)0xFFFFFFFFFFFFFFFF) recvBufForLens    = NULL;
     
     /* Now send the calculated offsets and lengths to respective processes */
 
@@ -865,18 +884,23 @@ void ADIOI_BG_Calc_others_req(ADIO_File fd, int count_my_req_procs,
     {
 	if ( (my_req[i].count) &&
 	     ((MPIR_Upint)my_req[i].offsets <= (MPIR_Upint)sendBufForOffsets) )
+       {
 	  sendBufForOffsets = my_req[i].offsets;
+    }
 	   
 	if ( (my_req[i].count) &&
 	     ((MPIR_Upint)my_req[i].lens <= (MPIR_Upint)sendBufForLens) )
+       {
 	    sendBufForLens = my_req[i].lens;
+      }
     }
 
     /* If no send buffer was found in the loop above, make it NULL */
-    if ( sendBufForOffsets == (void*)0xFFFFFFFF) sendBufForOffsets = NULL;
-    if ( sendBufForLens    == (void*)0xFFFFFFFF) sendBufForLens    = NULL;
+    if ( sendBufForOffsets == (void*)0xFFFFFFFFFFFFFFFF) sendBufForOffsets = NULL;
+    if ( sendBufForLens    == (void*)0xFFFFFFFFFFFFFFFF) sendBufForLens    = NULL;
 
     /* Calculate the displacements from the sendBufForOffsets/Lens */
+    MPI_Barrier(fd->comm);
     for (i=0; i<nprocs; i++)
     {
 	// Send these offsets to process i.
