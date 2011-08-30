@@ -43,12 +43,15 @@ writeatallbex.cxx iwritex.cxx iwriteshx.cxx \
 iwriteatnosx.cxx iwritenosx.cxx iwriteshnosx.cxx writenosx.cxx \
 writeatnosx.cxx writeallnosx.cxx writeatallnosx.cxx writeallbenosx.cxx \
 writeordnosx.cxx writeordbenosx.cxx writeshnosx.cxx \
-writeatallbenosx.cxx : ioharness.tlt ioharness.defn
+writeatallbenosx.cxx : .source
+
+.source: ioharness.tlt ioharness.defn
 	../../maint/testmerge -defn=$(top_srcdir)/maint/common.defn \
 		$(srcdir)/ioharness.defn $(srcdir)/ioharness.tlt
+	touch $@
 
 ../util/mtest.o: 
 	(cd ../util && $(MAKE) mtest.o)
 
 clean-local:
-	rm -f .iotest.txt.*
+	rm -f .iotest.txt.* .source

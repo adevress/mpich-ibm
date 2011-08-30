@@ -49,9 +49,12 @@ c2f2ciof_LDADD        = ../util/mtestf.o
 # These IO tests are build from a template and a set of definitions.
 iwriteatf.f writef.f writeatf.f writeatallf.f writeallf.f writeallbef.f \
 writeordf.f writeordbef.f writeshf.f writeatallbef.f \
-iwritef.f iwriteshf.f : ioharness.tlt ioharness.defn ../../maint/testmerge
+iwritef.f iwriteshf.f : .source
+
+.source: ioharness.tlt ioharness.defn ../../maint/testmerge
 	../../maint/testmerge -defn=$(top_srcdir)/maint/common.defn \
 		$(srcdir)/ioharness.defn $(srcdir)/ioharness.tlt
+	touch $@
 
 testing:
 	../../runtests -srcdir=$(srcdir) -tests=testlist \
@@ -62,4 +65,4 @@ testing:
 	(cd ../util && $(MAKE) mtestf.o)
 
 clean-local:
-	rm -f .iotest.txt.*
+	rm -f .iotest.txt.* .source
