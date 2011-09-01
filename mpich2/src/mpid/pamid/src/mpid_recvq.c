@@ -168,8 +168,8 @@ MPIDI_Recvq_FDUR(MPI_Request req, int source, int tag, int context_id)
   /* ----------------------- */
   /* first we do the finding */
   /* ----------------------- */
-  cur_rreq = MPIDI_Recvq.unexpected_head;
   MPIDI_Mutex_sync(); //We may be retriving data stored by another thread
+  cur_rreq = MPIDI_Recvq.unexpected_head;
   while (cur_rreq != NULL) {
 #ifdef USE_STATISTICS
     ++search_length;
@@ -320,8 +320,9 @@ MPIDI_Recvq_FDPR(MPID_Request * req)
   unsigned search_length = 0;
 #endif
 
-  cur_rreq = MPIDI_Recvq.posted_head;
   MPIDI_Mutex_sync(); //We may be retriving data stored by another thread
+  cur_rreq = MPIDI_Recvq.posted_head;
+
   while (cur_rreq != NULL) {
 #ifdef USE_STATISTICS
     ++search_length;
@@ -388,6 +389,7 @@ MPIDI_Recvq_AEU(int source, int tag, int context_id)
   rreq->kind = MPID_REQUEST_RECV;
   MPIDI_Request_setMatch(rreq, tag, source, context_id);
   MPIDI_Recvq_append(MPIDI_Recvq.unexpected, rreq);
+  MPIDI_Mutex_sync(); // Make changes visible to other cores.
 
   return rreq;
 }

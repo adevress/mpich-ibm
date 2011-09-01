@@ -58,7 +58,6 @@ MPIDI_RecvShortCB(pami_context_t    context,
     }
 
   /* the receive queue processing has been completed and we found match*/
-  MPIDI_Mutex_sync();
   MPIU_THREAD_CS_EXIT(MSGQUEUE,0);
 
   /* ---------------------- */

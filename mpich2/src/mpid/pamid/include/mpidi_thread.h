@@ -9,6 +9,7 @@
  *      See COPYRIGHT in top-level directory.
  */
 #include "mpidi_mutex.h"
+#include "spi/include/l1p/flush.h"
 
 
 #ifndef __include_mpidi_thread_h__
@@ -110,7 +111,11 @@
 #define MPIU_THREAD_CS_MPI_OBJ_ENTER(context_)      MPIDI_CS_ENTER(5)
 #define MPIU_THREAD_CS_MPI_OBJ_EXIT(context_)       MPIDI_CS_EXIT (5)
 #define MPIU_THREAD_CS_MSGQUEUE_ENTER(_context)     MPIDI_CS_ENTER(6)
-#define MPIU_THREAD_CS_MSGQUEUE_EXIT(_context)      MPIDI_CS_EXIT (6)
+#define MPIU_THREAD_CS_MSGQUEUE_EXIT(_context)  \
+({                                              \
+  L1P_FlushRequests();                          \
+  MPIDI_CS_EXIT (6);                            \
+})
 #define MPIU_THREAD_CS_PAMI_ENTER(_context)         MPIDI_CS_ENTER(7)
 #define MPIU_THREAD_CS_PAMI_EXIT(_context)          MPIDI_CS_EXIT (7)
 

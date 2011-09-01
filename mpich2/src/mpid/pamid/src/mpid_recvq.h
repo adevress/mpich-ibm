@@ -100,8 +100,8 @@ MPIDI_Recvq_FDP(size_t source, size_t tag, size_t context_id)
   unsigned search_length = 0;
 #endif
 
-  rreq = MPIDI_Recvq.posted_head;
   MPIDI_Mutex_sync(); //We may be retriving data stored by another thread
+  rreq = MPIDI_Recvq.posted_head;
   while (rreq != NULL) {
 #ifdef USE_STATISTICS
     ++search_length;

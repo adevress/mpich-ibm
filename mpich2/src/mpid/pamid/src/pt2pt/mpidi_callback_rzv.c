@@ -113,6 +113,5 @@ MPIDI_RecvRzvCB(pami_context_t    context,
   /* ---------------------------------------- */
   MPIDI_Progress_signal();
 
-  MPIDI_Mutex_sync();
   MPIU_THREAD_CS_EXIT(MSGQUEUE,0);
 }
