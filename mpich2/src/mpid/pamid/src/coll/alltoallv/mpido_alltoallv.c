@@ -7,7 +7,7 @@
 
 #include <mpidimpl.h>
 
-#define PAMIBYTEREQUIRED
+//#define PAMIBYTEREQUIRED
 
 static void cb_alltoallv(void *ctxt, void *clientdata, pami_result_t err)
 {
@@ -33,7 +33,7 @@ int MPIDO_Alltoallv(void *sendbuf,
       TRACE_ERR("Entering MPIDO_Alltoallv\n");
    char *pname = comm_ptr->mpid.user_metadata[PAMI_XFER_ALLTOALLV_INT].name;
    volatile unsigned active = 1;
-   int tsndlen, trcvlen, snd_contig, rcv_contig;
+   int sndtypelen, rcvtypelen, snd_contig, rcv_contig;
    MPID_Datatype *sdt, *rdt;
    pami_type_t stype, rtype;
    MPI_Aint sdt_true_lb, rdt_true_lb;
@@ -61,8 +61,8 @@ int MPIDO_Alltoallv(void *sendbuf,
    if(!comm_ptr->rank)
       TRACE_ERR("Using %s for alltoallv protocol\n", pname);
 
-   MPIDI_Datatype_get_info(1, sendtype, snd_contig, tsndlen, sdt, sdt_true_lb);
-   MPIDI_Datatype_get_info(1, recvtype, rcv_contig, trcvlen, rdt, rdt_true_lb);
+   MPIDI_Datatype_get_info(1, sendtype, snd_contig, sndtypelen, sdt, sdt_true_lb);
+   MPIDI_Datatype_get_info(1, recvtype, rcv_contig, rcvtypelen, rdt, rdt_true_lb);
 
    pami_xfer_t alltoallv;
    alltoallv.cb_done = cb_alltoallv;
@@ -71,10 +71,9 @@ int MPIDO_Alltoallv(void *sendbuf,
    alltoallv.algorithm = comm_ptr->mpid.user_selected[PAMI_XFER_ALLTOALLV_INT];
    alltoallv.cmd.xfer_alltoallv_int.sndbuf = sendbuf+sdt_true_lb;
    alltoallv.cmd.xfer_alltoallv_int.rcvbuf = recvbuf+rdt_true_lb;
-
-
-
-#ifdef PAMIBYTEREQUIRED
+      
+/* I'll delete this code once the PAMI API changes for the fix discussed below */
+#ifdef PAMIBYTEREQUIRED 
    int *slen, *sdisp, *rlen, *rdisp;
    if(!comm_ptr->rank)
       TRACE_ERR("Mallocing arrays\n");
@@ -89,10 +88,10 @@ int MPIDO_Alltoallv(void *sendbuf,
    int i = 0;
    for(i = 0; i <comm_ptr->local_size; i++)
    {
-      slen[i] = tsndlen * sendcounts[i];
-      sdisp[i] = tsndlen * senddispls[i];
-      rlen[i] = trcvlen * recvcounts[i];
-      rdisp[i] = trcvlen * recvdispls[i];
+      slen[i] = sndtypelen * sendcounts[i];
+      sdisp[i] = sndtypelen * senddispls[i];
+      rlen[i] = rcvtypelen * recvcounts[i];
+      rdisp[i] = rcvtypelen * recvdispls[i];
       TRACE_ERR("sc[%d]: %d -> %d, sd[]: %d -> %d, rc[]: %d -> %d, rd[]: %d -> %d\n",
             i, sendcounts[i], slen[i], senddispls[i], sdisp[i], recvcounts[i], rlen[i], recvdispls[i], rdisp[i]);
    }
@@ -107,10 +106,29 @@ int MPIDO_Alltoallv(void *sendbuf,
 
 #else
 
+   /* This chunk of code *should* be temporary. We are discussing changing
+    * the PAMI API to have displacements in datatype units rather than
+    * bytes.
+    * Once the API changes, I can gut this and the ifdef block above.
+    */
+   int *sdispls, *rdispls;
+   sdispls = (int *)malloc(sizeof(int) * comm_ptr->local_size);
+   MPID_assert(sdispls);
+   rdispls = (int *)malloc(sizeof(int) * comm_ptr->local_size);
+   MPID_assert(rdispls);
+   int i;
+   for(i=0;i<comm_ptr->local_size;i++)
+   {
+      sdispls[i] = senddispls[i] * sndtypelen;
+      rdispls[i] = recvdispls[i] * rcvtypelen;
+   }
+      
+      
+
    alltoallv.cmd.xfer_alltoallv_int.stypecounts = sendcounts;
-   alltoallv.cmd.xfer_alltoallv_int.sdispls = senddispls;
+   alltoallv.cmd.xfer_alltoallv_int.sdispls = sdispls;
    alltoallv.cmd.xfer_alltoallv_int.rtypecounts = recvcounts;
-   alltoallv.cmd.xfer_alltoallv_int.rdispls = recvdispls;
+   alltoallv.cmd.xfer_alltoallv_int.rdispls = rdispls;
    alltoallv.cmd.xfer_alltoallv_int.stype = stype;
    alltoallv.cmd.xfer_alltoallv_int.rtype = rtype;
 
@@ -149,12 +167,17 @@ int MPIDO_Alltoallv(void *sendbuf,
    TRACE_ERR("%d waiting on active %d\n", comm_ptr->rank, active);
    MPID_PROGRESS_WAIT_WHILE(active);
 
+
    TRACE_ERR("Leaving alltoallv\n");
+
 #ifdef PAMIBYTEREQUIRED
    free(slen);
    free(sdisp);
    free(rlen);
    free(rdisp);
+#else
+   free(sdispls);
+   free(rdispls);
 #endif
    return rc;
 }
