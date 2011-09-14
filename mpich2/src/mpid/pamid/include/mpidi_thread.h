@@ -9,7 +9,11 @@
  *      See COPYRIGHT in top-level directory.
  */
 #include "mpidi_mutex.h"
+#ifdef __BGQ__
 #include "spi/include/l1p/flush.h"
+#else /* !__BGQ__ */
+#define L1P_FlushRequests() MPIDI_Mutex_sync()
+#endif /* !__BGQ__ */
 
 
 #ifndef __include_mpidi_thread_h__
