@@ -8,8 +8,6 @@
 
 #include <mpidimpl.h>
 
-#define PAMIBYTEREQUIRED
-
 static void cb_alltoall(void *ctxt, void *clientdata, pami_result_t err)
 {
    int *active = (int *)clientdata;
@@ -73,20 +71,10 @@ int MPIDO_Alltoall(void *sendbuf,
    alltoall.cmd.xfer_alltoall.sndbuf = sendbuf + sdt_true_lb;
    alltoall.cmd.xfer_alltoall.rcvbuf = recvbuf + rdt_true_lb;
 
-   #ifdef PAMIBYTEREQUIRED
-   alltoall.cmd.xfer_alltoall.stypecount = sendcount * sndlen;
-   alltoall.cmd.xfer_alltoall.rtypecount = recvcount * rcvlen;
-   alltoall.cmd.xfer_alltoall.stype = PAMI_TYPE_BYTE;
-   alltoall.cmd.xfer_alltoall.rtype = PAMI_TYPE_BYTE;
-
-   #else
-
    alltoall.cmd.xfer_alltoall.stypecount = sendcount;
    alltoall.cmd.xfer_alltoall.rtypecount = recvcount;
    alltoall.cmd.xfer_alltoall.stype = stype;
    alltoall.cmd.xfer_alltoall.rtype = rtype;
-
-   #endif
 
    if(unlikely(comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLTOALL] >= MPID_COLL_QUERY))
    {
