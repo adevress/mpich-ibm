@@ -20,7 +20,7 @@ pami_result_t MPIDI_Pami_post_wrapper(pami_context_t context, void *cookie)
 
 /* some useful macros to make the comparisons less icky, esp given the */
 /* explosion of datatypes in MPI2.2                                    */
-#define isS_INT(x) ( (x)==MPI_INTEGER || (x) == MPI_BYTE || \
+#define isS_INT(x) ( (x)==MPI_INTEGER || \
                      (x) == MPI_INT32_T || (x) == MPI_INTEGER4 || \
                      (x) == MPI_INT)
 
@@ -34,7 +34,8 @@ pami_result_t MPIDI_Pami_post_wrapper(pami_context_t context, void *cookie)
 #define isS_CHAR(x) ( (x) == MPI_SIGNED_CHAR || (x) == MPI_INT8_T || \
                       (x) == MPI_INTEGER1 || (x) == MPI_CHAR)
 
-#define isUS_CHAR(x) ( (x) == MPI_UNSIGNED_CHAR || (x) == MPI_UINT8_T)
+#define isUS_CHAR(x) ( (x) == MPI_BYTE || \
+		       (x) == MPI_UNSIGNED_CHAR || (x) == MPI_UINT8_T )
 
 /* sizeof(longlong) == sizeof(long) == sizeof(uint64) on bgq */
 #define isS_LONG(x) ( (x) == MPI_INT64_T || (x) == MPI_LONG || \
