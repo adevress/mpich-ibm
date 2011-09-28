@@ -218,6 +218,14 @@ void MPIDI_Coll_comm_destroy(MPID_Comm *comm)
   if (!MPIDI_Process.optimized.collectives)
     return;
 
+  if(comm->comm_kind != MPID_INTRACOMM) 
+    return;
+
+  /* It's possible (MPIR_Setup_intercomm_localcomm) to have an intracomm
+     without a geometry even when using optimized collectives */
+  if(comm->mpid.geometry == NULL)
+    return; 
+
    MPIU_TestFree(&comm->coll_fns);
    for(i=0;i<PAMI_XFER_COUNT;i++)
    {
