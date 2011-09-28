@@ -1,3 +1,4 @@
+# -*- mode: makefile-gmake; -*-
 SUBDIRS= barrier bcast allreduce allgather allgatherv scatterv scatter gather alltoall alltoallv .
 INCLUDES = -I${master_top_srcdir}/src/include -I${top_builddir}/src/include
 lib${MPILIBNAME}_a_SOURCES =	coll_utils.c

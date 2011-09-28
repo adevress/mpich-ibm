@@ -88,8 +88,8 @@ MPIX_Progress_quiesce(double timeout)
   unsigned long long t0;
   t0 = PAMI_Wtimebase(MPIDI_Client);
   while (PAMI_Wtimebase(MPIDI_Client) - t0 < cycles) {
-	rc = MPID_Progress_wait_inline(1);
-	if (rc != MPI_SUCCESS) return rc;
+        rc = MPID_Progress_wait_inline(1);
+        if (rc != MPI_SUCCESS) return rc;
   }
   return MPI_SUCCESS;
 }

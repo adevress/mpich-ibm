@@ -1,3 +1,4 @@
+# -*- mode: makefile-gmake; -*-
 install_INCLUDE = ${srcdir}/include/mpix.h
 SUBDIRS = src .
 

@@ -92,8 +92,8 @@ MPIDI_RecvDoneCB(pami_context_t   context,
  */
 void
 MPIDI_RecvDoneCB_mutexed(pami_context_t   context,
-			 void           * clientdata,
-			 pami_result_t    result)
+                         void           * clientdata,
+                         pami_result_t    result)
 {
   MPIU_THREAD_CS_ENTER(MSGQUEUE, 0);
 
