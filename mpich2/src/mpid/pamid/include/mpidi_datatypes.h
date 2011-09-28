@@ -12,6 +12,9 @@
 #ifndef __include_mpidi_datatypes_h__
 #define __include_mpidi_datatypes_h__
 
+#ifdef MPIDI_STATISTICS
+#include <pami_ext_pe.h>
+#endif
 
 #if (MPIU_HANDLE_ALLOCATION_METHOD == MPIU_HANDLE_ALLOCATION_THREAD_LOCAL) && defined(__BGQ__)
 struct MPID_Request;
@@ -36,6 +39,14 @@ typedef struct
   unsigned short_limit;
   unsigned eager_limit;
   unsigned eager_limit_local;
+#if (MPIDI_STATISTICS || MPIDI_PRINTENV)
+  unsigned mp_infolevel;
+  unsigned mp_statistics;     /* print pamid statistcs data                           */
+  unsigned mp_printenv; ;     /* print env data                                       */
+#endif
+#ifdef RDMA_FAILOVER
+  unsigned mp_s_use_pami_get; /* force the PAMI_Get path instead of PAMI_Rget         */
+#endif
 
 #if (MPIU_HANDLE_ALLOCATION_METHOD == MPIU_HANDLE_ALLOCATION_THREAD_LOCAL) && defined(__BGQ__)
   MPIDI_RequestHandle_t request_handles[MPIDI_MAX_THREADS];
@@ -149,11 +160,11 @@ typedef struct
 typedef struct
 {
   MPIDI_MsgInfo    msginfo;
-#ifdef USE_PAMI_RDMA
   pami_memregion_t memregion;
-#else
-  void           * data;
+#ifdef RDMA_FAILOVER
+  uint32_t         memregion_used;
 #endif
+  void           * data;
   size_t           length;
 } MPIDI_MsgEnvelope;
 
@@ -178,13 +189,15 @@ struct MPIDI_Request
 
   MPIDI_REQUEST_PTYPE   ptype;        /**< The persistent msg type    */
   MPIDI_CA              ca;           /**< Completion action          */
-#ifdef USE_PAMI_RDMA
   pami_memregion_t      memregion;    /**< Rendezvous recv memregion  */
-#endif
 #ifdef OUT_OF_ORDER_HANDLING
   struct MPID_Request  *prev;         /**< Link to prev req. in queue */
   void                 *nextR;        /** < pointer to next recv for the out-of-order list, the out-of-order list is a list per source */
   void                 *prevR;        /** < pointer to prev recv for the out-of-order list, the out-of-order list is a list per source */
+  struct MPID_Request  *oo_peer;      /** < pointer to the matched post recv request to complete in the out-of-order case */
+#endif
+#ifdef RDMA_FAILOVER
+  uint32_t             memregion_used;
 #endif
 };
 
@@ -245,6 +258,13 @@ struct MPIDI_Comm
    int query_allred_ismm;
 
 #endif
+  union tasks_descrip_t {
+    /* For create_taskrange */
+    pami_geometry_range_t *ranges;
+    /* For create_tasklist/endpoints if we ever use it */
+    pami_task_t *tasks;
+    pami_endpoint_t *endpoints;
+  } tasks_descriptor;
 };
 
 
@@ -290,6 +310,9 @@ struct MPIDI_Win_info
   struct MPID_Win  * win;
   uint32_t           disp_unit;     /**< Node's exposure window displacement units            */
   pami_memregion_t   memregion;     /**< Memory region descriptor for each node               */
+#ifdef RDMA_FAILOVER
+  uint32_t           memregion_used;
+#endif
 };
 /**
  * \brief Structure of PAMI extensions to MPID_Win structure

@@ -8,6 +8,10 @@
 #define __src_pt2pt_mpidi_recv_h__
 
 #include <mpidimpl.h>
+#include "../mpid_recvq.h"
+/*#ifdef MPIDI_STATISTICS
+  #include "../../include/mpidi_datatypes.h"
+#endif*/
 
 
 /**
@@ -49,7 +53,9 @@ MPIDI_Recv(void          * buf,
       MPIDI_RecvMsg_procnull(comm, is_blocking, status, request);
       return MPI_SUCCESS;
     }
-
+#if (MPIDI_STATISTICS)
+  MPID_NSTAT(mpid_statp->recvs);
+#endif
   MPIR_Comm_add_ref(comm);
 
   MPIU_THREAD_CS_ENTER(MSGQUEUE,0);
@@ -112,6 +118,11 @@ MPIDI_Recv(void          * buf,
   *request = rreq;
   if (status != MPI_STATUS_IGNORE)
     *status = rreq->status;
+  #ifdef MPIDI_STATISTICS
+    if (!(MPID_cc_is_complete(&rreq->cc))) {
+        MPID_NSTAT(mpid_statp->recvWaitsComplete);
+    }
+  #endif
 
   MPIU_THREAD_CS_EXIT(MSGQUEUE,0);
   return mpi_errno;

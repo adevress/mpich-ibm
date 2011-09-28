@@ -137,7 +137,7 @@ MPIDI_RecvShortCB(pami_context_t    context,
 
 #ifdef OUT_OF_ORDER_HANDLING
   MPIU_THREAD_CS_ENTER(MSGQUEUE,0);
-  if ((source != MPI_ANY_SOURCE) && (MPIDI_In_cntr[source].n_OutOfOrderMsgs>0))  {
+  if ((rank != MPI_ANY_SOURCE) && (MPIDI_In_cntr[source].n_OutOfOrderMsgs>0))  {
     MPIDI_Recvq_process_out_of_order_msgs(source, context);
   }
   MPIU_THREAD_CS_EXIT(MSGQUEUE,0);

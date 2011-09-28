@@ -58,6 +58,7 @@
 #define MPIDI_CS_ENTER(m) ({ if (MPIR_ThreadInfo.isThreaded) {                                             MPIDI_Mutex_acquire(m); } })
 #define MPIDI_CS_EXIT(m)  ({ if (MPIR_ThreadInfo.isThreaded) { MPIDI_Mutex_sync(); MPIDI_Mutex_release(m);                         } })
 #define MPIDI_CS_YIELD(m) ({ if (MPIR_ThreadInfo.isThreaded) { MPIDI_Mutex_sync(); MPIDI_Mutex_release(m); MPIDI_Mutex_acquire(m); } })
+#define MPIDI_CS_SCHED_YIELD(m) ({ if (MPIR_ThreadInfo.isThreaded) { MPIDI_Mutex_sync(); MPIDI_Mutex_release(m); sched_yield(); MPIDI_Mutex_acquire(m); } })
 
 /* There is a single, global lock, held for the duration of an MPI call */
 #define MPIU_THREAD_CS_ALLFUNC_ENTER(_context)      MPIDI_CS_ENTER(0)
@@ -89,6 +90,7 @@
 #define MPIDI_CS_ENTER(m) ({                     MPIDI_Mutex_acquire(m); })
 #define MPIDI_CS_EXIT(m)  ({ MPIDI_Mutex_sync(); MPIDI_Mutex_release(m); })
 #define MPIDI_CS_YIELD(m) ({ MPIDI_Mutex_sync(); MPIDI_Mutex_release(m); MPIDI_Mutex_acquire(m); })
+#define MPIDI_CS_SCHED_YIELD(m) ({ MPIDI_Mutex_sync(); MPIDI_Mutex_release(m); sched_yield(); MPIDI_Mutex_acquire(m); })
 
 #define MPIU_THREAD_CS_ALLFUNC_ENTER(_context)
 #define MPIU_THREAD_CS_ALLFUNC_EXIT(_context)

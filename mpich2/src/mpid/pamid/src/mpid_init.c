@@ -6,6 +6,14 @@
 #include <mpidimpl.h>
 #include "onesided/mpidi_onesided.h"
 
+#if (MPIDI_STATISTICS || MPIDI_PRINTENV)
+  pami_extension_t pe_extension;
+#endif
+
+#ifdef MPIDI_SINGLE_CONTEXT_ASYNC_PROGRESS
+  pami_extension_t progress_extension;
+#endif
+
 pami_client_t   MPIDI_Client;
 pami_context_t MPIDI_Context[MPIDI_MAX_CONTEXTS];
 
@@ -27,6 +35,11 @@ MPIDI_Process_t  MPIDI_Process = {
   .short_limit         = MPIDI_SHORT_LIMIT,
   .eager_limit         = MPIDI_EAGER_LIMIT,
   .eager_limit_local   = MPIDI_EAGER_LIMIT_LOCAL,
+#if (MPIDI_STATISTICS || MPIDI_PRINTENV)
+  .mp_infolevel        = 0,
+  .mp_statistics       = 0,
+  .mp_printenv         = 0,
+#endif
 
   .rma_pending         = 1000,
   .shmem_pt2pt         = 1,
@@ -170,6 +183,9 @@ MPIDI_PAMI_context_init(int* threading)
 {
   int requested_thread_level;
   requested_thread_level = *threading;
+#ifdef OUT_OF_ORDER_HANDLING
+  extern int numTasks;
+#endif
 
   /* ---------------------------------------------------------------------------
    * TODO: Remove this hardware threads check - it is implementation-specific.
@@ -248,7 +264,7 @@ MPIDI_PAMI_context_init(int* threading)
 
 
 #ifdef OUT_OF_ORDER_HANDLING
-  unsigned numTasks  = PAMIX_Client_query(MPIDI_Client, PAMI_CLIENT_NUM_TASKS).value.intval;
+  numTasks  = PAMIX_Client_query(MPIDI_Client, PAMI_CLIENT_NUM_TASKS).value.intval;
   MPIDI_In_cntr = MPIU_Calloc0(numTasks, MPIDI_In_cntr_t);
   if(MPIDI_In_cntr == NULL)
     MPID_abort();
@@ -269,6 +285,13 @@ MPIDI_PAMI_context_init(int* threading)
   pami_result_t rc;
   rc = PAMI_Context_createv(MPIDI_Client, &config, 1, MPIDI_Context, MPIDI_Process.avail_contexts);
   MPID_assert_always(rc == PAMI_SUCCESS);
+#if (MPIDI_STATISTICS || MPIDI_PRINTENV)
+  MPIDI_open_pe_extension();
+#endif
+#ifdef MPIDI_SINGLE_CONTEXT_ASYNC_PROGRESS
+  MPIDI_open_async_extension();
+  MPIDI_disable_ASYNC();
+#endif
 }
 
 
@@ -337,6 +360,7 @@ MPIDI_PAMI_dispath_init()
 }
 
 
+
 extern char **environ;
 static void
 printEnvVars(char *type)
@@ -373,6 +397,11 @@ MPIDI_PAMI_init(int* rank, int* size, int* threading)
              "  eager_limit_local     : %u\n"
              "  rma_pending           : %u\n"
              "  shmem_pt2pt           : %u\n"
+#if (MPIDI_STATISTICS || MPIDI_PRINTENV)
+             "  mp_infolevel : %u\n"
+             "  mp_statistics: %u\n"
+             "  mp_printenv  : %u\n"
+#endif
              "  optimized.collectives : %u\n"
              "  optimized.select_colls: %u\n"
              "  optimized.subcomms    : %u\n",
@@ -386,6 +415,11 @@ MPIDI_PAMI_init(int* rank, int* size, int* threading)
              MPIDI_Process.eager_limit_local,
              MPIDI_Process.rma_pending,
              MPIDI_Process.shmem_pt2pt,
+#if (MPIDI_STATISTICS || MPIDI_PRINTENV)
+             MPIDI_Process.mp_infolevel,
+             MPIDI_Process.mp_statistics,
+             MPIDI_Process.mp_printenv,
+#endif
              MPIDI_Process.optimized.collectives,
              MPIDI_Process.optimized.select_colls,
              MPIDI_Process.optimized.subcomms);
@@ -396,6 +430,17 @@ MPIDI_PAMI_init(int* rank, int* size, int* threading)
       printEnvVars("MUSPI_");
       printEnvVars("BG_");
     }
+#ifdef MPIDI_BANNER
+  if ((*rank == 0) && (MPIDI_Process.mp_infolevel >=1)) {
+       char* buf = (char *) MPIU_Malloc(160);
+       int   rc  = MPIDI_Banner(buf);
+       if ( rc == 0 )
+            fprintf(stderr, "%s\n", buf);
+       else
+            TRACE_ERR("mpid_banner() return code=%d task %d",rc,*rank);
+       MPIU_Free(buf);
+  }
+#endif
 }
 
 
@@ -464,13 +509,15 @@ int MPID_Init(int * argc,
   /* ------------------------------------ */
   MPIDI_Env_setup(rank, requested);
 
-
   /* ----------------------------- */
   /* Initialize messager           */
   /* ----------------------------- */
   *provided = requested;
   MPIDI_PAMI_init(&rank, &size, provided);
-
+#ifdef MPIDI_SINGLE_CONTEXT_ASYNC_PROGRESS
+  /* hwthreads should not override user's thread setting */
+  *provided = requested;
+#endif
 
   /* ------------------------- */
   /* initialize request queues */
@@ -521,8 +568,11 @@ int MPID_Init(int * argc,
   /* ------------------------------- */
   *has_args = TRUE;
   *has_env  = TRUE;
-
-
+#ifdef MPIDI_PRINTENV
+  if (MPIDI_Process.mp_printenv) {
+      MPIDI_Print_mpenv(rank,size);
+  }
+#endif
   return MPI_SUCCESS;
 }
 
@@ -535,6 +585,87 @@ int MPID_InitCompleted()
   MPIDI_Progress_init();
   return MPI_SUCCESS;
 }
+
+#if (MPIDI_PRINTENV || MPIDI_STATISTICS || MPIDI_BANNER)
+void MPIDI_open_pe_extension() {
+    int rc;
+     /* open PE extension       */
+     memset(&pe_extension,0, sizeof(pami_extension_t));
+     rc = PAMI_Extension_open (MPIDI_Client, "EXT_pe_extension", &pe_extension);
+     TRACE_ERR("PAMI_Extension_open: rc %d\n", rc);
+     if (rc != PAMI_SUCCESS) {
+         TRACE_ERR("ERROR open PAMI_Extension_open failed rc %d", rc);
+         MPID_assert_always(rc == PAMI_SUCCESS);
+     }
+}
+
+
+int MPIDI_Banner(char * bufPtr) {
+    char  *cp, *level=NULL;
+    char buf[30];
+    char *ASC_time;
+    time_t  ltime;
+    char msgBuf[60];
+    char type[64], ver_buf[64];
+    struct  tm  *tmx,*tm1;
+
+    /* Note: The _ibm_release_version will be expanded to a full string  */
+    /*       ONLY IF this file is extracted from CMVC.                   */
+    /*       If this file is cloned from GIT the the string will be just */
+    /*       "%W%.                                                       */
+    if ( strncmp(_ibm_release_version_, "%W", 2) ) {
+       /* IBMPE's expanded version string has release name like ppe_rbarlx */
+       /* and that '_' in the name is what we are looking for.             */
+       /* BGQ's version string does not have a '_' in it.                  */
+       level = strrchr(_ibm_release_version_, '_');
+       if ( level ) {
+          level -=3;
+
+          /* The version string generated by CMVC during weekly build has a */
+          /* date which is the time when the mpidi_platform.h file is last  */
+          /* updated.  This date can be quite old and is better removed.    */
+          bzero(ver_buf, sizeof(ver_buf));
+          strncpy(ver_buf, level, sizeof(ver_buf)-1);
+          if ( cp = strchr(ver_buf, ',') ) *cp = '\0';
+       }
+    }
+
+#ifndef __32BIT__
+    strcpy(type, "64bit (MPI over PAMI)");
+#else
+    strcpy(type, "32bit (MPI over PAMI)");
+#endif
+
+    sprintf(msgBuf,"MPICH2 library was compiled on");
+
+    tmx=MPIU_Malloc(sizeof(struct tm));
+    sprintf(buf,__DATE__" "__TIME__);
+
+    if ( NULL == strptime(buf, "%B %d %Y %T", tmx))
+       return(1);
+
+   /*  update isdst in tmx structure    */
+    ltime=0;
+    time(&ltime);
+    tm1 = localtime(&ltime);
+    tmx->tm_isdst=tm1->tm_isdst;
+
+   /* localtime updates tm_wday in tmx structure  */
+    ltime=mktime(tmx);
+    tm1 = localtime(&ltime);
+    tmx->tm_wday = tm1->tm_wday;
+    ASC_time = asctime(tmx);
+
+    if (level) {
+       sprintf(bufPtr, "%s %s %s %s ", type, ver_buf, msgBuf, ASC_time);
+    } else {
+       sprintf(bufPtr, "%s %s %s ", type, msgBuf, ASC_time);
+    }
+
+    MPIU_Free(tmx);
+    return MPI_SUCCESS;
+}
+#endif 
 
 
 static inline void

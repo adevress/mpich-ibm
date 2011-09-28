@@ -9,7 +9,7 @@
  */
 
 #include <mpidimpl.h>
-
+#include "mpid_recvq.h"
 
 /**
  * \defgroup MPID_RECVQ MPID Receive Queue management
@@ -261,6 +261,9 @@ MPIDI_Recvq_FDU(int source, pami_task_t pami_source, int tag, int context_id, in
 #endif
             MPIDI_Recvq_remove(MPIDI_Recvq.unexpected, rreq, prev_rreq);
             found = TRUE;
+#if (MPIDI_STATISTICS)
+            MPID_NSTAT(mpid_statp->earlyArrivalsMatched);
+#endif
             goto fn_exit;
           }
 #ifdef OUT_OF_ORDER_HANDLING
@@ -317,8 +320,8 @@ MPIDI_Recvq_FDU(int source, pami_task_t pami_source, int tag, int context_id, in
             if(source == MPI_ANY_SOURCE) {
               in_cntr = &MPIDI_In_cntr[MPIDI_Request_getPeerRank_pami(rreq)];
               nMsgs = in_cntr->nMsgs+1;
-              if( (nMsgs-MPIDI_Request_getMatchSeq(rreq)) < 0 )
-                continue;
+              if((int) (nMsgs-MPIDI_Request_getMatchSeq(rreq)) < 0 )
+                 goto NEXT_MSG;
             }
             if (rreq->mpid.nextR != NULL)  { /* recv is in the out of order list */
               if (MPIDI_Request_getMatchSeq(rreq) == nMsgs)
@@ -328,12 +331,15 @@ MPIDI_Recvq_FDU(int source, pami_task_t pami_source, int tag, int context_id, in
 #endif
             MPIDI_Recvq_remove(MPIDI_Recvq.unexpected, rreq, prev_rreq);
             found = TRUE;
+#if (MPIDI_STATISTICS)
+            MPID_NSTAT(mpid_statp->earlyArrivalsMatched);
+#endif
             goto fn_exit;
           }
 #ifdef OUT_OF_ORDER_HANDLING
         }
+     NEXT_MSG:
 #endif
-
         prev_rreq = rreq;
         rreq = rreq->mpid.next;
       }
@@ -414,13 +420,19 @@ MPIDI_Recvq_FDP_or_AEU(int source, pami_task_t pami_source, int tag, int context
   rreq = MPIDI_Recvq_FDP(source, pami_source, tag, context_id, msg_seqno);
 #endif
 
-  if (rreq != NULL)
+  if (rreq != NULL) {
       found = TRUE;
-  else {
+#if (MPIDI_STATISTICS)
+      MPID_NSTAT(mpid_statp->lateArrivals);
+#endif
+  } else {
 #ifndef OUT_OF_ORDER_HANDLING
       rreq = MPIDI_Recvq_AEU(source, tag, context_id);
 #else
       rreq = MPIDI_Recvq_AEU(source, pami_source, tag, context_id, msg_seqno);
+#endif
+#if (MPIDI_STATISTICS)
+     MPID_NSTAT(mpid_statp->earlyArrivals);
 #endif
   }
 
@@ -460,6 +472,8 @@ MPIDI_Recvq_AEU(int source, pami_task_t pami_source, int tag, int context_id, in
 
   in_cntr = &MPIDI_In_cntr[pami_source];
   MPIDI_Request_setMatch(rreq, tag, source, context_id); /* mpi rank needed */
+  MPIDI_Request_setPeerRank_pami(rreq, pami_source);
+  MPIDI_Request_setPeerRank_comm(rreq, source);
   MPIDI_Request_setMatchSeq(rreq, msg_seqno);
 
   if (!in_cntr->n_OutOfOrderMsgs) {
@@ -478,9 +492,9 @@ MPIDI_Recvq_AEU(int source, pami_task_t pami_source, int tag, int context_id, in
       q=q->mpid.nextR;
     }
     if (!insert) {
-        MPIDI_Recvq_append(MPIDI_Recvq.unexpected, rreq);
+      MPIDI_Recvq_append(MPIDI_Recvq.unexpected, rreq);
     }
-  }
+   }
 
   if (((int)(in_cntr->nMsgs - msg_seqno)) < 0) { /* seqno > nMsgs, out of order */
     MPIDI_Recvq_enqueue_ool(pami_source,rreq);
@@ -533,6 +547,7 @@ MPIDI_Recvq_DumpQueues(int verbose)
     fprintf(stderr, "Unexpected Queue:\n-----------------\n");
   while (rreq != NULL) {
     if(verbose >= MPIDI_VERBOSE_DETAILS_ALL)
+#ifndef OUT_OF_ORDER_HANDLING
       fprintf(stderr, "UE %d: MPItag=%d MPIrank=%d ctxt=%d uebuf=%p uebuflen=%u\n",
               i++,
               MPIDI_Request_getMatchTag(rreq),
@@ -540,6 +555,17 @@ MPIDI_Recvq_DumpQueues(int verbose)
               MPIDI_Request_getMatchCtxt(rreq),
               rreq->mpid.uebuf,
               rreq->mpid.uebuflen);
+#else
+      fprintf(stderr, "UE %d: MPItag=%d MPIrank=%d pami_task_id=%d MPIseq=%d ctxt=%d uebuf=%p uebuflen=%u\n",
+              i++,
+              MPIDI_Request_getMatchTag(rreq),
+              MPIDI_Request_getMatchRank(rreq),
+              MPIDI_Request_getPeerRank_pami(rreq),
+              MPIDI_Request_getMatchSeq(rreq),
+              MPIDI_Request_getMatchCtxt(rreq),
+              rreq->mpid.uebuf,
+              rreq->mpid.uebuflen);
+#endif
     numue++;
     uebytes+=rreq->mpid.uebuflen;
     prev_rreq = rreq;
@@ -567,6 +593,7 @@ void MPIDI_Recvq_enqueue_ool(pami_task_t src, MPID_Request *req)
     head=in_cntr->OutOfOrderList;
     q=in_cntr->OutOfOrderList;
     insert=0;
+    MPID_assert(q->mpid.nextR != NULL);
     while(q->mpid.nextR != head) {
       if (((int)(MPIDI_Request_getMatchSeq(q) - MPIDI_Request_getMatchSeq(req))) > 0) {
         insert=1;
@@ -595,6 +622,9 @@ void MPIDI_Recvq_enqueue_ool(pami_task_t src, MPID_Request *req)
     req->mpid.nextR=req;
   }
   in_cntr->n_OutOfOrderMsgs++;
+#if (MPIDI_STATISTICS)
+  MPID_NSTAT(mpid_statp->unorderedMsgs);
+#endif
 } /* void MPIDI_Recvq_insert_ool(pami_task_t src, MPID_Request *N) */
 
 
@@ -605,9 +635,7 @@ void MPIDI_Recvq_enqueue_ool(pami_task_t src, MPID_Request *req)
 void  MPIDI_Recvq_insert_ool(MPID_Request *q,MPID_Request *e)
 {
   (e)->mpid.prevR = (q)->mpid.prevR;
-  if((q)->mpid.prevR != NULL) {
-    ((MPID_Request *)((q)->mpid.prevR))->mpid.nextR = (e);
-  }
+  ((MPID_Request *)((q)->mpid.prevR))->mpid.nextR = (e);
   (e)->mpid.nextR = (q);
   (q)->mpid.prevR = (e);
 }

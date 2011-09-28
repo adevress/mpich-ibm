@@ -5,6 +5,21 @@
  */
 #include <mpidimpl.h>
 
+inline void
+MPIDI_RendezvousTransfer_use_pami_rget(pami_context_t   context,
+                                       pami_endpoint_t  dest,
+                                       MPID_Request     *rreq)
+__attribute__((__always_inline__));
+#ifdef RDMA_FAILOVER
+inline void
+MPIDI_RendezvousTransfer_use_pami_get(pami_context_t   context,
+                                      pami_endpoint_t  dest,
+	                              void             *rcvbuf,
+                                      MPID_Request     *rreq)
+__attribute__((__always_inline__));
+#endif
+
+
 pami_result_t
 MPIDI_RendezvousTransfer(pami_context_t   context,
                          void           * _rreq)
@@ -77,25 +92,65 @@ MPIDI_RendezvousTransfer(pami_context_t   context,
 #ifdef USE_PAMI_RDMA
   size_t rcvlen_out;
   rc = PAMI_Memregion_create(context,
-                             rcvbuf,
-                             rcvlen,
-                             &rcvlen_out,
-                             &rreq->mpid.memregion);
+			     rcvbuf,
+			     rcvlen,
+			     &rcvlen_out,
+			     &rreq->mpid.memregion);
   MPID_assert(rc == PAMI_SUCCESS);
   MPID_assert(rcvlen == rcvlen_out);
 
   TRACE_ERR("RZV Xfer for req=%p addr=%p *addr[0]=%#016llx *addr[1]=%#016llx\n",
-            rreq,
-            rcvbuf,
-            *(((unsigned long long*)rcvbuf)+0),
-            *(((unsigned long long*)rcvbuf)+1));
+	    rreq,
+	    rcvbuf,
+	    *(((unsigned long long*)rcvbuf)+0),
+	    *(((unsigned long long*)rcvbuf)+1));
 
+  MPIDI_RendezvousTransfer_use_pami_rget(context,dest,rreq);
+#else
+  rreq->mpid.memregion_used=0;
+  if( (!MPIDI_Process.mp_s_use_pami_get) && (rreq->mpid.envelope.memregion_used) )
+    {
+      size_t rcvlen_out;
+      rc = PAMI_Memregion_create(context,
+				 rcvbuf,
+				 rcvlen,
+				 &rcvlen_out,
+				 &rreq->mpid.memregion);
+      if (rc == PAMI_SUCCESS)
+	{
+	  rreq->mpid.memregion_used=1;
+	  MPID_assert(rcvlen == rcvlen_out);
+
+	  TRACE_ERR("RZV Xfer for req=%p addr=%p *addr[0]=%#016llx *addr[1]=%#016llx\n",
+		    rreq,
+		    rcvbuf,
+		    *(((unsigned long long*)rcvbuf)+0),
+		    *(((unsigned long long*)rcvbuf)+1));
+          MPIDI_RendezvousTransfer_use_pami_rget(context,dest,rreq);
+	} else {
+          MPIDI_RendezvousTransfer_use_pami_get(context,dest,rcvbuf,rreq);
+	}
+    } else {
+      MPIDI_RendezvousTransfer_use_pami_get(context,dest,rcvbuf,rreq);
+    }
+#endif
+
+  return PAMI_SUCCESS;
+}
+
+
+inline void
+MPIDI_RendezvousTransfer_use_pami_rget(pami_context_t   context,
+                                       pami_endpoint_t  dest,
+                                       MPID_Request     *rreq)
+{
+  pami_result_t rc;
   pami_rget_simple_t params = {
     .rma  = {
       .dest    = dest,
       .hints   = {
-        .buffer_registered= PAMI_HINT_ENABLE,
-        .use_rdma=          PAMI_HINT_ENABLE,
+	.buffer_registered= PAMI_HINT_ENABLE,
+	.use_rdma=          PAMI_HINT_ENABLE,
       },
       .bytes   = rreq->mpid.envelope.length,
       .cookie  = rreq,
@@ -103,26 +158,36 @@ MPIDI_RendezvousTransfer(pami_context_t   context,
     },
     .rdma = {
       .local  = {
-        .mr     = &rreq->mpid.memregion,
-        .offset = 0,
+	.mr     = &rreq->mpid.memregion,
+	.offset = 0,
       },
       .remote = {
-        .mr     = &rreq->mpid.envelope.memregion,
-        .offset = 0,
+	.mr     = &rreq->mpid.envelope.memregion,
+	.offset = 0,
       },
     },
   };
 
   rc = PAMI_Rget(context, &params);
   MPID_assert(rc == PAMI_SUCCESS);
-#else
+}
+
+
+#ifdef RDMA_FAILOVER
+inline void
+MPIDI_RendezvousTransfer_use_pami_get(pami_context_t   context,
+                                      pami_endpoint_t  dest,
+	                              void             *rcvbuf,
+	                              MPID_Request     *rreq)
+{
+  pami_result_t rc;
   pami_get_simple_t params = {
     .rma  = {
       .dest    = dest,
       .hints   = {
-        .use_rdma=       1,
+	.use_rdma= PAMI_HINT_DEFAULT,
 #ifndef OUT_OF_ORDER_HANDLING
-        .no_long_header= 1,
+	.no_long_header= 1,
 #endif
       },
       .bytes   = rreq->mpid.envelope.length,
@@ -137,11 +202,8 @@ MPIDI_RendezvousTransfer(pami_context_t   context,
 
   rc = PAMI_Get(context, &params);
   MPID_assert(rc == PAMI_SUCCESS);
-#endif
-
-  return PAMI_SUCCESS;
 }
-
+#endif
 
 pami_result_t MPIDI_RendezvousTransfer_SyncAck (pami_context_t context, void * _rreq)
 {

@@ -13,4 +13,5 @@ lib${MPILIBNAME}_a_SOURCES =			\
         mpid_time.c				\
         mpid_vc.c				\
         mpidi_env.c				\
+        mpidi_util.c                            \
         mpidi_mutex.c

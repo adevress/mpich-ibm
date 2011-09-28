@@ -312,6 +312,13 @@
  *
  *
  */
+#if (MPIDI_STATISTICS || MPIDI_PRINTENV)
+int prtStat=0;
+int prtEnv=0;
+int numTasks=0;
+MPIX_stats_t *mpid_statp=NULL;
+extern MPIDI_printenv_t  *mpich_env;
+#endif
 
 #define ENV_Deprecated(a, b, c, d, e) ENV_Deprecated__(a, b, c, d, e)
 static inline void
@@ -398,6 +405,42 @@ ENV_Unsigned__(char* name[], unsigned* val, char* string, unsigned num_supported
 }
 
 
+#define ENV_Char(a, b) ENV_Char__(a, b, #b)
+static inline void
+ENV_Char__(char* name[], unsigned* val, char* string)
+{
+  char * env;
+  unsigned i=0;
+  for (;; ++i) {
+    if (name[i] == NULL)
+      return;
+    env = getenv(name[i]);
+    if (env != NULL)
+      break;
+  }
+
+  if ((env[0]=='y')|| (env[0]=='Y')|| (env[0]=='p')|| (env[0]=='P'))
+          *val = 1;
+  if (MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL)
+    fprintf(stderr, "%s = %u\n", string, *val);
+}
+
+#define ENV_Char2(a, b) ENV_Char2__(a, b, #b)
+static inline void
+ENV_Char2__(char* name[], char** val, char* string)
+{
+  unsigned i=0;
+  for (;; ++i) {
+    if (name[i] == NULL)
+      return;
+    *val = getenv(name[i]);
+    if (*val != NULL)
+      break;
+  }
+
+  if (MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL)
+    fprintf(stderr, "%s = %s\n", string, *val);
+}
 
 /** \brief Checks the Environment variables at initialization and stores the results.
  *
@@ -636,8 +679,61 @@ MPIDI_Env_setup(int rank, int requested)
       char* names[] = {"PAMID_CORE_ON_ABORT", "PAMI_COREONABORT", "PAMI_COREONMPIABORT", "PAMI_COREONMPIDABORT", NULL};
       ENV_Unsigned(names, &tmp, 1, &found_deprecated_env_var, rank);
     }
-  }
+#if (MPIDI_STATISTICS || MPIDI_PRINTENV)
+    mpich_env=(MPIDI_printenv_t *) MPIU_Malloc(sizeof(MPIDI_printenv_t)+1);
+    mpid_statp=(MPIX_stats_t *) MPIU_Malloc(sizeof(MPIX_stats_t)+1);
+    memset((void *)mpich_env,0,sizeof(MPIDI_printenv_t));
+    memset((void *)mpid_statp,0,sizeof(MPIX_stats_t));
+    /* If MP_STATISTICS is set, each task prints statistics data at the end of an MPI jobs */
+    {
+      char* names[] = {"MP_STATISTICS", NULL};
+      ENV_Char(names, &MPIDI_Process.mp_statistics);
+      if (MPIDI_Process.mp_statistics) {
+        prtStat=1;
+      }
+    }
+    /* if MP_INFOLEVEL is greater than or equal to 1, the library will display the banner */
+    {
+      char* names[] = {"MP_INFOLEVEL", NULL};
+      ENV_Unsigned(names, &MPIDI_Process.mp_infolevel, 1, &found_deprecated_env_var, rank);
+    }
+    /* If MP_PRINTENV is set, task 0 prints out the env. info after MPI_Init   */
+    {
+      char* names[] = {"MP_PRINTENV", NULL};
+      ENV_Char(names, &MPIDI_Process.mp_printenv);
+      if (MPIDI_Process.mp_printenv) {
+        prtEnv=1;
+      }
+    }
+    /*  MP_CSS_INTERRUPT                                                       */
+    {
+      char* names[] = {"MP_CSS_INTERRUPT", NULL};
+      ENV_Char(names, &mpich_env->interrupts);
+    }
+    /*  MP_SINGLE_THREAD                                                       */
+    {
+      char* names[] = {"MP_SINGLE_THREAD", NULL};
+      ENV_Char(names, &mpich_env->single_thread);
+    }
+    /* MP_POLLING_INTERVAL                                                     */
+    {
+      char* names[] = {"MP_POLLING_INTERVAL", NULL};
+      ENV_Unsigned(names,(unsigned int *) &mpich_env->polling_interval,1, &found_deprecated_env_var, rank);
+    }
 
+    /* MP_RETRANSMIT_INTERVAL                                                  */
+    {
+      char* names[] = {"MP_RETRANSMIT_INTERVAL", NULL};
+      ENV_Unsigned(names, &mpich_env->retransmit_interval,1, &found_deprecated_env_var, rank);
+    }
+
+    /* MP_S_USE_PAMI_GET                                                       */
+    {
+      char* names[] = {"MP_S_USE_PAMI_GET", NULL};
+      ENV_Char(names, &MPIDI_Process.mp_s_use_pami_get);
+    }
+#endif
+  }
   /* Exit if any deprecated environment variables were specified. */
   if (found_deprecated_env_var)
     {

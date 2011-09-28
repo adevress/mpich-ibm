@@ -65,6 +65,7 @@ MPID_Win_create(void       * base,
   struct MPIDI_Win_info *winfo = &win->mpid.info[rank];
 
   MPID_assert((base != NULL) || (length == 0));
+#ifdef USE_PAMI_RDMA
   if (length != 0)
     {
       size_t length_out = 0;
@@ -73,6 +74,19 @@ MPID_Win_create(void       * base,
       MPID_assert(rc == PAMI_SUCCESS);
       MPID_assert(length == length_out);
     }
+#else
+  if ( (!MPIDI_Process.mp_s_use_pami_get) && (length != 0) )
+    {
+      size_t length_out = 0;
+      pami_result_t rc;
+      rc = PAMI_Memregion_create(MPIDI_Context[0], base, length, &length_out, &winfo->memregion);
+      if(rc == PAMI_SUCCESS)
+	{
+	  winfo->memregion_used = 1;
+	  MPID_assert(length == length_out);
+	}
+    }
+#endif
 
   winfo->base_addr  = base;
   /* winfo->win_handle = win->handle; */

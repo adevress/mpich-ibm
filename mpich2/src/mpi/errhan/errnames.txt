@@ -1437,6 +1437,9 @@ is too big (> MPIU_SHMW_GHND_SZ)
 **mpir_wingetattr:MPIR_WinGetAttr failed
 **mpir_wingetattr %W %d %p %p:MPIR_WinGetAttr(%W, win_keyval=%d, attribute_val=%p, flag=%p) failed
 
+# Datarep conversion function not supported by ROMIO (Temproary until implemented)
+**drconvnotsupported:Read and Write datarep conversions are currently not supported by MPI-IO
+
 # -----------------------------------------------------------------------------
 # The following names are defined but not used (see the -careful option 
 # for extracterrmsgs) (still to do: move the undefined names here)

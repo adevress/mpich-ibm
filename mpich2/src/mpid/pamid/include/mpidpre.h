@@ -39,6 +39,6 @@
 #include "mpidi_externs.h"
 #include "mpidi_hooks.h"
 #include "mpidi_thread.h"
-
+#include "mpidi_util.h"
 
 #endif

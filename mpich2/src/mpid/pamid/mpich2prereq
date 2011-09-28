@@ -11,8 +11,17 @@ if test -z "$device_args" ; then
     device_args=none
 fi
 
-#if test "$device_args" = "BGP" ; then
+#if test "$device_args" = "BGP" || test "$device_args" = "PE"; then
     MPID_MAX_PROCESSOR_NAME=128
+
+#  If you do not want the default value for MPI_MAX_ERROR_STRING, equal 1024,
+#  as defined in 'configure.in' then define a value for MPID_MAX_ERROR_STRING
+#  here.
+#  The default value of 512 will provide backward compatibility with MPI 2.1.
+    if test "$device_args" = "PE"; then
+       MPID_MAX_ERROR_STRING=512
+    fi
+
     MPID_NO_LONG_LONG=no
     MPID_NO_LONG_DOUBLE=no
     MPID_NO_SPAWN=yes
@@ -42,6 +51,8 @@ fi
 #                            needs added to the definition of MPI_Status.
 #    MPID_MAX_PROCESSOR_NAME - The maximum number of character in a processor
 #                            name.  If not set, 128 will be used.
+#    MPID_MAX_ERROR_STRING   - The maximum number of character in an error
+#                            string.  If is not defined here, 1024 will be used.
 #    PMI_REQUIRES_READABLE_TOKENS - if yes, define the C-preprocessor
 #                            value USE_HUMAN_READABLE_TOKENS, which is
 #                            used in src/include/mpimem.h to define token

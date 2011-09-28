@@ -27,12 +27,21 @@ MPID_Win_free(MPID_Win **win_ptr)
     return mpi_errno;
 
   struct MPIDI_Win_info *winfo = &win->mpid.info[rank];
+#ifdef USE_PAMI_RDMA
   if (win->size != 0)
     {
       pami_result_t rc;
       rc = PAMI_Memregion_destroy(MPIDI_Context[0], &winfo->memregion);
       MPID_assert(rc == PAMI_SUCCESS);
     }
+#else
+  if ( (!MPIDI_Process.mp_s_use_pami_get) && (win->size != 0) && (winfo->memregion_used) )
+    {
+      pami_result_t rc;
+      rc = PAMI_Memregion_destroy(MPIDI_Context[0], &winfo->memregion);
+      MPID_assert(rc == PAMI_SUCCESS);
+    }
+#endif
 
   MPIU_Free(win->mpid.info);
 

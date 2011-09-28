@@ -81,13 +81,20 @@ MPIDI_RecvDoneCB(pami_context_t   context,
       }
     }
 #ifdef OUT_OF_ORDER_HANDLING
+  MPID_Request * oo_peer = rreq->mpid.oo_peer;
+  if (oo_peer) {
+     oo_peer->status.count = rreq->status.count;
+     MPIDI_Request_complete(oo_peer);
+  }
+#endif
+  MPIDI_Request_complete(rreq);
+#ifdef OUT_OF_ORDER_HANDLING
   int source;
   source = MPIDI_Request_getPeerRank_pami(rreq);
   if (MPIDI_In_cntr[source].n_OutOfOrderMsgs > 0) {
      MPIDI_Recvq_process_out_of_order_msgs(source, context);
   }
 #endif
-  MPIDI_Request_complete(rreq);
 }
 
 
@@ -162,25 +169,27 @@ void MPIDI_Recvq_process_out_of_order_msgs(pami_task_t src, pami_context_t conte
             rreq->status.MPI_ERROR = MPI_ERR_TRUNCATE;
           }
 
-        MPIDI_RecvMsg_Unexp(ooreq, rreq->mpid.userbuf, rreq->mpid.userbufcount, rreq->mpid.datatype);
-        if(ooreq->mpid.uebuf == NULL) {
-          MPIDI_Request_complete(rreq);
-          rreq->status.count = ooreq->status.count;
-        } else {
-          MPIDI_Buffer_copy(ooreq->mpid.uebuf,
-                            ooreq->mpid.uebuflen,
-                            MPI_CHAR,
-                            &ooreq->status.MPI_ERROR,
-                            rreq->mpid.userbuf,
-                            rreq->mpid.userbufcount,
-                            rreq->mpid.datatype,
-                            &_count,
-                            &rreq->status.MPI_ERROR);
+        ooreq->comm = rreq->comm;
+        MPIR_Comm_add_ref(ooreq->comm);
+        ooreq->mpid.userbuf = rreq->mpid.userbuf;
+        ooreq->mpid.userbufcount = rreq->mpid.userbufcount;
+        ooreq->mpid.datatype = rreq->mpid.datatype;
+	if (HANDLE_GET_KIND(ooreq->mpid.datatype) != HANDLE_KIND_BUILTIN)
+          {
+            MPID_Datatype_get_ptr(ooreq->mpid.datatype, ooreq->mpid.datatype_ptr);
+            MPID_Datatype_add_ref(ooreq->mpid.datatype_ptr);
+          }
 
-          MPIDI_Request_complete(rreq);
-          rreq->status.count = _count;
-        }
         MPIDI_Recvq_remove(MPIDI_Recvq.unexpected, ooreq, ooreq->mpid.prev);
+	if (!MPID_cc_is_complete(&ooreq->cc)) {
+	  ooreq->mpid.oo_peer = rreq;
+          MPIDI_RecvMsg_Unexp(ooreq, rreq->mpid.userbuf, rreq->mpid.userbufcount, rreq->mpid.datatype);
+	} else {
+          MPIDI_RecvMsg_Unexp(ooreq, rreq->mpid.userbuf, rreq->mpid.userbufcount, rreq->mpid.datatype);
+          rreq->status.count = ooreq->status.count;
+	  MPIDI_Request_complete(rreq);
+        }
+        MPID_Request_release(ooreq);
 
       } else {
         if (MPIDI_Request_getMatchSeq(ooreq) == (in_cntr->nMsgs+ 1))

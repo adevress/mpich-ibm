@@ -205,7 +205,7 @@ MPIDI_Recvq_FDP(size_t source, pami_task_t pami_source, int tag, int context_id,
   MPIDI_In_cntr_t *in_cntr = &MPIDI_In_cntr[pami_source];
   int nMsgs=(in_cntr->nMsgs+1);
 
-  if( (msg_seqno == nMsgs) ) {
+  if(msg_seqno == nMsgs) {
         in_cntr->nMsgs = msg_seqno;
   }
 
@@ -285,9 +285,7 @@ MPIDI_Recvq_FDP(size_t source, pami_task_t pami_source, int tag, int context_id,
         } else if (in_cntr->n_OutOfOrderMsgs > 0) {                         \
           in_cntr->OutOfOrderList=req->mpid.nextR;                          \
           /* remove req from out of order list */                           \
-          if((req)->mpid.prevR != NULL)  \
           ((MPID_Request *)(req)->mpid.prevR)->mpid.nextR = (req)->mpid.nextR; \
-          if((req)->mpid.nextR != NULL) \
           ((MPID_Request *)(req)->mpid.nextR)->mpid.prevR = (req)->mpid.prevR; \
             (req)->mpid.nextR=NULL;                                         \
             (req)->mpid.prevR=NULL;                                         \

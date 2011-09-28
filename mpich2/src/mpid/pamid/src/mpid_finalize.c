@@ -5,6 +5,22 @@
  */
 #include <mpidimpl.h>
 
+
+
+#ifdef MPIDI_STATISTICS
+extern pami_extension_t pe_extension;
+
+
+void MPIDI_close_pe_extension() {
+     int rc;
+     /* PAMI_Extension_open in pami_init   */
+     rc = PAMI_Extension_close (pe_extension);
+     if (rc != PAMI_SUCCESS) {
+         TRACE_ERR("ERROR close PAMI_Extension failed rc %d", rc);
+     }
+}
+#endif
+
 /**
  * \brief Shut down the system
  *
@@ -17,6 +33,15 @@ int MPID_Finalize()
   int mpierrno = MPI_SUCCESS;
   MPIR_Barrier_impl(MPIR_Process.comm_world, &mpierrno);
 
+#ifdef MPIDI_STATISTICS
+  if (MPIDI_Process.mp_statistics) {
+      MPIDI_print_statistics();
+  }
+  MPIDI_close_pe_extension();
+#endif
+#ifdef MPIDI_SINGLE_CONTEXT_ASYNC_PROGRESS
+  MPIDI_close_async_extension();
+#endif
   /* ------------------------- */
   /* shutdown request queues   */
   /* ------------------------- */

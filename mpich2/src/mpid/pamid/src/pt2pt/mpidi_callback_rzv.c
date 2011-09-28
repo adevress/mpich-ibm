@@ -76,9 +76,15 @@ MPIDI_RecvRzvCB(pami_context_t    context,
   /* ----------------------------------------------------- */
 #ifdef USE_PAMI_RDMA
   memcpy(&rreq->mpid.envelope.memregion,
-         &envelope->memregion,
-         sizeof(pami_memregion_t));
+	 &envelope->memregion,
+	 sizeof(pami_memregion_t));
 #else
+  rreq->mpid.envelope.memregion_used = envelope->memregion_used;
+  if(envelope->memregion_used) {
+    memcpy(&rreq->mpid.envelope.memregion,
+           &envelope->memregion,
+           sizeof(pami_memregion_t));
+  }
   rreq->mpid.envelope.data   = envelope->data;
 #endif
   rreq->mpid.envelope.length = envelope->length;
@@ -110,11 +116,6 @@ MPIDI_RecvRzvCB(pami_context_t    context,
       MPID_assert(rreq->mpid.uebuflen == 0);
       /* rreq->mpid.uebuf = NULL; */
       /* rreq->mpid.uebuflen = 0; */
-#ifdef OUT_OF_ORDER_HANDLING
-      if ((source != MPI_ANY_SOURCE) && (MPIDI_In_cntr[source].n_OutOfOrderMsgs>0))  {
-        MPIDI_Recvq_process_out_of_order_msgs(source, context);
-      }
-#endif
     }
 
   /* ---------------------------------------- */

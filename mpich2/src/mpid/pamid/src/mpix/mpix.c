@@ -128,6 +128,111 @@ MPIX_Hardware(MPIX_Hardware_t *hw)
   return MPI_SUCCESS;
 }
 
+#if (MPIDI_PRINTENV || MPIDI_STATISTICS || MPIDI_BANNER)
+  /* ------------------------------------------- */
+  /* - mpid_statistics_zero  and        -------- */
+  /* - mpid_statistics_write can be     -------- */
+  /* - called during init and finalize  -------- */
+  /* - PE utiliti routines              -------- */
+  /* ------------------------------------------- */
+
+int
+MPIX_Statistics_zero(void)
+{
+    int rc=0;
+
+   mpid_statp->sends = 0;
+   mpid_statp->sendsComplete = 0;
+   mpid_statp->sendWaitsComplete = 0;
+   mpid_statp->recvs = 0;
+   mpid_statp->recvWaitsComplete = 0;
+   mpid_statp->earlyArrivals = 0;
+   mpid_statp->earlyArrivalsMatched = 0;
+   mpid_statp->lateArrivals = 0;
+   mpid_statp->unorderedMsgs = 0;
+
+   return (rc); /* to map with current PE support */
+}
+int
+MPIX_Statistics_write (FILE *statfile) {
+
+    int rc=-1;
+    int i;
+    char time_buf[201];
+    extern pami_extension_t extension;
+    pami_configuration_t  query_stat;
+    pami_statistics_t *pami_stat;
+    pami_counter_t *pami_counters;
+    long long Tot_dup_pkt_cnt=0;
+    long long Tot_retrans_pkt_cnt=0;
+    long long Tot_gho_pkt_cnt=0;
+    long long Tot_pkt_sent_cnt=0;
+    long long Tot_pkt_recv_cnt=0;
+    long long Tot_data_sent=0;
+    long long Tot_data_recv=0;
+
+    memset(&time_buf,0, 201);
+    sprintf(time_buf, __DATE__" "__TIME__);
+    mpid_statp->sendWaitsComplete =  mpid_statp->sends - mpid_statp->sendsComplete;
+    fprintf(statfile,"Start of task (pid=%d) statistics at %s \n", getpid(), time_buf);
+    fprintf(statfile, "PAMID: sends = %ld\n", mpid_statp->sends);
+    fprintf(statfile, "PAMID: sendsComplete = %ld\n", mpid_statp->sendsComplete);
+    fprintf(statfile, "PAMID: sendWaitsComplete = %ld\n", mpid_statp->sendWaitsComplete);
+    fprintf(statfile, "PAMID: recvs = %ld\n", mpid_statp->recvs);
+    fprintf(statfile, "PAMID: recvWaitsComplete = %ld\n", mpid_statp->recvWaitsComplete);
+    fprintf(statfile, "PAMID: earlyArrivals = %ld\n", mpid_statp->earlyArrivals);
+    fprintf(statfile, "PAMID: earlyArrivalsMatched = %ld\n", mpid_statp->earlyArrivalsMatched);
+    fprintf(statfile, "PAMID: lateArrivals = %ld\n", mpid_statp->lateArrivals);
+    fprintf(statfile, "PAMID: unorderedMsgs = %ld\n", mpid_statp->unorderedMsgs);
+    fflush(statfile);
+    memset(&query_stat,0, sizeof(query_stat));
+    query_stat.name =  (pami_attribute_name_t)PAMI_CONTEXT_STATISTICS ;
+    rc = PAMI_Context_query(MPIDI_Context[0], &query_stat, 1);
+    pami_stat = (pami_statistics_t*)query_stat.value.chararray;
+    pami_counters = pami_stat->counters;
+    if (!rc) {
+        for (i = 0; i < pami_stat->count; i ++) {
+             printf("+++%s:%llu\n", pami_counters[i].name, pami_counters[i].value);
+             if (!strncasecmp("Duplicate Pkt Count",pami_counters[i].name,19)) {
+                  Tot_dup_pkt_cnt=pami_counters[i].value;
+             } else if (!strncasecmp("Retransmit Pkt Count",pami_counters[i].name,20)) {
+                  Tot_retrans_pkt_cnt=pami_counters[i].value;
+             } else if (!strncasecmp("Ghost Pkt Count",pami_counters[i].name,15)) {
+                  Tot_gho_pkt_cnt=pami_counters[i].value;
+             } else if (!strncasecmp("Packets Sent",pami_counters[i].name,12) &&
+                        (!(strchr(pami_counters[i].name, 'v')))) {
+                  /* Packets Sent, not Packets Sent via SHM   */
+                  Tot_pkt_sent_cnt=pami_counters[i].value;
+             } else if (!strncasecmp("Packets Received",pami_counters[i].name,16) &&
+                        (!(strchr(pami_counters[i].name, 'S')))) {
+                  /* Packets Received, not Packets Received via SHM   */
+                  Tot_pkt_recv_cnt=pami_counters[i].value;
+             } else if (!strncasecmp("Data Sent",pami_counters[i].name,9) &&
+                        (!(strchr(pami_counters[i].name, 'v')))) {
+                  /* Data Sent, not Data Sent via SHM   */
+                  Tot_data_sent=pami_counters[i].value;
+             } else if (!strncasecmp("Data Received",pami_counters[i].name,13) &&
+                        (!(strchr(pami_counters[i].name, 'S')))) {
+                  /* Data Received, not Data Received via SHM   */
+                  Tot_data_recv=pami_counters[i].value;
+             }
+         }
+         fprintf(statfile, "PAMI: Tot_dup_pkt_cnt=%lld\n", Tot_dup_pkt_cnt);
+         fprintf(statfile, "PAMI: Tot_retrans_pkt_cnt=%lld\n", Tot_retrans_pkt_cnt);
+         fprintf(statfile, "PAMI: Tot_gho_pkt_cnt=%lld\n", Tot_gho_pkt_cnt);
+         fprintf(statfile, "PAMI: Tot_pkt_sent_cnt=%lld\n", Tot_pkt_sent_cnt);
+         fprintf(statfile, "PAMI: Tot_pkt_recv_cnt=%lld\n", Tot_pkt_recv_cnt);
+         fprintf(statfile, "PAMI: Tot_data_sent=%lld\n", Tot_data_sent);
+         fprintf(statfile, "PAMI: Tot_data_recv=%lld\n", Tot_data_recv);
+         fflush(statfile);
+        } else {
+         TRACE_ERR("PAMID: PAMI_Context_query() with PAMI_CONTEXT_STATISTICS failed rc =%d\
+n",rc);
+        }
+   return (rc);
+}
+
+#endif
 
 #if defined(__BGQ__) || defined(__BGP__)
 

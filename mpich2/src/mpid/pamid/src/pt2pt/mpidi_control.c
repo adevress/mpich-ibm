@@ -78,6 +78,13 @@ MPIDI_RecvRzvDoneCB(pami_context_t  context,
   pami_result_t rc;
   rc = PAMI_Memregion_destroy(context, &rreq->mpid.memregion);
   MPID_assert(rc == PAMI_SUCCESS);
+#else
+  if( (!MPIDI_Process.mp_s_use_pami_get) && (rreq->mpid.memregion_used) )
+    {
+      pami_result_t rc;
+      rc = PAMI_Memregion_destroy(context, &rreq->mpid.memregion);
+      MPID_assert(rc == PAMI_SUCCESS);
+    }
 #endif
 
   MPIDI_RecvDoneCB(context, rreq, PAMI_SUCCESS);
@@ -162,6 +169,13 @@ MPIDI_RzvAck_proc_req(pami_context_t   context,
   pami_result_t rc;
   rc = PAMI_Memregion_destroy(context, &req->mpid.envelope.memregion);
   MPID_assert(rc == PAMI_SUCCESS);
+#else
+  if( (!MPIDI_Process.mp_s_use_pami_get) && (req->mpid.envelope.memregion_used) )
+    {
+      pami_result_t rc;
+      rc = PAMI_Memregion_destroy(context, &req->mpid.envelope.memregion);
+      MPID_assert(rc == PAMI_SUCCESS);
+    }
 #endif
 
   MPIDI_SendDoneCB(context, req, PAMI_SUCCESS);

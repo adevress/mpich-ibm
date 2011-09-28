@@ -6057,6 +6057,21 @@ else
 fi
 AC_SUBST(MPI_MAX_PROCESSOR_NAME)
 
+# -----------------------------------------------------------------------------
+# Set the value of MPI_MAX_ERROR_STRING.  The default value is 1024 for MPI 2.2.
+# If other value is needed, for example set to 512 in order to provide backward
+# compatibility with MPI 2.1 then add a MPID_MAX_ERROR_STRING definition in the
+# 'mpich2prereq' file.
+if test -z "$MPID_MAX_ERROR_STRING" ; then
+    if test -z "$MPI_MAX_ERROR_STRING" ; then
+       MPI_MAX_ERROR_STRING=1024
+    fi
+    AC_MSG_WARN([The $with_device device did not set the maximum length of a error string, $MPI_MAX_ERROR_STRING being used.])
+else
+    MPI_MAX_ERROR_STRING=$MPID_MAX_ERROR_STRING
+fi
+AC_SUBST(MPI_MAX_ERROR_STRING)
+
 # Add a definition that is used to help support Windows DLLs (used in mpi.h.in)
 MPIU_DLL_SPEC_DEF="#define MPIU_DLL_SPEC"
 AC_SUBST(MPIU_DLL_SPEC_DEF)
@@ -6210,7 +6225,7 @@ WRAPPER_LDFLAGS="$WRAPPER_LDFLAGS $LDFLAGS"
 WRAPPER_LIBS="$WRAPPER_LIBS $LIBS"
 
 # Setup required inter-library dependencies
-LIB_DEPS=""
+LIB_DEPS="-lmpl -lopa"
 LDFLAGS_DEPS=""
 if test "$ENABLE_SHLIB" != "none" -a "$enable_lib_depend" = "yes" ; then
    LIB_DEPS="$WRAPPER_LIBS"

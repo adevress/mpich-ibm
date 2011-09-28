@@ -6,19 +6,56 @@
 #include "mpidi_onesided.h"
 
 
+static inline int
+MPIDI_Get_use_pami_rget(pami_context_t context, MPIDI_Win_request * req, int *freed)
+__attribute__((__always_inline__));
+#ifdef RDMA_FAILOVER
+static inline int
+MPIDI_Get_use_pami_get(pami_context_t context, MPIDI_Win_request * req, int *freed)
+__attribute__((__always_inline__));
+#endif
+
 static pami_result_t
 MPIDI_Get(pami_context_t   context,
           void           * _req)
 {
   MPIDI_Win_request *req = (MPIDI_Win_request*)_req;
   pami_result_t rc;
+  int  freed=0;
+
+#ifdef USE_PAMI_RDMA
+  rc = MPIDI_Get_use_pami_rget(context,req,&freed);
+#else
+  if( (req->origin.memregion_used) &&
+      (req->win->mpid.info[req->target.rank].memregion_used) )
+    {
+      rc = MPIDI_Get_use_pami_rget(context,req,&freed);
+    } else {
+      rc = MPIDI_Get_use_pami_get(context,req,&freed);
+    }
+#endif
+  if(rc == PAMI_EAGAIN)
+    return rc;
+
+  if (!freed)
+      MPIDI_Win_datatype_unmap(&req->target.dt);
+
+  return PAMI_SUCCESS;
+}
+
+
+static inline int
+MPIDI_Get_use_pami_rget(pami_context_t context, MPIDI_Win_request * req, int *freed)
+{
+  pami_result_t rc;
+  void  *map=NULL;
 
   pami_rget_simple_t params = {
     .rma = {
       .dest = req->dest,
       .hints = {
-        .buffer_registered = PAMI_HINT_ENABLE,
-        .use_rdma          = PAMI_HINT_ENABLE,
+	.buffer_registered = PAMI_HINT_ENABLE,
+	.use_rdma          = PAMI_HINT_ENABLE,
       },
       .bytes   = 0,
       .cookie  = req,
@@ -26,30 +63,26 @@ MPIDI_Get(pami_context_t   context,
     },
     .rdma = {
       .local = {
-        .mr = &req->origin.memregion,
+	.mr = &req->origin.memregion,
       },
       .remote = {
-        .mr     = &req->win->mpid.info[req->target.rank].memregion,
-        .offset = req->offset,
+	.mr     = &req->win->mpid.info[req->target.rank].memregion,
+	.offset = req->offset,
       },
     },
-
-
-
   };
 
   struct MPIDI_Win_sync* sync = &req->win->mpid.sync;
   TRACE_ERR("Start       index=%u/%d  l-addr=%p  r-base=%p  r-offset=%zu (sync->started=%u  sync->complete=%u)\n",
-            req->state.index, req->target.dt.num_contig, req->buffer, req->win->mpid.info[req->target.rank].base_addr, req->offset, sync->started, sync->complete);
+	    req->state.index, req->target.dt.num_contig, req->buffer, req->win->mpid.info[req->target.rank].base_addr, req->offset, sync->started, sync->complete);
   while (req->state.index < req->target.dt.num_contig) {
     if (sync->started > sync->complete + MPIDI_Process.rma_pending)
       {
-        TRACE_ERR("Bailing out;  index=%u/%d  sync->started=%u  sync->complete=%u\n",
-                req->state.index, req->target.dt.num_contig, sync->started, sync->complete);
-        return PAMI_EAGAIN;
+	TRACE_ERR("Bailing out;  index=%u/%d  sync->started=%u  sync->complete=%u\n",
+		  req->state.index, req->target.dt.num_contig, sync->started, sync->complete);
+	return PAMI_EAGAIN;
       }
     ++sync->started;
-
 
     params.rma.bytes          =                       req->target.dt.map[req->state.index].DLOOP_VECTOR_LEN;
     params.rdma.remote.offset = req->offset + (size_t)req->target.dt.map[req->state.index].DLOOP_VECTOR_BUF;
@@ -58,20 +91,98 @@ MPIDI_Get(pami_context_t   context,
 #ifdef TRACE_ON
     unsigned* buf = (unsigned*)(req->buffer + params.rdma.local.offset);
 #endif
-    TRACE_ERR("  Sub     index=%u  bytes=%zu  l-offset=%zu  r-offset=%zu  buf=%p  *(int*)buf=0x%08x\n",
-              req->state.index, params.rma.bytes, params.rdma.local.offset, params.rdma.remote.offset, buf, *buf);
-    rc = PAMI_Rget(context, &params);
-    MPID_assert(rc == PAMI_SUCCESS);
-
-
-    req->state.local_offset += params.rma.bytes;
-    ++req->state.index;
+    TRACE_ERR("  Sub     index=%u  bytes=%zu  l-offset=%zu  r-offset=%zu  buf=%p  *(int*)buf=0x%08x\n", req->state.index, params.rma.bytes, params.rdma.local.offset, params.rdma.remote.offset, buf, *buf);
+      if (sync->total - sync->complete == 1) {
+          map=NULL;
+          if (req->target.dt.map != &req->target.dt.__map) {
+              map=(void *) req->target.dt.map;
+          }
+          rc = PAMI_Rget(context, &params);
+          MPID_assert(rc == PAMI_SUCCESS);
+          if (map)
+              MPIU_Free(map);
+          *freed=1;
+          return PAMI_SUCCESS;
+      } else {
+          rc = PAMI_Rget(context, &params);
+          MPID_assert(rc == PAMI_SUCCESS);
+          req->state.local_offset += params.rma.bytes;
+          ++req->state.index;
+      }
   }
-
-  MPIDI_Win_datatype_unmap(&req->target.dt);
-
   return PAMI_SUCCESS;
 }
+
+
+#ifdef RDMA_FAILOVER
+static inline int
+MPIDI_Get_use_pami_get(pami_context_t context, MPIDI_Win_request * req, int *freed)
+{
+  pami_result_t rc;
+  void  *map=NULL;
+
+  pami_get_simple_t params = {
+    .rma = {
+      .dest = req->dest,
+      .hints = {
+	.use_rdma          = PAMI_HINT_DEFAULT,
+#ifndef OUT_OF_ORDER_HANDLING
+	.no_long_header= 1,
+#endif
+      },
+      .bytes   = 0,
+      .cookie  = req,
+      .done_fn = MPIDI_Win_DoneCB,
+    },
+    .addr = {
+      .local   = req->buffer,
+      .remote  = req->win->mpid.info[req->target.rank].base_addr,
+    },
+  };
+
+  struct MPIDI_Win_sync* sync = &req->win->mpid.sync;
+  TRACE_ERR("Start       index=%u/%d  l-addr=%p  r-base=%p  r-offset=%zu (sync->started=%u  sync->complete=%u)\n",
+	    req->state.index, req->target.dt.num_contig, req->buffer, req->win->mpid.info[req->target.rank].base_addr, req->offset, sync->started, sync->complete);
+  while (req->state.index < req->target.dt.num_contig) {
+    if (sync->started > sync->complete + MPIDI_Process.rma_pending)
+      {
+	TRACE_ERR("Bailing out;  index=%u/%d  sync->started=%u  sync->complete=%u\n",
+		  req->state.index, req->target.dt.num_contig, sync->started, sync->complete);
+	return PAMI_EAGAIN;
+      }
+    ++sync->started;
+
+
+    params.rma.bytes          =                       req->target.dt.map[req->state.index].DLOOP_VECTOR_LEN;
+    params.addr.local          = req->buffer+req->state.local_offset;
+    params.addr.remote         = req->win->mpid.info[req->target.rank].base_addr+ req->offset + (size_t)req->target.dt.map[req->state.index].DLOOP_VECTOR_BUF;
+
+#ifdef TRACE_ON
+    unsigned* buf = (unsigned*)(req->buffer + params.rdma.local.offset);
+#endif
+    TRACE_ERR("  Sub     index=%u  bytes=%zu  l-offset=%zu  r-offset=%zu  buf=%p  *(int*)buf=0x%08x\n",
+	      req->state.index, params.rma.bytes, params.rdma.local.offset, params.rdma.remote.offset, buf, *buf);
+    if (sync->total - sync->complete == 1) {
+        map=NULL;
+        if (req->target.dt.map != &req->target.dt.__map) {
+            map=(void *) req->target.dt.map;
+        }
+        rc = PAMI_Get(context, &params);
+        MPID_assert(rc == PAMI_SUCCESS);
+        if (map)
+            MPIU_Free(map);
+        *freed=1;
+        return PAMI_SUCCESS;
+    } else {
+        rc = PAMI_Get(context, &params);
+        MPID_assert(rc == PAMI_SUCCESS);
+        req->state.local_offset += params.rma.bytes;
+        ++req->state.index;
+    }
+  }
+  return PAMI_SUCCESS;
+}
+#endif
 
 
 /**
@@ -109,7 +220,15 @@ MPID_Get(void         *origin_addr,
   MPIDI_Win_datatype_basic(target_count,
                            target_datatype,
                            &req->target.dt);
-  MPID_assert(req->origin.dt.size == req->target.dt.size);
+  #ifndef MPIDI_NO_ASSERT
+     MPID_assert(req->origin.dt.size == req->target.dt.size);
+  #else
+  /* temp fix, should be fixed as part of error injection for one sided comm.*/
+  /* by 10/12                                                                */
+  if (req->origin.dt.size != req->target.dt.size) {
+       exit(1);
+  }
+  #endif
 
   if ( (req->origin.dt.size == 0) ||
        (target_rank == MPI_PROC_NULL))
@@ -161,14 +280,31 @@ MPID_Get(void         *origin_addr,
   rc = PAMI_Endpoint_create(MPIDI_Client, task, 0, &req->dest);
   MPID_assert(rc == PAMI_SUCCESS);
 
+#ifdef USE_PAMI_RDMA
   size_t length_out;
   rc = PAMI_Memregion_create(MPIDI_Context[0],
-                             req->buffer,
-                             req->origin.dt.size,
-                             &length_out,
-                             &req->origin.memregion);
+			     req->buffer,
+			     req->origin.dt.size,
+			     &length_out,
+			     &req->origin.memregion);
   MPID_assert(rc == PAMI_SUCCESS);
   MPID_assert(req->origin.dt.size == length_out);
+#else
+  if(!MPIDI_Process.mp_s_use_pami_get)
+    {
+      size_t length_out;
+      rc = PAMI_Memregion_create(MPIDI_Context[0],
+				 req->buffer,
+				 req->origin.dt.size,
+				 &length_out,
+				 &req->origin.memregion);
+      if(rc == PAMI_SUCCESS)
+	{
+	  req->origin.memregion_used = 1;
+	  MPID_assert(req->origin.dt.size == length_out);
+	}
+    }
+#endif
 
 
   MPIDI_Win_datatype_map(&req->target.dt);

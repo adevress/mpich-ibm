@@ -357,6 +357,8 @@ typedef struct MPID_Datatype {
     /* handle and ref_count are filled in by MPIU_Handle_obj_alloc() */
     MPIU_OBJECT_HEADER; /* adds handle and ref_count fields */
 
+    void *next;         /* adds this to match MPIU_Handle_common */
+
     /* basic parameters for datatype, accessible via MPI calls */
     int      size;
     MPI_Aint extent, ub, lb, true_ub, true_lb;

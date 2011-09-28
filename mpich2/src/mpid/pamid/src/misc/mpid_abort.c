@@ -69,6 +69,9 @@ int MPID_Abort(MPID_Comm * comm, int mpi_errno, int exit_code, const char *error
   char* env     = getenv("PAMID_CORE_ON_ABORT");
   MPIDI_Abort_core(comm, mpi_errno, exit_code, error_msg);
 
+#ifdef MPIDI_NO_ASSERT
+  exit(1);
+#endif
   if (env != NULL)
     if ( (strncasecmp("no", env, 2)==0) || (strncasecmp("exit", env, 4)==0) || (strncmp("0", env, 1)==0) )
       exit(1);

@@ -45,11 +45,15 @@ MPIDI_Callback_process_unexp(pami_context_t        context,
   MPIDI_Request_setSync        (rreq, isSync);
 
   /* Set the rank of the sender if a sync msg. */
+#ifndef OUT_OF_ORDER_HANDLING
   if (isSync)
     {
+#endif
       MPIDI_Request_setPeerRank_comm(rreq, rank);
       MPIDI_Request_setPeerRank_pami(rreq, PAMIX_Endpoint_query(sender));
+#ifndef OUT_OF_ORDER_HANDLING
     }
+#endif
 
   rreq->mpid.uebuflen = sndlen;
   rreq->mpid.uebuf = uebuf;

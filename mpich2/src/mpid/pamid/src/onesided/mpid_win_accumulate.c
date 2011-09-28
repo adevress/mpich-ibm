@@ -51,6 +51,7 @@ MPIDI_Accumulate(pami_context_t   context,
 {
   MPIDI_Win_request *req = (MPIDI_Win_request*)_req;
   pami_result_t rc;
+  void *map;
 
   pami_send_t params = {
     .send = {
@@ -90,12 +91,22 @@ MPIDI_Accumulate(pami_context_t   context,
     TRACE_ERR("  Sub     index=%u  bytes=%zu  l-offset=%zu  r-addr=%p  l-buf=%p  *(int*)buf=0x%08x  *(double*)buf=%g\n",
               req->state.index, params.send.data.iov_len, req->state.local_offset, req->accum_headers[req->state.index].addr, buf, *ibuf, *dbuf);
 #endif
-    rc = PAMI_Send(context, &params);
-    MPID_assert(rc == PAMI_SUCCESS);
-
-
-    req->state.local_offset += params.send.data.iov_len;
-    ++req->state.index;
+      if (sync->total - sync->complete == 1) {
+          map=NULL;
+          if (req->target.dt.map != &req->target.dt.__map) {
+              map=(void *) req->target.dt.map;
+          }
+          rc = PAMI_Send(context, &params);
+          MPID_assert(rc == PAMI_SUCCESS);
+          if (map)
+              MPIU_Free(map);
+          return PAMI_SUCCESS;
+      } else {
+          rc = PAMI_Send(context, &params);
+          MPID_assert(rc == PAMI_SUCCESS);
+          req->state.local_offset += params.send.data.iov_len;
+          ++req->state.index;
+      }
   }
 
   MPIDI_Win_datatype_unmap(&req->target.dt);

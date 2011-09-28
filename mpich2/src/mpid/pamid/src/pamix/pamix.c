@@ -86,7 +86,7 @@ static struct
 void
 PAMIX_Initialize(pami_client_t client)
 {
-#ifndef __PE__
+#ifndef MPIDI_SINGLE_CONTEXT_ASYNC_PROGRESS
   PAMI_EXTENSION_OPEN(client, "EXT_async_progress", &PAMIX_Extensions.progress);
   PAMIX_Functions.progress_register = PAMI_EXTENSION_FUNCTION(pamix_progress_register_fn, "register", PAMIX_Extensions.progress);
   PAMIX_Functions.progress_enable   = PAMI_EXTENSION_FUNCTION(pamix_progress_enable_fn,   "enable",   PAMIX_Extensions.progress);

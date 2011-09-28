@@ -89,9 +89,8 @@ typedef struct
   struct
   {
     pami_memregion_t memregion;
-#if 0
-    /** \todo: use this to conditionally destroy the memregion */
-    uint32_t         memregion_used;    /**<  */
+#ifdef RDMA_FAILOVER
+    uint32_t         memregion_used;    /**< memory region registered or not */
 #endif
     void            *addr;
     int              count;

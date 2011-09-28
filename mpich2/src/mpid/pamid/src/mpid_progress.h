@@ -103,6 +103,11 @@ MPID_Progress_wait_inline(unsigned loop_count)
 #else
   rc = PAMI_Context_advancev(MPIDI_Context, MPIDI_Process.avail_contexts, loop_count);
   MPID_assert( (rc == PAMI_SUCCESS) || (rc == PAMI_EAGAIN) );
+#ifdef MPIDI_SINGLE_CONTEXT_ASYNC_PROGRESS
+  if (rc == PAMI_EAGAIN) {
+       MPIDI_CS_SCHED_YIELD(0);
+  } else
+#endif
   MPIU_THREAD_CS_YIELD(ALLFUNC,);
 #endif
 

@@ -42,6 +42,9 @@ MPIDI_SendMsg_short(pami_context_t    context,
   MPID_assert(rc == PAMI_SUCCESS);
 
   MPIDI_SendDoneCB_inline(context, sreq, PAMI_SUCCESS);
+#if (MPIDI_STATISTICS)
+  MPID_NSTAT(mpid_statp->sendsComplete);
+#endif
 }
 
 static void
@@ -116,9 +119,9 @@ MPIDI_SendMsg_rzv(pami_context_t    context,
   size_t sndlen_out;
   rc = PAMI_Memregion_create(context,
                              sndbuf,
-                             sndlen,
-                             &sndlen_out,
-                             &sreq->mpid.envelope.memregion);
+			     sndlen,
+			     &sndlen_out,
+			     &sreq->mpid.envelope.memregion);
   MPID_assert(rc == PAMI_SUCCESS);
   MPID_assert(sndlen == sndlen_out);
   TRACE_ERR("RZV send for mr=%#llx addr=%p *addr[0]=%#016llx *addr[1]=%#016llx bytes=%u\n",
@@ -128,7 +131,35 @@ MPIDI_SendMsg_rzv(pami_context_t    context,
             *(((unsigned long long*)sndbuf)+1),
             sndlen);
 #else
-  sreq->mpid.envelope.data   = sndbuf;
+  sreq->mpid.envelope.memregion_used = 0;
+  if (!MPIDI_Process.mp_s_use_pami_get)
+    {
+      size_t sndlen_out;
+      rc = PAMI_Memregion_create(context,
+				 sndbuf,
+				 sndlen,
+				 &sndlen_out,
+				 &sreq->mpid.envelope.memregion);
+      if(rc == PAMI_SUCCESS)
+	{
+	  MPID_assert(sndlen == sndlen_out);
+	  TRACE_ERR("RZV send for mr=%#llx addr=%p *addr[0]=%#016llx *addr[1]=%#016llx bytes=%u\n",
+		    *(unsigned long long*)&sreq->mpid.envelope.memregion,
+		    sndbuf,
+		    *(((unsigned long long*)sndbuf)+0),
+		    *(((unsigned long long*)sndbuf)+1),
+		    sndlen);
+	  sreq->mpid.envelope.memregion_used = 1;
+	}
+        sreq->mpid.envelope.data   = sndbuf;
+    } else {
+      TRACE_ERR("RZV send (failed registration for sreq=%p addr=%p *addr[0]=%#016llx *addr[1]=%#016llx bytes=%u\n",
+		sreq,sndbuf,
+		*(((unsigned long long*)sndbuf)+0),
+		*(((unsigned long long*)sndbuf)+1),
+		sndlen);
+      sreq->mpid.envelope.data   = sndbuf;
+    }
 #endif
   sreq->mpid.envelope.length = sndlen;
 
@@ -346,6 +377,11 @@ MPIDI_SendMsg(pami_context_t   context,
                           dest,
                           sndbuf,
                           data_sz);
+    #ifdef MPIDI_STATISTICS
+      if (MPID_cc_is_complete(&sreq->cc)) {
+          MPID_NSTAT(mpid_statp->sendsComplete);
+      }
+    #endif
     }
   /*
    * Use the default rendezvous protocol (glue implementation that
@@ -359,6 +395,11 @@ MPIDI_SendMsg(pami_context_t   context,
                         dest,
                         sndbuf,
                         data_sz);
+      #ifdef MPIDI_STATISTICS
+         if (MPID_cc_is_complete(&sreq->cc)) {
+             MPID_NSTAT(mpid_statp->sendsComplete);
+       }
+     #endif
     }
 }
 

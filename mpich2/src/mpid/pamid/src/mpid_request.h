@@ -176,6 +176,9 @@ MPIDI_Request_initialize(MPID_Request * req)
   mpid->uebuflen         = 0;
 #ifdef OUT_OF_ORDER_HANDLING
   mpid->prev             = NULL;
+  mpid->prevR            = NULL;
+  mpid->nextR            = NULL;
+  mpid->oo_peer          = NULL;
 #endif
   MPIDI_Request_setCA(req, MPIDI_CA_COMPLETE);
 }

@@ -42,7 +42,7 @@ int MPIDO_Allreduce(void *sendbuf,
    pami_xfer_t allred;
    pami_algorithm_t my_allred;
    pami_metadata_t *my_allred_md = (pami_metadata_t *)NULL;
-
+   int alg_selected = 0;
 
    rc = MPIDI_Datatype_to_pami(dt, &pdt, op, &pop, &mu);
   if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0))
@@ -83,7 +83,6 @@ int MPIDO_Allreduce(void *sendbuf,
 
 #ifdef MPIDI_BASIC_COLLECTIVE_SELECTION
    TRACE_ERR("Allreduce - Basic Collective Selection\n");
-   int alg_selected = 0;
    if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLREDUCE] == MPID_COLL_SELECTED)
    {
       if(pop == PAMI_DATA_SUM || pop == PAMI_DATA_MAX || pop == PAMI_DATA_MIN)
