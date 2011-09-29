@@ -18,6 +18,8 @@
 /* Default features */
 #define USE_PAMI_RDMA 1
 #define USE_PAMI_COMM_THREADS 0
+#define USE_PAMI_CONSISTENCY PAMI_HINT_ENABLE
+#undef  OUT_OF_ORDER_HANDLING
 
 
 /* Platform overrides */
@@ -34,6 +36,12 @@
 #if defined(__BGQ__) && (MPIU_THREAD_GRANULARITY == MPIU_THREAD_GRANULARITY_PER_OBJECT)
 #undef  USE_PAMI_COMM_THREADS
 #define USE_PAMI_COMM_THREADS 1
+#endif
+
+#ifdef __PE__
+#undef USE_PAMI_CONSISTENCY
+#define USE_PAMI_CONSISTENCY PAMI_HINT_DISABLE
+#define OUT_OF_ORDER_HANDLING 1
 #endif
 
 

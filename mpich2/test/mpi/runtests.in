@@ -41,7 +41,7 @@ use warnings;
 use Cwd qw(abs_path);
 use File::Basename; #req for fileparse(), basename(), dirname()
 use File::Copy;
-use File::Path qw(make_path);
+use File::Path qw(mkpath);
 
 # Global variables
 $MPIMajorVersion = "@MPI_SUBVERSION@";
@@ -127,12 +127,12 @@ if(defined($ENV{"STAGINGDIR"})) {
 }
 else {
     $username=getlogin;
-    $stagingdir="/bgusr/$username/bvt";
+    $stagingdir="/u/$username/bvt";
     $stagingdirflag=1;
 }
 if($stagingdirflag==1) {
     print "Using $stagingdir for holding/running executables\n" if $verbose;
-    make_path($stagingdir);
+    mkpath($stagingdir);
 }
 if (defined($ENV{"NP_MAX"})) {
     $np_max = $ENV{"NP_MAX"};
@@ -646,7 +646,7 @@ sub RunMPIProgram {
         my @cores = <$stagingdir/core.*>;
         if (scalar @cores) {
             my $core_dir = "$stagingdir/$programname.$np.cores/";
-            make_path($core_dir);
+            mkpath($core_dir);
             copy("$stagingdir/$programname", $core_dir);
             foreach my $core (@cores) {
                 move($core, $core_dir);
