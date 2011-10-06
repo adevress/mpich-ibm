@@ -321,15 +321,16 @@ extern char **environ;
 static void
 printEnvVars(char *type)
 {
-   printf("The following %s environment variables were specified:\n", type);
+   printf("The following %s* environment variables were specified:\n", type);
    char **env;
    for(env = environ; *env != 0 ; env++)
    {
       if(!strncasecmp(*env, type, strlen(type)))
-         printf("%s\n", *env);
+        printf("  %s\n", *env);
    }
 }
-      
+
+
 static void
 MPIDI_PAMI_init(int* rank, int* size, int* threading)
 {
