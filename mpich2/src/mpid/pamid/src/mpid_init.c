@@ -471,7 +471,7 @@ int MPID_Init(int * argc,
   pami_result_t rc;
   rc = PAMI_Geometry_world(MPIDI_Client, &MPIDI_Process.world_geometry);
   MPID_assert_always(rc == PAMI_SUCCESS);
-  TRACE_ERR("calling comm_create on comm world %p\n", comm);
+  TRACE_ERR("calling comm_create on comm world %p\n", MPIR_Process.comm_world);
   MPIR_Process.comm_world->mpid.geometry = MPIDI_Process.world_geometry;
   MPIR_Process.comm_world->mpid.parent   = PAMI_GEOMETRY_NULL;
   MPIDI_Comm_create(MPIR_Process.comm_world);
