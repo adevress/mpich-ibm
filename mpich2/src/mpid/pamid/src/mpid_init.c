@@ -8,27 +8,18 @@
 
 
 pami_client_t   MPIDI_Client;
-#define MAX_CONTEXTS 64
-pami_context_t MPIDI_Context[MAX_CONTEXTS];
+pami_context_t MPIDI_Context[MPIDI_MAX_CONTEXTS];
 
 MPIDI_Process_t  MPIDI_Process = {
   .verbose             = 0,
   .statistics          = 0,
 
-  .avail_contexts      = MAX_CONTEXTS,
+  .avail_contexts      = MPIDI_MAX_CONTEXTS,
   .commthreads_active  = 0,
-#ifdef USE_PAMI_COMM_THREADS
-  .commthreads_enabled = 1,
-#else
-  .commthreads_enabled = 0,
-#endif
+  .commthreads_enabled = USE_PAMI_COMM_THREADS,
   .context_post        = 1,
-  .short_limit         = 555,
-#ifdef __BGQ__
-  .eager_limit         = 1234,
-#else
-  .eager_limit         = UINT_MAX,
-#endif
+  .short_limit         = MPIDI_SHORT_LIMIT,
+  .eager_limit         = MPIDI_EAGER_LIMIT,
 
   .rma_pending         = 1000,
   .shmem_pt2pt         = 1,
@@ -200,13 +191,13 @@ MPIDI_PAMI_context_init(int* threading)
       /*  Figure out the context situation  */
       /* ---------------------------------- */
       /*
-       * avail_contexts = MIN(getenv("PAMI_MAXCONTEXTS"), MAX_CONTEXTS, PAMI_CONTEXTS, PAMI_HWTHREADS);
+       * avail_contexts = MIN(getenv("PAMI_MAXCONTEXTS"), MPIDI_MAX_CONTEXTS, PAMI_CONTEXTS, PAMI_HWTHREADS);
        *
        */
 
 
-      if (MPIDI_Process.avail_contexts > MAX_CONTEXTS)
-        MPIDI_Process.avail_contexts = MAX_CONTEXTS;
+      if (MPIDI_Process.avail_contexts > MPIDI_MAX_CONTEXTS)
+        MPIDI_Process.avail_contexts = MPIDI_MAX_CONTEXTS;
 
 
       unsigned same = PAMIX_Client_query(MPIDI_Client, PAMI_CLIENT_CONST_CONTEXTS).value.intval;

@@ -21,19 +21,6 @@
 #include <pami.h>
 
 
-#if defined(__BGQ__) || defined(__BGP__)
-#define USE_PAMI_RDMA 1
-#endif
-
-#if defined(__BGQ__) && (MPIU_THREAD_GRANULARITY == MPIU_THREAD_GRANULARITY_PER_OBJECT)
-#define USE_PAMI_COMM_THREADS 1
-#endif
-
-#ifdef __BGQ__
-#define MPIDI_MAX_THREADS 64
-#define MPIDI_MUTEX_L2_ATOMIC 1
-#endif
-
 /** \brief Creates a compile error if the condition is false. */
 #define MPID_assert_static(expr) ({ switch(0){case 0:case expr:;} })
 #define MPID_assert_always(x) assert(x) /**< \brief Tests for likely problems--always active */
@@ -44,6 +31,8 @@
 #define MPID_assert(x)        assert(x) /**< \brief Tests for likely problems--may not be active in performance code */
 #endif
 
+
+#include "mpidi_platform.h"
 
 #include "mpidi_constants.h"
 #include "mpidi_datatypes.h"
