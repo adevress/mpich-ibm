@@ -326,6 +326,19 @@ MPIDI_PAMI_dispath_init()
 }
 
 
+extern char **environ;
+static void
+printEnvVars(char *type)
+{
+   printf("The following %s environment variables were specified:\n", type);
+   char **env;
+   for(env = environ; *env != 0 ; env++)
+   {
+      if(!strncasecmp(*env, type, strlen(type)))
+         printf("%s\n", *env);
+   }
+}
+      
 static void
 MPIDI_PAMI_init(int* rank, int* size, int* threading)
 {
@@ -363,6 +376,8 @@ MPIDI_PAMI_init(int* rank, int* size, int* threading)
              MPIDI_Process.shmem_pt2pt,
              MPIDI_Process.optimized.collectives,
              MPIDI_Process.optimized.subcomms);
+      printEnvVars("PAMI_");
+      printEnvVars("BG_");
     }
 }
 
