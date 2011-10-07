@@ -179,7 +179,7 @@ MPIDI_PAMI_context_init(int* threading)
       /* If we aren't posting, so just use 1 context and no commthreads. */
       MPIDI_Process.avail_contexts      = 1;
       MPIDI_Process.commthreads_enabled = 0;
-#ifdef USE_PAMI_COMM_THREADS
+#if USE_PAMI_COMM_THREADS
       /* Pre-obj builds require post & hwthreads for MPI_THREAD_MULTIPLE */
       if (*threading == MPI_THREAD_MULTIPLE)
         *threading = MPI_THREAD_SERIALIZED;
@@ -226,7 +226,7 @@ MPIDI_PAMI_context_init(int* threading)
       MPID_assert_always(MPIDI_Process.avail_contexts);
 
 
-#ifdef USE_PAMI_COMM_THREADS
+#if USE_PAMI_COMM_THREADS
       /* Help a user who REALLY wants comm-threads by enabling them, irrespective of thread mode, when commthreads_enabled is set to 2 */
       if (MPIDI_Process.commthreads_enabled >= 2)
           *threading = MPI_THREAD_MULTIPLE;

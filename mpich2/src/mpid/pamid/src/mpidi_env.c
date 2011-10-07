@@ -528,7 +528,7 @@ MPIDI_Env_setup()
     TRACE_ERR("MPIDI_Process.optimized.subcomms=%u\n", MPIDI_Process.optimized.subcomms);
   }
 
-#ifdef USE_PAMI_COMM_THREADS
+#if USE_PAMI_COMM_THREADS
   /* Enable/Disable commthreads for asynchronous communication. */
   {
     char *names[] = {"PAMI_COMMTHREAD", "PAMI_COMMTHREADS", "PAMI_COMM_THREAD", "PAMI_COMM_THREADS", NULL};

@@ -293,7 +293,7 @@ MPIDI_Mutex_initialize()
   rc = pthread_mutexattr_init(&attr);
   MPID_assert(rc == 0);
   extern int pthread_mutexattr_settype(pthread_mutexattr_t *__attr, int __kind) __THROW __nonnull ((1));
-#ifdef USE_PAMI_COMM_THREADS
+#if USE_PAMI_COMM_THREADS
   rc = pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE_NP);
 #else
   rc = pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_ERRORCHECK_NP);

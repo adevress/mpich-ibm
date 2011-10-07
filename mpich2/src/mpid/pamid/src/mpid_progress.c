@@ -9,7 +9,7 @@
 void
 MPIDI_Progress_init()
 {
-#ifdef USE_PAMI_COMM_THREADS
+#if USE_PAMI_COMM_THREADS
   if (MPIDI_Process.commthreads_enabled)
     {
       TRACE_ERR("Async advance beginning...\n");
