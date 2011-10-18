@@ -47,7 +47,7 @@ use File::Path qw(mkpath);
 $MPIMajorVersion = "@MPI_SUBVERSION@";
 $MPIMinorVersion = "@MPI_VERSION@";
 $mpiexec = "@MPIEXEC@";    # Name of mpiexec program (including path, if necessary)
-$np_arg  = "--np";       # Name of argument to specify the number of processes
+$np_arg  = "-n";         # Name of argument to specify the number of processes
 $err_count = 0;          # Number of programs that failed.
 $total_count = 0;        # Number of programs tested
 $np_default = 2;         # Default number of processes to use
