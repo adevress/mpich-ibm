@@ -53,7 +53,7 @@ static struct
     .func = MPIDI_RecvShortAsyncCB,
     .dispatch = MPIDI_Protocols_Short,
     .options = {
-      .consistency     = PAMI_HINT_ENABLE,
+      .consistency     = USE_PAMI_CONSISTENCY,
       .long_header     = PAMI_HINT_DISABLE,
       .recv_immediate  = PAMI_HINT_ENABLE,
       .use_rdma        = PAMI_HINT_DISABLE,
@@ -64,7 +64,7 @@ static struct
     .func = MPIDI_RecvShortSyncCB,
     .dispatch = MPIDI_Protocols_ShortSync,
     .options = {
-      .consistency     = PAMI_HINT_ENABLE,
+      .consistency     = USE_PAMI_CONSISTENCY,
       .long_header     = PAMI_HINT_DISABLE,
       .recv_immediate  = PAMI_HINT_ENABLE,
       .use_rdma        = PAMI_HINT_DISABLE,
@@ -75,7 +75,7 @@ static struct
     .func = MPIDI_RecvCB,
     .dispatch = MPIDI_Protocols_Eager,
     .options = {
-      .consistency     = PAMI_HINT_ENABLE,
+      .consistency     = USE_PAMI_CONSISTENCY,
       .long_header     = PAMI_HINT_DISABLE,
       .recv_contiguous = PAMI_HINT_ENABLE,
       .recv_copy =       PAMI_HINT_ENABLE,
@@ -86,7 +86,7 @@ static struct
     .func = MPIDI_RecvRzvCB,
     .dispatch = MPIDI_Protocols_RVZ,
     .options = {
-      .consistency     = PAMI_HINT_ENABLE,
+      .consistency     = USE_PAMI_CONSISTENCY,
       .long_header     = PAMI_HINT_DISABLE,
       .recv_immediate  = PAMI_HINT_ENABLE,
       .use_rdma        = PAMI_HINT_DISABLE,
@@ -236,6 +236,27 @@ MPIDI_PAMI_context_init(int* threading)
 #endif
     }
   TRACE_ERR("Thread-level=%d, requested=%d\n", *threading, requested_thread_level);
+
+
+#ifdef OUT_OF_ORDER_HANDLING
+  /* ----------------------------------- */
+  /*  Allocate the sequence counters     */
+  /* ----------------------------------- */
+  /** \todo This should probably exit if the allocations fail.
+            Consider MPIU_Calloc0 for allocation/error-checking/memset */
+      unsigned numTasks  = PAMIX_Client_query(MPIDI_Client, PAMI_CLIENT_NUM_TASKS).value.intval;
+      MPIDI_In_cntr = (MPIDI_In_cntr_t *)MPIU_Malloc(numTasks*sizeof(MPIDI_In_cntr_t));
+      if (!MPIDI_In_cntr) {
+        fprintf(stderr, "Unable to allocate memory for MPIDI_In_cntr\n");
+      }
+      memset((void *)MPIDI_In_cntr, 0, numTasks * sizeof(MPIDI_In_cntr_t));
+
+      MPIDI_Out_cntr = (MPIDI_Out_cntr_t *)MPIU_Malloc(numTasks * sizeof(MPIDI_Out_cntr_t));
+      if (!MPIDI_Out_cntr) {
+        fprintf(stderr, "Unable to allocate memory for MPIDI_Out_cntr\n");
+      }
+      memset((void *)MPIDI_Out_cntr, 0, numTasks * sizeof(MPIDI_Out_cntr_t));
+#endif
 
 
   /* ----------------------------------- */

@@ -44,6 +44,10 @@ void    MPIDI_Request_allocate_pool();
 #define MPIDI_Request_setControl(_req,_t)        ({ (_req)->mpid.envelope.msginfo.control  = (_t);  })
 #define MPIDI_Request_setSync(_req,_t)           ({ (_req)->mpid.envelope.msginfo.isSync   = (_t);  })
 #define MPIDI_Request_setRzv(_req,_t)            ({ (_req)->mpid.envelope.msginfo.isRzv    = (_t);  })
+#ifdef OUT_OF_ORDER_HANDLING
+#define MPIDI_Request_getMatchSeq(_req)          ({ (_req)->mpid.envelope.msginfo.MPIseqno;           })
+#define MPIDI_Request_setMatchSeq(_req,_sq)      ({ (_req)->mpid.envelope.msginfo.MPIseqno = (_sq);  })
+#endif
 #define MPIDI_Request_setMatch(_req,_tag,_rank,_ctxtid) \
 ({                                                      \
   (_req)->mpid.envelope.msginfo.MPItag=(_tag);          \
@@ -170,6 +174,9 @@ MPIDI_Request_initialize(MPID_Request * req)
   mpid->datatype_ptr     = NULL;
   mpid->uebuf            = NULL;
   mpid->uebuflen         = 0;
+#ifdef OUT_OF_ORDER_HANDLING
+  mpid->prev             = NULL;
+#endif
   MPIDI_Request_setCA(req, MPIDI_CA_COMPLETE);
 }
 

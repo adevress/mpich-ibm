@@ -539,19 +539,19 @@ MPIDI_Env_setup()
 
   /* Determine short limit */
   {
-    char* names[] = {"PAMI_SHORT", NULL};
+    char* names[] = {"PAMI_SHORT", "MP_S_SHORT_LIMIT", NULL};
     ENV_Unsigned(names, &MPIDI_Process.short_limit);
   }
 
   /* Determine eager limit */
   {
-    char* names[] = {"PAMI_RVZ", "PAMI_RZV", "PAMI_EAGER", NULL};
+    char* names[] = {"PAMI_RVZ", "PAMI_RZV", "PAMI_EAGER", "MP_EAGER_LIMIT", NULL};
     ENV_Unsigned(names, &MPIDI_Process.eager_limit);
   }
 
   /* Set the maximum number of outstanding RDMA requests */
   {
-    char* names[] = {"PAMI_RMA_PENDING", NULL};
+    char* names[] = {"PAMI_RMA_PENDING", "MP_RMA_PENDING", NULL};
     ENV_Unsigned(names, &MPIDI_Process.rma_pending);
   }
 
@@ -564,7 +564,7 @@ MPIDI_Env_setup()
 
   /* Set the status of the optimized shared memory point-to-point functions */
   {
-    char* names[] = {"PAMI_SHMEM_PT2PT", NULL};
+    char* names[] = {"PAMI_SHMEM_PT2PT", "MP_SHMEM_PT2PT", NULL};
     ENV_Unsigned(names, &MPIDI_Process.shmem_pt2pt);
   }
 }

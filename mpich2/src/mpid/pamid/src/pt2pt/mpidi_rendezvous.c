@@ -121,7 +121,9 @@ MPIDI_RendezvousTransfer(pami_context_t   context,
       .dest    = dest,
       .hints   = {
         .use_rdma=       1,
+#ifndef OUT_OF_ORDER_HANDLING
         .no_long_header= 1,
+#endif
       },
       .bytes   = rreq->mpid.envelope.length,
       .cookie  = rreq,

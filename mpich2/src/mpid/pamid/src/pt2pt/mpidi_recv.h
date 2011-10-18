@@ -58,10 +58,28 @@ MPIDI_Recv(void          * buf,
   /* find our request in the unexpected queue */
   /* or allocate one in the posted queue      */
   /* ---------------------------------------- */
+#ifndef OUT_OF_ORDER_HANDLING
   rreq = MPIDI_Recvq_FDU_or_AEP(rank,
                                 tag,
                                 comm->recvcontext_id + context_offset,
                                 &found);
+#else
+  int pami_source;
+  if(rank != MPI_ANY_SOURCE) {
+    pami_source = MPID_VCR_GET_LPID(comm->vcr, rank);
+  } else {
+    pami_source = MPI_ANY_SOURCE;
+  }
+  if ((pami_source != MPI_ANY_SOURCE) && (MPIDI_In_cntr[pami_source].n_OutOfOrderMsgs>0))  {
+        /* returns unlock    */
+        MPIDI_Recvq_process_out_of_order_msgs(pami_source, MPIDI_Context[0]);
+  }
+  rreq = MPIDI_Recvq_FDU_or_AEP(rank,
+                                pami_source,
+                                tag,
+                                comm->recvcontext_id + context_offset,
+                                &found);
+#endif
 
   /* ----------------------------------------------------------------- */
   /* populate request with our data                                    */

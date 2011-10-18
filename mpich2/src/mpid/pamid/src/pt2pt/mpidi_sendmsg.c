@@ -256,6 +256,17 @@ MPIDI_SendMsg(pami_context_t   context,
    */
   pami_endpoint_t dest;
   MPIDI_Context_endpoint(sreq, &dest);
+#ifdef OUT_OF_ORDER_HANDLING
+  MPIDI_Out_cntr_t *out_cntr;
+  pami_task_t desttid;
+
+  desttid = PAMIX_Endpoint_query(dest);
+  MPIU_THREAD_CS_ENTER(MSGQUEUE,0);
+  out_cntr = &MPIDI_Out_cntr[desttid];
+  out_cntr->nMsgs++;
+  MPIU_THREAD_CS_EXIT(MSGQUEUE,0);
+  MPIDI_Request_setMatchSeq(sreq, out_cntr->nMsgs);
+#endif
 
   size_t   data_sz;
   void   * sndbuf;

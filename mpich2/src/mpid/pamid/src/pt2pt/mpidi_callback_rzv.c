@@ -46,7 +46,12 @@ MPIDI_RecvRzvCB(pami_context_t    context,
   unsigned context_id = msginfo->MPIctxt;
 
   MPIU_THREAD_CS_ENTER(MSGQUEUE,0);
+#ifndef OUT_OF_ORDER_HANDLING
   rreq = MPIDI_Recvq_FDP_or_AEU(rank, tag, context_id, &found);
+#else
+  pami_task_t source = PAMIX_Endpoint_query(sender);
+  rreq = MPIDI_Recvq_FDP_or_AEU(rank, source, tag, context_id, msginfo->MPIseqno, &found);
+#endif
   TRACE_ERR("RZV CB for req=%p remote-mr=0x%llx bytes=%zu (%sfound)\n",
             rreq,
             *(unsigned long long*)&envelope->envelope.memregion,
@@ -106,6 +111,11 @@ MPIDI_RecvRzvCB(pami_context_t    context,
       MPID_assert(rreq->mpid.uebuflen == 0);
       /* rreq->mpid.uebuf = NULL; */
       /* rreq->mpid.uebuflen = 0; */
+#ifdef OUT_OF_ORDER_HANDLING
+      if ((source != MPI_ANY_SOURCE) && (MPIDI_In_cntr[source].n_OutOfOrderMsgs>0))  {
+        MPIDI_Recvq_process_out_of_order_msgs(source, context);
+      }
+#endif
     }
 
   /* ---------------------------------------- */

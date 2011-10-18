@@ -101,6 +101,7 @@ MPIDI_SyncAck_post(pami_context_t   context,
   MPIDI_CtrlSend(context, info, peer);
 }
 
+
 /**
  * \brief Process an incoming MPI_Ssend() acknowledgment
  *

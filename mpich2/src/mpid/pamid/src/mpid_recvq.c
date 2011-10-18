@@ -212,14 +212,28 @@ MPIDI_Recvq_FDUR(MPI_Request req, int source, int tag, int context_id)
  * \param[out] foundp    TRUE iff the request was found
  * \return     The matching UE request or the new posted request
  */
+#ifndef OUT_OF_ORDER_HANDLING
 MPID_Request *
 MPIDI_Recvq_FDU(int source, int tag, int context_id, int * foundp)
+#else
+MPID_Request *
+MPIDI_Recvq_FDU(int source, pami_task_t pami_source, int tag, int context_id, int * foundp)
+#endif
 {
   int found = FALSE;
   MPID_Request * rreq = NULL;
   MPID_Request * prev_rreq;
 #ifdef USE_STATISTICS
   unsigned search_length = 0;
+#endif
+#ifdef OUT_OF_ORDER_HANDLING
+  MPIDI_In_cntr_t *in_cntr;
+  uint nMsgs=0;
+
+  if(pami_source != MPI_ANY_SOURCE) {
+    in_cntr=&MPIDI_In_cntr[pami_source];
+    nMsgs = in_cntr->nMsgs + 1;
+  }
 #endif
 
   //This function is typically called when there are unexp recvs
@@ -232,15 +246,29 @@ MPIDI_Recvq_FDU(int source, int tag, int context_id, int * foundp)
 #ifdef USE_STATISTICS
         ++search_length;
 #endif
+#ifdef OUT_OF_ORDER_HANDLING
+        if( ((int)(nMsgs-MPIDI_Request_getMatchSeq(rreq))) >= 0 ) {
+#endif
         if ( (MPIDI_Request_getMatchCtxt(rreq) == context_id) &&
              (MPIDI_Request_getMatchRank(rreq) == source    ) &&
              (MPIDI_Request_getMatchTag(rreq)  == tag       )
              )
           {
+#ifdef OUT_OF_ORDER_HANDLING
+            if(rreq->mpid.nextR != NULL) {       /* recv is in the out of order list */
+              if (MPIDI_Request_getMatchSeq(rreq) == nMsgs) {
+                in_cntr->nMsgs=nMsgs;
+              }
+              MPIDI_Recvq_remove_req_from_ool(rreq,in_cntr);
+            }
+#endif
             MPIDI_Recvq_remove(MPIDI_Recvq.unexpected, rreq, prev_rreq);
             found = TRUE;
             goto fn_exit;
           }
+#ifdef OUT_OF_ORDER_HANDLING
+       }
+#endif
 
         prev_rreq = rreq;
         rreq = rreq->mpid.next;
@@ -280,15 +308,34 @@ MPIDI_Recvq_FDU(int source, int tag, int context_id, int * foundp)
 #ifdef USE_STATISTICS
         ++search_length;
 #endif
+#ifdef OUT_OF_ORDER_HANDLING
+        if(( ( (int)(nMsgs-MPIDI_Request_getMatchSeq(rreq))) >= 0) || (source == MPI_ANY_SOURCE)) {
+#endif
         if ( (  MPIDI_Request_getMatchCtxt(rreq)              == match.context_id) &&
              ( (MPIDI_Request_getMatchRank(rreq) & mask.rank) == match.rank      ) &&
              ( (MPIDI_Request_getMatchTag(rreq)  & mask.tag ) == match.tag       )
              )
           {
+#ifdef OUT_OF_ORDER_HANDLING
+            if(source == MPI_ANY_SOURCE) {
+              in_cntr = &MPIDI_In_cntr[MPIDI_Request_getPeerRank_pami(rreq)];
+              nMsgs = in_cntr->nMsgs+1;
+              if( (nMsgs-MPIDI_Request_getMatchSeq(rreq)) < 0 )
+                continue;
+            }
+            if (rreq->mpid.nextR != NULL)  { /* recv is in the out of order list */
+              if (MPIDI_Request_getMatchSeq(rreq) == nMsgs)
+                in_cntr->nMsgs=nMsgs;
+              MPIDI_Recvq_remove_req_from_ool(rreq,in_cntr);
+            }
+#endif
             MPIDI_Recvq_remove(MPIDI_Recvq.unexpected, rreq, prev_rreq);
             found = TRUE;
             goto fn_exit;
           }
+#ifdef OUT_OF_ORDER_HANDLING
+        }
+#endif
 
         prev_rreq = rreq;
         rreq = rreq->mpid.next;
@@ -354,17 +401,32 @@ MPIDI_Recvq_FDPR(MPID_Request * req)
  * \param[out] foundp    TRUE iff the request was found
  * \return     The matching posted request or the new UE request
  */
+#ifndef OUT_OF_ORDER_HANDLING
 MPID_Request *
 MPIDI_Recvq_FDP_or_AEU(int source, int tag, int context_id, int * foundp)
+#else
+MPID_Request *
+MPIDI_Recvq_FDP_or_AEU(int source, pami_task_t pami_source, int tag, int context_id, int msg_seqno, int * foundp)
+#endif
 {
   MPID_Request * rreq;
   int found = FALSE;
 
+#ifndef OUT_OF_ORDER_HANDLING
   rreq = MPIDI_Recvq_FDP(source, tag, context_id);
+#else
+  rreq = MPIDI_Recvq_FDP(source, pami_source, tag, context_id, msg_seqno);
+#endif
+
   if (rreq != NULL)
       found = TRUE;
-  else
+  else {
+#ifndef OUT_OF_ORDER_HANDLING
       rreq = MPIDI_Recvq_AEU(source, tag, context_id);
+#else
+      rreq = MPIDI_Recvq_AEU(source, pami_source, tag, context_id, msg_seqno);
+#endif
+  }
 
   *foundp = found;
   return rreq;
@@ -378,8 +440,13 @@ MPIDI_Recvq_FDP_or_AEU(int source, int tag, int context_id, int * foundp)
  * \param[in]  context_id Find by Context ID (communicator)
  * \return     The matching posted request or the new UE request
  */
+#ifndef OUT_OF_ORDER_HANDLING
 MPID_Request *
 MPIDI_Recvq_AEU(int source, int tag, int context_id)
+#else
+MPID_Request *
+MPIDI_Recvq_AEU(int source, pami_task_t pami_source, int tag, int context_id, int msg_seqno)
+#endif
 {
   /* A matching request was not found in the posted queue, so we
      need to allocate a new request and add it to the unexpected
@@ -387,12 +454,47 @@ MPIDI_Recvq_AEU(int source, int tag, int context_id)
   MPID_Request *rreq;
   rreq = MPIDI_Request_create2();
   rreq->kind = MPID_REQUEST_RECV;
+#ifndef OUT_OF_ORDER_HANDLING
   MPIDI_Request_setMatch(rreq, tag, source, context_id);
   MPIDI_Recvq_append(MPIDI_Recvq.unexpected, rreq);
+#else
+  MPID_Request *q;
+  MPIDI_In_cntr_t *in_cntr;
+  int insert, i;
+
+  in_cntr = &MPIDI_In_cntr[pami_source];
+  MPIDI_Request_setMatch(rreq, tag, source, context_id); /* mpi rank needed */
+  MPIDI_Request_setMatchSeq(rreq, msg_seqno);
+
+  if (!in_cntr->n_OutOfOrderMsgs) {
+    MPIDI_Recvq_append(MPIDI_Recvq.unexpected, rreq);
+  } else {
+    q=in_cntr->OutOfOrderList;
+    insert=0;
+    for (i=1; i<=in_cntr->n_OutOfOrderMsgs; i++) {
+      if ( context_id == MPIDI_Request_getMatchCtxt(q)) {
+        if (((int)(msg_seqno - MPIDI_Request_getMatchSeq(q))) < 0) {
+           MPIDI_Recvq_insert(MPIDI_Recvq.unexpected, q, rreq);
+           insert=1;
+           break;
+        }
+      }
+      q=q->mpid.nextR;
+    }
+    if (!insert) {
+        MPIDI_Recvq_append(MPIDI_Recvq.unexpected, rreq);
+    }
+  }
+
+  if (((int)(in_cntr->nMsgs - msg_seqno)) < 0) { /* seqno > nMsgs, out of order */
+    MPIDI_Recvq_enqueue_ool(pami_source,rreq);
+  }
+#endif
   MPIDI_Mutex_sync(); // Make changes visible to other cores.
 
   return rreq;
 }
+
 
 /**
  * \brief Dump the queues
@@ -449,3 +551,67 @@ MPIDI_Recvq_DumpQueues(int verbose)
   fprintf(stderr, "Unexpected Requests %d, Total Mem: %d bytes\n",
           numue, uebytes);
 }
+
+
+#ifdef OUT_OF_ORDER_HANDLING
+/**
+ * Insert a request in the OutOfOrderList, make sure this list is
+ * arranged in the ascending order.
+ */
+void MPIDI_Recvq_enqueue_ool(pami_task_t src, MPID_Request *req)
+{
+  MPID_Request  *q;
+  void *head;
+  int insert,i;
+  MPIDI_In_cntr_t *in_cntr;
+
+  in_cntr=&MPIDI_In_cntr[src];
+  if (in_cntr->n_OutOfOrderMsgs != 0) {
+    head=in_cntr->OutOfOrderList;
+    q=in_cntr->OutOfOrderList;
+    insert=0;
+    while(q->mpid.nextR != head) {
+      if (((int)(MPIDI_Request_getMatchSeq(q) - MPIDI_Request_getMatchSeq(req))) > 0) {
+        insert=1;
+        break;
+      }
+      q=q->mpid.nextR;
+    }
+    if (insert) {
+      MPIDI_Recvq_insert_ool(q,req);
+      if (q == head) { /* 1st element in the list */
+        in_cntr->OutOfOrderList=req;
+      }
+    } else {
+      if (((int)(MPIDI_Request_getMatchSeq(q) - MPIDI_Request_getMatchSeq(req))) > 0) {
+        MPIDI_Recvq_insert_ool(q,req);
+        if (q == head) { /* 1st element in the list */
+          in_cntr->OutOfOrderList=req;
+        }
+      } else {
+        MPIDI_Recvq_insert_ool((MPID_Request *)q->mpid.nextR,req);
+      }
+    }
+  } else {   /*  empty list    */
+    in_cntr->OutOfOrderList=req;
+    req->mpid.prevR=req;
+    req->mpid.nextR=req;
+  }
+  in_cntr->n_OutOfOrderMsgs++;
+} /* void MPIDI_Recvq_insert_ool(pami_task_t src, MPID_Request *N) */
+
+
+/**
+ *  MPIDI_Recvq_insert_ool: place e between q and q->prevR
+ *
+ */
+void  MPIDI_Recvq_insert_ool(MPID_Request *q,MPID_Request *e)
+{
+  (e)->mpid.prevR = (q)->mpid.prevR;
+  if((q)->mpid.prevR != NULL) {
+    ((MPID_Request *)((q)->mpid.prevR))->mpid.nextR = (e);
+  }
+  (e)->mpid.nextR = (q);
+  (q)->mpid.prevR = (e);
+}
+#endif

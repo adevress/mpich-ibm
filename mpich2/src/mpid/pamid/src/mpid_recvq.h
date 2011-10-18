@@ -19,6 +19,7 @@ struct MPIDI_Recvq_t
 extern struct MPIDI_Recvq_t MPIDI_Recvq;
 
 
+#ifndef OUT_OF_ORDER_HANDLING
 #define MPIDI_Recvq_append(__Q, __req)                  \
 ({                                                      \
   /* ---------------------------------------------- */  \
@@ -33,8 +34,29 @@ extern struct MPIDI_Recvq_t MPIDI_Recvq;
   /* ------------------------------------------ */      \
   __Q ## _tail = __req;                                 \
 })
+#else
+#define MPIDI_Recvq_append(__Q, __req)                  \
+({                                                      \
+  /* ---------------------------------------------- */  \
+  /*  The tail request should point to the new one  */  \
+  /* ---------------------------------------------- */  \
+  if (__Q ## _tail != NULL)  {                          \
+      __Q ## _tail->mpid.next = __req;                  \
+      __req->mpid.prev = __Q ## _tail;                  \
+  }                                                     \
+  else {                                                \
+      __Q ## _head = __req;                             \
+      __req->mpid.prev = NULL;                          \
+  }                                                     \
+  /* ------------------------------------------ */      \
+  /*  The tail should point to the new request  */      \
+  /* ------------------------------------------ */      \
+  __Q ## _tail = __req;                                 \
+})
+#endif
 
 
+#ifndef OUT_OF_ORDER_HANDLING
 #define MPIDI_Recvq_remove(__Q, __req, __prev)          \
 ({                                                      \
   /* --------------------------------------------- */   \
@@ -50,6 +72,26 @@ extern struct MPIDI_Recvq_t MPIDI_Recvq;
   if (__req->mpid.next == NULL)                         \
     __Q ## _tail = __prev;                              \
 })
+#else
+#define MPIDI_Recvq_remove(__Q, __req, __prev)          \
+({                                                      \
+  /* --------------------------------------------- */   \
+  /*  Patch the next pointers to skip the request  */   \
+  /* --------------------------------------------- */   \
+  if (__prev != NULL) {                                 \
+    __prev->mpid.next = __req->mpid.next;               \
+  }                                                     \
+  else                                                  \
+    __Q ## _head = __req->mpid.next;                    \
+  /* ------------------------------------------- */     \
+  /*  Set tail pointer if removing the last one  */     \
+  /* ------------------------------------------- */     \
+  if (__req->mpid.next == NULL)                         \
+    __Q ## _tail = __prev;                              \
+  else                                                  \
+    (__req->mpid.next)->mpid.prev = __prev;             \
+})
+#endif
 
 
 /**
@@ -60,13 +102,22 @@ extern struct MPIDI_Recvq_t MPIDI_Recvq;
  * \param[out] foundp     TRUE iff the request was found
  * \return     The matching UE request or the new posted request
  */
+#ifndef OUT_OF_ORDER_HANDLING
 static inline MPID_Request *
 MPIDI_Recvq_FDU_or_AEP(int source, int tag, int context_id, int * foundp)
+#else
+static inline MPID_Request *
+MPIDI_Recvq_FDU_or_AEP(int source, pami_task_t pami_source, int tag, int context_id, int * foundp)
+#endif
 {
   MPID_Request * rreq = NULL;
   /* We have unexpected messages, so search unexpected queue */
   if (unlikely(MPIDI_Recvq.unexpected_head != NULL)) {
+#ifndef OUT_OF_ORDER_HANDLING
     rreq = MPIDI_Recvq_FDU(source, tag, context_id, foundp);
+#else
+    rreq = MPIDI_Recvq_FDU(source, pami_source, tag, context_id, foundp);
+#endif
     if (*foundp == TRUE)
       return rreq;
   }
@@ -84,6 +135,33 @@ MPIDI_Recvq_FDU_or_AEP(int source, int tag, int context_id, int * foundp)
 }
 
 
+#ifdef OUT_OF_ORDER_HANDLING
+
+/**
+ * data structures that tracks pair-wise in-coming communication.
+ */
+typedef struct MPIDI_In_cntr {
+  uint               n_OutOfOrderMsgs:16; /* the number of out-of-order messages received */
+  uint               nMsgs;               /* the number of received messages */
+  MPID_Request       *OutOfOrderList;     /* link list of out-of-order messages */
+} MPIDI_In_cntr_t;
+
+/**
+ * data structures that tracks pair-wise Out-going communication.
+ */
+typedef struct MPIDI_Out_cntr {
+  uint         unmatched:16;             /* the number of un-matched messages */
+  uint         nMsgs;                    /* the number of out-going messages */
+} MPIDI_Out_cntr_t;
+
+/* global data to keep track of pair-wise communication, storage malloced
+during initialization time */
+MPIDI_In_cntr_t *MPIDI_In_cntr;
+MPIDI_Out_cntr_t *MPIDI_Out_cntr;
+
+#endif
+
+
 /**
  * \brief Find a request in the posted queue and dequeue it
  * \param[in]  source     Find by Sender
@@ -91,8 +169,13 @@ MPIDI_Recvq_FDU_or_AEP(int source, int tag, int context_id, int * foundp)
  * \param[in]  context_id Find by Context ID (communicator)
  * \return     The matching posted request or the new UE request
  */
+#ifndef OUT_OF_ORDER_HANDLING
 static inline MPID_Request *
 MPIDI_Recvq_FDP(size_t source, size_t tag, size_t context_id)
+#else
+static inline MPID_Request *
+MPIDI_Recvq_FDP(size_t source, pami_task_t pami_source, int tag, int context_id, int msg_seqno)
+#endif
 {
   MPID_Request * rreq;
   MPID_Request * prev_rreq = NULL;
@@ -102,6 +185,17 @@ MPIDI_Recvq_FDP(size_t source, size_t tag, size_t context_id)
 
   MPIDI_Mutex_sync(); //We may be retriving data stored by another thread
   rreq = MPIDI_Recvq.posted_head;
+
+#ifdef OUT_OF_ORDER_HANDLING
+  MPIDI_In_cntr_t *in_cntr = &MPIDI_In_cntr[pami_source];
+  int nMsgs=(in_cntr->nMsgs+1);
+
+  if( (msg_seqno == nMsgs) ) {
+        in_cntr->nMsgs = msg_seqno;
+  }
+
+  if( ((int)(in_cntr->nMsgs - msg_seqno)) >= 0) {
+#endif
   while (rreq != NULL) {
 #ifdef USE_STATISTICS
     ++search_length;
@@ -137,12 +231,54 @@ MPIDI_Recvq_FDP(size_t source, size_t tag, size_t context_id)
     prev_rreq = rreq;
     rreq = rreq->mpid.next;
   }
+#ifdef OUT_OF_ORDER_HANDLING
+  }
+#endif
 
 #ifdef USE_STATISTICS
   MPIDI_Statistics_time(MPIDI_Statistics.recvq.unexpected_search, search_length);
 #endif
   return NULL;
 }
+
+
+#ifdef OUT_OF_ORDER_HANDLING
+/**
+ * insert a request _req2 before _req1
+ */
+#define MPIDI_Recvq_insert(__Q, __req1, __req2)         \
+({                                                      \
+  (__req2)->mpid.next = __req1;                         \
+  if((__req1)->mpid.prev != NULL)                       \
+   ((__req1)->mpid.prev)->mpid.next = (__req2);         \
+  else                                                  \
+   __Q ## _head = __req2;                               \
+  (__req2)->mpid.prev = (__req1)->mpid.prev;            \
+  (__req1)->mpid.prev = (__req2);                       \
+})
+
+/**
+ * remove a request from out of order list
+ */
+#define MPIDI_Recvq_remove_req_from_ool(req,in_cntr)                        \
+({                                                                          \
+        in_cntr->n_OutOfOrderMsgs--;                                        \
+        if (in_cntr->n_OutOfOrderMsgs == 0) {                               \
+            in_cntr->OutOfOrderList=NULL;                                   \
+            req->mpid.nextR=NULL;                                           \
+            req->mpid.prevR=NULL;                                           \
+        } else if (in_cntr->n_OutOfOrderMsgs > 0) {                         \
+          in_cntr->OutOfOrderList=req->mpid.nextR;                          \
+          /* remove req from out of order list */                           \
+          if((req)->mpid.prevR != NULL)  \
+          ((MPID_Request *)(req)->mpid.prevR)->mpid.nextR = (req)->mpid.nextR; \
+          if((req)->mpid.nextR != NULL) \
+          ((MPID_Request *)(req)->mpid.nextR)->mpid.prevR = (req)->mpid.prevR; \
+            (req)->mpid.nextR=NULL;                                         \
+            (req)->mpid.prevR=NULL;                                         \
+        }                                                                   \
+})
+#endif
 
 
 #endif

@@ -47,7 +47,12 @@ MPIDI_RecvShortCB(pami_context_t    context,
   unsigned context_id = msginfo->MPIctxt;
 
   MPIU_THREAD_CS_ENTER(MSGQUEUE,0);
+#ifndef OUT_OF_ORDER_HANDLING
   rreq = MPIDI_Recvq_FDP(rank, tag, context_id);
+#else
+  pami_task_t source = PAMIX_Endpoint_query(sender);
+  rreq = MPIDI_Recvq_FDP(rank, source, tag, context_id, msginfo->MPIseqno);
+#endif
 
   /* Match not found */
   if (unlikely(rreq == NULL))
@@ -105,6 +110,14 @@ MPIDI_RecvShortCB(pami_context_t    context,
   if (sndlen > 0)
     memcpy(rcvbuf, sndbuf, sndlen);
   MPIDI_Request_complete(rreq);
+
+#ifdef OUT_OF_ORDER_HANDLING
+  MPIU_THREAD_CS_ENTER(MSGQUEUE,0);
+  if ((source != MPI_ANY_SOURCE) && (MPIDI_In_cntr[source].n_OutOfOrderMsgs>0))  {
+    MPIDI_Recvq_process_out_of_order_msgs(source, context);
+  }
+  MPIU_THREAD_CS_EXIT(MSGQUEUE,0);
+#endif
 
  fn_exit_short:
   /* ---------------------------------------- */

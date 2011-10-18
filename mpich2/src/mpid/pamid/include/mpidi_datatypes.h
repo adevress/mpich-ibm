@@ -112,6 +112,9 @@ typedef struct
   int tag;        /**< match tag     */
   int rank;       /**< match rank    */
   int context_id; /**< match context */
+#ifdef OUT_OF_ORDER_HANDLING
+  int seqno;      /**< match seqno */
+#endif
 } MPIDI_Message_match;
 
 
@@ -134,6 +137,9 @@ typedef struct
     };
   };
 
+#ifdef OUT_OF_ORDER_HANDLING
+  unsigned    MPIseqno;    /**< match seqno            */
+#endif
 } MPIDI_MsgInfo;
 
 /** \brief Full Rendezvous msg info to be set as two quads of unexpected data. */
@@ -171,6 +177,11 @@ struct MPIDI_Request
   MPIDI_CA              ca;           /**< Completion action          */
 #ifdef USE_PAMI_RDMA
   pami_memregion_t      memregion;    /**< Rendezvous recv memregion  */
+#endif
+#ifdef OUT_OF_ORDER_HANDLING
+  struct MPID_Request  *prev;         /**< Link to prev req. in queue */
+  void                 *nextR;        /** < pointer to next recv for the out-of-order list, the out-of-order list is a list per source */
+  void                 *prevR;        /** < pointer to prev recv for the out-of-order list, the out-of-order list is a list per source */
 #endif
 };
 

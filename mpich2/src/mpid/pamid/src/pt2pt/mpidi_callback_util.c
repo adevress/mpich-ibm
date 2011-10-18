@@ -28,7 +28,12 @@ MPIDI_Callback_process_unexp(pami_context_t        context,
   unsigned rank       = msginfo->MPIrank;
   unsigned tag        = msginfo->MPItag;
   unsigned context_id = msginfo->MPIctxt;
+#ifndef OUT_OF_ORDER_HANDLING
   rreq = MPIDI_Recvq_AEU(rank, tag, context_id);
+#else
+  unsigned msg_seqno  = msginfo->MPIseqno;
+  rreq = MPIDI_Recvq_AEU(rank, PAMIX_Endpoint_query(sender), tag, context_id, msg_seqno);
+#endif
   /* ---------------------- */
   /*  Copy in information.  */
   /* ---------------------- */
