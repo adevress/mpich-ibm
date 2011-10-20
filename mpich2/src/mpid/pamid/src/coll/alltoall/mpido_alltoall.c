@@ -45,9 +45,9 @@ int MPIDO_Alltoall(void *sendbuf,
 
 
    /* Is it a built in type? If not, send to MPICH */
-   if(MPItoPAMI(sendtype, &stype, -1, NULL, &tmp) != MPI_SUCCESS)
+   if(MPIDI_Datatype_to_pami(sendtype, &stype, -1, NULL, &tmp) != MPI_SUCCESS)
       pamidt = 0;
-   if(MPItoPAMI(recvtype, &rtype, -1, NULL, &tmp) != MPI_SUCCESS)
+   if(MPIDI_Datatype_to_pami(recvtype, &rtype, -1, NULL, &tmp) != MPI_SUCCESS)
       pamidt = 0;
    if(!snd_contig) pamidt = 0;
    if(!rcv_contig) pamidt = 0;

@@ -209,8 +209,12 @@ int MPIDO_Alltoall(void *sendbuf, int sendcount, MPI_Datatype sendtype,
                    void *recvbuf, int recvcount, MPI_Datatype recvtype,
                    MPID_Comm *comm_ptr, int *mpierrno);
 
-int MPItoPAMI(MPI_Datatype dt, pami_type_t *pdt, MPI_Op op, pami_data_function *pop, int *musupport);
-void MPIopString(MPI_Op op, char *string);
+int MPIDI_Datatype_to_pami(MPI_Datatype        dt,
+                           pami_type_t        *pdt,
+                           MPI_Op              op,
+                           pami_data_function *pop,
+                           int                *musupport);
+void MPIDI_Op_to_string(MPI_Op op, char *string);
 pami_result_t MPIDI_Pami_post_wrapper(pami_context_t context, void *cookie);
 
 #endif

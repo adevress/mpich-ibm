@@ -70,7 +70,7 @@ pami_result_t MPIDI_Pami_post_wrapper(pami_context_t context, void *cookie)
 #define MUUNSUPPORTED 0
 
 /* for easier debug */
-void MPIopString(MPI_Op op, char *string)
+void MPIDI_Op_to_string(MPI_Op op, char *string)
 {
    switch(op)
    {
@@ -91,7 +91,11 @@ void MPIopString(MPI_Op op, char *string)
 }
 
 
-int MPItoPAMI(MPI_Datatype dt, pami_type_t *pdt, MPI_Op op, pami_data_function *pop, int *musupport)
+int MPIDI_Datatype_to_pami(MPI_Datatype        dt,
+                           pami_type_t        *pdt,
+                           MPI_Op              op,
+                           pami_data_function *pop,
+                           int                *musupport)
 {
    *musupport = MUSUPPORTED;
    *pdt = PAMI_TYPE_NULL;

@@ -25,7 +25,7 @@ MPIDI_WinAccumCB(pami_context_t    context,
   int null=0;
   pami_type_t         pami_type;
   pami_data_function  pami_op;
-  MPItoPAMI(msginfo->type, &pami_type, msginfo->op, &pami_op, &null);
+  MPIDI_Datatype_to_pami(msginfo->type, &pami_type, msginfo->op, &pami_op, &null);
 
 #ifdef TRACE_ON
   void    *  buf = msginfo->addr;

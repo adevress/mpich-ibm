@@ -42,9 +42,9 @@ int MPIDO_Alltoallv(void *sendbuf,
    int pamidt = 1;
    int tmp;
 
-   if(MPItoPAMI(sendtype, &stype, -1, NULL, &tmp) != MPI_SUCCESS)
+   if(MPIDI_Datatype_to_pami(sendtype, &stype, -1, NULL, &tmp) != MPI_SUCCESS)
       pamidt = 0;
-   if(MPItoPAMI(recvtype, &rtype, -1, NULL, &tmp) != MPI_SUCCESS)
+   if(MPIDI_Datatype_to_pami(recvtype, &rtype, -1, NULL, &tmp) != MPI_SUCCESS)
       pamidt = 0;
 
    if((sendbuf == MPI_IN_PLACE) || 

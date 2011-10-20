@@ -38,9 +38,9 @@ int MPIDO_Allreduce(void *sendbuf,
    /* char dt_str[255]; */
    volatile unsigned active = 1;
    pami_xfer_t allred;
-   /* MPIopString(op, op_str); */
+   /* MPIDI_Op_to_string(op, op_str); */
    /* PMPI_Type_get_name(dt, dt_str, &len); */
-   rc = MPItoPAMI(dt, &pdt, op, &pop, &mu);
+   rc = MPIDI_Datatype_to_pami(dt, &pdt, op, &pop, &mu);
    if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm_ptr->rank == 0)
       fprintf(stderr,"rc %u, Datatype %p, op %p, mu %u, selectedvar %u != %u\n",
               rc, pdt, pop, mu, 
