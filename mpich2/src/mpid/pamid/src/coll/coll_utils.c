@@ -107,30 +107,30 @@ int MPItoPAMI(MPI_Datatype dt, pami_type_t *pdt, MPI_Op op, pami_data_function *
          return -1;
    }
    else if(isUS_INT(dt)) *pdt = PAMI_TYPE_UNSIGNED_INT;
-   else if(isFLOAT(dt)) *pdt = PAMI_TYPE_FLOAT;
+   else if(isFLOAT(dt))  *pdt = PAMI_TYPE_FLOAT;
    else if(isDOUBLE(dt)) *pdt = PAMI_TYPE_DOUBLE;
    else
    {
       *musupport = MUUNSUPPORTED;
-      if(isS_CHAR(dt)) *pdt = PAMI_TYPE_SIGNED_CHAR;
-      else if(isUS_CHAR(dt)) *pdt = PAMI_TYPE_UNSIGNED_CHAR;
-      else if(isS_SHORT(dt)) *pdt = PAMI_TYPE_SIGNED_SHORT;
-      else if(isUS_SHORT(dt)) *pdt = PAMI_TYPE_UNSIGNED_SHORT;
-      else if(isS_LONG(dt)) *pdt = PAMI_TYPE_SIGNED_LONG_LONG;
-      else if(isUS_LONG(dt)) *pdt = PAMI_TYPE_UNSIGNED_LONG_LONG;
+      if(isS_CHAR(dt))              *pdt = PAMI_TYPE_SIGNED_CHAR;
+      else if(isUS_CHAR(dt))        *pdt = PAMI_TYPE_UNSIGNED_CHAR;
+      else if(isS_SHORT(dt))        *pdt = PAMI_TYPE_SIGNED_SHORT;
+      else if(isUS_SHORT(dt))       *pdt = PAMI_TYPE_UNSIGNED_SHORT;
+      else if(isS_LONG(dt))         *pdt = PAMI_TYPE_SIGNED_LONG_LONG;
+      else if(isUS_LONG(dt))        *pdt = PAMI_TYPE_UNSIGNED_LONG_LONG;
       else if(isSINGLE_COMPLEX(dt)) *pdt = PAMI_TYPE_SINGLE_COMPLEX;
       else if(isDOUBLE_COMPLEX(dt)) *pdt = PAMI_TYPE_DOUBLE_COMPLEX;
       else if(isLOC_TYPE(dt))
       {
          switch(dt)
          {
-            case MPI_2REAL: *pdt = PAMI_TYPE_LOC_2FLOAT; break;
-            case MPI_2DOUBLE_PRECISION: *pdt = PAMI_TYPE_LOC_2DOUBLE; break;
+            case MPI_2REAL:             *pdt = PAMI_TYPE_LOC_2FLOAT;     break;
+            case MPI_2DOUBLE_PRECISION: *pdt = PAMI_TYPE_LOC_2DOUBLE;    break;
             case MPI_2INTEGER:
-            case MPI_2INT: *pdt = PAMI_TYPE_LOC_2INT; break;
-            case MPI_FLOAT_INT: *pdt = PAMI_TYPE_LOC_FLOAT_INT; break;
-            case MPI_DOUBLE_INT: *pdt = PAMI_TYPE_LOC_DOUBLE_INT; break;
-            case MPI_SHORT_INT: *pdt = PAMI_TYPE_LOC_SHORT_INT; break;
+            case MPI_2INT:              *pdt = PAMI_TYPE_LOC_2INT;       break;
+            case MPI_FLOAT_INT:         *pdt = PAMI_TYPE_LOC_FLOAT_INT;  break;
+            case MPI_DOUBLE_INT:        *pdt = PAMI_TYPE_LOC_DOUBLE_INT; break;
+            case MPI_SHORT_INT:         *pdt = PAMI_TYPE_LOC_SHORT_INT;  break;
          }
          if(op == -1) return MPI_SUCCESS;
          if(op == MPI_MINLOC) *pop = PAMI_DATA_MINLOC;

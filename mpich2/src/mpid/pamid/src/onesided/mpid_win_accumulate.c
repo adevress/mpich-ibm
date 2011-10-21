@@ -31,7 +31,7 @@ MPIDI_WinAccumCB(pami_context_t    context,
   void    *  buf = msginfo->addr;
   unsigned* ibuf = (unsigned*)buf;
   double  * dbuf = (double  *)buf;
-  TRACE_ERR("New accum msg:  len=%zu  type=%d  op=%d  l-buf=%p  *(int*)buf=0x%08x  *(double*)buf=%g\n", sndlen, msginfo->type, msginfo->op, buf, *ibuf, *dbuf);
+  TRACE_ERR("New accum msg:  len=%zu  type=%x  op=%x  l-buf=%p  *(int*)buf=0x%08x  *(double*)buf=%g\n", sndlen, msginfo->type, msginfo->op, buf, *ibuf, *dbuf);
   TRACE_ERR("                PAMI:    type=%p  op=%p\n", pami_type, pami_op);
 #endif
 
@@ -193,8 +193,20 @@ MPID_Accumulate(void         *origin_addr,
 
 
   {
-    MPI_Datatype basic_type;
+    MPI_Datatype basic_type = MPI_DATATYPE_NULL;
     MPID_Datatype_get_basic_type(origin_datatype, basic_type);
+    /* MPID_Datatype_get_basic_type() doesn't handle the struct types */
+    if ((origin_datatype == MPI_FLOAT_INT)  ||
+        (origin_datatype == MPI_DOUBLE_INT) ||
+        (origin_datatype == MPI_LONG_INT)   ||
+        (origin_datatype == MPI_SHORT_INT)  ||
+        (origin_datatype == MPI_2INT)       ||
+        (origin_datatype == MPI_LONG_DOUBLE_INT))
+      {
+        MPID_assert(basic_type == MPI_DATATYPE_NULL);
+        basic_type = origin_datatype;
+      }
+    MPID_assert(basic_type != MPI_DATATYPE_NULL);
 
     unsigned index;
     MPIDI_Win_MsgInfo * headers = MPIU_Calloc0(req->target.dt.num_contig, MPIDI_Win_MsgInfo);
