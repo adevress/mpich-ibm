@@ -9,14 +9,13 @@
  */
 
 #include <mpidimpl.h>
-#include "mpid_recvq.h"
+
 
 /**
  * \defgroup MPID_RECVQ MPID Receive Queue management
  *
  * Functions to manage the Receive Queues
  */
-
 
 
 /** \brief Structure to group the common recvq pointers */
@@ -58,7 +57,7 @@ MPIDI_Recvq_finalize()
  * \param[in]  source     Find by Sender
  * \param[in]  tag        Find by Tag
  * \param[in]  context_id Find by Context ID (communicator)
- * \return     The matching UE request or NULL
+ * \return     1/0 if the matching UE request was found or not
  */
 int
 MPIDI_Recvq_FU(int source, int tag, int context_id, MPI_Status * status)

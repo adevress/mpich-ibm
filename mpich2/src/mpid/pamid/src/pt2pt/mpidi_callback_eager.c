@@ -4,7 +4,6 @@
  * \brief The callback for a new eager message
  */
 #include <mpidimpl.h>
-#include "../mpid_recvq.h"
 
 
 /**

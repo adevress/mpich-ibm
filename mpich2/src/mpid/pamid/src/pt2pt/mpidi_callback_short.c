@@ -4,7 +4,6 @@
  * \brief The callback for a new short message
  */
 #include <mpidimpl.h>
-#include "../mpid_recvq.h"
 
 
 /**

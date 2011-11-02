@@ -6,8 +6,6 @@
 #ifndef  __src_pt2pt_mpidi_recvq_h__
 #define  __src_pt2pt_mpidi_recvq_h__
 
-#include <mpidimpl.h>
-
 
 struct MPIDI_Recvq_t
 {

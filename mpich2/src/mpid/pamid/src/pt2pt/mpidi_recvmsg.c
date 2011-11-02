@@ -4,7 +4,7 @@
  * \brief ADI level implemenation of common recv code.
  */
 #include <mpidimpl.h>
-#include "../mpid_recvq.h"
+
 
 void
 MPIDI_RecvMsg_Unexp(MPID_Request  * rreq,

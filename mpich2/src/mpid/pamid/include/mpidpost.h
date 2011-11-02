@@ -16,6 +16,7 @@
 
 #include "../src/mpid_progress.h"
 #include "../src/mpid_request.h"
+#include "../src/mpid_recvq.h"
 #include "../src/pt2pt/mpid_isend.h"
 #include "../src/pt2pt/mpid_send.h"
 #include "../src/pt2pt/mpid_irecv.h"

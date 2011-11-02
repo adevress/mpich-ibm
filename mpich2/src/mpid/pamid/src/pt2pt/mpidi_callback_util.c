@@ -4,7 +4,6 @@
  * \brief Utility functions to help uncommon cases in the new-message callbacks
  */
 #include <mpidimpl.h>
-#include "../mpid_recvq.h"
 
 
 void
