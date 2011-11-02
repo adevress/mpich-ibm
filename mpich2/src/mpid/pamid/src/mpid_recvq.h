@@ -93,6 +93,25 @@ extern struct MPIDI_Recvq_t MPIDI_Recvq;
 
 
 /**
+ * \brief A thread-safe version of MPIDI_Recvq_FU
+ * \param[in]  source     Find by Sender
+ * \param[in]  tag        Find by Tag
+ * \param[in]  context_id Find by Context ID (communicator)
+ * \return     1/0 if the matching UE request was found or not
+ */
+static inline int
+MPIDI_Recvq_FU_r(int source, int tag, int context, MPI_Status * status)
+{
+  int rc;
+  MPIU_THREAD_CS_ENTER(MSGQUEUE,0);
+  rc = MPIDI_Recvq_FU(source, tag, context, status);
+  MPIDI_Mutex_sync();
+  MPIU_THREAD_CS_EXIT(MSGQUEUE, 0);
+  return rc;
+}
+
+
+/**
  * \brief Find a request in the unexpected queue and dequeue it, or allocate a new request and enqueue it in the posted queue
  * \param[in]  source     Find by Sender
  * \param[in]  tag        Find by Tag

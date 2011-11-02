@@ -24,7 +24,7 @@ MPID_Iprobe(int source,
       *flag = TRUE;
       return MPI_SUCCESS;
     }
-  *flag = MPIDI_Recvq_FU(source, tag, context, status);
+  *flag = MPIDI_Recvq_FU_r(source, tag, context, status);
   if (!(*flag))
     MPID_Progress_poke();
   return MPI_SUCCESS;

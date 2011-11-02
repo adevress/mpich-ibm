@@ -20,6 +20,6 @@ MPID_Probe(int source,
         MPIR_Status_set_procnull(status);
         return MPI_SUCCESS;
     }
-  MPID_PROGRESS_WAIT_WHILE(!MPIDI_Recvq_FU(source, tag, context, status));
+  MPID_PROGRESS_WAIT_WHILE(!MPIDI_Recvq_FU_r(source, tag, context, status));
   return MPI_SUCCESS;
 }
