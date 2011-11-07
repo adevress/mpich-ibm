@@ -30,5 +30,10 @@ int MPID_Finalize()
   rc = PAMI_Client_destroy(&MPIDI_Client);
   MPID_assert_always(rc == PAMI_SUCCESS);
 
+#ifdef OUT_OF_ORDER_HANDLING
+  MPIU_Free(MPIDI_In_cntr);
+  MPIU_Free(MPIDI_Out_cntr);
+#endif
+
   return MPI_SUCCESS;
 }
