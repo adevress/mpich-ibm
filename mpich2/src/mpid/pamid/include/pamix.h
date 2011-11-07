@@ -46,17 +46,17 @@ typedef enum
 } pamix_progress_t;
 
 void
-PAMIX_progress_register(pami_context_t            context,
+PAMIX_Progress_register(pami_context_t            context,
                         pamix_progress_function   progress_fn,
                         pamix_progress_function   suspend_fn,
                         pamix_progress_function   resume_fn,
                         void                    * cookie);
 void
-PAMIX_progress_enable(pami_context_t   context,
+PAMIX_Progress_enable(pami_context_t   context,
                       pamix_progress_t event_type);
 
 void
-PAMIX_progress_disable(pami_context_t   context,
+PAMIX_Progress_disable(pami_context_t   context,
                        pamix_progress_t event_type);
 
 

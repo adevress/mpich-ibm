@@ -17,8 +17,8 @@ MPIDI_Progress_init()
       MPIDI_Process.commthreads_active = 1;
       unsigned i;
       for (i=0; i<MPIDI_Process.avail_contexts; ++i) {
-        PAMIX_progress_register(MPIDI_Context[i], NULL, MPIDI_Progress_async_end, MPIDI_Progress_async_start, NULL);
-        PAMIX_progress_enable(MPIDI_Context[i], PAMIX_PROGRESS_ALL);
+        PAMIX_Progress_register(MPIDI_Context[i], NULL, MPIDI_Progress_async_end, MPIDI_Progress_async_start, NULL);
+        PAMIX_Progress_enable(MPIDI_Context[i], PAMIX_PROGRESS_ALL);
       }
 
       TRACE_ERR("Async advance enabled\n");

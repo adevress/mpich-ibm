@@ -185,7 +185,7 @@ PAMIX_Endpoint_query(pami_endpoint_t endpoint)
 
 
 void
-PAMIX_progress_register(pami_context_t            context,
+PAMIX_Progress_register(pami_context_t            context,
                         pamix_progress_function   progress_fn,
                         pamix_progress_function   suspend_fn,
                         pamix_progress_function   resume_fn,
@@ -199,7 +199,7 @@ PAMIX_progress_register(pami_context_t            context,
 
 
 void
-PAMIX_progress_enable(pami_context_t   context,
+PAMIX_Progress_enable(pami_context_t   context,
                       pamix_progress_t event_type)
 {
   PAMIX_assert(PAMIX_Functions.progress_enable != NULL);
@@ -210,7 +210,7 @@ PAMIX_progress_enable(pami_context_t   context,
 
 
 void
-PAMIX_progress_disable(pami_context_t   context,
+PAMIX_Progress_disable(pami_context_t   context,
                        pamix_progress_t event_type)
 {
   PAMIX_assert(PAMIX_Functions.progress_disable != NULL);
