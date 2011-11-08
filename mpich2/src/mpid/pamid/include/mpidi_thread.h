@@ -60,9 +60,9 @@
 
 #if MPIU_THREAD_GRANULARITY == MPIU_THREAD_GRANULARITY_GLOBAL
 
-#define MPIDI_CS_ENTER(m) ({ if (MPIR_ThreadInfo.isThreaded) {                         MPIDI_Mutex_acquire(m); } })
-#define MPIDI_CS_EXIT(m)  ({ if (MPIR_ThreadInfo.isThreaded) { MPIDI_Mutex_release(m);                         } })
-#define MPIDI_CS_YIELD(m) ({ if (MPIR_ThreadInfo.isThreaded) { MPIDI_Mutex_release(m); MPIDI_Mutex_acquire(m); } })
+#define MPIDI_CS_ENTER(m) ({ if (MPIR_ThreadInfo.isThreaded) {                                             MPIDI_Mutex_acquire(m); } })
+#define MPIDI_CS_EXIT(m)  ({ if (MPIR_ThreadInfo.isThreaded) { MPIDI_Mutex_sync(); MPIDI_Mutex_release(m);                         } })
+#define MPIDI_CS_YIELD(m) ({ if (MPIR_ThreadInfo.isThreaded) { MPIDI_Mutex_sync(); MPIDI_Mutex_release(m); MPIDI_Mutex_acquire(m); } })
 
 /* There is a single, global lock, held for the duration of an MPI call */
 #define MPIU_THREAD_CS_ALLFUNC_ENTER(_context)      MPIDI_CS_ENTER(0)
@@ -91,9 +91,9 @@
 
 #elif MPIU_THREAD_GRANULARITY == MPIU_THREAD_GRANULARITY_PER_OBJECT
 
-#define MPIDI_CS_ENTER(m) ({ MPIDI_Mutex_acquire(m); })
-#define MPIDI_CS_EXIT(m)  ({ MPIDI_Mutex_release(m); })
-#define MPIDI_CS_YIELD(m) ({ MPIDI_Mutex_release(m); MPIDI_Mutex_acquire(m); })
+#define MPIDI_CS_ENTER(m) ({                     MPIDI_Mutex_acquire(m); })
+#define MPIDI_CS_EXIT(m)  ({ MPIDI_Mutex_sync(); MPIDI_Mutex_release(m); })
+#define MPIDI_CS_YIELD(m) ({ MPIDI_Mutex_sync(); MPIDI_Mutex_release(m); MPIDI_Mutex_acquire(m); })
 
 #define MPIU_THREAD_CS_ALLFUNC_ENTER(_context)
 #define MPIU_THREAD_CS_ALLFUNC_EXIT(_context)
@@ -114,11 +114,11 @@
 #define MPIU_THREAD_CS_MEMALLOC_EXIT(_context)      MPIDI_CS_EXIT (4)
 #define MPIU_THREAD_CS_MPI_OBJ_ENTER(context_)      MPIDI_CS_ENTER(5)
 #define MPIU_THREAD_CS_MPI_OBJ_EXIT(context_)       MPIDI_CS_EXIT (5)
-#define MPIU_THREAD_CS_MSGQUEUE_ENTER(_context)     MPIDI_CS_ENTER(6)
+#define MPIU_THREAD_CS_MSGQUEUE_ENTER(_context)     MPIDI_Mutex_acquire(6)
 #define MPIU_THREAD_CS_MSGQUEUE_EXIT(_context)  \
 ({                                              \
   L1P_FlushRequests();                          \
-  MPIDI_CS_EXIT (6);                            \
+  MPIDI_Mutex_release(6);                       \
 })
 #define MPIU_THREAD_CS_PAMI_ENTER(_context)         MPIDI_CS_ENTER(7)
 #define MPIU_THREAD_CS_PAMI_EXIT(_context)          MPIDI_CS_EXIT (7)
