@@ -14,7 +14,7 @@
 #include <mpiutil.h>
 #include <malloc.h>
 
-#define MPIDI_THREAD_ID()       Kernel_ProcessorID()
+#define MPIDI_THREAD_ID() Kernel_ProcessorID()
 
 #if MPIDI_MUTEX_L2_ATOMIC
 
@@ -135,9 +135,7 @@ MPIDI_Mutex_release(unsigned m)
 }
 
 
-static inline void MPIDI_Mutex_sync() {
-  OPA_read_write_barrier();
-}
+#define MPIDI_Mutex_sync() OPA_read_write_barrier()
 
 
 
@@ -272,9 +270,7 @@ MPIDI_Mutex_release(unsigned m)
 }
 
 
-static inline void MPIDI_Mutex_sync() {
-  OPA_read_write_barrier();
-}
+#define MPIDI_Mutex_sync() OPA_read_write_barrier()
 
 
 
