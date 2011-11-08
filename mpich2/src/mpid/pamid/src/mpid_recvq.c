@@ -167,7 +167,6 @@ MPIDI_Recvq_FDUR(MPI_Request req, int source, int tag, int context_id)
   /* ----------------------- */
   /* first we do the finding */
   /* ----------------------- */
-  MPIDI_Mutex_sync(); //We may be retriving data stored by another thread
   cur_rreq = MPIDI_Recvq.unexpected_head;
   while (cur_rreq != NULL) {
 #ifdef USE_STATISTICS
@@ -236,7 +235,6 @@ MPIDI_Recvq_FDU(int source, pami_task_t pami_source, int tag, int context_id, in
 #endif
 
   //This function is typically called when there are unexp recvs
-  MPIDI_Mutex_sync(); //We may be retriving data stored by another thread
   if (tag != MPI_ANY_TAG && source != MPI_ANY_SOURCE)
     {
       prev_rreq = NULL;
@@ -366,7 +364,6 @@ MPIDI_Recvq_FDPR(MPID_Request * req)
   unsigned search_length = 0;
 #endif
 
-  MPIDI_Mutex_sync(); //We may be retriving data stored by another thread
   cur_rreq = MPIDI_Recvq.posted_head;
 
   while (cur_rreq != NULL) {
@@ -489,7 +486,6 @@ MPIDI_Recvq_AEU(int source, pami_task_t pami_source, int tag, int context_id, in
     MPIDI_Recvq_enqueue_ool(pami_source,rreq);
   }
 #endif
-  MPIDI_Mutex_sync(); // Make changes visible to other cores.
 
   return rreq;
 }

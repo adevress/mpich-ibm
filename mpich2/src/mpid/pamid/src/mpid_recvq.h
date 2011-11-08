@@ -105,7 +105,6 @@ MPIDI_Recvq_FU_r(int source, int tag, int context, MPI_Status * status)
   int rc;
   MPIU_THREAD_CS_ENTER(MSGQUEUE,0);
   rc = MPIDI_Recvq_FU(source, tag, context, status);
-  MPIDI_Mutex_sync();
   MPIU_THREAD_CS_EXIT(MSGQUEUE, 0);
   return rc;
 }
@@ -200,7 +199,6 @@ MPIDI_Recvq_FDP(size_t source, pami_task_t pami_source, int tag, int context_id,
   unsigned search_length = 0;
 #endif
 
-  MPIDI_Mutex_sync(); //We may be retriving data stored by another thread
   rreq = MPIDI_Recvq.posted_head;
 
 #ifdef OUT_OF_ORDER_HANDLING

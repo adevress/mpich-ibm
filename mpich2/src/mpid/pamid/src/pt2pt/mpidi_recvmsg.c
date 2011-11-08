@@ -88,8 +88,6 @@ MPIDI_RecvMsg_Unexp(MPID_Request  * rreq,
           MPID_Datatype_add_ref(rreq->mpid.datatype_ptr);
         }
     }
-
-  MPIDI_Mutex_sync();
 }
 
 

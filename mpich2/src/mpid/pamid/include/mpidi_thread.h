@@ -9,11 +9,6 @@
  *      See COPYRIGHT in top-level directory.
  */
 #include "mpidi_mutex.h"
-#ifdef __BGQ__
-#include "spi/include/l1p/flush.h"
-#else /* !__BGQ__ */
-#define L1P_FlushRequests() MPIDI_Mutex_sync()
-#endif /* !__BGQ__ */
 
 
 #ifndef __include_mpidi_thread_h__
@@ -114,12 +109,8 @@
 #define MPIU_THREAD_CS_MEMALLOC_EXIT(_context)      MPIDI_CS_EXIT (4)
 #define MPIU_THREAD_CS_MPI_OBJ_ENTER(context_)      MPIDI_CS_ENTER(5)
 #define MPIU_THREAD_CS_MPI_OBJ_EXIT(context_)       MPIDI_CS_EXIT (5)
-#define MPIU_THREAD_CS_MSGQUEUE_ENTER(_context)     MPIDI_Mutex_acquire(6)
-#define MPIU_THREAD_CS_MSGQUEUE_EXIT(_context)  \
-({                                              \
-  L1P_FlushRequests();                          \
-  MPIDI_Mutex_release(6);                       \
-})
+#define MPIU_THREAD_CS_MSGQUEUE_ENTER(_context)     MPIDI_CS_ENTER(6)
+#define MPIU_THREAD_CS_MSGQUEUE_EXIT(_context)      MPIDI_CS_EXIT (6)
 #define MPIU_THREAD_CS_PAMI_ENTER(_context)         MPIDI_CS_ENTER(7)
 #define MPIU_THREAD_CS_PAMI_EXIT(_context)          MPIDI_CS_EXIT (7)
 
