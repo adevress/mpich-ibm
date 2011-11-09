@@ -9,6 +9,11 @@ testing:
 bgq-testing:
 	SRCDIR=$(srcdir) $(srcdir)/bgq-runtests
 
+pe-testing:
+	./runtests -srcdir=$(srcdir) -tests=testlist \
+		   -nospawn \
+		   -xmlfile=summary.xml -mpiexec=/usr/bin/mpiexec -verbose
+
 clean-local:
 	-rm -f summary.xml
 
