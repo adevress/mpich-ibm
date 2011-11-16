@@ -239,23 +239,13 @@ MPIDI_PAMI_context_init(int* threading)
 
 
 #ifdef OUT_OF_ORDER_HANDLING
-  /* ----------------------------------- */
-  /*  Allocate the sequence counters     */
-  /* ----------------------------------- */
-  /** \todo This should probably exit if the allocations fail.
-            Consider MPIU_Calloc0 for allocation/error-checking/memset */
-      unsigned numTasks  = PAMIX_Client_query(MPIDI_Client, PAMI_CLIENT_NUM_TASKS).value.intval;
-      MPIDI_In_cntr = (MPIDI_In_cntr_t *)MPIU_Malloc(numTasks*sizeof(MPIDI_In_cntr_t));
-      if (!MPIDI_In_cntr) {
-        fprintf(stderr, "Unable to allocate memory for MPIDI_In_cntr\n");
-      }
-      memset((void *)MPIDI_In_cntr, 0, numTasks * sizeof(MPIDI_In_cntr_t));
-
-      MPIDI_Out_cntr = (MPIDI_Out_cntr_t *)MPIU_Malloc(numTasks * sizeof(MPIDI_Out_cntr_t));
-      if (!MPIDI_Out_cntr) {
-        fprintf(stderr, "Unable to allocate memory for MPIDI_Out_cntr\n");
-      }
-      memset((void *)MPIDI_Out_cntr, 0, numTasks * sizeof(MPIDI_Out_cntr_t));
+  unsigned numTasks  = PAMIX_Client_query(MPIDI_Client, PAMI_CLIENT_NUM_TASKS).value.intval;
+  MPIDI_In_cntr = MPIU_Calloc0(numTasks, MPIDI_In_cntr_t);
+  if(MPIDI_In_cntr == NULL)
+    MPID_abort();
+  MPIDI_Out_cntr = MPIU_Calloc0(numTasks, MPIDI_Out_cntr_t);
+  if(MPIDI_Out_cntr == NULL)
+    MPID_abort();
 #endif
 
 
