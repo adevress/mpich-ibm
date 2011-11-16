@@ -144,7 +144,7 @@ MPIDI_PAMI_client_init(int* rank, int* size)
   /*  Initialize the MPICH2->PAMI Client  */
   /* ------------------------------------ */
   pami_result_t rc;
-  rc = PAMI_Client_create("MPICH2", &MPIDI_Client, NULL, 0);
+  rc = PAMI_Client_create("MPI", &MPIDI_Client, NULL, 0);
   MPID_assert_always(rc == PAMI_SUCCESS);
   PAMIX_Initialize(MPIDI_Client);
 
