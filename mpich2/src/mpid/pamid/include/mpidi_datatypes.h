@@ -47,6 +47,7 @@ typedef struct
   unsigned shmem_pt2pt;    /**< Enable optimized shared memory point-to-point functions. */
 
   pami_geometry_t world_geometry;
+
   struct
   {
     unsigned collectives;  /**< Enable optimized collective functions. */
@@ -206,6 +207,16 @@ struct MPIDI_Comm
   char allgathervs[4];
   char scattervs[2];
   char optgather, optscatter;
+
+  /* These need to be freed at geom destroy, so we need to store them
+   * inside the communicator struct until destroy time rather than
+   * allocating pointers on the stack
+   */
+  /* For create_taskrange */
+  pami_geometry_range_t *ranges;
+  /* For create_tasklist/endpoints if we ever use it */
+  pami_task_t *tasks;
+  pami_endpoint_t *endpoints;
 };
 
 

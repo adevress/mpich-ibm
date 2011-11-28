@@ -42,7 +42,7 @@ typedef struct MPIDI_Post_geom_create
    pami_geometry_t newgeom;
    pami_geometry_t parent;
    unsigned id;
-   pami_geometry_range_t *slices;
+   pami_geometry_range_t *ranges;
    size_t slice_count;
    pami_event_function fn;
    void* cookie;
@@ -70,7 +70,7 @@ static pami_result_t geom_rangelist_create_wrapper(pami_context_t context, void 
                geom_struct->newgeom,
                geom_struct->parent,
                geom_struct->id,
-               geom_struct->slices,
+               geom_struct->ranges,
                geom_struct->slice_count,
                context,
                geom_struct->fn,
@@ -98,7 +98,6 @@ void MPIDI_Coll_comm_create(MPID_Comm *comm)
    int rc;
    volatile int geom_init = 1;
    int i;
-   pami_geometry_range_t *slices = NULL;
    MPIDI_Post_geom_create_t geom_post;
 
   TRACE_ERR("MPIDI_Coll_comm_create enter\n");
@@ -131,11 +130,13 @@ void MPIDI_Coll_comm_create(MPID_Comm *comm)
                                           &geom_init);
       #endif
 
-      slices = MPIU_Malloc(sizeof(pami_geometry_range_t) * comm->local_size);
+      comm->mpid.ranges = MPIU_Malloc(sizeof(pami_geometry_range_t) * 
+                                             comm->local_size);
+      /* Can we just pass a max and min. Does that work now? */
       for(i=0;i<comm->local_size;i++)
       {
-         slices[i].lo = MPID_VCR_GET_LPID(comm->vcr, i);
-         slices[i].hi = MPID_VCR_GET_LPID(comm->vcr, i);
+         comm->mpid.ranges[i].lo = MPID_VCR_GET_LPID(comm->vcr, i);
+         comm->mpid.ranges[i].hi = MPID_VCR_GET_LPID(comm->vcr, i);
       }
       pami_configuration_t config;
       size_t numconfigs = 0;
@@ -159,7 +160,7 @@ void MPIDI_Coll_comm_create(MPID_Comm *comm)
          geom_post.newgeom = &comm->mpid.geometry,
          geom_post.parent = NULL;
          geom_post.id     = comm->context_id;
-         geom_post.slices = slices;
+         geom_post.ranges = comm->mpid.ranges;
          geom_post.slice_count = (size_t)comm->local_size,
          geom_post.fn = geom_create_cb_done;
          geom_post.cookie = (void*)&geom_init;
@@ -177,7 +178,7 @@ void MPIDI_Coll_comm_create(MPID_Comm *comm)
                                          &comm->mpid.geometry,
                                          NULL, /*MPIDI_Process.world_geometry,*/
                                          comm->context_id,
-                                         slices,
+                                         comm->mpid.ranges,
                                          (size_t)comm->local_size,
                                          MPIDI_Context[0],
                                          geom_create_cb_done,
@@ -203,7 +204,6 @@ void MPIDI_Coll_comm_create(MPID_Comm *comm)
    TRACE_ERR("mpir barrier\n");
    int mpierrno;
    MPIR_Barrier(comm, &mpierrno);
-   MPIU_Free(slices);
 
 
   TRACE_ERR("MPIDI_Coll_comm_create exit\n");
@@ -264,6 +264,10 @@ void MPIDI_Coll_comm_destroy(MPID_Comm *comm)
    }
    TRACE_ERR("Waiting for geom destroy to finish\n");
    MPID_PROGRESS_WAIT_WHILE(geom_destroy);
+   TRACE_ERR("Freeing geometry ranges\n");
+   MPIU_TestFree(&comm->mpid.ranges);
+   MPIU_TestFree(&comm->mpid.tasks);
+   MPIU_TestFree(&comm->mpid.endpoints);
    TRACE_ERR("MPIDI_Coll_comm_destroy exit\n");
 }
 
