@@ -19,6 +19,7 @@ MPIDI_Process_t  MPIDI_Process = {
   .context_post        = 1,
   .short_limit         = MPIDI_SHORT_LIMIT,
   .eager_limit         = MPIDI_EAGER_LIMIT,
+  .eager_limit_local   = MPIDI_EAGER_LIMIT_LOCAL,
 
   .rma_pending         = 1000,
   .shmem_pt2pt         = 1,

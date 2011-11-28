@@ -53,12 +53,19 @@ static struct
 #endif
 } PAMIX_Functions = {0};
 
+#if defined(__BGQ__)
+uint32_t * PAMIX_BGQ_mapcache = NULL;
+#endif
+
 static struct
 {
   pami_extension_t progress;
 
 #if defined(__BG__)
   pami_extension_t torus;
+#endif
+#if defined(__BGQ__)
+  pami_extension_t mapping;
 #endif
 } PAMIX_Extensions;
 
@@ -92,6 +99,11 @@ PAMIX_Initialize(pami_client_t client)
   PAMIX_Functions.task2torus = PAMI_EXTENSION_FUNCTION(pamix_task2torus_fn, "task2torus",  PAMIX_Extensions.torus);
   PAMIX_Functions.torus2task = PAMI_EXTENSION_FUNCTION(pamix_torus2task_fn, "torus2task",  PAMIX_Extensions.torus);
 #endif
+
+#if defined(__BGQ__)
+  PAMI_EXTENSION_OPEN(client, "BGQ_bgq_mapping", &PAMIX_Extensions.mapping);
+  PAMIX_BGQ_mapcache = PAMI_EXTENSION_FUNCTION(uint32_t *, PAMIX_Extensions.mapping, "mapcache");
+#endif
 }
 
 
@@ -108,6 +120,12 @@ PAMIX_Finalize(pami_client_t client)
 #if defined(__BG__)
   rc = PAMI_Extension_close(PAMIX_Extensions.torus);
   PAMIX_assert_always(rc == PAMI_SUCCESS);
+#endif
+
+#if defined(__BGQ__)
+  rc = PAMI_Extension_close(PAMIX_Extensions.mapping);
+  PAMIX_assert_always(rc == PAMI_SUCCESS);
+  PAMIX_BGQ_mapcache = NULL;
 #endif
 }
 

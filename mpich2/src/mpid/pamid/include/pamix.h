@@ -76,6 +76,13 @@ int PAMIX_Torus2task(size_t coords[], pami_task_t* task_id);
 
 #endif
 
+#if defined(__BGQ__)
+extern uint32_t * PAMIX_BGQ_mapcache;
+#define PAMIX_Task_is_local(task_id) (0x40000000 & PAMIX_BGQ_mapcache[task_id])
+#else
+#define PAMIX_Task_is_local(task_id) (0)
+#endif
+
 
 #if defined(__cplusplus)
 }

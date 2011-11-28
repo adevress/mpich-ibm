@@ -35,6 +35,7 @@ typedef struct
   unsigned context_post;
   unsigned short_limit;
   unsigned eager_limit;
+  unsigned eager_limit_local;
 
 #if (MPIU_HANDLE_ALLOCATION_METHOD == MPIU_HANDLE_ALLOCATION_THREAD_LOCAL) && defined(__BGQ__)
   MPIDI_RequestHandle_t request_handles[MPIDI_MAX_THREADS];

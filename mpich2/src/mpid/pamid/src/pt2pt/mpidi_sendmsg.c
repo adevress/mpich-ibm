@@ -281,10 +281,51 @@ MPIDI_SendMsg(pami_context_t   context,
     }
 
 
+  if (unlikely(PAMIX_Task_is_local(rank) != 0))
+    {
+      /*
+       * Always use the short protocol when data_sz is small.
+       */
+      if (likely(data_sz < MPIDI_Process.short_limit))
+        {
+          TRACE_ERR("Sending(short,intranode) bytes=%u (short_limit=%u)\n", data_sz, MPIDI_Process.short_limit);
+          MPIDI_SendMsg_short(context,
+                              sreq,
+                              dest,
+                              sndbuf,
+                              data_sz,
+                              isSync);
+        }
+      /*
+       * Use the eager protocol when data_sz is less than the 'local' eager limit.
+       */
+      else if (data_sz < MPIDI_Process.eager_limit_local)
+        {
+          TRACE_ERR("Sending(eager,intranode) bytes=%u (eager_limit_local=%u)\n", data_sz, MPIDI_Process.eager_limit_local);
+          MPIDI_SendMsg_eager(context,
+                              sreq,
+                              dest,
+                              sndbuf,
+                              data_sz);
+        }
+      /*
+       * Use the default rendezvous protocol (glue implementation that
+       * guarantees no unexpected data).
+       */
+      else
+        {
+          TRACE_ERR("Sending(RZV,intranode) bytes=%u (eager_limit=%u)\n", data_sz, MPIDI_Process.eager_limit);
+          MPIDI_SendMsg_rzv(context,
+                            sreq,
+                            dest,
+                            sndbuf,
+                            data_sz);
+      }
+    }
   /*
    * Always use the short protocol when data_sz is small.
    */
-  if (likely(data_sz < MPIDI_Process.short_limit))
+  else if (likely(data_sz < MPIDI_Process.short_limit))
     {
       TRACE_ERR("Sending(short) bytes=%u (eager_limit=%u)\n", data_sz, MPIDI_Process.eager_limit);
       MPIDI_SendMsg_short(context,

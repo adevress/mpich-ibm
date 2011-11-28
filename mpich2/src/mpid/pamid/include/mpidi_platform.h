@@ -15,6 +15,8 @@
 #define MPIDI_SHORT_LIMIT  555
 /** This is set to 4 BGQ torus packets (+1, because of the way it is compared) */
 #define MPIDI_EAGER_LIMIT  2049
+/** This is set to 0 which effectively disables the eager protocol for local transfers */
+#define MPIDI_EAGER_LIMIT_LOCAL  0
 /* Default features */
 #define USE_PAMI_RDMA 1
 #define USE_PAMI_COMM_THREADS 0

@@ -18,7 +18,16 @@
  *   to switch from the eager protocol to the rendezvous protocol for point-to-point
  *   messaging.  Increasing the limit might help for larger partitions
  *   and if most of the communication is nearest neighbor.
- *   - Default is 1200 bytes.
+ *   - Default is 2049 bytes.
+ *
+ * - PAMI_EAGER_LOCAL -
+ * - PAMI_RZV_LOCAL -
+ * - PAMI_RVZ_LOCAL - Sets the cutoff for the switch to the rendezvous protocol
+ *   when the destination rank is local. All three options are identical.  This
+ *   takes an argument, in bytes, to switch from the eager protocol to the
+ *   rendezvous protocol for point-to-point messaging.  The default value
+ *   effectively disables the eager protocol for local transfers.
+ *   - Default is 0 bytes.
  *
  * - PAMI_OPTRVZ -
  * - PAMI_OPTRZV - Determines the optimized rendezvous limit. Both options
@@ -547,6 +556,12 @@ MPIDI_Env_setup()
   {
     char* names[] = {"PAMI_RVZ", "PAMI_RZV", "PAMI_EAGER", "MP_EAGER_LIMIT", NULL};
     ENV_Unsigned(names, &MPIDI_Process.eager_limit);
+  }
+
+  /* Determine 'local' eager limit */
+  {
+    char* names[] = {"PAMI_RVZ_LOCAL", "PAMI_RZV_LOCAL", "PAMI_EAGER_LOCAL", "MP_EAGER_LIMIT_LOCAL", NULL};
+    ENV_Unsigned(names, &MPIDI_Process.eager_limit_local);
   }
 
   /* Set the maximum number of outstanding RDMA requests */
