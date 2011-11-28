@@ -250,16 +250,21 @@ MPIX_Comm_update(MPI_Comm comm, int optimize)
                                 (void *)&geom_update);
    }
 
-   MPID_assert(rc == PAMI_SUCCESS);
    TRACE_ERR("Waiting for geometry update to finish\n");
 
    MPID_PROGRESS_WAIT_WHILE(geom_update);
 
-   /* Determine what protocols are available for this comm/geom */
-   MPIDI_Comm_coll_query(comm_ptr);
-   MPIDI_Comm_coll_envvars(comm_ptr);
-
-   return MPI_SUCCESS;
+   if(rc == PAMI_SUCCESS)
+   {
+      MPIDI_Comm_coll_query(comm_ptr);
+      MPIDI_Comm_coll_envvars(comm_ptr);
+      return MPI_SUCCESS;
+   }
+   else
+   {
+      MPID_assert(rc == PAMI_SUCCESS);
+      return rc;
+   }
 }
 
 int
