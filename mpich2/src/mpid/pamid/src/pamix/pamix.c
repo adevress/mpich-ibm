@@ -40,7 +40,7 @@ typedef pami_result_t             (*pamix_torus2task_fn) (size_t[], pami_task_t 
 #endif
 
 
-struct
+static struct
 {
   pamix_progress_register_fn progress_register;
   pamix_progress_enable_fn   progress_enable;
@@ -53,7 +53,7 @@ struct
 #endif
 } PAMIX_Functions = {0};
 
-struct
+static struct
 {
   pami_extension_t progress;
 
@@ -67,13 +67,13 @@ struct
 ({                                              \
   pami_result_t rc;                             \
   rc = PAMI_Extension_open(client, name, ext);  \
-  PAMIX_assert_always(rc == PAMI_SUCCESS);             \
+  PAMIX_assert_always(rc == PAMI_SUCCESS);      \
 })
 #define PAMI_EXTENSION_FUNCTION(type, name, ext)        \
 ({                                                      \
   void* fn;                                             \
   fn = PAMI_Extension_symbol(ext, name);                \
-  PAMIX_assert_always(fn != NULL);                             \
+  PAMIX_assert_always(fn != NULL);                      \
   (type)fn;                                             \
 })
 void

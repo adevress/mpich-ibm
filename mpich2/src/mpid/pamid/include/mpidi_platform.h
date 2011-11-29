@@ -25,7 +25,7 @@
 /* Platform overrides */
 
 #ifdef __BGP__
-#undef  MPIDI_EAGER_LIMIT  2049
+#undef  MPIDI_EAGER_LIMIT
 #define MPIDI_EAGER_LIMIT  UINT_MAX
 #endif
 
@@ -41,7 +41,7 @@
 #ifdef __PE__
 #undef USE_PAMI_CONSISTENCY
 #define USE_PAMI_CONSISTENCY PAMI_HINT_DISABLE
-#undef  MPIDI_EAGER_LIMIT  2049
+#undef  MPIDI_EAGER_LIMIT
 #define MPIDI_EAGER_LIMIT  4096
 #define OUT_OF_ORDER_HANDLING 1
 #endif
