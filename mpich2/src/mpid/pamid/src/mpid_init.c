@@ -6,6 +6,7 @@
 #include <mpidimpl.h>
 #include "onesided/mpidi_onesided.h"
 
+/* I am adding a commemt here to make sure I can push changes to cvs02 */
 
 pami_client_t   MPIDI_Client;
 pami_context_t MPIDI_Context[MPIDI_MAX_CONTEXTS];
