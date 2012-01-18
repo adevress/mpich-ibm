@@ -83,6 +83,7 @@ ADIOI_BG_gen_agg_ranklist(ADIO_File fd, int n_aggrs_per_pset)
     int r, s;
     ADIOI_BG_ProcInfo_t  *procInfo, *all_procInfo;
     ADIOI_BG_ConfInfo_t  *confInfo;
+    TRACE_ERR("Entering ADIOI_BG_gen_agg_ranklist\n");
 
     MPI_Comm_size( fd->comm, &s );
     MPI_Comm_rank( fd->comm, &r );
@@ -126,6 +127,7 @@ ADIOI_BG_gen_agg_ranklist(ADIO_File fd, int n_aggrs_per_pset)
 		fd->comm );
     
     ADIOI_BG_persInfo_free( confInfo, procInfo );
+    TRACE_ERR("Leaving ADIOI_BG_gen_agg_ranklist\n");
     return 0;
 }
 
@@ -139,6 +141,7 @@ ADIOI_BG_select_agg_in_pset (const ADIOI_BG_ConfInfo_t *confInfo,
 			      int *tmp_ranklist)
 {
 /* first implementation, based on their rank order. */
+   TRACE_ERR("Entering ADIOI_BG_select_agg_in_pset\n");
 
     int i, j, k; 
 
@@ -167,6 +170,7 @@ ADIOI_BG_select_agg_in_pset (const ADIOI_BG_ConfInfo_t *confInfo,
       }
     }
 
+   TRACE_ERR("Leaving ADIOI_BG_select_agg_in_pset\n");
     return nAggrs;
 }
 
@@ -200,6 +204,7 @@ ADIOI_BG_compute_agg_ranklist_serial_do (const ADIOI_BG_ConfInfo_t *confInfo,
 					  int *aggrsInPset, 
 					  int *tmp_ranklist)
 {
+    TRACE_ERR("Entering ADIOI_BG_compute_agg_ranklist_serial_do\n");
    /* BES: This should be done in the init routines probably. */
     int i, j;
     int aggTotal;
@@ -213,7 +218,7 @@ ADIOI_BG_compute_agg_ranklist_serial_do (const ADIOI_BG_ConfInfo_t *confInfo,
    {
       bridgelist[i].bridge = all_procInfo[i].bridgeRank;
       bridgelist[i].rank = i;
-      TRACE_ERR(stderr,"bridgelist[%d].bridge: %d .rank: %d\n", i, bridgelist[i].bridge, i);
+      TRACE_ERR("bridgelist[%d].bridge: %d .rank: %d\n", i, bridgelist[i].bridge, i);
    }
    
    /* This list contains rank->bridge info. Now, we need to sort this list. */
@@ -260,6 +265,7 @@ ADIOI_BG_compute_agg_ranklist_serial_do (const ADIOI_BG_ConfInfo_t *confInfo,
    ADIOI_Free (bridgelist);
    ADIOI_Free (aggList);
 
+   TRACE_ERR("Leaving ADIOI_BG_compute_agg_ranklist_serial_do\n");
    return aggTotal;
 
 }
@@ -273,10 +279,10 @@ ADIOI_BG_compute_agg_ranklist_serial ( ADIO_File fd,
 					ADIOI_BG_ProcInfo_t *all_procInfo,
 					int *aggrsInPset )
 {
-#   if AGG_DEBUG
+    TRACE_ERR("Entering ADIOI_BG_compute_agg_ranklist_serial\n");
     int i; 
-#   endif
     int naggs; 
+    int size;
     int *tmp_ranklist;
 
   /* compute the ranklist of IO aggregators and put into tmp_ranklist */
@@ -288,7 +294,7 @@ ADIOI_BG_compute_agg_ranklist_serial ( ADIO_File fd,
     }
 #   endif
 
-    naggs = 
+    naggs= 
     ADIOI_BG_compute_agg_ranklist_serial_do (confInfo, all_procInfo, aggrsInPset, tmp_ranklist);
 
 #   define VERIFY 1
@@ -304,7 +310,21 @@ ADIOI_BG_compute_agg_ranklist_serial ( ADIO_File fd,
 	    confInfo->aggRatio        ,
 	    naggs );
 #   endif
-
+    MPI_Comm_size( fd->comm, &size );
+    /* This fix is for when the bridgenode rnk is not part of the particular
+     * subcomm associated with this MPI File operation. I don't know if
+     * this is the best/right answer but it passes the test cases at least.
+     * I don't know how common file IO in subcomms is anyway... */
+    for(i=0;i<naggs;i++)
+    {
+      if(tmp_ranklist[i] > size)
+      {
+         TRACE_ERR("Using 0 as tmp_ranklist[%d] instead of %d for comm %x\n",
+               i, tmp_ranklist[i], fd->comm);
+         tmp_ranklist[i] = 0;
+      }
+   }
+         
 #   if AGG_DEBUG
     for (i=0; i<naggs; i++) {
       DBG_FPRINTF(stderr, "\taggr %-4d = %6d\n", i, tmp_ranklist[i] );
@@ -320,6 +340,7 @@ ADIOI_BG_compute_agg_ranklist_serial ( ADIO_File fd,
 
   /* */
     ADIOI_Free( tmp_ranklist );
+    TRACE_ERR("Leaving ADIOI_BG_compute_agg_ranklist_serial\n");
     return;
 }
 
@@ -365,6 +386,7 @@ int ADIOI_BG_Calc_aggregator(ADIO_File fd,
 {
     int rank_index, rank;
     ADIO_Offset avail_bytes;
+    TRACE_ERR("Entering ADIOI_BG_Calc_aggregator\n");
 
     ADIOI_BG_assert ( (off <= fd_end[fd->hints->cb_nodes-1] && off >= min_off && fd_start[0] >= min_off ) );
 
@@ -426,6 +448,7 @@ int ADIOI_BG_Calc_aggregator(ADIO_File fd,
     /* map our index to a rank */
     /* NOTE: FOR NOW WE DON'T HAVE A MAPPING...JUST DO 0..NPROCS_FOR_COLL */
     rank = fd->hints->ranklist[rank_index];
+    TRACE_ERR("Leaving ADIOI_BG_Calc_aggregator\n");
 
     return rank;
 }
@@ -456,6 +479,7 @@ void ADIOI_BG_GPFS_Calc_file_domains(ADIO_Offset *st_offsets,
 {
     ADIO_Offset min_st_offset, max_end_offset, *fd_start, *fd_end, *fd_size;
     int i, aggr;
+    TRACE_ERR("Entering ADIOI_BG_GPFS_Calc_file_domains\n");
 
 #ifdef AGGREGATION_PROFILE
     MPE_Log_event (5004, 0, NULL);
@@ -562,6 +586,7 @@ void ADIOI_BG_GPFS_Calc_file_domains(ADIO_Offset *st_offsets,
     MPE_Log_event (5005, 0, NULL);
 #endif
     ADIOI_Free (fd_size);
+    TRACE_ERR("Leaving ADIOI_BG_GPFS_Calc_file_domains\n");
 }
 
 /* 
@@ -600,6 +625,7 @@ void ADIOI_BG_Calc_my_req(ADIO_File fd, ADIO_Offset *offset_list, ADIO_Offset *l
     int i, l, proc;
     ADIO_Offset fd_len, rem_len, curr_idx, off;
     ADIOI_Access *my_req;
+    TRACE_ERR("Entering ADIOI_BG_Calc_my_req\n");
 
 #ifdef AGGREGATION_PROFILE
     MPE_Log_event (5024, 0, NULL);
@@ -755,6 +781,7 @@ void ADIOI_BG_Calc_my_req(ADIO_File fd, ADIO_Offset *offset_list, ADIO_Offset *l
 #ifdef AGGREGATION_PROFILE
     MPE_Log_event (5025, 0, NULL);
 #endif
+    TRACE_ERR("Leaving ADIOI_BG_Calc_my_req\n");
 }
 
 /*
@@ -781,6 +808,7 @@ void ADIOI_BG_Calc_others_req(ADIO_File fd, int count_my_req_procs,
 				int *count_others_req_procs_ptr,
 				ADIOI_Access **others_req_ptr)  
 {
+    TRACE_ERR("Entering ADIOI_BG_Calc_others_req\n");
 /* determine what requests of other processes lie in this process's
    file domain */
 
@@ -976,4 +1004,5 @@ for(i=0;i<nprocs;i++)
 #ifdef AGGREGATION_PROFILE
     MPE_Log_event (5027, 0, NULL);
 #endif
+    TRACE_ERR("Leaving ADIOI_BG_Calc_others_req\n");
 }
