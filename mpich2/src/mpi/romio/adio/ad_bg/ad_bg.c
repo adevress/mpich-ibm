@@ -22,20 +22,11 @@ struct ADIOI_Fns_struct ADIO_BG_operations = {
     ADIOI_GEN_OpenColl, /* Collective open */
     ADIOI_BG_ReadContig, /* ReadContig */
     ADIOI_BG_WriteContig, /* WriteContig */
-#if BG_OPTIM_STEP1_2
     ADIOI_BG_ReadStridedColl, /* ReadStridedColl */
     ADIOI_BG_WriteStridedColl, /* WriteStridedColl */
-#else
-    ADIOI_GEN_ReadStridedColl, /* ReadStridedColl */
-    ADIOI_GEN_WriteStridedColl, /* WriteStridedColl */
-#endif
     ADIOI_GEN_SeekIndividual, /* SeekIndividual */
     ADIOI_BG_Fcntl, /* Fcntl */
-#if BG_OPTIM_STEP1_1
     ADIOI_BG_SetInfo, /* SetInfo */
-#else
-    ADIOI_GEN_SetInfo, /* SetInfo */
-#endif
     ADIOI_BG_ReadStrided, /* ReadStrided */
     ADIOI_BG_WriteStrided, /* WriteStrided */
     ADIOI_BG_Close, /* Close */
