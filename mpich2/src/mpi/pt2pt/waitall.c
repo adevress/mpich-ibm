@@ -189,7 +189,8 @@ int MPIR_Waitall_impl(int count, MPI_Request array_of_requests[],
         MPID_Progress_start(&progress_state);
 
         for (i = 0; i < count_notdone; ++i) {
-            if ( unlikely((request_ptrs[i]->kind != MPID_REQUEST_SEND) && (request_ptrs[i]->kind != MPID_REQUEST_RECV)) )
+               if(unlikely(request_ptrs[i] == NULL)) continue;
+               if ( unlikely((request_ptrs[i]->kind != MPID_REQUEST_SEND) && (request_ptrs[i]->kind != MPID_REQUEST_RECV)) )
                 goto fn_general;
 
             while(!MPID_Request_is_complete(request_ptrs[i])) {
