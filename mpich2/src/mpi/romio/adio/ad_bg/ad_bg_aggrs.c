@@ -234,9 +234,9 @@ ADIOI_BG_compute_agg_ranklist_serial_do (const ADIOI_BG_ConfInfo_t *confInfo,
       aggTotal = numAggs * confInfo->numBridgeNodes + numAggs; 
 
    distance = (confInfo->virtualPsetSize / numAggs);
+   TRACE_ERR("aggRatio: %f numBridge: %d pset size: %d numAggs: %d distance: %d, aggTotal: %d\n", confInfo->aggRatio, confInfo->numBridgeNodes,  confInfo->virtualPsetSize, numAggs, distance, aggTotal);
    aggList = (int *)ADIOI_Malloc(aggTotal * sizeof(int));
 
-   TRACE_ERR("numAggs: %d distance: %d, aggTotal: %d\n", numAggs, distance, aggTotal);
 
    /* For each bridge node, determine who the aggregators will be */
    /* basically, the n*distance and bridge node */

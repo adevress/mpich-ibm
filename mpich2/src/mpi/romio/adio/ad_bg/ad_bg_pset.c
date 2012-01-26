@@ -127,7 +127,9 @@ ADIOI_BG_persInfo_init(ADIOI_BG_ConfInfo_t *conf,
    int count = 0;
    sortstruct *array;
    sortstruct *bridges;
+   int commsize;
 
+   TRACE_ERR("Entering BG_persInfo_init, size: %d, rank: %d, n_aggrs: %d, comm: %d\n", size, rank, n_aggrs, (int)comm);
 
    Personality_t pers;
    MPIX_Hardware_t hw;
@@ -137,6 +139,7 @@ ADIOI_BG_persInfo_init(ADIOI_BG_ConfInfo_t *conf,
 
    proc->rank = rank;
    proc->coreID = hw.coreID;
+   MPI_Comm_size(comm, &commsize);
 
    /* Determine the rank of the nearest bridge node */
    int bridgeCoords[6];
@@ -153,8 +156,10 @@ ADIOI_BG_persInfo_init(ADIOI_BG_ConfInfo_t *conf,
       fprintf(stderr,"Tours2Rank failed for finding bridgenode rank\n");
       ADIOI_BG_assert((rc == MPI_SUCCESS));
    }
+
+   TRACE_ERR("Bridge coords: %d %d %d %d %d, %d. Rank: %d\n", bridgeCoords[0], bridgeCoords[1], bridgeCoords[2], bridgeCoords[3], bridgeCoords[4], bridgeCoords[5], bridgerank);
    /* Some special cases first */
-   if(bridgerank == -1 || size == 1)
+   if(bridgerank == -1 || size == 1 || bridgerank >= commsize)
    {
       if(bridgerank == -1) /* Bridge node not part of job */
       {
@@ -172,7 +177,21 @@ ADIOI_BG_persInfo_init(ADIOI_BG_ConfInfo_t *conf,
             proc->iamBridgenode = 0;
          }
       }
-      else
+      else if(bridgerank >= commsize)
+      {
+         bridgerank = 0;
+         if(rank == 0)
+         {
+            iambridge = 1;
+            proc->iamBridgenode = 1;
+         }
+         else
+         {
+            iambridge = 0;
+            proc->iamBridgenode = 0;
+         }
+      }
+      else if(size == 1)
       {
          iambridge = 1;
          proc->iamBridgenode = 1;
@@ -244,7 +263,7 @@ ADIOI_BG_persInfo_init(ADIOI_BG_ConfInfo_t *conf,
          bridges[index].rank = temp;
          bridges[index].bridge = (count+1)/hw.ppn;
          mincompute = size+1;
-         maxcompute = 0;
+         maxcompute = 1;
 
          for(i=0;i<numbridge;i++)
          {
