@@ -5,7 +5,7 @@ use strict;
 use warnings;
 
 my $e                    = ($ENV{ENVS} or '');
-$ENV{ENVS}               = 'BG_APPAGENT1=/bgsys/drivers/ppcfloor/agents/bin/comm.elf BG_SHAREDMEMSIZE=64 ';
+$ENV{ENVS}               = '';
 $ENV{ENVS}              .= join(" " => map { "$_=$ENV{$_} " } grep { m/^(BG|PAMI)_/ } keys %ENV);
 $ENV{ENVS}              .= $e;
 
@@ -26,13 +26,20 @@ $ENV{VERBOSE}            = 1;
 $ENV{PRESERVE}           = 1;
 $ENV{RESUME}             = 1;
 
+# If no env vars, don't specify --envs parameter
+if ($ENV{ENVS} eq '') {
+  $ENV{ENVS2} = '';
+}
+else {
+  $ENV{ENVS2} = "--envs ";
+}
 $ENV{MPITEST_PROGRAM_WRAPPER} =
     $ENV{RUNJOB_OPTIONS}                 .
     "--block          $ENV{BLOCK} "      .
     "--cwd            $ENV{STAGINGDIR} " .
     "--timeout        $ENV{TIMEOUT} "    .
     "--ranks-per-node $ENV{PPN} "        .
-    "--envs           $ENV{ENVS} :";
+    "$ENV{ENVS2}      $ENV{ENVS} :";
 $ENV{MPITEST_PROGRAM_WRAPPER} =~ s/ +/ /g;
 
 
