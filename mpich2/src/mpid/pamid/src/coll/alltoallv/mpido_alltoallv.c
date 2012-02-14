@@ -7,8 +7,6 @@
 
 #include <mpidimpl.h>
 
-//#define PAMIBYTEREQUIRED
-
 static void cb_alltoallv(void *ctxt, void *clientdata, pami_result_t err)
 {
    int *active = (int *)clientdata;
@@ -73,66 +71,62 @@ int MPIDO_Alltoallv(void *sendbuf,
    alltoallv.cmd.xfer_alltoallv_int.rcvbuf = recvbuf+rdt_true_lb;
       
 /* I'll delete this code once the PAMI API changes for the fix discussed below */
-#ifdef PAMIBYTEREQUIRED 
-   int *slen, *sdisp, *rlen, *rdisp;
+#ifdef PAMI_BYTES_REQUIRED 
+   int *slen, *rlen;
    if(!comm_ptr->rank)
-      TRACE_ERR("Mallocing arrays\n");
-   slen = malloc(sizeof(int) * comm_ptr->local_size);
-   sdisp = malloc(sizeof(int) * comm_ptr->local_size);
-   rlen = malloc(sizeof(int) * comm_ptr->local_size);
-   rdisp = malloc(sizeof(int) * comm_ptr->local_size);
+      TRACE_ERR("Mallocing arraysin alltoallv\n");
+   slen = MPIU_Malloc(sizeof(int) * comm_ptr->local_size);
+   rlen = MPIU_Malloc(sizeof(int) * comm_ptr->local_size);
    assert(slen != NULL);
-   assert(sdisp != NULL);
    assert(rlen != NULL);
+#endif
+
+#ifdef PAMI_DISPS_ARE_BYTES
+   int *sdisp, *rdisp;
+   sdisp = MPIU_Malloc(sizeof(int) * comm_ptr->local_size);
+   rdisp = MPIU_Malloc(sizeof(int) * comm_ptr->local_size);
+   assert(sdisp != NULL);
    assert(rdisp != NULL);
-   int i = 0;
-   for(i = 0; i <comm_ptr->local_size; i++)
-   {
-      slen[i] = sndtypelen * sendcounts[i];
-      sdisp[i] = sndtypelen * senddispls[i];
-      rlen[i] = rcvtypelen * recvcounts[i];
-      rdisp[i] = rcvtypelen * recvdispls[i];
-      TRACE_ERR("sc[%d]: %d -> %d, sd[]: %d -> %d, rc[]: %d -> %d, rd[]: %d -> %d\n",
-            i, sendcounts[i], slen[i], senddispls[i], sdisp[i], recvcounts[i], rlen[i], recvdispls[i], rdisp[i]);
-   }
-   if(!comm_ptr->rank)
-      TRACE_ERR("Done mallocing\n");
-   alltoallv.cmd.xfer_alltoallv_int.stypecounts = slen;
-   alltoallv.cmd.xfer_alltoallv_int.sdispls = sdisp;
-   alltoallv.cmd.xfer_alltoallv_int.rtypecounts = rlen;
-   alltoallv.cmd.xfer_alltoallv_int.rdispls = rdisp;
-   alltoallv.cmd.xfer_alltoallv_int.stype = PAMI_TYPE_BYTE;
-   alltoallv.cmd.xfer_alltoallv_int.rtype = PAMI_TYPE_BYTE;
-
-#else
-
-   /* This chunk of code *should* be temporary. We are discussing changing
-    * the PAMI API to have displacements in datatype units rather than
-    * bytes.
-    * Once the API changes, I can gut this and the ifdef block above.
-    */
-   int *sdispls, *rdispls;
-   sdispls = (int *)malloc(sizeof(int) * comm_ptr->local_size);
-   MPID_assert(sdispls);
-   rdispls = (int *)malloc(sizeof(int) * comm_ptr->local_size);
-   MPID_assert(rdispls);
-   int i;
-   for(i=0;i<comm_ptr->local_size;i++)
-   {
-      sdispls[i] = senddispls[i] * sndtypelen;
-      rdispls[i] = recvdispls[i] * rcvtypelen;
-   }
-      
-      
-
+#endif
+   alltoallv.cmd.xfer_alltoallv_int.sdispls = senddispls;
+   alltoallv.cmd.xfer_alltoallv_int.rdispls = recvdispls;
    alltoallv.cmd.xfer_alltoallv_int.stypecounts = sendcounts;
-   alltoallv.cmd.xfer_alltoallv_int.sdispls = sdispls;
    alltoallv.cmd.xfer_alltoallv_int.rtypecounts = recvcounts;
-   alltoallv.cmd.xfer_alltoallv_int.rdispls = rdispls;
    alltoallv.cmd.xfer_alltoallv_int.stype = stype;
    alltoallv.cmd.xfer_alltoallv_int.rtype = rtype;
 
-#endif 
+#if defined(PAMI_DISPS_ARE_BYTES) || defined(PAMI_BYTES_REQUIRED)
+   int i = 0;
+   for(i = 0; i <comm_ptr->local_size; i++)
+   {
+      #ifdef PAMI_DISPS_ARE_BYTES 
+      sdisp[i] = sndtypelen * senddispls[i];
+      rdisp[i] = rcvtypelen * recvdispls[i];
+      TRACE_ERR("sd[%d]: %d -> %d, rd[]: %d -> %d\n", i, senddispls[i],
+         sdisp[i], recvdispls[i], rdisp[i]);
+      #endif
+      #ifdef PAMI_BYTES_REQUIRED 
+      slen[i] = sndtypelen * sendcounts[i];
+      rlen[i] = rcvtypelen * recvcounts[i];
+      TRACE_ERR("sc[%d]: %d -> %d, rc[]: %d -> %d\n", i, sendcounts[i],
+         slen[i], recvcounts[i], rlen[i]);
+      #endif
+   }
+   if(!comm_ptr->rank)
+      TRACE_ERR("Done mallocing\n");
+   #ifdef PAMI_DISPS_ARE_BYTES
+   alltoallv.cmd.xfer_alltoallv_int.sdispls = sdisp;
+   alltoallv.cmd.xfer_alltoallv_int.rdispls = rdisp;
+   #endif
+   #ifdef PAMI_BYTES_REQUIRED
+   alltoallv.cmd.xfer_alltoallv_int.stypecounts = slen;
+   alltoallv.cmd.xfer_alltoallv_int.rtypecounts = rlen;
+   alltoallv.cmd.xfer_alltoallv_int.stype = PAMI_TYPE_BYTE;
+   alltoallv.cmd.xfer_alltoallv_int.rtype = PAMI_TYPE_BYTE;
+   #endif
+
+#endif
+
 
    if(unlikely(comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLTOALLV_INT] >= MPID_COLL_QUERY))
    {
@@ -170,14 +164,14 @@ int MPIDO_Alltoallv(void *sendbuf,
 
    TRACE_ERR("Leaving alltoallv\n");
 
-#ifdef PAMIBYTEREQUIRED
-   free(slen);
-   free(sdisp);
-   free(rlen);
-   free(rdisp);
-#else
-   free(sdispls);
-   free(rdispls);
+#ifdef PAMI_BYTES_REQUIRED
+   MPIU_Free(slen);
+   MPIU_Free(rlen);
 #endif
+#ifdef PAMI_DISPS_ARE_BYTES
+   MPIU_Free(sdisp);
+   MPIU_Free(rdisp);
+#endif
+
    return rc;
 }

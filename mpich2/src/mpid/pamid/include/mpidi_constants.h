@@ -12,6 +12,9 @@
 #ifndef __include_mpidi_constants_h__
 #define __include_mpidi_constants_h__
 
+#define PAMI_BYTES_REQUIRED 0
+#define PAMI_DISPS_ARE_BYTES 1
+
 enum
   {
     /* N is "number of operations" and P is number of ranks */
@@ -56,6 +59,8 @@ enum
     MPID_COLL_ALWAYS_QUERY      = 2,
     MPID_COLL_CHECK_FN_REQUIRED = 3,
     MPID_COLL_USE_MPICH         = 4,
+    MPID_COLL_NOSELECTION       = 5,
+    MPID_COLL_SELECTED          = 6,
   };
 /** \} */
 
