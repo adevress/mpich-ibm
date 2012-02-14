@@ -178,6 +178,8 @@ int MPIDO_Bcast(void *buffer, int count, MPI_Datatype dt, int root, MPID_Comm *c
 int MPIDO_Barrier(MPID_Comm *comm_ptr, int *mpierrno);
 int MPIDO_Allreduce(void *sbuffer, void *rbuffer, int count,
                     MPI_Datatype datatype, MPI_Op op, MPID_Comm *comm_ptr, int *mpierrno);
+int MPIDO_Reduce(void *sendbuf, void *recvbuf, int count, MPI_Datatype datatype, 
+                 MPI_Op op, int root, MPID_Comm *comm_ptr, int *mpierrno);
 int MPIDO_Allgather(void *sendbuf, int sendcount, MPI_Datatype sendtype,
                     void *recvbuf, int recvcount, MPI_Datatype recvtype,
                     MPID_Comm *comm_ptr, int *mpierrno);
@@ -189,6 +191,16 @@ int MPIDO_Allgatherv(void *sendbuf, int sendcount, MPI_Datatype sendtype,
 int MPIDO_Gather(void *sendbuf, int sendcount, MPI_Datatype sendtype,
                  void *recvbuf, int recvcount, MPI_Datatype recvtype,
                  int root, MPID_Comm * comm_ptr, int *mpierrno);
+
+int MPIDO_Gatherv(void *sendbuf, int sendcount, MPI_Datatype sendtype,
+                  void *recvbuf, int *recvcounts, int *displs, MPI_Datatype recvtype,
+                  int root, MPID_Comm * comm_ptr, int *mpierrno);
+
+int MPIDO_Scan(void *sendbuf, void *recvbuf, int count, MPI_Datatype datatype,
+               MPI_Op op, MPID_Comm * comm_ptr, int *mpierrno);
+
+int MPIDO_Exscan(void *sendbuf, void *recvbuf, int count, MPI_Datatype datatype,
+               MPI_Op op, MPID_Comm * comm_ptr, int *mpierrno);
 
 int MPIDO_Scatter(void *sendbuf, int sendcount, MPI_Datatype sendtype,
                   void *recvbuf, int recvcount, MPI_Datatype recvtype,
