@@ -13,7 +13,8 @@ MPIDI_Callback_process_unexp(pami_context_t        context,
                              pami_endpoint_t       sender,
                              const void          * sndbuf,
                              pami_recv_t         * recv,
-                             unsigned              isSync)
+                             unsigned              isSync,
+                             void                * uebuf)
 {
   MPID_Request *rreq = NULL;
 
@@ -51,11 +52,8 @@ MPIDI_Callback_process_unexp(pami_context_t        context,
     }
 
   rreq->mpid.uebuflen = sndlen;
-  if (sndlen)
-    {
-      rreq->mpid.uebuf    = MPIU_Malloc(sndlen);
-      MPID_assert(rreq->mpid.uebuf != NULL);
-    }
+  rreq->mpid.uebuf = uebuf;
+  MPID_assert(!sndlen || rreq->mpid.uebuf != NULL);
 
   if (recv != NULL)
     {

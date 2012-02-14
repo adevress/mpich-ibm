@@ -56,13 +56,38 @@ MPIDI_RecvShortCB(pami_context_t    context,
   /* Match not found */
   if (unlikely(rreq == NULL))
     {
-      MPIDI_Callback_process_unexp(context, msginfo, sndlen, sender, sndbuf, NULL, isSync);
+      void *uebuf = NULL;
+      if (sndlen)
+      {
+        MPIU_THREAD_CS_EXIT(MSGQUEUE,0);
+        uebuf = MPIU_Malloc(sndlen);
+        MPID_assert(uebuf != NULL);
+        MPIU_THREAD_CS_ENTER(MSGQUEUE,0);
+#ifndef OUT_OF_ORDER_HANDLING
+        rreq = MPIDI_Recvq_FDP(rank, tag, context_id);
+#else
+        rreq = MPIDI_Recvq_FDP(rank, PAMIX_Endpoint_query(sender), tag, context_id, msginfo->MPIseqno);
+#endif
+      }
+      
+      if (unlikely(rreq == NULL))
+      {
+        MPIDI_Callback_process_unexp(context, msginfo, sndlen, sender, sndbuf, NULL, isSync, uebuf);
+        MPIU_THREAD_CS_EXIT(MSGQUEUE,0);
+        goto fn_exit_short;
+      }
+      else
+      {       
+        MPIU_THREAD_CS_EXIT(MSGQUEUE,0);
+        if (sndlen) MPIU_Free(uebuf);
+      }         
+    }
+  else
+    {
       MPIU_THREAD_CS_EXIT(MSGQUEUE,0);
-      goto fn_exit_short;
     }
 
   /* the receive queue processing has been completed and we found match*/
-  MPIU_THREAD_CS_EXIT(MSGQUEUE,0);
 
   /* ---------------------- */
   /*  Copy in information.  */

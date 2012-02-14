@@ -124,7 +124,8 @@ void MPIDI_Callback_process_unexp(pami_context_t        context,
                                   pami_endpoint_t       senderendpoint,
                                   const void          * sndbuf,
                                   pami_recv_t         * recv,
-                                  unsigned              isSync);
+                                  unsigned              isSync,
+                                  void                * uebuf);
 void MPIDI_Callback_process_trunc(pami_context_t  context,
                                   MPID_Request   *rreq,
                                   pami_recv_t    *recv,
