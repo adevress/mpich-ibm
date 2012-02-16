@@ -13,10 +13,17 @@ MPIDI_Process_t  MPIDI_Process = {
   .verbose             = 0,
   .statistics          = 0,
 
+#if defined(__BGQ__) && (MPIU_THREAD_GRANULARITY == MPIU_THREAD_GRANULARITY_PER_OBJECT)
   .avail_contexts      = MPIDI_MAX_CONTEXTS,
   .commthreads_active  = 0,
   .commthreads_enabled = USE_PAMI_COMM_THREADS,
   .context_post        = 1,
+#else
+  .avail_contexts      = 1,
+  .commthreads_active  = 0,
+  .commthreads_enabled = 0,
+  .context_post        = 0,
+#endif
   .short_limit         = MPIDI_SHORT_LIMIT,
   .eager_limit         = MPIDI_EAGER_LIMIT,
   .eager_limit_local   = MPIDI_EAGER_LIMIT_LOCAL,
@@ -379,7 +386,10 @@ MPIDI_PAMI_init(int* rank, int* size, int* threading)
              MPIDI_Process.shmem_pt2pt,
              MPIDI_Process.optimized.collectives,
              MPIDI_Process.optimized.subcomms);
+      printEnvVars("PAMID_");
       printEnvVars("PAMI_");
+      printEnvVars("COMMAGENT_");
+      printEnvVars("MUSPI_");
       printEnvVars("BG_");
     }
 }
