@@ -499,6 +499,8 @@ MPIDI_Recvq_DumpQueues(int verbose)
 {
   if(verbose < MPIDI_VERBOSE_SUMMARY_ALL)
     return;
+   if(!MPIDI_Process.statistics)
+      return;
 
   MPID_Request * rreq = MPIDI_Recvq.posted_head;
   MPID_Request * prev_rreq = NULL;
