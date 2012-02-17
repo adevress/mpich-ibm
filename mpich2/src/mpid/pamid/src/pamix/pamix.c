@@ -102,7 +102,7 @@ PAMIX_Initialize(pami_client_t client)
 
 #if defined(__BGQ__)
   PAMI_EXTENSION_OPEN(client, "BGQ_bgq_mapping", &PAMIX_Extensions.mapping);
-  PAMIX_BGQ_mapcache = PAMI_EXTENSION_FUNCTION(uint32_t *, PAMIX_Extensions.mapping, "mapcache");
+  PAMIX_BGQ_mapcache = PAMI_EXTENSION_FUNCTION(uint32_t *, "mapcache", PAMIX_Extensions.mapping);
 #endif
 }
 
