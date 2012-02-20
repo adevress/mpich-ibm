@@ -2743,6 +2743,34 @@ fi
 # 
 # Add the steps for debugger support
 BUILD_TVDLL=no
+
+if test "$enable_debuginfo" = "bgq" ; then
+   # We don't necessarily want to test for shared objects if we are building with
+   # XL on BGQ. Primarily, we want to enable the HAVE_DEBUGGER_SUPPORT #define
+   # and traverse into debugger/ if we are building with XL.
+   # We don't need to build the TVDLL, just the dbginit.o file
+   BUILD_TVDLL=no
+   AC_SUBST(BUILD_TVDLL)
+    debugger_dir=debugger
+    AC_DEFINE(HAVE_DEBUGGER_SUPPORT,1,[Define if debugger support is included])
+    if test -z "$MPICH_DEBUGLIBNAME" ; then
+        DEBUGLIBNAME=libtvmpich2.$SHLIB_EXT
+    else
+        DEBUGLIBNAME=$MPICH_DEBUGLIBNAME
+    fi
+    if test "x$exec_prefix" = xNONE ; then
+        saveExecPrefix=$exec_prefix
+	exec_prefix=$prefix
+        eval dlldir=$libdir/$DEBUGLIBNAME
+	exec_prefix=$saveExecPrefix
+    else
+        eval dlldir=$libdir/$DEBUGLIBNAME
+    fi
+    dlldir='"'$dlldir'"'
+    AC_DEFINE_UNQUOTED(MPICH_INFODLL_LOC,$dlldir,[Define as the name of the debugger support library])
+   AC_SUBST(debugger_dir)
+fi
+
 if test "$enable_debuginfo" = "yes" ; then
    # We can build the Totalview interface DLL only if we know how to build
    # shared libraries.  For now, require that enable_sharedlibs is not none
@@ -2821,6 +2849,7 @@ on all link lines (consider adding it to LDFLAGS)])
     AC_DEFINE_UNQUOTED(MPICH_INFODLL_LOC,$dlldir,[Define as the name of the debugger support library])
 fi
 AC_SUBST(debugger_dir)
+
 
 # ----------------------------------------------------------------------------
 

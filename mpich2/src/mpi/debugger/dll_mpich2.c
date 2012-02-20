@@ -652,7 +652,8 @@ static int fetch_receive (mqs_process *proc, mpich_process_info *p_info,
 	    int is_complete   = fetch_int ( proc, base + i_info->req_cc_offs, p_info);
         mqs_taddr_t buffer = 0;
         unsigned buf_count = -1;
-        int datatype = fetch_int(proc, base + i_info->req_datatype_offs, p_info);
+        int datatype;
+        datatype = fetch_int(proc, base + i_info->req_datatype_offs, p_info);
 
         if(look_for_user_buffer)
          {
