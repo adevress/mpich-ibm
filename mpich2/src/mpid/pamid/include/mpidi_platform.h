@@ -25,6 +25,10 @@
 
 
 /* Platform overrides */
+/* These should be disable-able shortly */
+#define PAMI_BYTES_REQUIRED 0
+#define PAMI_DISPS_ARE_BYTES 1
+
 
 #ifdef __BGP__
 #undef  MPIDI_EAGER_LIMIT
@@ -34,6 +38,7 @@
 #ifdef __BGQ__
 #define MPIDI_MAX_THREADS     64
 #define MPIDI_MUTEX_L2_ATOMIC 1
+#define MPIDI_BASIC_COLLECTIVE_SELECTION 1
 #endif
 #if defined(__BGQ__) && (MPIU_THREAD_GRANULARITY == MPIU_THREAD_GRANULARITY_PER_OBJECT)
 #undef  USE_PAMI_COMM_THREADS

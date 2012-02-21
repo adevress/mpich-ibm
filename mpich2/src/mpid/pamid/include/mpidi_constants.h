@@ -12,9 +12,6 @@
 #ifndef __include_mpidi_constants_h__
 #define __include_mpidi_constants_h__
 
-#define PAMI_BYTES_REQUIRED 0
-#define PAMI_DISPS_ARE_BYTES 1
-
 enum
   {
     /* N is "number of operations" and P is number of ranks */

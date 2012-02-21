@@ -35,7 +35,7 @@ int MPIDO_Reduce(void *sendbuf,
 
    rc = MPIDI_Datatype_to_pami(datatype, &pdt, op, &pop, &mu);
    if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm_ptr->rank == 0)
-      fprintf(stderr,"rc %u, dt: %p, op: %p, mu: %u, selectedvar %u != %u (MPICH)\n",
+      fprintf(stderr,"reduce - rc %u, dt: %p, op: %p, mu: %u, selectedvar %u != %u (MPICH)\n",
          rc, pdt, pop, mu, 
          (unsigned)comm_ptr->mpid.user_selectedvar[PAMI_XFER_REDUCE], MPID_COLL_USE_MPICH);
 
@@ -66,20 +66,31 @@ int MPIDO_Reduce(void *sendbuf,
    reduce.cmd.xfer_reduce.root = MPID_VCR_GET_LPID(comm_ptr->vcr, root);
 
 
-   if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_REDUCE] >= MPID_COLL_QUERY)
+   if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_REDUCE] == MPID_COLL_ALWAYS_QUERY ||
+      comm_ptr->mpid.user_selectedvar[PAMI_XFER_REDUCE] == MPID_COLL_CHECK_FN_REQUIRED)
    {
-      metadata_result_t result = {0};
-      TRACE_ERR("Querying reduce protocol %s, type was %d\n",
-         comm_ptr->mpid.user_metadata[PAMI_XFER_REDUCE].name,
-         comm_ptr->mpid.user_selectedvar[PAMI_XFER_REDUCE]);
-      result = comm_ptr->mpid.user_metadata[PAMI_XFER_REDUCE].check_fn(&reduce);
-      TRACE_ERR("Bitmask: %#X\n", result.bitmask);
-      if(!result.bitmask)
+      if(comm_ptr->mpid.user_metadata[PAMI_XFER_REDUCE].check_fn != NULL)
       {
-         fprintf(stderr,"Query failed for %s.\n",
-            comm_ptr->mpid.user_metadata[PAMI_XFER_REDUCE].name);
+         metadata_result_t result = {0};
+         TRACE_ERR("Querying reduce protocol %s, type was %d\n",
+            comm_ptr->mpid.user_metadata[PAMI_XFER_REDUCE].name,
+            comm_ptr->mpid.user_selectedvar[PAMI_XFER_REDUCE]);
+         result = comm_ptr->mpid.user_metadata[PAMI_XFER_REDUCE].check_fn(&reduce);
+         TRACE_ERR("Bitmask: %#X\n", result.bitmask);
+         if(!result.bitmask)
+         {
+            fprintf(stderr,"Query failed for %s.\n",
+               comm_ptr->mpid.user_metadata[PAMI_XFER_REDUCE].name);
+         }
+      }
+      else
+      {
+         /* No check function, but check required */
+         /* look at meta data */
+         assert(0);
       }
    }
+
    
    if(MPIDI_Process.context_post)
    {

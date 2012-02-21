@@ -27,7 +27,6 @@ int MPIDO_Alltoall(void *sendbuf,
                    int *mpierrno)
 {
    TRACE_ERR("Entering MPIDO_Alltoall\n");
-   char *pname = comm_ptr->mpid.user_metadata[PAMI_XFER_ALLTOALL].name;
    volatile unsigned active = 1;
    MPID_Datatype *sdt, *rdt;
    pami_type_t stype, rtype;
@@ -64,10 +63,31 @@ int MPIDO_Alltoall(void *sendbuf,
    }
 
    pami_xfer_t alltoall;
+   pami_algorithm_t my_alltoall;
+   pami_metadata_t *my_alltoall_md;
+   int queryreq = 0;
+#ifdef MPIDI_BASIC_COLLECTIVE_SELECTION
+   if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLTOALL] == MPID_COLL_SELECTED)
+   {
+      TRACE_ERR("Optimized alltoall was pre-selected\n");
+      my_alltoall = comm_ptr->mpid.opt_protocol[PAMI_XFER_ALLTOALL][0];
+      my_alltoall_md = &comm_ptr->mpid.opt_protocol_md[PAMI_XFER_ALLTOALL][0];
+      queryreq = comm_ptr->mpid.must_query[PAMI_XFER_ALLTOALL][0];
+   }
+   else
+#endif
+   {
+      TRACE_ERR("Alltoall was specified by user\n");
+      my_alltoall = comm_ptr->mpid.user_selected[PAMI_XFER_ALLTOALL];
+      my_alltoall_md = &comm_ptr->mpid.user_metadata[PAMI_XFER_ALLTOALL];
+      queryreq = comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLTOALL];
+   }
+   char *pname = my_alltoall_md->name;
+   TRACE_ERR("Using alltoall protocol %s\n", pname);
 
    alltoall.cb_done = cb_alltoall;
    alltoall.cookie = (void *)&active;
-   alltoall.algorithm = comm_ptr->mpid.user_selected[PAMI_XFER_ALLTOALL];
+   alltoall.algorithm = my_alltoall;
    alltoall.cmd.xfer_alltoall.sndbuf = sendbuf + sdt_true_lb;
    alltoall.cmd.xfer_alltoall.rcvbuf = recvbuf + rdt_true_lb;
 
@@ -76,12 +96,12 @@ int MPIDO_Alltoall(void *sendbuf,
    alltoall.cmd.xfer_alltoall.stype = stype;
    alltoall.cmd.xfer_alltoall.rtype = rtype;
 
-   if(unlikely(comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLTOALL] >= MPID_COLL_QUERY))
+   if(unlikely(queryreq >= MPID_COLL_QUERY))
    {
       metadata_result_t result = {0};
-      TRACE_ERR("querying alltoall protocol %s, type was %d\n", pname,
-         comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLTOALL]);
-      result = comm_ptr->mpid.user_metadata[PAMI_XFER_ALLTOALL].check_fn(&alltoall);
+      TRACE_ERR("querying alltoall protocol %s, query level was %d\n", pname,
+         queryreq);
+      result = my_alltoall_md->check_fn(&alltoall);
       TRACE_ERR("bitmask: %#X\n", result.bitmask);
       if(!result.bitmask)
       {

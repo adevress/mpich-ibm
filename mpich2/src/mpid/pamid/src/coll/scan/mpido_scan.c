@@ -58,7 +58,8 @@ int MPIDO_Doscan(void *sendbuf, void *recvbuf,
    pami_xfer_t scan;
    volatile unsigned scan_active = 1;
 
-   if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_SCAN] == MPID_COLL_USE_MPICH)
+   if(sendbuf == MPI_IN_PLACE || comm_ptr->mpid.user_selectedvar[PAMI_XFER_SCAN] == MPID_COLL_USE_MPICH)
+      
    {
       TRACE_ERR("Using MPICH (ex)scan algorithm\n");
       if(exflag)
@@ -84,7 +85,8 @@ int MPIDO_Doscan(void *sendbuf, void *recvbuf,
    scan.cmd.xfer_scan.exclusive = exflag;
 
 
-   if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_SCAN] >= MPID_COLL_QUERY)
+   if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_SCAN] == MPID_COLL_ALWAYS_QUERY ||
+      comm_ptr->mpid.user_selectedvar[PAMI_XFER_SCAN] == MPID_COLL_CHECK_FN_REQUIRED)
    {
       metadata_result_t result = {0};
       TRACE_ERR("Querying scan protocol %s, type was %d\n",

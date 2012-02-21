@@ -29,7 +29,6 @@ int MPIDO_Alltoallv(void *sendbuf,
 {
    if(comm_ptr->rank == 0)
       TRACE_ERR("Entering MPIDO_Alltoallv\n");
-   char *pname = comm_ptr->mpid.user_metadata[PAMI_XFER_ALLTOALLV_INT].name;
    volatile unsigned active = 1;
    int sndtypelen, rcvtypelen, snd_contig, rcv_contig;
    MPID_Datatype *sdt, *rdt;
@@ -63,10 +62,33 @@ int MPIDO_Alltoallv(void *sendbuf,
    MPIDI_Datatype_get_info(1, recvtype, rcv_contig, rcvtypelen, rdt, rdt_true_lb);
 
    pami_xfer_t alltoallv;
+   pami_algorithm_t my_alltoallv;
+   pami_metadata_t *my_alltoallv_md;
+   int queryreq = 0;
+
+#ifdef MPIDI_BASIC_COLLECTIVE_SELECTION
+   if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLTOALLV_INT] == MPID_COLL_SELECTED)
+   {
+      TRACE_ERR("Optimized alltoallv was selected\n");
+      my_alltoallv = comm_ptr->mpid.opt_protocol[PAMI_XFER_ALLTOALLV_INT][0];
+      my_alltoallv_md = &comm_ptr->mpid.opt_protocol_md[PAMI_XFER_ALLTOALLV_INT][0];
+      queryreq = comm_ptr->mpid.must_query[PAMI_XFER_ALLTOALLV_INT][0];
+   }
+   else
+#endif
+   { /* is this purely an else? or do i need to check for some other selectedvar... */
+      TRACE_ERR("Alltoallv specified by user\n");
+      my_alltoallv = comm_ptr->mpid.user_selected[PAMI_XFER_ALLTOALLV_INT];
+      my_alltoallv_md = &comm_ptr->mpid.user_metadata[PAMI_XFER_ALLTOALLV_INT];
+      queryreq = comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLTOALLV_INT];
+   }
+   alltoallv.algorithm = my_alltoallv;
+   char *pname = my_alltoallv_md->name;
+
+
    alltoallv.cb_done = cb_alltoallv;
    alltoallv.cookie = (void *)&active;
    /* We won't bother with alltoallv since MPI is always going to be ints. */
-   alltoallv.algorithm = comm_ptr->mpid.user_selected[PAMI_XFER_ALLTOALLV_INT];
    alltoallv.cmd.xfer_alltoallv_int.sndbuf = sendbuf+sdt_true_lb;
    alltoallv.cmd.xfer_alltoallv_int.rcvbuf = recvbuf+rdt_true_lb;
       
@@ -128,12 +150,11 @@ int MPIDO_Alltoallv(void *sendbuf,
 #endif
 
 
-   if(unlikely(comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLTOALLV_INT] >= MPID_COLL_QUERY))
+   if(unlikely(queryreq == MPID_COLL_ALWAYS_QUERY || queryreq == MPID_COLL_CHECK_FN_REQUIRED))
    {
       metadata_result_t result = {0};
-      TRACE_ERR("querying alltoallv protocol %s, type was %d\n", pname,
-         comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLTOALLV_INT]);
-      result = comm_ptr->mpid.user_metadata[PAMI_XFER_ALLTOALLV_INT].check_fn(&alltoallv);
+      TRACE_ERR("querying alltoallv protocol %s, type was %d\n", pname, queryreq);
+      result = my_alltoallv_md->check_fn(&alltoallv);
       TRACE_ERR("bitmask: %#X\n", result.bitmask);
       if(!result.bitmask)
       {

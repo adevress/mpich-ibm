@@ -69,6 +69,10 @@ int MPIDO_Bcast(void *buffer,
    }
 
    pami_xfer_t bcast;
+   pami_algorithm_t my_bcast;
+   pami_metadata_t *my_bcast_md;
+   int queryreq = 0;
+
    bcast.cb_done = cb_bcast;
    bcast.cookie = (void *)&active;
    bcast.cmd.xfer_broadcast.root = MPID_VCR_GET_LPID(comm_ptr->vcr, root);
@@ -77,26 +81,56 @@ int MPIDO_Bcast(void *buffer,
    bcast.cmd.xfer_broadcast.type = PAMI_TYPE_BYTE;
    /* Needs to be sizeof(type)*count since we are using bytes as * the generic type */
    bcast.cmd.xfer_broadcast.typecount = data_size;
-   if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_BROADCAST] >= MPID_COLL_QUERY)
+
+#ifdef MPIDI_BASIC_COLLECTIVE_SELECTION
+   if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_BROADCAST] == MPID_COLL_SELECTED)
+   {
+      TRACE_ERR("Optimized barrier (%s) and (%s) were pre-selected\n",
+         comm_ptr->mpid.opt_protocol_md[PAMI_XFER_BROADCAST][0].name,
+         comm_ptr->mpid.opt_protocol_md[PAMI_XFER_BROADCAST][1].name);
+
+      if(data_size > comm_ptr->mpid.cutoff_size[PAMI_XFER_BROADCAST][0])
+      {
+         my_bcast = comm_ptr->mpid.opt_protocol[PAMI_XFER_BROADCAST][1];
+         my_bcast_md = &comm_ptr->mpid.opt_protocol_md[PAMI_XFER_BROADCAST][1];
+         queryreq = comm_ptr->mpid.must_query[PAMI_XFER_BROADCAST][1];
+      }
+      else
+      {
+         my_bcast = comm_ptr->mpid.opt_protocol[PAMI_XFER_BROADCAST][0];
+         my_bcast_md = &comm_ptr->mpid.opt_protocol_md[PAMI_XFER_BROADCAST][0];
+         queryreq = comm_ptr->mpid.must_query[PAMI_XFER_BROADCAST][0];
+      }
+   }
+   else
+#endif
+   {
+      TRACE_ERR("Optimized bcast (%s) was specified by user\n",
+         comm_ptr->mpid.user_metadata[PAMI_XFER_BROADCAST].name);
+      my_bcast =  comm_ptr->mpid.user_selected[PAMI_XFER_BROADCAST];
+      my_bcast_md = &comm_ptr->mpid.user_metadata[PAMI_XFER_BROADCAST];
+      queryreq = comm_ptr->mpid.user_selectedvar[PAMI_XFER_BROADCAST];
+   }
+
+   bcast.algorithm = my_bcast;
+
+   if(queryreq == MPID_COLL_ALWAYS_QUERY || queryreq == MPID_COLL_CHECK_FN_REQUIRED)
    {
       metadata_result_t result = {0};
       TRACE_ERR("querying bcast protocol %s, type was: %d\n",
-         comm_ptr->mpid.user_metadata[PAMI_XFER_BROADCAST].name, 
-         comm_ptr->mpid.user_selectedvar[PAMI_XFER_BROADCAST]);
-      result = comm_ptr->mpid.user_metadata[PAMI_XFER_BROADCAST].check_fn(&bcast);
+         my_bcast_md->name, queryreq);
+      result = my_bcast_md->check_fn(&bcast);
       TRACE_ERR("bitmask: %#X\n", result.bitmask);
       if(!result.bitmask)
       {
-         fprintf(stderr,"query failed for %s.\n",
-         comm_ptr->mpid.user_metadata[PAMI_XFER_BROADCAST].name);
+         fprintf(stderr,"query failed for %s.\n", my_bcast_md->name);
       }
    }
 
 
    TRACE_ERR("posting bcast, context: %d, algoname: %s\n",0, 
-         comm_ptr->mpid.user_metadata[PAMI_XFER_BROADCAST].name);
-   MPIDI_Update_last_algorithm(comm_ptr, 
-         comm_ptr->mpid.user_metadata[PAMI_XFER_BROADCAST].name);
+      my_bcast_md->name);
+   MPIDI_Update_last_algorithm(comm_ptr, my_bcast_md->name);
 
    if(MPIDI_Process.context_post)
    {
@@ -108,7 +142,7 @@ int MPIDO_Bcast(void *buffer,
    else
    {
       if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL)
-         fprintf(stderr,"Using protocol %s.\n",comm_ptr->mpid.user_metadata[PAMI_XFER_BROADCAST].name);
+         fprintf(stderr,"Using protocol %s.\n", my_bcast_md->name);
       rc = PAMI_Collective(MPIDI_Context[0], (pami_xfer_t *)&bcast);
    }
 

@@ -253,6 +253,7 @@ MPIDO_Allgather(void *sendbuf,
    use_bcast = comm_ptr->mpid.allgathers[1];
    use_pami = 
       (comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLGATHER] == MPID_COLL_USE_MPICH) ? 0 : 1;
+   if(sendbuf == MPI_IN_PLACE) use_pami = 0;
    use_opt = use_alltoall || use_tree_reduce || use_bcast || use_pami;
    TRACE_ERR("flags before: b: %d a: %d t: %d p: %d\n", use_bcast, use_alltoall, use_tree_reduce, use_pami);
    if(!use_opt)
@@ -277,7 +278,7 @@ MPIDO_Allgather(void *sendbuf,
    send_size = recv_size;
    rbuf = (char *)recvbuf+recv_true_lb;
 
-   if (sendbuf != MPI_IN_PLACE)
+   if(sendbuf != MPI_IN_PLACE)
    {
       MPIDI_Datatype_get_info(sendcount,
                             sendtype,
@@ -286,6 +287,10 @@ MPIDO_Allgather(void *sendbuf,
                             dt_null,
                             send_true_lb);
       sbuf = (char *)sendbuf+send_true_lb;
+   }
+   else
+   {
+      sbuf = recvbuf;
    }
 //   fprintf(stderr,"sendount: %d, recvcount: %d send_size: %zd recv_size: %zd\n", sendcount, recvcount, send_size, recv_size);
 

@@ -258,6 +258,11 @@ MPIX_Comm_update(MPI_Comm comm, int optimize)
    {
       MPIDI_Comm_coll_query(comm_ptr);
       MPIDI_Comm_coll_envvars(comm_ptr);
+#ifdef MPIDI_BASIC_COLLECTIVE_SELECTION
+      if(MPIDI_Process.optimized.select_colls)
+         MPIDI_Comm_coll_select(comm_ptr);
+#endif
+
       return MPI_SUCCESS;
    }
    else

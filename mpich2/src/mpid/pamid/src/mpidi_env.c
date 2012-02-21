@@ -29,26 +29,6 @@
  *   effectively disables the eager protocol for local transfers.
  *   - Default is 0 bytes.
  *
- * - PAMI_OPTRVZ -
- * - PAMI_OPTRZV - Determines the optimized rendezvous limit. Both options
- *   are identical.  This takes an argument, in bytes.  The
- *   optimized rendezvous protocol will be used if:
- *   eager_limit <= message_size < (eager_limit + PAMI_OPTRZV).
- *   For sending, one of three protocols will be used depending on the message
- *   size:  The eager protocol for small messages, the optimized rendezvous
- *   protocol for medium messages, and the default rendezvous protocol for
- *   large messages. The optimized rendezvous protocol generally has less
- *   latency than the default rendezvous protocol, but does not wait for a
- *   receive to be posted first.  Therefore, unexpected messages in this size
- *   range may be received, consuming storage until the receives are issued.
- *   The default rendezvous protocol waits for a receive to be posted first.
- *   Therefore, no unexpected messages in this size range will be received.
- *   The optimized rendezvous protocol also avoids filling injection fifos
- *   which can cause delays while larger fifos are allocated.  For example,
- *   alltoall on large subcommunicators with thread mode multiple will
- *   benefit from optimized rendezvous.
- *   - Default is 0 bytes, meaning that optimized rendezvous is not used.
- *
  * - PAMI_RMA_PENDING - Maximum outstanding RMA requests.
  *   Limits number of PAMI_Request objects allocated by MPI Onesided operations.
  *   - Default is 1000.
@@ -65,23 +45,29 @@
  *   Possible values:
  *   - 0 - Optimized collectives are not used.
  *   - 1 - Optimized collectives are used.
- *   - NOTREE.  Only collective network optimizations are not used.
- *   - Default is 1.
  *
- * - PAMI_INTERRUPT -
- * - PAMI_INTERRUPTS - Turns on interrupt driven communications. This
- *   can be beneficial to some applications and is required if you are
- *   using Global Arrays or ARMCI.  (They force this on, regardless of
- *   the environment setting).  Possible values:
- *   - 0 - Interrupt driven communications is not used.
- *   - 1 - Interrupt driven communications is used.
- *   - Default is 0.
- *
+ * - PAMI_COLLECTIVE_SELECTION -
+ * - PAMI_COLLECTIVES_SELECTION - Turns on optimized collective selection. If this
+ *   is not on, only the generic PGAS "always works" algorithms will be selected. This
+ *   can still be better than PAMI_COLLECTIVES=0. Additionally, setting this off
+ *   still allows environment variable selection of individual collectives protocols.
+ *   - 0 - Optimized collective selection is not used.
+ *   - 1 - Optimized collective selection is used. (default)
  *
  * - PAMI_VERBOSE - Increases the amount of information dumped during an
  *   MPI_Abort() call.  Possible values:
  *   - 0 - No additional information is dumped.
- *   - 1 - Additional information is dumped.
+ *   - 1 - Useful information is printed from MPI_Init(). This option does
+ *   NOT impact performance (other than a tiny bit during MPI_Init() and
+ *   is highly recommended for all applications.
+ *   - 2 - This turns on a lot of verbose output for collective selection,
+ *   including a list of which protocols are viable for each communicator
+ *   creation. This can be a lot of output, but typically only at 
+ *   communicator creation. Additionally, if PAMI_STATISTICS are on,
+ *   queue depths for each node will be printed at MPI_Finalize();
+ *   - 3 - This turns on a lot of per-node information (plus everything 
+ *   at the verbose=2 level). This can be a lot of information and is
+ *   rarely recommended.
  *   - Default is 0.
  *
  * - PAMI_STATISTICS - Turns on statistics printing for the message layer
@@ -134,39 +120,6 @@
  *         yield unpredictable results, usually hangs.
  *   - Default is N.
  *
- * - PAMI_SAFEALLREDUCE - The direct put allreduce bandwidth optimization
- *   protocols require the send and recv buffers to be 16-byte aligned on all
- *   nodes. Unfortunately, root's buffer can be misaligned from the rest of
- *   the nodes. Therefore, by default we must do an 2-byte allreduce before dput
- *   allreduces to ensure all nodes have the same alignment. If you know all of
- *   your buffers are 16 byte aligned, turning on this option will skip the
- *   allreduce step and improve performance. Setting this to "Y" is highly
- *   recommended for the majority of applications. We have not seen an
- *   application yet where "N" was unsafe, however it is technically incorrect
- *   to assume the alignment is the same on all nodes and therefore this must
- *   be set to "N" by default.
- *   Possible values:
- *   - N - Perform the allreduce
- *   - Y - Bypass the allreduce. If you have mismatched alignment, you will
- *         likely get weird behavior (hangs/crashes) or asserts.
- *   - Default is N.
- *
- * - PAMI_SAFEBCAST - The rectangle direct put bcast bandwidth optimization
- *   protocol requires the bcast buffers to be 16-byte aligned on all nodes.
- *   Unfortunately, you can have root's buffer be misaligned from the rest of
- *   the nodes. Therefore, by default we must do an allreduce before dput
- *   bcasts to ensure all nodes have the same alignment. If you know all of
- *   your buffers are 16 byte aligned, turning on this option will skip the
- *   allreduce step. Setting this to "Y" is highly recommended for the majority
- *   of applications. We have seen one mixed C/Fortran code where the alignment
- *   on root's buffer was different that on nonroot nodes. However, that is the
- *   only application we've seen that had a problem.
- *   Possible values:
- *   - N - Perform the allreduce
- *   - Y - Bypass the allreduce. If you have mismatched alignment, you will
- *         likely get weird behavior or asserts.
- *   - Default is N.
- *
  * - PAMI_SAFESCATTERV - The optimized scatterv protocol requires
  *   contiguous datatypes and similar datatypes on all nodes.  It
  *   also requires continuous displacements.  To verify
@@ -186,8 +139,9 @@
  *   - Default is N.
  *
  * - PAMI_PREALLREDUCE - Controls the protocol used for the pre-allreducing
- *   employed by bcast, allreduce, allgather(v), and scatterv. This option
- *   is independant from PAMI_ALLREDUCE. Possible values are:
+ *   employed by allgather(v), and scatterv. This option
+ *   is independant from PAMI_ALLREDUCE. 
+ *  TODO CLEANUP OPTIONS
  *   - MPIDO - Just call MPIDO_Allreduce and let the existing logic determine
  *             what allreduce to use. This can be expensive, but it is the only
  *             guaranteed option, and it is the only way to get MPICH for the
@@ -222,67 +176,6 @@
  *   a barrier. See PAMI_BCAST and PAMI_ALLGATHER(V) for more information
  *   - Default is 32.
  *
- * - PAMI_NUMCOLORS - Controls how many colors are used for rectangular
- *   broadcasts.  See PAMI_BCAST for more information. Possible values:
- *   - 0 - Let the lower-level messaging system decide.
- *   - 1, 2, or 3.
- *   - Default is 0.
- *
- * - PAMI_ASYNCCUTOFF - Changes the cutoff point between
- *   asynchronous and synchronous rectangular/binomial broadcasts.
- *   This can be highly application dependent.
- *   - Default is 128k.
- *
- * - PAMI_ALLTOALL_PREMALLOC -
- * - PAMI_ALLTOALLV_PREMALLOC -
- * - PAMI_ALLTOALLW_PREMALLOC - These are equivalent options.
- *   The alltoall protocols require 6 arrays to be setup
- *   before communication begins.  These 6 arrays are each of size
- *   (comm_size) so can be sizeable on large machines.  If your application
- *   does not use alltoall, or you need as much memory as possible, you can
- *   turn off pre-allocating these arrays.  By default, we allocate them
- *   once per communicator creation.  There is only one set, regardless of
- *   whether you are using alltoall, alltoallv, or alltoallw. Turning this off
- *   can free up a sizeable amount of per-communicator memory, especially if
- *   you aren't using alltoall(vw) on those communicators.
- *   Possible values:
- *   - Y - Premalloc the arrays.
- *   - N - Malloc and free on every alltoall operation.
- *   - Default is Y.
- *
- * - PAMI_ALLREDUCE_REUSE_STORAGE - This allows the lower
- *   level protcols to reuse some storage instead of malloc/free
- *   on every allreduce call.
- *   Possible values:
- *   - Y - Does not malloc/free on every allreduce call.  This improves
- *         performance, but retains malloc'd memory between allreduce calls.
- *   - N - Malloc/free on every allreduce call.  This frees up storage for
- *         use between allreduce calls.
- *   - Default is Y.
- *
- * - PAMI_ALLREDUCE_REUSE_STORAGE_LIMIT - This specifies the upper limit
- *   of storage to save and reuse across allreduce calls when
- *   PAMI_ALLREDUCE_REUSE_STORAGE is set to Y. (This environment variable
- *   is processed within the PAMI_Allreduce_register() API, not in
- *   MPIDI_Env_setup().)
- *   - Default is 1048576 bytes.
- *
- * - PAMI_REDUCE_REUSE_STORAGE - This allows the lower
- *   level protcols to reuse some storage instead of malloc/free
- *   on every reduce call.
- *   Possible values:
- *   - Y - Does not malloc/free on every reduce call.  This improves
- *         performance, but retains malloc'd memory between reduce calls.
- *   - N - Malloc/free on every reduce call.  This frees up storage for
- *         use between reduce calls.
- *   - Default is Y.
- *
- * - PAMI_REDUCE_REUSE_STORAGE_LIMIT - This specifies the upper limit
- *   of storage to save and reuse across allreduce calls when
- *   PAMI_REDUCE_REUSE_STORAGE is set to Y. (This environment variable
- *   is processed within the PAMI_Reduce_register() API, not in
- *   MPIDI_Env_setup().)
- *   - Default is 1048576 bytes.
  *
  ***************************************************************************
  *                      Specific Collectives Switches                      *
@@ -374,9 +267,8 @@
  *   protocol for allreduce.
  *
  * - PAMI_ALLTOALL -
- * - PAMI_ALLTOALLV -
- * - PAMI_ALLTOALLW - Controls the protocol used for
- *   alltoall/alltoallv/alltoallw.  Possible values:
+ * - PAMI_ALLTOALLV - Controls the protocol used for
+ *   alltoall/alltoallv  Possible values:
  *   - MPICH - Turn off all optimizations and use the MPICH
  *     point-to-point protocol.
  *   - Default (or if anything else is specified)
@@ -523,7 +415,7 @@ MPIDI_Env_setup()
   /* Do not use the PAMI_Context_post interface; call the work function directly.
    * As coded, this has the side-effect of only using a single context. */
   {
-    char *names[] = {"PAMI_CONTEXT_POST", NULL};
+    char *names[] = {"PAMI_CONTEXT_POST", "PAMI_CONTEXTPOST", NULL};
     ENV_Unsigned(names, &MPIDI_Process.context_post);
     TRACE_ERR("MPIDI_Process.context_post=%u\n", MPIDI_Process.context_post);
   }
@@ -576,6 +468,13 @@ MPIDI_Env_setup()
     ENV_Unsigned(names, &MPIDI_Process.optimized.collectives);
     TRACE_ERR("MPIDI_Process.optimized.collectives=%u\n", MPIDI_Process.optimized.collectives);
   }
+   /* Set the status for optimized selection of collectives */
+   {
+      char* names[] = {"PAMI_COLLECTIVE_SELECTION", "PAMI_COLLECTIVES_SELECTION", NULL};
+      ENV_Unsigned(names, &MPIDI_Process.optimized.select_colls);
+      TRACE_ERR("MPIDI_Process.optimized.select_colls=%u\n", MPIDI_Process.optimized.select_colls);
+   }
+
 
   /* Set the status of the optimized shared memory point-to-point functions */
   {
