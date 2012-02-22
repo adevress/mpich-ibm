@@ -45,6 +45,7 @@
  *   Possible values:
  *   - 0 - Optimized collectives are not used.
  *   - 1 - Optimized collectives are used.
+ *   If this is set to 0, only MPICH point-to-point based collectives will be used.
  *
  * - PAMI_COLLECTIVE_SELECTION -
  * - PAMI_COLLECTIVES_SELECTION - Turns on optimized collective selection. If this
@@ -55,20 +56,23 @@
  *   - 1 - Optimized collective selection is used. (default)
  *
  * - PAMI_VERBOSE - Increases the amount of information dumped during an
- *   MPI_Abort() call.  Possible values:
+ *   MPI_Abort() call and during varoius MPI function calls.  Possible values:
  *   - 0 - No additional information is dumped.
  *   - 1 - Useful information is printed from MPI_Init(). This option does
- *   NOT impact performance (other than a tiny bit during MPI_Init() and
- *   is highly recommended for all applications.
+ *   NOT impact performance (other than a tiny bit during MPI_Init()) and
+ *   is highly recommended for all applications. It will display which PAMI_
+ *   and BG_ env vars were used. However, it does NOT guarantee you typed the
+ *   env vars in correctly :)
  *   - 2 - This turns on a lot of verbose output for collective selection,
  *   including a list of which protocols are viable for each communicator
  *   creation. This can be a lot of output, but typically only at 
  *   communicator creation. Additionally, if PAMI_STATISTICS are on,
- *   queue depths for each node will be printed at MPI_Finalize();
+ *   queue depths for point-to-point operations will be printed for each node 
+ *   during MPI_Finalize();
  *   - 3 - This turns on a lot of per-node information (plus everything 
  *   at the verbose=2 level). This can be a lot of information and is
  *   rarely recommended.
- *   - Default is 0.
+ *   - Default is 0. However, setting to 1 is recommended.
  *
  * - PAMI_STATISTICS - Turns on statistics printing for the message layer
  *   such as the maximum receive queue depth.  Possible values:
@@ -86,7 +90,7 @@
  *                            "Safety" Options                             *
  ***************************************************************************
  *
- * - PAMI_SAFEALLGATHER - The optimized allgather protocols require
+ * - PAMI_SAFEALLGATHER - Some optimized allgather protocols require
  *   contiguous datatypes and similar datatypes on all nodes.  To verify
  *   this is true, we must do an allreduce at the beginning of the
  *   allgather call.  If the application uses "well behaved" datatypes, you can
@@ -140,28 +144,9 @@
  *
  * - PAMI_PREALLREDUCE - Controls the protocol used for the pre-allreducing
  *   employed by allgather(v), and scatterv. This option
- *   is independant from PAMI_ALLREDUCE. 
- *  TODO CLEANUP OPTIONS
- *   - MPIDO - Just call MPIDO_Allreduce and let the existing logic determine
- *             what allreduce to use. This can be expensive, but it is the only
- *             guaranteed option, and it is the only way to get MPICH for the
- *             pre-allreduce.
- *   - SRECT - Use the short rectangle protocol. If you set this and do not
- *             have a rectangular (sub)communicator, you'll get the MPIDO
- *             option. This is the default selection for rectangular subcomms.
- *   - SBINOM - Use the short binomial protocol. This is the default for
- *             irregular subcomms.
- *   - ARING - Use the async rectangular ring protocol
- *   - ARECT - Use the async rectangle protocol
- *   - ABINOM - Use the async binomial protocol
- *   - RING - Use the rectangular ring protocol
- *   - RECT - Use the rectangle protocol
- *   - TDPUT - Use the tree dput protocol. This is the default in virtual
- *             node mode on MPI_COMM_WORLD
- *   - TREE - Use the tree. This is the default in SMP mode on MPI_COMM_WORLD
- *   - DPUT - Use the rectangular direct put protocol
- *   - PIPE - Use the pipelined CCMI tree protocol
- *   - BINOM - Use a binomial protocol
+ *   is independant from PAMI_ALLREDUCE. The available protocols can be 
+ *   determined with PAMI_VERBOSE=2. If collective selection is on, we will
+ *   attempt to use the fastest protocol for the given communicator.
  *
  ***************************************************************************
  *                       General Collectives Options                       *
@@ -185,186 +170,111 @@
  *   Possible values:
  *   - MPICH - Turn off all optimizations for allgather and use the MPICH
  *     point-to-point protocol. This can be very bad on larger partitions.
- *   - ALLREDUCE - Use a collective network based allreduce.  This is the
- *     default on MPI_COMM_WORLD for smaller messages.
- *   - ALLTOALL - Use an all-to-all based algorithm.  This is the default on
- *     irregular communicators.  It works very well for larger messages,
- *     especially on larger communicators.
- *   - BCAST - Use a broadcast.  This will use a collective network broadcast
- *     on MPI_COMM_WORLD. It is the default for larger messages on
- *     MPI_COMM_WORLD.  This can work well on rectangular subcommunicators for
- *     medium-sized messages.
- *   - ASYNC - Use an async broadcast.  This will use a series of asynchronous
- *     broadcasts (one per node in the allgather call) to do the allgather.
- *     After every {PAMI_NUMREQUESTS}, a barrier is called. This is the default
- *     option for small messages on rectangular or irregular subcommunicators.
- *   - Default varies based on the communicator.  See above.
+ *  - Other options can be determined by running with PAMI_VERBOSE=2.
+ *   TODO: Implement the NO options
  *   NOTE: Individual options may be turned off by prefixing them with "NO".
- *   For example, PAMI_ALLGATHER=NOASYNC will prevent the use of async bcast
- *   based allgathers.
+ *   For example, PAMI_ALLGATHER=NO{specific protocol name} will prevent the 
+ *   use of the specified protocol.
  *
  * - PAMI_ALLGATHERV - Controls the protocol used for allgatherv.
  *   Possible values:
  *   - MPICH - Turn off all optimizations for allgather and use the MPICH
  *     point-to-point protocol. This can be very bad on larger partitions.
- *   - ALLREDUCE - Use a collective network based allreduce.  This is the
- *     default on MPI_COMM_WORLD for smaller messages.
- *   - ALLTOALL - Use an all-to-all based algorithm.  This is the default on
- *     irregular communicators.  It works very well for larger messages and
- *     larger communicators.
- *   - BCAST - Use a broadcast.  This will use a series of broadcasts.
- *     It is the default for larger messages on MPI_COMM_WORLD.
- *     This can work well on rectangular subcommunicators for medium to
- *     large messages (where it is the default).
- *   - ASYNC - Use a series of async broadcast, one per node. After every
- *     {PAMI_NUMREQUESTS} we do a barrier. This is the default for small
- *     messages on rectangular or irregular subcommunicators.
- *   - Default varies based on the communicator.  See above.
+ *  - Other options can be determined by running with PAMI_VERBOSE=2.
+ *   TODO: Implement the NO options
  *   NOTE: Individual options may be turned off by prefixing them with "NO".
- *   For example, PAMI_ALLGATHERV=NOASYNC will prevent the use of async bcast
- *   based allgathervs.
+ *   For example, PAMI_ALLGATHERV=NO{specific protocol name} will prevent the 
+ *   use of the specified protocol.
  *
  * - PAMI_ALLREDUCE - Controls the protocol used for allreduce.
  *   Possible values:
  *   - MPICH - Turn off all optimizations for allreduce and use the MPICH
  *     point-to-point protocol.
- *   - RING - Use a rectangular ring protocol.  This is the default for
- *     rectangular subcommunicators.
- *   - RECT - Use a rectangular/binomial protocol.  This is off by default.
- *   - BINOM - Use a binomial protocol.  This is the default for irregular
- *     subcommunicators when not using floating point for MPI_SUM/MPI_PROD
- *     operations. The protocol can produce different results on different
- *     nodes because of floating point non-associativity. This can be
- *     overridden with PAMI_ALLREDUCE_ND=1.
- *   - TREE - Use the collective network.  This is the default for
- *       MPI_COMM_WORLD and duplicates of MPI_COMM_WORLD in MPI_THREAD_SINGLE
- *       mode.
- *   - PIPE - Use the pipelined CCMI collective network protocol. This is off
- *       by default.
- *   - ARECT - Enable the asynchronous rectangle protocol
- *   - ABINOM - Enable the async binomial protocol
- *   - ARING - Enable the asynchronous version of the rectangular ring protocol.
- *   - TDPUT - Use the tree+direct put protocol. This is the default for VNM
- *       on MPI_COMM_WORLD
- *   - SR - Use the short async rectangular protocol. This protocol only works
- *       with up to 208 bytes. It is very fast for short messages however.
- *   - SB - Use the short async binomial protocol. This protocol only works
- *       with up to 208 bytes. It is very fast for short messages on irregular
- *       subcommunicators. However, this protocol can produce slightly
- *       different results on different nodes because of floating point
- *       addition being nonassociative. This is still useable on integers
- *       and floating point operations beyond MPI_SUM and MPI_PROD. To get this
- *       protocol for MPI_SUM and MPI_PROD, use the PAMI_ALLREDUCE_ND=1 option.
- *   - DPUT - Use the rectangular direct put protocol. This is the default for
- *       large messages on rectangular subcomms and MPI_COMM_WORLD
- *   - TDPUT - Use the tree plus direct put protocol. Only usable on
- *       MPI_COMM_WORLD.
- *   - GLOBAL - Use the global tree protocol. Only usable on MPI_COMM_WORLD.
- *   - Default varies based on the communicator and message size and if the
- *     operation/datatype pair is supported on the tree hardware.
+ *   - Other options can be determined by running with PAMI_VERBOSE=2.
+ *   Note: Many allreduce algorithms are in the "must query" category and 
+ *   might or might not be available for a specific callsite.
+ *   TODO: Implement the NO options
  *   NOTE: Individual options may be turned off by prefixing them with "NO".
- *   For example, PAMI_ALLREDUCE=NOTREE will prevent the use of the tree
- *   protocol for allreduce.
+ *   For example, PAMI_ALLREDUCE=NO{specific protocol name} will prevent the 
+ *   use of the specified protocol.
  *
  * - PAMI_ALLTOALL -
  * - PAMI_ALLTOALLV - Controls the protocol used for
  *   alltoall/alltoallv  Possible values:
  *   - MPICH - Turn off all optimizations and use the MPICH
  *     point-to-point protocol.
- *   - Default (or if anything else is specified)
- *     is to use an optimized alltoall/alltoallv/alltoallw.
+ *   - Other options can be determined by running with PAMI_VERBOSE=2.
+ *   TODO: Implement the NO options
+ *   NOTE: Individual options may be turned off by prefixing them with "NO".
+ *   For example, PAMI_ALLTOALL=NO{specific protocol name} will prevent the 
+ *   use of the specified protocol.
+ *
  *
  * - PAMI_BARRIER - Controls the protocol used for barriers.
  *   Possible values:
  *   - MPICH - Turn off optimized barriers and use the MPICH
  *     point-to-point protocol.
- *   - BINOM - Use the binomial barrier.  This is the default for all
- *     subcommunicators.
- *   - GI - Use the GI network.  This is the default for MPI_COMM_WORLD and
- *     duplicates of MPI_COMM_WORLD in MPI_THREAD_SINGLE mode.
- *   - CCMI - Use the CCMI GI network protocol.  This is off by
- *     default.
- *   - Default varies based on the communicator.  See above.
+ *   - Other options can be determined by running with PAMI_VERBOSE=2.
+ *   TODO: Implement the NO options
  *   NOTE: Individual options may be turned off by prefixing them with "NO".
- *   For example, PAMI_BARRIER=NOGI will prevent the use of the global
- *   interrupts.
+ *   For example, PAMI_BARRIER=NO{specific protocol name} will prevent the 
+ *   use of the specified protocol.
  *
  * - PAMI_BCAST - Controls the protocol used for broadcast.  Possible values:
  *   - MPICH - Turn off all optimizations for broadcast and use the MPICH
  *     point-to-point protocol.
- *   - TREE - Use the collective network. This is the default on MPI_COMM_WORLD
- *     and duplicates of MPI_COMM_WORLD in MPI_THREAD_SINGLE mode.  This
- *     provides the fastest possible broadcast for small messages.
- *   - CCMI - Use the CCMI collective network protocol.  This is off by default.
- *   - CDPUT - Use the CCMI collective network protocol with
- *     DPUT. This is off by default.
- *   - AR - Use the asynchronous rectangle protocol. This is the default
- *     for small messages on rectangular subcommunicators.  The cutoff between
- *     async and sync can be controlled with PAMI_ASYNCCUTOFF.
- *   - AB - Use the asynchronous binomial protocol.  This is the default
- *     for irregularly shaped subcommunicators.  The cutoff between
- *     async and sync can be controlled with PAMI_ASYNCCUTOFF.
- *   - RECT - Use the rectangle protocol. This is the default for rectangularly
- *     shaped subcommunicators for large messages.  This disables the
- *     asynchronous protocol.
- *   - BINOM - Use the binomial protocol. This is the default for irregularly
- *     shaped subcommunicators for large messages.  This disables the
- *     asynchronous protocol.
- *   - Default varies based on the communicator.  See above.
- *   NOTE: Any option may be prefixed with "NO" to turn OFF just that protocol.
- *   For example, PAMI_BCAST=NOTREE will prevent us from using the tree for
- *   broadcasts.
+ *   - Other options can be determined by running with PAMI_VERBOSE=2.
+ *   TODO: Implement the NO options
+ *   NOTE: Individual options may be turned off by prefixing them with "NO".
+ *   For example, PAMI_BCAST=NO{specific protocol name} will prevent the 
+ *   use of the specified protocol.
  *
  * - PAMI_GATHER - Controls the protocol used for gather.
  *   Possible values:
  *   - MPICH - Use the MPICH point-to-point protocol.
- *   - Default (or if anything else is specified)
- *     is to use a reduce-based algorithm for larger message sizes.
+ *   - Other options can be determined by running with PAMI_VERBOSE=2.
+ *   TODO: Implement the NO options
+ *   NOTE: Individual options may be turned off by prefixing them with "NO".
+ *   For example, PAMI_GATHER=NO{specific protocol name} will prevent the 
+ *   use of the specified protocol.
  *
  * - PAMI_REDUCE - Controls the protocol used for reduce.
  *   Possible values:
  *   - MPICH - Turn off all optimizations and use the MPICH point-to-point
  *     protocol.
- *   - RECT - Use a rectangular/binomial protocol.  This is the default for
- *     rectangular subcommunicators.
- *   - BINOM - Use a binomial protocol.  This is the default for irregular
- *     subcommunicators.
- *   - TREE - Use the collective network.  This is the default for
- *     MPI_COMM_WORLD and duplicates of MPI_COMM_WORLD in MPI_THREAD_SINGLE
- *     mode.
- *   - CCMI - Use the CCMI collective network protocol.  This is off by default.
- *   - ALLREDUCE - Use an allreduce protocl. This is off by default but can
- *     actually provide better results than a reduce at the expense of some
- *     application memory.
- *   - Default varies based on the communicator.  See above.
- *   NOTE: Any option may be prefixed with "NO" to turn OFF just that protocol.
- *   For example, PAMI_REDUCE=NOTREE will prevent us from using the tree for
- *   reduce.
+ *   - Other options can be determined by running with PAMI_VERBOSE=2.
+ *   TODO: Implement the NO options
+ *   NOTE: Individual options may be turned off by prefixing them with "NO".
+ *   For example, PAMI_REDUCE=NO{specific protocol name} will prevent the 
+ *   use of the specified protocol.
  *
  * - PAMI_REDUCESCATTER - Controls the protocol used for reduce_scatter
  *   operations.  The options for PAMI_SCATTERV and PAMI_REDUCE can change the
  *   behavior of reduce_scatter.  Possible values:
  *   - MPICH - Use the MPICH point-to-point protocol.
- *   - Default (or if anything else is specified)
- *     is to use an optimized reduce followed by an optimized scatterv.
- *     This works well for larger messages.
+ *   - Other options can be determined by running with PAMI_VERBOSE=2.
+ *   TODO: Implement the NO options
+ *   NOTE: Individual options may be turned off by prefixing them with "NO".
+ *   For example, PAMI_REDUCESCATTER=NO{specific protocol name} will prevent the 
+ *   use of the specified protocol.
  *
  * - PAMI_SCATTER - Controls the protocol used for scatter.
  *   Possible values:
  *   - MPICH - Use the MPICH point-to-point protocol.
- *   - Default (or if anything else is specified)
- *     is to use a broadcast-based scatter at a 2k or larger
- *     message size.
+ *   - Other options can be determined by running with PAMI_VERBOSE=2.
+ *   TODO: Implement the NO options
+ *   NOTE: Individual options may be turned off by prefixing them with "NO".
+ *   For example, PAMI_SCATTER=NO{specific protocol name} will prevent the 
+ *   use of the specified protocol.
  *
  * - PAMI_SCATTERV - Controls the protocol used for scatterv.
  *   Possible values:
- *   - ALLTOALL - Use an all-to-all based protocol when the
- *     message size is above 2k. This is optimal for larger messages
- *     and larger partitions.
- *   - BCAST - Use a broadcast-based scatterv.  This works well
- *     for small messages.
  *   - MPICH - Use the MPICH point-to-point protocol.
- *   - Default is ALLTOALL.
+ *   - Other options can be determined by running with PAMI_VERBOSE=2.
+ *   TODO: Implement the NO options
+ *   NOTE: Individual options may be turned off by prefixing them with "NO".
+ *   For example, PAMI_SCATTERV=NO{specific protocol name} will prevent the 
+ *   use of the specified protocol.
  *
  *
  */
