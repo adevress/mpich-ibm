@@ -6,6 +6,14 @@
 
 #include <mpidimpl.h>
 
+static void cb_scatter(void *ctxt, void *clientdata, pami_result_t err)
+{
+   unsigned *active = (unsigned *)clientdata;
+   TRACE_ERR("cb_scatter enter, active: %u\n", (*active));
+   MPIDI_Progress_signal();
+   (*active)--;
+}
+
 /* works for simple data types, assumes fast bcast is available */
 int MPIDO_Scatter_bcast(void * sendbuf,
 			int sendcount,
@@ -84,10 +92,18 @@ int MPIDO_Scatter(void *sendbuf,
 {
   MPID_Datatype * data_ptr;
   MPI_Aint true_lb = 0;
-  char *sbuf = sendbuf, *rbuf = recvbuf;
+//  char *sbuf = sendbuf, *rbuf = recvbuf;
   int contig, nbytes = 0;
   int rank = comm_ptr->rank;
   int success = 1;
+
+  if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_SCATTER] == MPID_COLL_USE_MPICH)
+  {
+     MPIDI_Update_last_algorithm(comm_ptr, "SCATTER_MPICH");
+    return MPIR_Scatter(sendbuf, sendcount, sendtype,
+                        recvbuf, recvcount, recvtype,
+                        root, comm_ptr, mpierrno);
+  }
 
   if (rank == root)
   {
@@ -124,14 +140,88 @@ int MPIDO_Scatter(void *sendbuf,
       success = 0;
   }
 
-  MPIDI_Update_last_algorithm(comm_ptr, "SCATTER_MPICH");
-  if(!comm_ptr->mpid.optscatter ||
-   comm_ptr->mpid.user_selectedvar[PAMI_XFER_SCATTER] == MPID_COLL_USE_MPICH)
-  {
-    return MPIR_Scatter(sendbuf, sendcount, sendtype,
-                        recvbuf, recvcount, recvtype,
-                        root, comm_ptr, mpierrno);
-  }
+
+   pami_xfer_t scatter;
+   pami_result_t rc;
+   MPIDI_Post_coll_t scatter_post;
+   pami_algorithm_t my_scatter;
+   pami_metadata_t *my_scatter_md;
+   volatile unsigned scatter_active = 1;
+   int queryreq = 0;
+
+#ifdef MPIDI_BASIC_COLLECTIVE_SELECTION
+   if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_SCATTER] == MPID_COLL_SELECTED)
+   {
+      TRACE_ERR("Optimized scatter %s was selected\n",
+         comm_ptr->mpid.opt_protocol_md[PAMI_XFER_SCATTER][0].name);
+      my_scatter = comm_ptr->mpid.opt_protocol[PAMI_XFER_SCATTER][0];
+      my_scatter_md = &comm_ptr->mpid.opt_protocol_md[PAMI_XFER_SCATTER][0];
+      queryreq = comm_ptr->mpid.must_query[PAMI_XFER_SCATTER][0];
+   }
+   else
+#endif
+   {
+      TRACE_ERR("Optimized scatter %s was set by user\n",
+         comm_ptr->mpid.user_metadata[PAMI_XFER_SCATTER].name);
+      my_scatter = comm_ptr->mpid.user_selected[PAMI_XFER_SCATTER];
+      my_scatter_md = &comm_ptr->mpid.user_metadata[PAMI_XFER_SCATTER];
+      queryreq = comm_ptr->mpid.user_selectedvar[PAMI_XFER_SCATTER];
+   }
+
+   scatter.algorithm = my_scatter;
+   scatter.cb_done = cb_scatter;
+   scatter.cookie = (void *)&scatter_active;
+   scatter.cmd.xfer_scatter.root = MPID_VCR_GET_LPID(comm_ptr->vcr, root);
+   scatter.cmd.xfer_scatter.sndbuf = (void *)sendbuf;
+   scatter.cmd.xfer_scatter.stype = PAMI_TYPE_BYTE;
+   scatter.cmd.xfer_scatter.stypecount = nbytes;
+   scatter.cmd.xfer_scatter.rcvbuf = (void *)recvbuf;
+   scatter.cmd.xfer_scatter.rtype = PAMI_TYPE_BYTE;
+   scatter.cmd.xfer_scatter.rtypecount = nbytes;
+
+   if(unlikely(queryreq == MPID_COLL_ALWAYS_QUERY ||
+               queryreq == MPID_COLL_CHECK_FN_REQUIRED))
+   {
+      metadata_result_t result = {0};
+      TRACE_ERR("querying scatter protoocl %s, type was %d\n",
+         my_scatter_md->name, queryreq);
+      result = my_scatter_md->check_fn(&scatter);
+      TRACE_ERR("bitmask: %#X\n", result.bitmask);
+      if(!result.bitmask)
+      {
+         fprintf(stderr,"query failed for %s\n", my_scatter_md->name);
+      }
+   }
+
+   if(MPIDI_Process.context_post)
+   {
+      TRACE_ERR("Posting scatter\n");
+      scatter_post.coll_struct = &scatter;
+      rc = PAMI_Context_post(MPIDI_Context[0], &scatter_post.state,
+            MPIDI_Pami_post_wrapper, (void *)&scatter_post);
+   }
+   else
+   {
+      TRACE_ERR("Calling scatter\n");
+      rc = PAMI_Collective(MPIDI_Context[0], (pami_xfer_t *)&scatter);
+   }
+   TRACE_ERR("Return code: %d\n", rc);
+   TRACE_ERR("Waiting on active %d\n", scatter_active);
+   MPID_PROGRESS_WAIT_WHILE(scatter_active);
+
+
+   TRACE_ERR("Leaving MPIDO_Scatter\n");
+
+   return rc;
+}
+
+
+
+#if 0 /* old glue-based scatter-via-bcast */
+
+  /* Assume glue protocol sucks for now.... Needs work if not or to enable */
+
+
 
   /* see if we all agree to use bcast scatter */
   MPIDO_Allreduce(MPI_IN_PLACE, &success, 1, MPI_INT, MPI_BAND, comm_ptr, mpierrno);
@@ -148,4 +238,4 @@ int MPIDO_Scatter(void *sendbuf,
    return MPIDO_Scatter_bcast(sbuf, sendcount, sendtype,
                               rbuf, recvcount, recvtype,
                               root, comm_ptr, mpierrno);
-}
+#endif
