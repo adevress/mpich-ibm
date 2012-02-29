@@ -64,10 +64,34 @@ int MPIDO_Gatherv(void *sendbuf,
    }
 
    pami_xfer_t gatherv;
+   pami_algorithm_t my_gatherv;
+   pami_metadata_t *my_gatherv_md;
+   int queryreq = 0;
+
+#ifdef MPIDI_BASIC_COLLECTIVE_SELECTION
+   if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_GATHERV_INT] == MPID_COLL_SELECTED)
+   {
+      TRACE_ERR("Optimized gatherv %s was selected\n",
+         comm_ptr->mpid.opt_protocol_md[PAMI_XFER_GATHERV_INT][0].name);
+      my_gatherv = comm_ptr->mpid.opt_protocol[PAMI_XFER_GATHERV_INT][0];
+      my_gatherv_md = &comm_ptr->mpid.opt_protocol_md[PAMI_XFER_GATHERV_INT][0];
+      queryreq = comm_ptr->mpid.must_query[PAMI_XFER_GATHERV_INT][0];
+   }
+   else
+#endif
+   {
+      TRACE_ERR("Optimized gatherv %s was set by user\n",
+         comm_ptr->mpid.user_selected[PAMI_XFER_GATHERV_INT]);
+         my_gatherv = comm_ptr->mpid.user_selected[PAMI_XFER_GATHERV_INT];
+         my_gatherv_md = &comm_ptr->mpid.user_metadata[PAMI_XFER_GATHERV_INT];
+         queryreq = comm_ptr->mpid.user_selectedvar[PAMI_XFER_GATHERV_INT];
+   }
+
+   gatherv.algorithm = my_gatherv;
+
    gatherv.cb_done = cb_gatherv;
    gatherv.cookie = (void *)&gatherv_active;
    gatherv.cmd.xfer_gatherv_int.root = MPID_VCR_GET_LPID(comm_ptr->vcr, root);
-   gatherv.algorithm = comm_ptr->mpid.user_selected[PAMI_XFER_GATHERV];
    gatherv.cmd.xfer_gatherv_int.sndbuf = sbuf;
    gatherv.cmd.xfer_gatherv_int.rcvbuf = rbuf;
    #ifdef PAMI_DISPS_ARE_BYTES 
@@ -117,9 +141,21 @@ int MPIDO_Gatherv(void *sendbuf,
    gatherv.cmd.xfer_gatherv_int.rdispls = displs;
    #endif
 
+   if(unlikely(queryreq == MPID_COLL_ALWAYS_QUERY || queryreq == MPID_COLL_CHECK_FN_REQUIRED))
+   {
+      metadata_result_t result = {0};
+      TRACE_ERR("querying gatherv protocol %s, type was %d\n", 
+         my_gatherv_md->name, queryreq);
+      result = my_gatherv_md->check_fn(&gatherv);
+      TRACE_ERR("bitmask: %#X\n", result.bitmask);
+      if(!result.bitmask)
+      {
+         fprintf(stderr,"Query failed for %s\n", my_gatherv_md->name);
+      }
+   }
    
-   MPIDI_Update_last_algorithm(comm_ptr,
-      comm_ptr->mpid.user_metadata[PAMI_XFER_GATHERV_INT].name);
+   MPIDI_Update_last_algorithm(comm_ptr, my_gatherv_md->name);
+
    if(MPIDI_Process.context_post)
    {
       MPIDI_Post_coll_t gatherv_post;
