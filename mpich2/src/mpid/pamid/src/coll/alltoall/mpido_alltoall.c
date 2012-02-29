@@ -96,7 +96,7 @@ int MPIDO_Alltoall(void *sendbuf,
    alltoall.cmd.xfer_alltoall.stype = stype;
    alltoall.cmd.xfer_alltoall.rtype = rtype;
 
-   if(unlikely(queryreq >= MPID_COLL_QUERY))
+   if(unlikely(queryreq == MPID_COLL_ALWAYS_QUERY || queryreq == MPID_COLL_CHECK_FN_REQUIRED))
    {
       metadata_result_t result = {0};
       TRACE_ERR("querying alltoall protocol %s, query level was %d\n", pname,

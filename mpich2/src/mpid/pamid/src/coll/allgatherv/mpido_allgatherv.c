@@ -440,7 +440,8 @@ MPIDO_Allgatherv(void *sendbuf,
       allgatherv.cmd.xfer_allgatherv_int.rdispls = displs;
       #endif
 
-      if(unlikely(comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLGATHERV_INT] >= MPID_COLL_QUERY))
+      if(unlikely (comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLGATHERV_INT] == MPID_COLL_ALWAYS_QUERY ||
+                   comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLGATHERV_INT] == MPID_COLL_CHECK_FN_REQUIRED))
       {
          metadata_result_t result = {0};
          TRACE_ERR("Querying allgatherv_int protocol %s, type was %d\n", pname,

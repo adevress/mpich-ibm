@@ -378,7 +378,8 @@ MPIDO_Allgather(void *sendbuf,
       allgather.cmd.xfer_allgather.stypecount = send_size;
       allgather.cmd.xfer_allgather.rtypecount = recv_size;
       allgather.algorithm = comm_ptr->mpid.user_selected[PAMI_XFER_ALLGATHER];
-      if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLGATHER] >= MPID_COLL_QUERY)
+      if(unlikely( comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLGATHER] == MPID_COLL_ALWAYS_QUERY ||
+                   comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLGATHER] == MPID_COLL_CHECK_FN_REQUIRED))
       {
          metadata_result_t result = {0};
          TRACE_ERR("Querying allgather protocol %s, type was: %d\n",
