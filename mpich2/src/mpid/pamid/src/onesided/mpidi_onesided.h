@@ -97,6 +97,7 @@ typedef struct
     int              count;
     MPI_Datatype     datatype;
     MPIDI_Datatype   dt;
+    int              completed;
   } origin;
 
   struct

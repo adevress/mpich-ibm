@@ -148,6 +148,7 @@ MPID_Get(void         *origin_addr,
       req->origin.addr  = origin_addr;
       req->origin.count = origin_count;
       req->origin.datatype = origin_datatype;
+      req->origin.completed = 0;
 
 
 

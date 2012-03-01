@@ -50,6 +50,8 @@ pami_result_t MPIDI_Pami_post_wrapper(pami_context_t context, void *cookie)
 
 #define isDOUBLE(x) ( (x) == MPI_DOUBLE || (x) == MPI_DOUBLE_PRECISION)
 
+#define isLONG_DOUBLE(x) ( (x) == MPI_LONG_DOUBLE )
+
 #define isLOC_TYPE(x) ( (x) == MPI_2REAL || (x) == MPI_2DOUBLE_PRECISION || \
                         (x) == MPI_2INTEGER || (x) == MPI_FLOAT_INT || \
                         (x) == MPI_DOUBLE_INT || (x) == MPI_LONG_INT || \
@@ -107,6 +109,7 @@ int MPIDI_Datatype_to_pami(MPI_Datatype        dt,
    else if(isUS_INT(dt)) *pdt = PAMI_TYPE_UNSIGNED_INT;
    else if(isFLOAT(dt))  *pdt = PAMI_TYPE_FLOAT;
    else if(isDOUBLE(dt)) *pdt = PAMI_TYPE_DOUBLE;
+   else if(isLONG_DOUBLE(dt)) *pdt = PAMI_TYPE_LONG_DOUBLE;
    else
    {
       *musupport = MUUNSUPPORTED;
@@ -150,6 +153,11 @@ int MPIDI_Datatype_to_pami(MPI_Datatype        dt,
             *pop = PAMI_DATA_MAXLOC;
             return MPI_SUCCESS;
          }
+         if(op == MPI_REPLACE) 
+         {
+            *pop = PAMI_DATA_COPY;
+            return MPI_SUCCESS;
+         }
          else return -1;
       }
       else if(isLOGICAL(dt))
@@ -169,6 +177,11 @@ int MPIDI_Datatype_to_pami(MPI_Datatype        dt,
          if(op == MPI_LXOR) 
          {   
             *pop = PAMI_DATA_LXOR;
+            return MPI_SUCCESS;
+         }
+         if(op == MPI_REPLACE) 
+         {   
+            *pop = PAMI_DATA_COPY;
             return MPI_SUCCESS;
          }
          return -1;
@@ -192,6 +205,11 @@ int MPIDI_Datatype_to_pami(MPI_Datatype        dt,
             *pop = PAMI_DATA_LXOR;
             return MPI_SUCCESS;
          }
+         if(op == MPI_REPLACE) 
+         {   
+            *pop = PAMI_DATA_COPY;
+            return MPI_SUCCESS;
+         }
          return -1;
       }
    }
@@ -213,6 +231,7 @@ int MPIDI_Datatype_to_pami(MPI_Datatype        dt,
       case MPI_LAND: *pop = PAMI_DATA_LAND; return MPI_SUCCESS; break;
       case MPI_LOR: *pop = PAMI_DATA_LOR; return MPI_SUCCESS; break;
       case MPI_LXOR: *pop = PAMI_DATA_LXOR; return MPI_SUCCESS; break;
+      case MPI_REPLACE: *pop = PAMI_DATA_COPY; return MPI_SUCCESS; break;
    }
    if(*pop == PAMI_DATA_NOOP) return -1;
 

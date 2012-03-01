@@ -14,24 +14,29 @@ MPIDI_Win_DoneCB(pami_context_t  context,
   MPIDI_Win_request *req = (MPIDI_Win_request*)cookie;
   ++req->win->mpid.sync.complete;
 
+  if ((req->buffer_free) && (req->type == MPIDI_WIN_REQUEST_GET))
+    {
+      ++req->origin.completed;
+      if (req->origin.completed == req->origin.count)
+        {
+          int mpi_errno;
+          mpi_errno = MPIR_Localcopy(req->buffer,
+                                     req->origin.dt.size,
+                                     MPI_CHAR,
+                                     req->origin.addr,
+                                     req->origin.count,
+                                     req->origin.datatype);
+          MPID_assert(mpi_errno == MPI_SUCCESS);
+          MPID_Datatype_release(req->origin.dt.pointer);
+          MPIU_Free(req->buffer);
+          req->buffer_free = 0;
+        }
+    }
+
   if (req->win->mpid.sync.total == req->win->mpid.sync.complete)
     {
       if (req->buffer_free)
-        {
-          if (req->type == MPIDI_WIN_REQUEST_GET)
-            {
-              int mpi_errno;
-              mpi_errno = MPIR_Localcopy(req->buffer,
-                                         req->origin.dt.size,
-                                         MPI_CHAR,
-                                         req->origin.addr,
-                                         req->origin.count,
-                                         req->origin.datatype);
-              MPID_assert(mpi_errno == MPI_SUCCESS);
-              MPID_Datatype_release(req->origin.dt.pointer);
-            }
-          MPIU_Free(req->buffer);
-        }
+        MPIU_Free(req->buffer);
       if (req->accum_headers)
         MPIU_Free(req->accum_headers);
       MPIU_Free(req);

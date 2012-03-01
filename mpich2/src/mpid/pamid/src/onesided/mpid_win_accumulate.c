@@ -240,7 +240,6 @@ MPID_Accumulate(void         *origin_addr,
         (origin_datatype == MPI_DOUBLE_INT) ||
         (origin_datatype == MPI_LONG_INT)   ||
         (origin_datatype == MPI_SHORT_INT)  ||
-        (origin_datatype == MPI_2INT)       ||
         (origin_datatype == MPI_LONG_DOUBLE_INT))
       {
         MPID_assert(basic_type == MPI_DATATYPE_NULL);
