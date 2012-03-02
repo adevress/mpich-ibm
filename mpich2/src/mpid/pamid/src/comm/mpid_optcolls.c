@@ -496,6 +496,22 @@ void MPIDI_Comm_coll_select(MPID_Comm *comm_ptr)
       TRACE_ERR("Done setting optimized allreduce protocols\n");
    }
       
+   if(MPIDI_Process.optimized.select_colls != 2)
+   {
+      for(i = 0; i < PAMI_XFER_COUNT; i++)
+      {
+         if(i == PAMI_XFER_AMBROADCAST || i == PAMI_XFER_AMSCATTER ||
+            i == PAMI_XFER_AMGATHER || i == PAMI_XFER_AMREDUCE)
+            continue;
+         if(comm_ptr->mpid.user_selectedvar[i] != MPID_COLL_SELECTED)
+         {
+            if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm_ptr->rank == 0)
+               fprintf(stderr, "Collective wasn't selected for type %d,using MPICH (comm %p)\n", i, comm_ptr);
+            comm_ptr->mpid.user_selectedvar[i] = MPID_COLL_USE_MPICH;
+         }
+      }
+   }
+   
             
    if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm_ptr->rank == 0)
    {

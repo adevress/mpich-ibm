@@ -43,7 +43,7 @@ int MPIDO_Reduce(void *sendbuf,
    pami_xfer_t reduce;
    volatile unsigned reduce_active = 1;
 
-   if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_REDUCE] == MPID_COLL_USE_MPICH)
+   if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_REDUCE] == MPID_COLL_USE_MPICH || rc != MPI_SUCCESS)
    {
       TRACE_ERR("Using MPICH reduce algorithm\n");
       return MPIR_Reduce(sendbuf, recvbuf, count, datatype, op, root, comm_ptr, mpierrno);

@@ -58,7 +58,7 @@ int MPIDO_Doscan(void *sendbuf, void *recvbuf,
    pami_xfer_t scan;
    volatile unsigned scan_active = 1;
 
-   if(sendbuf == MPI_IN_PLACE || comm_ptr->mpid.user_selectedvar[PAMI_XFER_SCAN] == MPID_COLL_USE_MPICH)
+   if(sendbuf == MPI_IN_PLACE || comm_ptr->mpid.user_selectedvar[PAMI_XFER_SCAN] == MPID_COLL_USE_MPICH || rc != MPI_SUCCESS)
       
    {
       TRACE_ERR("Using MPICH (ex)scan algorithm\n");

@@ -4,6 +4,8 @@
  * \brief ???
  */
 
+//#define TRACE_ON
+
 #include <mpidimpl.h>
 
 static void cb_scatter(void *ctxt, void *clientdata, pami_result_t err)

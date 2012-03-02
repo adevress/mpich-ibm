@@ -133,10 +133,24 @@ int MPIDI_Datatype_to_pami(MPI_Datatype        dt,
             case MPI_LONG_INT:          *pdt = PAMI_TYPE_LOC_LONG_INT;   break;
             case MPI_LONG_DOUBLE_INT:   *pdt = PAMI_TYPE_LOC_LONGDOUBLE_INT;  break;
          }
+         /* 
+          * There are some 2-element types that PAMI doesn't support, so we 
+          * need to bail on anything that's left of the LOC_TYPEs 
+          */
+         if(*pdt == PAMI_TYPE_NULL) return -1;
+
          if(op == -1) return MPI_SUCCESS;
-         if(op == MPI_MINLOC) *pop = PAMI_DATA_MINLOC;
-         if(op == MPI_MAXLOC) *pop = PAMI_DATA_MAXLOC;
-         return MPI_SUCCESS;
+         if(op == MPI_MINLOC)
+         {
+            *pop = PAMI_DATA_MINLOC;
+            return MPI_SUCCESS;
+         }
+         if(op == MPI_MAXLOC) 
+         {
+            *pop = PAMI_DATA_MAXLOC;
+            return MPI_SUCCESS;
+         }
+         else return -1;
       }
       else if(isLOGICAL(dt))
       {

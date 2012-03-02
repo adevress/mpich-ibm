@@ -26,8 +26,8 @@
 
 /* Platform overrides */
 /* These should be disable-able shortly */
-#define PAMI_BYTES_REQUIRED 0
-#define PAMI_DISPS_ARE_BYTES 1
+//#define PAMI_BYTES_REQUIRED 
+//#define PAMI_DISPS_ARE_BYTES 
 
 
 #ifdef __BGP__

@@ -214,6 +214,20 @@ void MPIDI_Comm_coll_envvars(MPID_Comm *comm)
    MPIDI_Check_protocols("PAMI_SCAN", comm, "scan", PAMI_XFER_SCAN);
 
    comm->mpid.scattervs[0] = comm->mpid.scattervs[1] = 0;
+
+   if(MPIDI_Process.optimized.select_colls != 2)
+   {
+      /* Punt to mpich instead of [0][0]s to be consistent with the other
+       * collectives. These have/had glue-level protocols so things were 
+       * inconsistent with the similar clause in mpid_optcolls.c
+       */
+      comm->mpid.user_selectedvar[PAMI_XFER_SCATTERV_INT] = MPID_COLL_USE_MPICH;
+      comm->mpid.user_selectedvar[PAMI_XFER_SCATTER] = MPID_COLL_USE_MPICH;
+      comm->mpid.user_selectedvar[PAMI_XFER_ALLGATHER] = MPID_COLL_USE_MPICH;
+      comm->mpid.user_selectedvar[PAMI_XFER_ALLGATHERV_INT] = MPID_COLL_USE_MPICH;
+      comm->mpid.user_selectedvar[PAMI_XFER_GATHER] = MPID_COLL_USE_MPICH;
+   }
+
    envopts = getenv("PAMI_SCATTERV");
    if(envopts != NULL)
    {
@@ -241,7 +255,7 @@ void MPIDI_Comm_coll_envvars(MPID_Comm *comm)
    if(envopts != NULL)
    {
       if(strncasecmp(envopts, "GLUE_", 5) != 0)
-        MPIDI_Check_protocols("PAMI_SCATTERV", comm, "scatter", PAMI_XFER_SCATTER);
+        MPIDI_Check_protocols("PAMI_SCATTER", comm, "scatter", PAMI_XFER_SCATTER);
       else
       {
          if(strcasecmp(envopts, "GLUE_BCAST") == 0)

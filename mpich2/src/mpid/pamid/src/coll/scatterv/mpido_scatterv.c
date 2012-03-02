@@ -221,7 +221,7 @@ int MPIDO_Scatterv(void *sendbuf,
                    MPID_Comm *comm_ptr,
                    int *mpierrno)
 {
-  int i, contig, tmp, pamidt, rc;
+  int contig, tmp, pamidt, rc;
   int ssize, rsize;
   MPID_Datatype *dt_ptr = NULL;
   MPI_Aint send_true_lb=0, recv_true_lb;
@@ -330,6 +330,7 @@ int MPIDO_Scatterv(void *sendbuf,
 
    /* Fill in the arrays */
    #if defined(PAMI_DISPS_ARE_BYTES) || defined(PAMI_BYTES_REQUIRED)
+   int i;
    for(i = 0; i < comm_ptr->local_size; i++)
    {
       #ifdef PAMI_DISPS_ARE_BYTES
@@ -345,8 +346,8 @@ int MPIDO_Scatterv(void *sendbuf,
    scatterv.cmd.xfer_scatterv_int.stypecounts = scounts;
    scatterv.cmd.xfer_scatterv_int.rtypecount = recvcount * rsize;
    #else
-   scatterv.cmd.xfer_scatterv_int.stypecounts = sendcount;
-   scatterv.cmd.xfer_scatterv_int.rtypecount = recvcounts;
+   scatterv.cmd.xfer_scatterv_int.stypecounts = sendcounts;
+   scatterv.cmd.xfer_scatterv_int.rtypecount = recvcount;
    #endif
 
    #ifdef PAMI_DISPS_ARE_BYTES

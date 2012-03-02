@@ -47,10 +47,10 @@ int MPIDO_Allreduce(void *sendbuf,
 
 
    rc = MPIDI_Datatype_to_pami(dt, &pdt, op, &pop, &mu);
-/*BES   if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm_ptr->rank == 0)
+  if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm_ptr->rank == 0))
       fprintf(stderr,"allred rc %u, Datatype %p, op %p, mu %u, selectedvar %u != %u\n",
               rc, pdt, pop, mu, 
-              (unsigned)comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLREDUCE],MPID_COLL_USE_MPICH);*/
+              (unsigned)comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLREDUCE],MPID_COLL_USE_MPICH);
    /*fprintf(stderr,"type %u >= %u, fn %p\n",
            comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLREDUCE],
            MPID_COLL_QUERY,

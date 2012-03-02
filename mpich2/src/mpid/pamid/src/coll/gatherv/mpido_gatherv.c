@@ -39,7 +39,9 @@ int MPIDO_Gatherv(void *sendbuf,
    volatile unsigned gatherv_active = 1;
 
    /* Check for native PAMI types and MPI_IN_PLACE on sendbuf */
-   if(sendbuf == MPI_IN_PLACE || MPIDI_Datatype_to_pami(sendtype, &stype, -1, NULL, &tmp) != MPI_SUCCESS)
+   /* MPI_IN_PLACE is a nonlocal decision. We will need a preallreduce if we ever have
+    * multiple "good" gathervs that work on different counts for example */
+   if(MPIDI_Datatype_to_pami(sendtype, &stype, -1, NULL, &tmp) != MPI_SUCCESS)
       pamidt = 0;
    if(MPIDI_Datatype_to_pami(recvtype, &rtype, -1, NULL, &tmp) != MPI_SUCCESS)
       pamidt = 0;
@@ -55,12 +57,15 @@ int MPIDO_Gatherv(void *sendbuf,
 
    MPIDI_Datatype_get_info(1, recvtype, contig, rsize, dt_ptr, recv_true_lb);
    rbuf = recvbuf + recv_true_lb;
-   sbuf = sendbuf;
+   if(sendbuf == MPI_IN_PLACE) 
+      sbuf = rbuf;
+   else 
+      sbuf = sendbuf;
 
    if(comm_ptr->rank == root)
    {
       MPIDI_Datatype_get_info(1, sendtype, contig, ssize, dt_ptr, send_true_lb);
-      sbuf = sendbuf + send_true_lb;
+      sbuf = sbuf + send_true_lb;
    }
 
    pami_xfer_t gatherv;
@@ -81,7 +86,7 @@ int MPIDO_Gatherv(void *sendbuf,
 #endif
    {
       TRACE_ERR("Optimized gatherv %s was set by user\n",
-         comm_ptr->mpid.user_selected[PAMI_XFER_GATHERV_INT]);
+         comm_ptr->mpid.user_metadata[PAMI_XFER_GATHERV_INT].name);
          my_gatherv = comm_ptr->mpid.user_selected[PAMI_XFER_GATHERV_INT];
          my_gatherv_md = &comm_ptr->mpid.user_metadata[PAMI_XFER_GATHERV_INT];
          queryreq = comm_ptr->mpid.user_selectedvar[PAMI_XFER_GATHERV_INT];
@@ -95,7 +100,7 @@ int MPIDO_Gatherv(void *sendbuf,
    gatherv.cmd.xfer_gatherv_int.sndbuf = sbuf;
    gatherv.cmd.xfer_gatherv_int.rcvbuf = rbuf;
    #ifdef PAMI_DISPS_ARE_BYTES 
-   TRACE_ERR("Malloc()ing array for MPIDO_Gatherv displacements\n");
+   TRACE_ERR("Malloc()ing array for MPIDO_Gatherv displacements. rsize: %d\n", rsize);
    int *rdispls;
    rdispls = MPIU_Malloc(sizeof(int) * comm_ptr->local_size);
    assert(rdispls != NULL);
