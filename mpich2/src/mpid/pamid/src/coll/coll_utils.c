@@ -56,7 +56,9 @@ pami_result_t MPIDI_Pami_post_wrapper(pami_context_t context, void *cookie)
                         (x) == MPI_2INT || (x) == MPI_SHORT_INT || \
                         (x) == MPI_LONG_DOUBLE_INT )
 
-#define isLOGICAL(x) ( (x) == MPI_C_BOOL || (x) == MPI_LOGICAL)
+#define isBOOL(x) ( (x) == MPI_C_BOOL )
+
+#define isLOGICAL(x) ( (x) == MPI_LOGICAL )
 
 #define isSINGLE_COMPLEX(x) ( (x) == MPI_COMPLEX || (x) == MPI_C_FLOAT_COMPLEX)
 
@@ -101,15 +103,7 @@ int MPIDI_Datatype_to_pami(MPI_Datatype        dt,
    *pdt = PAMI_TYPE_NULL;
    if(op != -1)
       *pop = PAMI_DATA_NOOP;
-   if(isS_INT(dt))
-   {
-      *pdt = PAMI_TYPE_SIGNED_INT;
-      if(op == -1) return MPI_SUCCESS;
-      /* #warning FIXME : signed int + Band/bor/bxor doesn't work at the lower level */
-      /* For some reason, signed int+B* ops doesn't work */
-      if(op == MPI_BOR || op == MPI_BAND || op == MPI_BXOR)
-         return -1;
-   }
+   if(isS_INT(dt))       *pdt = PAMI_TYPE_SIGNED_INT;
    else if(isUS_INT(dt)) *pdt = PAMI_TYPE_UNSIGNED_INT;
    else if(isFLOAT(dt))  *pdt = PAMI_TYPE_FLOAT;
    else if(isDOUBLE(dt)) *pdt = PAMI_TYPE_DOUBLE;
@@ -135,6 +129,9 @@ int MPIDI_Datatype_to_pami(MPI_Datatype        dt,
             case MPI_FLOAT_INT:         *pdt = PAMI_TYPE_LOC_FLOAT_INT;  break;
             case MPI_DOUBLE_INT:        *pdt = PAMI_TYPE_LOC_DOUBLE_INT; break;
             case MPI_SHORT_INT:         *pdt = PAMI_TYPE_LOC_SHORT_INT;  break;
+
+            case MPI_LONG_INT:          *pdt = PAMI_TYPE_LOC_LONG_INT;   break;
+            case MPI_LONG_DOUBLE_INT:   *pdt = PAMI_TYPE_LOC_LONGDOUBLE_INT;  break;
          }
          if(op == -1) return MPI_SUCCESS;
          if(op == MPI_MINLOC) *pop = PAMI_DATA_MINLOC;
@@ -143,12 +140,45 @@ int MPIDI_Datatype_to_pami(MPI_Datatype        dt,
       }
       else if(isLOGICAL(dt))
       {
-         *pdt = PAMI_TYPE_LOGICAL;
+         *pdt = PAMI_TYPE_LOGICAL4;
          if(op == -1) return MPI_SUCCESS;
-         if(op == MPI_LOR) *pop = PAMI_DATA_LOR;
-         if(op == MPI_LAND) *pop = PAMI_DATA_LAND;
-         if(op == MPI_LXOR) *pop = PAMI_DATA_LXOR;
-         return MPI_SUCCESS;
+         if(op == MPI_LOR) 
+         {   
+            *pop = PAMI_DATA_LOR;
+            return MPI_SUCCESS;
+         }
+         if(op == MPI_LAND) 
+         {   
+            *pop = PAMI_DATA_LAND;
+            return MPI_SUCCESS;
+         }
+         if(op == MPI_LXOR) 
+         {   
+            *pop = PAMI_DATA_LXOR;
+            return MPI_SUCCESS;
+         }
+         return -1;
+      }
+      else if(isBOOL(dt))
+      {
+         *pdt = PAMI_TYPE_LOGICAL1;
+         if(op == -1) return MPI_SUCCESS;
+         if(op == MPI_LOR) 
+         {   
+            *pop = PAMI_DATA_LOR;
+            return MPI_SUCCESS;
+         }
+         if(op == MPI_LAND) 
+         {   
+            *pop = PAMI_DATA_LAND;
+            return MPI_SUCCESS;
+         }
+         if(op == MPI_LXOR) 
+         {   
+            *pop = PAMI_DATA_LXOR;
+            return MPI_SUCCESS;
+         }
+         return -1;
       }
    }
 
@@ -166,6 +196,9 @@ int MPIDI_Datatype_to_pami(MPI_Datatype        dt,
       case MPI_BAND: *pop = PAMI_DATA_BAND; return MPI_SUCCESS; break;
       case MPI_BOR: *pop = PAMI_DATA_BOR; return MPI_SUCCESS; break;
       case MPI_BXOR: *pop = PAMI_DATA_BXOR; return MPI_SUCCESS; break;
+      case MPI_LAND: *pop = PAMI_DATA_LAND; return MPI_SUCCESS; break;
+      case MPI_LOR: *pop = PAMI_DATA_LOR; return MPI_SUCCESS; break;
+      case MPI_LXOR: *pop = PAMI_DATA_LXOR; return MPI_SUCCESS; break;
    }
    if(*pop == PAMI_DATA_NOOP) return -1;
 

@@ -142,12 +142,52 @@ MPID_Accumulate(void         *origin_addr,
 
   req->offset = target_disp * win->mpid.info[target_rank].disp_unit;
 
-  MPIDI_Win_datatype_basic(origin_count,
-                           origin_datatype,
-                           &req->origin.dt);
-  MPIDI_Win_datatype_basic(target_count,
-                           target_datatype,
-                           &req->target.dt);
+  if (origin_datatype == MPI_DOUBLE_INT)
+    {
+      MPIDI_Win_datatype_basic(origin_count*2,
+                               MPI_DOUBLE,
+                               &req->origin.dt);
+      MPIDI_Win_datatype_basic(target_count*2,
+                               MPI_DOUBLE,
+                               &req->target.dt);
+    }
+  else if (origin_datatype == MPI_LONG_DOUBLE_INT)
+    {
+      MPIDI_Win_datatype_basic(origin_count*2,
+                               MPI_LONG_DOUBLE,
+                               &req->origin.dt);
+      MPIDI_Win_datatype_basic(target_count*2,
+                               MPI_LONG_DOUBLE,
+                               &req->target.dt);
+    }
+  else if (origin_datatype == MPI_LONG_INT)
+    {
+      MPIDI_Win_datatype_basic(origin_count*2,
+                               MPI_LONG,
+                               &req->origin.dt);
+      MPIDI_Win_datatype_basic(target_count*2,
+                               MPI_LONG,
+                               &req->target.dt);
+    }
+  else if (origin_datatype == MPI_SHORT_INT)
+    {
+      MPIDI_Win_datatype_basic(origin_count*2,
+                               MPI_INT,
+                               &req->origin.dt);
+      MPIDI_Win_datatype_basic(target_count*2,
+                               MPI_INT,
+                               &req->target.dt);
+    }
+  else
+    {
+      MPIDI_Win_datatype_basic(origin_count,
+                               origin_datatype,
+                               &req->origin.dt);
+      MPIDI_Win_datatype_basic(target_count,
+                               target_datatype,
+                               &req->target.dt);
+    }
+
   MPID_assert(req->origin.dt.size == req->target.dt.size);
 
   if ( (req->origin.dt.size == 0) ||
