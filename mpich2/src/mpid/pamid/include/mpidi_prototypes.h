@@ -139,6 +139,7 @@ void MPIDI_Callback_process_userdefined_dt(pami_context_t      context,
 
 /** \brief Acknowledge an MPI_Ssend() */
 void MPIDI_SyncAck_post(pami_context_t context, MPID_Request * req, unsigned rank);
+pami_result_t MPIDI_SyncAck_handoff(pami_context_t context, void * inputReq);
 /** \brief This is the general PT2PT control message call-back */
 void MPIDI_ControlCB(pami_context_t    context,
                      void            * cookie,
@@ -160,6 +161,7 @@ MPIDI_WinControlCB(pami_context_t    context,
 
 /** \brief Helper function to complete a rendevous transfer */
 pami_result_t MPIDI_RendezvousTransfer(pami_context_t context, void* rreq);
+pami_result_t MPIDI_RendezvousTransfer_SyncAck(pami_context_t context, void* rreq);
 
 
 void MPIDI_Comm_create      (MPID_Comm *comm);

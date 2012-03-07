@@ -4,6 +4,7 @@
  * \brief ADI level implemenation of common recv code.
  */
 #include <mpidimpl.h>
+#include <mpidi_macros.h>
 
 
 void
@@ -20,29 +21,40 @@ MPIDI_RecvMsg_Unexp(MPID_Request  * rreq,
   /* Recv functions will ack the messages that are unexpected     */
   /* ------------------------------------------------------------ */
 
-  /* -------------------------------- */
-  /* request is complete              */
-  /* if sync request, need to ack it. */
-  /* -------------------------------- */
-  if (unlikely(MPIDI_Request_isSync(rreq)))
-      MPIDI_SyncAck_post(MPIDI_Context_local(rreq), rreq, MPIDI_Request_getPeerRank_pami(rreq));
-
   if (MPIDI_Request_isRzv(rreq))
     {
       /* -------------------------------------------------------- */
       /* Received an expected flow-control rendezvous RTS.        */
-          /*     This is very similar to the found/incomplete case    */
-          /* -------------------------------------------------------- */
+      /*     This is very similar to the found/incomplete case    */
+      /* -------------------------------------------------------- */
       if (HANDLE_GET_KIND(datatype) != HANDLE_KIND_BUILTIN)
         {
           MPID_Datatype_get_ptr(datatype, rreq->mpid.datatype_ptr);
           MPID_Datatype_add_ref(rreq->mpid.datatype_ptr);
         }
 
-      MPIDI_Context_post(MPIDI_Context_local(rreq), &rreq->mpid.post_request, MPIDI_RendezvousTransfer, rreq);
+      if (unlikely(MPIDI_Request_isSync(rreq)))
+        MPIDI_Context_post(MPIDI_Context_local(rreq), &rreq->mpid.post_request, MPIDI_RendezvousTransfer_SyncAck, rreq);
+      else
+        MPIDI_Context_post(MPIDI_Context_local(rreq), &rreq->mpid.post_request, MPIDI_RendezvousTransfer, rreq);
     }
-  else if (MPID_cc_is_complete(&rreq->cc))
+  else 
     {
+     if (MPID_cc_is_complete(&rreq->cc))
+     {
+      if (unlikely(MPIDI_Request_isSync(rreq)))
+      {
+        /* Post this to the generic device queue so a commthread picks this up and advances
+         * it there.  We cannot do the send-immediate inline here because we may not have the
+         * context locked (the commthread does).
+         * Must "uncomplete" the message (increment the ref and completion counts) so we
+         * hold onto this request object until this send has completed.  When MPIDI_SyncAck_handoff
+         * finishes sending the ack, it will complete the request, decrementing the ref and
+         * completion counts.
+         */
+        MPIDI_Request_uncomplete(rreq);
+        MPIDI_Send_post(MPIDI_SyncAck_handoff, rreq);
+      }
       /* -------------------------------- */
       /* request is complete              */
       /* -------------------------------- */
@@ -70,13 +82,25 @@ MPIDI_RecvMsg_Unexp(MPID_Request  * rreq,
           MPID_assert(rreq->mpid.uebuflen == 0);
           rreq->status.count = 0;
         }
-    }
-
-  else
-    {
+     }
+     else
+     {
       /* -------------------------------- */
       /* request is incomplete            */
       /* -------------------------------- */
+      if (unlikely(MPIDI_Request_isSync(rreq)))
+        {
+          /* Post this to the generic device queue so a commthread picks this up and advances
+           * it there.  We cannot do the send-immediate inline here because we may not have the
+           * context locked (the commthread does).
+           * Must "uncomplete" the message (increment the ref and completion counts) so we
+           * hold onto this request object until this send has completed.  When MPIDI_SyncAck_handoff
+           * finishes sending the ack, it will complete the request, decrementing the ref and
+           * completion counts.
+           */
+          MPIDI_Request_uncomplete(rreq);
+          MPIDI_Send_post(MPIDI_SyncAck_handoff, rreq);
+        }
       if(rreq->status.cancelled == FALSE)
         {
           MPID_assert(rreq->mpid.uebuf != NULL);
@@ -87,8 +111,10 @@ MPIDI_RecvMsg_Unexp(MPID_Request  * rreq,
           MPID_Datatype_get_ptr(datatype, rreq->mpid.datatype_ptr);
           MPID_Datatype_add_ref(rreq->mpid.datatype_ptr);
         }
+     }
     }
 }
+
 
 
 void

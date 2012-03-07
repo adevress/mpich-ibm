@@ -114,4 +114,24 @@ MPIDI_Context_post(pami_context_t       context,
 }
 
 
+#define MPIDI_Send_post(__func, __req)                          \
+({                                                              \
+  if (likely(MPIDI_Process.context_post > 0))                   \
+    {                                                           \
+      pami_context_t context = MPIDI_Context_local(__req);      \
+                                                                \
+      pami_result_t rc;                                         \
+      rc = PAMI_Context_post(context,                           \
+                             &(__req)->mpid.post_request,       \
+                             __func,                            \
+                             __req);                            \
+      MPID_assert(rc == PAMI_SUCCESS);                          \
+    }                                                           \
+  else                                                          \
+    {                                                           \
+      __func(MPIDI_Context[0], __req);                          \
+    }                                                           \
+})
+
+
 #endif

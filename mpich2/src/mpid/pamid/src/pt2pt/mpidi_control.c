@@ -103,6 +103,34 @@ MPIDI_SyncAck_post(pami_context_t   context,
 
 
 /**
+ * \brief Acknowledge an MPI_Ssend()
+ *
+ * This is the handoff side, executing in advance().
+ * The send is performed, and then the request is
+ * completed.  The send is "immediate" so the payload
+ * has been copied upon return from MPIDI_CtrlSend(),
+ * so it is safe to complete the request.
+ *
+ * \param[in] context The PAMI context
+ * \param[in] req The request element to acknowledge
+ *
+ * \returns  The PAMI return code
+ */
+pami_result_t
+MPIDI_SyncAck_handoff(pami_context_t   context,
+                      void           * inputReq)
+{
+  MPID_Request *req = inputReq;
+  MPIDI_Request_setControl(req, MPIDI_CONTROL_SSEND_ACKNOWLEDGE);
+  MPIDI_MsgInfo * info = &req->mpid.envelope.msginfo;
+  unsigned peer        = MPIDI_Request_getPeerRank_pami(req);
+  MPIDI_CtrlSend(context, info, peer);
+  MPIDI_Request_complete(req);
+  return PAMI_SUCCESS;
+}
+
+
+/**
  * \brief Process an incoming MPI_Ssend() acknowledgment
  *
  * \param[in] info The contents of the control message as a MPIDI_MsgInfo struct

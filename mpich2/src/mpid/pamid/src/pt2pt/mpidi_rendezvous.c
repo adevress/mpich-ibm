@@ -141,3 +141,15 @@ MPIDI_RendezvousTransfer(pami_context_t   context,
 
   return PAMI_SUCCESS;
 }
+
+
+pami_result_t MPIDI_RendezvousTransfer_SyncAck (pami_context_t context, void * _rreq)
+{
+  MPID_Request *rreq = (MPID_Request*)_rreq;
+
+  // Do the sync ack transfer here.
+  MPIDI_SyncAck_post (context, rreq, MPIDI_Request_getPeerRank_pami(rreq));
+
+  // Continue on to the rendezvous transfer part.
+  return MPIDI_RendezvousTransfer(context, _rreq);
+}
