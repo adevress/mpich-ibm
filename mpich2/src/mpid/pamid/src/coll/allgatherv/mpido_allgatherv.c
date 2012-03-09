@@ -398,6 +398,8 @@ MPIDO_Allgatherv(void *sendbuf,
       allgatherv.cmd.xfer_allgatherv.rcvbuf = recvbuf;
 
       /* Assumed !PAMI_BYTES_REQUIRED initiailly */
+      allgatherv.cmd.xfer_allgatherv_int.stype = stype;
+      allgatherv.cmd.xfer_allgatherv_int.rtype = rtype;
       allgatherv.cmd.xfer_allgatherv_int.stypecount = sendcount;
 
       #ifdef PAMI_BYTES_REQUIRED
@@ -413,8 +415,6 @@ MPIDO_Allgatherv(void *sendbuf,
       int *rdisps;
       rdisps = MPIU_Malloc(sizeof(int) * comm_ptr->local_size);
       assert(rdisps != NULL);
-      allgatherv.cmd.xfer_allgatherv_int.stype = stype;
-      allgatherv.cmd.xfer_allgatherv_int.rtype = rtype;
       #endif
 
       #if defined(PAMI_DISPS_ARE_BYTES) || defined(PAMI_BYTES_REQUIRED)
