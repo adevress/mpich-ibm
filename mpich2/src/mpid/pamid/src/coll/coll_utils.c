@@ -228,9 +228,15 @@ int MPIDI_Datatype_to_pami(MPI_Datatype        dt,
       case MPI_BAND: *pop = PAMI_DATA_BAND; return MPI_SUCCESS; break;
       case MPI_BOR: *pop = PAMI_DATA_BOR; return MPI_SUCCESS; break;
       case MPI_BXOR: *pop = PAMI_DATA_BXOR; return MPI_SUCCESS; break;
-      case MPI_LAND: *pop = PAMI_DATA_LAND; return MPI_SUCCESS; break;
-      case MPI_LOR: *pop = PAMI_DATA_LOR; return MPI_SUCCESS; break;
-      case MPI_LXOR: *pop = PAMI_DATA_LXOR; return MPI_SUCCESS; break;
+      case MPI_LAND: 
+         if(isLONG_DOUBLE(dt)) return -1; 
+         *pop = PAMI_DATA_LAND; return MPI_SUCCESS; break;
+      case MPI_LOR: 
+         if(isLONG_DOUBLE(dt)) return -1; 
+         *pop = PAMI_DATA_LOR; return MPI_SUCCESS; break;
+      case MPI_LXOR: 
+         if(isLONG_DOUBLE(dt)) return -1; 
+         *pop = PAMI_DATA_LXOR; return MPI_SUCCESS; break;
       case MPI_REPLACE: *pop = PAMI_DATA_COPY; return MPI_SUCCESS; break;
    }
    if(*pop == PAMI_DATA_NOOP) return -1;
