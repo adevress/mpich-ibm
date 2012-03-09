@@ -98,10 +98,26 @@ int MPIDO_Scatter(void *sendbuf,
   int contig, nbytes = 0;
   int rank = comm_ptr->rank;
   int success = 1;
+  pami_type_t stype, rtype;
+  int tmp;
+  char use_pami = !(comm_ptr->mpid.user_selectedvar[PAMI_XFER_SCATTER] == MPID_COLL_USE_MPICH);
 
-  if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_SCATTER] == MPID_COLL_USE_MPICH)
+  /* if (rank == root)
+     We can't decide on just the root to use MPICH. Really need a pre-allreduce.
+     For now check sendtype on non-roots too and hope it matches? I think that's what
+     scatterv does... */
   {
-     MPIDI_Update_last_algorithm(comm_ptr, "SCATTER_MPICH");
+    if(MPIDI_Datatype_to_pami(sendtype, &stype, -1, NULL, &tmp) != MPI_SUCCESS)
+      use_pami = 0;
+  }
+  if(MPIDI_Datatype_to_pami(recvtype, &rtype, -1, NULL, &tmp) != MPI_SUCCESS)
+    use_pami = 0;
+
+  if(!use_pami)
+  {
+/*    if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0)// && rank == 0)
+         fprintf(stderr,"Using SCATTER_MPICH\n"); */
+    MPIDI_Update_last_algorithm(comm_ptr, "SCATTER_MPICH");
     return MPIR_Scatter(sendbuf, sendcount, sendtype,
                         recvbuf, recvcount, recvtype,
                         root, comm_ptr, mpierrno);
@@ -109,7 +125,7 @@ int MPIDO_Scatter(void *sendbuf,
 
   if (rank == root)
   {
-    if (recvtype != MPI_DATATYPE_NULL && recvcount >= 0)
+    if (recvtype != MPI_DATATYPE_NULL && recvcount >= 0)/* Should this be send or recv? */
     {
       MPIDI_Datatype_get_info(sendcount, sendtype, contig,
                               nbytes, data_ptr, true_lb);
@@ -169,17 +185,17 @@ int MPIDO_Scatter(void *sendbuf,
       my_scatter_md = &comm_ptr->mpid.user_metadata[PAMI_XFER_SCATTER];
       queryreq = comm_ptr->mpid.user_selectedvar[PAMI_XFER_SCATTER];
    }
-
+ 
    scatter.algorithm = my_scatter;
    scatter.cb_done = cb_scatter;
    scatter.cookie = (void *)&scatter_active;
    scatter.cmd.xfer_scatter.root = MPID_VCR_GET_LPID(comm_ptr->vcr, root);
    scatter.cmd.xfer_scatter.sndbuf = (void *)sendbuf;
-   scatter.cmd.xfer_scatter.stype = PAMI_TYPE_BYTE;
-   scatter.cmd.xfer_scatter.stypecount = nbytes;
+   scatter.cmd.xfer_scatter.stype = stype;
+   scatter.cmd.xfer_scatter.stypecount = sendcount;
    scatter.cmd.xfer_scatter.rcvbuf = (void *)recvbuf;
-   scatter.cmd.xfer_scatter.rtype = PAMI_TYPE_BYTE;
-   scatter.cmd.xfer_scatter.rtypecount = nbytes;
+   scatter.cmd.xfer_scatter.rtype = rtype;
+   scatter.cmd.xfer_scatter.rtypecount = recvcount;
 
    if(unlikely(queryreq == MPID_COLL_ALWAYS_QUERY ||
                queryreq == MPID_COLL_CHECK_FN_REQUIRED))
