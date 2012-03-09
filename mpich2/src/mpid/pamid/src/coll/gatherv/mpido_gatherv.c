@@ -57,14 +57,13 @@ int MPIDO_Gatherv(void *sendbuf,
 
    MPIDI_Datatype_get_info(1, recvtype, contig, rsize, dt_ptr, recv_true_lb);
    rbuf = recvbuf + recv_true_lb;
-   if(sendbuf == MPI_IN_PLACE) 
-      sbuf = rbuf;
-   else 
-      sbuf = sendbuf;
+   sbuf = sendbuf;
 
    if(comm_ptr->rank == root)
    {
       MPIDI_Datatype_get_info(1, sendtype, contig, ssize, dt_ptr, send_true_lb);
+      if(sendbuf == MPI_IN_PLACE) 
+         sbuf = rbuf + ssize*displs[comm_ptr->rank];
       sbuf = sbuf + send_true_lb;
    }
 
