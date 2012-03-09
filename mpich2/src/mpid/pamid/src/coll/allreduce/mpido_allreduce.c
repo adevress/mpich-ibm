@@ -216,6 +216,8 @@ int MPIDO_Allreduce(void *sendbuf,
 /*      if((MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm_ptr->rank == 0) ||
          (MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL))
          fprintf(stderr,"Using protocol %s\n", my_allred_md->name);*/
+      if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm_ptr->rank == 0)
+         fprintf(stderr,"Posting protocol %s\n", my_allred_md->name);
       TRACE_ERR("posting allreduce, context: %d, algoname: %s, dt: %s, op: %s, count: %d\n", 0,
                 my_allred_md->name, dt_str, op_str, count);
       rc = PAMI_Context_post(MPIDI_Context[0], &allred_post.state, 

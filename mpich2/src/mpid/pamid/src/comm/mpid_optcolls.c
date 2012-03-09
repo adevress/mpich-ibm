@@ -316,7 +316,7 @@ void MPIDI_Comm_coll_select(MPID_Comm *comm_ptr)
       }
       else
       {
-         TRACE_ERR("Couldn't find any optimal barrier protocols. Using MPICH\n");
+         TRACE_ERR("Couldn't find any optimal bcast protocols. Using MPICH\n");
          comm_ptr->mpid.user_selectedvar[PAMI_XFER_BROADCAST] = MPID_COLL_USE_MPICH;
       }
 
@@ -480,14 +480,14 @@ void MPIDI_Comm_coll_select(MPID_Comm *comm_ptr)
       /* At this point, if opt_proto != -1, we have must-query protocols in the i/dsmm caches */
       /* We should pick a backup, non-must query */
       /* I0:ShortAllreduce:P2P:P2P < 128, then mpich*/
-      for(i = 0; i < comm_ptr->mpid.coll_count[PAMI_XFER_ALLREDUCE][0]; i++)
+      for(i = 0; i < comm_ptr->mpid.coll_count[PAMI_XFER_ALLREDUCE][1]; i++)
       {
-         if(strcasecmp(comm_ptr->mpid.coll_metadata[PAMI_XFER_ALLREDUCE][0][i].name, "I0:ShortAllreduce:P2P:P2P") == 0)
+         if(strcasecmp(comm_ptr->mpid.coll_metadata[PAMI_XFER_ALLREDUCE][1][i].name, "I1:ShortAllreduce:P2P:P2P") == 0)
          {
             comm_ptr->mpid.opt_protocol[PAMI_XFER_ALLREDUCE][0] =
-                   comm_ptr->mpid.coll_algorithm[PAMI_XFER_ALLREDUCE][0][i];
+                   comm_ptr->mpid.coll_algorithm[PAMI_XFER_ALLREDUCE][1][i];
             memcpy(&comm_ptr->mpid.opt_protocol_md[PAMI_XFER_ALLREDUCE][0],
-                   &comm_ptr->mpid.coll_metadata[PAMI_XFER_ALLREDUCE][0][i],
+                   &comm_ptr->mpid.coll_metadata[PAMI_XFER_ALLREDUCE][1][i],
                    sizeof(pami_metadata_t));
             comm_ptr->mpid.must_query[PAMI_XFER_ALLREDUCE][0] = MPID_COLL_NOQUERY;
             /* Short is good for up to 128 */
@@ -495,11 +495,13 @@ void MPIDI_Comm_coll_select(MPID_Comm *comm_ptr)
             comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLREDUCE] = MPID_COLL_SELECTED;
             /* MPICH is actually better at > 128 bytes for 1/16/64ppn at 512 nodes */
             comm_ptr->mpid.must_query[PAMI_XFER_ALLREDUCE][1] = MPID_COLL_USE_MPICH;
-            opt_proto = -1;
+            opt_proto = i;
          }
       }
       if(opt_proto == -1)
       {
+         if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm_ptr->rank == 0)
+            fprintf(stderr,"Opt to MPICH\n");
          comm_ptr->mpid.must_query[PAMI_XFER_ALLREDUCE][0] = MPID_COLL_USE_MPICH;
          comm_ptr->mpid.must_query[PAMI_XFER_ALLREDUCE][1] = MPID_COLL_USE_MPICH;
       }
