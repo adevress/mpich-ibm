@@ -47,7 +47,7 @@ int MPIDO_Allreduce(void *sendbuf,
 
 
    rc = MPIDI_Datatype_to_pami(dt, &pdt, op, &pop, &mu);
-  if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm_ptr->rank == 0))
+  if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0))
       fprintf(stderr,"allred rc %u, Datatype %p, op %p, mu %u, selectedvar %u != %u\n",
               rc, pdt, pop, mu, 
               (unsigned)comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLREDUCE],MPID_COLL_USE_MPICH);
@@ -60,7 +60,7 @@ int MPIDO_Allreduce(void *sendbuf,
    if(rc != MPI_SUCCESS || 
       comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLREDUCE] == MPID_COLL_USE_MPICH)
    {
-      if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm_ptr->rank == 0)
+      if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0)
          fprintf(stderr,"Using MPICH allreduce type %u.\n",
                  comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLREDUCE]);
       MPIDI_Update_last_algorithm(comm_ptr, "ALLREDUCE_MPICH");
@@ -164,20 +164,18 @@ int MPIDO_Allreduce(void *sendbuf,
                comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLREDUCE]);
             result = comm_ptr->mpid.user_metadata[PAMI_XFER_ALLREDUCE].check_fn(&allred);
             TRACE_ERR("bitmask: %#X\n", result.bitmask);
-            if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm_ptr->rank == 0)
+            if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0)
                fprintf(stderr,"check_fn result %#X\n",result.bitmask);
             /* \todo Ignore check_correct.values.nonlocal until we implement the
                'pre-allreduce allreduce' or the 'safe' environment flag.
                We will basically assume 'safe' -- that all ranks are aligned (or not).
             */
             result.check.nonlocal = 0; /* #warning REMOVE THIS WHEN IMPLEMENTED */
-            if(result.bitmask)
-            {
-               if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm_ptr->rank == 0)
+            if(!result.bitmask)
+               alg_selected = 1; /* query algorithm successfully selected */
+            else 
+               if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0)
                   fprintf(stderr,"check_fn failed for %s.\n", my_allred_md->name);
-               MPIDI_Update_last_algorithm(comm_ptr, "ALLREDUCE_MPICH");
-               return MPIR_Allreduce(sendbuf, recvbuf, count, dt, op, comm_ptr, mpierrno);
-            }
          }
          else /* no check_fn, manually look at the metadata fields */
          {
@@ -191,22 +189,28 @@ int MPIDO_Allreduce(void *sendbuf,
 
                if((my_allred_md->range_lo <= data_size) &&
                   (my_allred_md->range_hi >= data_size))
-                  ;
+                  alg_selected = 1; /* query algorithm successfully selected */
                else
-               {
-                  if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm_ptr->rank == 0)
+                 if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0)
                      fprintf(stderr,"message size (%u) outside range (%zu<->%zu) for %s.\n",
                              data_size,
                              my_allred_md->range_lo,
                              my_allred_md->range_hi,
                              my_allred_md->name);
-                  MPIDI_Update_last_algorithm(comm_ptr, "ALLREDUCE_MPICH");
-                  return MPIR_Allreduce(sendbuf, recvbuf, count, dt, op, comm_ptr, mpierrno);
-               }
             }
             /* \todo check the rest of the metadata */
          }
       }
+      else alg_selected = 1; /* non-query algorithm selected */
+
+   }
+
+   if(!alg_selected) /* must be fallback to MPICH */
+   {
+      if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0)
+	fprintf(stderr,"Using MPICH allreduce\n");
+      MPIDI_Update_last_algorithm(comm_ptr, "ALLREDUCE_MPICH");
+      return MPIR_Allreduce(sendbuf, recvbuf, count, dt, op, comm_ptr, mpierrno);
    }
 
    TRACE_ERR("Right before calling, allreduce: %s\n", my_allred_md->name);
@@ -216,7 +220,7 @@ int MPIDO_Allreduce(void *sendbuf,
 /*      if((MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm_ptr->rank == 0) ||
          (MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL))
          fprintf(stderr,"Using protocol %s\n", my_allred_md->name);*/
-      if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm_ptr->rank == 0)
+      if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0)
          fprintf(stderr,"Posting protocol %s\n", my_allred_md->name);
       TRACE_ERR("posting allreduce, context: %d, algoname: %s, dt: %s, op: %s, count: %d\n", 0,
                 my_allred_md->name, dt_str, op_str, count);
@@ -226,8 +230,7 @@ int MPIDO_Allreduce(void *sendbuf,
    }
    else
    {
-      if((MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm_ptr->rank == 0) ||
-         (MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL))
+      if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0)
          fprintf(stderr,"Using protocol %s\n", my_allred_md->name);
       rc = PAMI_Collective(MPIDI_Context[0], (pami_xfer_t *)&allred);
    }
