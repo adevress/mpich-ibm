@@ -17,7 +17,7 @@ MPIDI_Win_DoneCB(pami_context_t  context,
   if ((req->buffer_free) && (req->type == MPIDI_WIN_REQUEST_GET))
     {
       ++req->origin.completed;
-      if (req->origin.completed == req->origin.count)
+      if (req->origin.completed == req->target.dt.num_contig)
         {
           int mpi_errno;
           mpi_errno = MPIR_Localcopy(req->buffer,
