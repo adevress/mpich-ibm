@@ -32,8 +32,9 @@ MPIDI_Process_t  MPIDI_Process = {
   .shmem_pt2pt         = 1,
 
   .optimized = {
-    .collectives       = 0,
+    .collectives       = 1,
     .subcomms          = 1,
+    .select_colls      = 2,
   },
 };
 
@@ -374,6 +375,7 @@ MPIDI_PAMI_init(int* rank, int* size, int* threading)
              "  rma_pending  : %u\n"
              "  shmem_pt2pt  : %u\n"
              "  optimized.collectives : %u\n"
+             "  optimized.select_colls: %u\n"
              "  optimized.subcomms    : %u\n",
              MPIDI_Process.verbose,
              MPIDI_Process.statistics,
@@ -385,6 +387,7 @@ MPIDI_PAMI_init(int* rank, int* size, int* threading)
              MPIDI_Process.rma_pending,
              MPIDI_Process.shmem_pt2pt,
              MPIDI_Process.optimized.collectives,
+             MPIDI_Process.optimized.select_colls,
              MPIDI_Process.optimized.subcomms);
       printEnvVars("PAMID_");
       printEnvVars("PAMI_");
