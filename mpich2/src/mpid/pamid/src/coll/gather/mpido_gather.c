@@ -148,6 +148,8 @@ int MPIDO_Gather(void *sendbuf,
   if(!comm_ptr->mpid.optgather ||
    comm_ptr->mpid.user_selectedvar[PAMI_XFER_GATHER] == MPID_COLL_USE_MPICH)
   {
+    if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0)
+      fprintf(stderr,"Using MPICH gather algorithm\n");
     return MPIR_Gather(sendbuf, sendcount, sendtype,
                        recvbuf, recvcount, recvtype,
                        root, comm_ptr, mpierrno);
@@ -184,6 +186,8 @@ int MPIDO_Gather(void *sendbuf,
 
    if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_GATHER] == MPID_COLL_USE_MPICH || !success)
    {
+    if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0)
+      fprintf(stderr,"Using MPICH gather algorithm\n");
     return MPIR_Gather(sendbuf, sendcount, sendtype,
                        recvbuf, recvcount, recvtype,
                        root, comm_ptr, mpierrno);
@@ -199,7 +203,12 @@ int MPIDO_Gather(void *sendbuf,
    gather.cb_done = cb_gather;
    gather.cookie = (void *)&active;
    gather.cmd.xfer_gather.root = MPID_VCR_GET_LPID(comm_ptr->vcr, root);
-   gather.cmd.xfer_gather.sndbuf = (void *)sendbuf;
+   if(sendbuf == MPI_IN_PLACE) 
+   {
+     gather.cmd.xfer_gather.sndbuf = (char *)recvbuf + recv_bytes*comm_ptr->rank;
+   }
+   else
+     gather.cmd.xfer_gather.sndbuf = (void *)sendbuf;
    gather.cmd.xfer_gather.stype = PAMI_TYPE_BYTE;
    gather.cmd.xfer_gather.stypecount = send_bytes;
    gather.cmd.xfer_gather.rcvbuf = (void *)recvbuf;

@@ -55,7 +55,8 @@ int MPIDO_Alltoall(void *sendbuf,
       (comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLTOALL] == MPID_COLL_USE_MPICH) ||
       pamidt == 0)
    {
-      TRACE_ERR("Using MPICH alltoall\n");
+      if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0)
+         fprintf(stderr,"Using MPICH alltoall algorithm\n");
       return MPIR_Alltoall_intra(sendbuf, sendcount, sendtype,
                       recvbuf, recvcount, recvtype,
                       comm_ptr, mpierrno);

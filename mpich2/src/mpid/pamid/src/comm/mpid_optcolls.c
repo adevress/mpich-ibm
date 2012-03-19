@@ -20,14 +20,13 @@ void MPIDI_Comm_coll_select(MPID_Comm *comm_ptr)
 
 
    /* So, several protocols are really easy. Tackle them first. */
-   /* Alltoallv */
-   if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLTOALLV_INT] == MPID_COLL_NOSELECTION)
+   if(0) // hangs with Rectangle allgatherv so disable for now (comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLGATHERV_INT] == MPID_COLL_NOSELECTION)
    {
-      TRACE_ERR("No alltoallv env var, so setting optimized alltoallv\n");
-      /* The best alltoallv is always I0:M2MComposite:MU:MU */
-      for(i = 0; i < comm_ptr->mpid.coll_count[PAMI_XFER_ALLTOALLV_INT][0]; i++)
+      TRACE_ERR("No allgatherv[int] env var, so setting optimized allgatherv[int]\n");
+      /* Use I0:RectangleDput */
+      for(i = 0; i < comm_ptr->mpid.coll_count[PAMI_XFER_ALLGATHERV_INT][0]; i++)
       {
-         if(strcasecmp(comm_ptr->mpid.coll_metadata[PAMI_XFER_ALLTOALLV_INT][0][i].name, "I0:M2MComposite:MU:MU") == 0)
+         if(strcasecmp(comm_ptr->mpid.coll_metadata[PAMI_XFER_ALLGATHERV_INT][0][i].name, "I0:RectangleDput:SHMEM:MU") == 0)
          {
             opt_proto = i;
             break;
@@ -36,23 +35,25 @@ void MPIDI_Comm_coll_select(MPID_Comm *comm_ptr)
       if(opt_proto != -1)
       {
          TRACE_ERR("Memcpy protocol type %d number %d (%s) to optimized protocol\n",
-            PAMI_XFER_ALLTOALLV_INT, opt_proto,
-            comm_ptr->mpid.coll_metadata[PAMI_XFER_ALLTOALLV_INT][0][opt_proto].name);
-         comm_ptr->mpid.opt_protocol[PAMI_XFER_ALLTOALLV_INT][0] =
-                comm_ptr->mpid.coll_algorithm[PAMI_XFER_ALLTOALLV_INT][0][opt_proto];
-         memcpy(&comm_ptr->mpid.opt_protocol_md[PAMI_XFER_ALLTOALLV_INT][0], 
-                &comm_ptr->mpid.coll_metadata[PAMI_XFER_ALLTOALLV_INT][0][opt_proto], 
+            PAMI_XFER_ALLGATHERV_INT, opt_proto,
+            comm_ptr->mpid.coll_metadata[PAMI_XFER_ALLGATHERV_INT][0][opt_proto].name);
+         comm_ptr->mpid.opt_protocol[PAMI_XFER_ALLGATHERV_INT][0] =
+                comm_ptr->mpid.coll_algorithm[PAMI_XFER_ALLGATHERV_INT][0][opt_proto];
+         memcpy(&comm_ptr->mpid.opt_protocol_md[PAMI_XFER_ALLGATHERV_INT][0], 
+                &comm_ptr->mpid.coll_metadata[PAMI_XFER_ALLGATHERV_INT][0][opt_proto], 
                 sizeof(pami_metadata_t));
-         comm_ptr->mpid.must_query[PAMI_XFER_ALLTOALLV_INT][0] = MPID_COLL_NOQUERY;
-         comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLTOALLV_INT] = MPID_COLL_SELECTED;
+         comm_ptr->mpid.must_query[PAMI_XFER_ALLGATHERV_INT][0] = MPID_COLL_NOQUERY;
+         comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLGATHERV_INT] = MPID_COLL_SELECTED;
       }
       else
       {
-         TRACE_ERR("Couldn't find optimial alltoallv protocol\n");
-         comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLTOALLV_INT] = MPID_COLL_USE_MPICH;
+         TRACE_ERR("Couldn't find optimial allgatherv[int] protocol\n");
+         comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLGATHERV_INT] = MPID_COLL_USE_MPICH;
       }
-      TRACE_ERR("Done setting optimized alltoallv\n");
+      TRACE_ERR("Done setting optimized allgatherv[int]\n");
    }
+
+   opt_proto = -1;
 
    /* Alltoall */
    /* If the user has forced a selection, don't bother setting it here */
@@ -529,12 +530,18 @@ void MPIDI_Comm_coll_select(MPID_Comm *comm_ptr)
    {
       if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_BARRIER] == MPID_COLL_SELECTED)
          fprintf(stderr,"Using %s for opt barrier comm %p\n", comm_ptr->mpid.opt_protocol_md[PAMI_XFER_BARRIER][0].name, comm_ptr);
+      if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLGATHERV_INT] == MPID_COLL_SELECTED)
+         fprintf(stderr,"Using %s for opt allgatherv comm %p\n", comm_ptr->mpid.opt_protocol_md[PAMI_XFER_ALLGATHERV_INT][0].name, comm_ptr);
+      if(comm_ptr->mpid.must_query[PAMI_XFER_ALLGATHERV_INT][0] == MPID_COLL_USE_MPICH)
+         fprintf(stderr,"Using MPICH for allgatherv below %d size comm %p\n", comm_ptr->mpid.cutoff_size[PAMI_XFER_ALLREDUCE][0], comm_ptr);
       if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_BROADCAST] == MPID_COLL_SELECTED)
          fprintf(stderr,"Using %s for opt bcast up to size %d comm %p\n", comm_ptr->mpid.opt_protocol_md[PAMI_XFER_BROADCAST][0].name,
             comm_ptr->mpid.cutoff_size[PAMI_XFER_BROADCAST][0], comm_ptr);
       if(comm_ptr->mpid.must_query[PAMI_XFER_BROADCAST][1] == MPID_COLL_NOQUERY)
          fprintf(stderr,"Using %s for opt bcast above size %d comm %p\n", comm_ptr->mpid.opt_protocol_md[PAMI_XFER_BROADCAST][1].name,
             comm_ptr->mpid.cutoff_size[PAMI_XFER_BROADCAST][0], comm_ptr);
+      if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLTOALLV_INT] == MPID_COLL_SELECTED)
+         fprintf(stderr,"Using %s for opt alltoallv comm %p\n", comm_ptr->mpid.opt_protocol_md[PAMI_XFER_ALLTOALLV_INT][0].name, comm_ptr);
       if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLTOALL] == MPID_COLL_SELECTED)
          fprintf(stderr,"Using %s for opt alltoall comm %p\n", comm_ptr->mpid.opt_protocol_md[PAMI_XFER_ALLTOALL][0].name, comm_ptr);
       if(comm_ptr->mpid.must_query[PAMI_XFER_ALLREDUCE][0] == MPID_COLL_USE_MPICH)

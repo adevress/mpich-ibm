@@ -58,10 +58,11 @@ int MPIDO_Doscan(void *sendbuf, void *recvbuf,
    pami_xfer_t scan;
    volatile unsigned scan_active = 1;
 
-   if(sendbuf == MPI_IN_PLACE || comm_ptr->mpid.user_selectedvar[PAMI_XFER_SCAN] == MPID_COLL_USE_MPICH || rc != MPI_SUCCESS)
+   if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_SCAN] == MPID_COLL_USE_MPICH || rc != MPI_SUCCESS)
       
    {
-      TRACE_ERR("Using MPICH (ex)scan algorithm\n");
+      if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0)
+         fprintf(stderr,"Using MPICH scan algorithm\n");
       if(exflag)
          return MPIR_Exscan(sendbuf, recvbuf, count, datatype, op, comm_ptr, mpierrno);
       else
@@ -69,8 +70,13 @@ int MPIDO_Doscan(void *sendbuf, void *recvbuf,
    }
 
    MPIDI_Datatype_get_info(count, datatype, dt_contig, tsize, dt_null, true_lb);
-   sbuf = sendbuf + true_lb;
    rbuf = recvbuf + true_lb;
+   if(sendbuf == MPI_IN_PLACE) 
+   {
+      sbuf = rbuf;
+   }
+   else
+      sbuf = sendbuf + true_lb;
 
    scan.cb_done = scan_cb_done;
    scan.cookie = (void *)&scan_active;

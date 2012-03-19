@@ -213,6 +213,9 @@ void MPIDI_Comm_coll_envvars(MPID_Comm *comm)
    MPIDI_Check_protocols("PAMID_COLLECTIVE_GATHERV", comm, "gatherv", PAMI_XFER_GATHERV_INT);
 
    MPIDI_Check_protocols("PAMID_COLLECTIVE_SCAN", comm, "scan", PAMI_XFER_SCAN);
+   /* If a scan protocol was not specified, punt to MPICH */
+   if(comm->mpid.user_selectedvar[PAMI_XFER_SCAN] == MPID_COLL_NOSELECTION)
+      comm->mpid.user_selectedvar[PAMI_XFER_SCAN] = MPID_COLL_USE_MPICH;
 
    comm->mpid.scattervs[0] = comm->mpid.scattervs[1] = 0;
 
@@ -227,6 +230,14 @@ void MPIDI_Comm_coll_envvars(MPID_Comm *comm)
       comm->mpid.user_selectedvar[PAMI_XFER_ALLGATHER] = MPID_COLL_USE_MPICH;
       comm->mpid.user_selectedvar[PAMI_XFER_ALLGATHERV_INT] = MPID_COLL_USE_MPICH;
       comm->mpid.user_selectedvar[PAMI_XFER_GATHER] = MPID_COLL_USE_MPICH;
+   }
+   else
+   {
+      comm->mpid.user_selectedvar[PAMI_XFER_SCATTERV_INT] = MPID_COLL_NOSELECTION; 
+      comm->mpid.user_selectedvar[PAMI_XFER_SCATTER] = MPID_COLL_NOSELECTION; 
+      comm->mpid.user_selectedvar[PAMI_XFER_ALLGATHER] = MPID_COLL_NOSELECTION; 
+      comm->mpid.user_selectedvar[PAMI_XFER_ALLGATHERV_INT] = MPID_COLL_NOSELECTION; 
+      comm->mpid.user_selectedvar[PAMI_XFER_GATHER] = MPID_COLL_NOSELECTION; 
    }
 
    envopts = getenv("PAMID_COLLECTIVE_SCATTERV");

@@ -270,20 +270,24 @@ MPIDO_Allgatherv(void *sendbuf,
    use_alltoall = comm_ptr->mpid.allgathervs[2];
    use_tree_reduce = comm_ptr->mpid.allgathervs[0];
    use_bcast = comm_ptr->mpid.allgathervs[1];
-   /* Assuming PAMI will barf on MPI_IN_PLACE */
-   use_pami = sendbuf != MPI_IN_PLACE &&
-   (comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLGATHERV_INT] == MPID_COLL_USE_MPICH) ? 0 : 1;
+   /* Assuming PAMI doesn't support MPI_IN_PLACE */
+   use_pami = sendbuf != MPI_IN_PLACE && 
+     (comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLGATHERV_INT] == MPID_COLL_USE_MPICH) ? 0 : 1;
 
    if((MPIDI_Datatype_to_pami(sendtype, &stype, -1, NULL, &tmp) != MPI_SUCCESS) || 
       (MPIDI_Datatype_to_pami(recvtype, &rtype, -1, NULL, &tmp) != MPI_SUCCESS))
       use_pami = 0;
 
-   use_opt = use_alltoall || use_tree_reduce || use_bcast || use_pami;
-   TRACE_ERR("MPIDO_Allgatherv selection flags: b: %d a: %d r: %d p: %d\n",
-            use_bcast, use_alltoall, use_tree_reduce, use_pami);
+   use_opt = (use_alltoall || use_tree_reduce || use_bcast) && use_pami;
+   if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0)
+     fprintf(stderr,"MPIDO_Allgatherv selection flags: b: %d a: %d r: %d p: %d o: %d\n",
+            use_bcast, use_alltoall, use_tree_reduce, use_pami, use_opt);
 
    if(!use_opt)
-  {
+   {
+     if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0)
+     fprintf(stderr,"Using MPICH allgatherv type %u.\n",
+             comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLGATHERV_INT]);
    TRACE_ERR("Using MPICH Allgatherv\n");
    MPIDI_Update_last_algorithm(comm_ptr, "ALLGATHERV_MPICH");
    return MPIR_Allgatherv(sendbuf, sendcount, sendtype,
@@ -299,16 +303,14 @@ MPIDO_Allgatherv(void *sendbuf,
 			  recv_true_lb);
 
 
-  if (sendbuf != MPI_IN_PLACE)
-  {
-    MPIDI_Datatype_get_info(sendcount,
-                            sendtype,
-                            config[MPID_SEND_CONTIG],
-                            send_size,
-                            dt_null,
-                            send_true_lb);
-    sbuf = (char *)sendbuf+send_true_lb;
-  }
+  /* No MPI_IN_PLACE for pami so sbuf is ok like this */
+  MPIDI_Datatype_get_info(sendcount,
+			  sendtype,
+			  config[MPID_SEND_CONTIG],
+			  send_size,
+			  dt_null,
+			  send_true_lb);
+  sbuf = (char *)sendbuf+send_true_lb;
 
   if (displs[0])
     config[MPID_RECV_CONTINUOUS] = 0;
@@ -361,6 +363,9 @@ MPIDO_Allgatherv(void *sendbuf,
    /* TODO These need ordered in speed-order */
    if(use_tree_reduce)
    {
+     if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0)
+       fprintf(stderr,"Using tree reduce allgatherv type %u.\n",
+               comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLGATHERV_INT]);
      rc = MPIDO_Allgatherv_allreduce(sendbuf, sendcount, sendtype,
              recvbuf, recvcounts, buffer_sum, displs, recvtype,
              send_true_lb, recv_true_lb, send_size, recv_size,
@@ -370,6 +375,9 @@ MPIDO_Allgatherv(void *sendbuf,
    }
    if(use_bcast)
    {
+     if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0)
+       fprintf(stderr,"Using bcast allgatherv type %u.\n",
+               comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLGATHERV_INT]);
      rc = MPIDO_Allgatherv_bcast(sendbuf, sendcount, sendtype,
              recvbuf, recvcounts, buffer_sum, displs, recvtype,
              send_true_lb, recv_true_lb, send_size, recv_size,
@@ -379,6 +387,9 @@ MPIDO_Allgatherv(void *sendbuf,
    }
    if(use_alltoall)
    {
+     if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0)
+       fprintf(stderr,"Using alltoall allgatherv type %u.\n",
+               comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLGATHERV_INT]);
      rc = MPIDO_Allgatherv_alltoall(sendbuf, sendcount, sendtype,
              recvbuf, recvcounts, buffer_sum, displs, recvtype,
              send_true_lb, recv_true_lb, send_size, recv_size,
@@ -388,14 +399,23 @@ MPIDO_Allgatherv(void *sendbuf,
    }
    if(use_pami)
    {
+     if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0)
+       fprintf(stderr,"Using PAMI allgatherv type %u.\n",
+               comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLGATHERV_INT]);
 
       char *pname = comm_ptr->mpid.user_metadata[PAMI_XFER_ALLGATHERV_INT].name;
       pami_xfer_t allgatherv;
       allgatherv.cb_done = allgatherv_cb_done;
       allgatherv.cookie = (void *)&allgatherv_active;
-      allgatherv.algorithm = comm_ptr->mpid.user_selected[PAMI_XFER_ALLGATHERV_INT];
-      allgatherv.cmd.xfer_allgatherv.sndbuf = sendbuf;
-      allgatherv.cmd.xfer_allgatherv.rcvbuf = recvbuf;
+#ifdef MPIDI_BASIC_COLLECTIVE_SELECTION
+      if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLGATHERV_INT] == MPID_COLL_SELECTED)
+        allgatherv.algorithm = comm_ptr->mpid.opt_protocol[PAMI_XFER_ALLGATHERV_INT][0];
+      else
+#endif
+        allgatherv.algorithm = comm_ptr->mpid.user_selected[PAMI_XFER_ALLGATHERV_INT];
+      
+      allgatherv.cmd.xfer_allgatherv.sndbuf = sbuf;
+      allgatherv.cmd.xfer_allgatherv.rcvbuf = rbuf;
 
       /* Assumed !PAMI_BYTES_REQUIRED initiailly */
       allgatherv.cmd.xfer_allgatherv_int.stype = stype;
@@ -483,6 +503,9 @@ MPIDO_Allgatherv(void *sendbuf,
    }
    else
    {
+     if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0)
+       fprintf(stderr,"Using MPICH allgatherv type %u.\n",
+               comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLGATHERV_INT]);
       TRACE_ERR("Using MPICH for Allgatherv\n");
       MPIDI_Update_last_algorithm(comm_ptr, "ALLGATHERV_MPICH");
       return MPIR_Allgatherv(sendbuf, sendcount, sendtype,
