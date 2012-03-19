@@ -24,9 +24,7 @@ int MPIDO_Allreduce(void *sendbuf,
                     MPID_Comm *comm_ptr,
                     int *mpierrno)
 {
-  if (sendbuf == MPI_IN_PLACE)
-    return MPIR_Allreduce(sendbuf, recvbuf, count, dt, op, comm_ptr, mpierrno);
-
+   void *sbuf;
    TRACE_ERR("Entering mpido_allreduce\n");
    MPIDI_Post_coll_t allred_post;
    pami_type_t pdt;
@@ -67,9 +65,15 @@ int MPIDO_Allreduce(void *sendbuf,
       return MPIR_Allreduce(sendbuf, recvbuf, count, dt, op, comm_ptr, mpierrno);
    }
 
+   if(sendbuf == MPI_IN_PLACE) 
+   {
+      sbuf = recvbuf;
+   }
+   else sbuf = sendbuf;
+
    allred.cb_done = cb_allreduce;
    allred.cookie = (void *)&active;
-   allred.cmd.xfer_allreduce.sndbuf = sendbuf;
+   allred.cmd.xfer_allreduce.sndbuf = sbuf;
    allred.cmd.xfer_allreduce.stype = pdt;
    allred.cmd.xfer_allreduce.rcvbuf = recvbuf;
    allred.cmd.xfer_allreduce.rtype = pdt;
@@ -208,7 +212,7 @@ int MPIDO_Allreduce(void *sendbuf,
    if(!alg_selected) /* must be fallback to MPICH */
    {
       if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0)
-	fprintf(stderr,"Using MPICH allreduce\n");
+         fprintf(stderr,"Using MPICH allreduce\n");
       MPIDI_Update_last_algorithm(comm_ptr, "ALLREDUCE_MPICH");
       return MPIR_Allreduce(sendbuf, recvbuf, count, dt, op, comm_ptr, mpierrno);
    }
@@ -217,9 +221,6 @@ int MPIDO_Allreduce(void *sendbuf,
    if(MPIDI_Process.context_post)
    {
       allred_post.coll_struct = &allred;
-/*      if((MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm_ptr->rank == 0) ||
-         (MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL))
-         fprintf(stderr,"Using protocol %s\n", my_allred_md->name);*/
       if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0)
          fprintf(stderr,"Posting protocol %s\n", my_allred_md->name);
       TRACE_ERR("posting allreduce, context: %d, algoname: %s, dt: %s, op: %s, count: %d\n", 0,
@@ -231,7 +232,7 @@ int MPIDO_Allreduce(void *sendbuf,
    else
    {
       if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0)
-         fprintf(stderr,"Using protocol %s\n", my_allred_md->name);
+         fprintf(stderr,"Using protocol %s for allreduce\n", my_allred_md->name);
       rc = PAMI_Collective(MPIDI_Context[0], (pami_xfer_t *)&allred);
    }
 

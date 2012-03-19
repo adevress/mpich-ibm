@@ -221,7 +221,7 @@ int MPIDO_Scatterv(void *sendbuf,
                    MPID_Comm *comm_ptr,
                    int *mpierrno)
 {
-  int contig, tmp, pamidt, rc;
+  int contig, tmp, pamidt = 1, rc;
   int ssize, rsize;
   MPID_Datatype *dt_ptr = NULL;
   MPI_Aint send_true_lb=0, recv_true_lb;
@@ -245,7 +245,9 @@ int MPIDO_Scatterv(void *sendbuf,
 
    if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_SCATTERV] == MPID_COLL_USE_MPICH)
   {
-   MPIDI_Update_last_algorithm(comm_ptr, "SCATTERV_MPICH");
+    if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0)
+      fprintf(stderr,"Using MPICH scatterv algorithm\n");
+    MPIDI_Update_last_algorithm(comm_ptr, "SCATTERV_MPICH");
     return MPIR_Scatterv(sendbuf, sendcounts, displs, sendtype,
                          recvbuf, recvcount, recvtype,
                          root, comm_ptr, mpierrno);
@@ -277,14 +279,20 @@ int MPIDO_Scatterv(void *sendbuf,
       queryreq = comm_ptr->mpid.user_selectedvar[PAMI_XFER_SCATTERV_INT];
    }
 
-   if(recvbuf == MPI_IN_PLACE || MPIDI_Datatype_to_pami(recvtype, &rtype, -1, NULL, &tmp) != MPI_SUCCESS)
+   if(MPIDI_Datatype_to_pami(recvtype, &rtype, -1, NULL, &tmp) != MPI_SUCCESS)
       pamidt = 0;
 
    if(MPIDI_Datatype_to_pami(sendtype, &stype, -1, NULL, &tmp) != MPI_SUCCESS)
       pamidt = 0;
 
+  if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0)
+    fprintf(stderr,"Use pami %d, use mpich %d.\n",
+            pamidt,comm_ptr->mpid.user_selectedvar[PAMI_XFER_SCATTERV_INT] == MPID_COLL_USE_MPICH);
+
    if(pamidt == 0 || comm_ptr->mpid.user_selectedvar[PAMI_XFER_SCATTERV_INT] == MPID_COLL_USE_MPICH)
    {
+     if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0)
+       fprintf(stderr,"Using MPICH scatterv algorithm\n");
       TRACE_ERR("Scatterv using MPICH\n");
       MPIDI_Update_last_algorithm(comm_ptr, "SCATTERV_MPICH");
       return MPIR_Scatterv(sendbuf, sendcounts, displs, sendtype,
@@ -299,7 +307,12 @@ int MPIDO_Scatterv(void *sendbuf,
    if(comm_ptr->rank == root)
    {
       MPIDI_Datatype_get_info(1, recvtype, contig, rsize, dt_ptr, recv_true_lb);
-      rbuf = recvbuf + recv_true_lb;
+      if(recvbuf == MPI_IN_PLACE) 
+      {
+        rbuf = (char *)sendbuf + rsize*displs[comm_ptr->rank] + recv_true_lb;
+      }
+      else
+        rbuf = recvbuf + recv_true_lb;
    }
 
    scatterv.cb_done = cb_scatterv;
@@ -308,8 +321,10 @@ int MPIDO_Scatterv(void *sendbuf,
 
    scatterv.algorithm = my_scatterv;
 
-   scatterv.cmd.xfer_scatterv_int.sndbuf = sbuf;
    scatterv.cmd.xfer_scatterv_int.rcvbuf = rbuf;
+
+   scatterv.cmd.xfer_scatterv_int.sndbuf = sbuf;
+  
    #ifdef PAMI_DISPS_ARE_BYTES
    TRACE_ERR("Malloc()ing array for MPIDO_Scatterv displacements\n");
    int *sdispls;
@@ -370,6 +385,10 @@ int MPIDO_Scatterv(void *sendbuf,
    }
 
    MPIDI_Update_last_algorithm(comm_ptr, my_scatterv_md->name);
+
+   if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0)
+     fprintf(stderr,"Using PAMI scatterv type %u.\n",
+             comm_ptr->mpid.user_selectedvar[PAMI_XFER_SCATTERV_INT]);
 
    if(MPIDI_Process.context_post)
    {
@@ -526,6 +545,8 @@ int MPIDO_Scatterv(void *sendbuf,
    } /* nothing valid to try, go to mpich */
    else
    {
+     if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0)
+       fprintf(stderr,"Using MPICH scatterv algorithm\n");
       MPIDI_Update_last_algorithm(comm_ptr, "SCATTERV_MPICH");
       return MPIR_Scatterv(sendbuf, sendcounts, displs, sendtype,
                            recvbuf, recvcount, recvtype,

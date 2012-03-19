@@ -49,6 +49,8 @@ int MPIDO_Alltoallv(void *sendbuf,
             MPID_COLL_USE_MPICH) ||
        pamidt == 0)
    {
+      if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0)
+         fprintf(stderr,"Using MPICH alltoallv algorithm\n");
       if(!comm_ptr->rank)
          TRACE_ERR("Using MPICH alltoallv\n");
       return MPIR_Alltoallv(sendbuf, sendcounts, senddispls, sendtype,

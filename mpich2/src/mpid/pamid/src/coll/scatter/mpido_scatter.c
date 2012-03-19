@@ -113,10 +113,14 @@ int MPIDO_Scatter(void *sendbuf,
   if(MPIDI_Datatype_to_pami(recvtype, &rtype, -1, NULL, &tmp) != MPI_SUCCESS)
     use_pami = 0;
 
+  if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0)
+    fprintf(stderr,"Use pami %d, use mpich %d.\n",
+            use_pami,comm_ptr->mpid.user_selectedvar[PAMI_XFER_SCATTER] == MPID_COLL_USE_MPICH);
+
   if(!use_pami)
   {
-/*    if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0)// && rank == 0)
-         fprintf(stderr,"Using SCATTER_MPICH\n"); */
+    if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0)
+      fprintf(stderr,"Using MPICH scatter algorithm\n");
     MPIDI_Update_last_algorithm(comm_ptr, "SCATTER_MPICH");
     return MPIR_Scatter(sendbuf, sendcount, sendtype,
                         recvbuf, recvcount, recvtype,
@@ -193,7 +197,14 @@ int MPIDO_Scatter(void *sendbuf,
    scatter.cmd.xfer_scatter.sndbuf = (void *)sendbuf;
    scatter.cmd.xfer_scatter.stype = stype;
    scatter.cmd.xfer_scatter.stypecount = sendcount;
-   scatter.cmd.xfer_scatter.rcvbuf = (void *)recvbuf;
+   if(recvbuf == MPI_IN_PLACE) 
+   {
+     MPI_Aint recv_true_lb = 0;
+     MPIDI_Datatype_get_info(1, recvtype, contig, nbytes, data_ptr, recv_true_lb);
+     scatter.cmd.xfer_scatter.rcvbuf = (char *)sendbuf + nbytes*comm_ptr->rank;
+   }
+   else
+     scatter.cmd.xfer_scatter.rcvbuf = (void *)recvbuf;
    scatter.cmd.xfer_scatter.rtype = rtype;
    scatter.cmd.xfer_scatter.rtypecount = recvcount;
 
@@ -210,6 +221,10 @@ int MPIDO_Scatter(void *sendbuf,
          fprintf(stderr,"query failed for %s\n", my_scatter_md->name);
       }
    }
+
+   if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0)
+     fprintf(stderr,"Using PAMI scatter type %u.\n",
+             comm_ptr->mpid.user_selectedvar[PAMI_XFER_SCATTER]);
 
    if(MPIDI_Process.context_post)
    {
@@ -245,9 +260,13 @@ int MPIDO_Scatter(void *sendbuf,
   MPIDO_Allreduce(MPI_IN_PLACE, &success, 1, MPI_INT, MPI_BAND, comm_ptr, mpierrno);
 
   if (!success)
+  {
+    if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0)
+      fprintf(stderr,"Using MPICH scatter algorithm\n");
     return MPIR_Scatter(sendbuf, sendcount, sendtype,
                         recvbuf, recvcount, recvtype,
                         root, comm_ptr, mpierrno);
+  }
 
    sbuf = sendbuf+true_lb;
    rbuf = recvbuf+true_lb;
