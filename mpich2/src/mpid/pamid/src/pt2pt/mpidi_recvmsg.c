@@ -44,9 +44,9 @@ MPIDI_RecvMsg_Unexp(MPID_Request  * rreq,
      {
       if (unlikely(MPIDI_Request_isSync(rreq)))
       {
-        /* Post this to the generic device queue so a commthread picks this up and advances
-         * it there.  We cannot do the send-immediate inline here because we may not have the
-         * context locked (the commthread does).
+        /* Post this to the context for asynchronous progresss. We cannot do
+         * the send-immediate inline here because we may not have the
+         * context locked (its is being asynchrously advanced).
          * Must "uncomplete" the message (increment the ref and completion counts) so we
          * hold onto this request object until this send has completed.  When MPIDI_SyncAck_handoff
          * finishes sending the ack, it will complete the request, decrementing the ref and
@@ -90,9 +90,9 @@ MPIDI_RecvMsg_Unexp(MPID_Request  * rreq,
       /* -------------------------------- */
       if (unlikely(MPIDI_Request_isSync(rreq)))
         {
-          /* Post this to the generic device queue so a commthread picks this up and advances
-           * it there.  We cannot do the send-immediate inline here because we may not have the
-           * context locked (the commthread does).
+          /* Post this to the context for asynchronous progresss. We cannot do
+           * the send-immediate inline here because we may not have the
+           * context locked (its is being asynchrously advanced).
            * Must "uncomplete" the message (increment the ref and completion counts) so we
            * hold onto this request object until this send has completed.  When MPIDI_SyncAck_handoff
            * finishes sending the ack, it will complete the request, decrementing the ref and

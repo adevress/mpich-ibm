@@ -31,7 +31,7 @@ typedef struct
 typedef struct
 {
   unsigned avail_contexts;
-  volatile unsigned commthreads_active;
+  volatile unsigned async_progress_active;
   unsigned context_post;
   unsigned short_limit;
   unsigned eager_limit;
@@ -41,7 +41,7 @@ typedef struct
   MPIDI_RequestHandle_t request_handles[MPIDI_MAX_THREADS];
 #endif
 
-  unsigned commthreads_enabled;
+  unsigned async_progress_enabled;
   unsigned verbose;        /**< The current level of verbosity for end-of-job stats. */
   unsigned statistics;     /**< The current level of stats collection.               */
   unsigned rma_pending;    /**< The max num outstanding requests during an RMA op    */

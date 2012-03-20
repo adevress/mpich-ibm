@@ -52,6 +52,8 @@
  *   to 1 when the application is linked with one of the "non-legacy" MPICH
  *   libraries (gcc, xl, xl.ndebug) and MPI_Init_thread() is called with
  *   MPI_THREAD_MULTIPLE.
+ *   - NOTE: This environment variable has the same effect as setting
+ *           MPICH_THREADLEVEL_DEFAULT=multiple
  *
  * - PAMID_CONTEXT_MAX - This variable sets the maximum allowable number
  *   of contexts. Contexts are a method of dividing hardware resources
@@ -71,6 +73,9 @@
  *        for that context are driven by communications threads.
  *   The default value is 1 when using the gcc, xl, and xl.ndebug libraries
  *   and MPI_Init_thread(...  MPI_THREAD_MULTIPLE ...), and 0 otherwise.
+ *
+ * - PAMID_ASYNC_PROGRESS - This variable enables or disables the async
+ *   progress extension.
  *
  * - PAMID_COLLECTIVES - Controls whether optimized collectives are used.
  *   Possible values:
@@ -328,28 +333,14 @@ ENV_Unsigned__(char* name[], unsigned* val, char* string)
     fprintf(stderr, "%s = %u\n", string, *val);
 }
 
-/** \brief Checks the Environment variables at initialization and stores the results */
+/** \brief Checks the Environment variables at initialization and stores the results.
+ *
+ * \param [in] requested  The thread model requested by the user
+ */
 void
-MPIDI_Env_setup()
+MPIDI_Env_setup(int requested)
 {
   /* Set defaults for various environment variables */
-  {
-    unsigned value = (unsigned)-1;
-    char* names[] = {"PAMID_THREAD_MULTIPLE", NULL};
-    ENV_Unsigned(names, &value);
-    if (value == 1)
-    {
-      MPIDI_Process.context_post        = 1;
-      MPIDI_Process.commthreads_enabled = 1;
-      MPIDI_Process.avail_contexts      = MPIDI_MAX_CONTEXTS;
-    }
-    else if (value == 0)
-    {
-      MPIDI_Process.context_post        = 0;
-      MPIDI_Process.commthreads_enabled = 0;
-      MPIDI_Process.avail_contexts      = 1;
-    }
-  }
 
   /* Set the verbosity level.  When set, this will print information at finalize. */
   /* These environment variable name(s) are deprecated and will be removed later:
@@ -367,6 +358,53 @@ MPIDI_Env_setup()
   {
     char* names[] = {"PAMID_STATISTICS", "PAMI_STATISTICS", NULL};
     ENV_Unsigned(names, &MPIDI_Process.statistics);
+  }
+
+  /* "Globally" set the optimization flag for low-level collectives in geometry creation.
+   * This is probably temporary. metadata should set this flag likely.
+   */
+  /* These environment variable name(s) are deprecated and will be removed later:
+   * - PAMI_OPTIMIZED_SUBCOMMS
+   */
+  {
+    /* THIS ENVIRONMENT VARIABLE NEEDS TO BE DOCUMENTED ABOVE */
+    char *names[] = {"PAMID_OPTIMIZED_SUBCOMMS", "PAMI_OPTIMIZED_SUBCOMMS", NULL};
+    ENV_Unsigned(names, &MPIDI_Process.optimized.subcomms);
+    TRACE_ERR("MPIDI_Process.optimized.subcomms=%u\n", MPIDI_Process.optimized.subcomms);
+  }
+
+#if (MPIU_THREAD_GRANULARITY == MPIU_THREAD_GRANULARITY_PER_OBJECT)
+  /* Set the default threads values based on the requested mpi thread mode. */
+  if (requested != MPI_THREAD_MULTIPLE)
+    {
+      MPIDI_Process.context_post           = 0;
+      MPIDI_Process.async_progress_enabled = 0;
+      MPIDI_Process.avail_contexts         = 1;
+    }
+  else /*if (requested == 0)*/
+    {
+      MPIDI_Process.context_post           = 1;
+      MPIDI_Process.async_progress_enabled = 1;
+      MPIDI_Process.avail_contexts         = MPIDI_MAX_CONTEXTS;
+    }
+
+  /* Set the threads values from a single override. */
+  {
+    unsigned value = (unsigned)-1;
+    char* names[] = {"PAMID_THREAD_MULTIPLE", NULL};
+    ENV_Unsigned(names, &value);
+    if (value == 1)
+    {
+      MPIDI_Process.context_post           = 1;
+      MPIDI_Process.async_progress_enabled = 1;
+      MPIDI_Process.avail_contexts         = MPIDI_MAX_CONTEXTS;
+    }
+    else if (value == 0)
+    {
+      MPIDI_Process.context_post           = 0;
+      MPIDI_Process.async_progress_enabled = 0;
+      MPIDI_Process.avail_contexts         = 1;
+    }
   }
 
   /* Set the upper-limit of number of PAMI Contexts. */
@@ -393,22 +431,9 @@ MPIDI_Env_setup()
     TRACE_ERR("MPIDI_Process.context_post=%u\n", MPIDI_Process.context_post);
   }
 
-  /* "Globally" set the optimization flag for low-level collectives in geometry creation.
-   * This is probably temporary. metadata should set this flag likely.
-   */
+  /* Enable/Disable asynchronous progress. */
   /* These environment variable name(s) are deprecated and will be removed later:
-   * - PAMI_OPTIMIZED_SUBCOMMS
-   */
-  {
-    /* THIS ENVIRONMENT VARIABLE NEEDS TO BE DOCUMENTED ABOVE */
-    char *names[] = {"PAMID_OPTIMIZED_SUBCOMMS", "PAMI_OPTIMIZED_SUBCOMMS", NULL};
-    ENV_Unsigned(names, &MPIDI_Process.optimized.subcomms);
-    TRACE_ERR("MPIDI_Process.optimized.subcomms=%u\n", MPIDI_Process.optimized.subcomms);
-  }
-
-#if USE_PAMI_COMM_THREADS
-  /* Enable/Disable commthreads for asynchronous communication. */
-  /* These environment variable name(s) are deprecated and will be removed later:
+   * - PAMID_COMMTHREADS
    * - PAMI_COMMTHREAD
    * - PAMI_COMMTHREADS
    * - PAMI_COMM_THREAD
@@ -416,10 +441,15 @@ MPIDI_Env_setup()
    */
   {
     /* THIS ENVIRONMENT VARIABLE NEEDS TO BE DOCUMENTED ABOVE */
-    char *names[] = {"PAMID_COMMTHREADS", "PAMI_COMMTHREAD", "PAMI_COMMTHREADS", "PAMI_COMM_THREAD", "PAMI_COMM_THREADS", NULL};
-    ENV_Unsigned(names, &MPIDI_Process.commthreads_enabled);
-    TRACE_ERR("MPIDI_Process.commthreads_enabled=%u\n", MPIDI_Process.commthreads_enabled);
+    char *names[] = {"PAMID_ASYNC_PROGRESS", "PAMID_COMMTHREADS", "PAMI_COMMTHREAD", "PAMI_COMMTHREADS", "PAMI_COMM_THREAD", "PAMI_COMM_THREADS", NULL};
+    ENV_Unsigned(names, &MPIDI_Process.async_progress_enabled);
+    TRACE_ERR("MPIDI_Process.async_progress_enabled=%u\n", MPIDI_Process.async_progress_enabled);
   }
+#else
+  /* Set the default value for 'legacy' compiles */
+  MPIDI_Process.context_post           = 0;
+  MPIDI_Process.async_progress_enabled = 0;
+  MPIDI_Process.avail_contexts         = 1;
 #endif
 
   /* Determine short limit */

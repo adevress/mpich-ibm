@@ -94,8 +94,8 @@ static inline int
 MPID_Progress_wait_inline(unsigned loop_count)
 {
   pami_result_t rc = 0;
-#if USE_PAMI_COMM_THREADS
-  if (unlikely(MPIDI_Process.commthreads_active == 0)) {
+#if (MPIU_THREAD_GRANULARITY == MPIU_THREAD_GRANULARITY_PER_OBJECT)
+  if (unlikely(MPIDI_Process.async_progress_active == 0)) {
     /* This just assumes that people will want the thread-safe version when using the per-obj code. */
     rc = PAMI_Context_trylock_advancev(MPIDI_Context, MPIDI_Process.avail_contexts, 1);
     MPID_assert( (rc == PAMI_SUCCESS) || (rc == PAMI_EAGAIN) );
