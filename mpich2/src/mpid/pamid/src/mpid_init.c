@@ -13,15 +13,15 @@ MPIDI_Process_t  MPIDI_Process = {
   .verbose             = 0,
   .statistics          = 0,
 
-#if defined(__BGQ__) && (MPIU_THREAD_GRANULARITY == MPIU_THREAD_GRANULARITY_PER_OBJECT)
+#if (MPIU_THREAD_GRANULARITY == MPIU_THREAD_GRANULARITY_PER_OBJECT)
   .avail_contexts      = MPIDI_MAX_CONTEXTS,
-  .commthreads_active  = 0,
-  .commthreads_enabled = USE_PAMI_COMM_THREADS,
+  .async_progress_active  = 0,
+  .async_progress_enabled = 1,
   .context_post        = 1,
 #else
   .avail_contexts      = 1,
-  .commthreads_active  = 0,
-  .commthreads_enabled = 0,
+  .async_progress_active  = 0,
+  .async_progress_enabled = 0,
   .context_post        = 0,
 #endif
   .short_limit         = MPIDI_SHORT_LIMIT,
@@ -144,7 +144,6 @@ static struct
   },
 };
 
-
 static void
 MPIDI_PAMI_client_init(int* rank, int* size)
 {
@@ -172,23 +171,28 @@ MPIDI_PAMI_context_init(int* threading)
   int requested_thread_level;
   requested_thread_level = *threading;
 
-
+  /* ---------------------------------------------------------------------------
+   * TODO: Remove this hardware threads check - it is implementation-specific.
+   *       Instead, use the pami async progress extension as intended. If the
+   *       async progress extension is not able to make async progress after
+   *       the extension has started then the extension will invoke the
+   *       'suspend' trigger to inform mpich that async progress is off. At this
+   *       point the "MPIDI_Process.async_progress_active" value will be set
+   *       to zero.
+   * ------------------------------------------------------------------------ */
   unsigned hwthreads = PAMIX_Client_query(MPIDI_Client, PAMI_CLIENT_HWTHREADS_AVAILABLE).value.intval;
   if (hwthreads == 1)
     {
-      /* VNM mode imlies MPI_THREAD_SINGLE, 1 context, and no posting or commthreads. */
+      /* VNM mode implies MPI_THREAD_SINGLE, 1 context, and no posting or async progress. */
       MPIDI_Process.avail_contexts      = 1;
       MPIDI_Process.context_post        = 0;
-      MPIDI_Process.commthreads_enabled = 0;
+      MPIDI_Process.async_progress_enabled = 0;
       *threading = MPI_THREAD_SINGLE;
     }
   else if (MPIDI_Process.context_post == 0)
     {
-      /* If we aren't posting, so just use 1 context and no commthreads. */
-      MPIDI_Process.avail_contexts      = 1;
-      MPIDI_Process.commthreads_enabled = 0;
-#if USE_PAMI_COMM_THREADS
-      /* Pre-obj builds require post & hwthreads for MPI_THREAD_MULTIPLE */
+#if (MPIU_THREAD_GRANULARITY == MPIU_THREAD_GRANULARITY_PER_OBJECT)
+      /* Per-obj builds require post & hwthreads for MPI_THREAD_MULTIPLE */
       if (*threading == MPI_THREAD_MULTIPLE)
         *threading = MPI_THREAD_SERIALIZED;
 #endif
@@ -234,13 +238,10 @@ MPIDI_PAMI_context_init(int* threading)
       MPID_assert_always(MPIDI_Process.avail_contexts);
 
 
-#if USE_PAMI_COMM_THREADS
-      /* Help a user who REALLY wants comm-threads by enabling them, irrespective of thread mode, when commthreads_enabled is set to 2 */
-      if (MPIDI_Process.commthreads_enabled >= 2)
+#if (MPIU_THREAD_GRANULARITY == MPIU_THREAD_GRANULARITY_PER_OBJECT)
+      /* Help a user who REALLY wants async_progress by enabling them, irrespective of thread mode, when async_progress_enabled is set to 2 */
+      if (MPIDI_Process.async_progress_enabled >= 2)
           *threading = MPI_THREAD_MULTIPLE;
-      /* In the per-obj builds, async progress defaults to always ON, so turn it off if not in MPI_THREAD_MULTIPLE */
-      if (*threading != MPI_THREAD_MULTIPLE)
-        MPIDI_Process.commthreads_enabled = 0;
 #endif
     }
   TRACE_ERR("Thread-level=%d, requested=%d\n", *threading, requested_thread_level);
@@ -365,30 +366,33 @@ MPIDI_PAMI_init(int* rank, int* size, int* threading)
   if ( (*rank == 0) && (MPIDI_Process.verbose >= MPIDI_VERBOSE_SUMMARY_0) )
     {
       printf("MPIDI_Process.*\n"
-             "  verbose      : %u\n"
-             "  statistics   : %u\n"
-             "  contexts     : %u\n"
-             "  commthreads  : %u\n"
-             "  context_post : %u\n"
-             "  short_limit  : %u\n"
-             "  eager_limit  : %u\n"
-             "  rma_pending  : %u\n"
-             "  shmem_pt2pt  : %u\n"
+             "  verbose               : %u\n"
+             "  statistics            : %u\n"
+             "  contexts              : %u\n"
+             "  async_progress        : %u\n"
+             "  context_post          : %u\n"
+             "  short_limit           : %u\n"
+             "  eager_limit           : %u\n"
+             "  eager_limit_local     : %u\n"
+             "  rma_pending           : %u\n"
+             "  shmem_pt2pt           : %u\n"
              "  optimized.collectives : %u\n"
              "  optimized.select_colls: %u\n"
              "  optimized.subcomms    : %u\n",
              MPIDI_Process.verbose,
              MPIDI_Process.statistics,
              MPIDI_Process.avail_contexts,
-             MPIDI_Process.commthreads_enabled,
+             MPIDI_Process.async_progress_enabled,
              MPIDI_Process.context_post,
              MPIDI_Process.short_limit,
              MPIDI_Process.eager_limit,
+             MPIDI_Process.eager_limit_local,
              MPIDI_Process.rma_pending,
              MPIDI_Process.shmem_pt2pt,
              MPIDI_Process.optimized.collectives,
              MPIDI_Process.optimized.select_colls,
              MPIDI_Process.optimized.subcomms);
+      printEnvVars("MPICH_");
       printEnvVars("PAMID_");
       printEnvVars("PAMI_");
       printEnvVars("COMMAGENT_");
@@ -455,7 +459,7 @@ int MPID_Init(int * argc,
   /* ------------------------------------ */
   /*  Get new defaults from the Env Vars  */
   /* ------------------------------------ */
-  MPIDI_Env_setup();
+  MPIDI_Env_setup(requested);
 
 
   /* ----------------------------- */
