@@ -313,10 +313,74 @@
  *
  */
 
-#define ENV_Unsigned(a, b) ENV_Unsigned__(a, b, #b)
+#define ENV_Deprecated(a, b, c, d, e) ENV_Deprecated__(a, b, c, d, e)
 static inline void
-ENV_Unsigned__(char* name[], unsigned* val, char* string)
+ENV_Deprecated__(char* name[], unsigned num_supported, unsigned* deprecated, int rank, int NA)
 {
+  if (name == NULL) return;
+
+  unsigned i;
+  char * env;
+
+  for (i=0; i<num_supported; ++i)
+    {
+      if (name[i] == NULL) return;
+
+      if (NA)
+        {
+          env = getenv(name[i]);
+          if (env != NULL)
+            {
+              if (rank == 0)
+                {
+                  if (*deprecated == 0)
+                    fprintf (stderr, "\n");
+
+                  fprintf (stderr, "The environment variable \"%s\" is not applicable.\n", name[i]);
+                }
+              *deprecated = 1;
+            }
+        }
+    }
+
+  for (i=num_supported; name[i] != NULL; ++i)
+    {
+      env = getenv(name[i]);
+      if (env != NULL)
+        {
+          if (rank == 0)
+            {
+              if (*deprecated == 0)
+                fprintf (stderr, "\n");
+
+              if (NA)
+                fprintf (stderr, "The environment variable \"%s\" is deprecated.\n", name[i]);
+              else
+                {
+                  char supported[10240];
+                  int n, index = 0;
+                  index += snprintf(&supported[index], 10240-index-1, "\"%s\"", name[0]);
+                  for (n=1; n<num_supported; ++n)
+                    index += snprintf(&supported[index], 10240-index-1, " or \"%s\"", name[n]);
+                  
+                  fprintf (stderr, "The environment variable \"%s\" is deprecated. Consider using %s instead.\n", name[i], supported);
+                }
+            }
+          *deprecated = 1;
+        }
+    }
+}
+
+#define ENV_Unsigned(a, b, c, d, e) ENV_Unsigned__(a, b, #b, c, d, e, 0)
+
+#define ENV_Unsigned_NA(a, b, c, d, e) ENV_Unsigned__(a, b, #b, c, d, e, 1)
+
+static inline void
+ENV_Unsigned__(char* name[], unsigned* val, char* string, unsigned num_supported, unsigned* deprecated, int rank, int NA)
+{
+  /* Check for deprecated environment variables. */
+  ENV_Deprecated(name, num_supported, deprecated, rank, NA);
+
   char * env;
 
   unsigned i=0;
@@ -329,70 +393,68 @@ ENV_Unsigned__(char* name[], unsigned* val, char* string)
   }
 
   *val = atoi(env);
-  if (MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL)
+  if (MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && rank == 0)
     fprintf(stderr, "%s = %u\n", string, *val);
 }
 
+
+
 /** \brief Checks the Environment variables at initialization and stores the results.
  *
+ * \param [in] rank       The process rank; used to limit output
  * \param [in] requested  The thread model requested by the user
  */
 void
-MPIDI_Env_setup(int requested)
+MPIDI_Env_setup(int rank, int requested)
 {
+  unsigned found_deprecated_env_var = 0;
+
   /* Set defaults for various environment variables */
 
   /* Set the verbosity level.  When set, this will print information at finalize. */
-  /* These environment variable name(s) are deprecated and will be removed later:
-   * - PAMI_VERBOSE
-   */
   {
     char* names[] = {"PAMID_VERBOSE", "PAMI_VERBOSE", NULL};
-    ENV_Unsigned(names, &MPIDI_Process.verbose);
+    ENV_Unsigned(names, &MPIDI_Process.verbose, 1, &found_deprecated_env_var, rank);
   }
 
   /* Enable statistics collection. */
-  /* These environment variable name(s) are deprecated and will be removed later:
-   * - PAMI_STATISTICS
-   */
   {
     char* names[] = {"PAMID_STATISTICS", "PAMI_STATISTICS", NULL};
-    ENV_Unsigned(names, &MPIDI_Process.statistics);
+    ENV_Unsigned(names, &MPIDI_Process.statistics, 1, &found_deprecated_env_var, rank);
   }
 
   /* "Globally" set the optimization flag for low-level collectives in geometry creation.
    * This is probably temporary. metadata should set this flag likely.
    */
-  /* These environment variable name(s) are deprecated and will be removed later:
-   * - PAMI_OPTIMIZED_SUBCOMMS
-   */
   {
     /* THIS ENVIRONMENT VARIABLE NEEDS TO BE DOCUMENTED ABOVE */
     char *names[] = {"PAMID_OPTIMIZED_SUBCOMMS", "PAMI_OPTIMIZED_SUBCOMMS", NULL};
-    ENV_Unsigned(names, &MPIDI_Process.optimized.subcomms);
+    ENV_Unsigned(names, &MPIDI_Process.optimized.subcomms, 1, &found_deprecated_env_var, rank);
     TRACE_ERR("MPIDI_Process.optimized.subcomms=%u\n", MPIDI_Process.optimized.subcomms);
   }
 
-#if (MPIU_THREAD_GRANULARITY == MPIU_THREAD_GRANULARITY_PER_OBJECT)
   /* Set the default threads values based on the requested mpi thread mode. */
-  if (requested != MPI_THREAD_MULTIPLE)
-    {
-      MPIDI_Process.context_post           = 0;
-      MPIDI_Process.async_progress_enabled = 0;
-      MPIDI_Process.avail_contexts         = 1;
-    }
-  else /*if (requested == 0)*/
+#if (MPIU_THREAD_GRANULARITY == MPIU_THREAD_GRANULARITY_PER_OBJECT)
+  if (requested == MPI_THREAD_MULTIPLE)
     {
       MPIDI_Process.context_post           = 1;
       MPIDI_Process.async_progress_enabled = 1;
       MPIDI_Process.avail_contexts         = MPIDI_MAX_CONTEXTS;
+    }
+  else
+#endif
+    {
+      MPIDI_Process.context_post           = 0;
+      MPIDI_Process.async_progress_enabled = 0;
+      MPIDI_Process.avail_contexts         = 1;
     }
 
   /* Set the threads values from a single override. */
   {
     unsigned value = (unsigned)-1;
     char* names[] = {"PAMID_THREAD_MULTIPLE", NULL};
-    ENV_Unsigned(names, &value);
+#if (MPIU_THREAD_GRANULARITY == MPIU_THREAD_GRANULARITY_PER_OBJECT)
+    ENV_Unsigned(names, &value, 1, &found_deprecated_env_var, rank);
     if (value == 1)
     {
       MPIDI_Process.context_post           = 1;
@@ -405,118 +467,95 @@ MPIDI_Env_setup(int requested)
       MPIDI_Process.async_progress_enabled = 0;
       MPIDI_Process.avail_contexts         = 1;
     }
+#else
+    ENV_Unsigned_NA(names, &value, 1, &found_deprecated_env_var, rank);
+#endif
   }
 
   /* Set the upper-limit of number of PAMI Contexts. */
-  /* These environment variable name(s) are deprecated and will be removed later:
-   * - PAMI_MAXCONTEXT
-   * - PAMI_MAXCONTEXTS
-   * - PAMI_MAX_CONTEXT
-   * - PAMI_MAX_CONTEXTS
-   */
   {
     char *names[] = {"PAMID_CONTEXT_MAX", "PAMI_MAXCONTEXT", "PAMI_MAXCONTEXTS", "PAMI_MAX_CONTEXT", "PAMI_MAX_CONTEXTS", NULL};
-    ENV_Unsigned(names, &MPIDI_Process.avail_contexts);
+#if (MPIU_THREAD_GRANULARITY == MPIU_THREAD_GRANULARITY_PER_OBJECT)
+    ENV_Unsigned(names, &MPIDI_Process.avail_contexts, 1, &found_deprecated_env_var, rank);
     TRACE_ERR("MPIDI_Process.avail_contexts=%u\n", MPIDI_Process.avail_contexts);
+#else
+    ENV_Unsigned_NA(names, &MPIDI_Process.avail_contexts, 1, &found_deprecated_env_var, rank);
+#endif
   }
 
-  /* Do not use the PAMI_Context_post interface; call the work function directly.
-   * As coded, this has the side-effect of only using a single context. */
-  /* These environment variable name(s) are deprecated and will be removed later:
-   * - PAMI_CONTEXT_POST
-   */
+  /* Enable context post. */
   {
     char *names[] = {"PAMID_CONTEXT_POST", "PAMI_CONTEXT_POST", NULL};
-    ENV_Unsigned(names, &MPIDI_Process.context_post);
+#if (MPIU_THREAD_GRANULARITY == MPIU_THREAD_GRANULARITY_PER_OBJECT)
+    ENV_Unsigned(names, &MPIDI_Process.context_post, 1, &found_deprecated_env_var, rank);
     TRACE_ERR("MPIDI_Process.context_post=%u\n", MPIDI_Process.context_post);
+#else
+    ENV_Unsigned_NA(names, &MPIDI_Process.context_post, 1, &found_deprecated_env_var, rank);
+#endif
   }
 
   /* Enable/Disable asynchronous progress. */
-  /* These environment variable name(s) are deprecated and will be removed later:
-   * - PAMID_COMMTHREADS
-   * - PAMI_COMMTHREAD
-   * - PAMI_COMMTHREADS
-   * - PAMI_COMM_THREAD
-   * - PAMI_COMM_THREADS
-   */
   {
     /* THIS ENVIRONMENT VARIABLE NEEDS TO BE DOCUMENTED ABOVE */
     char *names[] = {"PAMID_ASYNC_PROGRESS", "PAMID_COMMTHREADS", "PAMI_COMMTHREAD", "PAMI_COMMTHREADS", "PAMI_COMM_THREAD", "PAMI_COMM_THREADS", NULL};
-    ENV_Unsigned(names, &MPIDI_Process.async_progress_enabled);
+#if (MPIU_THREAD_GRANULARITY == MPIU_THREAD_GRANULARITY_PER_OBJECT)
+    ENV_Unsigned(names, &MPIDI_Process.async_progress_enabled, 1, &found_deprecated_env_var, rank);
     TRACE_ERR("MPIDI_Process.async_progress_enabled=%u\n", MPIDI_Process.async_progress_enabled);
-  }
 #else
-  /* Set the default value for 'legacy' compiles */
-  MPIDI_Process.context_post           = 0;
-  MPIDI_Process.async_progress_enabled = 0;
-  MPIDI_Process.avail_contexts         = 1;
+    ENV_Unsigned_NA(names, &MPIDI_Process.async_progress_enabled, 1, &found_deprecated_env_var, rank);
 #endif
+  }
 
   /* Determine short limit */
-  /* These environment variable name(s) are deprecated and will be removed later:
-   * - PAMI_SHORT
-   */
   {
     /* THIS ENVIRONMENT VARIABLE NEEDS TO BE DOCUMENTED ABOVE */
-    char* names[] = {"PAMID_SHORT", "PAMI_SHORT", "MP_S_SHORT_LIMIT", NULL};
-    ENV_Unsigned(names, &MPIDI_Process.short_limit);
+    char* names[] = {"PAMID_SHORT", "MP_S_SHORT_LIMIT", "PAMI_SHORT", NULL};
+    ENV_Unsigned(names, &MPIDI_Process.short_limit, 2, &found_deprecated_env_var, rank);
   }
 
   /* Determine eager limit */
-  /* These environment variable name(s) are deprecated and will be removed later:
-   * - PAMI_RVZ
-   * - PAMI_RZV
-   * - PAMI_EAGER
-   */
   {
-    char* names[] = {"PAMID_RZV", "PAMID_EAGER", "PAMI_RVZ", "PAMI_RZV", "PAMI_EAGER", "MP_EAGER_LIMIT", NULL};
-    ENV_Unsigned(names, &MPIDI_Process.eager_limit);
+    char* names[] = {"PAMID_EAGER", "PAMID_RZV", "MP_EAGER_LIMIT", "PAMI_RVZ", "PAMI_RZV", "PAMI_EAGER", NULL};
+    ENV_Unsigned(names, &MPIDI_Process.eager_limit, 3, &found_deprecated_env_var, rank);
   }
 
   /* Determine 'local' eager limit */
-  /* These environment variable name(s) are deprecated and will be removed later:
-   * - PAMI_RVZ_LOCAL
-   * - PAMI_RZV_LOCAL
-   * - PAMI_EAGER_LOCAL
-   */
   {
-    char* names[] = {"PAMID_RZV_LOCAL", "PAMID_EAGER_LOCAL", "PAMI_RVZ_LOCAL", "PAMI_RZV_LOCAL", "PAMI_EAGER_LOCAL", "MP_EAGER_LIMIT_LOCAL", NULL};
-    ENV_Unsigned(names, &MPIDI_Process.eager_limit_local);
+    char* names[] = {"PAMID_RZV_LOCAL", "PAMID_EAGER_LOCAL", "MP_EAGER_LIMIT_LOCAL", "PAMI_RVZ_LOCAL", "PAMI_RZV_LOCAL", "PAMI_EAGER_LOCAL", NULL};
+    ENV_Unsigned(names, &MPIDI_Process.eager_limit_local, 3, &found_deprecated_env_var, rank);
   }
 
   /* Set the maximum number of outstanding RDMA requests */
-  /* These environment variable name(s) are deprecated and will be removed later:
-   * - PAMI_RMA_PENDING
-   */
   {
-    char* names[] = {"PAMID_RMA_PENDING", "PAMI_RMA_PENDING", "MP_RMA_PENDING", NULL};
-    ENV_Unsigned(names, &MPIDI_Process.rma_pending);
+    char* names[] = {"PAMID_RMA_PENDING", "MP_RMA_PENDING", "PAMI_RMA_PENDING", NULL};
+    ENV_Unsigned(names, &MPIDI_Process.rma_pending, 2, &found_deprecated_env_var, rank);
   }
 
   /* Set the status of the optimized collectives */
-  /* These environment variable name(s) are deprecated and will be removed later:
-   * - PAMI_COLLECTIVE
-   * - PAMI_COLLECTIVES
-   */
   {
     char* names[] = {"PAMID_COLLECTIVES", "PAMI_COLLECTIVE", "PAMI_COLLECTIVES", NULL};
-    ENV_Unsigned(names, &MPIDI_Process.optimized.collectives);
+    ENV_Unsigned(names, &MPIDI_Process.optimized.collectives, 1, &found_deprecated_env_var, rank);
     TRACE_ERR("MPIDI_Process.optimized.collectives=%u\n", MPIDI_Process.optimized.collectives);
   }
+
    /* Set the status for optimized selection of collectives */
    {
       char* names[] = {"PAMID_COLLECTIVES_SELECTION", NULL};
-      ENV_Unsigned(names, &MPIDI_Process.optimized.select_colls);
+      ENV_Unsigned(names, &MPIDI_Process.optimized.select_colls, 1, &found_deprecated_env_var, rank);
       TRACE_ERR("MPIDI_Process.optimized.select_colls=%u\n", MPIDI_Process.optimized.select_colls);
    }
 
 
   /* Set the status of the optimized shared memory point-to-point functions */
-  /* These environment variable name(s) are deprecated and will be removed later:
-   * - PAMI_SHMEM_PT2PT
-   */
   {
-    char* names[] = {"PAMID_SHMEM_PT2PT", "PAMI_SHMEM_PT2PT", "MP_SHMEM_PT2PT", NULL};
-    ENV_Unsigned(names, &MPIDI_Process.shmem_pt2pt);
+    char* names[] = {"PAMID_SHMEM_PT2PT", "MP_SHMEM_PT2PT", "PAMI_SHMEM_PT2PT", NULL};
+    ENV_Unsigned(names, &MPIDI_Process.shmem_pt2pt, 2, &found_deprecated_env_var, rank);
   }
+
+  /* Exit if any deprecated environment variables were specified. */
+  if (found_deprecated_env_var)
+    {
+      if (rank == 0) fprintf (stderr, "\n");
+      exit(1);
+    }
 }
