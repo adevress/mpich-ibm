@@ -231,10 +231,12 @@ ADIOI_BG_compute_agg_ranklist_serial_do (const ADIOI_BG_ConfInfo_t *confInfo,
    if(numAggs == 1)
       aggTotal = 1;
    else
-      aggTotal = numAggs * confInfo->numBridgeNodes + numAggs; 
+   /* the number of aggregators is (numAggs per bridgenode) plus each 
+    * bridge node is an aggregator */
+      aggTotal = confInfo->numBridgeNodes * (numAggs+1);
 
    distance = (confInfo->virtualPsetSize / numAggs);
-   TRACE_ERR("aggRatio: %f numBridge: %d pset size: %d numAggs: %d distance: %d, aggTotal: %d\n", confInfo->aggRatio, confInfo->numBridgeNodes,  confInfo->virtualPsetSize, numAggs, distance, aggTotal);
+   TRACE_ERR("numBridgeNodes: %d, aggRatio: %f numBridge: %d pset size: %d numAggs: %d distance: %d, aggTotal: %d\n", confInfo->numBridgeNodes, confInfo->aggRatio, confInfo->numBridgeNodes,  confInfo->virtualPsetSize, numAggs, distance, aggTotal);
    aggList = (int *)ADIOI_Malloc(aggTotal * sizeof(int));
 
 
@@ -247,10 +249,22 @@ ADIOI_BG_compute_agg_ranklist_serial_do (const ADIOI_BG_ConfInfo_t *confInfo,
       for(i=0; i < confInfo->numBridgeNodes; i++)
       {
          aggList[i]=bridgelist[i*confInfo->virtualPsetSize].bridge;
-
+         TRACE_ERR("aggList[%d]: %d\n", i, aggList[i]);
+         
          for(j = 0; j < numAggs; j++)
          {
-            aggList[confInfo->numBridgeNodes + i*numAggs + j] = bridgelist[i*confInfo->virtualPsetSize + j*distance].rank;
+            /* Sets up a list of nodes which will act as aggregators. numAggs
+             * per bridge node total. The list of aggregators is
+             * bridgeNodes
+             * bridgeNode[0]aggr[0]
+             * bridgeNode[0]aggr[1]...
+             * bridgeNode[0]aggr[N]...
+             * ...
+             * bridgeNode[N]aggr[0]..
+             * bridgeNode[N]aggr[N]
+             */
+            aggList[i*numAggs+j+confInfo->numBridgeNodes] = bridgelist[i*confInfo->virtualPsetSize + j*distance+1].rank;
+            TRACE_ERR("(post bridge) agglist[%d] -> %d\n", confInfo->numBridgeNodes +i*numAggs+j, aggList[i*numAggs+j+confInfo->numBridgeNodes]);
          }
       }
    }
