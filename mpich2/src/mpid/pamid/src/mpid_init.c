@@ -354,9 +354,6 @@ printEnvVars(char *type)
 static void
 MPIDI_PAMI_init(int* rank, int* size, int* threading)
 {
-  MPIDI_PAMI_client_init(rank, size);
-
-
   MPIDI_PAMI_context_init(threading);
 
 
@@ -456,10 +453,16 @@ int MPID_Init(int * argc,
   int rank, size;
 
 
+  /* ------------------------------------------------------------------------------- */
+  /*  Initialize the pami client to get the process rank; needed for env var output. */
+  /* ------------------------------------------------------------------------------- */
+  MPIDI_PAMI_client_init(&rank, &size);
+
+
   /* ------------------------------------ */
   /*  Get new defaults from the Env Vars  */
   /* ------------------------------------ */
-  MPIDI_Env_setup(requested);
+  MPIDI_Env_setup(rank, requested);
 
 
   /* ----------------------------- */
