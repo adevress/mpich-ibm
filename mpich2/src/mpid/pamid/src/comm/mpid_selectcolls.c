@@ -138,6 +138,7 @@ static int MPIDI_Check_protocols(char *env, MPID_Comm *comm, char *name, int con
        * the specified protocol */
       TRACE_ERR("Specified protocol %s was unavailable; using MPICH for %s\n", envopts, name);
       comm->mpid.user_selectedvar[constant] = MPID_COLL_USE_MPICH;
+      return 0;
    }
    /* Looks like we didn't get anything, set NOSELECTION so automated selection can pick something */
    comm->mpid.user_selectedvar[constant] = MPID_COLL_NOSELECTION; 
@@ -178,40 +179,40 @@ void MPIDI_Comm_coll_envvars(MPID_Comm *comm)
 
    TRACE_ERR("Checking env vars\n");
 
-   MPIDI_Check_preallreduce("PAMI_ALLGATHER_PREALLREDUCE", comm, "allgather", 
+   MPIDI_Check_preallreduce("PAMID_COLLECTIVE_ALLGATHER_PREALLREDUCE", comm, "allgather",
          MPID_ALLGATHER_PREALLREDUCE);
 
-   MPIDI_Check_preallreduce("PAMI_ALLGATHERV_PREALLREDUCE", comm, "allgatherv",
+   MPIDI_Check_preallreduce("PAMID_COLLECTIVE_ALLGATHERV_PREALLREDUCE", comm, "allgatherv",
          MPID_ALLGATHERV_PREALLREDUCE);
 
-   MPIDI_Check_preallreduce("PAMI_ALLREDUCE_PREALLREDUCE", comm, "allreduce",
+   MPIDI_Check_preallreduce("PAMID_COLLECTIVE_ALLREDUCE_PREALLREDUCE", comm, "allreduce",
          MPID_ALLREDUCE_PREALLREDUCE);
 
-   MPIDI_Check_preallreduce("PAMI_BCAST_PREALLREDUCE", comm, "broadcast",
+   MPIDI_Check_preallreduce("PAMID_COLLECTIVE_BCAST_PREALLREDUCE", comm, "broadcast",
          MPID_BCAST_PREALLREDUCE);
 
-   MPIDI_Check_preallreduce("PAMI_SCATTERV_PREALLREDUCE", comm, "scatterv",
+   MPIDI_Check_preallreduce("PAMID_COLLECTIVE_SCATTERV_PREALLREDUCE", comm, "scatterv",
          MPID_SCATTERV_PREALLREDUCE);
 
-   MPIDI_Check_protocols("PAMI_BCAST", comm, "broadcast", PAMI_XFER_BROADCAST);
+   MPIDI_Check_protocols("PAMID_COLLECTIVE_BCAST", comm, "broadcast", PAMI_XFER_BROADCAST);
 
    TRACE_ERR("Checking allreduce\n");
-   MPIDI_Check_protocols("PAMI_ALLREDUCE", comm, "allreduce", PAMI_XFER_ALLREDUCE);
+   MPIDI_Check_protocols("PAMID_COLLECTIVE_ALLREDUCE", comm, "allreduce", PAMI_XFER_ALLREDUCE);
    TRACE_ERR("Checking barrier\n");
 
-   MPIDI_Check_protocols("PAMI_BARRIER", comm, "barrier", PAMI_XFER_BARRIER);
+   MPIDI_Check_protocols("PAMID_COLLECTIVE_BARRIER", comm, "barrier", PAMI_XFER_BARRIER);
 
-   MPIDI_Check_protocols("PAMI_ALLTOALL", comm, "alltoall", PAMI_XFER_ALLTOALL);
+   MPIDI_Check_protocols("PAMID_COLLECTIVE_ALLTOALL", comm, "alltoall", PAMI_XFER_ALLTOALL);
 
-   MPIDI_Check_protocols("PAMI_REDUCE", comm, "reduce", PAMI_XFER_REDUCE);
+   MPIDI_Check_protocols("PAMID_COLLECTIVE_REDUCE", comm, "reduce", PAMI_XFER_REDUCE);
 
    /* Assume MPI will use _INT protocols but no need to make user know that */
-   MPIDI_Check_protocols("PAMI_ALLTOALLV", comm, "alltoallv", PAMI_XFER_ALLTOALLV_INT);
-   MPIDI_Check_protocols("PAMI_ALLTOALLV_INT", comm, "alltoallv", PAMI_XFER_ALLTOALLV_INT);
+   MPIDI_Check_protocols("PAMID_COLLECTIVE_ALLTOALLV", comm, "alltoallv", PAMI_XFER_ALLTOALLV_INT);
+   MPIDI_Check_protocols("PAMID_COLLECTIVE_ALLTOALLV_INT", comm, "alltoallv", PAMI_XFER_ALLTOALLV_INT);
 
-   MPIDI_Check_protocols("PAMI_GATHERV", comm, "gatherv", PAMI_XFER_GATHERV_INT);
+   MPIDI_Check_protocols("PAMID_COLLECTIVE_GATHERV", comm, "gatherv", PAMI_XFER_GATHERV_INT);
 
-   MPIDI_Check_protocols("PAMI_SCAN", comm, "scan", PAMI_XFER_SCAN);
+   MPIDI_Check_protocols("PAMID_COLLECTIVE_SCAN", comm, "scan", PAMI_XFER_SCAN);
 
    comm->mpid.scattervs[0] = comm->mpid.scattervs[1] = 0;
 
@@ -228,11 +229,11 @@ void MPIDI_Comm_coll_envvars(MPID_Comm *comm)
       comm->mpid.user_selectedvar[PAMI_XFER_GATHER] = MPID_COLL_USE_MPICH;
    }
 
-   envopts = getenv("PAMI_SCATTERV");
+   envopts = getenv("PAMID_COLLECTIVE_SCATTERV");
    if(envopts != NULL)
    {
       if(strncasecmp(envopts,"GLUE_", 5) != 0)
-         MPIDI_Check_protocols("PAMI_SCATTERV", comm, "scatterv", PAMI_XFER_SCATTERV_INT);
+         MPIDI_Check_protocols("PAMID_COLLECTIVE_SCATTERV", comm, "scatterv", PAMI_XFER_SCATTERV_INT);
       else
       {
          if(strcasecmp(envopts, "GLUE_BCAST") == 0)
@@ -251,11 +252,11 @@ void MPIDI_Comm_coll_envvars(MPID_Comm *comm)
    }
       
    comm->mpid.optscatter = 0;
-   envopts = getenv("PAMI_SCATTER");
+   envopts = getenv("PAMID_COLLECTIVE_SCATTER");
    if(envopts != NULL)
    {
       if(strncasecmp(envopts, "GLUE_", 5) != 0)
-        MPIDI_Check_protocols("PAMI_SCATTER", comm, "scatter", PAMI_XFER_SCATTER);
+        MPIDI_Check_protocols("PAMID_COLLECTIVE_SCATTER", comm, "scatter", PAMI_XFER_SCATTER);
       else
       {
          if(strcasecmp(envopts, "GLUE_BCAST") == 0)
@@ -268,12 +269,12 @@ void MPIDI_Comm_coll_envvars(MPID_Comm *comm)
    }
 
    comm->mpid.allgathers[0] = comm->mpid.allgathers[1] = comm->mpid.allgathers[2] = 0;
-   envopts = getenv("PAMI_ALLGATHER");
+   envopts = getenv("PAMID_COLLECTIVE_ALLGATHER");
    if(envopts != NULL)
    {
       if(strncasecmp(envopts, "GLUE_", 5) != 0)
       {
-         MPIDI_Check_protocols("PAMI_ALLGATHER", comm, "allgather", PAMI_XFER_ALLGATHER);
+         MPIDI_Check_protocols("PAMID_COLLECTIVE_ALLGATHER", comm, "allgather", PAMI_XFER_ALLGATHER);
       }
       else
       {
@@ -301,11 +302,11 @@ void MPIDI_Comm_coll_envvars(MPID_Comm *comm)
    }
 
    comm->mpid.allgathervs[0] = comm->mpid.allgathervs[1] = comm->mpid.allgathervs[2] = 0;
-   envopts = getenv("PAMI_ALLGATHERV");
+   envopts = getenv("PAMID_COLLECTIVE_ALLGATHERV");
    if(envopts != NULL)
    {
       if(strncasecmp(envopts, "GLUE_", 5) != 0)
-         MPIDI_Check_protocols("PAMI_ALLGATHERV", comm, "allgatherv", PAMI_XFER_ALLGATHERV_INT);
+         MPIDI_Check_protocols("PAMID_COLLECTIVE_ALLGATHERV", comm, "allgatherv", PAMI_XFER_ALLGATHERV_INT);
       else
       {
          if(strcasecmp(envopts, "GLUE_ALLREDUCE") == 0)
@@ -332,11 +333,11 @@ void MPIDI_Comm_coll_envvars(MPID_Comm *comm)
    }
 
    comm->mpid.optgather = 0;
-   envopts = getenv("PAMI_GATHER");
+   envopts = getenv("PAMID_COLLECTIVE_GATHER");
    if(envopts != NULL)
    {
       if(strncasecmp(envopts, "GLUE_", 5) != 0)
-         MPIDI_Check_protocols("PAMI_GATHER", comm, "gather", PAMI_XFER_GATHER);
+         MPIDI_Check_protocols("PAMID_COLLECTIVE_GATHER", comm, "gather", PAMI_XFER_GATHER);
       else
       {
          if(strcasecmp(envopts, "GLUE_REDUCE") == 0)
