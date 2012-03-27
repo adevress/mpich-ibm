@@ -641,7 +641,13 @@ MPIDI_Env_setup(int rank, int requested)
   /* Exit if any deprecated environment variables were specified. */
   if (found_deprecated_env_var)
     {
-      if (rank == 0) fprintf (stderr, "\n");
-      exit(1);
+      if (rank == 0)
+      {
+        // Only rank 0 prints and exits.  sleep to make sure message is sent before exiting.
+        // Other ranks will proceed, but will be waiting in a barrier in context create
+        // when the exit occurs.
+        fprintf (stderr, "\n"); fflush(stderr); sleep(1);
+        exit(1);
+      }
     }
 }
