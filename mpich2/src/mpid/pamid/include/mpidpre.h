@@ -15,6 +15,7 @@
 #include <stdio.h>
 #include <assert.h>
 #include <pthread.h>
+#include <unistd.h>
 
 #include <mpid_config.h>
 #include <mpid_dataloop.h>
