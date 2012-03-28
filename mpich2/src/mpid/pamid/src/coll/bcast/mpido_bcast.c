@@ -44,6 +44,11 @@ int MPIDO_Bcast(void *buffer,
    MPIDI_Datatype_get_info(count, datatype,
                data_contig, data_size, data_ptr, data_true_lb);
 
+   /* If the user has constructed some weird 0-length datatype but 
+    * count is not 0, we'll let mpich handle it */
+   if(unlikely( data_size == 0) )
+      return MPIR_Bcast_intra(buffer, count, datatype, root, comm_ptr, mpierrno);
+      
    data_buffer = buffer + data_true_lb;
 
    if(!data_contig)
