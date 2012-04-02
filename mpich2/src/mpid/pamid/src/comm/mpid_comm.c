@@ -18,8 +18,8 @@ void geom_create_cb_done(void *ctxt, void *data, pami_result_t err)
 
 void geom_destroy_cb_done(void *ctxt, void *data, pami_result_t err)
 {
-   union tasks_descrip_t *tasklist = (union tasks_descrip_t *)data;
-   MPIU_TestFree(&tasklist->ranges);
+   int *active = (int *)data;
+   (*active)--;
 }
 
 void MPIDI_Comm_create (MPID_Comm *comm)
@@ -217,6 +217,7 @@ void MPIDI_Coll_comm_destroy(MPID_Comm *comm)
 {
   TRACE_ERR("MPIDI_Coll_comm_destroy enter\n");
   int i, rc;
+  volatile int geom_destroy = 1;
   MPIDI_Post_geom_destroy_t geom_destroy_post;
   if (!MPIDI_Process.optimized.collectives)
     return;
@@ -246,7 +247,7 @@ void MPIDI_Coll_comm_destroy(MPID_Comm *comm)
       geom_destroy_post.client = MPIDI_Client;
       geom_destroy_post.geom = &comm->mpid.geometry;
       geom_destroy_post.fn = geom_destroy_cb_done;
-      geom_destroy_post.cookie = (void *)(&comm->mpid.tasks_descriptor);
+      geom_destroy_post.cookie = (void *)&geom_destroy;
       TRACE_ERR("Posting geom_destroy\n");
       rc = PAMI_Context_post(MPIDI_Context[0], &geom_destroy_post.state, 
                   geom_destroy_wrapper, (void *)&geom_destroy_post);
@@ -257,7 +258,7 @@ void MPIDI_Coll_comm_destroy(MPID_Comm *comm)
                         &comm->mpid.geometry, 
                         MPIDI_Context[0],
                         geom_destroy_cb_done,
-                        (void *)(&comm->mpid.tasks_descriptor));
+                        (void *)&geom_destroy);
    }
 
    if(rc != PAMI_SUCCESS)
@@ -266,7 +267,8 @@ void MPIDI_Coll_comm_destroy(MPID_Comm *comm)
       exit(1);
    }
    TRACE_ERR("Waiting for geom destroy to finish\n");
-   TRACE_ERR("Freeing geometry ranges\n");
+   MPID_PROGRESS_WAIT_WHILE(geom_destroy);
+   MPIU_TestFree(&comm->mpid.tasks_descriptor.ranges);
    TRACE_ERR("MPIDI_Coll_comm_destroy exit\n");
 }
 
