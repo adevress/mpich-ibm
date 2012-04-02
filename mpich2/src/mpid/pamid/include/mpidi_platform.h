@@ -33,6 +33,7 @@
 #ifdef __BGP__
 #undef  MPIDI_EAGER_LIMIT
 #define MPIDI_EAGER_LIMIT  UINT_MAX
+#define MPIDI_OPTIMIZED_COLLECTIVE_DEFAULT 0
 static const char _ibm_release_version_[] = "BGP";
 #endif
 
@@ -40,6 +41,7 @@ static const char _ibm_release_version_[] = "BGP";
 #define MPIDI_MAX_THREADS     64
 #define MPIDI_MUTEX_L2_ATOMIC 1
 #define MPIDI_BASIC_COLLECTIVE_SELECTION 1
+#define MPIDI_OPTIMIZED_COLLECTIVE_DEFAULT 1
 static const char _ibm_release_version_[] = "V1R1M0";
 #endif
 
@@ -51,6 +53,7 @@ static const char _ibm_release_version_[] = "V1R1M0";
 #define OUT_OF_ORDER_HANDLING 1
 #define MPIDI_STATISTICS      1
 #define MPIDI_PRINTENV        1
+#define MPIDI_OPTIMIZED_COLLECTIVE_DEFAULT 0
 #undef  USE_PAMI_RDMA
 #define RDMA_FAILOVER
 #define MPIDI_SINGLE_CONTEXT_ASYNC_PROGRESS  1

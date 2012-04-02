@@ -45,7 +45,7 @@ MPIDI_Process_t  MPIDI_Process = {
   .shmem_pt2pt         = 1,
 
   .optimized = {
-    .collectives       = 1,
+    .collectives       = MPIDI_OPTIMIZED_COLLECTIVE_DEFAULT,
     .subcomms          = 1,
     .select_colls      = 2,
   },
