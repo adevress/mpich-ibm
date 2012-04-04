@@ -400,7 +400,7 @@ sub RunList {
 	# skip empty lines
 	next unless defined $programname;
 
-	next if defined $program_list{$programname}{$np};
+#	next if defined $program_list{$programname}{$np};
 	$program_list{$programname}{$np} = 1;
 
 	if (-d $programname) {
