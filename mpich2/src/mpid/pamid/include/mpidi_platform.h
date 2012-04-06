@@ -57,6 +57,7 @@ static const char _ibm_release_version_[] = "V1R1M0";
 #undef  USE_PAMI_RDMA
 #define RDMA_FAILOVER
 #define MPIDI_SINGLE_CONTEXT_ASYNC_PROGRESS  1
+#define MPIDI_BASIC_COLLECTIVE_SELECTION 1
 #define MPIDI_BANNER          1
 #define MPIDI_NO_ASSERT       1
 

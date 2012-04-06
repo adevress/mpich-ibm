@@ -59,6 +59,13 @@ enum
     MPID_COLL_NOSELECTION       = 5,
     MPID_COLL_SELECTED          = 6,
   };
+
+enum
+ {
+   MPID_COLL_OFF = 0,
+   MPID_COLL_ON  = 1,
+   MPID_COLL_FCA = 2, /* Selecting these is fairly easy so special case */
+ };
 /** \} */
 
 #endif

@@ -268,6 +268,7 @@ void MPIDI_Coll_comm_destroy(MPID_Comm *comm)
    }
    TRACE_ERR("Waiting for geom destroy to finish\n");
    MPID_PROGRESS_WAIT_WHILE(geom_destroy);
+   TRACE_ERR("Freeing geometry ranges\n");
    MPIU_TestFree(&comm->mpid.tasks_descriptor.ranges);
    TRACE_ERR("MPIDI_Coll_comm_destroy exit\n");
 }

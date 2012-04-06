@@ -243,7 +243,7 @@ int MPIDO_Scatterv(void *sendbuf,
   allred.cmd.xfer_allreduce.op = PAMI_DATA_BAND;
 
 
-   if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_SCATTERV] == MPID_COLL_USE_MPICH)
+   if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_SCATTERV_INT] == MPID_COLL_USE_MPICH)
   {
     if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0)
       fprintf(stderr,"Using MPICH scatterv algorithm\n");

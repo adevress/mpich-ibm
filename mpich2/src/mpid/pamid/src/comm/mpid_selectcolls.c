@@ -93,10 +93,18 @@ static void MPIDI_Check_preallreduce(char *env, MPID_Comm *comm, char *name, int
       }
    }
 }
-static int MPIDI_Check_protocols(char *env, MPID_Comm *comm, char *name, int constant)
+static int MPIDI_Check_protocols(char *names[], MPID_Comm *comm, char *name, int constant)
 {
-   int i;
-   char *envopts = getenv(env);
+   int i = 0;
+   char *envopts;
+   for(;; ++i) 
+   {
+      if(names[i] == NULL)
+         return 0;
+      envopts = getenv(names[i]);
+      if(envopts != NULL)
+         break;
+   }
    /* Now, change it if we have a match */
    if(envopts != NULL)
    {
@@ -159,7 +167,8 @@ void MPIDI_Comm_coll_envvars(MPID_Comm *comm)
          i == PAMI_XFER_AMGATHER || i == PAMI_XFER_AMREDUCE)
          continue;
 
-      comm->mpid.user_selectedvar[i] = MPID_COLL_NOQUERY;
+      /* Initialize to noselection instead of noquery for PE/FCA stuff. Is this the right answer? */
+      comm->mpid.user_selectedvar[i] = MPID_COLL_NOSELECTION;
          if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm->rank == 0)
             fprintf(stderr,"Setting up collective %d on comm %p\n", i, comm);
       if(comm->mpid.coll_count[i][0] == 0 && comm->mpid.coll_count[i][1] == 0)
@@ -194,26 +203,49 @@ void MPIDI_Comm_coll_envvars(MPID_Comm *comm)
    MPIDI_Check_preallreduce("PAMID_COLLECTIVE_SCATTERV_PREALLREDUCE", comm, "scatterv",
          MPID_SCATTERV_PREALLREDUCE);
 
-   MPIDI_Check_protocols("PAMID_COLLECTIVE_BCAST", comm, "broadcast", PAMI_XFER_BROADCAST);
+   {
+      TRACE_ERR("Checking bcast\n");
+      char* names[] = {"PAMID_COLLECTIVE_BCAST", "MP_S_MPI_BCAST", NULL};
+      MPIDI_Check_protocols(names, comm, "broadcast", PAMI_XFER_BROADCAST);
+   }
+   {
+      TRACE_ERR("Checking allreduce\n");
+      char* names[] = {"PAMID_COLLECTIVE_ALLREDUCE", "MP_S_MPI_ALLREDUCE", NULL};
+      MPIDI_Check_protocols(names, comm, "allreduce", PAMI_XFER_ALLREDUCE);
+   }
+   {
+      TRACE_ERR("Checking barrier\n");
+      char* names[] = {"PAMID_COLLECTIVE_BARRIER", "MP_S_MPI_BARRIER", NULL};
+      MPIDI_Check_protocols(names, comm, "barrier", PAMI_XFER_BARRIER);
+   }
+   {
+      TRACE_ERR("Checking alltaoll\n");
+      char* names[] = {"PAMID_COLLECTIVE_ALLTOALL", NULL};
+      MPIDI_Check_protocols(names, comm, "alltoall", PAMI_XFER_ALLTOALL);
+   }
+   {
+      TRACE_ERR("Checking reduce\n");
+      char* names[] = {"PAMID_COLLECTIVE_REDUCE", "MP_S_MPI_REDUCE", NULL};
+      MPIDI_Check_protocols(names, comm, "reduce", PAMI_XFER_REDUCE);
+   }
+   {
+      TRACE_ERR("Checking alltoallv\n");
+      char* names[] = {"PAMID_COLLECTIVE_ALLTOALLV", NULL};
+      MPIDI_Check_protocols(names, comm, "alltoallv", PAMI_XFER_ALLTOALLV_INT);
+   }
+   {
+      TRACE_ERR("Checking gatherv\n");
+      char* names[] = {"PAMID_COLLECTIVE_GATHERV",  NULL};
+      MPIDI_Check_protocols(names, comm, "gatherv", PAMI_XFER_GATHERV_INT);
+   }
+   {
+      TRACE_ERR("Checking scan\n");
+      char* names[] = {"PAMID_COLLECTIVE_SCAN", NULL};
+      MPIDI_Check_protocols(names, comm, "scan", PAMI_XFER_SCAN);
+   }
 
-   TRACE_ERR("Checking allreduce\n");
-   MPIDI_Check_protocols("PAMID_COLLECTIVE_ALLREDUCE", comm, "allreduce", PAMI_XFER_ALLREDUCE);
-   TRACE_ERR("Checking barrier\n");
-
-   MPIDI_Check_protocols("PAMID_COLLECTIVE_BARRIER", comm, "barrier", PAMI_XFER_BARRIER);
-
-   MPIDI_Check_protocols("PAMID_COLLECTIVE_ALLTOALL", comm, "alltoall", PAMI_XFER_ALLTOALL);
-
-   MPIDI_Check_protocols("PAMID_COLLECTIVE_REDUCE", comm, "reduce", PAMI_XFER_REDUCE);
-
-   /* Assume MPI will use _INT protocols but no need to make user know that */
-   MPIDI_Check_protocols("PAMID_COLLECTIVE_ALLTOALLV", comm, "alltoallv", PAMI_XFER_ALLTOALLV_INT);
-   MPIDI_Check_protocols("PAMID_COLLECTIVE_ALLTOALLV_INT", comm, "alltoallv", PAMI_XFER_ALLTOALLV_INT);
-
-   MPIDI_Check_protocols("PAMID_COLLECTIVE_GATHERV", comm, "gatherv", PAMI_XFER_GATHERV_INT);
-
-   MPIDI_Check_protocols("PAMID_COLLECTIVE_SCAN", comm, "scan", PAMI_XFER_SCAN);
-   /* If a scan protocol was not specified, punt to MPICH */
+   /* If a scan protocol was not explicitly specified, punt to MPICH */
+   /* TODO: Not sure why we do this, need to (re)investigate */
    if(comm->mpid.user_selectedvar[PAMI_XFER_SCAN] == MPID_COLL_NOSELECTION)
       comm->mpid.user_selectedvar[PAMI_XFER_SCAN] = MPID_COLL_USE_MPICH;
 
@@ -240,124 +272,122 @@ void MPIDI_Comm_coll_envvars(MPID_Comm *comm)
       comm->mpid.user_selectedvar[PAMI_XFER_GATHER] = MPID_COLL_NOSELECTION; 
    }
 
+   TRACE_ERR("Checking scatterv\n");
    envopts = getenv("PAMID_COLLECTIVE_SCATTERV");
    if(envopts != NULL)
    {
-      if(strncasecmp(envopts,"GLUE_", 5) != 0)
-         MPIDI_Check_protocols("PAMID_COLLECTIVE_SCATTERV", comm, "scatterv", PAMI_XFER_SCATTERV_INT);
-      else
+      if(strcasecmp(envopts, "GLUE_BCAST") == 0)
       {
-         if(strcasecmp(envopts, "GLUE_BCAST") == 0)
-         {
-            if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm->rank == 0)
-               fprintf(stderr,"Using glue bcast for scatterv\n");
-            comm->mpid.scattervs[0] = 1;
-         }
-         else if(strcasecmp(envopts, "GLUE_ALLTOALLV") == 0)
-         {
-            if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm->rank == 0)
-               fprintf(stderr,"Using glue alltoallv for scatterv\n");
-            comm->mpid.scattervs[1] = 1;
-         }
+         if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm->rank == 0)
+            fprintf(stderr,"Using glue bcast for scatterv\n");
+         comm->mpid.scattervs[0] = 1;
+      }
+      else if(strcasecmp(envopts, "GLUE_ALLTOALLV") == 0)
+      {
+         if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm->rank == 0)
+            fprintf(stderr,"Using glue alltoallv for scatterv\n");
+         comm->mpid.scattervs[1] = 1;
       }
    }
+   {
+      char* names[] = {"PAMID_COLLECTIVE_SCATTERV", NULL};
+      MPIDI_Check_protocols(names, comm, "scatterv", PAMI_XFER_SCATTERV_INT);
+   }
       
+   TRACE_ERR("Checking scatter\n");
    comm->mpid.optscatter = 0;
    envopts = getenv("PAMID_COLLECTIVE_SCATTER");
    if(envopts != NULL)
    {
-      if(strncasecmp(envopts, "GLUE_", 5) != 0)
-        MPIDI_Check_protocols("PAMID_COLLECTIVE_SCATTER", comm, "scatter", PAMI_XFER_SCATTER);
-      else
+      if(strcasecmp(envopts, "GLUE_BCAST") == 0)
       {
-         if(strcasecmp(envopts, "GLUE_BCAST") == 0)
-         {
-            if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm->rank == 0)
-               fprintf(stderr,"Using glue_bcast for scatter\n");
-            comm->mpid.optscatter = 1;
-         }
+         if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm->rank == 0)
+            fprintf(stderr,"Using glue_bcast for scatter\n");
+         comm->mpid.optscatter = 1;
       }
    }
+   { /* It wasn't set to glue, check for others, and check for PE now */
+      char* names[] = {"PAMID_COLLECTIVE_SCATTER", NULL};
+      MPIDI_Check_protocols(names, comm, "scatter", PAMI_XFER_SCATTER);
+   }
 
+   TRACE_ERR("Checking allgather\n");
    comm->mpid.allgathers[0] = comm->mpid.allgathers[1] = comm->mpid.allgathers[2] = 0;
    envopts = getenv("PAMID_COLLECTIVE_ALLGATHER");
    if(envopts != NULL)
    {
-      if(strncasecmp(envopts, "GLUE_", 5) != 0)
+      if(strcasecmp(envopts, "GLUE_ALLREDUCE") == 0)
       {
-         MPIDI_Check_protocols("PAMID_COLLECTIVE_ALLGATHER", comm, "allgather", PAMI_XFER_ALLGATHER);
+         if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm->rank == 0)
+            fprintf(stderr,"Using glue_allreduce for allgather\n");
+         comm->mpid.allgathers[0] = 1;
       }
-      else
+
+      else if(strcasecmp(envopts, "GLUE_BCAST") == 0)
       {
-         if(strcasecmp(envopts, "GLUE_ALLREDUCE") == 0)
-         {
-            if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm->rank == 0)
-               fprintf(stderr,"Using glue_allreduce for allgather\n");
-            comm->mpid.allgathers[0] = 1;
-         }
+         if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm->rank == 0)
+            fprintf(stderr,"Using glue_bcast for allgather\n");
+         comm->mpid.allgathers[1] = 1;
+      }
 
-         else if(strcasecmp(envopts, "GLUE_BCAST") == 0)
-         {
-            if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm->rank == 0)
-               fprintf(stderr,"Using glue_bcast for allgather\n");
-            comm->mpid.allgathers[1] = 1;
-         }
-
-         else if(strcasecmp(envopts, "GLUE_ALLTOALL") == 0)
-         {
-            if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm->rank == 0)
-               fprintf(stderr,"Using glue_alltoall for allgather\n");
-            comm->mpid.allgathers[2] = 1;
-         }
+      else if(strcasecmp(envopts, "GLUE_ALLTOALL") == 0)
+      {
+         if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm->rank == 0)
+            fprintf(stderr,"Using glue_alltoall for allgather\n");
+         comm->mpid.allgathers[2] = 1;
       }
    }
+   {
+      char* names[] = {"PAMID_COLLECTIVE_ALLGATHER", "MP_S_MPI_ALLGATHER", NULL};
+      MPIDI_Check_protocols(names, comm, "allgather", PAMI_XFER_ALLGATHER);
+   }
 
+   TRACE_ERR("Checking allgatherv\n");
    comm->mpid.allgathervs[0] = comm->mpid.allgathervs[1] = comm->mpid.allgathervs[2] = 0;
    envopts = getenv("PAMID_COLLECTIVE_ALLGATHERV");
    if(envopts != NULL)
    {
-      if(strncasecmp(envopts, "GLUE_", 5) != 0)
-         MPIDI_Check_protocols("PAMID_COLLECTIVE_ALLGATHERV", comm, "allgatherv", PAMI_XFER_ALLGATHERV_INT);
-      else
+      if(strcasecmp(envopts, "GLUE_ALLREDUCE") == 0)
       {
-         if(strcasecmp(envopts, "GLUE_ALLREDUCE") == 0)
-         {
-            if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm->rank == 0)
-               fprintf(stderr,"Using glue_allreduce for allgatherv\n");
-            comm->mpid.allgathervs[0] = 1;
-         }
+         if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm->rank == 0)
+            fprintf(stderr,"Using glue_allreduce for allgatherv\n");
+         comm->mpid.allgathervs[0] = 1;
+      }
 
-         else if(strcasecmp(envopts, "GLUE_BCAST") == 0)
-         {
-            if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm->rank == 0)
-               fprintf(stderr,"Using glue_bcast for allgatherv\n");
-            comm->mpid.allgathervs[1] = 1;
-         }
+      else if(strcasecmp(envopts, "GLUE_BCAST") == 0)
+      {
+         if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm->rank == 0)
+            fprintf(stderr,"Using glue_bcast for allgatherv\n");
+         comm->mpid.allgathervs[1] = 1;
+      }
 
-         else if(strcasecmp(envopts, "GLUE_ALLTOALL") == 0)
-         {
-            if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm->rank == 0)
-               fprintf(stderr,"Using glue_alltoall for allgatherv\n");
-            comm->mpid.allgathervs[2] = 1;
-         }
+      else if(strcasecmp(envopts, "GLUE_ALLTOALL") == 0)
+      {
+         if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm->rank == 0)
+            fprintf(stderr,"Using glue_alltoall for allgatherv\n");
+         comm->mpid.allgathervs[2] = 1;
       }
    }
+   {
+      char* names[] = {"PAMID_COLLECTIVE_ALLGATHERV", "MP_S_MPI_ALLGATHERV", NULL};
+      MPIDI_Check_protocols(names, comm, "allgatherv", PAMI_XFER_ALLGATHERV_INT);
+   }
 
+   TRACE_ERR("CHecking gather\n");
    comm->mpid.optgather = 0;
    envopts = getenv("PAMID_COLLECTIVE_GATHER");
    if(envopts != NULL)
    {
-      if(strncasecmp(envopts, "GLUE_", 5) != 0)
-         MPIDI_Check_protocols("PAMID_COLLECTIVE_GATHER", comm, "gather", PAMI_XFER_GATHER);
-      else
+      if(strcasecmp(envopts, "GLUE_REDUCE") == 0)
       {
-         if(strcasecmp(envopts, "GLUE_REDUCE") == 0)
-         {
-            if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm->rank == 0)
-               fprintf(stderr,"using glue_reduce for gather\n");
-            comm->mpid.optgather = 1;
-         }
+         if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm->rank == 0)
+            fprintf(stderr,"using glue_reduce for gather\n");
+         comm->mpid.optgather = 1;
       }
+   }
+   {
+      char* names[] = {"PAMID_COLLECTIVE_GATHER", NULL};
+      MPIDI_Check_protocols(names, comm, "gather", PAMI_XFER_GATHER);
    }
 
    TRACE_ERR("MPIDI_Comm_coll_envvars exit\n");

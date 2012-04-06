@@ -419,8 +419,12 @@ ENV_Char__(char* name[], unsigned* val, char* string)
       break;
   }
 
-  if ((env[0]=='y')|| (env[0]=='Y')|| (env[0]=='p')|| (env[0]=='P'))
+  if ((env[0]=='y')|| (env[0]=='Y')|| (env[0]=='p')|| (env[0]=='P') || (env[0]=='F')|| (env[0]=='f'))
           *val = 1;
+  /*This may seem redundant; however, 
+    in some cases we need to force val=0 if value = no/none*/
+  if ((env[0]=='n')|| (env[0]=='N')) 
+          *val = 0;  
   if (MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL)
     fprintf(stderr, "%s = %u\n", string, *val);
 }
@@ -580,6 +584,26 @@ MPIDI_Env_setup(int rank, int requested)
     ENV_Unsigned(names, &MPIDI_Process.optimized.collectives, 1, &found_deprecated_env_var, rank);
     TRACE_ERR("MPIDI_Process.optimized.collectives=%u\n", MPIDI_Process.optimized.collectives);
   }
+
+   /* First, if MP_COLLECTIVE_OFFLOAD is "on", then we want PE (FCA) collectives */
+   {
+      unsigned temp;
+      temp = 0;
+      char* names[] = {"MP_COLLECTIVE_OFFLOAD", NULL};
+      ENV_Char(names, &temp);
+      if(temp)
+         MPIDI_Process.optimized.collectives = MPID_COLL_FCA;
+   }
+   
+   /* However, MP_MP_PAMI_FOR can be set to "none" in which case we don't want PE (FCA) collectives */
+   {
+      char *env = getenv("MP_MPI_PAMI_FOR");
+      if(env != NULL)
+      {
+         if(strncasecmp(env, "N", 1) == 1)
+            MPIDI_Process.optimized.collectives = 0;
+      }
+   }
 
    /* Set the status for optimized selection of collectives */
    {

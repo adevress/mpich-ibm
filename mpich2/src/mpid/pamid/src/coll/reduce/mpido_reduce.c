@@ -42,6 +42,9 @@ int MPIDO_Reduce(void *sendbuf,
 
 
    pami_xfer_t reduce;
+   pami_algorithm_t my_reduce;
+   pami_metadata_t *my_reduce_md;
+   int queryreq = 0;
    volatile unsigned reduce_active = 1;
 
    if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_REDUCE] == MPID_COLL_USE_MPICH || rc != MPI_SUCCESS)
@@ -62,7 +65,28 @@ int MPIDO_Reduce(void *sendbuf,
 
    reduce.cb_done = reduce_cb_done;
    reduce.cookie = (void *)&reduce_active;
-   reduce.algorithm = comm_ptr->mpid.user_selected[PAMI_XFER_REDUCE];
+#ifdef MPIDI_BASIC_COLLECTIVE_SELECTION
+/* TODO: Remove the #ifdef once collective selection for reduce is enabled on BG */
+#ifdef __PE__
+   if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_REDUCE] == MPID_COLL_SELECTED)
+   {
+      TRACE_ERR("Optimized Reduce (%s) was pre-selected\n",
+         comm_ptr->mpid.opt_protocol_md[PAMI_XFER_REDUCE][0].name);
+      my_reduce    = comm_ptr->mpid.opt_protocol[PAMI_XFER_REDUCE][0];
+      my_reduce_md = &comm_ptr->mpid.opt_protocol_md[PAMI_XFER_REDUCE][0];
+      queryreq     = comm_ptr->mpid.must_query[PAMI_XFER_REDUCE][0];
+   }
+   else
+#endif
+#endif   
+   {
+      TRACE_ERR("Optimized reduce (%s) was specified by user\n",
+         comm_ptr->mpid.user_metadata[PAMI_XFER_REDUCE].name);
+      my_reduce    =  comm_ptr->mpid.user_selected[PAMI_XFER_REDUCE];
+      my_reduce_md = &comm_ptr->mpid.user_metadata[PAMI_XFER_REDUCE];
+      queryreq     = comm_ptr->mpid.user_selectedvar[PAMI_XFER_REDUCE];
+   }
+   reduce.algorithm = my_reduce;
    reduce.cmd.xfer_reduce.sndbuf = sbuf;
    reduce.cmd.xfer_reduce.rcvbuf = rbuf;
    reduce.cmd.xfer_reduce.stype = pdt;
@@ -73,21 +97,20 @@ int MPIDO_Reduce(void *sendbuf,
    reduce.cmd.xfer_reduce.root = MPID_VCR_GET_LPID(comm_ptr->vcr, root);
 
 
-   if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_REDUCE] == MPID_COLL_ALWAYS_QUERY ||
-      comm_ptr->mpid.user_selectedvar[PAMI_XFER_REDUCE] == MPID_COLL_CHECK_FN_REQUIRED)
+   if(queryreq == MPID_COLL_ALWAYS_QUERY || queryreq == MPID_COLL_CHECK_FN_REQUIRED)
    {
-      if(comm_ptr->mpid.user_metadata[PAMI_XFER_REDUCE].check_fn != NULL)
+      if(my_reduce_md->check_fn != NULL)
       {
          metadata_result_t result = {0};
          TRACE_ERR("Querying reduce protocol %s, type was %d\n",
-            comm_ptr->mpid.user_metadata[PAMI_XFER_REDUCE].name,
-            comm_ptr->mpid.user_selectedvar[PAMI_XFER_REDUCE]);
-         result = comm_ptr->mpid.user_metadata[PAMI_XFER_REDUCE].check_fn(&reduce);
+            my_reduce_md->name,
+            queryreq);
+         result = my_reduce_md->check_fn(&reduce);
          TRACE_ERR("Bitmask: %#X\n", result.bitmask);
-         if(!result.bitmask)
+         if(result.bitmask)
          {
             fprintf(stderr,"Query failed for %s.\n",
-               comm_ptr->mpid.user_metadata[PAMI_XFER_REDUCE].name);
+               my_reduce_md->name);
          }
          else alg_selected = 1;
       }
@@ -104,9 +127,9 @@ int MPIDO_Reduce(void *sendbuf,
       if(MPIDI_Process.context_post)
       {
          TRACE_ERR("Posting reduce, context %d, algoname: %s, exflag: %d\n", 0,
-            comm_ptr->mpid.user_metadata[PAMI_XFER_REDUCE].name, exflag);
+            my_reduce_md->name, exflag);
          MPIDI_Update_last_algorithm(comm_ptr,
-            comm_ptr->mpid.user_metadata[PAMI_XFER_REDUCE].name);
+            my_reduce_md->name);
          MPIDI_Post_coll_t reduce_post;
          reduce_post.coll_struct = &reduce;
          rc = PAMI_Context_post(MPIDI_Context[0], &reduce_post.state, MPIDI_Pami_post_wrapper, (void *)&reduce_post);
@@ -116,7 +139,7 @@ int MPIDO_Reduce(void *sendbuf,
       {
          TRACE_ERR("Calling PAMI_Collective with reduce structure\n");
          if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0)
-            fprintf(stderr,"Using protocol %s for reduce\n", comm_ptr->mpid.user_metadata[PAMI_XFER_REDUCE].name);
+            fprintf(stderr,"Using protocol %s for reduce\n", my_reduce_md->name);
          rc = PAMI_Collective(MPIDI_Context[0], (pami_xfer_t *)&reduce);
       }
    }

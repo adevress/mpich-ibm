@@ -122,6 +122,12 @@ int MPIDO_Allreduce(void *sendbuf,
             my_allred_md = &comm_ptr->mpid.opt_protocol_md[PAMI_XFER_ALLREDUCE][1];
             alg_selected = 1;
          }
+         else if(comm_ptr->mpid.must_query[PAMI_XFER_ALLREDUCE][0] == MPID_COLL_CHECK_FN_REQUIRED)
+         {
+            my_allred = comm_ptr->mpid.opt_protocol[PAMI_XFER_ALLREDUCE][0];
+            my_allred_md = &comm_ptr->mpid.opt_protocol_md[PAMI_XFER_ALLREDUCE][0];
+            alg_selected = 1;
+         }
       }
       else
       {
@@ -144,8 +150,42 @@ int MPIDO_Allreduce(void *sendbuf,
       TRACE_ERR("Alg selected: %d\n", alg_selected);
       if(alg_selected)
       {
-         TRACE_ERR("Using %s for allreduce\n", my_allred_md->name);
-         allred.algorithm = my_allred;
+        if(comm_ptr->mpid.must_query[PAMI_XFER_ALLREDUCE][0] == MPID_COLL_CHECK_FN_REQUIRED)
+        {
+           if(my_allred_md->check_fn != NULL)/*This should always be the case in FCA.. Otherwise punt to mpich*/
+           {
+              metadata_result_t result = {0};
+              TRACE_ERR("querying allreduce algorithm %s, type was %d\n",
+                 my_allred_md->name,
+                 comm_ptr->mpid.must_query[PAMI_XFER_ALLREDUCE]);
+              result = my_allred_md->check_fn(&allred);
+              TRACE_ERR("bitmask: %#X\n", result.bitmask);
+              if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0)
+                 fprintf(stderr,"check_fn result %#X\n",result.bitmask);
+              /* \todo Ignore check_correct.values.nonlocal until we implement the
+                 'pre-allreduce allreduce' or the 'safe' environment flag.
+                 We will basically assume 'safe' -- that all ranks are aligned (or not).
+              */
+              result.check.nonlocal = 0; /* #warning REMOVE THIS WHEN IMPLEMENTED */
+              if(!result.bitmask)
+              {
+                 allred.algorithm = my_allred;
+              }
+              else
+              {
+                 alg_selected = 0;
+                 if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0)
+                    fprintf(stderr,"check_fn failed for %s.\n", my_allred_md->name);
+              }
+           }
+           else
+             alg_selected = 0;
+        }
+        else
+        {
+           TRACE_ERR("Using %s for allreduce\n", my_allred_md->name);
+           allred.algorithm = my_allred;
+        }
       }
    }
    else

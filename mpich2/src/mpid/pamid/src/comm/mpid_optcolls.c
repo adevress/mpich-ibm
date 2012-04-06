@@ -12,12 +12,150 @@
 #include <mpidimpl.h>
 
 #ifdef MPIDI_BASIC_COLLECTIVE_SELECTION
+
+
+static int MPIDI_Check_FCA_envvar(char *string)
+{
+   char *env = getenv("MP_MPI_PAMI_FOR");
+   if(env != NULL)
+   {
+      if(strcasecmp(env, "ALL") == 0)
+         return 1;
+      int len = strlen(env);
+      char *temp = MPIU_Malloc(sizeof(char) * len);
+      char *ptrToFree = temp;
+      strcpy(temp, env);
+      char *sepptr;
+      for(sepptr = temp; (sepptr = strsep(&temp, ",")) != NULL ; )
+      {
+         if(strcasecmp(sepptr, string) == 0)
+         {
+            MPIU_Free(ptrToFree);
+            return 1;
+         }
+         else
+            sepptr++;
+      }
+      /* We didn't find it, but the end var was set, so return 0 */
+      MPIU_Free(ptrToFree);
+      return 0;
+   }
+   if(MPIDI_Process.optimized.collectives == MPID_COLL_FCA)
+      return 1; /* To have gotten this far, opt colls are on. If the env doesn't exist,
+                   we should use the FCA protocol for "string" */
+   else
+      return -1; /* we don't have any FCA things */
+}
+
+static inline void 
+MPIDI_Coll_comm_check_FCA(char *coll_name, 
+                          char *protocol_name, 
+                          int pami_xfer, 
+                          int query_type,
+                          int proto_num,
+                          MPID_Comm *comm_ptr)
+{                        
+   int opt_proto = -1;
+   int i;
+#ifdef TRACE_ON
+   char *envstring = getenv("MP_MPI_PAMI_FOR");
+#endif
+   TRACE_ERR("Checking for %s in %s\n", coll_name, envstring);
+   int check_var = MPIDI_Check_FCA_envvar(coll_name);
+   if(check_var == 1)
+   {
+      TRACE_ERR("Found %s\n",coll_name);
+      /* Look for protocol_name in the "always works list */
+      for(i = 0; i <comm_ptr->mpid.coll_count[pami_xfer][0]; i++)
+      {
+         if(strcasecmp(comm_ptr->mpid.coll_metadata[pami_xfer][0][i].name, protocol_name) == 0)
+         {
+            opt_proto = i;
+            break;
+         }
+      }
+      if(opt_proto != -1) /* we found it, so copy it to the optimized var */
+      {                                                                                           
+         TRACE_ERR("Memcpy protocol type %d, number %d (%s) to optimized protocol\n",
+               pami_xfer, opt_proto,
+               comm_ptr->mpid.coll_metadata[pami_xfer][0][opt_proto].name);
+            comm_ptr->mpid.opt_protocol[pami_xfer][proto_num] =
+                  comm_ptr->mpid.coll_algorithm[pami_xfer][0][opt_proto];
+            memcpy(&comm_ptr->mpid.opt_protocol_md[pami_xfer][proto_num],
+                  &comm_ptr->mpid.coll_metadata[pami_xfer][0][opt_proto],
+                  sizeof(pami_metadata_t));
+            comm_ptr->mpid.must_query[pami_xfer][proto_num] = query_type;
+            comm_ptr->mpid.user_selectedvar[pami_xfer] = MPID_COLL_SELECTED;
+      }                                                                                           
+      else /* see if it is in the must query list instead */
+      {
+         for(i = 0; i <comm_ptr->mpid.coll_count[pami_xfer][1]; i++)
+         {
+            if(strcasecmp(comm_ptr->mpid.coll_metadata[pami_xfer][1][i].name, protocol_name) == 0)
+            {
+               opt_proto = i;
+               break;
+            }
+         }
+         if(opt_proto != -1) /* ok, it was in the must query list */
+         {
+            TRACE_ERR("Memcpy protocol type %d, number %d (%s) to optimized protocol\n",
+                  pami_xfer, opt_proto,
+                  comm_ptr->mpid.coll_metadata[pami_xfer][1][opt_proto].name);
+            comm_ptr->mpid.opt_protocol[pami_xfer][proto_num] =
+                  comm_ptr->mpid.coll_algorithm[pami_xfer][1][opt_proto];
+            memcpy(&comm_ptr->mpid.opt_protocol_md[pami_xfer][proto_num],
+                  &comm_ptr->mpid.coll_metadata[pami_xfer][1][opt_proto],
+                  sizeof(pami_metadata_t));
+            comm_ptr->mpid.must_query[pami_xfer][proto_num] = query_type;
+            comm_ptr->mpid.user_selectedvar[pami_xfer] = MPID_COLL_SELECTED;
+         }
+         else /* that protocol doesn't exist */
+         {
+            TRACE_ERR("Couldn't find %s in the list for %s, reverting to MPICH\n",protocol_name,coll_name);
+                  comm_ptr->mpid.user_selectedvar[pami_xfer] = MPID_COLL_USE_MPICH;
+         }
+      }
+   }
+   else if(check_var == 0)/* The env var was set, but wasn't set for coll_name */
+   {
+      TRACE_ERR("Couldn't find any optimal %s protocols or user chose not to set it. Using MPICH\n",coll_name);
+                  comm_ptr->mpid.user_selectedvar[pami_xfer] = MPID_COLL_USE_MPICH;
+   }
+   else
+      return; 
+}
+
+
 void MPIDI_Comm_coll_select(MPID_Comm *comm_ptr)
 {
    TRACE_ERR("Entering MPIDI_Comm_coll_select\n");
    int opt_proto = -1;
    int i;
-
+   
+   /* First, setup the (easy, allreduce is complicated) FCA collectives if there 
+    * are any because they are always usable when they are on */
+   if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_REDUCE] == MPID_COLL_NOSELECTION)
+   {
+      MPIDI_Coll_comm_check_FCA("REDUCE","I1:Reduce:FCA:FCA",PAMI_XFER_REDUCE,MPID_COLL_CHECK_FN_REQUIRED, 0, comm_ptr);
+   }
+   if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLGATHER] == MPID_COLL_NOSELECTION)
+   {
+      MPIDI_Coll_comm_check_FCA("ALLGATHER","I1:Allgather:FCA:FCA",PAMI_XFER_ALLGATHER,MPID_COLL_NOQUERY, 0, comm_ptr);
+   }
+   if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLGATHERV_INT] == MPID_COLL_NOSELECTION)
+   {
+      MPIDI_Coll_comm_check_FCA("ALLGATHERV","I1:AllgathervInt:FCA:FCA",PAMI_XFER_ALLGATHERV_INT,MPID_COLL_NOQUERY, 0, comm_ptr);
+   }
+   if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_BROADCAST] == MPID_COLL_NOSELECTION)
+   {
+      MPIDI_Coll_comm_check_FCA("BCAST", "I1:Broadcast:FCA:FCA", PAMI_XFER_BROADCAST, MPID_COLL_NOQUERY, 0, comm_ptr);
+      MPIDI_Coll_comm_check_FCA("BCAST", "I1:Broadcast:FCA:FCA", PAMI_XFER_BROADCAST, MPID_COLL_NOQUERY, 1, comm_ptr);
+   }
+   if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_BARRIER] == MPID_COLL_NOSELECTION)
+   {
+      MPIDI_Coll_comm_check_FCA("BARRIER","I1:Barrier:FCA:FCA",PAMI_XFER_BARRIER,MPID_COLL_NOQUERY, 0, comm_ptr);
+   }
 
    /* So, several protocols are really easy. Tackle them first. */
    if(0) // hangs with Rectangle allgatherv so disable for now (comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLGATHERV_INT] == MPID_COLL_NOSELECTION)
@@ -160,15 +298,15 @@ void MPIDI_Comm_coll_select(MPID_Comm *comm_ptr)
           */
       for(i = 0 ; i < comm_ptr->mpid.coll_count[PAMI_XFER_BARRIER][0]; i++)
       {
-         /* These two are mutually exclusive */
-         if(strcasecmp(comm_ptr->mpid.coll_metadata[PAMI_XFER_BARRIER][0][i].name, "I0:MultiSync2Device:SHMEM:GI") == 0)
-         {
-            opt_proto = i;
-         }
-         if(strcasecmp(comm_ptr->mpid.coll_metadata[PAMI_XFER_BARRIER][0][i].name, "I0:MultiSync:-:GI") == 0)
-         {
-            opt_proto = i;
-         }
+          /* These two are mutually exclusive */
+          if(strcasecmp(comm_ptr->mpid.coll_metadata[PAMI_XFER_BARRIER][0][i].name, "I0:MultiSync2Device:SHMEM:GI") == 0)
+          {
+             opt_proto = i;
+          }
+          if(strcasecmp(comm_ptr->mpid.coll_metadata[PAMI_XFER_BARRIER][0][i].name, "I0:MultiSync:-:GI") == 0)
+          {
+             opt_proto = i;
+          }
       }
       /* Next best rectangular to check */
       if(opt_proto == -1)
@@ -247,6 +385,8 @@ void MPIDI_Comm_coll_select(MPID_Comm *comm_ptr)
       /* I0:RankBased_Binomial:-:ShortMU is good on irregular for <256 bytes */
       /* I0:MultiCast:SHMEM:- is good at 1 node/16ppn, which is a SOW point */
       TRACE_ERR("No bcast env var, so setting optimized bcast\n");
+      int mustquery = 0;
+
       for(i = 0 ; i < comm_ptr->mpid.coll_count[PAMI_XFER_BROADCAST][0]; i++)
       {
          /* These two are mutually exclusive */
@@ -280,9 +420,11 @@ void MPIDI_Comm_coll_select(MPID_Comm *comm_ptr)
          for(i = 0; i < comm_ptr->mpid.coll_count[PAMI_XFER_BROADCAST][1]; i++)
          {
             /* This is a good choice for small messages only */
+            /* BES TODO Why is this protocol in a must query list? */
             if(strcasecmp(comm_ptr->mpid.coll_metadata[PAMI_XFER_BROADCAST][1][i].name, "I0:RankBased_Binomial:SHMEM:MU") == 0)
             {
                opt_proto = i;
+               mustquery = 1;
                comm_ptr->mpid.cutoff_size[PAMI_XFER_BROADCAST][0] = 256;
             }
          }
@@ -305,12 +447,12 @@ void MPIDI_Comm_coll_select(MPID_Comm *comm_ptr)
       {
          TRACE_ERR("Memcpy protocol type %d, number %d (%s) to optimize protocol 0\n",
             PAMI_XFER_BROADCAST, opt_proto, 
-            comm_ptr->mpid.coll_metadata[PAMI_XFER_BROADCAST][0][opt_proto].name);
+            comm_ptr->mpid.coll_metadata[PAMI_XFER_BROADCAST][mustquery][opt_proto].name);
 
          comm_ptr->mpid.opt_protocol[PAMI_XFER_BROADCAST][0] = 
-                comm_ptr->mpid.coll_algorithm[PAMI_XFER_BROADCAST][0][opt_proto];
+                comm_ptr->mpid.coll_algorithm[PAMI_XFER_BROADCAST][mustquery][opt_proto];
          memcpy(&comm_ptr->mpid.opt_protocol_md[PAMI_XFER_BROADCAST][0], 
-                &comm_ptr->mpid.coll_metadata[PAMI_XFER_BROADCAST][0][opt_proto], 
+                &comm_ptr->mpid.coll_metadata[PAMI_XFER_BROADCAST][mustquery][opt_proto], 
                 sizeof(pami_metadata_t));
          comm_ptr->mpid.must_query[PAMI_XFER_BROADCAST][0] = MPID_COLL_NOQUERY;
          comm_ptr->mpid.user_selectedvar[PAMI_XFER_BROADCAST] = MPID_COLL_SELECTED;
@@ -321,8 +463,8 @@ void MPIDI_Comm_coll_select(MPID_Comm *comm_ptr)
          comm_ptr->mpid.user_selectedvar[PAMI_XFER_BROADCAST] = MPID_COLL_USE_MPICH;
       }
 
-      TRACE_ERR("Done setting optimized bcast 0\n");
 
+      TRACE_ERR("Done setting optimized bcast 0\n");
 
       /* Now, look into large message bcasts */
       opt_proto = -1;
@@ -408,9 +550,9 @@ void MPIDI_Comm_coll_select(MPID_Comm *comm_ptr)
          }
       }
       TRACE_ERR("Done with bcast protocol selection\n");
-
    }
 
+   opt_proto = -1;
    /* The most fun... allreduce */
    /* 512-way data: */
    /* For starters, Amith's protocol works on doubles on sum/min/max. Because
@@ -426,7 +568,6 @@ void MPIDI_Comm_coll_select(MPID_Comm *comm_ptr)
       comm_ptr->mpid.query_allred_ismm = MPID_COLL_USE_MPICH;
 
       comm_ptr->mpid.cutoff_size[PAMI_XFER_ALLREDUCE][0] = 128;
-
       /* 1ppn: I0:MultiCombineDput:-:MU if it is available, but it has a check_fn
        * since it is MU-based*/
       /* Next best is I1:ShortAllreduce:P2P:P2P for short messages, then MPICH is best*/
@@ -434,7 +575,14 @@ void MPIDI_Comm_coll_select(MPID_Comm *comm_ptr)
       /* First, look in the 'must query' list and see i I0:MultiCombine:Dput:-:MU is there */
       for(i = 0; i < comm_ptr->mpid.coll_count[PAMI_XFER_ALLREDUCE][1]; i++)
       {
-         if(strcasecmp(comm_ptr->mpid.coll_metadata[PAMI_XFER_ALLREDUCE][1][i].name, "I0:MultiCombineDput:-:MU") == 0)
+         char *pname;
+         if(MPIDI_Check_FCA_envvar("ALLREDUCE") == 1)
+            pname = "I1:Allreduce:FCA:FCA";
+         else
+            pname = "I0:MultiCombineDput:-:MU";
+         /*SSS: Any "MU" protocol will not be available on non-BG systems. I just need to check for FCA in the 
+                first if only. No need to do another check since the second if will never succeed for PE systems*/
+         if(strcasecmp(comm_ptr->mpid.coll_metadata[PAMI_XFER_ALLREDUCE][1][i].name, pname) == 0)
          {
             /* So, this should be fine for the i/dsmm protocols. everything else needs to call the check function */
             /* This also works for all message sizes, so no need to deal with it specially for query */
@@ -483,19 +631,36 @@ void MPIDI_Comm_coll_select(MPID_Comm *comm_ptr)
       /* I0:ShortAllreduce:P2P:P2P < 128, then mpich*/
       for(i = 0; i < comm_ptr->mpid.coll_count[PAMI_XFER_ALLREDUCE][1]; i++)
       {
-         if(strcasecmp(comm_ptr->mpid.coll_metadata[PAMI_XFER_ALLREDUCE][1][i].name, "I1:ShortAllreduce:P2P:P2P") == 0)
+         char *pname;
+         int pickFCA = MPIDI_Check_FCA_envvar("ALLREDUCE");
+         if(pickFCA == 1)
+            pname = "I1:Allreduce:FCA:FCA";
+         else
+            pname = "I1:ShortAllreduce:P2P:P2P";
+         /*SSS: ShortAllreduce is available on both BG and PE. I have to pick just one to check for in this case. 
+                However, I need to add FCA for both opt_protocol[0]and[1] to cover all data sizes*/
+         if(strcasecmp(comm_ptr->mpid.coll_metadata[PAMI_XFER_ALLREDUCE][1][i].name, pname) == 0)
          {
             comm_ptr->mpid.opt_protocol[PAMI_XFER_ALLREDUCE][0] =
                    comm_ptr->mpid.coll_algorithm[PAMI_XFER_ALLREDUCE][1][i];
             memcpy(&comm_ptr->mpid.opt_protocol_md[PAMI_XFER_ALLREDUCE][0],
                    &comm_ptr->mpid.coll_metadata[PAMI_XFER_ALLREDUCE][1][i],
                    sizeof(pami_metadata_t));
-            comm_ptr->mpid.must_query[PAMI_XFER_ALLREDUCE][0] = MPID_COLL_NOQUERY;
-            /* Short is good for up to 128 */
-            comm_ptr->mpid.cutoff_size[PAMI_XFER_ALLREDUCE][0] = 128;
+            if(pickFCA == 1)
+            {
+              comm_ptr->mpid.must_query[PAMI_XFER_ALLREDUCE][0] = MPID_COLL_CHECK_FN_REQUIRED;
+              comm_ptr->mpid.cutoff_size[PAMI_XFER_ALLREDUCE][0] = 0;/*SSS: Always use opt_protocol[0] for FCA*/
+            }
+            else
+            {
+              /*SSS: (on BG) MPICH is actually better at > 128 bytes for 1/16/64ppn at 512 nodes */
+              comm_ptr->mpid.must_query[PAMI_XFER_ALLREDUCE][1] = MPID_COLL_USE_MPICH;
+              comm_ptr->mpid.must_query[PAMI_XFER_ALLREDUCE][0] = MPID_COLL_NOQUERY;
+              /* Short is good for up to 128 */
+              comm_ptr->mpid.cutoff_size[PAMI_XFER_ALLREDUCE][0] = 128;
+            }
             comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLREDUCE] = MPID_COLL_SELECTED;
-            /* MPICH is actually better at > 128 bytes for 1/16/64ppn at 512 nodes */
-            comm_ptr->mpid.must_query[PAMI_XFER_ALLREDUCE][1] = MPID_COLL_USE_MPICH;
+
             opt_proto = i;
          }
       }
@@ -508,7 +673,8 @@ void MPIDI_Comm_coll_select(MPID_Comm *comm_ptr)
       }
       TRACE_ERR("Done setting optimized allreduce protocols\n");
    }
-      
+
+   
    if(MPIDI_Process.optimized.select_colls != 2)
    {
       for(i = 0; i < PAMI_XFER_COUNT; i++)

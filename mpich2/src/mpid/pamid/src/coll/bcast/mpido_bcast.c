@@ -90,7 +90,7 @@ int MPIDO_Bcast(void *buffer,
 #ifdef MPIDI_BASIC_COLLECTIVE_SELECTION
    if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_BROADCAST] == MPID_COLL_SELECTED)
    {
-      TRACE_ERR("Optimized barrier (%s) and (%s) were pre-selected\n",
+      TRACE_ERR("Optimized bcast (%s) and (%s) were pre-selected\n",
          comm_ptr->mpid.opt_protocol_md[PAMI_XFER_BROADCAST][0].name,
          comm_ptr->mpid.opt_protocol_md[PAMI_XFER_BROADCAST][1].name);
 
