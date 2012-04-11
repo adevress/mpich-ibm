@@ -208,7 +208,18 @@ MPIDI_PAMI_context_init(int* threading)
   else if (MPIDI_Process.context_post == 0)
     {
 #if (MPIU_THREAD_GRANULARITY == MPIU_THREAD_GRANULARITY_PER_OBJECT)
+      /*
+       * With MPIU_THREAD_GRANULARITY_PER_OBJECT, avail_contexts was initialized
+       * to MPIDI_MAX_CONTEXTS but this value may be too large for some
+       * run modes on some platforms. At this time, the most appropriate
+       * value under these circumstances seems to be "1", so we will force
+       * that value here. Without this, PAMI_Context_createv() may fail and
+       * cause MPICH to assert.
+       */
+      MPIDI_Process.avail_contexts = 1;
+
       /* Per-obj builds require post & hwthreads for MPI_THREAD_MULTIPLE */
+      /* Note, MPI_THREAD_SERIALIZED may be too restrictive, we might need to reconsider. */
       if (*threading == MPI_THREAD_MULTIPLE)
         *threading = MPI_THREAD_SERIALIZED;
 #endif
