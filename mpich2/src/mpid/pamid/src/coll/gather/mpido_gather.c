@@ -148,7 +148,7 @@ int MPIDO_Gather(void *sendbuf,
   if(!comm_ptr->mpid.optgather ||
    comm_ptr->mpid.user_selectedvar[PAMI_XFER_GATHER] == MPID_COLL_USE_MPICH)
   {
-    if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0)
+    if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0))
       fprintf(stderr,"Using MPICH gather algorithm\n");
     return MPIR_Gather(sendbuf, sendcount, sendtype,
                        recvbuf, recvcount, recvtype,
@@ -186,7 +186,7 @@ int MPIDO_Gather(void *sendbuf,
 
    if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_GATHER] == MPID_COLL_USE_MPICH || !success)
    {
-    if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0)
+    if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0))
       fprintf(stderr,"Using MPICH gather algorithm\n");
     return MPIR_Gather(sendbuf, sendcount, sendtype,
                        recvbuf, recvcount, recvtype,
@@ -254,6 +254,17 @@ int MPIDO_Gather(void *sendbuf,
             comm_ptr->mpid.user_metadata[PAMI_XFER_GATHER].name);
 
 
+   if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0))
+   {
+      unsigned long long int threadID;
+      MPIU_Thread_id_t tid;
+      MPIU_Thread_self(&tid);
+      threadID = (unsigned long long int)tid;
+      fprintf(stderr,"<%llx> Using protocol %s for gather on %u\n", 
+              threadID,
+              my_gather_md->name,
+              (unsigned) comm_ptr->context_id);
+   }
    if(MPIDI_Process.context_post)
    {
       TRACE_ERR("Posting gather\n");

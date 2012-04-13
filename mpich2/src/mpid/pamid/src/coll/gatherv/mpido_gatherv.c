@@ -48,7 +48,7 @@ int MPIDO_Gatherv(void *sendbuf,
 
    if(pamidt == 0 || comm_ptr->mpid.user_selectedvar[PAMI_XFER_GATHERV_INT] == MPID_COLL_USE_MPICH)
    {
-      if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0)
+      if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0))
          fprintf(stderr,"Using MPICH gatherv algorithm\n");
       TRACE_ERR("GATHERV using MPICH\n");
       MPIDI_Update_last_algorithm(comm_ptr, "GATHERV_MPICH");
@@ -162,6 +162,17 @@ int MPIDO_Gatherv(void *sendbuf,
    
    MPIDI_Update_last_algorithm(comm_ptr, my_gatherv_md->name);
 
+   if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0))
+   {
+      unsigned long long int threadID;
+      MPIU_Thread_id_t tid;
+      MPIU_Thread_self(&tid);
+      threadID = (unsigned long long int)tid;
+      fprintf(stderr,"<%llx> Using protocol %s for gatherv on %u\n", 
+              threadID,
+              my_gatherv_md->name,
+              (unsigned) comm_ptr->context_id);
+   }
    if(MPIDI_Process.context_post)
    {
       MPIDI_Post_coll_t gatherv_post;

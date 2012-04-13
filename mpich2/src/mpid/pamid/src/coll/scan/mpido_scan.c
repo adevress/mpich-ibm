@@ -49,7 +49,7 @@ int MPIDO_Doscan(void *sendbuf, void *recvbuf,
    int rc;
 
    rc = MPIDI_Datatype_to_pami(datatype, &pdt, op, &pop, &mu);
-   if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm_ptr->rank == 0)
+   if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm_ptr->rank == 0))
       fprintf(stderr,"rc %u, dt: %p, op: %p, mu: %u, selectedvar %u != %u (MPICH)\n",
          rc, pdt, pop, mu, 
          (unsigned)comm_ptr->mpid.user_selectedvar[PAMI_XFER_SCAN], MPID_COLL_USE_MPICH);
@@ -61,8 +61,8 @@ int MPIDO_Doscan(void *sendbuf, void *recvbuf,
    if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_SCAN] == MPID_COLL_USE_MPICH || rc != MPI_SUCCESS)
       
    {
-      if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0)
-         fprintf(stderr,"Using MPICH scan algorithm\n");
+      if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0))
+         fprintf(stderr,"Using MPICH scan algorithm (exflag %d)\n",exflag);
       if(exflag)
          return MPIR_Exscan(sendbuf, recvbuf, count, datatype, op, comm_ptr, mpierrno);
       else
@@ -107,12 +107,22 @@ int MPIDO_Doscan(void *sendbuf, void *recvbuf,
       }
    }
    
+   if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0))
+   {
+      unsigned long long int threadID;
+      MPIU_Thread_id_t tid;
+      MPIU_Thread_self(&tid);
+      threadID = (unsigned long long int)tid;
+      fprintf(stderr,"<%llx> Using protocol %s for scan on %u (exflag %d)\n",
+              threadID,
+              comm_ptr->mpid.user_metadata[PAMI_XFER_SCAN].name,
+              (unsigned) comm_ptr->context_id,
+              exflag);
+   }
    if(MPIDI_Process.context_post)
    {
       TRACE_ERR("Posting scan, context %d, algoname: %s, exflag: %d\n", 0,
          comm_ptr->mpid.user_metadata[PAMI_XFER_SCAN].name, exflag);
-      MPIDI_Update_last_algorithm(comm_ptr,
-         comm_ptr->mpid.user_metadata[PAMI_XFER_SCAN].name);
       MPIDI_Post_coll_t scan_post;
       scan_post.coll_struct = &scan;
       rc = PAMI_Context_post(MPIDI_Context[0], &scan_post.state, MPIDI_Pami_post_wrapper, (void *)&scan_post);
@@ -121,10 +131,10 @@ int MPIDO_Doscan(void *sendbuf, void *recvbuf,
    else
    {
       TRACE_ERR("Calling PAMI_Collective with scan structure\n");
-      if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL)
-         fprintf(stderr,"Using protocol %s for scan\n", comm_ptr->mpid.user_metadata[PAMI_XFER_SCAN].name);
       rc = PAMI_Collective(MPIDI_Context[0], (pami_xfer_t *)&scan);
    }
+   MPIDI_Update_last_algorithm(comm_ptr,
+      comm_ptr->mpid.user_metadata[PAMI_XFER_SCAN].name);
 
    MPID_PROGRESS_WAIT_WHILE(scan_active);
    TRACE_ERR("Scan done\n");

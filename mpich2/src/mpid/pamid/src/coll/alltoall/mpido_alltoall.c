@@ -55,7 +55,7 @@ int MPIDO_Alltoall(void *sendbuf,
       (comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLTOALL] == MPID_COLL_USE_MPICH) ||
       pamidt == 0)
    {
-      if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0)
+      if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0))
          fprintf(stderr,"Using MPICH alltoall algorithm\n");
       return MPIR_Alltoall_intra(sendbuf, sendcount, sendtype,
                       recvbuf, recvcount, recvtype,
@@ -110,6 +110,17 @@ int MPIDO_Alltoall(void *sendbuf,
       }
    }
 
+   if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0))
+   {
+      unsigned long long int threadID;
+      MPIU_Thread_id_t tid;
+      MPIU_Thread_self(&tid);
+      threadID = (unsigned long long int)tid;
+      fprintf(stderr,"<%llx> Using protocol %s for alltoall on %u\n", 
+              threadID,
+              my_alltoall_md->name,
+              (unsigned) comm_ptr->context_id);
+   }
    if(MPIDI_Process.context_post)
    {
       TRACE_ERR("Posting alltoall\n");

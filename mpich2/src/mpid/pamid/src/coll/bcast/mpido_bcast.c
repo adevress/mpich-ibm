@@ -39,7 +39,11 @@ int MPIDO_Bcast(void *buffer,
       return MPI_SUCCESS;
    }
    if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_BROADCAST] == MPID_COLL_USE_MPICH)
-     return MPIR_Bcast_intra(buffer, count, datatype, root, comm_ptr, mpierrno);
+   {
+      if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0))
+         fprintf(stderr,"Using MPICH bcast algorithm\n");
+      return MPIR_Bcast_intra(buffer, count, datatype, root, comm_ptr, mpierrno);
+   }
 
    MPIDI_Datatype_get_info(count, datatype,
                data_contig, data_size, data_ptr, data_true_lb);
@@ -47,8 +51,11 @@ int MPIDO_Bcast(void *buffer,
    /* If the user has constructed some weird 0-length datatype but 
     * count is not 0, we'll let mpich handle it */
    if(unlikely( data_size == 0) )
+   {
+      if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0))
+         fprintf(stderr,"Using MPICH bcast algorithm for data_size 0\n");
       return MPIR_Bcast_intra(buffer, count, datatype, root, comm_ptr, mpierrno);
-      
+   }
    data_buffer = buffer + data_true_lb;
 
    if(!data_contig)
@@ -137,6 +144,17 @@ int MPIDO_Bcast(void *buffer,
       my_bcast_md->name);
    MPIDI_Update_last_algorithm(comm_ptr, my_bcast_md->name);
 
+   if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0))
+   {
+      unsigned long long int threadID;
+      MPIU_Thread_id_t tid;
+      MPIU_Thread_self(&tid);
+      threadID = (unsigned long long int)tid;
+      fprintf(stderr,"<%llx> Using protocol %s for bcast on %u\n", 
+              threadID,
+              my_bcast_md->name,
+              (unsigned) comm_ptr->context_id);
+   }
    if(MPIDI_Process.context_post)
    {
       bcast_post.coll_struct = &bcast;
@@ -146,8 +164,6 @@ int MPIDO_Bcast(void *buffer,
    }
    else
    {
-      if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL)
-         fprintf(stderr,"Using protocol %s for bcast.\n", my_bcast_md->name);
       rc = PAMI_Collective(MPIDI_Context[0], (pami_xfer_t *)&bcast);
    }
 

@@ -132,6 +132,25 @@ void MPIDI_Comm_coll_select(MPID_Comm *comm_ptr)
    TRACE_ERR("Entering MPIDI_Comm_coll_select\n");
    int opt_proto = -1;
    int i;
+   int use_threaded_collectives = 1;
+
+   /* Some highly optimized protocols (limited resource) do not
+      support MPI_THREAD_MULTIPLE semantics so do not enable them
+      except on COMM_WORLD.
+      NOTE: we are not checking metadata because these are known,
+      hardcoded optimized protocols.
+   */
+   if((MPIR_ThreadInfo.thread_provided == MPI_THREAD_MULTIPLE) &&
+      (comm_ptr != MPIR_Process.comm_world)) use_threaded_collectives = 0;
+   if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm_ptr->rank == 0))
+      fprintf(stderr, "thread_provided=%s, %scomm_world, use_threaded_collectives %u\n", 
+              MPIR_ThreadInfo.thread_provided == MPI_THREAD_MULTIPLE? "MPI_THREAD_MULTIPLE":
+              MPIR_ThreadInfo.thread_provided == MPI_THREAD_SINGLE?"MPI_THREAD_SINGLE":
+              MPIR_ThreadInfo.thread_provided == MPI_THREAD_FUNNELED?"MPI_THREAD_FUNNELED":
+              MPIR_ThreadInfo.thread_provided == MPI_THREAD_SERIALIZED?"MPI_THREAD_SERIALIZED":
+              "??", 
+              (comm_ptr != MPIR_Process.comm_world)?"!":"",
+              use_threaded_collectives);
    
    /* First, setup the (easy, allreduce is complicated) FCA collectives if there 
     * are any because they are always usable when they are on */
@@ -201,14 +220,15 @@ void MPIDI_Comm_coll_select(MPID_Comm *comm_ptr)
       /* the best alltoall is always I0:M2MComposite:MU:MU, though there are
        * displacement array memory issues today.... */
       /* Loop over the protocols until we find the one we want */
-      for(i = 0; i < comm_ptr->mpid.coll_count[PAMI_XFER_ALLTOALL][0]; i++)
-      {
+      if(use_threaded_collectives)
+       for(i = 0; i < comm_ptr->mpid.coll_count[PAMI_XFER_ALLTOALL][0]; i++)
+       {
          if(strcasecmp(comm_ptr->mpid.coll_metadata[PAMI_XFER_ALLTOALL][0][i].name, "I0:M2MComposite:MU:MU") == 0)
          {
             opt_proto = i;
             break;
          }
-      }
+       }
       if(opt_proto != -1)
       {
          TRACE_ERR("Memcpy protocol type %d, number %d (%s) to optimized protocol\n",
@@ -239,14 +259,15 @@ void MPIDI_Comm_coll_select(MPID_Comm *comm_ptr)
       /* the best alltoallv is always I0:M2MComposite:MU:MU, though there are
        * displacement array memory issues today.... */
       /* Loop over the protocols until we find the one we want */
-      for(i = 0; i <comm_ptr->mpid.coll_count[PAMI_XFER_ALLTOALLV_INT][0]; i++)
-      {
+      if(use_threaded_collectives)
+       for(i = 0; i <comm_ptr->mpid.coll_count[PAMI_XFER_ALLTOALLV_INT][0]; i++)
+       {
          if(strcasecmp(comm_ptr->mpid.coll_metadata[PAMI_XFER_ALLTOALLV_INT][0][i].name, "I0:M2MComposite:MU:MU") == 0)
          {
             opt_proto = i;
             break;
          }
-      }
+       }
       if(opt_proto != -1)
       {
          TRACE_ERR("Memcpy protocol type %d, number %d (%s) to optimized protocol\n",
@@ -296,8 +317,9 @@ void MPIDI_Comm_coll_select(MPID_Comm *comm_ptr)
           * I0:OptBinomial:P2P:P2P
           * MPICH
           */
-      for(i = 0 ; i < comm_ptr->mpid.coll_count[PAMI_XFER_BARRIER][0]; i++)
-      {
+      if(use_threaded_collectives)
+       for(i = 0 ; i < comm_ptr->mpid.coll_count[PAMI_XFER_BARRIER][0]; i++)
+       {
           /* These two are mutually exclusive */
           if(strcasecmp(comm_ptr->mpid.coll_metadata[PAMI_XFER_BARRIER][0][i].name, "I0:MultiSync2Device:SHMEM:GI") == 0)
           {
@@ -307,17 +329,18 @@ void MPIDI_Comm_coll_select(MPID_Comm *comm_ptr)
           {
              opt_proto = i;
           }
-      }
+       }
       /* Next best rectangular to check */
       if(opt_proto == -1)
       {
-         for(i = 0 ; i < comm_ptr->mpid.coll_count[PAMI_XFER_BARRIER][0]; i++)
-         {
+         if(use_threaded_collectives)
+          for(i = 0 ; i < comm_ptr->mpid.coll_count[PAMI_XFER_BARRIER][0]; i++)
+          {
             if(strcasecmp(comm_ptr->mpid.coll_metadata[PAMI_XFER_BARRIER][0][i].name, "I0:RectangleMultiSync2Device:SHMEM:MU") == 0)
                opt_proto = i;
             if(strcasecmp(comm_ptr->mpid.coll_metadata[PAMI_XFER_BARRIER][0][i].name, "I0:RectangleMultiSync:-:MU") == 0)
                opt_proto = i;
-         }
+          }
       }
       /* Finally, see if we have opt binomial */
       if(opt_proto == -1)
@@ -387,33 +410,38 @@ void MPIDI_Comm_coll_select(MPID_Comm *comm_ptr)
       TRACE_ERR("No bcast env var, so setting optimized bcast\n");
       int mustquery = 0;
 
-      for(i = 0 ; i < comm_ptr->mpid.coll_count[PAMI_XFER_BROADCAST][0]; i++)
-      {
+      if(use_threaded_collectives)
+       for(i = 0 ; i < comm_ptr->mpid.coll_count[PAMI_XFER_BROADCAST][0]; i++)
+       {
          /* These two are mutually exclusive */
          if(strcasecmp(comm_ptr->mpid.coll_metadata[PAMI_XFER_BROADCAST][0][i].name, "I0:MultiCastDput:-:MU") == 0)
             opt_proto = i;
          if(strcasecmp(comm_ptr->mpid.coll_metadata[PAMI_XFER_BROADCAST][0][i].name, "I0:MultiCastDput:SHMEM:MU") == 0)
             opt_proto = i;
-      }
+       }
       /* Next best rectangular to check */
+      if(use_threaded_collectives)
       if(opt_proto == -1)
       {
          /* This is also NOT in the 'must query' list */
-         for(i = 0; i < comm_ptr->mpid.coll_count[PAMI_XFER_BROADCAST][0]; i++)
-         {
+         if(use_threaded_collectives)
+          for(i = 0; i < comm_ptr->mpid.coll_count[PAMI_XFER_BROADCAST][0]; i++)
+          {
             if(strcasecmp(comm_ptr->mpid.coll_metadata[PAMI_XFER_BROADCAST][0][i].name, "I0:MultiCast2DeviceDput:SHMEM:MU") == 0)
                opt_proto = i;
-         }
+          }
       }
       /* Another rectangular to check */
+      if(use_threaded_collectives)
       if(opt_proto == -1)
       {
          /* This is also NOT in the 'must query' list */
-         for(i = 0; i < comm_ptr->mpid.coll_count[PAMI_XFER_BROADCAST][0]; i++)
-         {
+         if(use_threaded_collectives)
+          for(i = 0; i < comm_ptr->mpid.coll_count[PAMI_XFER_BROADCAST][0]; i++)
+          {
             if(strcasecmp(comm_ptr->mpid.coll_metadata[PAMI_XFER_BROADCAST][0][i].name, "I0:RectangleDput:SHMEM:MU") == 0)
                opt_proto = i;
-         }
+          }
       }
       if(opt_proto == -1)
       {
@@ -473,6 +501,7 @@ void MPIDI_Comm_coll_select(MPID_Comm *comm_ptr)
       /* Again, none of these protocols are in the 'must query' list */
       if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_BROADCAST] != MPID_COLL_USE_MPICH)
       {
+      if(use_threaded_collectives)
          if(strcasecmp(comm_ptr->mpid.opt_protocol_md[PAMI_XFER_BROADCAST][0].name, "I0:MultiCastDput:-:MU") == 0)
          {
             /* See if I0:RectangleDput:MU:MU is available */
@@ -487,6 +516,7 @@ void MPIDI_Comm_coll_select(MPID_Comm *comm_ptr)
          }
           /* small messages: I0:MultiCastDput:SHMEM:MU*/
           /* I0:RectangleDput:SHMEM:MU for >128k */
+      if(use_threaded_collectives)
          if(strcasecmp(comm_ptr->mpid.opt_protocol_md[PAMI_XFER_BROADCAST][0].name, "I0:MultiCastDput:SHMEM:MU") == 0)
          {
             /* See if I0:RectangleDput:SHMEM:MU is available */
@@ -575,10 +605,10 @@ void MPIDI_Comm_coll_select(MPID_Comm *comm_ptr)
       /* First, look in the 'must query' list and see i I0:MultiCombine:Dput:-:MU is there */
       for(i = 0; i < comm_ptr->mpid.coll_count[PAMI_XFER_ALLREDUCE][1]; i++)
       {
-         char *pname;
+         char *pname="...none...";
          if(MPIDI_Check_FCA_envvar("ALLREDUCE") == 1)
             pname = "I1:Allreduce:FCA:FCA";
-         else
+         else if(use_threaded_collectives)
             pname = "I0:MultiCombineDput:-:MU";
          /*SSS: Any "MU" protocol will not be available on non-BG systems. I just need to check for FCA in the 
                 first if only. No need to do another check since the second if will never succeed for PE systems*/
@@ -603,6 +633,7 @@ void MPIDI_Comm_coll_select(MPID_Comm *comm_ptr)
             opt_proto = i;
 
          }
+         if(use_threaded_collectives)
          if(strcasecmp(comm_ptr->mpid.coll_metadata[PAMI_XFER_ALLREDUCE][1][i].name, "I0:MultiCombineDput:SHMEM:MU") == 0)
          {
             /* This works well for doubles sum/min/max but has trouble with int > 8k/ppn */
@@ -635,7 +666,7 @@ void MPIDI_Comm_coll_select(MPID_Comm *comm_ptr)
          int pickFCA = MPIDI_Check_FCA_envvar("ALLREDUCE");
          if(pickFCA == 1)
             pname = "I1:Allreduce:FCA:FCA";
-         else
+         else 
             pname = "I1:ShortAllreduce:P2P:P2P";
          /*SSS: ShortAllreduce is available on both BG and PE. I have to pick just one to check for in this case. 
                 However, I need to add FCA for both opt_protocol[0]and[1] to cover all data sizes*/

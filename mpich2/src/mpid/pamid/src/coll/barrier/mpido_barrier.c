@@ -29,7 +29,7 @@ int MPIDO_Barrier(MPID_Comm *comm_ptr, int *mpierrno)
 
    if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_BARRIER] == MPID_COLL_USE_MPICH)
    {
-     if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0)
+     if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0))
        fprintf(stderr,"Using MPICH barrier\n");
       TRACE_ERR("Using MPICH Barrier\n");
       return MPIR_Barrier(comm_ptr, mpierrno);
@@ -61,6 +61,18 @@ int MPIDO_Barrier(MPID_Comm *comm_ptr, int *mpierrno)
 
    /* TODO Name needs fixed somehow */
    MPIDI_Update_last_algorithm(comm_ptr, my_barrier_md->name);
+   if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0))
+   {
+      unsigned long long int threadID;
+      MPIU_Thread_id_t tid;
+      MPIU_Thread_self(&tid);
+      threadID = (unsigned long long int)tid;
+     fprintf(stderr,"<%llx> Using protocol %s for barrier on %u\n", 
+             threadID,
+             my_barrier_md->name,
+/*             comm_ptr->rank,comm_ptr->local_size,comm_ptr->remote_size,*/
+            (unsigned) comm_ptr->context_id);
+   }
    if(MPIDI_Process.context_post)
    {
 
@@ -72,9 +84,6 @@ int MPIDO_Barrier(MPID_Comm *comm_ptr, int *mpierrno)
    }
    else
    {
-     if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL)
-       fprintf(stderr,"Using protocol %s for barrier on rank %d size %d/%d\n", my_barrier_md->name,
-               comm_ptr->rank,comm_ptr->local_size,comm_ptr->remote_size);
       rc = PAMI_Collective(MPIDI_Context[0], (pami_xfer_t *)&barrier);
    }
    MPID_assert_always(rc == PAMI_SUCCESS);

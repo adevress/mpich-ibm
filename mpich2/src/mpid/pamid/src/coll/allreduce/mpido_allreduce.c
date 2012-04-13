@@ -49,16 +49,11 @@ int MPIDO_Allreduce(void *sendbuf,
       fprintf(stderr,"allred rc %u, Datatype %p, op %p, mu %u, selectedvar %u != %u\n",
               rc, pdt, pop, mu, 
               (unsigned)comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLREDUCE],MPID_COLL_USE_MPICH);
-   /*fprintf(stderr,"type %u >= %u, fn %p\n",
-           comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLREDUCE],
-           MPID_COLL_QUERY,
-           comm_ptr->mpid.user_metadata[PAMI_XFER_ALLREDUCE].check_fn);
-   */
       /* convert to metadata query */
    if(rc != MPI_SUCCESS || 
       comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLREDUCE] == MPID_COLL_USE_MPICH)
    {
-      if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0)
+      if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0))
          fprintf(stderr,"Using MPICH allreduce type %u.\n",
                  comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLREDUCE]);
       MPIDI_Update_last_algorithm(comm_ptr, "ALLREDUCE_MPICH");
@@ -160,8 +155,6 @@ int MPIDO_Allreduce(void *sendbuf,
                  comm_ptr->mpid.must_query[PAMI_XFER_ALLREDUCE]);
               result = my_allred_md->check_fn(&allred);
               TRACE_ERR("bitmask: %#X\n", result.bitmask);
-              if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0)
-                 fprintf(stderr,"check_fn result %#X\n",result.bitmask);
               /* \todo Ignore check_correct.values.nonlocal until we implement the
                  'pre-allreduce allreduce' or the 'safe' environment flag.
                  We will basically assume 'safe' -- that all ranks are aligned (or not).
@@ -174,7 +167,7 @@ int MPIDO_Allreduce(void *sendbuf,
               else
               {
                  alg_selected = 0;
-                 if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0)
+                 if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0))
                     fprintf(stderr,"check_fn failed for %s.\n", my_allred_md->name);
               }
            }
@@ -207,8 +200,6 @@ int MPIDO_Allreduce(void *sendbuf,
                comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLREDUCE]);
             result = comm_ptr->mpid.user_metadata[PAMI_XFER_ALLREDUCE].check_fn(&allred);
             TRACE_ERR("bitmask: %#X\n", result.bitmask);
-            if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0)
-               fprintf(stderr,"check_fn result %#X\n",result.bitmask);
             /* \todo Ignore check_correct.values.nonlocal until we implement the
                'pre-allreduce allreduce' or the 'safe' environment flag.
                We will basically assume 'safe' -- that all ranks are aligned (or not).
@@ -217,7 +208,7 @@ int MPIDO_Allreduce(void *sendbuf,
             if(!result.bitmask)
                alg_selected = 1; /* query algorithm successfully selected */
             else 
-               if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0)
+               if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0))
                   fprintf(stderr,"check_fn failed for %s.\n", my_allred_md->name);
          }
          else /* no check_fn, manually look at the metadata fields */
@@ -234,7 +225,7 @@ int MPIDO_Allreduce(void *sendbuf,
                   (my_allred_md->range_hi >= data_size))
                   alg_selected = 1; /* query algorithm successfully selected */
                else
-                 if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0)
+                 if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0))
                      fprintf(stderr,"message size (%u) outside range (%zu<->%zu) for %s.\n",
                              data_size,
                              my_allred_md->range_lo,
@@ -250,18 +241,26 @@ int MPIDO_Allreduce(void *sendbuf,
 
    if(!alg_selected) /* must be fallback to MPICH */
    {
-      if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0)
+      if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0))
          fprintf(stderr,"Using MPICH allreduce\n");
       MPIDI_Update_last_algorithm(comm_ptr, "ALLREDUCE_MPICH");
       return MPIR_Allreduce(sendbuf, recvbuf, count, dt, op, comm_ptr, mpierrno);
    }
 
-   TRACE_ERR("Right before calling, allreduce: %s\n", my_allred_md->name);
+   if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0))
+   {
+      unsigned long long int threadID;
+      MPIU_Thread_id_t tid;
+      MPIU_Thread_self(&tid);
+      threadID = (unsigned long long int)tid;
+      fprintf(stderr,"<%llx> Using protocol %s for allreduce on %u\n", 
+              threadID,
+              my_allred_md->name,
+              (unsigned) comm_ptr->context_id);
+   }
    if(MPIDI_Process.context_post)
    {
       allred_post.coll_struct = &allred;
-      if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0)
-         fprintf(stderr,"Posting protocol %s\n", my_allred_md->name);
       TRACE_ERR("posting allreduce, context: %d, algoname: %s, dt: %s, op: %s, count: %d\n", 0,
                 my_allred_md->name, dt_str, op_str, count);
       rc = PAMI_Context_post(MPIDI_Context[0], &allred_post.state, 
@@ -270,8 +269,6 @@ int MPIDO_Allreduce(void *sendbuf,
    }
    else
    {
-      if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0)
-         fprintf(stderr,"Using protocol %s for allreduce\n", my_allred_md->name);
       rc = PAMI_Collective(MPIDI_Context[0], (pami_xfer_t *)&allred);
    }
 
@@ -280,3 +277,4 @@ int MPIDO_Allreduce(void *sendbuf,
    TRACE_ERR("allreduce done\n");
    return MPI_SUCCESS;
 }
+

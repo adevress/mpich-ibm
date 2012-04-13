@@ -280,13 +280,9 @@ MPIDO_Allgatherv(void *sendbuf,
 
    use_opt = use_alltoall || use_tree_reduce || use_bcast || use_pami;
 
-   if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0)
-     fprintf(stderr,"MPIDO_Allgatherv selection flags: b: %d a: %d r: %d p: %d o: %d\n",
-            use_bcast, use_alltoall, use_tree_reduce, use_pami, use_opt);
-
    if(!use_opt) /* back to MPICH */
    {
-     if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0)
+     if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0))
      fprintf(stderr,"Using MPICH allgatherv type %u.\n",
              comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLGATHERV_INT]);
      TRACE_ERR("Using MPICH Allgatherv\n");
@@ -365,10 +361,6 @@ MPIDO_Allgatherv(void *sendbuf,
 
    if(use_pami)
    {
-     if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0)
-       fprintf(stderr,"Using PAMI allgatherv type %u.\n",
-               comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLGATHERV_INT]);
-
       char *pname = comm_ptr->mpid.user_metadata[PAMI_XFER_ALLGATHERV_INT].name;
 
       pami_xfer_t allgatherv;
@@ -441,6 +433,17 @@ MPIDO_Allgatherv(void *sendbuf,
          }
       }
 
+      if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0))
+      {
+         unsigned long long int threadID;
+         MPIU_Thread_id_t tid;
+         MPIU_Thread_self(&tid);
+         threadID = (unsigned long long int)tid;
+         fprintf(stderr,"<%llx> Using protocol %s for allgatherv on %u\n", 
+                 threadID,
+                 pname,
+              (unsigned) comm_ptr->context_id);
+      }
       if(MPIDI_Process.context_post)
       {
          TRACE_ERR("Posting Allgatherv\n");
@@ -455,6 +458,7 @@ MPIDO_Allgatherv(void *sendbuf,
          TRACE_ERR("Calling allgatherv via PAMI_Collective()\n");
          rc = PAMI_Collective(MPIDI_Context[0], (pami_xfer_t *)&allgatherv);
       }
+      MPIDI_Update_last_algorithm(comm_ptr, pname);
 
       TRACE_ERR("Rank %d waiting on active %d\n", comm_ptr->rank, allgatherv_active);
       MPID_PROGRESS_WAIT_WHILE(allgatherv_active);
@@ -472,7 +476,7 @@ MPIDO_Allgatherv(void *sendbuf,
    /* TODO These need ordered in speed-order */
    if(use_tree_reduce)
    {
-     if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0)
+     if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0))
        fprintf(stderr,"Using tree reduce allgatherv type %u.\n",
                comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLGATHERV_INT]);
      rc = MPIDO_Allgatherv_allreduce(sendbuf, sendcount, sendtype,
@@ -485,7 +489,7 @@ MPIDO_Allgatherv(void *sendbuf,
 
    if(use_bcast)
    {
-     if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0)
+     if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0))
        fprintf(stderr,"Using bcast allgatherv type %u.\n",
                comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLGATHERV_INT]);
      rc = MPIDO_Allgatherv_bcast(sendbuf, sendcount, sendtype,
@@ -498,7 +502,7 @@ MPIDO_Allgatherv(void *sendbuf,
 
    if(use_alltoall)
    {
-     if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0)
+     if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0))
        fprintf(stderr,"Using alltoall allgatherv type %u.\n",
                comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLGATHERV_INT]);
      rc = MPIDO_Allgatherv_alltoall(sendbuf, sendcount, sendtype,
@@ -509,7 +513,7 @@ MPIDO_Allgatherv(void *sendbuf,
      return rc;
    }
 
-   if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0)
+   if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0))
       fprintf(stderr,"Using MPICH allgatherv type %u.\n",
             comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLGATHERV_INT]);
    TRACE_ERR("Using MPICH for Allgatherv\n");

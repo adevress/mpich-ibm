@@ -35,7 +35,7 @@ int MPIDO_Reduce(void *sendbuf,
    int alg_selected = 0;
 
    rc = MPIDI_Datatype_to_pami(datatype, &pdt, op, &pop, &mu);
-   if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm_ptr->rank == 0)
+   if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm_ptr->rank == 0))
       fprintf(stderr,"reduce - rc %u, dt: %p, op: %p, mu: %u, selectedvar %u != %u (MPICH)\n",
          rc, pdt, pop, mu, 
          (unsigned)comm_ptr->mpid.user_selectedvar[PAMI_XFER_REDUCE], MPID_COLL_USE_MPICH);
@@ -49,7 +49,7 @@ int MPIDO_Reduce(void *sendbuf,
 
    if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_REDUCE] == MPID_COLL_USE_MPICH || rc != MPI_SUCCESS)
    {
-      if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0)
+      if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0))
          fprintf(stderr,"Using MPICH reduce algorithm\n");
       return MPIR_Reduce(sendbuf, recvbuf, count, datatype, op, root, comm_ptr, mpierrno);
    }
@@ -125,12 +125,21 @@ int MPIDO_Reduce(void *sendbuf,
 
    if(alg_selected)
    {
+      if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0))
+      {
+         unsigned long long int threadID;
+         MPIU_Thread_id_t tid;
+         MPIU_Thread_self(&tid);
+         threadID = (unsigned long long int)tid;
+         fprintf(stderr,"<%llx> Using protocol %s for reduce on %u\n", 
+                 threadID,
+                 my_reduce_md->name,
+              (unsigned) comm_ptr->context_id);
+      }
       if(MPIDI_Process.context_post)
       {
          TRACE_ERR("Posting reduce, context %d, algoname: %s, exflag: %d\n", 0,
             my_reduce_md->name, exflag);
-         MPIDI_Update_last_algorithm(comm_ptr,
-            my_reduce_md->name);
          MPIDI_Post_coll_t reduce_post;
          reduce_post.coll_struct = &reduce;
          rc = PAMI_Context_post(MPIDI_Context[0], &reduce_post.state, MPIDI_Pami_post_wrapper, (void *)&reduce_post);
@@ -139,17 +148,18 @@ int MPIDO_Reduce(void *sendbuf,
       else
       {
          TRACE_ERR("Calling PAMI_Collective with reduce structure\n");
-         if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0)
-            fprintf(stderr,"Using protocol %s for reduce\n", my_reduce_md->name);
          rc = PAMI_Collective(MPIDI_Context[0], (pami_xfer_t *)&reduce);
       }
    }
    else
    {
-      if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0)
+      if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0))
          fprintf(stderr,"Using MPICH reduce algorithm\n");
       return MPIR_Reduce(sendbuf, recvbuf, count, datatype, op, root, comm_ptr, mpierrno);
    }
+
+   MPIDI_Update_last_algorithm(comm_ptr,
+                               my_reduce_md->name);
 
    MPID_PROGRESS_WAIT_WHILE(reduce_active);
    TRACE_ERR("Reduce done\n");

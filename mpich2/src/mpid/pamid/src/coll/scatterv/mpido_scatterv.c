@@ -245,7 +245,7 @@ int MPIDO_Scatterv(void *sendbuf,
 
    if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_SCATTERV_INT] == MPID_COLL_USE_MPICH)
   {
-    if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0)
+    if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0))
       fprintf(stderr,"Using MPICH scatterv algorithm\n");
     MPIDI_Update_last_algorithm(comm_ptr, "SCATTERV_MPICH");
     return MPIR_Scatterv(sendbuf, sendcounts, displs, sendtype,
@@ -285,13 +285,9 @@ int MPIDO_Scatterv(void *sendbuf,
    if(MPIDI_Datatype_to_pami(sendtype, &stype, -1, NULL, &tmp) != MPI_SUCCESS)
       pamidt = 0;
 
-  if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0)
-    fprintf(stderr,"Use pami %d, use mpich %d.\n",
-            pamidt,comm_ptr->mpid.user_selectedvar[PAMI_XFER_SCATTERV_INT] == MPID_COLL_USE_MPICH);
-
    if(pamidt == 0 || comm_ptr->mpid.user_selectedvar[PAMI_XFER_SCATTERV_INT] == MPID_COLL_USE_MPICH)
    {
-     if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0)
+     if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0))
        fprintf(stderr,"Using MPICH scatterv algorithm\n");
       TRACE_ERR("Scatterv using MPICH\n");
       MPIDI_Update_last_algorithm(comm_ptr, "SCATTERV_MPICH");
@@ -386,10 +382,17 @@ int MPIDO_Scatterv(void *sendbuf,
 
    MPIDI_Update_last_algorithm(comm_ptr, my_scatterv_md->name);
 
-   if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0)
-     fprintf(stderr,"Using PAMI scatterv type %u.\n",
-             comm_ptr->mpid.user_selectedvar[PAMI_XFER_SCATTERV_INT]);
-
+   if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0))
+   {
+      unsigned long long int threadID;
+      MPIU_Thread_id_t tid;
+      MPIU_Thread_self(&tid);
+      threadID = (unsigned long long int)tid;
+      fprintf(stderr,"<%llx> Using protocol %s for scatterv on %u\n", 
+              threadID,
+              my_scatterv_md->name,
+              (unsigned) comm_ptr->context_id);
+   }
    if(MPIDI_Process.context_post)
    {
       MPIDI_Post_coll_t scatterv_post;
@@ -545,7 +548,7 @@ int MPIDO_Scatterv(void *sendbuf,
    } /* nothing valid to try, go to mpich */
    else
    {
-     if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0)
+     if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0))
        fprintf(stderr,"Using MPICH scatterv algorithm\n");
       MPIDI_Update_last_algorithm(comm_ptr, "SCATTERV_MPICH");
       return MPIR_Scatterv(sendbuf, sendcounts, displs, sendtype,

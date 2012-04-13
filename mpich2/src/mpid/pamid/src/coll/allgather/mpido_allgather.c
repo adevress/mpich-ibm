@@ -260,7 +260,7 @@ MPIDO_Allgather(void *sendbuf,
    TRACE_ERR("flags before: b: %d a: %d t: %d p: %d\n", use_bcast, use_alltoall, use_tree_reduce, use_pami);
    if(!use_opt)
    {
-      if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0)
+      if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0))
          fprintf(stderr,"Using MPICH allgather algorithm\n");
       TRACE_ERR("No options set/available; using MPICH for allgather\n");
       MPIDI_Update_last_algorithm(comm_ptr, "ALLGATHER_MPICH");
@@ -343,9 +343,6 @@ MPIDO_Allgather(void *sendbuf,
    }
    if(use_pami)
    {
-     if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0)
-       fprintf(stderr,"Using PAMI allgather type %u.\n",
-               comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLGATHER]);
       TRACE_ERR("Using PAMI-level allgather protocol\n");
       pami_xfer_t allgather;
       allgather.cb_done = allgather_cb_done;
@@ -379,11 +376,20 @@ MPIDO_Allgather(void *sendbuf,
       }
 
       
+      if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0))
+      {
+         unsigned long long int threadID;
+         MPIU_Thread_id_t tid;
+         MPIU_Thread_self(&tid);
+         threadID = (unsigned long long int)tid;
+         fprintf(stderr,"<%llx> Using protocol %s for allgather on %u\n", 
+                 threadID,
+                 comm_ptr->mpid.user_metadata[PAMI_XFER_ALLGATHER].name,
+              (unsigned) comm_ptr->context_id);
+      }
       if(MPIDI_Process.context_post)
       {
          TRACE_ERR("Posting allgather, context: %d, algoname: %s\n", 0,
-         comm_ptr->mpid.user_metadata[PAMI_XFER_ALLGATHER].name);
-         MPIDI_Update_last_algorithm(comm_ptr,
          comm_ptr->mpid.user_metadata[PAMI_XFER_ALLGATHER].name);
          MPIDI_Post_coll_t allgather_post;
          allgather_post.coll_struct = &allgather;
@@ -393,10 +399,10 @@ MPIDO_Allgather(void *sendbuf,
       else
       {
          TRACE_ERR("Calling PAMI_Collective with allgather structure\n");
-         if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL)
-            fprintf(stderr,"Using protocol %s for allgather\n", comm_ptr->mpid.user_metadata[PAMI_XFER_ALLGATHER].name);
          rc = PAMI_Collective(MPIDI_Context[0], (pami_xfer_t *)&allgather);
       }
+      MPIDI_Update_last_algorithm(comm_ptr,
+      comm_ptr->mpid.user_metadata[PAMI_XFER_ALLGATHER].name);
 
       MPID_PROGRESS_WAIT_WHILE(allgather_active);
       TRACE_ERR("Allgather done\n");
@@ -433,7 +439,7 @@ MPIDO_Allgather(void *sendbuf,
    }
    
    /* Nothing used yet; dump to MPICH */
-   if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0)
+   if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0))
       fprintf(stderr,"Using MPICH allgather algorithm\n");
    TRACE_ERR("Using allgather via mpich\n");
    MPIDI_Update_last_algorithm(comm_ptr, "ALLGATHER_MPICH");

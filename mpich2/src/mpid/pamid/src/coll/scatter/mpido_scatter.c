@@ -113,13 +113,9 @@ int MPIDO_Scatter(void *sendbuf,
   if(MPIDI_Datatype_to_pami(recvtype, &rtype, -1, NULL, &tmp) != MPI_SUCCESS)
     use_pami = 0;
 
-  if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0)
-    fprintf(stderr,"Use pami %d, use mpich %d.\n",
-            use_pami,comm_ptr->mpid.user_selectedvar[PAMI_XFER_SCATTER] == MPID_COLL_USE_MPICH);
-
   if(!use_pami)
   {
-    if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0)
+    if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0))
       fprintf(stderr,"Using MPICH scatter algorithm\n");
     MPIDI_Update_last_algorithm(comm_ptr, "SCATTER_MPICH");
     return MPIR_Scatter(sendbuf, sendcount, sendtype,
@@ -222,10 +218,17 @@ int MPIDO_Scatter(void *sendbuf,
       }
    }
 
-   if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0)
-     fprintf(stderr,"Using PAMI scatter type %u.\n",
-             comm_ptr->mpid.user_selectedvar[PAMI_XFER_SCATTER]);
-
+   if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0))
+   {
+      unsigned long long int threadID;
+      MPIU_Thread_id_t tid;
+      MPIU_Thread_self(&tid);
+      threadID = (unsigned long long int)tid;
+      fprintf(stderr,"<%llx> Using protocol %s for scatter on %u\n", 
+              threadID,
+              my_scatter_md->name,
+              (unsigned) comm_ptr->context_id);
+   }
    if(MPIDI_Process.context_post)
    {
       TRACE_ERR("Posting scatter\n");
@@ -261,7 +264,7 @@ int MPIDO_Scatter(void *sendbuf,
 
   if (!success)
   {
-    if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0)
+    if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0))
       fprintf(stderr,"Using MPICH scatter algorithm\n");
     return MPIR_Scatter(sendbuf, sendcount, sendtype,
                         recvbuf, recvcount, recvtype,
