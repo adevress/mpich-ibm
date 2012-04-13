@@ -10,10 +10,6 @@
   pami_extension_t pe_extension;
 #endif
 
-#ifdef MPIDI_SINGLE_CONTEXT_ASYNC_PROGRESS
-  pami_extension_t progress_extension;
-#endif
-
 pami_client_t   MPIDI_Client;
 pami_context_t MPIDI_Context[MPIDI_MAX_CONTEXTS];
 
@@ -271,6 +267,12 @@ MPIDI_PAMI_context_init(int* threading)
           *threading = MPI_THREAD_MULTIPLE;
 #endif
     }
+
+#ifdef MPIDI_SINGLE_CONTEXT_ASYNC_PROGRESS
+      if (MPIDI_Process.async_progress_enabled) { /* promote to THREAD_MULTIPLE to handle synchronization in single threaded mode with async progress on */
+          *threading = MPI_THREAD_MULTIPLE;
+      }
+#endif
   TRACE_ERR("Thread-level=%d, requested=%d\n", *threading, requested_thread_level);
 
 
@@ -298,10 +300,6 @@ MPIDI_PAMI_context_init(int* threading)
   MPID_assert_always(rc == PAMI_SUCCESS);
 #if (MPIDI_STATISTICS || MPIDI_PRINTENV)
   MPIDI_open_pe_extension();
-#endif
-#ifdef MPIDI_SINGLE_CONTEXT_ASYNC_PROGRESS
-  MPIDI_open_async_extension();
-  MPIDI_disable_ASYNC();
 #endif
 }
 
@@ -412,6 +410,7 @@ MPIDI_PAMI_init(int* rank, int* size, int* threading)
              "  mp_infolevel : %u\n"
              "  mp_statistics: %u\n"
              "  mp_printenv  : %u\n"
+             "  mp_interrupts: %u\n"
 #endif
              "  optimized.collectives : %u\n"
              "  optimized.select_colls: %u\n"
@@ -430,6 +429,7 @@ MPIDI_PAMI_init(int* rank, int* size, int* threading)
              MPIDI_Process.mp_infolevel,
              MPIDI_Process.mp_statistics,
              MPIDI_Process.mp_printenv,
+             (MPIDI_Process.async_progress_enabled) ? 1 : 0,
 #endif
              MPIDI_Process.optimized.collectives,
              MPIDI_Process.optimized.select_colls,
@@ -524,10 +524,15 @@ int MPID_Init(int * argc,
   /* Initialize messager           */
   /* ----------------------------- */
   *provided = requested;
+#if (MPIDI_STATISTICS || MPIDI_PRINTENV)
+   if (requested != MPI_THREAD_MULTIPLE)
+       mpich_env->single_thread=1;
+#endif
   MPIDI_PAMI_init(&rank, &size, provided);
 #ifdef MPIDI_SINGLE_CONTEXT_ASYNC_PROGRESS
   /* hwthreads should not override user's thread setting */
-  *provided = requested;
+  if (!MPIDI_Process.async_progress_enabled)
+    *provided = requested;
 #endif
 
   /* ------------------------- */

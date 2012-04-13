@@ -733,11 +733,9 @@ MPIDI_Env_setup(int rank, int requested)
     {
       char* names[] = {"MP_CSS_INTERRUPT", NULL};
       ENV_Char(names, &mpich_env->interrupts);
-    }
-    /*  MP_SINGLE_THREAD                                                       */
-    {
-      char* names[] = {"MP_SINGLE_THREAD", NULL};
-      ENV_Char(names, &mpich_env->single_thread);
+      if (mpich_env->interrupts) {
+        MPIDI_Process.async_progress_enabled=1;
+      }
     }
     /* MP_POLLING_INTERVAL                                                     */
     {

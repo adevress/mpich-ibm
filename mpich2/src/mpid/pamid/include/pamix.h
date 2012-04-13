@@ -41,8 +41,10 @@ typedef void (*pamix_progress_function) (pami_context_t context, void *cookie);
 #define PAMIX_CLIENT_ASYNC_GUARANTEE 1016
 typedef enum
 {
-  PAMIX_PROGRESS_ALL =    0,
-  PAMIX_PROGRESS_EXT = 1000
+  PAMIX_PROGRESS_ALL            =    0,
+  PAMIX_PROGRESS_RECV_INTERRUPT =    1,
+  PAMIX_PROGRESS_TIMER          =    2,
+  PAMIX_PROGRESS_EXT            = 1000
 } pamix_progress_t;
 
 void

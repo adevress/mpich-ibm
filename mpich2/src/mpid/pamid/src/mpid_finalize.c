@@ -39,9 +39,6 @@ int MPID_Finalize()
   }
   MPIDI_close_pe_extension();
 #endif
-#ifdef MPIDI_SINGLE_CONTEXT_ASYNC_PROGRESS
-  MPIDI_close_async_extension();
-#endif
   /* ------------------------- */
   /* shutdown request queues   */
   /* ------------------------- */

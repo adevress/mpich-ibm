@@ -158,10 +158,4 @@ extern void MPIDI_close_pe_extension();
 #endif    /* MPIDI_STATISTICS    */
 #endif    /* MPIDI_PRINTENV || MPIDI_STATISTICS    */
 
-#ifdef MPIDI_SINGLE_CONTEXT_ASYNC_PROGRESS
-       extern void MPIDI_open_async_extension();
-       extern void MPIDI_close_async_extension();
-       extern void MPIDI_disable_ASYNC();
-#endif /* MPIDI_SINGLE_CONTEXT_ASYNC_PROGRESS  */
-
 #endif /* __include_mpidi_util_h__  */

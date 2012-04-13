@@ -86,12 +86,10 @@ static struct
 void
 PAMIX_Initialize(pami_client_t client)
 {
-#ifndef MPIDI_SINGLE_CONTEXT_ASYNC_PROGRESS
   PAMI_EXTENSION_OPEN(client, "EXT_async_progress", &PAMIX_Extensions.progress);
   PAMIX_Functions.progress_register = PAMI_EXTENSION_FUNCTION(pamix_progress_register_fn, "register", PAMIX_Extensions.progress);
   PAMIX_Functions.progress_enable   = PAMI_EXTENSION_FUNCTION(pamix_progress_enable_fn,   "enable",   PAMIX_Extensions.progress);
   PAMIX_Functions.progress_disable  = PAMI_EXTENSION_FUNCTION(pamix_progress_disable_fn,  "disable",  PAMIX_Extensions.progress);
-#endif
 
 #if defined(__BG__)
   PAMI_EXTENSION_OPEN(client, "EXT_torus_network", &PAMIX_Extensions.torus);
@@ -111,11 +109,8 @@ void
 PAMIX_Finalize(pami_client_t client)
 {
   pami_result_t rc;
-
-#ifndef __PE__
   rc = PAMI_Extension_close(PAMIX_Extensions.progress);
   PAMIX_assert_always(rc == PAMI_SUCCESS);
-#endif
 
 #if defined(__BG__)
   rc = PAMI_Extension_close(PAMIX_Extensions.torus);

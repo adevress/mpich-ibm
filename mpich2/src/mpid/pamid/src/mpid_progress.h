@@ -77,6 +77,7 @@
 void MPIDI_Progress_init();
 void MPIDI_Progress_async_start(pami_context_t context, void *cookie);
 void MPIDI_Progress_async_end  (pami_context_t context, void *cookie);
+void MPIDI_Progress_async_poll ();
 
 
 /**
