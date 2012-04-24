@@ -109,8 +109,9 @@ int MPIDO_Reduce(void *sendbuf,
          TRACE_ERR("Bitmask: %#X\n", result.bitmask);
          if(result.bitmask)
          {
-            fprintf(stderr,"Query failed for %s.\n",
-               my_reduce_md->name);
+            if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0)
+              fprintf(stderr,"Query failed for %s.\n",
+                 my_reduce_md->name);
          }
          else alg_selected = 1;
       }
