@@ -53,21 +53,7 @@ static struct
 #endif
 } PAMIX_Functions = {0};
 
-#if defined(__BGQ__)
-uint32_t * PAMIX_BGQ_mapcache = NULL;
-#endif
-
-static struct
-{
-  pami_extension_t progress;
-
-#if defined(__BG__)
-  pami_extension_t torus;
-#endif
-#if defined(__BGQ__)
-  pami_extension_t mapping;
-#endif
-} PAMIX_Extensions;
+pamix_extension_info_t PAMIX_Extensions;
 
 
 #define PAMI_EXTENSION_OPEN(client, name, ext)  \
@@ -98,10 +84,28 @@ PAMIX_Initialize(pami_client_t client)
   PAMIX_Functions.torus2task = PAMI_EXTENSION_FUNCTION(pamix_torus2task_fn, "torus2task",  PAMIX_Extensions.torus);
 #endif
 
-#if defined(__BGQ__)
-  PAMI_EXTENSION_OPEN(client, "BGQ_bgq_mapping", &PAMIX_Extensions.mapping);
-  PAMIX_BGQ_mapcache = PAMI_EXTENSION_FUNCTION(uint32_t *, "mapcache", PAMIX_Extensions.mapping);
+  {
+    PAMIX_Extensions.is_local_task.base    = & PAMIX_Extensions.is_local_task.base;
+    PAMIX_Extensions.is_local_task.stride  = 0;
+    PAMIX_Extensions.is_local_task.bitmask = 0;
+    PAMIX_Extensions.is_local_task.status  =
+      PAMI_Extension_open(client, "EXT_is_local_task",
+                          &PAMIX_Extensions.is_local_task.extension);
+
+    if (PAMIX_Extensions.is_local_task.status == PAMI_SUCCESS)
+      {
+        PAMIX_Extensions.is_local_task.base    = PAMI_EXTENSION_FUNCTION(uint8_t *, "base",    PAMIX_Extensions.is_local_task.extension);
+        PAMIX_Extensions.is_local_task.stride  = PAMI_EXTENSION_FUNCTION(uintptr_t, "stride",  PAMIX_Extensions.is_local_task.extension);
+        PAMIX_Extensions.is_local_task.bitmask = PAMI_EXTENSION_FUNCTION(uintptr_t, "bitmask", PAMIX_Extensions.is_local_task.extension);
+
+#ifdef PAMIX_IS_LOCAL_TASK_STRIDE
+        PAMIX_assert_always(PAMIX_IS_LOCAL_TASK_STRIDE  == PAMIX_Extensions.is_local_task.stride);
 #endif
+#ifdef PAMIX_IS_LOCAL_TASK_BITMASK
+        PAMIX_assert_always(PAMIX_IS_LOCAL_TASK_BITMASK == PAMIX_Extensions.is_local_task.bitmask);
+#endif
+      }
+  }
 }
 
 
@@ -112,15 +116,20 @@ PAMIX_Finalize(pami_client_t client)
   rc = PAMI_Extension_close(PAMIX_Extensions.progress);
   PAMIX_assert_always(rc == PAMI_SUCCESS);
 
+  if (PAMIX_Extensions.is_local_task.status == PAMI_SUCCESS)
+    {
+      rc = PAMI_Extension_close(PAMIX_Extensions.is_local_task.extension);
+      PAMIX_assert_always(rc == PAMI_SUCCESS);
+
+      PAMIX_Extensions.is_local_task.base    = NULL;
+      PAMIX_Extensions.is_local_task.stride  = 0;
+      PAMIX_Extensions.is_local_task.bitmask = 0;
+      PAMIX_Extensions.is_local_task.status  = PAMI_ERROR;
+    }
+
 #if defined(__BG__)
   rc = PAMI_Extension_close(PAMIX_Extensions.torus);
   PAMIX_assert_always(rc == PAMI_SUCCESS);
-#endif
-
-#if defined(__BGQ__)
-  rc = PAMI_Extension_close(PAMIX_Extensions.mapping);
-  PAMIX_assert_always(rc == PAMI_SUCCESS);
-  PAMIX_BGQ_mapcache = NULL;
 #endif
 }
 

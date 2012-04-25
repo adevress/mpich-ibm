@@ -9,11 +9,31 @@
 #define __include_pamix_h__
 
 #include <pami.h>
+#include <mpidi_platform.h>
 
 #if defined(__cplusplus)
 extern "C" {
 #endif
 
+typedef struct
+{
+  pami_extension_t progress;
+
+  struct
+  {
+    pami_extension_t   extension;
+    pami_result_t      status;
+    uint8_t          * base;
+    uintptr_t          stride;
+    uintptr_t          bitmask;
+  } is_local_task;
+
+#if defined(__BGQ__)
+  pami_extension_t torus;
+#endif
+} pamix_extension_info_t;
+
+extern pamix_extension_info_t PAMIX_Extensions;
 
 void
 PAMIX_Initialize(pami_client_t client);
@@ -78,13 +98,17 @@ int PAMIX_Torus2task(size_t coords[], pami_task_t* task_id);
 
 #endif
 
-#if defined(__BGQ__)
-extern uint32_t * PAMIX_BGQ_mapcache;
-#define PAMIX_Task_is_local(task_id) (0x40000000 & PAMIX_BGQ_mapcache[task_id])
+#if defined(PAMIX_IS_LOCAL_TASK_STRIDE) && defined(PAMIX_IS_LOCAL_TASK_BITMASK)
+#define PAMIX_Task_is_local(task_id)                                           \
+  (PAMIX_IS_LOCAL_TASK_BITMASK &                                               \
+    *(PAMIX_Extensions.is_local_task.base +                                    \
+    task_id * PAMIX_IS_LOCAL_TASK_STRIDE))
 #else
-#define PAMIX_Task_is_local(task_id) (0)
+#define PAMIX_Task_is_local(task_id)                                           \
+  (PAMIX_Extensions.is_local_task.bitmask &                                    \
+    *(PAMIX_Extensions.is_local_task.base +                                    \
+    task_id * PAMIX_Extensions.is_local_task.stride))
 #endif
-
 
 #if defined(__cplusplus)
 }

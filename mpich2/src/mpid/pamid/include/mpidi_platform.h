@@ -42,6 +42,8 @@ static const char _ibm_release_version_[] = "BGP";
 #define MPIDI_MUTEX_L2_ATOMIC 1
 #define MPIDI_BASIC_COLLECTIVE_SELECTION 1
 #define MPIDI_OPTIMIZED_COLLECTIVE_DEFAULT 1
+#define PAMIX_IS_LOCAL_TASK_STRIDE  (4)
+#define PAMIX_IS_LOCAL_TASK_BITMASK (0x40)
 static const char _ibm_release_version_[] = "V1R1M0";
 #endif
 
@@ -49,7 +51,9 @@ static const char _ibm_release_version_[] = "V1R1M0";
 #undef USE_PAMI_CONSISTENCY
 #define USE_PAMI_CONSISTENCY PAMI_HINT_DISABLE
 #undef  MPIDI_EAGER_LIMIT
-#define MPIDI_EAGER_LIMIT  4096
+#define MPIDI_EAGER_LIMIT 65536
+#undef  MPIDI_EAGER_LIMIT_LOCAL
+#define MPIDI_EAGER_LIMIT_LOCAL 1048576
 #define OUT_OF_ORDER_HANDLING 1
 #define MPIDI_STATISTICS      1
 #define MPIDI_PRINTENV        1
@@ -60,6 +64,8 @@ static const char _ibm_release_version_[] = "V1R1M0";
 #define MPIDI_BASIC_COLLECTIVE_SELECTION 1
 #define MPIDI_BANNER          1
 #define MPIDI_NO_ASSERT       1
+#define PAMIX_IS_LOCAL_TASK_STRIDE  (1)
+#define PAMIX_IS_LOCAL_TASK_BITMASK (0x01)
 
 /* When the Pok build team extracts this file from CMVC, %W% will expand to */
 /* a string with the current release, for example ppe_rbarlx.               */
