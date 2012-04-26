@@ -154,13 +154,27 @@ static struct
 };
 
 static void
-MPIDI_PAMI_client_init(int* rank, int* size)
+MPIDI_PAMI_client_init(int* rank, int* size, int threading)
 {
   /* ------------------------------------ */
   /*  Initialize the MPICH2->PAMI Client  */
   /* ------------------------------------ */
-  pami_result_t rc;
-  rc = PAMI_Client_create("MPI", &MPIDI_Client, NULL, 0);
+  pami_configuration_t config;
+  pami_result_t        rc = PAMI_ERROR;
+  unsigned             n  = 0;
+
+#ifndef HAVE_ERROR_CHECKING
+#ifdef OUT_OF_ORDER_HANDLING
+  /* fast library only, request lockless mode in PAMI */
+  if (threading == MPI_THREAD_SINGLE)
+    {
+      config.name = PAMI_CLIENT_THREAD_SAFE;
+      config.value.intval = 0;
+      n++;
+    }
+#endif
+#endif
+  rc = PAMI_Client_create("MPI", &MPIDI_Client, &config, n);
   MPID_assert_always(rc == PAMI_SUCCESS);
   PAMIX_Initialize(MPIDI_Client);
 
@@ -284,19 +298,31 @@ MPIDI_PAMI_context_init(int* threading)
   MPIDI_Out_cntr = MPIU_Calloc0(numTasks, MPIDI_Out_cntr_t);
   if(MPIDI_Out_cntr == NULL)
     MPID_abort();
+  memset((void *) MPIDI_In_cntr,0, sizeof(MPIDI_In_cntr_t));
+  memset((void *) MPIDI_Out_cntr,0, sizeof(MPIDI_Out_cntr_t));
 #endif
 
 
   /* ----------------------------------- */
   /*  Create the communication contexts  */
   /* ----------------------------------- */
-  pami_configuration_t config ={
-    .name  = PAMI_CLIENT_CONST_CONTEXTS,
-    .value = { .intval = 1, },
-  };
   TRACE_ERR("Creating %d contexts\n", MPIDI_Process.avail_contexts);
-  pami_result_t rc;
-  rc = PAMI_Context_createv(MPIDI_Client, &config, 1, MPIDI_Context, MPIDI_Process.avail_contexts);
+  pami_result_t rc = PAMI_ERROR;
+  pami_configuration_t config[3];
+  int  cfgval=0;
+  config[cfgval].name = PAMI_CLIENT_CONST_CONTEXTS,
+  config[cfgval].value.intval = 1;
+  cfgval++;
+#ifndef HAVE_ERROR_CHECKING
+#ifdef OUT_OF_ORDER_HANDLING
+  /* disable parameter checking in PAMI - fast library only */
+  config[cfgval].name = PAMI_CONTEXT_CHECK_PARAM;
+  config[cfgval].value.intval = 0;
+  cfgval++;
+#endif
+#endif
+  rc = PAMI_Context_createv(MPIDI_Client, config, cfgval, MPIDI_Context, MPIDI_Process.avail_contexts);
+
   MPID_assert_always(rc == PAMI_SUCCESS);
 #if (MPIDI_STATISTICS || MPIDI_PRINTENV)
   MPIDI_open_pe_extension();
@@ -333,6 +359,26 @@ MPIDI_PAMI_dispath_set(size_t              dispatch,
 static void
 MPIDI_PAMI_dispath_init()
 {
+#ifdef OUT_OF_ORDER_HANDLING
+  {
+    pami_configuration_t config;
+    pami_result_t        rc = PAMI_ERROR;
+
+    memset(&config, 0, sizeof(config));
+    config.name = PAMI_DISPATCH_SEND_IMMEDIATE_MAX;
+    rc = PAMI_Dispatch_query(MPIDI_Context[0], (size_t)0, &config, 1);
+    if ( rc == PAMI_SUCCESS )
+      {
+        TRACE_ERR("PAMI_DISPATCH_SEND_IMMEDIATE_MAX=%d.\n", config.value.intval, rc);
+        MPIDI_Process.short_limit = config.value.intval;
+      }
+    else
+      {
+        TRACE_ERR((" Attention: PAMI_Client_query(DISPATCH_SEND_IMMEDIATE_MAX=%d) rc=%d\n", config.name, rc));
+        MPIDI_Process.short_limit = 256;
+      }
+  }
+#endif
   /* ------------------------------------ */
   /*  Set up the communication protocols  */
   /* ------------------------------------ */
@@ -512,7 +558,7 @@ int MPID_Init(int * argc,
   /* ------------------------------------------------------------------------------- */
   /*  Initialize the pami client to get the process rank; needed for env var output. */
   /* ------------------------------------------------------------------------------- */
-  MPIDI_PAMI_client_init(&rank, &size);
+  MPIDI_PAMI_client_init(&rank, &size, requested);
 
 
   /* ------------------------------------ */
@@ -657,7 +703,7 @@ int MPIDI_Banner(char * bufPtr) {
     tmx=MPIU_Malloc(sizeof(struct tm));
     sprintf(buf,__DATE__" "__TIME__);
 
-    if ( NULL == strptime(buf, "%B %d %Y %T", tmx))
+    if ((void *) NULL == strptime(buf, "%B %d %Y %T", tmx))
        return(1);
 
    /*  update isdst in tmx structure    */
