@@ -85,7 +85,8 @@ PAMIX_Initialize(pami_client_t client)
 #endif
 
   {
-    PAMIX_Extensions.is_local_task.base    = & PAMIX_Extensions.is_local_task.base;
+    PAMIX_Extensions.is_local_task.base =
+      (uint8_t *) & PAMIX_Extensions.is_local_task.base;
     PAMIX_Extensions.is_local_task.stride  = 0;
     PAMIX_Extensions.is_local_task.bitmask = 0;
     PAMIX_Extensions.is_local_task.status  =
