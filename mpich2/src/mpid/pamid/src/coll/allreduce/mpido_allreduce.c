@@ -60,14 +60,27 @@ int MPIDO_Allreduce(void *sendbuf,
    pami_metadata_t *my_allred_md = (pami_metadata_t *)NULL;
    int alg_selected = 0;
 
-   rc = MPIDI_Datatype_to_pami(dt, &pdt, op, &pop, &mu);
+   if(likely(dt == MPI_DOUBLE || dt == MPI_DOUBLE_PRECISION))
+   {
+      rc = MPI_SUCCESS;
+      pdt = PAMI_TYPE_DOUBLE;
+      if(likely(op == MPI_SUM))
+         pop = PAMI_DATA_SUM; 
+      else if(likely(op == MPI_MAX))
+         pop = PAMI_DATA_MAX; 
+      else if(likely(op == MPI_MIN))
+         pop = PAMI_DATA_MIN; 
+      else rc = MPIDI_Datatype_to_pami(dt, &pdt, op, &pop, &mu);
+   }
+   else rc = MPIDI_Datatype_to_pami(dt, &pdt, op, &pop, &mu);
+
   if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0))
       fprintf(stderr,"allred rc %u, Datatype %p, op %p, mu %u, selectedvar %u != %u\n",
               rc, pdt, pop, mu, 
               (unsigned)comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLREDUCE],MPID_COLL_USE_MPICH);
       /* convert to metadata query */
-   if(rc != MPI_SUCCESS || 
-      comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLREDUCE] == MPID_COLL_USE_MPICH)
+  if(unlikely(rc != MPI_SUCCESS || 
+	      comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLREDUCE] == MPID_COLL_USE_MPICH))
    {
       if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0))
          fprintf(stderr,"Using MPICH allreduce type %u.\n",
@@ -76,7 +89,7 @@ int MPIDO_Allreduce(void *sendbuf,
       return MPIR_Allreduce(sendbuf, recvbuf, count, dt, op, comm_ptr, mpierrno);
    }
 
-   if(sendbuf == MPI_IN_PLACE) 
+  if(unlikely(sendbuf == MPI_IN_PLACE))
    {
       sbuf = recvbuf;
    }
@@ -94,12 +107,12 @@ int MPIDO_Allreduce(void *sendbuf,
 
 #ifdef MPIDI_BASIC_COLLECTIVE_SELECTION
    TRACE_ERR("Allreduce - Basic Collective Selection\n");
-   if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLREDUCE] == MPID_COLL_SELECTED)
+   if(likely(comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLREDUCE] == MPID_COLL_SELECTED))
    {
-      if(pop == PAMI_DATA_SUM || pop == PAMI_DATA_MAX || pop == PAMI_DATA_MIN)
+      if(likely(pop == PAMI_DATA_SUM || pop == PAMI_DATA_MAX || pop == PAMI_DATA_MIN))
       {
          /* double protocol works on all message sizes */
-         if(pdt == PAMI_TYPE_DOUBLE && comm_ptr->mpid.query_allred_dsmm == MPID_COLL_QUERY)
+         if(likely(pdt == PAMI_TYPE_DOUBLE && comm_ptr->mpid.query_allred_dsmm == MPID_COLL_QUERY))
          {
             my_allred = comm_ptr->mpid.cached_allred_dsmm;
             my_allred_md = &comm_ptr->mpid.cached_allred_dsmm_md;
@@ -159,9 +172,9 @@ int MPIDO_Allreduce(void *sendbuf,
          }
       }
       TRACE_ERR("Alg selected: %d\n", alg_selected);
-      if(alg_selected)
+      if(likely(alg_selected))
       {
-        if(comm_ptr->mpid.must_query[PAMI_XFER_ALLREDUCE][0] == MPID_COLL_CHECK_FN_REQUIRED)
+        if(unlikely(comm_ptr->mpid.must_query[PAMI_XFER_ALLREDUCE][0] == MPID_COLL_CHECK_FN_REQUIRED))
         {
            if(my_allred_md->check_fn != NULL)/*This should always be the case in FCA.. Otherwise punt to mpich*/
            {
@@ -255,7 +268,7 @@ int MPIDO_Allreduce(void *sendbuf,
 
    }
 
-   if(!alg_selected) /* must be fallback to MPICH */
+   if(unlikely(!alg_selected)) /* must be fallback to MPICH */
    {
       if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0))
          fprintf(stderr,"Using MPICH allreduce\n");
@@ -274,7 +287,7 @@ int MPIDO_Allreduce(void *sendbuf,
               my_allred_md->name,
               (unsigned) comm_ptr->context_id);
    }
-   if(MPIDI_Process.context_post)
+   if(unlikely(MPIDI_Process.context_post))
    {
       allred_post.coll_struct = &allred;
       TRACE_ERR("posting allreduce, context: %d, algoname: %s, dt: %s, op: %s, count: %d\n", 0,
