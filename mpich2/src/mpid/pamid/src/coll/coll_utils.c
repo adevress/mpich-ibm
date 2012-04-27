@@ -27,9 +27,8 @@
 pami_result_t MPIDI_Pami_post_wrapper(pami_context_t context, void *cookie)
 {
    TRACE_ERR("In post wrapper\n");
-   MPIDI_Post_coll_t *coll = (MPIDI_Post_coll_t*)cookie;
    TRACE_ERR("About to call collecive\n");
-   PAMI_Collective(context, (pami_xfer_t *)coll->coll_struct);
+   PAMI_Collective(context, (pami_xfer_t *)cookie);
    TRACE_ERR("Done calling collective\n");
    return PAMI_SUCCESS;
 }

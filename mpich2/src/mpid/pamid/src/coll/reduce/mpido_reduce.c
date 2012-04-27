@@ -149,20 +149,12 @@ int MPIDO_Reduce(void *sendbuf,
                  my_reduce_md->name,
               (unsigned) comm_ptr->context_id);
       }
-      if(MPIDI_Process.context_post)
-      {
-         TRACE_ERR("Posting reduce, context %d, algoname: %s, exflag: %d\n", 0,
-            my_reduce_md->name, exflag);
-         MPIDI_Post_coll_t reduce_post;
-         reduce_post.coll_struct = &reduce;
-         rc = PAMI_Context_post(MPIDI_Context[0], &reduce_post.state, MPIDI_Pami_post_wrapper, (void *)&reduce_post);
-         TRACE_ERR("Reduce posted, rc: %d\n", rc);
-      }
-      else
-      {
-         TRACE_ERR("Calling PAMI_Collective with reduce structure\n");
-         rc = PAMI_Collective(MPIDI_Context[0], (pami_xfer_t *)&reduce);
-      }
+      TRACE_ERR("%s reduce, context %d, algoname: %s, exflag: %d\n", MPIDI_Process.context_post.active>0?"Posting":"Invoking", 0,
+                my_reduce_md->name, exflag);
+      MPIDI_Post_coll_t reduce_post;
+      MPIDI_Context_post(MPIDI_Context[0], &reduce_post.state,
+                         MPIDI_Pami_post_wrapper, (void *)&reduce);
+      TRACE_ERR("Reduce %s\n", MPIDI_Process.context_post.active>0?"posted":"invoked");
    }
    else
    {
@@ -176,5 +168,5 @@ int MPIDO_Reduce(void *sendbuf,
 
    MPID_PROGRESS_WAIT_WHILE(reduce_active);
    TRACE_ERR("Reduce done\n");
-   return rc;
+   return 0;
 }

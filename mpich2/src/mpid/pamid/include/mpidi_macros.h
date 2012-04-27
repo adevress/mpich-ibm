@@ -117,7 +117,8 @@ MPIDI_Context_post(pami_context_t       context,
                    pami_work_function   fn,
                    void               * cookie)
 {
-  if(MPIDI_Process.context_post)
+#if (MPIU_THREAD_GRANULARITY == MPIU_THREAD_GRANULARITY_PER_OBJECT)
+  if (likely(MPIDI_Process.perobj.context_post.active > 0))
     {
       pami_result_t rc;
       rc = PAMI_Context_post(context, work, fn, cookie);
@@ -125,17 +126,32 @@ MPIDI_Context_post(pami_context_t       context,
     }
   else
     {
-      fn(context, cookie);
+      /* Lock access to the context. For more information see discussion of the
+       * simplifying assumption that the "per object" mpich lock mode does not
+       * expect a completely single threaded run environment in the file
+       * src/mpid/pamid/src/mpid_progress.h
+       */
+       PAMI_Context_lock(context);
+       fn(context, cookie);
+       PAMI_Context_unlock(context);
     }
+#else /* (MPIU_THREAD_GRANULARITY != MPIU_THREAD_GRANULARITY_PER_OBJECT) */
+  /*
+   * It is not necessary to lock the context before access in the "global"
+   * mpich lock mode because all threads, application and async progress,
+   * must first acquire the global mpich lock upon entry into the library.
+   */
+  fn(context, cookie);
+#endif
 }
 
-
+#if (MPIU_THREAD_GRANULARITY == MPIU_THREAD_GRANULARITY_PER_OBJECT)
 #define MPIDI_Send_post(__func, __req)                          \
 ({                                                              \
-  if (likely(MPIDI_Process.context_post > 0))                   \
-    {                                                           \
-      pami_context_t context = MPIDI_Context_local(__req);      \
+  pami_context_t context = MPIDI_Context_local(__req);          \
                                                                 \
+  if (likely(MPIDI_Process.perobj.context_post.active > 0))     \
+    {                                                           \
       pami_result_t rc;                                         \
       rc = PAMI_Context_post(context,                           \
                              &(__req)->mpid.post_request,       \
@@ -145,9 +161,16 @@ MPIDI_Context_post(pami_context_t       context,
     }                                                           \
   else                                                          \
     {                                                           \
-      __func(MPIDI_Context[0], __req);                          \
+      PAMI_Context_lock(context);                               \
+      __func(context, __req);                                   \
+      PAMI_Context_unlock(context);                             \
     }                                                           \
 })
-
+#else /* (MPIU_THREAD_GRANULARITY != MPIU_THREAD_GRANULARITY_PER_OBJECT) */
+#define MPIDI_Send_post(__func, __req)                          \
+({                                                              \
+  __func(MPIDI_Context[0], __req);                              \
+})
+#endif /* #if (MPIU_THREAD_GRANULARITY == MPIU_THREAD_GRANULARITY_PER_OBJECT) */
 
 #endif

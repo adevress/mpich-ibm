@@ -363,17 +363,9 @@ MPIDO_Allgatherv(void *sendbuf,
       /* disable with "safe allgatherv" env var */
       if(comm_ptr->mpid.preallreduces[MPID_ALLGATHERV_PREALLREDUCE])
       {
-         if(MPIDI_Process.context_post)
-         {
-            MPIDI_Post_coll_t allred_post;
-            allred_post.coll_struct = &allred;
-            PAMI_Context_post(MPIDI_Context[0], &allred_post.state, 
-               MPIDI_Pami_post_wrapper, (void *)&allred_post);
-         }
-         else
-         {
-            PAMI_Collective(MPIDI_Context[0], (pami_xfer_t *)&allred);
-         }
+         MPIDI_Post_coll_t allred_post;
+         MPIDI_Context_post(MPIDI_Context[0], &allred_post.state,
+                            MPIDI_Pami_post_wrapper, (void *)&allred);
 
          MPID_PROGRESS_WAIT_WHILE(allred_active);
       }
@@ -438,26 +430,18 @@ MPIDO_Allgatherv(void *sendbuf,
                  my_md->name,
               (unsigned) comm_ptr->context_id);
       }
-      if(MPIDI_Process.context_post)
-      {
-         TRACE_ERR("Posting Allgatherv\n");
-         MPIDI_Post_coll_t allgatherv_post;
-         allgatherv_post.coll_struct = &allgatherv;
-         rc = PAMI_Context_post(MPIDI_Context[0], &allgatherv_post.state,
-            MPIDI_Pami_post_wrapper, (void *)&allgatherv_post);
-         TRACE_ERR("Allgatherv posted, rc: %d\n", rc);
-      }
-      else
-      {
-         TRACE_ERR("Calling allgatherv via PAMI_Collective()\n");
-         rc = PAMI_Collective(MPIDI_Context[0], (pami_xfer_t *)&allgatherv);
-      }
+
+      TRACE_ERR("Calling allgatherv via %s()\n", MPIDI_Process.context_post.active>0?"PAMI_Collective":"PAMI_Context_post");
+      MPIDI_Post_coll_t allgatherv_post;
+      MPIDI_Context_post(MPIDI_Context[0], &allgatherv_post.state,
+                         MPIDI_Pami_post_wrapper, (void *)&allgatherv);
+
       MPIDI_Update_last_algorithm(comm_ptr, my_md->name);
 
       TRACE_ERR("Rank %d waiting on active %d\n", comm_ptr->rank, allgatherv_active);
       MPID_PROGRESS_WAIT_WHILE(allgatherv_active);
 
-      return rc;
+      return PAMI_SUCCESS;
    }
 
    /* TODO These need ordered in speed-order */

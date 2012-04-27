@@ -348,22 +348,11 @@ int MPIDO_Allreduce(void *sendbuf,
               my_allred_md->name,
               (unsigned) comm_ptr->context_id);
    }
-   if(unlikely(MPIDI_Process.context_post))
-   {
-     MPIDI_Post_coll_t allred_post;
-      allred_post.coll_struct = &allred;
-      TRACE_ERR("posting allreduce, context: %d, algoname: %s, dt: %s, op: %s, count: %d\n", 0,
-                my_allred_md->name, dt_str, op_str, count);
-      rc = PAMI_Context_post(MPIDI_Context[0], &allred_post.state, 
-                             MPIDI_Pami_post_wrapper, (void *)&allred_post);
-      TRACE_ERR("allreduce posted, rc: %d\n", rc);
-   }
-   else
-   {
-      rc = PAMI_Collective(MPIDI_Context[0], (pami_xfer_t *)&allred);
-   }
 
-   MPID_assert_always(rc == PAMI_SUCCESS);
+   MPIDI_Post_coll_t allred_post;
+   MPIDI_Context_post(MPIDI_Context[0], &allred_post.state,
+                      MPIDI_Pami_post_wrapper, (void *)&allred);
+
    MPID_PROGRESS_WAIT_WHILE(active);
    TRACE_ERR("allreduce done\n");
    return MPI_SUCCESS;

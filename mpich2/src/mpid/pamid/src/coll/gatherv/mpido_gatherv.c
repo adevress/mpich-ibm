@@ -43,7 +43,6 @@ int MPIDO_Gatherv(void *sendbuf,
 
 {
    TRACE_ERR("Entering MPIDO_Gatherv\n");
-   int rc;
    int contig, rsize, ssize;
    int pamidt = 1;
    ssize = 0;
@@ -159,24 +158,16 @@ int MPIDO_Gatherv(void *sendbuf,
               my_gatherv_md->name,
               (unsigned) comm_ptr->context_id);
    }
-   if(MPIDI_Process.context_post)
-   {
-      MPIDI_Post_coll_t gatherv_post;
-      TRACE_ERR("Posting gatherv\n");
-      gatherv_post.coll_struct = &gatherv;
-      rc = PAMI_Context_post(MPIDI_Context[0], &gatherv_post.state, 
-                                 MPIDI_Pami_post_wrapper, (void *)&gatherv_post);
-      TRACE_ERR("Gatherv posted; rc: %d\n", rc);
-   }
-   else
-   {
-      TRACE_ERR("Calling PAMI_Collective for gatherv\n");
-      rc = PAMI_Collective(MPIDI_Context[0], (pami_xfer_t *)&gatherv);
-   }
+
+   MPIDI_Post_coll_t gatherv_post;
+   TRACE_ERR("%s gatherv\n", MPIDI_Process.context_post.active>0?"Posting":"Invoking");
+   MPIDI_Context_post(MPIDI_Context[0], &gatherv_post.state,
+                      MPIDI_Pami_post_wrapper, (void *)&gatherv);
+   TRACE_ERR("Gatherv %s\n", MPIDI_Process.context_post.active>0?"posted":"invoked");
    
    TRACE_ERR("Waiting on active %d\n", gatherv_active);
    MPID_PROGRESS_WAIT_WHILE(gatherv_active);
 
    TRACE_ERR("Leaving MPIDO_Gatherv\n");
-   return rc;
+   return 0;
 }

@@ -50,8 +50,6 @@ typedef struct
 typedef struct
 {
   unsigned avail_contexts;
-  volatile unsigned async_progress_active;
-  unsigned context_post;
   unsigned short_limit;
   unsigned eager_limit;
   unsigned eager_limit_local;
@@ -68,7 +66,6 @@ typedef struct
   MPIDI_RequestHandle_t request_handles[MPIDI_MAX_THREADS];
 #endif
 
-  unsigned async_progress_enabled;
   unsigned verbose;        /**< The current level of verbosity for end-of-job stats. */
   unsigned statistics;     /**< The current level of stats collection.               */
   unsigned rma_pending;    /**< The max num outstanding requests during an RMA op    */
@@ -82,7 +79,23 @@ typedef struct
     unsigned subcomms;
     unsigned select_colls; /**< Enable collective selection */
   }
-  optimized;  
+  optimized;
+
+  struct
+  {
+    volatile unsigned active;  /**< Number of contexts with active async progress */
+    unsigned          mode;    /**< 0 == 'disabled', 1 == 'locked', 2 == 'trigger' */
+  }
+  async_progress;
+
+  struct
+  {
+    struct
+    {
+      unsigned requested;    /**< 1 == application requests context post */
+      unsigned active;       /**< 1 == context post is currently required */
+    } context_post;
+  } perobj;                  /**< This structure is only used in the 'perobj' mpich lock mode. */
 
 } MPIDI_Process_t;
 

@@ -40,7 +40,7 @@ int MPIDO_Bcast(void *buffer,
                 int *mpierrno)
 {
    TRACE_ERR("in mpido_bcast\n");
-   int data_size, data_contig, rc;
+   int data_size, data_contig;
    void *data_buffer    = NULL,
         *noncontig_buff = NULL;
    volatile unsigned active = 1;
@@ -155,8 +155,8 @@ int MPIDO_Bcast(void *buffer,
    }
 
 
-   TRACE_ERR("posting bcast, context: %d, algoname: %s\n",0, 
-      my_bcast_md->name);
+   TRACE_ERR("%s bcast, context: %d, algoname: %s\n",
+             MPIDI_Process.context_post.active>0?"posting":"invoking", 0, my_bcast_md->name);
    MPIDI_Update_last_algorithm(comm_ptr, my_bcast_md->name);
 
    if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0))
@@ -170,17 +170,10 @@ int MPIDO_Bcast(void *buffer,
               my_bcast_md->name,
               (unsigned) comm_ptr->context_id);
    }
-   if(MPIDI_Process.context_post)
-   {
-      bcast_post.coll_struct = &bcast;
-      rc = PAMI_Context_post(MPIDI_Context[0], &bcast_post.state, MPIDI_Pami_post_wrapper, (void *)&bcast_post);
 
-      TRACE_ERR("bcast posted, rc: %d\n", rc);
-   }
-   else
-   {
-      rc = PAMI_Collective(MPIDI_Context[0], (pami_xfer_t *)&bcast);
-   }
+   MPIDI_Context_post(MPIDI_Context[0], &bcast_post.state, MPIDI_Pami_post_wrapper, (void *)&bcast);
+
+   TRACE_ERR("bcast %s\n", MPIDI_Process.context_post.active>0?"posted":"invoked");
 
    MPID_PROGRESS_WAIT_WHILE(active);
    TRACE_ERR("bcast done\n");
@@ -195,5 +188,5 @@ int MPIDO_Bcast(void *buffer,
    }
 
    TRACE_ERR("leaving bcast\n");
-   return rc;
+   return 0;
 }

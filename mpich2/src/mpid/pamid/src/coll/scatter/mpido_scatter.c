@@ -176,7 +176,6 @@ int MPIDO_Scatter(void *sendbuf,
 
 
    pami_xfer_t scatter;
-   pami_result_t rc;
    MPIDI_Post_coll_t scatter_post;
    pami_algorithm_t my_scatter;
    pami_metadata_t *my_scatter_md;
@@ -249,26 +248,16 @@ int MPIDO_Scatter(void *sendbuf,
               my_scatter_md->name,
               (unsigned) comm_ptr->context_id);
    }
-   if(MPIDI_Process.context_post)
-   {
-      TRACE_ERR("Posting scatter\n");
-      scatter_post.coll_struct = &scatter;
-      rc = PAMI_Context_post(MPIDI_Context[0], &scatter_post.state,
-            MPIDI_Pami_post_wrapper, (void *)&scatter_post);
-   }
-   else
-   {
-      TRACE_ERR("Calling scatter\n");
-      rc = PAMI_Collective(MPIDI_Context[0], (pami_xfer_t *)&scatter);
-   }
-   TRACE_ERR("Return code: %d\n", rc);
+   TRACE_ERR("%s scatter\n", MPIDI_Process.context_post.active>0?"Posting":"Invoking");
+   MPIDI_Context_post(MPIDI_Context[0], &scatter_post.state,
+                      MPIDI_Pami_post_wrapper, (void *)&scatter);
    TRACE_ERR("Waiting on active %d\n", scatter_active);
    MPID_PROGRESS_WAIT_WHILE(scatter_active);
 
 
    TRACE_ERR("Leaving MPIDO_Scatter\n");
 
-   return rc;
+   return 0;
 }
 
 

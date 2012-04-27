@@ -237,7 +237,7 @@ int MPIDO_Scatterv(void *sendbuf,
                    MPID_Comm *comm_ptr,
                    int *mpierrno)
 {
-  int contig, tmp, pamidt = 1, rc;
+  int contig, tmp, pamidt = 1;
   int ssize, rsize;
   MPID_Datatype *dt_ptr = NULL;
   MPI_Aint send_true_lb=0, recv_true_lb;
@@ -369,26 +369,16 @@ int MPIDO_Scatterv(void *sendbuf,
               my_scatterv_md->name,
               (unsigned) comm_ptr->context_id);
    }
-   if(MPIDI_Process.context_post)
-   {
-      MPIDI_Post_coll_t scatterv_post;
-      TRACE_ERR("Posting scatterv\n");
-      scatterv_post.coll_struct = &scatterv;
-      rc = PAMI_Context_post(MPIDI_Context[0], &scatterv_post.state,
-            MPIDI_Pami_post_wrapper, (void *)&scatterv_post);
-   }
-   else
-   {
-      TRACE_ERR("Calling scatterv\n");
-      rc = PAMI_Collective(MPIDI_Context[0], (pami_xfer_t *)&scatterv);
-   }
-   TRACE_ERR("Collective RC: %d\n", rc);
+   MPIDI_Post_coll_t scatterv_post;
+   TRACE_ERR("%s scatterv\n", MPIDI_Process.context_post.active>0?"Posting":"Invoking");
+   MPIDI_Context_post(MPIDI_Context[0], &scatterv_post.state,
+                      MPIDI_Pami_post_wrapper, (void *)&scatterv);
 
    TRACE_ERR("Waiting on active %d\n", scatterv_active);
    MPID_PROGRESS_WAIT_WHILE(scatterv_active);
 
    TRACE_ERR("Leaving MPIDO_Scatterv\n");
-   return rc;
+   return 0;
 }
 
 
@@ -456,17 +446,11 @@ int MPIDO_Scatterv(void *sendbuf,
   /* set the internal control flow to disable internal star tuning */
    if(comm_ptr->mpid.preallreduces[MPID_SCATTERV_PREALLREDUCE])
    {
-      if(MPIDI_Process.context_post)
-      {
-         MPIDI_Post_coll_t allred_post;
-         allred_post.coll_struct = &allred;
-         rc = PAMI_Context_post(MPIDI_Context[0], &allred_post.state, 
-                  MPIDI_Pami_post_wrapper, (void *)&allred_post);
-      }
-      else
-      {
-         rc = PAMI_Collective(MPIDI_Context[0], (pami_xfer_t *)&allred);
-      }
+     TRACE_ERR("%s scatterv pre-allreduce\n", MPIDI_Process.context_post.active>0?"Posting":"Invoking");
+     MPIDI_Post_coll_t allred_post;
+     rc = MPIDI_Context_post(MPIDI_Context[0], &allred_post.state,
+                             MPIDI_Pami_post_wrapper, (void *)&allred);
+
       MPID_PROGRESS_WAIT_WHILE(allred_active);
    }
   /* reset flag */

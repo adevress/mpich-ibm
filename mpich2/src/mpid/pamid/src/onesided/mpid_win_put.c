@@ -332,6 +332,18 @@ MPID_Put(void         *origin_addr,
   win->mpid.sync.total += req->target.dt.num_contig;
 
 
+  /* The pamid one-sided design requires context post in order to handle the
+   * case where the number of pending rma operation exceeds the
+   * 'PAMID_RMA_PENDING' threshold. When there are too many pending requests the
+   * work function remains on the context post queue (by returning PAMI_EAGAIN)
+   * so that the next time the context is advanced the work function will be
+   * invoked again.
+   *
+   * TODO - When context post is not required it would be better to attempt a
+   *        direct context operation and then fail over to using context post if
+   *        the rma pending threshold has been reached. This would result in
+   *        better latency for one-sided operations.
+   */
   PAMI_Context_post(MPIDI_Context[0], &req->post_request, MPIDI_Put, req);
 
 

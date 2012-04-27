@@ -30,7 +30,14 @@
 static inline unsigned
 MPIDI_Context_hash(pami_task_t rank, unsigned ctxt, unsigned bias, unsigned ncontexts)
 {
+#if (MPIU_THREAD_GRANULARITY == MPIU_THREAD_GRANULARITY_PER_OBJECT)
   return (( rank + ctxt + bias ) & (ncontexts-1));
+#else
+  /* The 'global' mpich lock mode only supports a single context. See
+   * discussion in mpich2/src/mpid/pamid/src/mpid_init.c for more information.
+   */
+  return 0;
+#endif
 }
 static inline void
 MPIDI_Context_endpoint(MPID_Request * req, pami_endpoint_t * e)
@@ -104,23 +111,13 @@ MPID_Isend_inline(const void    * buf,
   MPIDI_Request_setPeerRank_comm(sreq, rank);
 
   unsigned ncontexts = MPIDI_Process.avail_contexts;
-  unsigned context_post = MPIDI_Process.context_post;
   /* communicator & destination info */
   sreq->comm = comm;
   sreq->kind = MPID_REQUEST_SEND;
   MPIR_Comm_add_ref(comm);
 
-  if (likely(context_post > 0))
-    {
-      pami_context_t context = MPIDI_Context[MPIDI_Context_hash(rank, context_id, 0, ncontexts)];
-      pami_result_t rc;
-      rc = PAMI_Context_post(context, &sreq->mpid.post_request, MPIDI_Isend_handoff, sreq);
-      MPID_assert(rc == PAMI_SUCCESS);
-    }
-  else
-    {
-      MPIDI_Isend_handoff(MPIDI_Context[0], sreq);
-    }
+  pami_context_t context = MPIDI_Context[MPIDI_Context_hash(rank, context_id, 0, ncontexts)];
+  MPIDI_Context_post(context, &sreq->mpid.post_request, MPIDI_Isend_handoff, sreq);
 
   return MPI_SUCCESS;
 }

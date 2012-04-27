@@ -111,7 +111,6 @@ static pami_result_t geom_destroy_wrapper(pami_context_t context, void *cookie)
 
 void MPIDI_Coll_comm_create(MPID_Comm *comm)
 {
-   int rc;
    volatile int geom_init = 1;
    int i;
    MPIDI_Post_geom_create_t geom_post;
@@ -167,46 +166,21 @@ void MPIDI_Coll_comm_create(MPID_Comm *comm)
          numconfigs = 0;
       }
 
-      if(MPIDI_Process.context_post)
-      {
-         geom_post.client = MPIDI_Client;
-         geom_post.configs = &config;
-         geom_post.context_offset = 0; /* TODO BES investigate */
-         geom_post.num_configs = numconfigs;
-         geom_post.newgeom = &comm->mpid.geometry,
-         geom_post.parent = NULL;
-         geom_post.id     = comm->context_id;
-         geom_post.ranges = comm->mpid.tasks_descriptor.ranges;
-         geom_post.slice_count = (size_t)comm->local_size,
-         geom_post.fn = geom_create_cb_done;
-         geom_post.cookie = (void*)&geom_init;
+      geom_post.client = MPIDI_Client;
+      geom_post.configs = &config;
+      geom_post.context_offset = 0; /* TODO BES investigate */
+      geom_post.num_configs = numconfigs;
+      geom_post.newgeom = &comm->mpid.geometry,
+      geom_post.parent = NULL;
+      geom_post.id     = comm->context_id;
+      geom_post.ranges = comm->mpid.tasks_descriptor.ranges;
+      geom_post.slice_count = (size_t)comm->local_size,
+      geom_post.fn = geom_create_cb_done;
+      geom_post.cookie = (void*)&geom_init;
 
-         TRACE_ERR("Posting geom_create\n");
-         rc = PAMI_Context_post(MPIDI_Context[0], &geom_post.state, 
-                  geom_rangelist_create_wrapper, (void *)&geom_post);
-      }
-      else
-      {
-         rc = PAMI_Geometry_create_taskrange(MPIDI_Client,
-                                          0, /* TODO BES need to investigate */
-                                         &config,
-                                         numconfigs,
-                                         &comm->mpid.geometry,
-                                         NULL, /*MPIDI_Process.world_geometry,*/
-                                         comm->context_id,
-                                         comm->mpid.tasks_descriptor.ranges,
-                                         (size_t)comm->local_size,
-                                         MPIDI_Context[0],
-                                         geom_create_cb_done,
-                                         (void*)&geom_init);
-
-      }
-
-      if(rc != PAMI_SUCCESS)
-      {
-         fprintf(stderr,"Error creating subcomm geometry. %d\n", rc);
-         exit(1);
-      }
+      TRACE_ERR("%s geom_create\n", MPIDI_Process.context_post>0?"Posting":"Invoking");
+      MPIDI_Context_post(MPIDI_Context[0], &geom_post.state,
+                         geom_rangelist_create_wrapper, (void *)&geom_post);
 
       TRACE_ERR("Waiting for geom create to finish\n");
       MPID_PROGRESS_WAIT_WHILE(geom_init);
@@ -230,7 +204,7 @@ void MPIDI_Coll_comm_create(MPID_Comm *comm)
 void MPIDI_Coll_comm_destroy(MPID_Comm *comm)
 {
   TRACE_ERR("MPIDI_Coll_comm_destroy enter\n");
-  int i, rc;
+  int i;
   volatile int geom_destroy = 1;
   MPIDI_Post_geom_destroy_t geom_destroy_post;
   if (!MPIDI_Process.optimized.collectives)
@@ -256,30 +230,14 @@ void MPIDI_Coll_comm_destroy(MPID_Comm *comm)
 
    TRACE_ERR("Destroying geometry\n");
 
-   if(MPIDI_Process.context_post)
-   {
-      geom_destroy_post.client = MPIDI_Client;
-      geom_destroy_post.geom = &comm->mpid.geometry;
-      geom_destroy_post.fn = geom_destroy_cb_done;
-      geom_destroy_post.cookie = (void *)&geom_destroy;
-      TRACE_ERR("Posting geom_destroy\n");
-      rc = PAMI_Context_post(MPIDI_Context[0], &geom_destroy_post.state, 
-                  geom_destroy_wrapper, (void *)&geom_destroy_post);
-   }
-   else
-   {
-      rc = PAMI_Geometry_destroy(MPIDI_Client, 
-                        &comm->mpid.geometry, 
-                        MPIDI_Context[0],
-                        geom_destroy_cb_done,
-                        (void *)&geom_destroy);
-   }
+   geom_destroy_post.client = MPIDI_Client;
+   geom_destroy_post.geom = &comm->mpid.geometry;
+   geom_destroy_post.fn = geom_destroy_cb_done;
+   geom_destroy_post.cookie = (void *)&geom_destroy;
+   TRACE_ERR("%s geom_destroy\n", MPIDI_Process.context_post>0?"Posting":"Invoking");
+   MPIDI_Context_post(MPIDI_Context[0], &geom_destroy_post.state,
+                      geom_destroy_wrapper, (void *)&geom_destroy_post);
 
-   if(rc != PAMI_SUCCESS)
-   {
-      fprintf(stderr,"Error destroying geometry %d\n", rc);
-      exit(1);
-   }
    TRACE_ERR("Waiting for geom destroy to finish\n");
    MPID_PROGRESS_WAIT_WHILE(geom_destroy);
    TRACE_ERR("Freeing geometry ranges\n");

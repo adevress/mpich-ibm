@@ -51,7 +51,6 @@ int MPIDO_Alltoallv(void *sendbuf,
    pami_type_t stype, rtype;
    MPI_Aint sdt_true_lb, rdt_true_lb;
    MPIDI_Post_coll_t alltoallv_post;
-   int rc;
    int pamidt = 1;
    int tmp;
 
@@ -152,22 +151,9 @@ int MPIDO_Alltoallv(void *sendbuf,
               my_alltoallv_md->name,
               (unsigned) comm_ptr->context_id);
    }
-   if(MPIDI_Process.context_post)
-   {
-      if(!comm_ptr->rank)
-         TRACE_ERR("Posting alltoallv\n");
-      alltoallv_post.coll_struct = &alltoallv;
-      rc = PAMI_Context_post(MPIDI_Context[0], &alltoallv_post.state, 
-            MPIDI_Pami_post_wrapper, (void *)&alltoallv_post);
-      if(!comm_ptr->rank)
-         TRACE_ERR("Alltoallv posted, rc: %d\n", rc);
-   }
-   else
-   {
-      if(!comm_ptr->rank)
-         TRACE_ERR("Calling PAMI_Collective\n");
-      rc = PAMI_Collective(MPIDI_Context[0], (pami_xfer_t *)&alltoallv);
-   }
+
+   MPIDI_Context_post(MPIDI_Context[0], &alltoallv_post.state,
+                      MPIDI_Pami_post_wrapper, (void *)&alltoallv);
 
    TRACE_ERR("%d waiting on active %d\n", comm_ptr->rank, active);
    MPID_PROGRESS_WAIT_WHILE(active);
@@ -176,5 +162,5 @@ int MPIDO_Alltoallv(void *sendbuf,
    TRACE_ERR("Leaving alltoallv\n");
 
 
-   return rc;
+   return 0;
 }

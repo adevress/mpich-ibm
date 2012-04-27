@@ -187,16 +187,9 @@ int MPIDO_Gather(void *sendbuf,
       allred.cmd.xfer_allreduce.stypecount = 1;
       allred.cmd.xfer_allreduce.rtypecount = 1;
       allred.cmd.xfer_allreduce.op = PAMI_DATA_BAND;
-      if(MPIDI_Process.context_post)
-      {
-         allred_post.coll_struct = &allred;
-         PAMI_Context_post(MPIDI_Context[0], &allred_post.state,
-                           MPIDI_Pami_post_wrapper, (void *)&allred_post);
-      }
-      else
-      {
-         PAMI_Collective(MPIDI_Context[0], (pami_xfer_t *)&allred);
-      }
+
+      MPIDI_Context_post(MPIDI_Context[0], &allred_post.state,
+                         MPIDI_Pami_post_wrapper, (void *)&allred);
       MPID_PROGRESS_WAIT_WHILE(allred_active);
    }
 
@@ -210,7 +203,6 @@ int MPIDO_Gather(void *sendbuf,
    }
 
 
-   pami_result_t rc;
    pami_algorithm_t my_gather;
    pami_metadata_t *my_gather_md;
    int queryreq = 0;
@@ -284,22 +276,14 @@ int MPIDO_Gather(void *sendbuf,
               my_gather_md->name,
               (unsigned) comm_ptr->context_id);
    }
-   if(MPIDI_Process.context_post)
-   {
-      TRACE_ERR("Posting gather\n");
-      gather_post.coll_struct = &gather;
-      rc = PAMI_Context_post(MPIDI_Context[0], &gather_post.state, 
-                              MPIDI_Pami_post_wrapper, (void *)&gather_post);
-   }
-   else
-   {
-      TRACE_ERR("Calling gather\n");
-      rc = PAMI_Collective(MPIDI_Context[0], (pami_xfer_t *)&gather);
-   }
-   TRACE_ERR("Return code: %d\n", rc);
+
+   TRACE_ERR("%s gather\n", MPIDI_Process.context_post.active>0?"Posting":"Invoking");
+   MPIDI_Context_post(MPIDI_Context[0], &gather_post.state,
+                      MPIDI_Pami_post_wrapper, (void *)&gather);
+
    TRACE_ERR("Waiting on active: %d\n", active);
    MPID_PROGRESS_WAIT_WHILE(active);
 
    TRACE_ERR("Leaving MPIDO_Gather\n");
-   return rc;
+   return 0;
 }

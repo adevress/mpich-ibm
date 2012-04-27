@@ -100,20 +100,39 @@ MPID_Cancel_send(MPID_Request * sreq)
   MPIDI_Request_uncomplete(sreq);
   /* TRACE_ERR("Posting cancel for request=%p   cc(curr)=%d ref(curr)=%d\n", sreq, val+1, MPIU_Object_get_ref(sreq)); */
 
-  if (likely(MPIDI_Process.context_post > 0))
+  pami_context_t context = MPIDI_Context_local(sreq);
+
+#if (MPIU_THREAD_GRANULARITY == MPIU_THREAD_GRANULARITY_PER_OBJECT)
+  if (likely(MPIDI_Process.perobj.context_post.active > 0))
     {
       /* This leaks intentionally.  At this time, the amount of work
        * required to avoid a leak here just isn't worth it.
        * Hopefully people aren't cancelling sends too much.
        */
       pami_work_t  * work    = malloc(sizeof(pami_work_t));
-      pami_context_t context = MPIDI_Context_local(sreq);
       PAMI_Context_post(context, work, MPIDI_CancelReq_post, sreq);
     }
   else
     {
-      MPIDI_CancelReq_post(MPIDI_Context[0], sreq);
+      /* Lock access to the context. For more information see discussion of the
+       * simplifying assumption that the "per object" mpich lock mode does not
+       * expect a completely single threaded run environment in the file
+       * src/mpid/pamid/src/mpid_progress.h
+       */
+       PAMI_Context_lock(context);
+       MPIDI_CancelReq_post(context, sreq);
+       PAMI_Context_unlock(context);
     }
+#else /* (MPIU_THREAD_GRANULARITY != MPIU_THREAD_GRANULARITY_PER_OBJECT) */
+  /*
+   * It is not necessary to lock the context before access in the "global" mpich
+   * lock mode because all application threads must first acquire the global
+   * mpich lock upon entry into the library, and any active async threads must
+   * first acquire the global mpich lock before accessing internal mpich data
+   * structures or accessing pami objects. This makes the context lock redundant.
+   */
+  MPIDI_CancelReq_post(context, sreq);
+#endif
 
   return MPI_SUCCESS;
 }

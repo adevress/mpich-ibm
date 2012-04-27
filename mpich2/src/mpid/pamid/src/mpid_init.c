@@ -30,36 +30,50 @@ pami_client_t   MPIDI_Client;
 pami_context_t MPIDI_Context[MPIDI_MAX_CONTEXTS];
 
 MPIDI_Process_t  MPIDI_Process = {
-  .verbose             = 0,
-  .statistics          = 0,
+  .verbose               = 0,
+  .statistics            = 0,
 
 #if (MPIU_THREAD_GRANULARITY == MPIU_THREAD_GRANULARITY_PER_OBJECT)
-  .avail_contexts      = MPIDI_MAX_CONTEXTS,
-  .async_progress_active  = 0,
-  .async_progress_enabled = 1,
-  .context_post        = 1,
+  .avail_contexts        = MPIDI_MAX_CONTEXTS,
+  .async_progress = {
+    .active              = 0,
+    .mode                = ASYNC_PROGRESS_MODE_DEFAULT,
+  },
+  .perobj = {
+    .context_post = {
+      .requested         = (ASYNC_PROGRESS_MODE_DEFAULT == ASYNC_PROGRESS_MODE_LOCKED),
+      .active            = 0,
+    },
+  },
 #else
-  .avail_contexts      = 1,
-  .async_progress_active  = 0,
-  .async_progress_enabled = 0,
-  .context_post        = 0,
+  .avail_contexts        = 1,
+  .async_progress = {
+    .active              = 0,
+    .mode                = ASYNC_PROGRESS_MODE_DISABLED,
+  },
+  .perobj = {
+    .context_post = {
+      .requested         = 0,
+      .active            = 0,
+    },
+  },
 #endif
-  .short_limit         = MPIDI_SHORT_LIMIT,
-  .eager_limit         = MPIDI_EAGER_LIMIT,
-  .eager_limit_local   = MPIDI_EAGER_LIMIT_LOCAL,
+  .short_limit           = MPIDI_SHORT_LIMIT,
+  .eager_limit           = MPIDI_EAGER_LIMIT,
+  .eager_limit_local     = MPIDI_EAGER_LIMIT_LOCAL,
 #if (MPIDI_STATISTICS || MPIDI_PRINTENV)
-  .mp_infolevel        = 0,
-  .mp_statistics       = 0,
-  .mp_printenv         = 0,
+  .mp_infolevel          = 0,
+  .mp_statistics         = 0,
+  .mp_printenv           = 0,
 #endif
 
-  .rma_pending         = 1000,
-  .shmem_pt2pt         = 1,
+  .rma_pending           = 1000,
+  .shmem_pt2pt           = 1,
 
   .optimized = {
-    .collectives       = MPIDI_OPTIMIZED_COLLECTIVE_DEFAULT,
-    .subcomms          = 1,
-    .select_colls      = 2,
+    .collectives         = MPIDI_OPTIMIZED_COLLECTIVE_DEFAULT,
+    .subcomms            = 1,
+    .select_colls        = 2,
   },
 };
 
@@ -213,98 +227,92 @@ MPIDI_PAMI_context_init(int* threading)
   extern int numTasks;
 #endif
 
-  /* ---------------------------------------------------------------------------
-   * TODO: Remove this hardware threads check - it is implementation-specific.
-   *       Instead, use the pami async progress extension as intended. If the
-   *       async progress extension is not able to make async progress after
-   *       the extension has started then the extension will invoke the
-   *       'suspend' trigger to inform mpich that async progress is off. At this
-   *       point the "MPIDI_Process.async_progress_active" value will be set
-   *       to zero.
-   * ------------------------------------------------------------------------ */
-  unsigned hwthreads = PAMIX_Client_query(MPIDI_Client, PAMI_CLIENT_HWTHREADS_AVAILABLE).value.intval;
-  if (hwthreads == 1)
-    {
-      /* VNM mode implies MPI_THREAD_SINGLE, 1 context, and no posting or async progress. */
-      MPIDI_Process.avail_contexts      = 1;
-      MPIDI_Process.context_post        = 0;
-      MPIDI_Process.async_progress_enabled = 0;
-      *threading = MPI_THREAD_SINGLE;
-    }
-  else if (MPIDI_Process.context_post == 0)
-    {
 #if (MPIU_THREAD_GRANULARITY == MPIU_THREAD_GRANULARITY_PER_OBJECT)
-      /*
-       * With MPIU_THREAD_GRANULARITY_PER_OBJECT, avail_contexts was initialized
-       * to MPIDI_MAX_CONTEXTS but this value may be too large for some
-       * run modes on some platforms. At this time, the most appropriate
-       * value under these circumstances seems to be "1", so we will force
-       * that value here. Without this, PAMI_Context_createv() may fail and
-       * cause MPICH to assert.
-       */
-      MPIDI_Process.avail_contexts = 1;
+  /*
+   * ASYNC_PROGRESS_MODE_LOCKED requires context post because the async thread
+   * will hold the context lock indefinitely; the only option for an application
+   * thread to interact with the context is to use context post. See discussion
+   * in src/mpid/pamid/src/mpid_progress.h for more information.
+   *
+   * There are three possible resolutions for the situation when context post is
+   * disabled and async progess mode is 'locked':
+   *  1. abort
+   *  2. silently enable context post
+   *  3. silently demote async progress mode to ASYNC_PROGRESS_MODE_TRIGGER
+   *
+   * For now this configuration is considered erroneous and mpi will abort.
+   */
+  if (MPIDI_Process.async_progress.mode == ASYNC_PROGRESS_MODE_LOCKED &&
+      MPIDI_Process.perobj.context_post.requested == 0)
+    MPID_Abort (NULL, 0, 1, "'locking' async progress requires context post");
 
-      /* Per-obj builds require post & hwthreads for MPI_THREAD_MULTIPLE */
-      /* Note, MPI_THREAD_SERIALIZED may be too restrictive, we might need to reconsider. */
-      if (*threading == MPI_THREAD_MULTIPLE)
-        *threading = MPI_THREAD_SERIALIZED;
+#else /* MPIU_THREAD_GRANULARITY != MPIU_THREAD_GRANULARITY_PER_OBJECT */
+  /*
+   * ASYNC_PROGRESS_MODE_LOCKED is not applicable in the "global lock" thread
+   * mode. See discussion in src/mpid/pamid/src/mpid_progress.h for more
+   * information.
+   *
+   * This configuration is considered erroneous and mpi will abort.
+   */
+  if (MPIDI_Process.async_progress.mode == ASYNC_PROGRESS_MODE_LOCKED)
+    MPID_Abort (NULL, 0, 1, "'locking' async progress not applicable");
 #endif
+
+  /* ----------------------------------
+   *  Figure out the context situation
+   * ---------------------------------- */
+#if (MPIU_THREAD_GRANULARITY == MPIU_THREAD_GRANULARITY_PER_OBJECT)
+
+  /* Limit the number of requested contexts by the maximum number of contexts
+   * allowed.  The default number of requested contexts depends on the mpich
+   * lock mode, 'global' or 'perobj', and may be changed before this point
+   * by an environment variables.
+   */
+  if (MPIDI_Process.avail_contexts > MPIDI_MAX_CONTEXTS)
+    MPIDI_Process.avail_contexts = MPIDI_MAX_CONTEXTS;
+
+  unsigned same = PAMIX_Client_query(MPIDI_Client, PAMI_CLIENT_CONST_CONTEXTS).value.intval;
+  if (same)
+    {
+      /* Determine the maximum number of contexts supported; limit the number of
+       * requested contexts by this value.
+       */
+      unsigned possible_contexts = PAMIX_Client_query(MPIDI_Client, PAMI_CLIENT_NUM_CONTEXTS).value.intval;
+      TRACE_ERR("PAMI allows up to %u contexts; MPICH2 allows up to %u\n",
+                possible_contexts, MPIDI_Process.avail_contexts);
+      if (MPIDI_Process.avail_contexts > possible_contexts)
+        MPIDI_Process.avail_contexts = possible_contexts;
     }
   else
     {
-      /* ---------------------------------- */
-      /*  Figure out the context situation  */
-      /* ---------------------------------- */
-      /*
-       * avail_contexts = MIN(getenv("PAMI_MAXCONTEXTS"), MPIDI_MAX_CONTEXTS, PAMI_CONTEXTS, PAMI_HWTHREADS);
-       *
-       */
-
-
-      if (MPIDI_Process.avail_contexts > MPIDI_MAX_CONTEXTS)
-        MPIDI_Process.avail_contexts = MPIDI_MAX_CONTEXTS;
-
-
-      unsigned same = PAMIX_Client_query(MPIDI_Client, PAMI_CLIENT_CONST_CONTEXTS).value.intval;
-      if (same)
-        {
-          unsigned possible_contexts = PAMIX_Client_query(MPIDI_Client, PAMI_CLIENT_NUM_CONTEXTS).value.intval;
-          TRACE_ERR("PAMI allows up to %u contexts; MPICH2 allows up to %u\n",
-                    possible_contexts, MPIDI_Process.avail_contexts);
-          if (MPIDI_Process.avail_contexts > possible_contexts)
-            MPIDI_Process.avail_contexts = possible_contexts;
-        }
-      else
-        {
-          /* If PAMI didn't give all nodes the same number of contexts, all bets are off for now */
-          MPIDI_Process.avail_contexts = 1;
-        }
-
-
-      if (MPIDI_Process.avail_contexts > hwthreads)
-        MPIDI_Process.avail_contexts = hwthreads;
-
-
-      /* The number of contexts must be a power-of-two, so decrement until we hit a power-of-two */
-      while(MPIDI_Process.avail_contexts & (MPIDI_Process.avail_contexts-1))
-        --MPIDI_Process.avail_contexts;
-      MPID_assert_always(MPIDI_Process.avail_contexts);
-
-
-#if (MPIU_THREAD_GRANULARITY == MPIU_THREAD_GRANULARITY_PER_OBJECT)
-      /* Help a user who REALLY wants async_progress by enabling them, irrespective of thread mode, when async_progress_enabled is set to 2 */
-      if (MPIDI_Process.async_progress_enabled >= 2)
-          *threading = MPI_THREAD_MULTIPLE;
-#endif
+      /* If PAMI didn't give all nodes the same number of contexts, all bets
+       * are off for now */
+      MPIDI_Process.avail_contexts = 1;
     }
 
-#ifdef MPIDI_SINGLE_CONTEXT_ASYNC_PROGRESS
-      if (MPIDI_Process.async_progress_enabled) { /* promote to THREAD_MULTIPLE to handle synchronization in single threaded mode with async progress on */
-          *threading = MPI_THREAD_MULTIPLE;
-      }
-#endif
-  TRACE_ERR("Thread-level=%d, requested=%d\n", *threading, requested_thread_level);
+  /* The number of contexts must be a power-of-two, as required by the
+   * MPIDI_Context_hash() function. Decrement until we hit a power-of-two */
+  while(MPIDI_Process.avail_contexts & (MPIDI_Process.avail_contexts-1))
+    --MPIDI_Process.avail_contexts;
+  MPID_assert_always(MPIDI_Process.avail_contexts);
 
+#else /* (MPIU_THREAD_GRANULARITY != MPIU_THREAD_GRANULARITY_PER_OBJECT) */
+
+  /* Only a single context is supported in the 'global' mpich lock mode.
+   *
+   * A multi-context application will always perform better with the
+   * 'per object' mpich lock mode - regardless of whether async progress is
+   * enabled or not. This is because all threads, application and async
+   * progress, must acquire the single global lock which effectively serializes
+   * the threads and negates any benefit of multiple contexts.
+   *
+   * This single context limitation removes code and greatly simplifies logic.
+   */
+  MPIDI_Process.avail_contexts = 1;
+
+#endif
+
+  TRACE_ERR ("Thread-level=%d, requested=%d\n", *threading, requested_thread_level);
 
 #ifdef OUT_OF_ORDER_HANDLING
   numTasks  = PAMIX_Client_query(MPIDI_Client, PAMI_CLIENT_NUM_TASKS).value.intval;
@@ -480,8 +488,8 @@ MPIDI_PAMI_init(int* rank, int* size, int* threading)
              MPIDI_Process.verbose,
              MPIDI_Process.statistics,
              MPIDI_Process.avail_contexts,
-             MPIDI_Process.async_progress_enabled,
-             MPIDI_Process.context_post,
+             MPIDI_Process.async_progress.mode,
+             MPIDI_Process.perobj.context_post.requested,
              MPIDI_Process.short_limit,
              MPIDI_Process.eager_limit,
              MPIDI_Process.eager_limit_local,
@@ -491,7 +499,7 @@ MPIDI_PAMI_init(int* rank, int* size, int* threading)
              MPIDI_Process.mp_infolevel,
              MPIDI_Process.mp_statistics,
              MPIDI_Process.mp_printenv,
-             (MPIDI_Process.async_progress_enabled) ? 1 : 0,
+             (MPIDI_Process.async_progress.mode != ASYNC_PROGRESS_MODE_DISABLED),
 #endif
              MPIDI_Process.optimized.collectives,
              MPIDI_Process.optimized.select_colls,
@@ -612,17 +620,25 @@ int MPID_Init(int * argc,
   /* ----------------------------- */
   /* Initialize messager           */
   /* ----------------------------- */
-  *provided = requested;
+  if (MPIDI_Process.async_progress.mode == ASYNC_PROGRESS_MODE_TRIGGER)
+  {
+    /* The 'trigger' async progress mode requires MPI_THREAD_MULTIPLE.
+     * Silently promote the thread level.
+     *
+     * See discussion in src/mpid/pamid/src/mpid_progress.h for more
+     * information.
+     */
+    *provided = MPI_THREAD_MULTIPLE;
+  }
+  else
+  {
+    *provided = requested;
+  }
 #if (MPIDI_STATISTICS || MPIDI_PRINTENV)
    if (requested != MPI_THREAD_MULTIPLE)
        mpich_env->single_thread=1;
 #endif
   MPIDI_PAMI_init(&rank, &size, provided);
-#ifdef MPIDI_SINGLE_CONTEXT_ASYNC_PROGRESS
-  /* hwthreads should not override user's thread setting */
-  if (!MPIDI_Process.async_progress_enabled)
-    *provided = requested;
-#endif
 
   /* ------------------------- */
   /* initialize request queues */

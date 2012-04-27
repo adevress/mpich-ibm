@@ -150,20 +150,11 @@ int MPIDO_Doscan(void *sendbuf, void *recvbuf,
               (unsigned) comm_ptr->context_id,
               exflag);
    }
-   if(MPIDI_Process.context_post)
-   {
-      TRACE_ERR("Posting scan, context %d, algoname: %s, exflag: %d\n", 0,
-         my_md->name, exflag);
-      MPIDI_Post_coll_t scan_post;
-      scan_post.coll_struct = &scan;
-      rc = PAMI_Context_post(MPIDI_Context[0], &scan_post.state, MPIDI_Pami_post_wrapper, (void *)&scan_post);
-      TRACE_ERR("Scan posted, rc: %d\n", rc);
-   }
-   else
-   {
-      TRACE_ERR("Calling PAMI_Collective with scan structure\n");
-      rc = PAMI_Collective(MPIDI_Context[0], (pami_xfer_t *)&scan);
-   }
+   MPIDI_Post_coll_t scan_post;
+   MPIDI_Context_post(MPIDI_Context[0], &scan_post.state,
+                      MPIDI_Pami_post_wrapper, (void *)&scan);
+   TRACE_ERR("Scan %s\n", MPIDI_Process.context_post.active>0?"posted":"invoked");
+
    MPIDI_Update_last_algorithm(comm_ptr,
       my_md->name);
 

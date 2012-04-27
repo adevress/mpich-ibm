@@ -48,7 +48,7 @@ int MPIDO_Alltoall(void *sendbuf,
    pami_type_t stype, rtype;
    MPI_Aint sdt_true_lb=0, rdt_true_lb;
    MPIDI_Post_coll_t alltoall_post;
-   int rc, sndlen, rcvlen, snd_contig, rcv_contig, pamidt=1;
+   int sndlen, rcvlen, snd_contig, rcv_contig, pamidt=1;
    int tmp;
 
    if(sendbuf == MPI_IN_PLACE) 
@@ -151,20 +151,13 @@ int MPIDO_Alltoall(void *sendbuf,
               my_alltoall_md->name,
               (unsigned) comm_ptr->context_id);
    }
-   if(MPIDI_Process.context_post)
-   {
-      TRACE_ERR("Posting alltoall\n");
-      alltoall_post.coll_struct = &alltoall;
-      rc = PAMI_Context_post(MPIDI_Context[0], &alltoall_post.state,
-            MPIDI_Pami_post_wrapper, (void *)&alltoall_post);
-      TRACE_ERR("Alltoall posted, rc: %d\n", rc);
-   }
-   else
-      rc = PAMI_Collective(MPIDI_Context[0], (pami_xfer_t *)&alltoall);
+
+   MPIDI_Context_post(MPIDI_Context[0], &alltoall_post.state,
+                      MPIDI_Pami_post_wrapper, (void *)&alltoall);
 
    TRACE_ERR("Waiting on active\n");
    MPID_PROGRESS_WAIT_WHILE(active);
 
    TRACE_ERR("Leaving alltoall\n");
-  return rc;
+  return PAMI_SUCCESS;
 }

@@ -39,6 +39,7 @@
 #undef  OUT_OF_ORDER_HANDLING
 #undef  RDMA_FAILOVER
 
+#define ASYNC_PROGRESS_MODE_DEFAULT 0
 
 #ifdef __BGP__
 #undef  MPIDI_EAGER_LIMIT
@@ -54,6 +55,10 @@ static const char _ibm_release_version_[] = "BGP";
 #define PAMIX_IS_LOCAL_TASK
 #define PAMIX_IS_LOCAL_TASK_STRIDE  (4)
 #define PAMIX_IS_LOCAL_TASK_BITMASK (0x40)
+
+#undef ASYNC_PROGRESS_MODE_DEFAULT
+#define ASYNC_PROGRESS_MODE_DEFAULT 1
+
 static const char _ibm_release_version_[] = "V1R1M0";
 #endif
 
@@ -70,12 +75,14 @@ static const char _ibm_release_version_[] = "V1R1M0";
 #define MPIDI_OPTIMIZED_COLLECTIVE_DEFAULT 0
 #undef  USE_PAMI_RDMA
 #define RDMA_FAILOVER
-#define MPIDI_SINGLE_CONTEXT_ASYNC_PROGRESS  1
 #define MPIDI_BANNER          1
 #define MPIDI_NO_ASSERT       1
 #define PAMIX_IS_LOCAL_TASK
 #define PAMIX_IS_LOCAL_TASK_STRIDE  (1)
 #define PAMIX_IS_LOCAL_TASK_BITMASK (0x01)
+
+#undef ASYNC_PROGRESS_MODE_DEFAULT
+#define ASYNC_PROGRESS_MODE_DEFAULT 2
 
 /* When the Pok build team extracts this file from CMVC, %W% will expand to */
 /* a string with the current release, for example ppe_rbarlx.               */

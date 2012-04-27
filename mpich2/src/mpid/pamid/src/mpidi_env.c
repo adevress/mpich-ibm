@@ -496,77 +496,168 @@ MPIDI_Env_setup(int rank, int requested)
     TRACE_ERR("MPIDI_Process.optimized.subcomms=%u\n", MPIDI_Process.optimized.subcomms);
   }
 
-  /* Set the default threads values based on the requested mpi thread mode. */
-#if (MPIU_THREAD_GRANULARITY == MPIU_THREAD_GRANULARITY_PER_OBJECT)
-  if (requested == MPI_THREAD_MULTIPLE)
-    {
-      MPIDI_Process.context_post           = 1;
-      MPIDI_Process.async_progress_enabled = 1;
-      MPIDI_Process.avail_contexts         = MPIDI_MAX_CONTEXTS;
-    }
-  else
-#endif
-    {
-      MPIDI_Process.context_post           = 0;
-      MPIDI_Process.async_progress_enabled = 0;
-      MPIDI_Process.avail_contexts         = 1;
-    }
-
   /* Set the threads values from a single override. */
   {
     unsigned value = (unsigned)-1;
     char* names[] = {"PAMID_THREAD_MULTIPLE", NULL};
-#if (MPIU_THREAD_GRANULARITY == MPIU_THREAD_GRANULARITY_PER_OBJECT)
     ENV_Unsigned(names, &value, 1, &found_deprecated_env_var, rank);
-    if (value == 1)
+#if (MPIU_THREAD_GRANULARITY == MPIU_THREAD_GRANULARITY_PER_OBJECT)
+    if (value == 1)      /* force on  */
     {
-      MPIDI_Process.context_post           = 1;
-      MPIDI_Process.async_progress_enabled = 1;
+      /* The default value for context post should be enabled only if the
+       * default async progress mode is the 'locked' mode.
+       */
+      MPIDI_Process.perobj.context_post.requested =
+        (ASYNC_PROGRESS_MODE_DEFAULT == ASYNC_PROGRESS_MODE_LOCKED);
+
+      MPIDI_Process.async_progress.mode    = ASYNC_PROGRESS_MODE_DEFAULT;
       MPIDI_Process.avail_contexts         = MPIDI_MAX_CONTEXTS;
     }
-    else if (value == 0)
+    else if (value == 0) /* force off */
     {
-      MPIDI_Process.context_post           = 0;
-      MPIDI_Process.async_progress_enabled = 0;
+      MPIDI_Process.perobj.context_post.requested = 0;
+      MPIDI_Process.async_progress.mode    = ASYNC_PROGRESS_MODE_DISABLED;
       MPIDI_Process.avail_contexts         = 1;
     }
+    else if (requested != MPI_THREAD_MULTIPLE)
+    {
+      /* The PAMID_THREAD_MULTIPLE override was not set, yet the application
+       * requested a thread mode other than MPI_THREAD_MULTIPLE. Therefore,
+       * assume that the application prefers the 'latency optimization' over
+       * the 'throughput optimization' and set the async progress configuration
+       * to disable context post.
+       */
+      MPIDI_Process.perobj.context_post.requested = 0;
+#ifdef BGQ_SUPPORTS_TRIGGER_ASYNC_PROGRESS
+      MPIDI_Process.async_progress.mode    = ASYNC_PROGRESS_MODE_TRIGGER;
+      MPIDI_Process.avail_contexts         = MPIDI_MAX_CONTEXTS;
 #else
-    ENV_Unsigned_NA(names, &value, 1, &found_deprecated_env_var, rank);
+      /* BGQ does not support the 'trigger' style of async progress. Until
+       * this is implemented, set the async progress configuration to the
+       * 'single threaded' defaults.
+       */
+      MPIDI_Process.async_progress.mode    = ASYNC_PROGRESS_MODE_DISABLED;
+      MPIDI_Process.avail_contexts         = 1;
+#endif
+    }
+#else
+    /* The only valid async progress mode when using the 'global' mpich lock
+     * mode is the 'trigger' async progress mode. Also, the 'global' mpich lock
+     * mode only supports a single context.
+     *
+     * See discussions in mpich2/src/mpid/pamid/src/mpid_init.c and
+     * src/mpid/pamid/src/mpid_progress.h for more information.
+     */
+    if (value == 1)      /* force on  */
+    {
+      MPIDI_Process.async_progress.mode    = ASYNC_PROGRESS_MODE_TRIGGER;
+      MPIDI_Process.avail_contexts         = 1;
+    }
+    else if (value == 0) /* force off */
+    {
+      MPIDI_Process.async_progress.mode    = ASYNC_PROGRESS_MODE_DISABLED;
+      MPIDI_Process.avail_contexts         = 1;
+    }
 #endif
   }
 
   /* Set the upper-limit of number of PAMI Contexts. */
   {
+    unsigned value = (unsigned)-1;
     char *names[] = {"PAMID_CONTEXT_MAX", "PAMI_MAXCONTEXT", "PAMI_MAXCONTEXTS", "PAMI_MAX_CONTEXT", "PAMI_MAX_CONTEXTS", NULL};
-#if (MPIU_THREAD_GRANULARITY == MPIU_THREAD_GRANULARITY_PER_OBJECT)
-    ENV_Unsigned(names, &MPIDI_Process.avail_contexts, 1, &found_deprecated_env_var, rank);
-    TRACE_ERR("MPIDI_Process.avail_contexts=%u\n", MPIDI_Process.avail_contexts);
-#else
-    ENV_Unsigned_NA(names, &MPIDI_Process.avail_contexts, 1, &found_deprecated_env_var, rank);
+    ENV_Unsigned(names, &value, 1, &found_deprecated_env_var, rank);
+
+    if (value != -1)
+    {
+#if (MPIU_THREAD_GRANULARITY != MPIU_THREAD_GRANULARITY_PER_OBJECT)
+      /* The 'global' mpich lock mode only supports a single context.
+       * See discussion in mpich2/src/mpid/pamid/src/mpid_init.c for more
+       * information.
+       */
+      if (value > 1)
+      {
+        found_deprecated_env_var++;
+        if (MPIDI_Process.verbose >= MPIDI_VERBOSE_SUMMARY_0 && rank == 0)
+          fprintf(stderr, "The environment variable \"PAMID_CONTEXT_MAX\" is invalid as this mpich2 library was configured.\n");
+      }
 #endif
+      if (value == 0)
+      {
+        if (MPIDI_Process.verbose >= MPIDI_VERBOSE_SUMMARY_0 && rank == 0)
+          fprintf(stderr, "The environment variable \"PAMID_CONTEXT_MAX\" must specify a value > 0. The number of contexts will be set to 1\n");
+
+        value=1;
+      }
+
+      MPIDI_Process.avail_contexts=value;
+    }
+
+    TRACE_ERR("MPIDI_Process.avail_contexts=%u\n", MPIDI_Process.avail_contexts);
   }
 
   /* Enable context post. */
   {
+    unsigned value = (unsigned)-1;
     char *names[] = {"PAMID_CONTEXT_POST", "PAMI_CONTEXT_POST", NULL};
+    ENV_Unsigned(names, &value, 1, &found_deprecated_env_var, rank);
+    if (value != -1)
+    {
 #if (MPIU_THREAD_GRANULARITY == MPIU_THREAD_GRANULARITY_PER_OBJECT)
-    ENV_Unsigned(names, &MPIDI_Process.context_post, 1, &found_deprecated_env_var, rank);
-    TRACE_ERR("MPIDI_Process.context_post=%u\n", MPIDI_Process.context_post);
+      MPIDI_Process.perobj.context_post.requested = (value > 0);
 #else
-    ENV_Unsigned_NA(names, &MPIDI_Process.context_post, 1, &found_deprecated_env_var, rank);
+      found_deprecated_env_var++;
+      if (MPIDI_Process.verbose >= MPIDI_VERBOSE_SUMMARY_0 && rank == 0)
+        fprintf(stderr, "The environment variable \"PAMID_CONTEXT_POST\" is invalid as this mpich2 library was configured.\n");
 #endif
+    }
+    TRACE_ERR("MPIDI_Process.perobj.context_post.requested=%u\n", MPIDI_Process.perobj.context_post.requested);
   }
 
   /* Enable/Disable asynchronous progress. */
   {
     /* THIS ENVIRONMENT VARIABLE NEEDS TO BE DOCUMENTED ABOVE */
+    unsigned value = (unsigned)-1;
     char *names[] = {"PAMID_ASYNC_PROGRESS", "PAMID_COMMTHREADS", "PAMI_COMMTHREAD", "PAMI_COMMTHREADS", "PAMI_COMM_THREAD", "PAMI_COMM_THREADS", NULL};
+    ENV_Unsigned(names, &value, 1, &found_deprecated_env_var, rank);
+
+    if (value != (unsigned)-1)
+    {
+      if (value != ASYNC_PROGRESS_MODE_DISABLED)
+      {
 #if (MPIU_THREAD_GRANULARITY == MPIU_THREAD_GRANULARITY_PER_OBJECT)
-    ENV_Unsigned(names, &MPIDI_Process.async_progress_enabled, 1, &found_deprecated_env_var, rank);
-    TRACE_ERR("MPIDI_Process.async_progress_enabled=%u\n", MPIDI_Process.async_progress_enabled);
-#else
-    ENV_Unsigned_NA(names, &MPIDI_Process.async_progress_enabled, 1, &found_deprecated_env_var, rank);
+        if (value == ASYNC_PROGRESS_MODE_LOCKED &&
+            MPIDI_Process.perobj.context_post.requested == 0)
+        {
+          /* The 'locked' async progress mode requires context post.
+           *
+           * See discussion in src/mpid/pamid/src/mpid_progress.h for more
+           * information.
+           */
+          found_deprecated_env_var++;
+          if (MPIDI_Process.verbose >= MPIDI_VERBOSE_SUMMARY_0 && rank == 0)
+            fprintf(stderr, "The environment variable \"PAMID_ASYNC_PROGRESS=1\" requires \"PAMID_CONTEXT_POST=1\".\n");
+        }
+
+#else /* (MPIU_THREAD_GRANULARITY != MPIU_THREAD_GRANULARITY_PER_OBJECT) */
+        if (value == ASYNC_PROGRESS_MODE_LOCKED)
+        {
+          /* The only valid async progress mode when using the 'global' mpich
+           * lock mode is the 'trigger' async progress mode.
+           *
+           * See discussion in src/mpid/pamid/src/mpid_progress.h for more
+           * information.
+           */
+          found_deprecated_env_var++;
+          if (MPIDI_Process.verbose >= MPIDI_VERBOSE_SUMMARY_0 && rank == 0)
+            fprintf(stderr, "The environment variable \"PAMID_ASYNC_PROGRESS=1\" is invalid as this mpich2 library was configured.\n");
+
+        }
 #endif
+      }
+
+      MPIDI_Process.async_progress.mode = value;
+    }
+    TRACE_ERR("MPIDI_Process.async_progress.mode=%u\n", MPIDI_Process.async_progress.mode);
   }
 
   /* Determine short limit */
@@ -749,8 +840,21 @@ MPIDI_Env_setup(int rank, int requested)
     {
       char* names[] = {"MP_CSS_INTERRUPT", NULL};
       ENV_Char(names, &mpich_env->interrupts);
-      if (mpich_env->interrupts) {
-        MPIDI_Process.async_progress_enabled=1;
+      if (mpich_env->interrupts == 1)      /* force on  */
+      {
+        MPIDI_Process.perobj.context_post.requested = 0;
+        MPIDI_Process.async_progress.mode    = ASYNC_PROGRESS_MODE_TRIGGER;
+#if (MPIU_THREAD_GRANULARITY == MPIU_THREAD_GRANULARITY_PER_OBJECT)
+        MPIDI_Process.avail_contexts         = MPIDI_MAX_CONTEXTS;
+#else
+        MPIDI_Process.avail_contexts         = 1;
+#endif
+      }
+      else if (mpich_env->interrupts == 0) /* force off */
+      {
+        MPIDI_Process.perobj.context_post.requested = 0;
+        MPIDI_Process.async_progress.mode    = ASYNC_PROGRESS_MODE_DISABLED;
+        MPIDI_Process.avail_contexts         = 1;
       }
     }
     /* MP_POLLING_INTERVAL                                                     */

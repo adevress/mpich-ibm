@@ -331,18 +331,9 @@ MPIDO_Allgather(void *sendbuf,
       if(comm_ptr->mpid.preallreduces[MPID_ALLGATHER_PREALLREDUCE])
       {
          TRACE_ERR("Preallreducing in allgather\n");
-         if(MPIDI_Process.context_post)
-         {
-            MPIDI_Post_coll_t allred_post;
-            allred_post.coll_struct = &allred;
-            /* Post the collective call */
-            PAMI_Context_post(MPIDI_Context[0], &allred_post.state, 
-                              MPIDI_Pami_post_wrapper, (void *)&allred_post);
-         }
-         else
-         {
-            rc = PAMI_Collective(MPIDI_Context[0], (pami_xfer_t *)&allred);
-         }
+         MPIDI_Post_coll_t allred_post;
+         MPIDI_Context_post(MPIDI_Context[0], &allred_post.state,
+                            MPIDI_Pami_post_wrapper, (void *)&allred);
 
          MPID_PROGRESS_WAIT_WHILE(allred_active);
      }
@@ -401,7 +392,6 @@ MPIDO_Allgather(void *sendbuf,
          }
       }
 
-      
       if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0))
       {
          unsigned long long int threadID;
@@ -413,24 +403,16 @@ MPIDO_Allgather(void *sendbuf,
                  my_md->name,
               (unsigned) comm_ptr->context_id);
       }
-      if(MPIDI_Process.context_post)
-      {
-         TRACE_ERR("Posting allgather, context: %d, algoname: %s\n", 0, my_md->name);
-         MPIDI_Post_coll_t allgather_post;
-         allgather_post.coll_struct = &allgather;
-         rc = PAMI_Context_post(MPIDI_Context[0], &allgather_post.state, MPIDI_Pami_post_wrapper, (void *)&allgather_post);
-         TRACE_ERR("Allgather posted, rc: %d\n", rc);
-      }
-      else
-      {
-         TRACE_ERR("Calling PAMI_Collective with allgather structure\n");
-         rc = PAMI_Collective(MPIDI_Context[0], (pami_xfer_t *)&allgather);
-      }
+      TRACE_ERR("Calling PAMI_Collective with allgather structure\n");
+      MPIDI_Post_coll_t allgather_post;
+      MPIDI_Context_post(MPIDI_Context[0], &allgather_post.state, MPIDI_Pami_post_wrapper, (void *)&allgather);
+      TRACE_ERR("Allgather %s\n", MPIDI_Process.context_post.active>0?"posted":"invoked");
+
       MPIDI_Update_last_algorithm(comm_ptr, my_md->name);
 
       MPID_PROGRESS_WAIT_WHILE(allgather_active);
       TRACE_ERR("Allgather done\n");
-      return rc;
+      return PAMI_SUCCESS;
    }
 
    if(use_tree_reduce)

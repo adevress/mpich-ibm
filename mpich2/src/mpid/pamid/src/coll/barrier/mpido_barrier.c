@@ -35,7 +35,6 @@ static void cb_barrier(void *ctxt, void *clientdata, pami_result_t err)
 int MPIDO_Barrier(MPID_Comm *comm_ptr, int *mpierrno)
 {
    TRACE_ERR("Entering MPIDO_Barrier\n");
-   int rc;
    volatile unsigned active=1;
    MPIDI_Post_coll_t barrier_post;
    pami_xfer_t barrier;
@@ -87,23 +86,13 @@ int MPIDO_Barrier(MPID_Comm *comm_ptr, int *mpierrno)
 /*             comm_ptr->rank,comm_ptr->local_size,comm_ptr->remote_size,*/
             (unsigned) comm_ptr->context_id);
    }
-   if(MPIDI_Process.context_post)
-   {
-
-      TRACE_ERR("posting barrier\n");
-      barrier_post.coll_struct = &barrier;
-      rc = PAMI_Context_post(MPIDI_Context[0], &barrier_post.state, 
-                              MPIDI_Pami_post_wrapper, (void *)&barrier_post);
-      TRACE_ERR("barrier posted rc: %d\n", rc);
-   }
-   else
-   {
-      rc = PAMI_Collective(MPIDI_Context[0], (pami_xfer_t *)&barrier);
-   }
-   MPID_assert_always(rc == PAMI_SUCCESS);
+   TRACE_ERR("%s barrier\n", MPIDI_Process.context_post.active>0?"posting":"invoking");
+   MPIDI_Context_post(MPIDI_Context[0], &barrier_post.state,
+                      MPIDI_Pami_post_wrapper, (void *)&barrier);
+   TRACE_ERR("barrier %s rc: %d\n", MPIDI_Process.context_post.active>0?"posted":"invoked", rc);
 
    TRACE_ERR("advance spinning\n");
    MPID_PROGRESS_WAIT_WHILE(active);
    TRACE_ERR("exiting mpido_barrier\n");
-   return rc;
+   return 0;
 }
