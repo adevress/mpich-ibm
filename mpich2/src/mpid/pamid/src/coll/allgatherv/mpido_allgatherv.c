@@ -272,7 +272,7 @@ MPIDO_Allgatherv(void *sendbuf,
    use_bcast = comm_ptr->mpid.allgathervs[1];
    /* Assuming PAMI doesn't support MPI_IN_PLACE */
    use_pami = sendbuf != MPI_IN_PLACE && 
-     (comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLGATHERV_INT] == MPID_COLL_USE_MPICH) ? 0 : 1;
+     comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLGATHERV_INT] != MPID_COLL_USE_MPICH;
 	 
    if((MPIDI_Datatype_to_pami(sendtype, &stype, -1, NULL, &tmp) != MPI_SUCCESS) || 
       (MPIDI_Datatype_to_pami(recvtype, &rtype, -1, NULL, &tmp) != MPI_SUCCESS))
