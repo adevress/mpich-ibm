@@ -84,9 +84,9 @@ PAMIX_Initialize(pami_client_t client)
   PAMIX_Functions.torus2task = PAMI_EXTENSION_FUNCTION(pamix_torus2task_fn, "torus2task",  PAMIX_Extensions.torus);
 #endif
 
+#ifdef PAMIX_IS_LOCAL_TASK
   {
-    PAMIX_Extensions.is_local_task.base =
-      (uint8_t *) & PAMIX_Extensions.is_local_task.base;
+    PAMIX_Extensions.is_local_task.base    = NULL;
     PAMIX_Extensions.is_local_task.stride  = 0;
     PAMIX_Extensions.is_local_task.bitmask = 0;
     PAMIX_Extensions.is_local_task.status  =
@@ -98,15 +98,22 @@ PAMIX_Initialize(pami_client_t client)
         PAMIX_Extensions.is_local_task.base    = PAMI_EXTENSION_FUNCTION(uint8_t *, "base",    PAMIX_Extensions.is_local_task.extension);
         PAMIX_Extensions.is_local_task.stride  = PAMI_EXTENSION_FUNCTION(uintptr_t, "stride",  PAMIX_Extensions.is_local_task.extension);
         PAMIX_Extensions.is_local_task.bitmask = PAMI_EXTENSION_FUNCTION(uintptr_t, "bitmask", PAMIX_Extensions.is_local_task.extension);
-
-#ifdef PAMIX_IS_LOCAL_TASK_STRIDE
-        PAMIX_assert_always(PAMIX_IS_LOCAL_TASK_STRIDE  == PAMIX_Extensions.is_local_task.stride);
-#endif
-#ifdef PAMIX_IS_LOCAL_TASK_BITMASK
-        PAMIX_assert_always(PAMIX_IS_LOCAL_TASK_BITMASK == PAMIX_Extensions.is_local_task.bitmask);
-#endif
       }
+
+#if defined(PAMIX_IS_LOCAL_TASK_STRIDE) && defined(PAMIX_IS_LOCAL_TASK_BITMASK)
+    /*
+     * If the compile-time stride and bitmask values are defined, then assert
+     * that the extension was open successfully and the base pointer is valid to
+     * avoid a null dereference in the PAMIX_Task_is_local macro and assert that
+     * the compile-time values match the values specified by the extension.
+     */
+    PAMIX_assert_always(PAMIX_Extensions.is_local_task.status == PAMI_SUCCESS);
+    PAMIX_assert_always(PAMIX_Extensions.is_local_task.base != NULL);
+    PAMIX_assert_always(PAMIX_IS_LOCAL_TASK_STRIDE  == PAMIX_Extensions.is_local_task.stride);
+    PAMIX_assert_always(PAMIX_IS_LOCAL_TASK_BITMASK == PAMIX_Extensions.is_local_task.bitmask);
+#endif
   }
+#endif /* PAMIX_IS_LOCAL_TASK */
 }
 
 

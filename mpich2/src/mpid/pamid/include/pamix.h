@@ -98,6 +98,7 @@ int PAMIX_Torus2task(size_t coords[], pami_task_t* task_id);
 
 #endif
 
+#ifdef PAMIX_IS_LOCAL_TASK
 #if defined(PAMIX_IS_LOCAL_TASK_STRIDE) && defined(PAMIX_IS_LOCAL_TASK_BITMASK)
 #define PAMIX_Task_is_local(task_id)                                           \
   (PAMIX_IS_LOCAL_TASK_BITMASK &                                               \
@@ -105,10 +106,14 @@ int PAMIX_Torus2task(size_t coords[], pami_task_t* task_id);
     task_id * PAMIX_IS_LOCAL_TASK_STRIDE))
 #else
 #define PAMIX_Task_is_local(task_id)                                           \
-  (PAMIX_Extensions.is_local_task.bitmask &                                    \
-    *(PAMIX_Extensions.is_local_task.base +                                    \
-    task_id * PAMIX_Extensions.is_local_task.stride))
-#endif
+  (PAMIX_Extensions.is_local_task.base &&                                      \
+    (PAMIX_Extensions.is_local_task.bitmask &                                  \
+      *(PAMIX_Extensions.is_local_task.base +                                  \
+        task_id * PAMIX_Extensions.is_local_task.stride)))
+#endif /* PAMIX_IS_LOCAL_TASK_STRIDE && PAMIX_IS_LOCAL_TASK_BITMASK */
+#else
+#define PAMIX_Task_is_local(task_id) (0)
+#endif /* PAMIX_IS_LOCAL_TASK */
 
 #if defined(__cplusplus)
 }

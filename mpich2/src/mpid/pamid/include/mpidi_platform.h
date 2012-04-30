@@ -42,6 +42,7 @@ static const char _ibm_release_version_[] = "BGP";
 #define MPIDI_MUTEX_L2_ATOMIC 1
 #define MPIDI_BASIC_COLLECTIVE_SELECTION 1
 #define MPIDI_OPTIMIZED_COLLECTIVE_DEFAULT 1
+#define PAMIX_IS_LOCAL_TASK
 #define PAMIX_IS_LOCAL_TASK_STRIDE  (4)
 #define PAMIX_IS_LOCAL_TASK_BITMASK (0x40)
 static const char _ibm_release_version_[] = "V1R1M0";
@@ -64,6 +65,7 @@ static const char _ibm_release_version_[] = "V1R1M0";
 #define MPIDI_BASIC_COLLECTIVE_SELECTION 1
 #define MPIDI_BANNER          1
 #define MPIDI_NO_ASSERT       1
+#define PAMIX_IS_LOCAL_TASK
 #define PAMIX_IS_LOCAL_TASK_STRIDE  (1)
 #define PAMIX_IS_LOCAL_TASK_BITMASK (0x01)
 
