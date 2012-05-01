@@ -53,8 +53,6 @@ static const char _ibm_release_version_[] = "V1R1M0";
 #define USE_PAMI_CONSISTENCY PAMI_HINT_DISABLE
 #undef  MPIDI_EAGER_LIMIT
 #define MPIDI_EAGER_LIMIT 65536
-#undef  MPIDI_EAGER_LIMIT_LOCAL
-#define MPIDI_EAGER_LIMIT_LOCAL 1048576
 #define OUT_OF_ORDER_HANDLING 1
 #define MPIDI_STATISTICS      1
 #define MPIDI_PRINTENV        1
