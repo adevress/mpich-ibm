@@ -1953,7 +1953,7 @@ sub attrint_ctof {
         *(MPI_Fint*)$cvar = 0;
     }
     else {
-        *(MPI_Fint*)$cvar = (MPI_Fint)(MPIR_Pint)attr$cvar;
+        *((MPI_Fint*)$cvar) = *(MPI_Fint *)&attr$cvar;
     }\n";
 }
 
