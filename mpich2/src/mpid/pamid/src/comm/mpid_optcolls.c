@@ -697,6 +697,8 @@ void MPIDI_Comm_coll_select(MPID_Comm *comm_ptr)
             {
               comm_ptr->mpid.must_query[PAMI_XFER_ALLREDUCE][0] = MPID_COLL_CHECK_FN_REQUIRED;
               comm_ptr->mpid.cutoff_size[PAMI_XFER_ALLREDUCE][0] = 0;/*SSS: Always use opt_protocol[0] for FCA*/
+              /*SSS: Otherwise another protocol may get selected in mpido_allreduce if we don't set this flag here*/
+              comm_ptr->mpid.must_query[PAMI_XFER_ALLREDUCE][1] = MPID_COLL_CHECK_FN_REQUIRED;
             }
             else
             {
