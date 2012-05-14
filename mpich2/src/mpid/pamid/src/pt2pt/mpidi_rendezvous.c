@@ -165,8 +165,10 @@ MPIDI_RendezvousTransfer_use_pami_rget(pami_context_t   context,
     .rma  = {
       .dest    = dest,
       .hints   = {
-	.buffer_registered= PAMI_HINT_ENABLE,
-	.use_rdma=          PAMI_HINT_ENABLE,
+	.buffer_registered     = PAMI_HINT_ENABLE,
+	.use_rdma              = PAMI_HINT_ENABLE,
+        .remote_async_progress = PAMI_HINT_DEFAULT, 
+        .use_shmem             = PAMI_HINT_DEFAULT,
       },
       .bytes   = rreq->mpid.envelope.length,
       .cookie  = rreq,
@@ -197,11 +199,20 @@ MPIDI_RendezvousTransfer_use_pami_get(pami_context_t   context,
 	                              MPID_Request     *rreq)
 {
   pami_result_t rc;
+  int val=0;
+
+  if (MPIDI_Process.mp_s_use_pami_get) 
+      val=PAMI_HINT_DEFAULT;
+  else 
+      val=PAMI_HINT_DISABLE;
   pami_get_simple_t params = {
     .rma  = {
       .dest    = dest,
       .hints   = {
-	.use_rdma= PAMI_HINT_DEFAULT,
+	.buffer_registered     = PAMI_HINT_DEFAULT,
+	.use_rdma              = val, 
+        .remote_async_progress = PAMI_HINT_DEFAULT, 
+        .use_shmem             = PAMI_HINT_DEFAULT,
 #ifndef OUT_OF_ORDER_HANDLING
 	.no_long_header= 1,
 #endif
