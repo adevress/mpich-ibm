@@ -58,8 +58,8 @@ extern "C" {
 /* These fields will be used on all platforms. */
     unsigned prank;    /**< Physical rank of the node (irrespective of mapping) */
     unsigned psize;    /**< Size of the partition (irrespective of mapping) */
-    unsigned ppn;      /**< Processes per node ("T+P" size) */
-    unsigned coreID;   /**< Core+Thread info. Value ranges from 0..63 */
+    unsigned ppn;      /**< Processes per node */
+    unsigned coreID;   /**< Process id; values monotonically increase from 0..63 */
 
     unsigned clockMHz; /**< Frequency in MegaHertz */
     unsigned memSize;  /**< Size of the core memory in MB */

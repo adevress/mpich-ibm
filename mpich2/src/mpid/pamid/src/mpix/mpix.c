@@ -44,12 +44,21 @@ MPIX_Init_hw(MPIX_Hardware_t *hw)
   /* The extension returns a "T" dimension */
   hw->torus_dimension = info->dims-1;
 
+  hw->psize = info->size[info->dims-1];
   for(i=0;i<info->dims-1;i++)
     {
       hw->Size[i]    = info->size[i];
       hw->Coords[i]  = info->coord[i];
       hw->isTorus[i] = info->torus[i];
+      hw->psize      = hw->psize * info->size[i];
     }
+
+  hw->prank = info->coord[0];
+  for(i=1;i<info->dims;i++)
+    {
+      hw->prank = (hw->prank * info->size[i] + info->coord[i]);
+    }
+
   /* The torus extension returns "T" as the last element */
   hw->coreID = info->coord[info->dims-1];
   hw->ppn    = info->size[info->dims-1];
@@ -256,7 +265,7 @@ int
 MPIX_Torus_ndims(int *numdimensions)
 {
   const pamix_torus_info_t *info = PAMIX_Torus_info();
-  *numdimensions = info->dims;
+  *numdimensions = info->dims - 1;
   return MPI_SUCCESS;
 }
 
