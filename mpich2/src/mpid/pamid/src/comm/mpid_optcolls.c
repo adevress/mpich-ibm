@@ -452,10 +452,17 @@ void MPIDI_Comm_coll_select(MPID_Comm *comm_ptr)
       if(opt_proto == -1)
       {
          /* This is also NOT in the 'must query' list */
+         unsigned len = strlen("I0:RectangleDput:");
          if(use_threaded_collectives)
           for(i = 0; i < comm_ptr->mpid.coll_count[PAMI_XFER_BROADCAST][0]; i++)
           {
-            if(strcasecmp(comm_ptr->mpid.coll_metadata[PAMI_XFER_BROADCAST][0][i].name, "I0:RectangleDput:SHMEM:MU") == 0)
+            if(strcasecmp (comm_ptr->mpid.coll_metadata[PAMI_XFER_BROADCAST][0][i].name, "I0:RectangleDput:SHMEM:MU") == 0)
+            { // Prefer the :SHMEM:MU so break when it's found
+               opt_proto = i; 
+               break;
+            }
+            // Otherwise any RectangleDput is better than nothing.
+            if(strncasecmp(comm_ptr->mpid.coll_metadata[PAMI_XFER_BROADCAST][0][i].name, "I0:RectangleDput:",len) == 0)
                opt_proto = i;
           }
       }
