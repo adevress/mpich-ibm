@@ -277,9 +277,6 @@ MPIDI_Recvq_FDU(int source, pami_task_t pami_source, int tag, int context_id, in
 #endif
             MPIDI_Recvq_remove(MPIDI_Recvq.unexpected, rreq, prev_rreq);
             found = TRUE;
-#if (MPIDI_STATISTICS)
-            MPID_NSTAT(mpid_statp->earlyArrivalsMatched);
-#endif
             goto fn_exit;
           }
 #ifdef OUT_OF_ORDER_HANDLING
@@ -347,9 +344,6 @@ MPIDI_Recvq_FDU(int source, pami_task_t pami_source, int tag, int context_id, in
 #endif
             MPIDI_Recvq_remove(MPIDI_Recvq.unexpected, rreq, prev_rreq);
             found = TRUE;
-#if (MPIDI_STATISTICS)
-            MPID_NSTAT(mpid_statp->earlyArrivalsMatched);
-#endif
             goto fn_exit;
           }
 #ifdef OUT_OF_ORDER_HANDLING
@@ -438,20 +432,13 @@ MPIDI_Recvq_FDP_or_AEU(int source, pami_task_t pami_source, int tag, int context
 
   if (rreq != NULL) {
       found = TRUE;
-#if (MPIDI_STATISTICS)
-      MPID_NSTAT(mpid_statp->lateArrivals);
-#endif
   } else {
 #ifndef OUT_OF_ORDER_HANDLING
       rreq = MPIDI_Recvq_AEU(source, tag, context_id);
 #else
       rreq = MPIDI_Recvq_AEU(source, pami_source, tag, context_id, msg_seqno);
 #endif
-#if (MPIDI_STATISTICS)
-     MPID_NSTAT(mpid_statp->earlyArrivals);
-#endif
   }
-
   *foundp = found;
   return rreq;
 }

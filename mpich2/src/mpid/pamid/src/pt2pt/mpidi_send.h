@@ -108,9 +108,6 @@ MPIDI_Send(const void    * buf,
 
   /* message type info */
   sreq->kind = MPID_REQUEST_SEND;
-#if (MPIDI_STATISTICS)
-  MPID_NSTAT(mpid_statp->sends);
-#endif
   /* ----------------------------------------- */
   /*      start the message                    */
   /* ----------------------------------------- */

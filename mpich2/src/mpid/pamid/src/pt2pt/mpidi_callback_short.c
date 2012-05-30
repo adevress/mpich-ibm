@@ -73,6 +73,10 @@ MPIDI_RecvShortCB(pami_context_t    context,
   if (unlikely(rreq == NULL))
     {
       void *uebuf = NULL;
+#if (MPIDI_STATISTICS)
+        MPID_NSTAT(mpid_statp->earlyArrivals);
+#endif
+
       if (sndlen)
       {
         MPIU_THREAD_CS_EXIT(MSGQUEUE,0);
@@ -100,6 +104,10 @@ MPIDI_RecvShortCB(pami_context_t    context,
     }
   else
     {
+#if (MPIDI_STATISTICS)
+        MPID_NSTAT(mpid_statp->earlyArrivalsMatched);
+#endif
+
       MPIU_THREAD_CS_EXIT(MSGQUEUE,0);
     }
 

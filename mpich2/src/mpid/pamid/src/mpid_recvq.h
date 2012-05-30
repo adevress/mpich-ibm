@@ -152,6 +152,11 @@ MPIDI_Recvq_FDU_or_AEP(int source, pami_task_t pami_source, int tag, int context
 #endif
     if (*foundp == TRUE)
       return rreq;
+#if (MPIDI_STATISTICS)
+    else {
+     MPID_NSTAT(mpid_statp->lateArrivals);
+    }
+#endif
   }
 
   /* A matching request was not found in the unexpected queue,

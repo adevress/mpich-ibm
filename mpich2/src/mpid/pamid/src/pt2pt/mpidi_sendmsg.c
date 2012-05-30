@@ -303,6 +303,9 @@ MPIDI_SendMsg(pami_context_t   context,
    */
   pami_endpoint_t dest;
   MPIDI_Context_endpoint(sreq, &dest);
+#if (MPIDI_STATISTICS)
+  MPID_NSTAT(mpid_statp->sends);
+#endif
 #ifdef OUT_OF_ORDER_HANDLING
   MPIDI_Out_cntr_t *out_cntr;
   pami_task_t desttid;

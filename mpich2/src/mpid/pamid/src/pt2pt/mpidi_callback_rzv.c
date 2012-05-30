@@ -110,6 +110,9 @@ MPIDI_RecvRzvCB(pami_context_t    context,
   /* ----------------------------------------- */
   if (found)
     {
+#if (MPIDI_STATISTICS)
+       MPID_NSTAT(mpid_statp->earlyArrivalsMatched);
+#endif
       /* --------------------------- */
       /* if synchronized, post ack.  */
       /* --------------------------- */
@@ -124,6 +127,9 @@ MPIDI_RecvRzvCB(pami_context_t    context,
   /* ------------------------------------------------------------- */
   else
     {
+#if (MPIDI_STATISTICS)
+       MPID_NSTAT(mpid_statp->earlyArrivals);
+#endif
       /*
        * This is to test that the fields don't need to be
        * initialized.  Remove after this doesn't fail for a while.

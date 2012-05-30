@@ -241,6 +241,9 @@ int MPIDI_Search_recv_posting_queue(int src, int tag, int context_id,
         ) {
             MPIDI_Recvq_remove(MPIDI_Recvq.posted, rreq, prev_rreq);
             *request = rreq;
+#if (MPIDI_STATISTICS)
+      MPID_NSTAT(mpid_statp->earlyArrivalsMatched);
+#endif
             return 1;
         }
         prev_rreq = rreq;
