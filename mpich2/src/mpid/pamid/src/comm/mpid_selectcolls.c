@@ -267,27 +267,6 @@ void MPIDI_Comm_coll_envvars(MPID_Comm *comm)
 
    comm->mpid.scattervs[0] = comm->mpid.scattervs[1] = 0;
 
-   if(MPIDI_Process.optimized.select_colls != 2)
-   {
-      /* Punt to mpich instead of [0][0]s to be consistent with the other
-       * collectives. These have/had glue-level protocols so things were 
-       * inconsistent with the similar clause in mpid_optcolls.c
-       */
-      comm->mpid.user_selectedvar[PAMI_XFER_SCATTERV_INT] = MPID_COLL_USE_MPICH;
-      comm->mpid.user_selectedvar[PAMI_XFER_SCATTER] = MPID_COLL_USE_MPICH;
-      comm->mpid.user_selectedvar[PAMI_XFER_ALLGATHER] = MPID_COLL_USE_MPICH;
-      comm->mpid.user_selectedvar[PAMI_XFER_ALLGATHERV_INT] = MPID_COLL_USE_MPICH;
-      comm->mpid.user_selectedvar[PAMI_XFER_GATHER] = MPID_COLL_USE_MPICH;
-   }
-   else
-   {
-      comm->mpid.user_selectedvar[PAMI_XFER_SCATTERV_INT] = MPID_COLL_NOSELECTION; 
-      comm->mpid.user_selectedvar[PAMI_XFER_SCATTER] = MPID_COLL_NOSELECTION; 
-      comm->mpid.user_selectedvar[PAMI_XFER_ALLGATHER] = MPID_COLL_NOSELECTION; 
-      comm->mpid.user_selectedvar[PAMI_XFER_ALLGATHERV_INT] = MPID_COLL_NOSELECTION; 
-      comm->mpid.user_selectedvar[PAMI_XFER_GATHER] = MPID_COLL_NOSELECTION; 
-   }
-
    TRACE_ERR("Checking scatterv\n");
    envopts = getenv("PAMID_COLLECTIVE_SCATTERV");
    if(envopts != NULL)
@@ -305,9 +284,16 @@ void MPIDI_Comm_coll_envvars(MPID_Comm *comm)
          comm->mpid.scattervs[1] = 1;
       }
    }
-   {
+   { /* In addition to glue protocols, check for other PAMI protocols and check for PE now */
       char* names[] = {"PAMID_COLLECTIVE_SCATTERV", NULL};
       MPIDI_Check_protocols(names, comm, "scatterv", PAMI_XFER_SCATTERV_INT);
+
+      // Use MPICH on large communicators (Issue 7516 and ticket 595)
+      if((comm->mpid.user_selectedvar[PAMI_XFER_SCATTERV_INT] == MPID_COLL_NOSELECTION) // no env var selected
+         && (comm->local_size > (16*1024))) // and > 16k ranks
+      {
+         comm->mpid.user_selectedvar[PAMI_XFER_SCATTERV_INT] = MPID_COLL_USE_MPICH;
+      }
    }
       
    TRACE_ERR("Checking scatter\n");
@@ -322,7 +308,7 @@ void MPIDI_Comm_coll_envvars(MPID_Comm *comm)
          comm->mpid.optscatter = 1;
       }
    }
-   { /* It wasn't set to glue, check for others, and check for PE now */
+   { /* In addition to glue protocols, check for other PAMI protocols and check for PE now */
       char* names[] = {"PAMID_COLLECTIVE_SCATTER", NULL};
       MPIDI_Check_protocols(names, comm, "scatter", PAMI_XFER_SCATTER);
    }
@@ -353,7 +339,7 @@ void MPIDI_Comm_coll_envvars(MPID_Comm *comm)
          comm->mpid.allgathers[2] = 1;
       }
    }
-   {
+   { /* In addition to glue protocols, check for other PAMI protocols and check for PE now */
       char* names[] = {"PAMID_COLLECTIVE_ALLGATHER", "MP_S_MPI_ALLGATHER", NULL};
       MPIDI_Check_protocols(names, comm, "allgather", PAMI_XFER_ALLGATHER);
    }
@@ -384,7 +370,7 @@ void MPIDI_Comm_coll_envvars(MPID_Comm *comm)
          comm->mpid.allgathervs[2] = 1;
       }
    }
-   {
+   { /* In addition to glue protocols, check for other PAMI protocols and check for PE now */
       char* names[] = {"PAMID_COLLECTIVE_ALLGATHERV", "MP_S_MPI_ALLGATHERV", NULL};
       MPIDI_Check_protocols(names, comm, "allgatherv", PAMI_XFER_ALLGATHERV_INT);
    }
@@ -401,7 +387,7 @@ void MPIDI_Comm_coll_envvars(MPID_Comm *comm)
          comm->mpid.optgather = 1;
       }
    }
-   {
+   { /* In addition to glue protocols, check for other PAMI protocols and check for PE now */
       char* names[] = {"PAMID_COLLECTIVE_GATHER", NULL};
       MPIDI_Check_protocols(names, comm, "gather", PAMI_XFER_GATHER);
    }
