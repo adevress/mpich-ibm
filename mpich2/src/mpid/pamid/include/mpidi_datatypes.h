@@ -213,7 +213,8 @@ struct MPIDI_Request
   struct MPID_Request  *oo_peer;      /** < pointer to the matched post recv request to complete in the out-of-order case */
 #endif
 #ifdef RDMA_FAILOVER
-  uint32_t             memregion_used;
+  uint32_t             memregion_used:16;
+  uint32_t             shm:16;
 #endif
 };
 

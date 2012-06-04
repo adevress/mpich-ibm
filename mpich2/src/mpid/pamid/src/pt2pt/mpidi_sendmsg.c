@@ -148,7 +148,11 @@ MPIDI_SendMsg_rzv(pami_context_t    context,
             sndlen);
 #else
   sreq->mpid.envelope.memregion_used = 0;
+#ifdef OUT_OF_ORDER_HANDLING
+  if ((!MPIDI_Process.mp_s_use_pami_get) && (!sreq->mpid.shm))
+#else
   if (!MPIDI_Process.mp_s_use_pami_get)
+#endif
     {
       size_t sndlen_out;
       rc = PAMI_Memregion_create(context,
@@ -331,6 +335,9 @@ MPIDI_SendMsg(pami_context_t   context,
     }
 
 
+#ifdef OUT_OF_ORDER_HANDLING
+       sreq->mpid.shm=0;
+#endif
   if (unlikely(PAMIX_Task_is_local(rank) != 0))
     {
       /*
@@ -365,6 +372,9 @@ MPIDI_SendMsg(pami_context_t   context,
       else
         {
           TRACE_ERR("Sending(RZV,intranode) bytes=%u (eager_limit=%u)\n", data_sz, MPIDI_Process.eager_limit);
+#ifdef OUT_OF_ORDER_HANDLING
+          sreq->mpid.shm=1;
+#endif
           MPIDI_SendMsg_rzv(context,
                             sreq,
                             dest,
