@@ -118,10 +118,13 @@ extern struct MPIDI_Recvq_t MPIDI_Recvq;
 static inline int
 MPIDI_Recvq_FU_r(int source, int tag, int context, MPI_Status * status)
 {
-  int rc;
-  MPIU_THREAD_CS_ENTER(MSGQUEUE,0);
-  rc = MPIDI_Recvq_FU(source, tag, context, status);
-  MPIU_THREAD_CS_EXIT(MSGQUEUE, 0);
+  int rc = FALSE;
+  if (likely(MPIDI_Recvq.unexpected_head != NULL))
+  {
+    MPIU_THREAD_CS_ENTER(MSGQUEUE,0);
+    rc = MPIDI_Recvq_FU(source, tag, context, status);
+    MPIU_THREAD_CS_EXIT(MSGQUEUE, 0);
+  }
   return rc;
 }
 
