@@ -54,7 +54,7 @@ int MPIDO_Reduce(void *sendbuf,
    if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0))
       fprintf(stderr,"reduce - rc %u, dt: %p, op: %p, mu: %u, selectedvar %u != %u (MPICH)\n",
          rc, pdt, pop, mu, 
-         (unsigned)comm_ptr->mpid.user_selectedvar[PAMI_XFER_REDUCE], MPID_COLL_USE_MPICH);
+         (unsigned)comm_ptr->mpid.user_selected_type[PAMI_XFER_REDUCE], MPID_COLL_USE_MPICH);
 
 
    pami_xfer_t reduce;
@@ -63,7 +63,7 @@ int MPIDO_Reduce(void *sendbuf,
    int queryreq = 0;
    volatile unsigned reduce_active = 1;
 
-   if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_REDUCE] == MPID_COLL_USE_MPICH || rc != MPI_SUCCESS)
+   if(comm_ptr->mpid.user_selected_type[PAMI_XFER_REDUCE] == MPID_COLL_USE_MPICH || rc != MPI_SUCCESS)
    {
       if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0))
          fprintf(stderr,"Using MPICH reduce algorithm\n");
@@ -71,20 +71,19 @@ int MPIDO_Reduce(void *sendbuf,
    }
 
    MPIDI_Datatype_get_info(count, datatype, dt_contig, tsize, dt_null, true_lb);
-   rbuf = recvbuf + true_lb;
+   rbuf = (char *)recvbuf + true_lb;
    if(sendbuf == MPI_IN_PLACE) 
    {
+      if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL))
+         fprintf(stderr,"reduce MPI_IN_PLACE buffering\n");
       sbuf = rbuf;
    }
    else
-      sbuf = sendbuf + true_lb;
+      sbuf = (char *)sendbuf + true_lb;
 
    reduce.cb_done = reduce_cb_done;
    reduce.cookie = (void *)&reduce_active;
-#ifdef MPIDI_BASIC_COLLECTIVE_SELECTION
-/* TODO: Remove the #ifdef once collective selection for reduce is enabled on BG */
-#ifdef __PE__
-   if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_REDUCE] == MPID_COLL_SELECTED)
+   if(comm_ptr->mpid.user_selected_type[PAMI_XFER_REDUCE] == MPID_COLL_OPTIMIZED)
    {
       TRACE_ERR("Optimized Reduce (%s) was pre-selected\n",
          comm_ptr->mpid.opt_protocol_md[PAMI_XFER_REDUCE][0].name);
@@ -93,14 +92,12 @@ int MPIDO_Reduce(void *sendbuf,
       queryreq     = comm_ptr->mpid.must_query[PAMI_XFER_REDUCE][0];
    }
    else
-#endif
-#endif   
    {
       TRACE_ERR("Optimized reduce (%s) was specified by user\n",
          comm_ptr->mpid.user_metadata[PAMI_XFER_REDUCE].name);
       my_reduce    =  comm_ptr->mpid.user_selected[PAMI_XFER_REDUCE];
       my_reduce_md = &comm_ptr->mpid.user_metadata[PAMI_XFER_REDUCE];
-      queryreq     = comm_ptr->mpid.user_selectedvar[PAMI_XFER_REDUCE];
+      queryreq     = comm_ptr->mpid.user_selected_type[PAMI_XFER_REDUCE];
    }
    reduce.algorithm = my_reduce;
    reduce.cmd.xfer_reduce.sndbuf = sbuf;

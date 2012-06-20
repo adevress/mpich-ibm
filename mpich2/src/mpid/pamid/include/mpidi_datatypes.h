@@ -230,7 +230,7 @@ struct MPIDI_Comm
   pami_algorithm_t user_selected[PAMI_XFER_COUNT];
   /* no way to tell if user_selected[] is NULL */
   /* could probably union these two though? */
-  char user_selectedvar[PAMI_XFER_COUNT];
+  char user_selected_type[PAMI_XFER_COUNT];
   pami_metadata_t user_metadata[PAMI_XFER_COUNT];
   char last_algorithm[100];
   char preallreduces[MPID_NUM_PREALLREDUCES];
@@ -249,7 +249,6 @@ struct MPIDI_Comm
   /* For create_tasklist/endpoints if we ever use it */
   pami_task_t *tasks;
   pami_endpoint_t *endpoints;
-#ifdef MPIDI_BASIC_COLLECTIVE_SELECTION
    /* There are some protocols where the optimized protocol always works and
     * is the best performance */
    /* Assume we have small vs large cutoffs vs medium for some protocols */
@@ -274,7 +273,6 @@ struct MPIDI_Comm
     * nonzero */
    int query_allred_ismm;
 
-#endif
   union tasks_descrip_t {
     /* For create_taskrange */
     pami_geometry_range_t *ranges;

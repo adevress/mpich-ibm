@@ -77,20 +77,22 @@ int MPIDO_Allreduce(void *sendbuf,
   if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0))
       fprintf(stderr,"allred rc %u, Datatype %p, op %p, mu %u, selectedvar %u != %u\n",
               rc, pdt, pop, mu, 
-              (unsigned)comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLREDUCE],MPID_COLL_USE_MPICH);
+              (unsigned)comm_ptr->mpid.user_selected_type[PAMI_XFER_ALLREDUCE],MPID_COLL_USE_MPICH);
       /* convert to metadata query */
   if(unlikely(rc != MPI_SUCCESS || 
-	      comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLREDUCE] == MPID_COLL_USE_MPICH))
+	      comm_ptr->mpid.user_selected_type[PAMI_XFER_ALLREDUCE] == MPID_COLL_USE_MPICH))
    {
       if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0))
          fprintf(stderr,"Using MPICH allreduce type %u.\n",
-                 comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLREDUCE]);
+                 comm_ptr->mpid.user_selected_type[PAMI_XFER_ALLREDUCE]);
       MPIDI_Update_last_algorithm(comm_ptr, "ALLREDUCE_MPICH");
       return MPIR_Allreduce(sendbuf, recvbuf, count, dt, op, comm_ptr, mpierrno);
    }
 
   if(unlikely(sendbuf == MPI_IN_PLACE))
    {
+      if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL))
+         fprintf(stderr,"allreduce MPI_IN_PLACE buffering\n");
       sbuf = recvbuf;
    }
    else sbuf = sendbuf;
@@ -105,9 +107,8 @@ int MPIDO_Allreduce(void *sendbuf,
    allred.cmd.xfer_allreduce.rtypecount = count;
    allred.cmd.xfer_allreduce.op = pop;
 
-#ifdef MPIDI_BASIC_COLLECTIVE_SELECTION
    TRACE_ERR("Allreduce - Basic Collective Selection\n");
-   if(likely(comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLREDUCE] == MPID_COLL_SELECTED))
+   if(likely(comm_ptr->mpid.user_selected_type[PAMI_XFER_ALLREDUCE] == MPID_COLL_OPTIMIZED))
    {
       if(likely(pop == PAMI_DATA_SUM || pop == PAMI_DATA_MAX || pop == PAMI_DATA_MIN))
       {
@@ -211,13 +212,12 @@ int MPIDO_Allreduce(void *sendbuf,
       }
    }
    else
-#endif
    {
       my_allred = comm_ptr->mpid.user_selected[PAMI_XFER_ALLREDUCE];
       my_allred_md = &comm_ptr->mpid.user_metadata[PAMI_XFER_ALLREDUCE];
       allred.algorithm = my_allred;
-      if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLREDUCE] == MPID_COLL_ALWAYS_QUERY ||
-         comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLREDUCE] == MPID_COLL_CHECK_FN_REQUIRED)
+      if(comm_ptr->mpid.user_selected_type[PAMI_XFER_ALLREDUCE] == MPID_COLL_ALWAYS_QUERY ||
+         comm_ptr->mpid.user_selected_type[PAMI_XFER_ALLREDUCE] == MPID_COLL_CHECK_FN_REQUIRED)
       {
          if(my_allred_md->check_fn != NULL)
          {
@@ -226,7 +226,7 @@ int MPIDO_Allreduce(void *sendbuf,
             metadata_result_t result = {0};
             TRACE_ERR("querying allreduce algorithm %s, type was %d\n",
                my_allred_md->name,
-               comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLREDUCE]);
+               comm_ptr->mpid.user_selected_type[PAMI_XFER_ALLREDUCE]);
             result = comm_ptr->mpid.user_metadata[PAMI_XFER_ALLREDUCE].check_fn(&allred);
             TRACE_ERR("bitmask: %#X\n", result.bitmask);
             /* \todo Ignore check_correct.values.nonlocal until we implement the

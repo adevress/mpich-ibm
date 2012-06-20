@@ -138,7 +138,7 @@ int MPIDO_Gather(void *sendbuf,
   int success = 1, contig, send_bytes=-1, recv_bytes = 0;
   int rank = comm_ptr->rank;
 
-  if (sendtype != MPI_DATATYPE_NULL && sendcount >= 0)
+  if ((sendbuf == MPI_IN_PLACE) && sendtype != MPI_DATATYPE_NULL && sendcount >= 0)
   {
     MPIDI_Datatype_get_info(sendcount, sendtype, contig,
                             send_bytes, data_ptr, true_lb);
@@ -162,7 +162,7 @@ int MPIDO_Gather(void *sendbuf,
 
   MPIDI_Update_last_algorithm(comm_ptr, "GATHER_MPICH");
   if(!comm_ptr->mpid.optgather ||
-   comm_ptr->mpid.user_selectedvar[PAMI_XFER_GATHER] == MPID_COLL_USE_MPICH)
+   comm_ptr->mpid.user_selected_type[PAMI_XFER_GATHER] == MPID_COLL_USE_MPICH)
   {
     if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0))
       fprintf(stderr,"Using MPICH gather algorithm\n");
@@ -200,7 +200,7 @@ int MPIDO_Gather(void *sendbuf,
       MPID_PROGRESS_WAIT_WHILE(allred_active);
    }
 
-   if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_GATHER] == MPID_COLL_USE_MPICH || !success)
+   if(comm_ptr->mpid.user_selected_type[PAMI_XFER_GATHER] == MPID_COLL_USE_MPICH || !success)
    {
     if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0))
       fprintf(stderr,"Using MPICH gather algorithm\n");
@@ -221,19 +221,23 @@ int MPIDO_Gather(void *sendbuf,
    gather.cmd.xfer_gather.root = MPID_VCR_GET_LPID(comm_ptr->vcr, root);
    if(sendbuf == MPI_IN_PLACE) 
    {
+     if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL))
+       fprintf(stderr,"gather MPI_IN_PLACE buffering\n");
+     gather.cmd.xfer_gather.stypecount = recv_bytes;
      gather.cmd.xfer_gather.sndbuf = (char *)recvbuf + recv_bytes*comm_ptr->rank;
    }
    else
+   {
+     gather.cmd.xfer_gather.stypecount = send_bytes;
      gather.cmd.xfer_gather.sndbuf = (void *)sendbuf;
+   }
    gather.cmd.xfer_gather.stype = PAMI_TYPE_BYTE;
-   gather.cmd.xfer_gather.stypecount = send_bytes;
    gather.cmd.xfer_gather.rcvbuf = (void *)recvbuf;
    gather.cmd.xfer_gather.rtype = PAMI_TYPE_BYTE;
    gather.cmd.xfer_gather.rtypecount = recv_bytes;
 
-#ifdef MPIDI_BASIC_COLLECTIVE_SELECTION
    /* If glue-level protocols are good, this will require some changes */
-   if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_GATHER] == MPID_COLL_SELECTED)
+   if(comm_ptr->mpid.user_selected_type[PAMI_XFER_GATHER] == MPID_COLL_OPTIMIZED)
    {
       TRACE_ERR("Optimized gather (%s) was pre-selected\n",
          comm_ptr->mpid.opt_protocol_md[PAMI_XFER_GATHER][0].name);
@@ -242,13 +246,12 @@ int MPIDO_Gather(void *sendbuf,
       queryreq = comm_ptr->mpid.must_query[PAMI_XFER_GATHER][0];
    }
    else
-#endif
    {
       TRACE_ERR("Optimized gather (%s) was specified by user\n",
          comm_ptr->mpid.user_metadata[PAMI_XFER_GATHER].name);
       my_gather = comm_ptr->mpid.user_selected[PAMI_XFER_GATHER];
       my_gather_md = &comm_ptr->mpid.user_metadata[PAMI_XFER_GATHER];
-      queryreq = comm_ptr->mpid.user_selectedvar[PAMI_XFER_GATHER];
+      queryreq = comm_ptr->mpid.user_selected_type[PAMI_XFER_GATHER];
    }
 
    gather.algorithm = my_gather;

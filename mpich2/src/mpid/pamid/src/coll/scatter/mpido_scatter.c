@@ -116,7 +116,7 @@ int MPIDO_Scatter(void *sendbuf,
   int success = 1;
   pami_type_t stype, rtype;
   int tmp;
-  char use_pami = !(comm_ptr->mpid.user_selectedvar[PAMI_XFER_SCATTER] == MPID_COLL_USE_MPICH);
+  char use_pami = !(comm_ptr->mpid.user_selected_type[PAMI_XFER_SCATTER] == MPID_COLL_USE_MPICH);
 
   /* if (rank == root)
      We can't decide on just the root to use MPICH. Really need a pre-allreduce.
@@ -164,7 +164,7 @@ int MPIDO_Scatter(void *sendbuf,
 
   else
   {
-    if (sendtype != MPI_DATATYPE_NULL && sendcount >= 0)
+    if (sendtype != MPI_DATATYPE_NULL && sendcount >= 0)/* Should this be send or recv? */
     {
       MPIDI_Datatype_get_info(recvcount, recvtype, contig,
                               nbytes, data_ptr, true_lb);
@@ -183,8 +183,7 @@ int MPIDO_Scatter(void *sendbuf,
    volatile unsigned scatter_active = 1;
    int queryreq = 0;
 
-#ifdef MPIDI_BASIC_COLLECTIVE_SELECTION
-   if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_SCATTER] == MPID_COLL_SELECTED)
+   if(comm_ptr->mpid.user_selected_type[PAMI_XFER_SCATTER] == MPID_COLL_OPTIMIZED)
    {
       TRACE_ERR("Optimized scatter %s was selected\n",
          comm_ptr->mpid.opt_protocol_md[PAMI_XFER_SCATTER][0].name);
@@ -193,13 +192,12 @@ int MPIDO_Scatter(void *sendbuf,
       queryreq = comm_ptr->mpid.must_query[PAMI_XFER_SCATTER][0];
    }
    else
-#endif
    {
       TRACE_ERR("Optimized scatter %s was set by user\n",
          comm_ptr->mpid.user_metadata[PAMI_XFER_SCATTER].name);
       my_scatter = comm_ptr->mpid.user_selected[PAMI_XFER_SCATTER];
       my_scatter_md = &comm_ptr->mpid.user_metadata[PAMI_XFER_SCATTER];
-      queryreq = comm_ptr->mpid.user_selectedvar[PAMI_XFER_SCATTER];
+      queryreq = comm_ptr->mpid.user_selected_type[PAMI_XFER_SCATTER];
    }
  
    scatter.algorithm = my_scatter;
@@ -211,14 +209,20 @@ int MPIDO_Scatter(void *sendbuf,
    scatter.cmd.xfer_scatter.stypecount = sendcount;
    if(recvbuf == MPI_IN_PLACE) 
    {
-     MPI_Aint recv_true_lb = 0;
-     MPIDI_Datatype_get_info(1, recvtype, contig, nbytes, data_ptr, recv_true_lb);
+     if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL))
+       fprintf(stderr,"scatter MPI_IN_PLACE buffering\n");
+     MPIDI_Datatype_get_info(sendcount, sendtype, contig,
+                             nbytes, data_ptr, true_lb);
      scatter.cmd.xfer_scatter.rcvbuf = (char *)sendbuf + nbytes*comm_ptr->rank;
+     scatter.cmd.xfer_scatter.rtype = stype;
+     scatter.cmd.xfer_scatter.rtypecount = sendcount;
    }
    else
+   {
      scatter.cmd.xfer_scatter.rcvbuf = (void *)recvbuf;
-   scatter.cmd.xfer_scatter.rtype = rtype;
-   scatter.cmd.xfer_scatter.rtypecount = recvcount;
+     scatter.cmd.xfer_scatter.rtype = rtype;
+     scatter.cmd.xfer_scatter.rtypecount = recvcount;
+   }
 
    if(unlikely(queryreq == MPID_COLL_ALWAYS_QUERY ||
                queryreq == MPID_COLL_CHECK_FN_REQUIRED))
@@ -287,8 +291,8 @@ int MPIDO_Scatter(void *sendbuf,
                         root, comm_ptr, mpierrno);
   }
 
-   sbuf = sendbuf+true_lb;
-   rbuf = recvbuf+true_lb;
+   sbuf = (char *)sendbuf+true_lb;
+   rbuf = (char *)recvbuf+true_lb;
 
    MPIDI_Update_last_algorithm(comm_ptr, "SCATTER_OPT_BCAST");
    return MPIDO_Scatter_bcast(sbuf, sendcount, sendtype,

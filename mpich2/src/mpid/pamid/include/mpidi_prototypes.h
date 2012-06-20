@@ -191,9 +191,7 @@ void MPIDI_Coll_Comm_create (MPID_Comm *comm);
 void MPIDI_Coll_Comm_destroy(MPID_Comm *comm);
 void MPIDI_Comm_coll_query  (MPID_Comm *comm);
 void MPIDI_Comm_coll_envvars(MPID_Comm *comm);
-#ifdef MPIDI_BASIC_COLLECTIVE_SELECTION
 void MPIDI_Comm_coll_select(MPID_Comm *comm);
-#endif
 void MPIDI_Coll_register    (void);
 
 int MPIDO_Bcast(void *buffer, int count, MPI_Datatype dt, int root, MPID_Comm *comm_ptr, int *mpierrno);

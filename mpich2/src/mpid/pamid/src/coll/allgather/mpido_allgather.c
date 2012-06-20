@@ -190,7 +190,7 @@ int MPIDO_Allgather_alltoall(void *sendbuf,
   }
   if (sendbuf != MPI_IN_PLACE)
   {
-    a2a_sendbuf = sendbuf + send_true_lb;
+    a2a_sendbuf = (char *)sendbuf + send_true_lb;
   }
   else
   {
@@ -246,6 +246,7 @@ MPIDO_Allgather(void *sendbuf,
    volatile unsigned allgather_active = 1;
    pami_xfer_t allred;
    for (i=0;i<6;i++) config[i] = 1;
+   pami_metadata_t *my_md;
 
 
    allred.cb_done = allred_cb_done;
@@ -268,8 +269,8 @@ MPIDO_Allgather(void *sendbuf,
    use_tree_reduce = comm_ptr->mpid.allgathers[0];
    use_bcast = comm_ptr->mpid.allgathers[1];
    use_pami = 
-      (comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLGATHER] == MPID_COLL_USE_MPICH) ? 0 : 1;
-   if(sendbuf == MPI_IN_PLACE) use_pami = 0;
+      (comm_ptr->mpid.user_selected_type[PAMI_XFER_ALLGATHER] == MPID_COLL_USE_MPICH) ? 0 : 1;
+//   if(sendbuf == MPI_IN_PLACE) use_pami = 0;
    use_opt = use_alltoall || use_tree_reduce || use_bcast || use_pami;
 
 
@@ -300,6 +301,8 @@ MPIDO_Allgather(void *sendbuf,
 
    if(sendbuf != MPI_IN_PLACE)
    {
+      if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL))
+         fprintf(stderr,"allgather MPI_IN_PLACE buffering\n");
       MPIDI_Datatype_get_info(sendcount,
                             sendtype,
                             config[MPID_SEND_CONTIG],
@@ -310,7 +313,7 @@ MPIDO_Allgather(void *sendbuf,
    }
    else
    {
-      sbuf = recvbuf;
+      sbuf = (char *)recvbuf+recv_size*comm_ptr->rank;
    }
 //   fprintf(stderr,"sendount: %d, recvcount: %d send_size: %zd recv_size: %zd\n", sendcount, recvcount, send_size, recv_size);
 
@@ -367,27 +370,32 @@ MPIDO_Allgather(void *sendbuf,
       allgather.cmd.xfer_allgather.sndbuf = sbuf;
       allgather.cmd.xfer_allgather.stype = PAMI_TYPE_BYTE;
       allgather.cmd.xfer_allgather.rtype = PAMI_TYPE_BYTE;
-//      fprintf(stderr,"send_size: %zd recv_size: %zd\n", send_size, recv_size);
       allgather.cmd.xfer_allgather.stypecount = send_size;
       allgather.cmd.xfer_allgather.rtypecount = recv_size;
-#ifndef __PE__ 
-      allgather.algorithm = comm_ptr->mpid.user_selected[PAMI_XFER_ALLGATHER];
-#else
-      allgather.algorithm = comm_ptr->mpid.opt_protocol[PAMI_XFER_ALLGATHER][0];
-#endif
-      if(unlikely( comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLGATHER] == MPID_COLL_ALWAYS_QUERY ||
-                   comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLGATHER] == MPID_COLL_CHECK_FN_REQUIRED))
+      if(comm_ptr->mpid.user_selected_type[PAMI_XFER_ALLGATHER] == MPID_COLL_OPTIMIZED)
+      {
+         allgather.algorithm = comm_ptr->mpid.opt_protocol[PAMI_XFER_ALLGATHER][0];
+         my_md = &comm_ptr->mpid.opt_protocol_md[PAMI_XFER_ALLGATHER][0];
+      }
+      else
+      {
+         allgather.algorithm = comm_ptr->mpid.user_selected[PAMI_XFER_ALLGATHER];
+         my_md = &comm_ptr->mpid.user_metadata[PAMI_XFER_ALLGATHER];
+      }
+
+      if(unlikely( comm_ptr->mpid.user_selected_type[PAMI_XFER_ALLGATHER] == MPID_COLL_ALWAYS_QUERY ||
+                   comm_ptr->mpid.user_selected_type[PAMI_XFER_ALLGATHER] == MPID_COLL_CHECK_FN_REQUIRED))
       {
          metadata_result_t result = {0};
          TRACE_ERR("Querying allgather protocol %s, type was: %d\n",
-            comm_ptr->mpid.user_metadata[PAMI_XFER_ALLGATHER].name,
-            comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLGATHER]);
-         result = comm_ptr->mpid.user_metadata[PAMI_XFER_ALLGATHER].check_fn(&allgather);
+            my_md->name,
+            comm_ptr->mpid.user_selected_type[PAMI_XFER_ALLGATHER]);
+         result = my_md->check_fn(&allgather);
          TRACE_ERR("bitmask: %#X\n", result.bitmask);
          if(!result.bitmask)
          {
             fprintf(stderr,"Query failed for %s.\n",
-               comm_ptr->mpid.user_metadata[PAMI_XFER_ALLGATHER].name);
+               my_md->name);
          }
       }
 
@@ -400,13 +408,12 @@ MPIDO_Allgather(void *sendbuf,
          threadID = (unsigned long long int)tid;
          fprintf(stderr,"<%llx> Using protocol %s for allgather on %u\n", 
                  threadID,
-                 comm_ptr->mpid.user_metadata[PAMI_XFER_ALLGATHER].name,
+                 my_md->name,
               (unsigned) comm_ptr->context_id);
       }
       if(MPIDI_Process.context_post)
       {
-         TRACE_ERR("Posting allgather, context: %d, algoname: %s\n", 0,
-         comm_ptr->mpid.user_metadata[PAMI_XFER_ALLGATHER].name);
+         TRACE_ERR("Posting allgather, context: %d, algoname: %s\n", 0, my_md->name);
          MPIDI_Post_coll_t allgather_post;
          allgather_post.coll_struct = &allgather;
          rc = PAMI_Context_post(MPIDI_Context[0], &allgather_post.state, MPIDI_Pami_post_wrapper, (void *)&allgather_post);
@@ -417,8 +424,7 @@ MPIDO_Allgather(void *sendbuf,
          TRACE_ERR("Calling PAMI_Collective with allgather structure\n");
          rc = PAMI_Collective(MPIDI_Context[0], (pami_xfer_t *)&allgather);
       }
-      MPIDI_Update_last_algorithm(comm_ptr,
-      comm_ptr->mpid.user_metadata[PAMI_XFER_ALLGATHER].name);
+      MPIDI_Update_last_algorithm(comm_ptr, my_md->name);
 
       MPID_PROGRESS_WAIT_WHILE(allgather_active);
       TRACE_ERR("Allgather done\n");

@@ -64,7 +64,7 @@ enum
     MPID_NUM_PREALLREDUCES       = 6,
   };
 
-enum
+enum /* The type of protocol selected */
   {
     MPID_COLL_NOQUERY           = 0,
     MPID_COLL_QUERY             = 1,
@@ -73,7 +73,7 @@ enum
     MPID_COLL_CHECK_FN_REQUIRED = 3,
     MPID_COLL_USE_MPICH         = 4,
     MPID_COLL_NOSELECTION       = 5,
-    MPID_COLL_SELECTED          = 6,
+    MPID_COLL_OPTIMIZED         = 6,
   };
 
 enum

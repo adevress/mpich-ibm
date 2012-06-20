@@ -54,7 +54,7 @@ int MPIDO_Bcast(void *buffer,
       MPIDI_Update_last_algorithm(comm_ptr,"BCAST_NONE");
       return MPI_SUCCESS;
    }
-   if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_BROADCAST] == MPID_COLL_USE_MPICH)
+   if(comm_ptr->mpid.user_selected_type[PAMI_XFER_BROADCAST] == MPID_COLL_USE_MPICH)
    {
       if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0))
          fprintf(stderr,"Using MPICH bcast algorithm\n");
@@ -72,7 +72,7 @@ int MPIDO_Bcast(void *buffer,
          fprintf(stderr,"Using MPICH bcast algorithm for data_size 0\n");
       return MPIR_Bcast_intra(buffer, count, datatype, root, comm_ptr, mpierrno);
    }
-   data_buffer = buffer + data_true_lb;
+   data_buffer = (char *)buffer + data_true_lb;
 
    if(!data_contig)
    {
@@ -110,8 +110,7 @@ int MPIDO_Bcast(void *buffer,
    /* Needs to be sizeof(type)*count since we are using bytes as * the generic type */
    bcast.cmd.xfer_broadcast.typecount = data_size;
 
-#ifdef MPIDI_BASIC_COLLECTIVE_SELECTION
-   if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_BROADCAST] == MPID_COLL_SELECTED)
+   if(comm_ptr->mpid.user_selected_type[PAMI_XFER_BROADCAST] == MPID_COLL_OPTIMIZED)
    {
       TRACE_ERR("Optimized bcast (%s) and (%s) were pre-selected\n",
          comm_ptr->mpid.opt_protocol_md[PAMI_XFER_BROADCAST][0].name,
@@ -131,13 +130,12 @@ int MPIDO_Bcast(void *buffer,
       }
    }
    else
-#endif
    {
       TRACE_ERR("Optimized bcast (%s) was specified by user\n",
          comm_ptr->mpid.user_metadata[PAMI_XFER_BROADCAST].name);
       my_bcast =  comm_ptr->mpid.user_selected[PAMI_XFER_BROADCAST];
       my_bcast_md = &comm_ptr->mpid.user_metadata[PAMI_XFER_BROADCAST];
-      queryreq = comm_ptr->mpid.user_selectedvar[PAMI_XFER_BROADCAST];
+      queryreq = comm_ptr->mpid.user_selected_type[PAMI_XFER_BROADCAST];
    }
 
    bcast.algorithm = my_bcast;

@@ -27,8 +27,6 @@
 
 #include <mpidimpl.h>
 
-#ifdef MPIDI_BASIC_COLLECTIVE_SELECTION
-
 
 static int MPIDI_Check_FCA_envvar(char *string)
 {
@@ -101,7 +99,7 @@ MPIDI_Coll_comm_check_FCA(char *coll_name,
                   &comm_ptr->mpid.coll_metadata[pami_xfer][0][opt_proto],
                   sizeof(pami_metadata_t));
             comm_ptr->mpid.must_query[pami_xfer][proto_num] = query_type;
-            comm_ptr->mpid.user_selectedvar[pami_xfer] = MPID_COLL_SELECTED;
+            comm_ptr->mpid.user_selected_type[pami_xfer] = MPID_COLL_OPTIMIZED;
       }                                                                                           
       else /* see if it is in the must query list instead */
       {
@@ -124,19 +122,19 @@ MPIDI_Coll_comm_check_FCA(char *coll_name,
                   &comm_ptr->mpid.coll_metadata[pami_xfer][1][opt_proto],
                   sizeof(pami_metadata_t));
             comm_ptr->mpid.must_query[pami_xfer][proto_num] = query_type;
-            comm_ptr->mpid.user_selectedvar[pami_xfer] = MPID_COLL_SELECTED;
+            comm_ptr->mpid.user_selected_type[pami_xfer] = MPID_COLL_OPTIMIZED;
          }
          else /* that protocol doesn't exist */
          {
             TRACE_ERR("Couldn't find %s in the list for %s, reverting to MPICH\n",protocol_name,coll_name);
-                  comm_ptr->mpid.user_selectedvar[pami_xfer] = MPID_COLL_USE_MPICH;
+                  comm_ptr->mpid.user_selected_type[pami_xfer] = MPID_COLL_USE_MPICH;
          }
       }
    }
    else if(check_var == 0)/* The env var was set, but wasn't set for coll_name */
    {
-      TRACE_ERR("Couldn't find any optimal %s protocols or user chose not to set it. Using MPICH\n",coll_name);
-                  comm_ptr->mpid.user_selectedvar[pami_xfer] = MPID_COLL_USE_MPICH;
+      TRACE_ERR("Couldn't find any optimal %s protocols or user chose not to set it. Selecting MPICH\n",coll_name);
+                  comm_ptr->mpid.user_selected_type[pami_xfer] = MPID_COLL_USE_MPICH;
    }
    else
       return; 
@@ -170,36 +168,36 @@ void MPIDI_Comm_coll_select(MPID_Comm *comm_ptr)
    
    /* First, setup the (easy, allreduce is complicated) FCA collectives if there 
     * are any because they are always usable when they are on */
-   if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_REDUCE] == MPID_COLL_NOSELECTION)
+   if(comm_ptr->mpid.user_selected_type[PAMI_XFER_REDUCE] == MPID_COLL_NOSELECTION)
    {
       MPIDI_Coll_comm_check_FCA("REDUCE","I1:Reduce:FCA:FCA",PAMI_XFER_REDUCE,MPID_COLL_CHECK_FN_REQUIRED, 0, comm_ptr);
    }
-   if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLGATHER] == MPID_COLL_NOSELECTION)
+   if(comm_ptr->mpid.user_selected_type[PAMI_XFER_ALLGATHER] == MPID_COLL_NOSELECTION)
    {
       MPIDI_Coll_comm_check_FCA("ALLGATHER","I1:Allgather:FCA:FCA",PAMI_XFER_ALLGATHER,MPID_COLL_NOQUERY, 0, comm_ptr);
    }
-   if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLGATHERV_INT] == MPID_COLL_NOSELECTION)
+   if(comm_ptr->mpid.user_selected_type[PAMI_XFER_ALLGATHERV_INT] == MPID_COLL_NOSELECTION)
    {
       MPIDI_Coll_comm_check_FCA("ALLGATHERV","I1:AllgathervInt:FCA:FCA",PAMI_XFER_ALLGATHERV_INT,MPID_COLL_NOQUERY, 0, comm_ptr);
    }
-   if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_BROADCAST] == MPID_COLL_NOSELECTION)
+   if(comm_ptr->mpid.user_selected_type[PAMI_XFER_BROADCAST] == MPID_COLL_NOSELECTION)
    {
       MPIDI_Coll_comm_check_FCA("BCAST", "I1:Broadcast:FCA:FCA", PAMI_XFER_BROADCAST, MPID_COLL_NOQUERY, 0, comm_ptr);
       MPIDI_Coll_comm_check_FCA("BCAST", "I1:Broadcast:FCA:FCA", PAMI_XFER_BROADCAST, MPID_COLL_NOQUERY, 1, comm_ptr);
    }
-   if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_BARRIER] == MPID_COLL_NOSELECTION)
+   if(comm_ptr->mpid.user_selected_type[PAMI_XFER_BARRIER] == MPID_COLL_NOSELECTION)
    {
       MPIDI_Coll_comm_check_FCA("BARRIER","I1:Barrier:FCA:FCA",PAMI_XFER_BARRIER,MPID_COLL_NOQUERY, 0, comm_ptr);
    }
    /* SSS: There isn't really an FCA Gatherv protocol. We do this call to force the use of MPICH for gatherv
     * when FCA is enabled so we don't have to use PAMI protocol.  */
-   if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_GATHERV_INT] == MPID_COLL_NOSELECTION)
+   if(comm_ptr->mpid.user_selected_type[PAMI_XFER_GATHERV_INT] == MPID_COLL_NOSELECTION)
    {
       MPIDI_Coll_comm_check_FCA("GATHERV","I1:GathervInt:FCA:FCA",PAMI_XFER_GATHERV_INT,MPID_COLL_NOQUERY, 0, comm_ptr);
    }
 
    /* So, several protocols are really easy. Tackle them first. */
-   if(0) // hangs with Rectangle allgatherv so disable for now (comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLGATHERV_INT] == MPID_COLL_NOSELECTION)
+   if(comm_ptr->mpid.user_selected_type[PAMI_XFER_ALLGATHERV_INT] == MPID_COLL_NOSELECTION)
    {
       TRACE_ERR("No allgatherv[int] env var, so setting optimized allgatherv[int]\n");
       /* Use I0:RectangleDput */
@@ -222,12 +220,13 @@ void MPIDI_Comm_coll_select(MPID_Comm *comm_ptr)
                 &comm_ptr->mpid.coll_metadata[PAMI_XFER_ALLGATHERV_INT][0][opt_proto], 
                 sizeof(pami_metadata_t));
          comm_ptr->mpid.must_query[PAMI_XFER_ALLGATHERV_INT][0] = MPID_COLL_NOQUERY;
-         comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLGATHERV_INT] = MPID_COLL_SELECTED;
+         comm_ptr->mpid.user_selected_type[PAMI_XFER_ALLGATHERV_INT] = MPID_COLL_OPTIMIZED;
       }
       else
       {
          TRACE_ERR("Couldn't find optimial allgatherv[int] protocol\n");
-         comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLGATHERV_INT] = MPID_COLL_USE_MPICH;
+         comm_ptr->mpid.user_selected_type[PAMI_XFER_ALLGATHERV_INT] = MPID_COLL_USE_MPICH;
+         comm_ptr->mpid.opt_protocol[PAMI_XFER_ALLGATHERV_INT][0] = 0;
       }
       TRACE_ERR("Done setting optimized allgatherv[int]\n");
    }
@@ -236,7 +235,7 @@ void MPIDI_Comm_coll_select(MPID_Comm *comm_ptr)
 
    /* Alltoall */
    /* If the user has forced a selection, don't bother setting it here */
-   if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLTOALL] == MPID_COLL_NOSELECTION)
+   if(comm_ptr->mpid.user_selected_type[PAMI_XFER_ALLTOALL] == MPID_COLL_NOSELECTION)
    {
       TRACE_ERR("No alltoall env var, so setting optimized alltoall\n");
       /* the best alltoall is always I0:M2MComposite:MU:MU, though there are
@@ -262,12 +261,13 @@ void MPIDI_Comm_coll_select(MPID_Comm *comm_ptr)
                 &comm_ptr->mpid.coll_metadata[PAMI_XFER_ALLTOALL][0][opt_proto], 
                 sizeof(pami_metadata_t));
          comm_ptr->mpid.must_query[PAMI_XFER_ALLTOALL][0] = MPID_COLL_NOQUERY;
-         comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLTOALL] = MPID_COLL_SELECTED;
+         comm_ptr->mpid.user_selected_type[PAMI_XFER_ALLTOALL] = MPID_COLL_OPTIMIZED;
       }
       else
       {
          TRACE_ERR("Couldn't find I0:M2MComposite:MU:MU in the list for alltoall, reverting to MPICH\n");
-         comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLTOALL] = MPID_COLL_USE_MPICH;
+         comm_ptr->mpid.user_selected_type[PAMI_XFER_ALLTOALL] = MPID_COLL_USE_MPICH;
+         comm_ptr->mpid.opt_protocol[PAMI_XFER_ALLTOALL][0] = 0;
       }
       TRACE_ERR("Done setting optimized alltoall\n");
    }
@@ -275,7 +275,7 @@ void MPIDI_Comm_coll_select(MPID_Comm *comm_ptr)
 
    opt_proto = -1;
    /* Alltoallv */
-   if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLTOALLV_INT] == MPID_COLL_NOSELECTION)
+   if(comm_ptr->mpid.user_selected_type[PAMI_XFER_ALLTOALLV_INT] == MPID_COLL_NOSELECTION)
    {
       TRACE_ERR("No alltoallv env var, so setting optimized alltoallv\n");
       /* the best alltoallv is always I0:M2MComposite:MU:MU, though there are
@@ -301,19 +301,20 @@ void MPIDI_Comm_coll_select(MPID_Comm *comm_ptr)
                 &comm_ptr->mpid.coll_metadata[PAMI_XFER_ALLTOALLV_INT][0][opt_proto], 
                 sizeof(pami_metadata_t));
          comm_ptr->mpid.must_query[PAMI_XFER_ALLTOALLV_INT][0] = MPID_COLL_NOQUERY;
-         comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLTOALLV_INT] = MPID_COLL_SELECTED;
+         comm_ptr->mpid.user_selected_type[PAMI_XFER_ALLTOALLV_INT] = MPID_COLL_OPTIMIZED;
       }
       else
       {
          TRACE_ERR("Couldn't find I0:M2MComposite:MU:MU in the list for alltoallv, reverting to MPICH\n");
-         comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLTOALLV_INT] = MPID_COLL_USE_MPICH;
+         comm_ptr->mpid.user_selected_type[PAMI_XFER_ALLTOALLV_INT] = MPID_COLL_USE_MPICH;
+         comm_ptr->mpid.opt_protocol[PAMI_XFER_ALLTOALLV_INT][0] = 0;
       }
       TRACE_ERR("Done setting optimized alltoallv\n");
    }
    
    opt_proto = -1;
    /* Barrier */
-   if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_BARRIER] == MPID_COLL_NOSELECTION)
+   if(comm_ptr->mpid.user_selected_type[PAMI_XFER_BARRIER] == MPID_COLL_NOSELECTION)
    {
       TRACE_ERR("No barrier env var, so setting optimized barrier\n");
       /* For 1ppn, I0:MultiSync:-:GI is best, followed by
@@ -386,12 +387,13 @@ void MPIDI_Comm_coll_select(MPID_Comm *comm_ptr)
                 &comm_ptr->mpid.coll_metadata[PAMI_XFER_BARRIER][0][opt_proto], 
                 sizeof(pami_metadata_t));
          comm_ptr->mpid.must_query[PAMI_XFER_BARRIER][0] = MPID_COLL_NOQUERY;
-         comm_ptr->mpid.user_selectedvar[PAMI_XFER_BARRIER] = MPID_COLL_SELECTED;
+         comm_ptr->mpid.user_selected_type[PAMI_XFER_BARRIER] = MPID_COLL_OPTIMIZED;
       }
       else
       {
-         TRACE_ERR("Couldn't find any optimal barrier protocols. Using MPICH\n");
-         comm_ptr->mpid.user_selectedvar[PAMI_XFER_BARRIER] = MPID_COLL_USE_MPICH;
+         TRACE_ERR("Couldn't find any optimal barrier protocols. Selecting MPICH\n");
+         comm_ptr->mpid.user_selected_type[PAMI_XFER_BARRIER] = MPID_COLL_USE_MPICH;
+         comm_ptr->mpid.opt_protocol[PAMI_XFER_BARRIER][0] = 0;
       }
 
       TRACE_ERR("Done setting optimized barrier\n");
@@ -422,7 +424,7 @@ void MPIDI_Comm_coll_select(MPID_Comm *comm_ptr)
 
 
    /* First, set up small message bcasts */
-   if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_BROADCAST] == MPID_COLL_NOSELECTION)
+   if(comm_ptr->mpid.user_selected_type[PAMI_XFER_BROADCAST] == MPID_COLL_NOSELECTION)
    {
       /* Note: Neither of these protocols are in a 'must query' list so
        * the for() loop only needs to loop over [0] protocols */
@@ -512,12 +514,13 @@ void MPIDI_Comm_coll_select(MPID_Comm *comm_ptr)
                 &comm_ptr->mpid.coll_metadata[PAMI_XFER_BROADCAST][mustquery][opt_proto], 
                 sizeof(pami_metadata_t));
          comm_ptr->mpid.must_query[PAMI_XFER_BROADCAST][0] = MPID_COLL_NOQUERY;
-         comm_ptr->mpid.user_selectedvar[PAMI_XFER_BROADCAST] = MPID_COLL_SELECTED;
+         comm_ptr->mpid.user_selected_type[PAMI_XFER_BROADCAST] = MPID_COLL_OPTIMIZED;
       }
       else
       {
-         TRACE_ERR("Couldn't find any optimal bcast protocols. Using MPICH\n");
-         comm_ptr->mpid.user_selectedvar[PAMI_XFER_BROADCAST] = MPID_COLL_USE_MPICH;
+         TRACE_ERR("Couldn't find any optimal bcast protocols. Selecting MPICH\n");
+         comm_ptr->mpid.user_selected_type[PAMI_XFER_BROADCAST] = MPID_COLL_USE_MPICH;
+         comm_ptr->mpid.opt_protocol[PAMI_XFER_BROADCAST][0] = 0;
       }
 
 
@@ -528,7 +531,7 @@ void MPIDI_Comm_coll_select(MPID_Comm *comm_ptr)
       /* If bcast0 is I0:MultiCastDput:-:MU, and I0:RectangleDput:MU:MU is available, use
        * it for 64k messages */
       /* Again, none of these protocols are in the 'must query' list */
-      if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_BROADCAST] != MPID_COLL_USE_MPICH)
+      if(comm_ptr->mpid.user_selected_type[PAMI_XFER_BROADCAST] != MPID_COLL_USE_MPICH)
       {
       if(use_threaded_collectives)
          if(strcasecmp(comm_ptr->mpid.opt_protocol_md[PAMI_XFER_BROADCAST][0].name, "I0:MultiCastDput:-:MU") == 0)
@@ -573,7 +576,7 @@ void MPIDI_Comm_coll_select(MPID_Comm *comm_ptr)
          {
             if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm_ptr->rank == 0)
             {
-               fprintf(stderr,"Using %s as optimal broadcast 1 (above %d)\n", 
+               fprintf(stderr,"Selecting %s as optimal broadcast 1 (above %d)\n", 
                   comm_ptr->mpid.coll_metadata[PAMI_XFER_BROADCAST][0][opt_proto].name, 
                   comm_ptr->mpid.cutoff_size[PAMI_XFER_BROADCAST][0]);
             }
@@ -589,7 +592,7 @@ void MPIDI_Comm_coll_select(MPID_Comm *comm_ptr)
                    sizeof(pami_metadata_t));
             comm_ptr->mpid.must_query[PAMI_XFER_BROADCAST][1] = MPID_COLL_NOQUERY;
             /* This should already be set... */
-            /* comm_ptr->mpid.user_selectedvar[PAMI_XFER_BROADCAST] = MPID_COLL_SELECTED; */
+            /* comm_ptr->mpid.user_selected_type[PAMI_XFER_BROADCAST] = MPID_COLL_OPTIMIZED; */
          }
          else
          {
@@ -620,7 +623,7 @@ void MPIDI_Comm_coll_select(MPID_Comm *comm_ptr)
     * it too
     */
    
-   if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLREDUCE] == MPID_COLL_NOSELECTION)
+   if(comm_ptr->mpid.user_selected_type[PAMI_XFER_ALLREDUCE] == MPID_COLL_NOSELECTION)
    {
       /* the user hasn't selected a protocol, so we can NULL the protocol/metadatas */
       comm_ptr->mpid.query_allred_dsmm = MPID_COLL_USE_MPICH;
@@ -658,7 +661,7 @@ void MPIDI_Comm_coll_select(MPID_Comm *comm_ptr)
                    &comm_ptr->mpid.coll_metadata[PAMI_XFER_ALLREDUCE][1][i],
                   sizeof(pami_metadata_t));
             comm_ptr->mpid.query_allred_ismm = MPID_COLL_QUERY;
-            comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLREDUCE] = MPID_COLL_SELECTED;
+            comm_ptr->mpid.user_selected_type[PAMI_XFER_ALLREDUCE] = MPID_COLL_OPTIMIZED;
             opt_proto = i;
 
          }
@@ -679,7 +682,7 @@ void MPIDI_Comm_coll_select(MPID_Comm *comm_ptr)
                    &comm_ptr->mpid.coll_metadata[PAMI_XFER_ALLREDUCE][1][i],
                   sizeof(pami_metadata_t));
             comm_ptr->mpid.query_allred_ismm = MPID_COLL_CHECK_FN_REQUIRED;
-            comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLREDUCE] = MPID_COLL_SELECTED;
+            comm_ptr->mpid.user_selected_type[PAMI_XFER_ALLREDUCE] = MPID_COLL_OPTIMIZED;
             /* I don't think MPIX_HW is initialized yet, so keep this at 128 for now, which 
              * is the upper lower limit anyway (8192 / 64) */
             /* comm_ptr->mpid.cutoff_size[PAMI_XFER_ALLREDUCE][0] = 8192 / ppn; */
@@ -721,7 +724,7 @@ void MPIDI_Comm_coll_select(MPID_Comm *comm_ptr)
               /* Short is good for up to 128 */
               comm_ptr->mpid.cutoff_size[PAMI_XFER_ALLREDUCE][0] = 128;
             }
-            comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLREDUCE] = MPID_COLL_SELECTED;
+            comm_ptr->mpid.user_selected_type[PAMI_XFER_ALLREDUCE] = MPID_COLL_OPTIMIZED;
 
             opt_proto = i;
          }
@@ -744,11 +747,11 @@ void MPIDI_Comm_coll_select(MPID_Comm *comm_ptr)
          if(i == PAMI_XFER_AMBROADCAST || i == PAMI_XFER_AMSCATTER ||
             i == PAMI_XFER_AMGATHER || i == PAMI_XFER_AMREDUCE)
             continue;
-         if(comm_ptr->mpid.user_selectedvar[i] != MPID_COLL_SELECTED)
+         if(comm_ptr->mpid.user_selected_type[i] != MPID_COLL_OPTIMIZED)
          {
             if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm_ptr->rank == 0)
                fprintf(stderr, "Collective wasn't selected for type %d,using MPICH (comm %p)\n", i, comm_ptr);
-            comm_ptr->mpid.user_selectedvar[i] = MPID_COLL_USE_MPICH;
+            comm_ptr->mpid.user_selected_type[i] = MPID_COLL_USE_MPICH;
          }
       }
    }
@@ -756,69 +759,69 @@ void MPIDI_Comm_coll_select(MPID_Comm *comm_ptr)
             
    if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm_ptr->rank == 0)
    {
-      if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_BARRIER] == MPID_COLL_SELECTED)
-         fprintf(stderr,"Using %s for opt barrier comm %p\n", comm_ptr->mpid.opt_protocol_md[PAMI_XFER_BARRIER][0].name, comm_ptr);
-      if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLGATHERV_INT] == MPID_COLL_SELECTED)
-         fprintf(stderr,"Using %s for opt allgatherv comm %p\n", comm_ptr->mpid.opt_protocol_md[PAMI_XFER_ALLGATHERV_INT][0].name, comm_ptr);
+      if(comm_ptr->mpid.user_selected_type[PAMI_XFER_BARRIER] == MPID_COLL_OPTIMIZED)
+         fprintf(stderr,"Selecting %s for opt barrier comm %p\n", comm_ptr->mpid.opt_protocol_md[PAMI_XFER_BARRIER][0].name, comm_ptr);
+      if(comm_ptr->mpid.user_selected_type[PAMI_XFER_ALLGATHERV_INT] == MPID_COLL_OPTIMIZED)
+         fprintf(stderr,"Selecting %s for opt allgatherv comm %p\n", comm_ptr->mpid.opt_protocol_md[PAMI_XFER_ALLGATHERV_INT][0].name, comm_ptr);
       if(comm_ptr->mpid.must_query[PAMI_XFER_ALLGATHERV_INT][0] == MPID_COLL_USE_MPICH)
-         fprintf(stderr,"Using MPICH for allgatherv below %d size comm %p\n", comm_ptr->mpid.cutoff_size[PAMI_XFER_ALLREDUCE][0], comm_ptr);
-      if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_BROADCAST] == MPID_COLL_SELECTED)
-         fprintf(stderr,"Using %s for opt bcast up to size %d comm %p\n", comm_ptr->mpid.opt_protocol_md[PAMI_XFER_BROADCAST][0].name,
+         fprintf(stderr,"Selecting MPICH for allgatherv below %d size comm %p\n", comm_ptr->mpid.cutoff_size[PAMI_XFER_ALLREDUCE][0], comm_ptr);
+      if(comm_ptr->mpid.user_selected_type[PAMI_XFER_BROADCAST] == MPID_COLL_OPTIMIZED)
+         fprintf(stderr,"Selecting %s for opt bcast up to size %d comm %p\n", comm_ptr->mpid.opt_protocol_md[PAMI_XFER_BROADCAST][0].name,
             comm_ptr->mpid.cutoff_size[PAMI_XFER_BROADCAST][0], comm_ptr);
       if(comm_ptr->mpid.must_query[PAMI_XFER_BROADCAST][1] == MPID_COLL_NOQUERY)
-         fprintf(stderr,"Using %s for opt bcast above size %d comm %p\n", comm_ptr->mpid.opt_protocol_md[PAMI_XFER_BROADCAST][1].name,
+         fprintf(stderr,"Selecting %s for opt bcast above size %d comm %p\n", comm_ptr->mpid.opt_protocol_md[PAMI_XFER_BROADCAST][1].name,
             comm_ptr->mpid.cutoff_size[PAMI_XFER_BROADCAST][0], comm_ptr);
-      if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLTOALLV_INT] == MPID_COLL_SELECTED)
-         fprintf(stderr,"Using %s for opt alltoallv comm %p\n", comm_ptr->mpid.opt_protocol_md[PAMI_XFER_ALLTOALLV_INT][0].name, comm_ptr);
-      if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLTOALL] == MPID_COLL_SELECTED)
-         fprintf(stderr,"Using %s for opt alltoall comm %p\n", comm_ptr->mpid.opt_protocol_md[PAMI_XFER_ALLTOALL][0].name, comm_ptr);
+      if(comm_ptr->mpid.user_selected_type[PAMI_XFER_ALLTOALLV_INT] == MPID_COLL_OPTIMIZED)
+         fprintf(stderr,"Selecting %s for opt alltoallv comm %p\n", comm_ptr->mpid.opt_protocol_md[PAMI_XFER_ALLTOALLV_INT][0].name, comm_ptr);
+      if(comm_ptr->mpid.user_selected_type[PAMI_XFER_ALLTOALL] == MPID_COLL_OPTIMIZED)
+         fprintf(stderr,"Selecting %s for opt alltoall comm %p\n", comm_ptr->mpid.opt_protocol_md[PAMI_XFER_ALLTOALL][0].name, comm_ptr);
       if(comm_ptr->mpid.must_query[PAMI_XFER_ALLREDUCE][0] == MPID_COLL_USE_MPICH)
-         fprintf(stderr,"Using MPICH for allreduce below %d size comm %p\n", comm_ptr->mpid.cutoff_size[PAMI_XFER_ALLREDUCE][0], comm_ptr);
+         fprintf(stderr,"Selecting MPICH for allreduce below %d size comm %p\n", comm_ptr->mpid.cutoff_size[PAMI_XFER_ALLREDUCE][0], comm_ptr);
       else
       {
          if(comm_ptr->mpid.query_allred_ismm != MPID_COLL_USE_MPICH)
          {
-            fprintf(stderr,"Using %s for integer sum/min/max ops, query: %d comm %p\n",
+            fprintf(stderr,"Selecting %s for integer sum/min/max ops, query: %d comm %p\n",
                comm_ptr->mpid.cached_allred_ismm_md.name, comm_ptr->mpid.query_allred_ismm, comm_ptr);
          }
          if(comm_ptr->mpid.query_allred_dsmm != MPID_COLL_USE_MPICH)
          {
-            fprintf(stderr,"Using %s for double sum/min/max ops, query: %d comm %p\n",
+            fprintf(stderr,"Selecting %s for double sum/min/max ops, query: %d comm %p\n",
                comm_ptr->mpid.cached_allred_dsmm_md.name, comm_ptr->mpid.query_allred_dsmm, comm_ptr);
          }
-         fprintf(stderr,"Using %s for other operations up to %d comm %p\n",
+         fprintf(stderr,"Selecting %s for other operations up to %d comm %p\n",
                comm_ptr->mpid.opt_protocol_md[PAMI_XFER_ALLREDUCE][0].name, 
                comm_ptr->mpid.cutoff_size[PAMI_XFER_ALLREDUCE][0], comm_ptr);
       }
       if(comm_ptr->mpid.must_query[PAMI_XFER_ALLREDUCE][1] == MPID_COLL_USE_MPICH)
-         fprintf(stderr,"Using MPICH for allreduce above %d size comm %p\n", comm_ptr->mpid.cutoff_size[PAMI_XFER_ALLREDUCE][0], comm_ptr);
+         fprintf(stderr,"Selecting MPICH for allreduce above %d size comm %p\n", comm_ptr->mpid.cutoff_size[PAMI_XFER_ALLREDUCE][0], comm_ptr);
       else
       {
          if(comm_ptr->mpid.query_allred_ismm != MPID_COLL_USE_MPICH)
          {
-            fprintf(stderr,"Using %s for integer sum/min/max ops, above %d query: %d comm %p\n",
+            fprintf(stderr,"Selecting %s for integer sum/min/max ops, above %d query: %d comm %p\n",
                comm_ptr->mpid.cached_allred_ismm_md.name, 
                comm_ptr->mpid.cutoff_size[PAMI_XFER_ALLREDUCE][0],
                comm_ptr->mpid.query_allred_ismm, comm_ptr);
          }
          else
          {
-            fprintf(stderr,"Using MPICH for integer sum/min/max ops above %d size comm %p\n",
+            fprintf(stderr,"Selecting MPICH for integer sum/min/max ops above %d size comm %p\n",
                comm_ptr->mpid.cutoff_size[PAMI_XFER_ALLREDUCE][0], comm_ptr);
          }
          if(comm_ptr->mpid.query_allred_dsmm != MPID_COLL_USE_MPICH)
          {
-            fprintf(stderr,"Using %s for double sum/min/max ops, above %d query: %d comm %p\n",
+            fprintf(stderr,"Selecting %s for double sum/min/max ops, above %d query: %d comm %p\n",
                comm_ptr->mpid.cached_allred_dsmm_md.name, 
                comm_ptr->mpid.cutoff_size[PAMI_XFER_ALLREDUCE][0],
                comm_ptr->mpid.query_allred_dsmm, comm_ptr);
          }
          else
          {
-            fprintf(stderr,"Using MPICH for double sum/min/max ops above %d size comm %p\n",
+            fprintf(stderr,"Selecting MPICH for double sum/min/max ops above %d size comm %p\n",
                comm_ptr->mpid.cutoff_size[PAMI_XFER_ALLREDUCE][0], comm_ptr);
          }
-         fprintf(stderr,"Using %s for other operations over %d comm %p\n",
+         fprintf(stderr,"Selecting %s for other operations over %d comm %p\n",
             comm_ptr->mpid.opt_protocol_md[PAMI_XFER_ALLREDUCE][1].name,
             comm_ptr->mpid.cutoff_size[PAMI_XFER_ALLREDUCE][0], comm_ptr);
       }
@@ -827,4 +830,4 @@ void MPIDI_Comm_coll_select(MPID_Comm *comm_ptr)
    TRACE_ERR("Leaving MPIDI_Comm_coll_select\n");
 
 }
-#endif
+

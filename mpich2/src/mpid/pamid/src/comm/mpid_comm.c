@@ -217,10 +217,8 @@ void MPIDI_Coll_comm_create(MPID_Comm *comm)
    /* These two functions moved to mpid_collselect.c */
    MPIDI_Comm_coll_query(comm);
    MPIDI_Comm_coll_envvars(comm);
-#ifdef MPIDI_BASIC_COLLECTIVE_SELECTION
    if(MPIDI_Process.optimized.select_colls)
       MPIDI_Comm_coll_select(comm);
-#endif
    TRACE_ERR("mpir barrier\n");
    int mpierrno;
    MPIR_Barrier(comm, &mpierrno);

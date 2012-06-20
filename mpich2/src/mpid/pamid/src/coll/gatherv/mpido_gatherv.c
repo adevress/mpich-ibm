@@ -57,12 +57,12 @@ int MPIDO_Gatherv(void *sendbuf,
    /* Check for native PAMI types and MPI_IN_PLACE on sendbuf */
    /* MPI_IN_PLACE is a nonlocal decision. We will need a preallreduce if we ever have
     * multiple "good" gathervs that work on different counts for example */
-   if(MPIDI_Datatype_to_pami(sendtype, &stype, -1, NULL, &tmp) != MPI_SUCCESS)
+   if((sendbuf != MPI_IN_PLACE) && (MPIDI_Datatype_to_pami(sendtype, &stype, -1, NULL, &tmp) != MPI_SUCCESS))
       pamidt = 0;
    if(MPIDI_Datatype_to_pami(recvtype, &rtype, -1, NULL, &tmp) != MPI_SUCCESS)
       pamidt = 0;
 
-   if(pamidt == 0 || comm_ptr->mpid.user_selectedvar[PAMI_XFER_GATHERV_INT] == MPID_COLL_USE_MPICH)
+   if(pamidt == 0 || comm_ptr->mpid.user_selected_type[PAMI_XFER_GATHERV_INT] == MPID_COLL_USE_MPICH)
    {
       if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0))
          fprintf(stderr,"Using MPICH gatherv algorithm\n");
@@ -74,24 +74,46 @@ int MPIDO_Gatherv(void *sendbuf,
    }
 
    MPIDI_Datatype_get_info(1, recvtype, contig, rsize, dt_ptr, recv_true_lb);
-   rbuf = recvbuf + recv_true_lb;
+   rbuf = (char *)recvbuf + recv_true_lb;
    sbuf = sendbuf;
+
+   pami_xfer_t gatherv;
+
+   gatherv.cb_done = cb_gatherv;
+   gatherv.cookie = (void *)&gatherv_active;
+   gatherv.cmd.xfer_gatherv_int.root = MPID_VCR_GET_LPID(comm_ptr->vcr, root);
+   gatherv.cmd.xfer_gatherv_int.rcvbuf = rbuf;
+   gatherv.cmd.xfer_gatherv_int.rtype = rtype;
+   gatherv.cmd.xfer_gatherv_int.rtypecounts = recvcounts;
+   gatherv.cmd.xfer_gatherv_int.rdispls = displs;
+
+   gatherv.cmd.xfer_gatherv_int.sndbuf = NULL;
+   gatherv.cmd.xfer_gatherv_int.stype = stype;
+   gatherv.cmd.xfer_gatherv_int.stypecount = sendcount;
 
    if(comm_ptr->rank == root)
    {
-      MPIDI_Datatype_get_info(1, sendtype, contig, ssize, dt_ptr, send_true_lb);
       if(sendbuf == MPI_IN_PLACE) 
-         sbuf = rbuf + ssize*displs[comm_ptr->rank];
-      sbuf = sbuf + send_true_lb;
+      {
+         if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL))
+            fprintf(stderr,"gatherv MPI_IN_PLACE buffering\n");
+         sbuf = (char*)rbuf + rsize*displs[comm_ptr->rank];
+         gatherv.cmd.xfer_gatherv_int.stype = rtype;
+         gatherv.cmd.xfer_gatherv_int.stypecount = recvcounts[comm_ptr->rank];
+      }
+      else
+      {
+         MPIDI_Datatype_get_info(1, sendtype, contig, ssize, dt_ptr, send_true_lb);
+         sbuf = (char *)sbuf + send_true_lb;
+      }
    }
+   gatherv.cmd.xfer_gatherv_int.sndbuf = sbuf;
 
-   pami_xfer_t gatherv;
    pami_algorithm_t my_gatherv;
    pami_metadata_t *my_gatherv_md;
    int queryreq = 0;
 
-#ifdef MPIDI_BASIC_COLLECTIVE_SELECTION
-   if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_GATHERV_INT] == MPID_COLL_SELECTED)
+   if(comm_ptr->mpid.user_selected_type[PAMI_XFER_GATHERV_INT] == MPID_COLL_OPTIMIZED)
    {
       TRACE_ERR("Optimized gatherv %s was selected\n",
          comm_ptr->mpid.opt_protocol_md[PAMI_XFER_GATHERV_INT][0].name);
@@ -100,68 +122,16 @@ int MPIDO_Gatherv(void *sendbuf,
       queryreq = comm_ptr->mpid.must_query[PAMI_XFER_GATHERV_INT][0];
    }
    else
-#endif
    {
       TRACE_ERR("Optimized gatherv %s was set by user\n",
          comm_ptr->mpid.user_metadata[PAMI_XFER_GATHERV_INT].name);
          my_gatherv = comm_ptr->mpid.user_selected[PAMI_XFER_GATHERV_INT];
          my_gatherv_md = &comm_ptr->mpid.user_metadata[PAMI_XFER_GATHERV_INT];
-         queryreq = comm_ptr->mpid.user_selectedvar[PAMI_XFER_GATHERV_INT];
+         queryreq = comm_ptr->mpid.user_selected_type[PAMI_XFER_GATHERV_INT];
    }
 
    gatherv.algorithm = my_gatherv;
 
-   gatherv.cb_done = cb_gatherv;
-   gatherv.cookie = (void *)&gatherv_active;
-   gatherv.cmd.xfer_gatherv_int.root = MPID_VCR_GET_LPID(comm_ptr->vcr, root);
-   gatherv.cmd.xfer_gatherv_int.sndbuf = sbuf;
-   gatherv.cmd.xfer_gatherv_int.rcvbuf = rbuf;
-   #ifdef PAMI_DISPS_ARE_BYTES 
-   TRACE_ERR("Malloc()ing array for MPIDO_Gatherv displacements. rsize: %d\n", rsize);
-   int *rdispls;
-   rdispls = MPIU_Malloc(sizeof(int) * comm_ptr->local_size);
-   assert(rdispls != NULL);
-   #endif
-   #ifdef PAMI_BYTES_REQUIRED
-   TRACE_ERR("Malloc()ing array for MPIDO_Gatherv counts\n");
-   int *rcounts;
-   rcounts = MPIU_Malloc(sizeof(int) * comm_ptr->local_size);
-   assert(rcounts != NULL);
-   gatherv.cmd.xfer_gatherv_int.rtype = PAMI_TYPE_BYTE;
-   gatherv.cmd.xfer_gatherv_int.stype = PAMI_TYPE_BYTE;
-   #else
-   gatherv.cmd.xfer_gatherv_int.rtype = stype;
-   gatherv.cmd.xfer_gatherv_int.stype = rtype;
-   #endif
-
-   /* Deal with the new arrays */
-   #if defined(PAMI_DISPS_ARE_BYTES) || defined(PAMI_BYTES_REQUIRED)
-   int i = 0;
-   for(i = 0; i < comm_ptr->local_size; i++)
-   {
-      #ifdef PAMI_DISPS_ARE_BYTES
-      rdispls[i] = displs[i] * rsize;
-      #endif
-      #ifdef PAMI_BYTES_REQUIRED
-      rcounts[i] = recvcounts[i] * rsize;
-      #endif
-   }
-   #endif
-
-   /* Deal with datatypes */
-   #ifdef PAMI_BYTES_REQUIRED
-   gatherv.cmd.xfer_gatherv_int.stypecount = sendcount * ssize;
-   gatherv.cmd.xfer_gatherv_int.rtypecounts = rcounts;
-   #else
-   gatherv.cmd.xfer_gatherv_int.stypecount = sendcount;
-   gatherv.cmd.xfer_gatherv_int.rtypecounts = recvcounts;
-   #endif
-
-   #ifdef PAMI_DISPS_ARE_BYTES
-   gatherv.cmd.xfer_gatherv_int.rdispls = rdispls;
-   #else
-   gatherv.cmd.xfer_gatherv_int.rdispls = displs;
-   #endif
 
    if(unlikely(queryreq == MPID_COLL_ALWAYS_QUERY || queryreq == MPID_COLL_CHECK_FN_REQUIRED))
    {
@@ -206,15 +176,6 @@ int MPIDO_Gatherv(void *sendbuf,
    
    TRACE_ERR("Waiting on active %d\n", gatherv_active);
    MPID_PROGRESS_WAIT_WHILE(gatherv_active);
-
-#ifdef PAMI_BYTES_REQUIRED
-   TRACE_ERR("Freeing memory for rcounts\n");
-   MPIU_Free(rcounts);
-#endif
-#ifdef PAMI_DISPS_ARE_BYTES
-   TRACE_ERR("Freeing memory for rdispls\n");
-   MPIU_Free(rdispls);
-#endif
 
    TRACE_ERR("Leaving MPIDO_Gatherv\n");
    return rc;

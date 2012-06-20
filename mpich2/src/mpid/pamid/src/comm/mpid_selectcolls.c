@@ -60,7 +60,7 @@ static void MPIDI_Update_coll(pami_algorithm_t coll,
                        MPID_Comm *comm)
 {
 
-   comm->mpid.user_selectedvar[coll] = type;
+   comm->mpid.user_selected_type[coll] = type;
    TRACE_ERR("Update_coll for protocol %s, type: %d index: %d\n", 
       comm->mpid.coll_metadata[coll][type][index].name, type, index);
 
@@ -73,14 +73,14 @@ static void MPIDI_Update_coll(pami_algorithm_t coll,
          TRACE_ERR("Protocol %s check_fn required always\n", comm->mpid.coll_metadata[coll][type][index].name);
          /* We must have a check_fn */
          MPID_assert_always(comm->mpid.coll_metadata[coll][type][index].check_fn !=NULL);
-         comm->mpid.user_selectedvar[coll] = MPID_COLL_CHECK_FN_REQUIRED;
+         comm->mpid.user_selected_type[coll] = MPID_COLL_CHECK_FN_REQUIRED;
       }
       else if(comm->mpid.coll_metadata[coll][type][index].check_fn != NULL)
       {
          /* For now, if there's a check_fn we will always call it and not cache.
             We *could* be smarter about this eventually.                        */
          TRACE_ERR("Protocol %s setting to always query\n", comm->mpid.coll_metadata[coll][type][index].name);
-         comm->mpid.user_selectedvar[coll] = MPID_COLL_ALWAYS_QUERY;
+         comm->mpid.user_selected_type[coll] = MPID_COLL_ALWAYS_QUERY;
       }
 
    }
@@ -129,10 +129,11 @@ static int MPIDI_Check_protocols(char *names[], MPID_Comm *comm, char *name, int
       /* Check if MPICH was specifically requested */
       if(strcasecmp(envopts, "MPICH") == 0)
       {
-         TRACE_ERR("Using MPICH for %s\n", name);
+         TRACE_ERR("Selecting MPICH for %s\n", name);
          if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm->rank == 0)
-            fprintf(stderr,"Using MPICH for %d (%s)\n", constant, name);
-         comm->mpid.user_selectedvar[constant] = MPID_COLL_USE_MPICH;
+            fprintf(stderr,"Selecting MPICH for %d (%s)\n", constant, name);
+         comm->mpid.user_selected_type[constant] = MPID_COLL_USE_MPICH;
+         comm->mpid.user_selected[constant] = 0;
          return 0;
       }
 
@@ -161,11 +162,13 @@ static int MPIDI_Check_protocols(char *names[], MPID_Comm *comm, char *name, int
       /* An envvar was specified, so we should probably use MPICH of we can't find
        * the specified protocol */
       TRACE_ERR("Specified protocol %s was unavailable; using MPICH for %s\n", envopts, name);
-      comm->mpid.user_selectedvar[constant] = MPID_COLL_USE_MPICH;
+      comm->mpid.user_selected_type[constant] = MPID_COLL_USE_MPICH;
+      comm->mpid.user_selected[constant] = 0;
       return 0;
    }
    /* Looks like we didn't get anything, set NOSELECTION so automated selection can pick something */
-   comm->mpid.user_selectedvar[constant] = MPID_COLL_NOSELECTION; 
+   comm->mpid.user_selected_type[constant] = MPID_COLL_NOSELECTION; 
+   comm->mpid.user_selected[constant] = 0;
    return 0;
 }
 
@@ -184,14 +187,15 @@ void MPIDI_Comm_coll_envvars(MPID_Comm *comm)
          continue;
 
       /* Initialize to noselection instead of noquery for PE/FCA stuff. Is this the right answer? */
-      comm->mpid.user_selectedvar[i] = MPID_COLL_NOSELECTION;
+      comm->mpid.user_selected_type[i] = MPID_COLL_NOSELECTION;
          if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm->rank == 0)
             fprintf(stderr,"Setting up collective %d on comm %p\n", i, comm);
       if(comm->mpid.coll_count[i][0] == 0)
       {
          if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm->rank == 0)
             fprintf(stderr,"There are no 'always works' protocols of type %d. This could be a problem later in your app\n", i);
-         comm->mpid.user_selectedvar[i] = MPID_COLL_USE_MPICH;
+         comm->mpid.user_selected_type[i] = MPID_COLL_USE_MPICH;
+         comm->mpid.user_selected[i] = 0;
       }
       else
       {
@@ -260,11 +264,6 @@ void MPIDI_Comm_coll_envvars(MPID_Comm *comm)
       MPIDI_Check_protocols(names, comm, "scan", PAMI_XFER_SCAN);
    }
 
-   /* If a scan protocol was not explicitly specified, punt to MPICH */
-   /* TODO: Not sure why we do this, need to (re)investigate */
-   if(comm->mpid.user_selectedvar[PAMI_XFER_SCAN] == MPID_COLL_NOSELECTION)
-      comm->mpid.user_selectedvar[PAMI_XFER_SCAN] = MPID_COLL_USE_MPICH;
-
    comm->mpid.scattervs[0] = comm->mpid.scattervs[1] = 0;
 
    TRACE_ERR("Checking scatterv\n");
@@ -274,13 +273,13 @@ void MPIDI_Comm_coll_envvars(MPID_Comm *comm)
       if(strcasecmp(envopts, "GLUE_BCAST") == 0)
       {
          if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm->rank == 0)
-            fprintf(stderr,"Using glue bcast for scatterv\n");
+            fprintf(stderr,"Selecting glue bcast for scatterv\n");
          comm->mpid.scattervs[0] = 1;
       }
       else if(strcasecmp(envopts, "GLUE_ALLTOALLV") == 0)
       {
          if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm->rank == 0)
-            fprintf(stderr,"Using glue alltoallv for scatterv\n");
+            fprintf(stderr,"Selecting glue alltoallv for scatterv\n");
          comm->mpid.scattervs[1] = 1;
       }
    }
@@ -289,10 +288,11 @@ void MPIDI_Comm_coll_envvars(MPID_Comm *comm)
       MPIDI_Check_protocols(names, comm, "scatterv", PAMI_XFER_SCATTERV_INT);
 
       // Use MPICH on large communicators (Issue 7516 and ticket 595)
-      if((comm->mpid.user_selectedvar[PAMI_XFER_SCATTERV_INT] == MPID_COLL_NOSELECTION) // no env var selected
+      if((comm->mpid.user_selected_type[PAMI_XFER_SCATTERV_INT] == MPID_COLL_NOSELECTION) // no env var selected
          && (comm->local_size > (16*1024))) // and > 16k ranks
       {
-         comm->mpid.user_selectedvar[PAMI_XFER_SCATTERV_INT] = MPID_COLL_USE_MPICH;
+         comm->mpid.user_selected_type[PAMI_XFER_SCATTERV_INT] = MPID_COLL_USE_MPICH;
+         comm->mpid.user_selected[PAMI_XFER_SCATTERV_INT] = 0;
       }
    }
       
@@ -304,7 +304,7 @@ void MPIDI_Comm_coll_envvars(MPID_Comm *comm)
       if(strcasecmp(envopts, "GLUE_BCAST") == 0)
       {
          if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm->rank == 0)
-            fprintf(stderr,"Using glue_bcast for scatter\n");
+            fprintf(stderr,"Selecting glue_bcast for scatter\n");
          comm->mpid.optscatter = 1;
       }
    }
@@ -321,21 +321,21 @@ void MPIDI_Comm_coll_envvars(MPID_Comm *comm)
       if(strcasecmp(envopts, "GLUE_ALLREDUCE") == 0)
       {
          if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm->rank == 0)
-            fprintf(stderr,"Using glue_allreduce for allgather\n");
+            fprintf(stderr,"Selecting glue_allreduce for allgather\n");
          comm->mpid.allgathers[0] = 1;
       }
 
       else if(strcasecmp(envopts, "GLUE_BCAST") == 0)
       {
          if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm->rank == 0)
-            fprintf(stderr,"Using glue_bcast for allgather\n");
+            fprintf(stderr,"Selecting glue_bcast for allgather\n");
          comm->mpid.allgathers[1] = 1;
       }
 
       else if(strcasecmp(envopts, "GLUE_ALLTOALL") == 0)
       {
          if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm->rank == 0)
-            fprintf(stderr,"Using glue_alltoall for allgather\n");
+            fprintf(stderr,"Selecting glue_alltoall for allgather\n");
          comm->mpid.allgathers[2] = 1;
       }
    }
@@ -352,21 +352,21 @@ void MPIDI_Comm_coll_envvars(MPID_Comm *comm)
       if(strcasecmp(envopts, "GLUE_ALLREDUCE") == 0)
       {
          if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm->rank == 0)
-            fprintf(stderr,"Using glue_allreduce for allgatherv\n");
+            fprintf(stderr,"Selecting glue_allreduce for allgatherv\n");
          comm->mpid.allgathervs[0] = 1;
       }
 
       else if(strcasecmp(envopts, "GLUE_BCAST") == 0)
       {
          if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm->rank == 0)
-            fprintf(stderr,"Using glue_bcast for allgatherv\n");
+            fprintf(stderr,"Selecting glue_bcast for allgatherv\n");
          comm->mpid.allgathervs[1] = 1;
       }
 
       else if(strcasecmp(envopts, "GLUE_ALLTOALL") == 0)
       {
          if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm->rank == 0)
-            fprintf(stderr,"Using glue_alltoall for allgatherv\n");
+            fprintf(stderr,"Selecting glue_alltoall for allgatherv\n");
          comm->mpid.allgathervs[2] = 1;
       }
    }

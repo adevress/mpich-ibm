@@ -43,7 +43,7 @@ int MPIDO_Barrier(MPID_Comm *comm_ptr, int *mpierrno)
    pami_metadata_t *my_barrier_md;
    int queryreq = 0;
 
-   if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_BARRIER] == MPID_COLL_USE_MPICH)
+   if(comm_ptr->mpid.user_selected_type[PAMI_XFER_BARRIER] == MPID_COLL_USE_MPICH)
    {
      if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0))
        fprintf(stderr,"Using MPICH barrier\n");
@@ -53,8 +53,7 @@ int MPIDO_Barrier(MPID_Comm *comm_ptr, int *mpierrno)
 
    barrier.cb_done = cb_barrier;
    barrier.cookie = (void *)&active;
-#ifdef MPIDI_BASIC_COLLECTIVE_SELECTION
-   if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_BARRIER] == MPID_COLL_SELECTED)
+   if(comm_ptr->mpid.user_selected_type[PAMI_XFER_BARRIER] == MPID_COLL_OPTIMIZED)
    {
       TRACE_ERR("Optimized barrier (%s) was pre-selected\n", comm_ptr->mpid.opt_protocol_md[PAMI_XFER_BARRIER][0].name);
       my_barrier = comm_ptr->mpid.opt_protocol[PAMI_XFER_BARRIER][0];
@@ -62,12 +61,11 @@ int MPIDO_Barrier(MPID_Comm *comm_ptr, int *mpierrno)
       queryreq = comm_ptr->mpid.must_query[PAMI_XFER_BARRIER][0];
    }
    else
-#endif
    {
       TRACE_ERR("Barrier (%s) was specified by user\n", comm_ptr->mpid.user_metadata[PAMI_XFER_BARRIER].name);
       my_barrier = comm_ptr->mpid.user_selected[PAMI_XFER_BARRIER];
       my_barrier_md = &comm_ptr->mpid.user_metadata[PAMI_XFER_BARRIER];
-      queryreq = comm_ptr->mpid.user_selectedvar[PAMI_XFER_BARRIER];
+      queryreq = comm_ptr->mpid.user_selected_type[PAMI_XFER_BARRIER];
    }
 
    barrier.algorithm = my_barrier;

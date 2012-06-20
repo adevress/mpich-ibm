@@ -259,7 +259,7 @@ int MPIDO_Scatterv(void *sendbuf,
   allred.cmd.xfer_allreduce.op = PAMI_DATA_BAND;
 
 
-   if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_SCATTERV_INT] == MPID_COLL_USE_MPICH)
+   if(comm_ptr->mpid.user_selected_type[PAMI_XFER_SCATTERV_INT] == MPID_COLL_USE_MPICH)
   {
     if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0))
       fprintf(stderr,"Using MPICH scatterv algorithm\n");
@@ -276,8 +276,7 @@ int MPIDO_Scatterv(void *sendbuf,
    volatile unsigned scatterv_active = 1;
    int queryreq = 0;
 
-#ifdef MPIDI_BASIC_COLLECTIVE_SELECTION
-   if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_SCATTERV_INT] == MPID_COLL_SELECTED)
+   if(comm_ptr->mpid.user_selected_type[PAMI_XFER_SCATTERV_INT] == MPID_COLL_OPTIMIZED)
    {
       TRACE_ERR("Optimized scatterv %s was selected\n",
          comm_ptr->mpid.opt_protocol_md[PAMI_XFER_SCATTERV_INT][0].name);
@@ -286,22 +285,21 @@ int MPIDO_Scatterv(void *sendbuf,
       queryreq = comm_ptr->mpid.must_query[PAMI_XFER_SCATTERV_INT][0];
    }
    else
-#endif
    {
       TRACE_ERR("User selected %s for scatterv\n",
          comm_ptr->mpid.user_selected[PAMI_XFER_SCATTERV_INT]);
       my_scatterv = comm_ptr->mpid.user_selected[PAMI_XFER_SCATTERV_INT];
       my_scatterv_md = &comm_ptr->mpid.user_metadata[PAMI_XFER_SCATTERV_INT];
-      queryreq = comm_ptr->mpid.user_selectedvar[PAMI_XFER_SCATTERV_INT];
+      queryreq = comm_ptr->mpid.user_selected_type[PAMI_XFER_SCATTERV_INT];
    }
 
-   if(MPIDI_Datatype_to_pami(recvtype, &rtype, -1, NULL, &tmp) != MPI_SUCCESS)
+   if((recvbuf != MPI_IN_PLACE) && MPIDI_Datatype_to_pami(recvtype, &rtype, -1, NULL, &tmp) != MPI_SUCCESS)
       pamidt = 0;
 
    if(MPIDI_Datatype_to_pami(sendtype, &stype, -1, NULL, &tmp) != MPI_SUCCESS)
       pamidt = 0;
 
-   if(pamidt == 0 || comm_ptr->mpid.user_selectedvar[PAMI_XFER_SCATTERV_INT] == MPID_COLL_USE_MPICH)
+   if(pamidt == 0 || comm_ptr->mpid.user_selected_type[PAMI_XFER_SCATTERV_INT] == MPID_COLL_USE_MPICH)
    {
      if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0))
        fprintf(stderr,"Using MPICH scatterv algorithm\n");
@@ -313,18 +311,22 @@ int MPIDO_Scatterv(void *sendbuf,
    }
 
    MPIDI_Datatype_get_info(1, sendtype, contig, ssize, dt_ptr, send_true_lb);
-   sbuf = sendbuf + send_true_lb;
+   sbuf = (char *)sendbuf + send_true_lb;
    rbuf = recvbuf;
 
    if(comm_ptr->rank == root)
    {
-      MPIDI_Datatype_get_info(1, recvtype, contig, rsize, dt_ptr, recv_true_lb);
       if(recvbuf == MPI_IN_PLACE) 
       {
-        rbuf = (char *)sendbuf + rsize*displs[comm_ptr->rank] + recv_true_lb;
+        if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL))
+          fprintf(stderr,"scatterv MPI_IN_PLACE buffering\n");
+        rbuf = (char *)sendbuf + ssize*displs[comm_ptr->rank] + send_true_lb;
       }
       else
-        rbuf = recvbuf + recv_true_lb;
+      {  
+        MPIDI_Datatype_get_info(1, recvtype, contig, rsize, dt_ptr, recv_true_lb);
+        rbuf = (char *)recvbuf + recv_true_lb;
+      }
    }
 
    scatterv.cb_done = cb_scatterv;
@@ -334,54 +336,12 @@ int MPIDO_Scatterv(void *sendbuf,
    scatterv.algorithm = my_scatterv;
 
    scatterv.cmd.xfer_scatterv_int.rcvbuf = rbuf;
-
    scatterv.cmd.xfer_scatterv_int.sndbuf = sbuf;
-  
-   #ifdef PAMI_DISPS_ARE_BYTES
-   TRACE_ERR("Malloc()ing array for MPIDO_Scatterv displacements\n");
-   int *sdispls;
-   sdispls = MPIU_Malloc(sizeof(int) * comm_ptr->local_size);
-   assert(sdispls != NULL);
-   #endif
-   #ifdef PAMI_BYTES_REQUIRED
-   TRACE_ERR("Malloc()ing array for MPIDO_Scatterv counts\n");
-   int *scounts;
-   scounts = MPIU_Malloc(sizeof(int) * comm_ptr->local_size);
-   assert(scounts != NULL);
-   scatterv.cmd.xfer_scatterv_int.rtype = PAMI_TYPE_BYTE;
-   scatterv.cmd.xfer_scatterv_int.stype = PAMI_TYPE_BYTE;
-   #else
    scatterv.cmd.xfer_scatterv_int.stype = stype;
    scatterv.cmd.xfer_scatterv_int.rtype = rtype;
-   #endif
-
-   /* Fill in the arrays */
-   #if defined(PAMI_DISPS_ARE_BYTES) || defined(PAMI_BYTES_REQUIRED)
-   int i;
-   for(i = 0; i < comm_ptr->local_size; i++)
-   {
-      #ifdef PAMI_DISPS_ARE_BYTES
-      sdispls[i] = displs[i] * ssize;
-      #endif
-      #ifdef PAMI_BYTES_REQUIRED
-      scounts[i] = sendcounts[i] * ssize;
-      #endif
-   }
-   #endif
-
-   #ifdef PAMI_BYTES_REQUIRED
-   scatterv.cmd.xfer_scatterv_int.stypecounts = scounts;
-   scatterv.cmd.xfer_scatterv_int.rtypecount = recvcount * rsize;
-   #else
    scatterv.cmd.xfer_scatterv_int.stypecounts = sendcounts;
    scatterv.cmd.xfer_scatterv_int.rtypecount = recvcount;
-   #endif
-
-   #ifdef PAMI_DISPS_ARE_BYTES
-   scatterv.cmd.xfer_scatterv_int.sdispls = sdispls;
-   #else
    scatterv.cmd.xfer_scatterv_int.sdispls = displs;
-   #endif
 
    if(unlikely(queryreq == MPID_COLL_ALWAYS_QUERY || queryreq == MPID_COLL_CHECK_FN_REQUIRED))
    {
@@ -426,15 +386,6 @@ int MPIDO_Scatterv(void *sendbuf,
 
    TRACE_ERR("Waiting on active %d\n", scatterv_active);
    MPID_PROGRESS_WAIT_WHILE(scatterv_active);
-
-   #ifdef PAMI_BYTES_REQUIRED
-   TRACE_ERR("Freeing memory for scounts\n");
-   MPIU_Free(scounts);
-   #endif
-   #ifdef PAMI_DISPS_ARE_BYTES
-   TRACE_ERR("Freeing memory for sdispls\n");
-   MPIU_Free(sdispls);
-   #endif
 
    TRACE_ERR("Leaving MPIDO_Scatterv\n");
    return rc;
@@ -526,11 +477,11 @@ int MPIDO_Scatterv(void *sendbuf,
       char *newsendbuf = sendbuf;
       if(rank == root)
       {
-         newsendbuf = sendbuf + true_lb;
+         newsendbuf = (char *)sendbuf + true_lb;
       }
       else
       {
-         newrecvbuf = recvbuf + true_lb;
+         newrecvbuf = (char *)recvbuf + true_lb;
       }
       if(!optscatterv[0])
       {
