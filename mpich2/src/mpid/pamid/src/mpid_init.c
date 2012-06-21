@@ -496,6 +496,33 @@ MPIDI_PAMI_init(int* rank, int* size, int* threading)
              MPIDI_Process.optimized.collectives,
              MPIDI_Process.optimized.select_colls,
              MPIDI_Process.optimized.subcomms);
+      switch (*threading)
+        {
+          case MPI_THREAD_MULTIPLE:
+            printf("mpi thread level        : 'MPI_THREAD_MULTIPLE'\n");
+            break;
+          case MPI_THREAD_SERIALIZED:
+            printf("mpi thread level        : 'MPI_THREAD_SERIALIZED'\n");
+            break;
+          case MPI_THREAD_FUNNELED:
+            printf("mpi thread level        : 'MPI_THREAD_FUNNELED'\n");
+            break;
+          case MPI_THREAD_SINGLE:
+            printf("mpi thread level        : 'MPI_THREAD_SINGLE'\n");
+            break;
+        }
+      printf("MPIU_THREAD_GRANULARITY : '%s'\n",
+             (MPIU_THREAD_GRANULARITY==MPIU_THREAD_GRANULARITY_PER_OBJECT)?"per object":"global");
+#ifdef ASSERT_LEVEL
+      printf("ASSERT_LEVEL            : %d\n", ASSERT_LEVEL);
+#else
+      printf("ASSERT_LEVEL            : not defined\n");
+#endif
+#ifdef MPICH2_LIBDIR
+      printf("MPICH2_LIBDIR           : %s\n", MPICH2_LIBDIR);
+#else
+      printf("MPICH2_LIBDIR           : not defined\n");
+#endif
       printEnvVars("MPICH_");
       printEnvVars("PAMID_");
       printEnvVars("PAMI_");
