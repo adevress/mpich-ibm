@@ -191,6 +191,12 @@ void MPIDI_Comm_coll_select(MPID_Comm *comm_ptr)
    {
       MPIDI_Coll_comm_check_FCA("BARRIER","I1:Barrier:FCA:FCA",PAMI_XFER_BARRIER,MPID_COLL_NOQUERY, 0, comm_ptr);
    }
+   /* SSS: There isn't really an FCA Gatherv protocol. We do this call to force the use of MPICH for gatherv
+    * when FCA is enabled so we don't have to use PAMI protocol.  */
+   if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_GATHERV_INT] == MPID_COLL_NOSELECTION)
+   {
+      MPIDI_Coll_comm_check_FCA("GATHERV","I1:GathervInt:FCA:FCA",PAMI_XFER_GATHERV_INT,MPID_COLL_NOQUERY, 0, comm_ptr);
+   }
 
    /* So, several protocols are really easy. Tackle them first. */
    if(0) // hangs with Rectangle allgatherv so disable for now (comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLGATHERV_INT] == MPID_COLL_NOSELECTION)
