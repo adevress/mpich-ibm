@@ -95,6 +95,7 @@ MPIDI_RendezvousTransfer(pami_context_t   context,
       MPID_assert(rcvbuf != NULL);
       rreq->mpid.uebuf    = rcvbuf;
       rreq->mpid.uebuflen = rcvlen;
+      rreq->mpid.uebuf_malloc = 1;
     }
 
   /* ---------------------------------------------------------------- */

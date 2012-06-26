@@ -104,6 +104,7 @@ MPIDI_RecvRzvDoneCB(pami_context_t  context,
 #endif
 
   MPIDI_RecvDoneCB(context, rreq, PAMI_SUCCESS);
+  MPID_Request_release(rreq);
 }
 
 
@@ -242,7 +243,6 @@ MPIDI_CancelReq_proc(pami_context_t        context,
                         info->MPIctxt);
   if(sreq)
     {
-      MPIU_TestFree(&sreq->mpid.uebuf);
       MPID_Request_release(sreq);
       type = MPIDI_CONTROL_CANCEL_ACKNOWLEDGE;
     }

@@ -39,13 +39,13 @@ int            MPIDI_Recvq_FU        (int s, int t, int c, MPI_Status * status);
 MPID_Request * MPIDI_Recvq_FDUR      (MPI_Request req, int source, int tag, int context_id);
 int            MPIDI_Recvq_FDPR      (MPID_Request * req);
 #ifndef OUT_OF_ORDER_HANDLING
-MPID_Request * MPIDI_Recvq_FDP_or_AEU(int s, int t, int c, int * foundp);
+MPID_Request * MPIDI_Recvq_FDP_or_AEU(MPID_Request *newreq, int s, int t, int c, int * foundp);
 MPID_Request * MPIDI_Recvq_FDU       (int source, int tag, int context_id, int * foundp);
-MPID_Request * MPIDI_Recvq_AEU       (int source, int tag, int context_id);
+MPID_Request * MPIDI_Recvq_AEU       (MPID_Request *newreq, int source, int tag, int context_id);
 #else
-MPID_Request * MPIDI_Recvq_FDP_or_AEU(int s, pami_task_t ps, int t, int c, int sq, int * foundp);
+MPID_Request * MPIDI_Recvq_FDP_or_AEU(MPID_Request *newreq, int s, pami_task_t ps, int t, int c, int sq, int * foundp);
 MPID_Request * MPIDI_Recvq_FDU       (int source, pami_task_t pami_source, int tag, int context_id, int * foundp);
-MPID_Request * MPIDI_Recvq_AEU       (int source, pami_task_t pami_source, int tag, int context_id, int msg_seqno);
+MPID_Request * MPIDI_Recvq_AEU       (MPID_Request *newreq, int source, pami_task_t pami_source, int tag, int context_id, int msg_seqno);
 #endif
 void MPIDI_Recvq_DumpQueues          (int verbose);
 #ifdef OUT_OF_ORDER_HANDLING
@@ -134,14 +134,14 @@ int MPIDI_Recvq_search_recv_posting_queue(int src, int tag, int context_id,
                                    MPID_Request **handleptr );
 #endif
 
-void MPIDI_Callback_process_unexp(pami_context_t        context,
+void MPIDI_Callback_process_unexp(MPID_Request *newreq,
+				  pami_context_t        context,
                                   const MPIDI_MsgInfo * msginfo,
                                   size_t                sndlen,
                                   pami_endpoint_t       senderendpoint,
                                   const void          * sndbuf,
                                   pami_recv_t         * recv,
-                                  unsigned              isSync,
-                                  void                * uebuf);
+                                  unsigned              isSync);
 void MPIDI_Callback_process_trunc(pami_context_t  context,
                                   MPID_Request   *rreq,
                                   pami_recv_t    *recv,

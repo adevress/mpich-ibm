@@ -91,34 +91,38 @@ MPIDI_RecvCB(pami_context_t    context,
   if (unlikely(rreq == NULL))
     {
       /* No request was found and hence no sync needed */
-      void *uebuf = NULL;
 #if (MPIDI_STATISTICS)
       MPID_NSTAT(mpid_statp->earlyArrivals);
 #endif
-
+      MPIU_THREAD_CS_EXIT(MSGQUEUE,0);
+      MPID_Request *newreq = MPIDI_Request_create2();
+      MPID_assert(newreq != NULL);
       if (sndlen)
       {
-        MPIU_THREAD_CS_EXIT(MSGQUEUE,0);
-        uebuf = MPIU_Malloc(sndlen);
-        MPID_assert(uebuf != NULL);
-        MPIU_THREAD_CS_ENTER(MSGQUEUE,0);
-#ifndef OUT_OF_ORDER_HANDLING
-        rreq = MPIDI_Recvq_FDP(rank, tag, context_id);
-#else
-        rreq = MPIDI_Recvq_FDP(rank, PAMIX_Endpoint_query(sender), tag, context_id, msginfo->MPIseqno);
-#endif
+        newreq->mpid.uebuflen = sndlen;
+        newreq->mpid.uebuf = MPIU_Malloc(sndlen);
+        MPID_assert(newreq->mpid.uebuf != NULL);
+        newreq->mpid.uebuf_malloc = 1;
       }
+      MPIU_THREAD_CS_ENTER(MSGQUEUE,0);
+#ifndef OUT_OF_ORDER_HANDLING
+      rreq = MPIDI_Recvq_FDP(rank, tag, context_id);
+#else
+      rreq = MPIDI_Recvq_FDP(rank, PAMIX_Endpoint_query(sender), tag, context_id, msginfo->MPIseqno);
+#endif
       
       if (unlikely(rreq == NULL))
       {
-        MPIDI_Callback_process_unexp(context, msginfo, sndlen, sender, sndbuf, recv, msginfo->isSync, uebuf);
+        MPIDI_Callback_process_unexp(newreq, context, msginfo, sndlen, sender, sndbuf, recv, msginfo->isSync);
+        int completed = MPID_Request_is_complete(newreq);
         MPIU_THREAD_CS_EXIT(MSGQUEUE,0);
+        if (completed) MPID_Request_release(newreq);
         goto fn_exit_eager;
       }
       else
       {
         MPIU_THREAD_CS_EXIT(MSGQUEUE,0);
-        if (sndlen) MPIU_Free(uebuf);
+        MPID_Request_discard(newreq);
       }
     }
   else
@@ -217,6 +221,7 @@ MPIDI_RecvCB(pami_context_t    context,
         {
           rreq->mpid.uebuf    = MPIU_Malloc(sndlen);
           MPID_assert(rreq->mpid.uebuf != NULL);
+          rreq->mpid.uebuf_malloc = 1;
         }
       /* -------------------------------------------------- */
       /*  Let PAMI know where to put the rest of the data.  */

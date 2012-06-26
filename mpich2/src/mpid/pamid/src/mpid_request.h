@@ -32,6 +32,8 @@
 #define MPID_Request_create    MPID_Request_create_inline
 #define MPID_Request_release   MPID_Request_release_inline
 #define MPIDI_Request_complete MPIDI_Request_complete_inline
+#define MPIDI_Request_complete_norelease MPIDI_Request_complete_norelease_inline
+#define MPID_Request_discard   MPID_Request_discard_inline
 
 
 extern MPIU_Object_alloc_t MPID_Request_mem;
@@ -190,6 +192,7 @@ MPIDI_Request_initialize(MPID_Request * req)
   mpid->datatype_ptr     = NULL;
   mpid->uebuf            = NULL;
   mpid->uebuflen         = 0;
+  mpid->uebuf_malloc     = 0;
 #ifdef OUT_OF_ORDER_HANDLING
   mpid->prev             = NULL;
   mpid->prevR            = NULL;
@@ -259,8 +262,18 @@ MPID_Request_release_inline(MPID_Request *req)
     if (req->comm)              MPIR_Comm_release(req->comm, 0);
     if (req->greq_fns)          MPIU_Free(req->greq_fns);
     if (req->mpid.datatype_ptr) MPID_Datatype_release(req->mpid.datatype_ptr);
+    if (req->mpid.uebuf_malloc) MPIU_Free(req->mpid.uebuf);
     MPIDI_Request_tls_free(req);
   }
+}
+
+
+/* This request was never used, at most had uebuf allocated. */
+static inline void
+MPID_Request_discard_inline(MPID_Request *req)
+{
+    if (req->mpid.uebuf_malloc) MPIU_Free(req->mpid.uebuf);
+    MPIDI_Request_tls_free(req);
 }
 
 
@@ -272,6 +285,20 @@ MPIDI_Request_complete_inline(MPID_Request *req)
     MPID_assert(count >= 0);
 
     MPID_Request_release(req);
+    if (count == 0) /* decrement completion count; if 0, signal progress engine */
+    {
+      MPIDI_Progress_signal();
+    }
+}
+
+
+static inline void
+MPIDI_Request_complete_norelease_inline(MPID_Request *req)
+{
+    int count;
+    MPID_cc_decr(req->cc_ptr, &count);
+    MPID_assert(count >= 0);
+
     if (count == 0) /* decrement completion count; if 0, signal progress engine */
     {
       MPIDI_Progress_signal();

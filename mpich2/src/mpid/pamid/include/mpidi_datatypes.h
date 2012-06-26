@@ -129,7 +129,6 @@ typedef enum
   {
     MPIDI_CA_COMPLETE,
     MPIDI_CA_UNPACK_UEBUF_AND_COMPLETE,         /**< Unpack uebuf, then complete. */
-    MPIDI_CA_UNPACK_UEBUF_AND_COMPLETE_NOFREE,  /**< Unpack uebuf (do not free), then complete. */
   } MPIDI_CA;
 
 
@@ -198,7 +197,8 @@ struct MPIDI_Request
   MPI_Datatype          datatype;     /**< Data type of message       */
   pami_task_t           peer_pami;    /**< The other guy's rank (in PAMI) */
   unsigned              peer_comm;    /**< The other guy's rank (in the orig communicator) */
-  unsigned            cancel_pending; /**< Cancel status              */
+  unsigned            cancel_pending:16; /**< Cancel status              */
+  unsigned            uebuf_malloc:16;   /**< does uebuf require free()  */
 
   unsigned              uebuflen;     /**< Length (bytes) of uebuf    */
   void                 *uebuf;        /**< Unexpected buffer          */

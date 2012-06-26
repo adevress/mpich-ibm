@@ -74,13 +74,14 @@ MPIDI_Recv(void          * buf,
 #endif
   MPIR_Comm_add_ref(comm);
 
-  MPIU_THREAD_CS_ENTER(MSGQUEUE,0);
   /* ---------------------------------------- */
   /* find our request in the unexpected queue */
   /* or allocate one in the posted queue      */
   /* ---------------------------------------- */
+  MPID_Request *newreq = MPIDI_Request_create2();
+  MPIU_THREAD_CS_ENTER(MSGQUEUE,0);
 #ifndef OUT_OF_ORDER_HANDLING
-  rreq = MPIDI_Recvq_FDU_or_AEP(rank,
+  rreq = MPIDI_Recvq_FDU_or_AEP(newreq, rank,
                                 tag,
                                 comm->recvcontext_id + context_offset,
                                 &found);
@@ -95,7 +96,7 @@ MPIDI_Recv(void          * buf,
         /* returns unlock    */
         MPIDI_Recvq_process_out_of_order_msgs(pami_source, MPIDI_Context[0]);
   }
-  rreq = MPIDI_Recvq_FDU_or_AEP(rank,
+  rreq = MPIDI_Recvq_FDU_or_AEP(newreq, rank,
                                 pami_source,
                                 tag,
                                 comm->recvcontext_id + context_offset,
@@ -141,6 +142,9 @@ MPIDI_Recv(void          * buf,
   #endif
 
   MPIU_THREAD_CS_EXIT(MSGQUEUE,0);
+  if (unlikely(found)) {
+    MPID_Request_discard(newreq);
+  }
   return mpi_errno;
 }
 
