@@ -675,6 +675,8 @@ sub ProcessFile
 			      'MPIU_ERR_CHKFATALANDJUMP3' => '3:-1:1:1',
 			      'MPIU_ERR_CHKFATALANDJUMP4' => '3:-1:1:1',
 			      'MPIR_ERRTEST_VALID_HANDLE' => '4:-1:0:1',
+                  'MPIU_ERR_CHKORASSERT'      => '4:-1:0:1',
+                  'MPIU_ERR_CHKORASSERT1'     => '4:-1:1:1',
 			      );
 	while (/(MPI[OUR]_E[A-Za-z0-9_]+)\s*(\(.*)$/) {
 	    my $routineName = $1;

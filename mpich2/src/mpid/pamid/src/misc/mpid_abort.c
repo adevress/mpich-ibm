@@ -92,5 +92,9 @@ int MPID_Abort(MPID_Comm * comm, int mpi_errno, int exit_code, const char *error
     if ( (strncasecmp("no", env, 2)==0) || (strncasecmp("exit", env, 4)==0) || (strncmp("0", env, 1)==0) )
       exit(1);
 
+#ifdef USE_PMI2_API
+  PMI2_Abort(1,error_msg);
+#else
   abort();
+#endif
 }

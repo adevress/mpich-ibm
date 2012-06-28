@@ -49,6 +49,46 @@
 #define MPID_assert(x)        assert(x) /**< \brief Tests for likely problems--may not be active in performance code */
 #endif
 
+/* --BEGIN ERROR MACROS-- */
+#ifdef MPIDI_NO_ASSERT
+#define MPIU_ERR_CHKORASSERT(cond_,err_,class_,stmt_,msg_)              \
+    if(!(cond_)) {                                                \
+        MPIU_ERR_SETANDSTMT(err_,class_, stmt_, msg_); \
+    }
+#define MPIU_ERR_CHKORASSERT1(cond_, err_, class_, stmt_, gmsg_, smsg_, arg1_)         \
+    if(!(cond_)) {                                                              \
+        MPIU_ERR_SETANDSTMT1(err_,class_,stmt_, gmsg_,smsg_,arg1_);  \
+    }
+#elif  ASSERT_LEVEL==0
+#define MPIU_ERR_CHKORASSERT(cond_,err_,class_,stmt_,msg)
+#define MPIU_ERR_CHKORASSERT1(cond_, err_, class_,stmt_,  gmsg_, smsg_, arg1_)
+#else
+#define PRINT_ERROR_MSG(err_)   {                                     \
+    if (err_ != MPI_SUCCESS) {                                        \
+        int len_;                                                     \
+        char err_str_[MPI_MAX_ERROR_STRING];                          \
+        MPI_Error_string(err_, err_str_, &len_);                      \
+        fprintf(stderr, __FILE__ " failed at line %d, err=%d: %s\n",  \
+                __LINE__, err_, err_str_);                            \
+        fflush(stderr);                                               \
+    }                                                                 \
+}
+#define MPIU_ERR_CHKORASSERT(cond_,err_,class_,stmt_, msg_) { \
+    if(!(cond_)) {                                          \
+        MPIU_ERR_SET(err_,class_,msg_);                     \
+        PRINT_ERROR_MSG(err_);                              \
+        stmt_;                                              \
+    }                                                       \
+}
+#define MPIU_ERR_CHKORASSERT1(cond_, err_, class_,stmt_,gmsg_, smsg_, arg1_) {   \
+    if(!(cond_)) {                                          \
+        MPIU_ERR_SET1(err_, class_, gmsg_, smsg_, arg1_);                     \
+        PRINT_ERROR_MSG(err_);                              \
+        stmt_;                                              \
+    }                                                       \
+}
+#endif
+/* --END ERROR MACROS-- */
 
 #include "mpidi_platform.h"
 

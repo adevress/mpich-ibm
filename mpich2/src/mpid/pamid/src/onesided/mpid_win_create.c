@@ -52,14 +52,16 @@ MPID_Win_create(void       * base,
                 MPID_Win  ** win_ptr)
 {
   int mpi_errno  = MPI_SUCCESS;
-
+  static char FCNAME[] = "MPID_Win_create";
 
   /* ----------------------------------------- */
   /*  Setup the common sections of the window  */
   /* ----------------------------------------- */
   MPID_Win *win = (MPID_Win*)MPIU_Handle_obj_alloc(&MPID_Win_mem);
-  if (win == NULL)
-    return mpi_errno;
+  
+  MPIU_ERR_CHKANDSTMT(win == NULL, mpi_errno, MPI_ERR_NO_MEM, 
+                     return mpi_errno, "**nomem");
+
   *win_ptr = win;
 
   win->base = base;
@@ -80,15 +82,20 @@ MPID_Win_create(void       * base,
 
   struct MPIDI_Win_info *winfo = &win->mpid.info[rank];
 
-  MPID_assert((base != NULL) || (length == 0));
+  MPIU_ERR_CHKORASSERT((base != NULL) || (length == 0),
+                        mpi_errno, MPI_ERR_ARG,  return mpi_errno, "**arg");
 #ifdef USE_PAMI_RDMA
   if (length != 0)
     {
       size_t length_out = 0;
       pami_result_t rc;
       rc = PAMI_Memregion_create(MPIDI_Context[0], base, length, &length_out, &winfo->memregion);
-      MPID_assert(rc == PAMI_SUCCESS);
-      MPID_assert(length == length_out);
+      MPIU_ERR_CHKORASSERT1(rc == PAMI_SUCCESS,mpi_errno, MPI_ERR_OTHER,return mpi_errno, 
+                            "**pamid|PAMI_Memregion_create",
+                            "**pamid|PAMI_Memregion_create %d", rc);  
+
+      MPIU_ERR_CHKORASSERT(length == length_out, mpi_errno, MPI_ERR_OTHER,
+                           return mpi_errno,"**pamid|sizesnotsame"); 
     }
 #else
   if ( (!MPIDI_Process.mp_s_use_pami_get) && (length != 0) )
@@ -99,7 +106,8 @@ MPID_Win_create(void       * base,
       if(rc == PAMI_SUCCESS)
 	{
 	  winfo->memregion_used = 1;
-	  MPID_assert(length == length_out);
+      MPIU_ERR_CHKORASSERT(length == length_out, mpi_errno, MPI_ERR_OTHER,
+                           return mpi_errno, "**pamid|sizesnotsame"); 
 	}
     }
 #endif

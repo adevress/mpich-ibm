@@ -1,0 +1,13 @@
+**pamid|PAMI_Context_post:PAMI_Context_post failed
+**pamid|PAMI_Context_post %d:PAMI_Context_post failed with rc = %d
+**pamid|PAMI_Endpoint_create:PAMI_Endpoint_create failed
+**pamid|PAMI_Endpoint_create %d:PAMI_Endpoint_create failed with rc = %d
+**pamid|PAMI_Memregion_create:PAMI_Memregion_create failed
+**pamid|PAMI_Memregion_create %d:PAMI_Memregion_create failed with rc = %d
+**pamid|sizesnotsame:sizes are not same 
+**pamid|PAMI_Context_advancev:PAMI_Context_advancev failed
+**pamid|PAMI_Context_advancev %d:PAMI_Context_advancev failed with rc = %d
+**pamid|PAMI_Memregion_destroy:PAMI_Memregion_destroy failed
+**pamid|PAMI_Memregion_destroy %d:PAMI_Memregion_destroy failed with rc = %d
+**pamid|PAMI_Context_trylock_advancev:PAMI_Context_trylock_advancev failed
+**pamid|PAMI_Context_trylock_advancev %d:PAMI_Context_trylock_advancev failed with rc = %d

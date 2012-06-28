@@ -222,6 +222,8 @@ MPID_Put(void         *origin_addr,
   MPIDI_Win_request *req = MPIU_Calloc0(1, MPIDI_Win_request);
   req->win          = win;
   req->type         = MPIDI_WIN_REQUEST_PUT;
+  int mpi_errno = MPI_SUCCESS;
+  static char FCNAME[] = "MPID_Put";
 
   req->offset = target_disp * win->mpid.info[target_rank].disp_unit;
 
@@ -237,7 +239,7 @@ MPID_Put(void         *origin_addr,
   /* temp fix, should be fixed as part of error injection for one sided comm.*/
   /* in 10/12                                                                */
      if (req->origin.dt.size != req->target.dt.size) {
-         exit(1);
+         MPIU_ERR_SETANDSTMT(mpi_errno, MPI_ERR_OTHER, return mpi_errno, "**pamid|sizesnotsame");
      }
   #endif
 
@@ -273,23 +275,27 @@ MPID_Put(void         *origin_addr,
     {
       req->buffer_free = 1;
       req->buffer      = MPIU_Malloc(req->origin.dt.size);
-      MPID_assert(req->buffer != NULL);
+      MPIU_ERR_CHKORASSERT1(req->buffer != NULL, mpi_errno, MPI_ERR_NO_MEM,return mpi_errno,
+                            "**nomem","**nomem %d", req->origin.dt.size);
 
-      int mpi_errno = 0;
       mpi_errno = MPIR_Localcopy(origin_addr,
                                  origin_count,
                                  origin_datatype,
                                  req->buffer,
                                  req->origin.dt.size,
                                  MPI_CHAR);
-      MPID_assert(mpi_errno == MPI_SUCCESS);
+
+     MPIU_ERR_CHKORASSERT(mpi_errno == MPI_SUCCESS, mpi_errno, MPI_ERR_OTHER, 
+                          return mpi_errno,"**other");
     }
 
 
   pami_result_t rc;
   pami_task_t task = MPID_VCR_GET_LPID(win->comm_ptr->vcr, target_rank);
   rc = PAMI_Endpoint_create(MPIDI_Client, task, 0, &req->dest);
-  MPID_assert(rc == PAMI_SUCCESS);
+  MPIU_ERR_CHKORASSERT1(rc == PAMI_SUCCESS, mpi_errno, MPI_ERR_OTHER,return mpi_errno,
+                        "**pamid|PAMI_Endpoint_create",
+                        "**pamid|PAMI_Endpoint_create %d",rc);
 
 #ifdef USE_PAMI_RDMA
   size_t length_out;
@@ -298,8 +304,13 @@ MPID_Put(void         *origin_addr,
 			     req->origin.dt.size,
 			     &length_out,
 			     &req->origin.memregion);
-  MPID_assert(rc == PAMI_SUCCESS);
-  MPID_assert(req->origin.dt.size == length_out);
+  
+  MPIU_ERR_CHKORASSERT1(rc == PAMI_SUCCESS, mpi_errno, MPI_ERR_OTHER,return mpi_errno,
+                        "**pamid|PAMI_Memregion_create",
+                        "**pamid|PAMI_Memregion_create %d",rc);
+  MPIU_ERR_CHKORASSERT(req->origin.dt.size == length_out, 
+                      mpi_errno, MPI_ERR_OTHER, 
+                      return mpi_errno,"**pamid|sizesnotsame");
 #else
   if(!MPIDI_Process.mp_s_use_pami_get)
     {
@@ -310,8 +321,10 @@ MPID_Put(void         *origin_addr,
 				 &length_out,
 				 &req->origin.memregion);
       if(rc == PAMI_SUCCESS) {
-	MPID_assert(req->origin.dt.size == length_out);
-	req->origin.memregion_used = 1;
+        MPIU_ERR_CHKORASSERT(req->origin.dt.size == length_out, 
+                             mpi_errno, MPI_ERR_OTHER, 
+                             return mpi_errno,"**pamid|sizesnotsame");
+	    req->origin.memregion_used = 1;
       }
     }
 #endif

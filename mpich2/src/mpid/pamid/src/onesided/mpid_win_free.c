@@ -34,6 +34,7 @@ int
 MPID_Win_free(MPID_Win **win_ptr)
 {
   int mpi_errno = MPI_SUCCESS;
+  static char FCNAME[] = "MPID_Win_free";
 
   MPID_Win *win = *win_ptr;
   size_t rank = win->comm_ptr->rank;
@@ -48,14 +49,20 @@ MPID_Win_free(MPID_Win **win_ptr)
     {
       pami_result_t rc;
       rc = PAMI_Memregion_destroy(MPIDI_Context[0], &winfo->memregion);
-      MPID_assert(rc == PAMI_SUCCESS);
+      MPIU_ERR_CHKORASSERT1(rc == PAMI_SUCCESS, mpi_errno, MPI_ERR_OTHER,return mpi_errno,
+                            "**pamid|PAMI_Memregion_destroy",
+                            "**pamid|PAMI_Memregion_destroy %d", rc);
     }
 #else
   if ( (!MPIDI_Process.mp_s_use_pami_get) && (win->size != 0) && (winfo->memregion_used) )
     {
       pami_result_t rc;
       rc = PAMI_Memregion_destroy(MPIDI_Context[0], &winfo->memregion);
-      MPID_assert(rc == PAMI_SUCCESS);
+
+      MPIU_ERR_CHKORASSERT1(rc == PAMI_SUCCESS, mpi_errno, MPI_ERR_OTHER,return mpi_errno,
+                            "**pamid|PAMI_Memregion_destroy",
+                            "**pamid|PAMI_Memregion_destroy %d", rc);
+        
     }
 #endif
 

@@ -214,6 +214,9 @@ void MPIDI_Progress_async_poll_perobj ();
 static inline int
 MPID_Progress_wait_inline(unsigned loop_count)
 {
+  static char FCNAME[] = "MPID_Progress_wait_inline";
+  int mpi_errno = MPI_SUCCESS;
+
   pami_result_t rc = 0;
 
 #if (MPIU_THREAD_GRANULARITY == MPIU_THREAD_GRANULARITY_PER_OBJECT)
@@ -234,7 +237,10 @@ MPID_Progress_wait_inline(unsigned loop_count)
        * check for this condition and simply always perform the context lock.
        */
       rc = PAMI_Context_trylock_advancev(MPIDI_Context, MPIDI_Process.avail_contexts, 1);
-      MPID_assert( (rc == PAMI_SUCCESS) || (rc == PAMI_EAGAIN) );
+      MPIU_ERR_CHKORASSERT1((rc == PAMI_SUCCESS) || (rc == PAMI_EAGAIN),
+                            mpi_errno, MPI_ERR_OTHER,return mpi_errno,
+                            "**pamid|PAMI_Context_trylock_advancev",
+                            "**pamid|PAMI_Context_trylock_advancev %d", rc);
     }
 #else
   /*
@@ -256,7 +262,10 @@ MPID_Progress_wait_inline(unsigned loop_count)
    *       more information.
    */
   rc = PAMI_Context_advance(MPIDI_Context[0], 1);
-  MPID_assert( (rc == PAMI_SUCCESS) || (rc == PAMI_EAGAIN) );
+  MPIU_ERR_CHKORASSERT1((rc == PAMI_SUCCESS) || (rc == PAMI_EAGAIN),
+                         mpi_errno, MPI_ERR_OTHER,return mpi_errno,
+                         "**pamid|PAMI_Context_advancev",
+                         "**pamid|PAMI_Context_advancev %d",rc);
 #ifdef __PE__
   if (rc == PAMI_EAGAIN) {
        MPIU_THREAD_CS_SCHED_YIELD(ALLFUNC,); /* sync, release(0), yield, acquire(0) */

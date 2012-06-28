@@ -88,6 +88,8 @@ MPID_Isend_inline(const void    * buf,
                   int             context_offset,
                   MPID_Request ** request)
 {
+   static char FCNAME[] = "MPID_Isend_inline";
+   int mpi_errno = MPI_SUCCESS;
   /* ---------------------------------------------------- */
   /* special case: PROC null handled by handoff function  */
   /* ---------------------------------------------------- */

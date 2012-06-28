@@ -166,6 +166,8 @@ MPID_Accumulate(void         *origin_addr,
   MPIDI_Win_request *req = MPIU_Calloc0(1, MPIDI_Win_request);
   req->win          = win;
   req->type         = MPIDI_WIN_REQUEST_ACCUMULATE;
+  int mpi_errno = MPI_SUCCESS;
+  static char FCNAME[] = "MPID_Accumulate";
 
   req->offset = target_disp * win->mpid.info[target_rank].disp_unit;
 
@@ -214,8 +216,9 @@ MPID_Accumulate(void         *origin_addr,
                                target_datatype,
                                &req->target.dt);
     }
-
-  MPID_assert(req->origin.dt.size == req->target.dt.size);
+    MPIU_ERR_CHKORASSERT(req->origin.dt.size == req->target.dt.size,
+                        mpi_errno, MPI_ERR_OTHER, return mpi_errno,
+                        "**pamid|sizesnotsame");
 
   if ( (req->origin.dt.size == 0) ||
        (target_rank == MPI_PROC_NULL))
@@ -236,24 +239,30 @@ MPID_Accumulate(void         *origin_addr,
     {
       req->buffer_free = 1;
       req->buffer      = MPIU_Malloc(req->origin.dt.size);
-      MPID_assert(req->buffer != NULL);
 
-      int mpi_errno = 0;
+      MPIU_ERR_CHKORASSERT1(req->buffer != NULL, mpi_errno, MPI_ERR_NO_MEM,return mpi_errno,
+                            "**nomem","**nomem %d", req->origin.dt.size);
+
       mpi_errno = MPIR_Localcopy(origin_addr,
                                  origin_count,
                                  origin_datatype,
                                  req->buffer,
                                  req->origin.dt.size,
                                  MPI_CHAR);
-      MPID_assert(mpi_errno == MPI_SUCCESS);
+     
+      MPIU_ERR_CHKORASSERT(mpi_errno == MPI_SUCCESS, mpi_errno, MPI_ERR_OTHER,
+                           return mpi_errno,"**other");
     }
 
 
   pami_result_t rc;
   pami_task_t task = MPID_VCR_GET_LPID(win->comm_ptr->vcr, target_rank);
   rc = PAMI_Endpoint_create(MPIDI_Client, task, 0, &req->dest);
-  MPID_assert(rc == PAMI_SUCCESS);
 
+  MPIU_ERR_CHKORASSERT1(rc == PAMI_SUCCESS, mpi_errno, MPI_ERR_OTHER,
+                        return mpi_errno,
+                        "**pamid|PAMI_Endpoint_create",
+                        "**pamid|PAMI_Endpoint_create %d", rc); 
 
   MPIDI_Win_datatype_map(&req->target.dt);
   win->mpid.sync.total += req->target.dt.num_contig;
@@ -269,11 +278,14 @@ MPID_Accumulate(void         *origin_addr,
         (origin_datatype == MPI_SHORT_INT)  ||
         (origin_datatype == MPI_LONG_DOUBLE_INT))
       {
-        MPID_assert(basic_type == MPI_DATATYPE_NULL);
+        MPIU_ERR_CHKORASSERT(basic_type == MPI_DATATYPE_NULL, mpi_errno, MPI_ERR_TYPE, 
+                             return mpi_errno,"**dtype");
         basic_type = origin_datatype;
       }
-    MPID_assert(basic_type != MPI_DATATYPE_NULL);
 
+      MPIU_ERR_CHKORASSERT(basic_type != MPI_DATATYPE_NULL, mpi_errno, MPI_ERR_TYPE, 
+                           return mpi_errno,"**dtype");
+    
     unsigned index;
     MPIDI_Win_MsgInfo * headers = MPIU_Calloc0(req->target.dt.num_contig, MPIDI_Win_MsgInfo);
     req->accum_headers = headers;

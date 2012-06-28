@@ -25,7 +25,12 @@
 int
 MPID_Cancel_recv(MPID_Request * rreq)
 {
-  MPID_assert(rreq->kind == MPID_REQUEST_RECV);
+  static char FCNAME[] = "MPID_Cancel_recv";
+  int mpi_errno = MPI_SUCCESS;
+
+  MPIU_ERR_CHKORASSERT(rreq->kind == MPID_REQUEST_RECV,mpi_errno, MPI_ERR_REQUEST,
+                       return mpi_errno,"**request_invalid_kind");
+
   if (MPIDI_Recvq_FDPR(rreq))
     {
       rreq->status.cancelled = TRUE;
@@ -92,8 +97,10 @@ MPIDI_CancelReq_post(pami_context_t context, void * _req)
 int
 MPID_Cancel_send(MPID_Request * sreq)
 {
-  MPID_assert(sreq != NULL);
-
+  static char FCNAME[] = "MPID_Cancel_send";
+  int mpi_errno = MPI_SUCCESS;
+  MPIU_ERR_CHKORASSERT(sreq != NULL, mpi_errno , MPI_ERR_REQUEST, 
+                       return mpi_errno, "**requestnull");
   if(!sreq->comm)
     return MPI_SUCCESS;
 
