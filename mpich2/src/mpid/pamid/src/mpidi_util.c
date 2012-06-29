@@ -784,6 +784,25 @@ void MPIDI_print_statistics() {
 
 #endif  /* MPIDI_PRINTENV || MPIDI_STATISTICS         */
 
+/**
+ * \brief validate whether a lpid is in a given group
+ *
+ * Searches the group lpid list for a match.
+ *
+ * \param[in] lpid  World rank of the node in question
+ * \param[in] grp   Group to validate against
+ * \return TRUE is lpid is in group
+ */
+
+int MPIDI_valid_group_rank(int lpid, MPID_Group *grp) {
+        int size = grp->size;
+        int z;
+
+        for (z = 0; z < size &&
+                lpid != grp->lrank_to_lpid[z].lpid; ++z);
+        return (z < size);
+}
+
 /****************************************************************/
 /* function MPIDI_uppers converts a passed string to upper case */
 /****************************************************************/
