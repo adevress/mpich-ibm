@@ -150,6 +150,7 @@ MPIDI_Request_create_basic()
      check for fields that are not being correctly initialized. */
   memset(&req->mpid, 0xFFFFFFFF, sizeof(struct MPIDI_Request));
 #endif
+  req->mpid.next = NULL;
 
   return req;
 }
@@ -184,7 +185,6 @@ MPIDI_Request_initialize(MPID_Request * req)
   req->status.MPI_ERROR  = MPI_SUCCESS;
 
   struct MPIDI_Request* mpid = &req->mpid;
-  mpid->next             = NULL;
   mpid->envelope.msginfo.flags = 0;
   mpid->cancel_pending   = FALSE;
   mpid->datatype_ptr     = NULL;
