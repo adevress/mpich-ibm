@@ -361,6 +361,7 @@ void MPIR_Sendq_remember( MPID_Request *req,
 	if (!p) {
 	    /* Just ignore it */
             req->mpid.next = NULL;
+            MPIU_THREAD_CS_EXIT(HANDLE,req);
 	    return;
 	}
     }
@@ -384,6 +385,7 @@ void MPIR_Sendq_forget( MPID_Request *req )
     p    = req->mpid.next;
     if (!p) {
         /* Just ignore it */
+        MPIU_THREAD_CS_EXIT(HANDLE,req);
         return;
     }
     prev = p->prev;
