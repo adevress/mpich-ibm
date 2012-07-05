@@ -75,7 +75,8 @@ int MPIDO_Doscan(void *sendbuf, void *recvbuf,
    pami_xfer_t scan;
    volatile unsigned scan_active = 1;
 
-   if(comm_ptr->mpid.user_selected_type[PAMI_XFER_SCAN] == MPID_COLL_USE_MPICH || rc != MPI_SUCCESS)
+   if((sendbuf == MPI_IN_PLACE) || /* Disable until ticket #627 is fixed */
+      (comm_ptr->mpid.user_selected_type[PAMI_XFER_SCAN] == MPID_COLL_USE_MPICH || rc != MPI_SUCCESS))
       
    {
       if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0))
