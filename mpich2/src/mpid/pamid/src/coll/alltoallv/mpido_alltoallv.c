@@ -55,6 +55,8 @@ int MPIDO_Alltoallv(void *sendbuf,
    int pamidt = 1;
    int tmp;
 
+   if(sendbuf == MPI_IN_PLACE) 
+     pamidt = 0; /* Disable until ticket #632 is fixed */
    if(MPIDI_Datatype_to_pami(sendtype, &stype, -1, NULL, &tmp) != MPI_SUCCESS)
       pamidt = 0;
    if(MPIDI_Datatype_to_pami(recvtype, &rtype, -1, NULL, &tmp) != MPI_SUCCESS)

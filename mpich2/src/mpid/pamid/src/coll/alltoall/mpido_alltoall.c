@@ -51,6 +51,8 @@ int MPIDO_Alltoall(void *sendbuf,
    int rc, sndlen, rcvlen, snd_contig, rcv_contig, pamidt=1;
    int tmp;
 
+   if(sendbuf == MPI_IN_PLACE) 
+     pamidt = 0; /* Disable until ticket #632 is fixed */
    if(sendbuf != MPI_IN_PLACE)
    {
       MPIDI_Datatype_get_info(1, sendtype, snd_contig, sndlen, sdt, sdt_true_lb);
