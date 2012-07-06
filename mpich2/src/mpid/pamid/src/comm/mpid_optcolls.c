@@ -725,9 +725,9 @@ void MPIDI_Comm_coll_select(MPID_Comm *comm_ptr)
             {
               /*SSS: (on BG) MPICH is actually better at > 128 bytes for 1/16/64ppn at 512 nodes */
               comm_ptr->mpid.must_query[PAMI_XFER_ALLREDUCE][1] = MPID_COLL_USE_MPICH;
-              comm_ptr->mpid.must_query[PAMI_XFER_ALLREDUCE][0] = MPID_COLL_NOQUERY;
-              /* Short is good for up to 128 */
-              comm_ptr->mpid.cutoff_size[PAMI_XFER_ALLREDUCE][0] = 128;
+              /* Short is good for up to 512 bytes... but it's a query protocol */
+              comm_ptr->mpid.must_query[PAMI_XFER_ALLREDUCE][0] = MPID_COLL_QUERY;
+              comm_ptr->mpid.cutoff_size[PAMI_XFER_ALLREDUCE][0] = 512;
             }
             comm_ptr->mpid.user_selected_type[PAMI_XFER_ALLREDUCE] = MPID_COLL_OPTIMIZED;
 
