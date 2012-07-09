@@ -122,7 +122,7 @@ ADIOI_BG_persInfo_init(ADIOI_BG_ConfInfo_t *conf,
 			ADIOI_BG_ProcInfo_t *proc, 
 			int size, int rank, int n_aggrs, MPI_Comm comm)
 {
-   int i, iambridge=0, bridgerank, numbridge;
+   int i, iambridge=0, bridgerank, numbridge, ihavebridge[2];
    int rc;
    int count = 0;
    sortstruct *array;
@@ -134,6 +134,7 @@ ADIOI_BG_persInfo_init(ADIOI_BG_ConfInfo_t *conf,
    Personality_t pers;
    MPIX_Hardware_t hw;
    MPIX_Hardware(&hw);
+   TRACE_ERR("BG_persInfo_init, my coords{%u,%u,%u,%u,%u}\n",hw.Coords[0],hw.Coords[1],hw.Coords[2],hw.Coords[3],hw.Coords[4]);
 
    Kernel_GetPersonality(&pers, sizeof(pers));
 
@@ -158,44 +159,32 @@ ADIOI_BG_persInfo_init(ADIOI_BG_ConfInfo_t *conf,
    }
 
    TRACE_ERR("Bridge coords: %d %d %d %d %d, %d. Rank: %d\n", bridgeCoords[0], bridgeCoords[1], bridgeCoords[2], bridgeCoords[3], bridgeCoords[4], bridgeCoords[5], bridgerank);
-   /* Some special cases first */
-   if(bridgerank == -1 || size == 1 || bridgerank >= commsize)
-   {
-      if(bridgerank == -1) /* Bridge node not part of job */
-      {
-         TRACE_ERR("Bridge node not part of job, setting 0 as the bridgenode\n");
 
-         proc->bridgeRank = 0; /* Rank zero will be the bridge node */
-         if(rank == 0)
-         {
-            iambridge = 1;
-            proc->iamBridgenode = 1;
-         }
-         else
-         {
-            iambridge = 0;
-            proc->iamBridgenode = 0;
-         }
-      }
-      else if(bridgerank >= commsize)
+   /* Some special cases first, see if anyone is missing a bridge
+      and pick one (minloc of ranks without a bridge) */
+   ihavebridge[1] = rank;
+   if(bridgerank == -1 || bridgerank >= commsize)
+   {
+      ihavebridge[0] = 0;
+      MPI_Allreduce( MPI_IN_PLACE, ihavebridge, 1, MPI_2INT, MPI_MINLOC, comm);
+      bridgerank = ihavebridge[1];
+      rc = MPIX_Rank2torus(bridgerank,bridgeCoords);
+      if(rc != MPI_SUCCESS)
       {
-         bridgerank = 0;
-         if(rank == 0)
-         {
-            iambridge = 1;
-            proc->iamBridgenode = 1;
-         }
-         else
-         {
-            iambridge = 0;
-            proc->iamBridgenode = 0;
-         }
+         TRACE_ERR("Rank2Torus failed for finding bridgenode rank\n");  /* shouldn't happen but who cares */
       }
-      else if(size == 1)
-      {
-         iambridge = 1;
-         proc->iamBridgenode = 1;
-      }
+      TRACE_ERR("Reset Bridge coords: %d %d %d %d %d, %d. Rank: %d\n", bridgeCoords[0], bridgeCoords[1], bridgeCoords[2], bridgeCoords[3], bridgeCoords[4], bridgeCoords[5], bridgerank);
+   }
+   else 
+   {
+      ihavebridge[0] = 1;
+      MPI_Allreduce( MPI_IN_PLACE, ihavebridge, 1, MPI_2INT, MPI_MINLOC, comm);
+   }
+
+   if(size == 1)
+   {
+      iambridge = 1;
+      proc->iamBridgenode = 1;
 
       /* Set up the other parameters */
       proc->myIOSize = size;
@@ -209,6 +198,7 @@ ADIOI_BG_persInfo_init(ADIOI_BG_ConfInfo_t *conf,
       conf->nAggrs = 1;
       conf->aggRatio = 1. * conf->nAggrs / conf->virtualPsetSize;
       if(conf->aggRatio > 1) conf->aggRatio = 1.;
+      TRACE_ERR("I am (single) Bridge node %s\n",iambridge?"yes":"no");
    }
    else
    {
@@ -219,7 +209,9 @@ ADIOI_BG_persInfo_init(ADIOI_BG_ConfInfo_t *conf,
 
       proc->iamBridgenode = iambridge;
 
+      TRACE_ERR("I am Bridge node %s (iambridge %u, rank %u, bridgerank %u)\n",iambridge?"yes":"no",iambridge,rank,bridgerank);
       MPI_Allreduce(&iambridge, &numbridge, 1, MPI_INT, MPI_SUM, comm);
+      TRACE_ERR("Num of Bridge nodes %d\n",numbridge);
 
       /* Determine how many compute nodes belong to each bridge node */
       array = (sortstruct *) ADIOI_Malloc(sizeof(sortstruct) * size);
