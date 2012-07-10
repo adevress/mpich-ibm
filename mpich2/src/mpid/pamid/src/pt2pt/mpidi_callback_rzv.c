@@ -60,12 +60,13 @@ MPIDI_RecvRzvCB(pami_context_t    context,
   unsigned tag        = msginfo->MPItag;
   unsigned context_id = msginfo->MPIctxt;
 
+  MPID_Request *newreq = MPIDI_Request_create2();
   MPIU_THREAD_CS_ENTER(MSGQUEUE,0);
 #ifndef OUT_OF_ORDER_HANDLING
-  rreq = MPIDI_Recvq_FDP_or_AEU(rank, tag, context_id, &found);
+  rreq = MPIDI_Recvq_FDP_or_AEU(newreq, rank, tag, context_id, &found);
 #else
   pami_task_t source = PAMIX_Endpoint_query(sender);
-  rreq = MPIDI_Recvq_FDP_or_AEU(rank, source, tag, context_id, msginfo->MPIseqno, &found);
+  rreq = MPIDI_Recvq_FDP_or_AEU(newreq, rank, source, tag, context_id, msginfo->MPIseqno, &found);
 #endif
   TRACE_ERR("RZV CB for req=%p remote-mr=0x%llx bytes=%zu (%sfound)\n",
             rreq,
@@ -116,7 +117,10 @@ MPIDI_RecvRzvCB(pami_context_t    context,
       if (unlikely(MPIDI_Request_isSync(rreq)))
         MPIDI_SyncAck_post(context, rreq, MPIDI_Request_getPeerRank_pami(rreq));
 
+      MPIU_THREAD_CS_EXIT(MSGQUEUE,0);
+
       MPIDI_RendezvousTransfer(context, rreq);
+      MPID_Request_discard(newreq);
     }
 
   /* ------------------------------------------------------------- */
@@ -132,12 +136,11 @@ MPIDI_RecvRzvCB(pami_context_t    context,
       MPID_assert(rreq->mpid.uebuflen == 0);
       /* rreq->mpid.uebuf = NULL; */
       /* rreq->mpid.uebuflen = 0; */
+      MPIU_THREAD_CS_EXIT(MSGQUEUE,0);
     }
 
   /* ---------------------------------------- */
   /*  Signal that the recv has been started.  */
   /* ---------------------------------------- */
   MPIDI_Progress_signal();
-
-  MPIU_THREAD_CS_EXIT(MSGQUEUE,0);
 }

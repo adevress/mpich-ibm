@@ -62,6 +62,8 @@ MPIDI_RecvDoneCB_copy(MPID_Request * rreq)
  * \brief Message layer callback which is invoked on the target node
  * when the incoming message is complete.
  *
+ * The MSGQUEUE lock may or may not be held.
+ *
  * \param[in,out] rreq MPI receive request object
  */
 void
@@ -76,14 +78,7 @@ MPIDI_RecvDoneCB(pami_context_t   context,
     case MPIDI_CA_UNPACK_UEBUF_AND_COMPLETE:
       {
         MPIDI_RecvDoneCB_copy(rreq);
-        /* free the unexpected data buffer */
-        MPIU_Free(rreq->mpid.uebuf);
-        rreq->mpid.uebuf = NULL;
-        break;
-      }
-    case MPIDI_CA_UNPACK_UEBUF_AND_COMPLETE_NOFREE:
-      {
-        MPIDI_RecvDoneCB_copy(rreq);
+        /* free the unexpected data buffer later */
         break;
       }
     case MPIDI_CA_COMPLETE:
@@ -103,7 +98,8 @@ MPIDI_RecvDoneCB(pami_context_t   context,
      MPIDI_Request_complete(oo_peer);
   }
 #endif
-  MPIDI_Request_complete(rreq);
+  MPIDI_Request_complete_norelease(rreq);
+  /* caller must release rreq, after unlocking MSGQUEUE (if held) */
 #ifdef OUT_OF_ORDER_HANDLING
   int source;
   source = MPIDI_Request_getPeerRank_pami(rreq);
@@ -125,11 +121,13 @@ MPIDI_RecvDoneCB_mutexed(pami_context_t   context,
                          void           * clientdata,
                          pami_result_t    result)
 {
+  MPID_Request * rreq = (MPID_Request*)clientdata;
   MPIU_THREAD_CS_ENTER(MSGQUEUE, 0);
 
   MPIDI_RecvDoneCB(context, clientdata, result);
 
   MPIU_THREAD_CS_EXIT(MSGQUEUE, 0);
+  MPID_Request_release(rreq);
 }
 
 

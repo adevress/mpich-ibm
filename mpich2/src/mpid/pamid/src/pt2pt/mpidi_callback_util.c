@@ -22,15 +22,16 @@
 #include <mpidimpl.h>
 
 
+/* MSGQUEUE lock must be held by caller */
 void
-MPIDI_Callback_process_unexp(pami_context_t        context,
+MPIDI_Callback_process_unexp(MPID_Request *newreq,
+			     pami_context_t        context,
                              const MPIDI_MsgInfo * msginfo,
                              size_t                sndlen,
                              pami_endpoint_t       sender,
                              const void          * sndbuf,
                              pami_recv_t         * recv,
-                             unsigned              isSync,
-                             void                * uebuf)
+                             unsigned              isSync)
 {
   MPID_Request *rreq = NULL;
 
@@ -45,10 +46,10 @@ MPIDI_Callback_process_unexp(pami_context_t        context,
   unsigned tag        = msginfo->MPItag;
   unsigned context_id = msginfo->MPIctxt;
 #ifndef OUT_OF_ORDER_HANDLING
-  rreq = MPIDI_Recvq_AEU(rank, tag, context_id);
+  rreq = MPIDI_Recvq_AEU(newreq, rank, tag, context_id);
 #else
   unsigned msg_seqno  = msginfo->MPIseqno;
-  rreq = MPIDI_Recvq_AEU(rank, PAMIX_Endpoint_query(sender), tag, context_id, msg_seqno);
+  rreq = MPIDI_Recvq_AEU(newreq, rank, PAMIX_Endpoint_query(sender), tag, context_id, msg_seqno);
 #endif
   /* ---------------------- */
   /*  Copy in information.  */
@@ -71,8 +72,6 @@ MPIDI_Callback_process_unexp(pami_context_t        context,
     }
 #endif
 
-  rreq->mpid.uebuflen = sndlen;
-  rreq->mpid.uebuf = uebuf;
   MPID_assert(!sndlen || rreq->mpid.uebuf != NULL);
 
   if (recv != NULL)
@@ -91,10 +90,12 @@ MPIDI_Callback_process_unexp(pami_context_t        context,
       /* ------------------------------------------------- */
       memcpy(rreq->mpid.uebuf, sndbuf,   sndlen);
       MPIDI_RecvDoneCB(context, rreq, PAMI_SUCCESS);
+      /* caller must release rreq, after unlocking MSGQUEUE */
     }
 }
 
 
+/* MSGQUEUE lock is not held */
 void
 MPIDI_Callback_process_trunc(pami_context_t  context,
                              MPID_Request   *rreq,
@@ -112,19 +113,22 @@ MPIDI_Callback_process_trunc(pami_context_t  context,
       rreq->mpid.uebuflen = rreq->status.count;
       rreq->mpid.uebuf    = MPIU_Malloc(rreq->status.count);
       MPID_assert(rreq->mpid.uebuf != NULL);
+      rreq->mpid.uebuf_malloc = 1;
 
       recv->addr = rreq->mpid.uebuf;
     }
   else
     {
-      MPIDI_Request_setCA(rreq, MPIDI_CA_UNPACK_UEBUF_AND_COMPLETE_NOFREE);
+      MPIDI_Request_setCA(rreq, MPIDI_CA_UNPACK_UEBUF_AND_COMPLETE);
       rreq->mpid.uebuflen = rreq->status.count;
       rreq->mpid.uebuf    = (void*)sndbuf;
       MPIDI_RecvDoneCB(context, rreq, PAMI_SUCCESS);
+      MPID_Request_release(rreq);
     }
 }
 
 
+/* MSGQUEUE lock is not held */
 void
 MPIDI_Callback_process_userdefined_dt(pami_context_t      context,
                                       const void        * sndbuf,
@@ -169,8 +173,9 @@ MPIDI_Callback_process_userdefined_dt(pami_context_t      context,
       return;
     }
 
-  MPIDI_Request_setCA(rreq, MPIDI_CA_UNPACK_UEBUF_AND_COMPLETE_NOFREE);
+  MPIDI_Request_setCA(rreq, MPIDI_CA_UNPACK_UEBUF_AND_COMPLETE);
   rreq->mpid.uebuflen = sndlen;
   rreq->mpid.uebuf    = (void*)sndbuf;
   MPIDI_RecvDoneCB(context, rreq, PAMI_SUCCESS);
+  MPID_Request_release(rreq);
 }

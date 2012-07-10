@@ -258,6 +258,7 @@ MPIDI_SendMsg_process_userdefined_dt(MPID_Request      * sreq,
           MPID_Abort(NULL, MPI_ERR_NO_SPACE, -1,
                      "Unable to allocate non-contiguous buffer");
         }
+      sreq->mpid.uebuf_malloc = 1;
 
       DLOOP_Offset last = data_sz;
       MPID_Segment_init(sreq->mpid.userbuf,

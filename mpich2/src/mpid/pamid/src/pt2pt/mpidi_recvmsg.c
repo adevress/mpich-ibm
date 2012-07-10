@@ -90,8 +90,6 @@ MPIDI_RecvMsg_Unexp(MPID_Request  * rreq,
                                 &rreq->status.MPI_ERROR);
               rreq->status.count = _count;
             }
-          MPIU_Free(rreq->mpid.uebuf);
-          rreq->mpid.uebuf = NULL;
         }
       else
         {
@@ -119,7 +117,6 @@ MPIDI_RecvMsg_Unexp(MPID_Request  * rreq,
         }
       if(rreq->status.cancelled == FALSE)
         {
-          MPID_assert(rreq->mpid.uebuf != NULL);
           MPIDI_Request_setCA(rreq, MPIDI_CA_UNPACK_UEBUF_AND_COMPLETE);
         }
       if (HANDLE_GET_KIND(datatype) != HANDLE_KIND_BUILTIN)

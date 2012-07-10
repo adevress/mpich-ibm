@@ -37,7 +37,6 @@ MPIDI_SendDoneCB_inline(pami_context_t   context,
 {
   MPID_Request * sreq = (MPID_Request*)clientdata;
   MPID_assert(sreq != NULL);
-  MPIU_TestFree(&sreq->mpid.uebuf);
   MPIDI_Request_complete(sreq);
 }
 

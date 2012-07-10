@@ -72,30 +72,35 @@ MPIDI_RecvShortCB(pami_context_t    context,
   /* Match not found */
   if (unlikely(rreq == NULL))
     {
-      void *uebuf = NULL;
+      MPIU_THREAD_CS_EXIT(MSGQUEUE,0);
+      MPID_Request *newreq = MPIDI_Request_create2();
+      MPID_assert(newreq != NULL);
       if (sndlen)
       {
-        MPIU_THREAD_CS_EXIT(MSGQUEUE,0);
-        uebuf = MPIU_Malloc(sndlen);
-        MPID_assert(uebuf != NULL);
-        MPIU_THREAD_CS_ENTER(MSGQUEUE,0);
-#ifndef OUT_OF_ORDER_HANDLING
-        rreq = MPIDI_Recvq_FDP(rank, tag, context_id);
-#else
-        rreq = MPIDI_Recvq_FDP(rank, PAMIX_Endpoint_query(sender), tag, context_id, msginfo->MPIseqno);
-#endif
+        newreq->mpid.uebuflen = sndlen;
+        newreq->mpid.uebuf = MPIU_Malloc(sndlen);
+        MPID_assert(newreq->mpid.uebuf != NULL);
+        newreq->mpid.uebuf_malloc = 1;
       }
+      MPIU_THREAD_CS_ENTER(MSGQUEUE,0);
+#ifndef OUT_OF_ORDER_HANDLING
+      rreq = MPIDI_Recvq_FDP(rank, tag, context_id);
+#else
+      rreq = MPIDI_Recvq_FDP(rank, PAMIX_Endpoint_query(sender), tag, context_id, msginfo->MPIseqno);
+#endif
       
       if (unlikely(rreq == NULL))
       {
-        MPIDI_Callback_process_unexp(context, msginfo, sndlen, sender, sndbuf, NULL, isSync, uebuf);
+        MPIDI_Callback_process_unexp(newreq, context, msginfo, sndlen, sender, sndbuf, NULL, isSync);
+        /* request is always complete now */
         MPIU_THREAD_CS_EXIT(MSGQUEUE,0);
+        MPID_Request_release(newreq);
         goto fn_exit_short;
       }
       else
       {       
         MPIU_THREAD_CS_EXIT(MSGQUEUE,0);
-        if (sndlen) MPIU_Free(uebuf);
+        MPID_Request_discard(newreq);
       }         
     }
   else

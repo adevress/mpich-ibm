@@ -421,10 +421,10 @@ MPIDI_Recvq_FDPR(MPID_Request * req)
  */
 #ifndef OUT_OF_ORDER_HANDLING
 MPID_Request *
-MPIDI_Recvq_FDP_or_AEU(int source, int tag, int context_id, int * foundp)
+MPIDI_Recvq_FDP_or_AEU(MPID_Request *newreq, int source, int tag, int context_id, int * foundp)
 #else
 MPID_Request *
-MPIDI_Recvq_FDP_or_AEU(int source, pami_task_t pami_source, int tag, int context_id, int msg_seqno, int * foundp)
+MPIDI_Recvq_FDP_or_AEU(MPID_Request *newreq, int source, pami_task_t pami_source, int tag, int context_id, int msg_seqno, int * foundp)
 #endif
 {
   MPID_Request * rreq;
@@ -443,9 +443,9 @@ MPIDI_Recvq_FDP_or_AEU(int source, pami_task_t pami_source, int tag, int context
 #endif
   } else {
 #ifndef OUT_OF_ORDER_HANDLING
-      rreq = MPIDI_Recvq_AEU(source, tag, context_id);
+      rreq = MPIDI_Recvq_AEU(newreq, source, tag, context_id);
 #else
-      rreq = MPIDI_Recvq_AEU(source, pami_source, tag, context_id, msg_seqno);
+      rreq = MPIDI_Recvq_AEU(newreq, source, pami_source, tag, context_id, msg_seqno);
 #endif
 #if (MPIDI_STATISTICS)
      MPID_NSTAT(mpid_statp->earlyArrivals);
@@ -466,17 +466,17 @@ MPIDI_Recvq_FDP_or_AEU(int source, pami_task_t pami_source, int tag, int context
  */
 #ifndef OUT_OF_ORDER_HANDLING
 MPID_Request *
-MPIDI_Recvq_AEU(int source, int tag, int context_id)
+MPIDI_Recvq_AEU(MPID_Request *newreq, int source, int tag, int context_id)
 #else
 MPID_Request *
-MPIDI_Recvq_AEU(int source, pami_task_t pami_source, int tag, int context_id, int msg_seqno)
+MPIDI_Recvq_AEU(MPID_Request *newreq, int source, pami_task_t pami_source, int tag, int context_id, int msg_seqno)
 #endif
 {
   /* A matching request was not found in the posted queue, so we
      need to allocate a new request and add it to the unexpected
      queue */
   MPID_Request *rreq;
-  rreq = MPIDI_Request_create2();
+  rreq = newreq;
   rreq->kind = MPID_REQUEST_RECV;
 #ifndef OUT_OF_ORDER_HANDLING
   MPIDI_Request_setMatch(rreq, tag, source, context_id);

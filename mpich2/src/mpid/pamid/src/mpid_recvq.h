@@ -136,10 +136,10 @@ MPIDI_Recvq_FU_r(int source, int tag, int context, MPI_Status * status)
  */
 #ifndef OUT_OF_ORDER_HANDLING
 static inline MPID_Request *
-MPIDI_Recvq_FDU_or_AEP(int source, int tag, int context_id, int * foundp)
+MPIDI_Recvq_FDU_or_AEP(MPID_Request *newreq, int source, int tag, int context_id, int * foundp)
 #else
 static inline MPID_Request *
-MPIDI_Recvq_FDU_or_AEP(int source, pami_task_t pami_source, int tag, int context_id, int * foundp)
+MPIDI_Recvq_FDU_or_AEP(MPID_Request *newreq, int source, pami_task_t pami_source, int tag, int context_id, int * foundp)
 #endif
 {
   MPID_Request * rreq = NULL;
@@ -157,7 +157,7 @@ MPIDI_Recvq_FDU_or_AEP(int source, pami_task_t pami_source, int tag, int context
   /* A matching request was not found in the unexpected queue,
      so we need to allocate a new request and add it to the
      posted queue */
-  rreq = MPIDI_Request_create2();
+  rreq = newreq;
   rreq->kind = MPID_REQUEST_RECV;
   MPIDI_Request_setMatch(rreq, tag, source, context_id);
   MPIDI_Recvq_append(MPIDI_Recvq.posted, rreq);
