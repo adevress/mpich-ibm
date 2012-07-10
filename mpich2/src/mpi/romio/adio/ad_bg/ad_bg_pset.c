@@ -42,25 +42,6 @@ ADIOI_BG_ProcInfo_free( ADIOI_BG_ProcInfo_t *info )
     if (info != NULL) ADIOI_Free (info);
 }
 
-static void ADIOI_BG_ProcInfo_set(ADIOI_BG_ProcInfo_t *info, Personality_t pers, MPIX_Hardware_t hw,   int r)
-{
-//   #warning need to get ioNodeIndex;
-
-   return;
-   
-
-   #if 0
-    info->psetNum    = hw->idOfPset;
-    info->xInPset    = hw->xCoord;
-    info->yInPset    = hw->yCoord;
-    info->zInPset    = hw->zCoord;
-    info->cpuid      = hw->tCoord;
-    info->rank       = r;
-    info->rankInPset = hw->rankInPset;
-   #endif
-}
-
-
 ADIOI_BG_ConfInfo_t *
 ADIOI_BG_ConfInfo_new ()
 {
@@ -69,31 +50,6 @@ ADIOI_BG_ConfInfo_new ()
     return p;
 }
 
-/* needs a procinfo passed in too */
-static void ADIOI_BG_ConfInfo_set(ADIOI_BG_ConfInfo_t *info, int s, int n_aggrs)
-{
-   return;
-   
-   #if 0
-    info->PsetSize        = hw->sizeOfPset;
-    info->numPsets        = (hw->xSize * hw->ySize *
-					hw->zSize) / hw->sizeOfPset;
-    info->isVNM           = (hw->tSize != 1);
-    info->cpuidSize       = hw->tSize;
-    info->virtualPsetSize = hw->sizeOfPset * hw->tSize;
-    info->nProcs          = s;
-
-    /* More complicated logic maybe needed for nAggrs specification */
-    info->nAggrs          = n_aggrs;
-    if ( info->nAggrs <=0 || MIN(info->nProcs, info->virtualPsetSize) < info->nAggrs ) 
-        info->nAggrs      = ADIOI_BGL_NAGG_PSET_DFLT;
-    if ( info->nAggrs > info->virtualPsetSize ) info->nAggrs = info->virtualPsetSize;
-
-    info->aggRatio        = 1. * info->nAggrs / info->virtualPsetSize;
-    if (info->aggRatio > 1) info->aggRatio = 1.;
-    #endif 
-    ;
-}
 
 void
 ADIOI_BG_ConfInfo_free( ADIOI_BG_ConfInfo_t *info )
@@ -105,7 +61,7 @@ ADIOI_BG_ConfInfo_free( ADIOI_BG_ConfInfo_t *info )
 typedef struct
 {
    int rank;
-   int bridge;
+   int bridgeCoord;
 } sortstruct;
 
 static int intsort(const void *p1, const void *p2)
@@ -113,7 +69,7 @@ static int intsort(const void *p1, const void *p2)
    sortstruct *i1, *i2;
    i1 = (sortstruct *)p1;
    i2 = (sortstruct *)p2;
-   return(i1->bridge - i2->bridge);
+   return(i1->bridgeCoord - i2->bridgeCoord);
 }
 
 
@@ -122,10 +78,8 @@ ADIOI_BG_persInfo_init(ADIOI_BG_ConfInfo_t *conf,
 			ADIOI_BG_ProcInfo_t *proc, 
 			int size, int rank, int n_aggrs, MPI_Comm comm)
 {
-   int i, iambridge=0, bridgerank, numbridge, ihavebridge[2];
-   int rc;
-   int count = 0;
-   sortstruct *array;
+   int i, iambridge=0, bridgerank = -1, bridgeIndex;
+   int countPset;
    sortstruct *bridges;
    int commsize;
 
@@ -134,7 +88,8 @@ ADIOI_BG_persInfo_init(ADIOI_BG_ConfInfo_t *conf,
    Personality_t pers;
    MPIX_Hardware_t hw;
    MPIX_Hardware(&hw);
-   TRACE_ERR("BG_persInfo_init, my coords{%u,%u,%u,%u,%u}\n",hw.Coords[0],hw.Coords[1],hw.Coords[2],hw.Coords[3],hw.Coords[4]);
+   TRACE_ERR("BG_persInfo_init, my coords{%u,%u,%u,%u,%u} rankInPset %u,sizeOfPset %u,idOfPset %u\n",hw.Coords[0],hw.Coords[1],hw.Coords[2],hw.Coords[3],hw.Coords[4],hw.rankInPset,hw.sizeOfPset,hw.idOfPset);
+
 
    Kernel_GetPersonality(&pers, sizeof(pers));
 
@@ -142,171 +97,177 @@ ADIOI_BG_persInfo_init(ADIOI_BG_ConfInfo_t *conf,
    proc->coreID = hw.coreID;
    MPI_Comm_size(comm, &commsize);
 
-   /* Determine the rank of the nearest bridge node */
-   int bridgeCoords[6];
-   bridgeCoords[0] = pers.Network_Config.cnBridge_A;
-   bridgeCoords[1] = pers.Network_Config.cnBridge_B;
-   bridgeCoords[2] = pers.Network_Config.cnBridge_C;
-   bridgeCoords[3] = pers.Network_Config.cnBridge_D;
-   bridgeCoords[4] = pers.Network_Config.cnBridge_E;
-   bridgeCoords[5] = 0;
-
-   rc = MPIX_Torus2rank(bridgeCoords, &bridgerank);
-   if(rc != MPI_SUCCESS)
-   {
-      fprintf(stderr,"Tours2Rank failed for finding bridgenode rank\n");
-      ADIOI_BG_assert((rc == MPI_SUCCESS));
-   }
-
-   TRACE_ERR("Bridge coords: %d %d %d %d %d, %d. Rank: %d\n", bridgeCoords[0], bridgeCoords[1], bridgeCoords[2], bridgeCoords[3], bridgeCoords[4], bridgeCoords[5], bridgerank);
-
-   /* Some special cases first, see if anyone is missing a bridge
-      and pick one (minloc of ranks without a bridge) */
-   ihavebridge[1] = rank;
-   if(bridgerank == -1 || bridgerank >= commsize)
-   {
-      ihavebridge[0] = 0;
-      MPI_Allreduce( MPI_IN_PLACE, ihavebridge, 1, MPI_2INT, MPI_MINLOC, comm);
-      bridgerank = ihavebridge[1];
-      rc = MPIX_Rank2torus(bridgerank,bridgeCoords);
-      if(rc != MPI_SUCCESS)
-      {
-         TRACE_ERR("Rank2Torus failed for finding bridgenode rank\n");  /* shouldn't happen but who cares */
-      }
-      TRACE_ERR("Reset Bridge coords: %d %d %d %d %d, %d. Rank: %d\n", bridgeCoords[0], bridgeCoords[1], bridgeCoords[2], bridgeCoords[3], bridgeCoords[4], bridgeCoords[5], bridgerank);
-   }
-   else 
-   {
-      ihavebridge[0] = 1;
-      MPI_Allreduce( MPI_IN_PLACE, ihavebridge, 1, MPI_2INT, MPI_MINLOC, comm);
-   }
-
    if(size == 1)
    {
-      iambridge = 1;
-      proc->iamBridgenode = 1;
+      proc->iamBridge = 1;
 
       /* Set up the other parameters */
       proc->myIOSize = size;
       proc->ioNodeIndex = 0;
       conf->ioMinSize = size;
       conf->ioMaxSize = size;
-      conf->numBridgeNodes = 1;
+      conf->numBridgeRanks = 1;
       conf->nProcs = size;
       conf->cpuIDsize = hw.ppn;
-      conf->virtualPsetSize = conf->ioMaxSize * conf->cpuIDsize;
+      /*conf->virtualPsetSize = conf->ioMaxSize * conf->cpuIDsize;*/
       conf->nAggrs = 1;
-      conf->aggRatio = 1. * conf->nAggrs / conf->virtualPsetSize;
+      conf->aggRatio = 1. * conf->nAggrs / conf->ioMaxSize /*virtualPsetSize*/;
       if(conf->aggRatio > 1) conf->aggRatio = 1.;
-      TRACE_ERR("I am (single) Bridge node %s\n",iambridge?"yes":"no");
+      TRACE_ERR("I am (single) Bridge rank\n");
+      return;
    }
-   else
+
+   /* Find the nearest bridge node coords.  We don't know the
+      rank in our comm so we will collective find/pick a bridge
+      rank later.
+   */ 
+   int32_t bridgeCoords;
+   bridgeCoords = pers.Network_Config.cnBridge_A << 24 | 
+                  pers.Network_Config.cnBridge_B << 18 | 
+                  pers.Network_Config.cnBridge_C << 12 | 
+                  pers.Network_Config.cnBridge_D << 6 | 
+                  pers.Network_Config.cnBridge_E << 2;
+   ADIOI_BG_assert((bridgeCoords >= 0)); /* A dim is < 6 bits or sorting won't work */
+
+   if((hw.Coords[0] == pers.Network_Config.cnBridge_A) && 
+      (hw.Coords[1] == pers.Network_Config.cnBridge_B) && 
+      (hw.Coords[2] == pers.Network_Config.cnBridge_C) && 
+      (hw.Coords[3] == pers.Network_Config.cnBridge_D) && 
+      (hw.Coords[4] == pers.Network_Config.cnBridge_E))
+      iambridge = 1;      /* I am bridge */
+
+   TRACE_ERR("Bridge coords(%8.8X): %d %d %d %d %d, %d. iambridge %d\n",bridgeCoords, pers.Network_Config.cnBridge_A,pers.Network_Config.cnBridge_B,pers.Network_Config.cnBridge_C,pers.Network_Config.cnBridge_D,pers.Network_Config.cnBridge_E,0, iambridge);
+
+   /* Allgather the ranks and bridgeCoords to determine the bridge
+      rank and how many ranks belong to each bridge rank*/
+   bridges = (sortstruct *) ADIOI_Malloc(sizeof(sortstruct) * size);
+
+   /* We're going to sort this structure by bridgeCoord:
+    
+   typedef struct
    {
-      /* Determine how many bridge nodes there are */
-      iambridge = (rank == bridgerank)? 1 : 0;
+      int rank;
+      int bridgeCoord;
+   } sortstruct; 
+    
+   and I want the rank that IS the bridge to sort first, so 
+   OR in '1' on non-bridge ranks that use a bridge coord. 
+   */ 
 
-      proc->bridgeRank = bridgerank;
+   /* My input to the collective */
+   bridges[rank].rank = rank;
+   bridges[rank].bridgeCoord = bridgeCoords;
+   if(!iambridge)
+      bridges[rank].bridgeCoord |= 1;  /* I am not bridge, turn on bit */
 
-      proc->iamBridgenode = iambridge;
 
-      TRACE_ERR("I am Bridge node %s (iambridge %u, rank %u, bridgerank %u)\n",iambridge?"yes":"no",iambridge,rank,bridgerank);
-      MPI_Allreduce(&iambridge, &numbridge, 1, MPI_INT, MPI_SUM, comm);
-      TRACE_ERR("Num of Bridge nodes %d\n",numbridge);
+   MPI_Allgather(MPI_IN_PLACE, 2, MPI_INT, bridges, 2, MPI_INT, comm);
 
-      /* Determine how many compute nodes belong to each bridge node */
-      array = (sortstruct *) ADIOI_Malloc(sizeof(sortstruct) * size);
-      for(i=0; i<size; i++)
+   qsort(bridges, size, sizeof(sortstruct), intsort);
+
+   /* Once the list is sorted walk through it to setup bridge
+      info and find bridge ranks, etc. */
+
+   int tempCoords, tempRank, mincompute, maxcompute;
+   tempCoords = bridges[0].bridgeCoord & ~1;
+   tempRank   = bridges[0].rank;
+
+   countPset=1;
+   bridgeIndex = 0; 
+   mincompute = size+1;
+   maxcompute = 1;
+
+   for(i=1; i<size; i++)
+   {
+      if((bridges[i].bridgeCoord  & ~1) == tempCoords) 
+            countPset++; /* same bridge (pset), count it */
+      else /* new bridge found */
       {
-         array[i].bridge = bridgerank;
-         array[i].rank = rank;
+#ifdef TRACE_ON
+         if(rank == 0) 
+            TRACE_ERR("Bridge set %u, bridge rank %d (%#8.8X) has %d ranks\n",
+                      bridgeIndex, tempRank, tempCoords, countPset);
+#endif
+         if(countPset > maxcompute)
+            maxcompute = countPset;
+         if(countPset < mincompute)
+            mincompute = countPset;
+
+         /* Is this my bridge? */
+         if(tempCoords == bridgeCoords)
+         {
+            /* Am I the bridge rank? */
+            if(tempRank == rank)
+               iambridge = 1;
+            else 
+               iambridge = 0; /* Another rank on my node may have taken over */
+            TRACE_ERR("Rank %u, bridge set %u, bridge rank %d (%#8.8X) has %d ranks, iambridge %u\n",
+                      rank, bridgeIndex, tempRank, tempCoords, countPset,iambridge);
+            bridgerank = tempRank;
+            proc->myIOSize = countPset;
+            proc->ioNodeIndex = bridgeIndex;
+         }
+         tempCoords = bridges[i].bridgeCoord & ~1;
+         tempRank   = bridges[i].rank;
+         bridgeIndex++;
+         countPset = 1;
       }
-
-      /* TODO: At some point, create a communicator of just core 0s to make this
-       * faster? */
-      MPI_Allgather(MPI_IN_PLACE, 2, MPI_INT, array, 2, MPI_INT, comm);
-
-      proc->myIOSize = count;
-            
-      bridges = (sortstruct *) ADIOI_Malloc(sizeof(sortstruct) * numbridge);
-
-      /* This should be rank 0 of the communicator */
-      if(rank == 0) /* only rank 0 needs to do the sorting/unique counting */
-      {
-         qsort(array, size, sizeof(sortstruct), intsort);
-         int temp, index = 0, mincompute, maxcompute;
-         temp = array[0].bridge;
-         /* Once the list is sorted walk through it to determine how many
-          * compute nodes share a bridge node */
-         for(i=0; i<size; i++)
-         {
-            if(array[i].bridge == temp)
-               count++;
-            else
-            {
-               /* number of nodes under this bridge node */
-               bridges[index].bridge = count/hw.ppn; 
-               /* this particular bridge node rank */
-               bridges[index].rank = temp;
-               index++;
-               temp = array[i].bridge;
-               count = 0;
-            }
-         }
-         bridges[index].rank = temp;
-         bridges[index].bridge = (count+1)/hw.ppn;
-         mincompute = size+1;
-         maxcompute = 1;
-
-         for(i=0;i<numbridge;i++)
-         {
-            if(bridges[i].bridge > maxcompute)
-               maxcompute = bridges[i].bridge;
-            if(bridges[i].bridge < mincompute)
-               mincompute = bridges[i].bridge;
-         }
-         for(i=0;i<numbridge;i++)
-         {
-            TRACE_ERR("Bridge node %d (%d) has %d compute nodes\n",
-               i, bridges[i].rank, bridges[i].bridge);
-         }
-
-         /* Only rank 0 has a conf structure, fill in stuff as appropriate */
-         conf->ioMinSize = mincompute;
-         conf->ioMaxSize = maxcompute; /* equivalent to pset size */
-         conf->numBridgeNodes = numbridge;
-         conf->nProcs = size;
-         conf->cpuIDsize = hw.ppn;
-         conf->virtualPsetSize = maxcompute * conf->cpuIDsize;
-
-         conf->nAggrs = n_aggrs;
-         /* First pass gets nAggrs = -1 */
-         if(conf->nAggrs <=0 || 
-               MIN(conf->nProcs, conf->virtualPsetSize) < conf->nAggrs) 
-            conf->nAggrs = ADIOI_BG_NAGG_PSET_DFLT;
-         if(conf->nAggrs > conf->numBridgeNodes) // maybe? * conf->cpuIDsize)
-            conf->nAggrs = conf->numBridgeNodes; // * conf->cpuIDsize;
-
-         conf->aggRatio = 1. * conf->nAggrs / conf->virtualPsetSize;
-         if(conf->aggRatio > 1) conf->aggRatio = 1.;
-         TRACE_ERR("Maximum nodes under a bridgenode: %d, minimum: %d, nAggrs: %d, vps: %d, numbridge: %d pset dflt: %d naggrs: %d ratio: %f\n", maxcompute, mincompute, conf->nAggrs, conf->virtualPsetSize, conf->numBridgeNodes, ADIOI_BG_NAGG_PSET_DFLT, conf->nAggrs, conf->aggRatio);
-
-      }
-
-      /* Broadcast the bridges array to everyone else */
-      MPI_Bcast(bridges, 2 * numbridge, MPI_INT, 0, comm);
-      for(i=0;i<numbridge;i++)
-      {
-         if(bridges[i].rank == bridgerank)
-         {
-            proc->myIOSize = bridges[i].bridge;
-            proc->ioNodeIndex = i;
-         }
-      }
-      TRACE_ERR("%d has bridge node %d (rank: %d) with %d other nodes, ioNodeIndex: %d\n", rank,  proc->ioNodeIndex, bridgerank, proc->myIOSize, proc->ioNodeIndex);
-
-      ADIOI_Free(array);
-      ADIOI_Free(bridges);
    }
+   /* Process last bridge */
+
+#ifdef TRACE_ON
+   if(rank == 0) 
+      TRACE_ERR("Bridge set %u, bridge rank %d (%#8.8X) has %d ranks\n",
+                bridgeIndex, tempRank, tempCoords, countPset);
+#endif
+   if(countPset > maxcompute)
+      maxcompute = countPset;
+   if(countPset < mincompute)
+      mincompute = countPset;
+
+   /* Is this my bridge? */
+   if(tempCoords == bridgeCoords)
+   {
+      /* Am I the bridge rank? */
+      if(tempRank == rank)
+         iambridge = 1;
+      else 
+         iambridge = 0; /* Another rank on my node may have taken over */
+      bridgerank = tempRank;
+      proc->myIOSize = countPset;
+      proc->ioNodeIndex = bridgeIndex;
+   }
+   
+   
+   if(rank == 0) 
+   {
+      /* Only rank 0 has a conf structure, fill in stuff as appropriate */
+      conf->ioMinSize = mincompute;
+      conf->ioMaxSize = maxcompute; /* equivalent to pset size */
+      conf->numBridgeRanks = bridgeIndex+1;
+      conf->nProcs = size;
+      conf->cpuIDsize = hw.ppn;
+      /*conf->virtualPsetSize = maxcompute * conf->cpuIDsize;*/
+            
+      conf->nAggrs = n_aggrs;
+      /*    First pass gets nAggrs = -1 */
+      if(conf->nAggrs <=0 || 
+         MIN(conf->nProcs, conf->ioMaxSize /*virtualPsetSize*/) < conf->nAggrs) 
+         conf->nAggrs = ADIOI_BG_NAGG_PSET_DFLT;
+      if(conf->nAggrs > conf->numBridgeRanks) // maybe? * conf->cpuIDsize)
+         conf->nAggrs = conf->numBridgeRanks; // * conf->cpuIDsize;
+   
+      conf->aggRatio = 1. * conf->nAggrs / conf->ioMaxSize /*virtualPsetSize*/;
+      if(conf->aggRatio > 1) conf->aggRatio = 1.;
+      TRACE_ERR("Maximum ranks under a bridge rank: %d, minimum: %d, nAggrs: %d, vps: %d, numBridgeRanks: %d pset dflt: %d naggrs: %d ratio: %f\n", maxcompute, mincompute, conf->nAggrs, conf->ioMaxSize /*virtualPsetSize*/, conf->numBridgeRanks, ADIOI_BG_NAGG_PSET_DFLT, conf->nAggrs, conf->aggRatio);
+   }
+
+   ADIOI_BG_assert((bridgerank != -1));
+   proc->bridgeRank = bridgerank;
+   proc->iamBridge = iambridge;
+   TRACE_ERR("Rank %d has bridge set index %d (bridge rank: %d) with %d other ranks, ioNodeIndex: %d\n", rank,  proc->ioNodeIndex, bridgerank, proc->myIOSize, proc->ioNodeIndex);
+
+   ADIOI_Free(bridges);
 
 }
 

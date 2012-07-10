@@ -22,23 +22,24 @@ typedef struct {
    int ioNodeIndex; /* similar to psetNum on BGL/BGP */
    int rank; /* my rank */
 //   int myCoords[5];
-   int bridgeRank;
+   int bridgeRank; /* my bridge node (or proxy) rank */
    unsigned char coreID;
    unsigned char threadID; /* unlikely to be useful but better than just padding */
    unsigned char __cpad[2];
-   int myIOSize; /* number of compute nodes sharing my bridge/IO node, i.e. psetsize */
-   int iamBridgenode; /* am *I* the bridge node? */
+   int myIOSize;  /* number of ranks sharing my bridge/IO
+      node, i.e. psetsize*/
+   int iamBridge; /* am *I* the bridge rank? */
    int __ipad[2];
 } ADIOI_BG_ProcInfo_t __attribute__((aligned(16)));
 
 /* Keeps general information for the whole communicator, only on process 0 */
 typedef struct {
-   int ioMinSize; /* Smallest number of compute nodes shareing 1 bridge node */
-   int ioMaxSize; /* Largest number of compute nodes sharing 1 bridge node */
+   int ioMinSize; /* Smallest number of ranks shareing 1 bridge node */
+   int ioMaxSize; /* Largest number of ranks sharing 1 bridge node */
    /* ioMaxSize will be the "psetsize" */
    int nAggrs;
-   int numBridgeNodes;
-   int virtualPsetSize; /*ppn * pset size */
+   int numBridgeRanks;
+   /*int virtualPsetSize; ppn * pset size */
    int nProcs;
    int cpuIDsize; /* num ppn */
    float aggRatio;
