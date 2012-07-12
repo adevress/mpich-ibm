@@ -20,7 +20,7 @@
  * \brief ???
  */
 
-//#define TRACE_ON
+/*#define TRACE_ON */
 
 #include <mpidimpl.h>
 extern void MPIDI_Comm_coll_query(MPID_Comm *);

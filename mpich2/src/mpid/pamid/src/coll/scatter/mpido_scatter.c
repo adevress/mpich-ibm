@@ -20,7 +20,7 @@
  * \brief ???
  */
 
-//#define TRACE_ON
+/*#define TRACE_ON */
 
 #include <mpidimpl.h>
 
@@ -110,7 +110,7 @@ int MPIDO_Scatter(void *sendbuf,
 {
   MPID_Datatype * data_ptr;
   MPI_Aint true_lb = 0;
-//  char *sbuf = sendbuf, *rbuf = recvbuf;
+/*  char *sbuf = sendbuf, *rbuf = recvbuf;*/
   int contig, nbytes = 0;
   int rank = comm_ptr->rank;
   int success = 1;

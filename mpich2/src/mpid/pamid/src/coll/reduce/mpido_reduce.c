@@ -20,7 +20,7 @@
  * \brief ???
  */
 
-//#define TRACE_ON
+/*#define TRACE_ON*/
 #include <mpidimpl.h>
 
 static void reduce_cb_done(void *ctxt, void *clientdata, pami_result_t err)

@@ -20,7 +20,7 @@
  * \brief ???
  */
 
-//#define TRACE_ON
+/*#define TRACE_ON*/
 
 #include <mpidimpl.h>
 
@@ -48,7 +48,8 @@ int MPIDO_Bcast(void *buffer,
    MPID_Datatype *data_ptr;
    MPID_Segment segment;
    MPIDI_Post_coll_t bcast_post;
-//   MPIDI_Post_coll_t allred_post; // eventually for preallreduces
+/*   MPIDI_Post_coll_t allred_post; eventually for
+   preallreduces*/
    if(count == 0)
    {
       MPIDI_Update_last_algorithm(comm_ptr,"BCAST_NONE");
@@ -84,7 +85,7 @@ int MPIDO_Bcast(void *buffer,
       {
          fprintf(stderr,
             "Pack: Tree Bcast cannot allocate local non-contig pack buffer\n");
-//         MPIX_Dump_stacks();
+/*         MPIX_Dump_stacks();*/
          MPID_Abort(NULL, MPI_ERR_NO_SPACE, 1,
             "Fatal:  Cannot allocate pack buffer");
       }

@@ -126,7 +126,7 @@ int MPIDO_Scatterv_alltoallv(void * sendbuf,
                                 MPI_ERR_OTHER,
                                 "**nomem", 0);
   }
-  //   memset(rbuf, 0, rbytes * size * sizeof(char));
+  /*   memset(rbuf, 0, rbytes * size * sizeof(char));*/
 
   if(rank == root)
   {
@@ -154,7 +154,7 @@ int MPIDO_Scatterv_alltoallv(void * sendbuf,
     }
     memset(sdispls, 0, size*sizeof(int));
     memset(scounts, 0, size*sizeof(int));
-    //      memset(sbuf, 0, rbytes * sizeof(char));
+    /*      memset(sbuf, 0, rbytes * sizeof(char));*/
   }
 
   rdispls = MPIU_Malloc(size * sizeof(int));
@@ -196,7 +196,7 @@ int MPIDO_Scatterv_alltoallv(void * sendbuf,
   }
   else
   {
-    //      memcpy(recvbuf, rbuf+(root*rbytes), rbytes);
+    /*      memcpy(recvbuf, rbuf+(root*rbytes), rbytes);*/
     memcpy(recvbuf, rbuf, rbytes);
     MPIU_Free(rbuf);
     MPIU_Free(rdispls);

@@ -134,7 +134,7 @@ int MPIDO_Gather(void *sendbuf,
   MPI_Aint true_lb = 0;
   pami_xfer_t gather;
   MPIDI_Post_coll_t gather_post;
-//  char *sbuf = sendbuf, *rbuf = recvbuf;
+/*  char *sbuf = sendbuf, *rbuf = recvbuf;*/
   int success = 1, contig, send_bytes=-1, recv_bytes = 0;
   int rank = comm_ptr->rank;
 

@@ -20,7 +20,7 @@
  * \brief ???
  */
 
-//#define TRACE_ON
+/*#define TRACE_ON */
 #include <mpidimpl.h>
 
 static void allgatherv_cb_done(void *ctxt, void *clientdata, pami_result_t err)
@@ -86,7 +86,7 @@ int MPIDO_Allgatherv_allreduce(void *sendbuf,
     memcpy(destbuf, outputbuf, send_size);
   }
 
-  //if (0==comm_ptr->rank) puts("allreduce allgatherv");
+  /*if (0==comm_ptr->rank) puts("allreduce allgatherv");*/
 
    TRACE_ERR("Calling MPIDO_Allreduce from MPIDO_Allgatherv_allreduce\n");
    /* TODO: Change to PAMI allreduce */
@@ -155,7 +155,7 @@ int MPIDO_Allgatherv_bcast(void *sendbuf,
                      comm_ptr,
                      mpierrno);
   }
-  //if (0==comm_ptr->rank) puts("bcast allgatherv");
+  /*if (0==comm_ptr->rank) puts("bcast allgatherv");*/
    TRACE_ERR("Leaving MPIDO_Allgatherv_bcast\n");
 
   return rc;
@@ -218,7 +218,7 @@ int MPIDO_Allgatherv_alltoall(void *sendbuf,
 
    TRACE_ERR("Calling alltoallv in MPIDO_Allgatherv_alltoallv\n");
    /* TODO: Change to PAMI alltoallv */
-  //if (0==comm_ptr->rank) puts("all2all allgatherv");
+  /*if (0==comm_ptr->rank) puts("all2all allgatherv");*/
   rc = MPIR_Alltoallv(a2a_sendbuf,
 		       a2a_sendcounts,
 		       a2a_senddispls,

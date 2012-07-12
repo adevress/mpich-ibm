@@ -20,7 +20,7 @@
  * \brief ???
  */
 
-//#define TRACE_ON 
+/*#define TRACE_ON */
 #include <mpidimpl.h>
 
 
@@ -234,7 +234,7 @@ MPIDO_Allgather(void *sendbuf,
    * Check the nature of the buffers
    * *********************************
    */
-//  MPIDO_Coll_config config = {1,1,1,1,1,1};
+/*  MPIDO_Coll_config config = {1,1,1,1,1,1};*/
    int config[6], i;
    MPID_Datatype * dt_null = NULL;
    MPI_Aint send_true_lb = 0;
@@ -270,7 +270,7 @@ MPIDO_Allgather(void *sendbuf,
    use_bcast = comm_ptr->mpid.allgathers[1];
    use_pami = 
       (comm_ptr->mpid.user_selected_type[PAMI_XFER_ALLGATHER] == MPID_COLL_USE_MPICH) ? 0 : 1;
-//   if(sendbuf == MPI_IN_PLACE) use_pami = 0;
+/*   if(sendbuf == MPI_IN_PLACE) use_pami = 0;*/
    use_opt = use_alltoall || use_tree_reduce || use_bcast || use_pami;
 
 
@@ -315,7 +315,9 @@ MPIDO_Allgather(void *sendbuf,
    {
       sbuf = (char *)recvbuf+recv_size*comm_ptr->rank;
    }
-//   fprintf(stderr,"sendount: %d, recvcount: %d send_size: %zd recv_size: %zd\n", sendcount, recvcount, send_size, recv_size);
+/*   fprintf(stderr,"sendount: %d, recvcount: %d send_size: %zd
+     recv_size: %zd\n", sendcount, recvcount, send_size,
+     recv_size);*/
 
   /* verify everyone's datatype contiguity */
   /* Check buffer alignment now, since we're pre-allreducing anyway */

@@ -12,7 +12,7 @@
  *   See COPYRIGHT notice in top-level directory.
  */
 
-//#define TRACE_ON 
+/* #define TRACE_ON */
 #include <stdlib.h>
 #include "ad_bg.h"
 #include "ad_bg_pset.h"
@@ -254,8 +254,8 @@ ADIOI_BG_persInfo_init(ADIOI_BG_ConfInfo_t *conf,
       if(conf->nAggrs <=0 || 
          MIN(conf->nProcs, conf->ioMaxSize /*virtualPsetSize*/) < conf->nAggrs) 
          conf->nAggrs = ADIOI_BG_NAGG_PSET_DFLT;
-      if(conf->nAggrs > conf->numBridgeRanks) // maybe? * conf->cpuIDsize)
-         conf->nAggrs = conf->numBridgeRanks; // * conf->cpuIDsize;
+      if(conf->nAggrs > conf->numBridgeRanks) /* maybe? * conf->cpuIDsize) */
+         conf->nAggrs = conf->numBridgeRanks; /* * conf->cpuIDsize; */
    
       conf->aggRatio = 1. * conf->nAggrs / conf->ioMaxSize /*virtualPsetSize*/;
       if(conf->aggRatio > 1) conf->aggRatio = 1.;

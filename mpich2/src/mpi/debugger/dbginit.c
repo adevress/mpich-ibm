@@ -373,7 +373,7 @@ void MPIR_Sendq_remember( MPID_Request *req,
     p->prev       = NULL;
     MPIR_Sendq_head = p;
     if (p->next) p->next->prev = p;
-    req->mpid.next = (MPID_Request *)p; // overload 'next' for debugger SEND queue
+    req->mpid.next = (MPID_Request *)p; /* overload 'next' for debugger SEND queue */
     MPIU_THREAD_CS_EXIT(HANDLE,req);
 }
 

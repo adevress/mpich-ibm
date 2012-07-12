@@ -12,7 +12,7 @@
  *   See COPYRIGHT notice in top-level directory.
  */
 
-//#define TRACE_ON
+/*#define TRACE_ON */
 
 #include "adio.h"
 #include "adio_cb_config_list.h"
@@ -94,7 +94,7 @@ ADIOI_BG_gen_agg_ranklist(ADIO_File fd, int n_aggrs_per_pset)
     ADIOI_BG_persInfo_init( confInfo, procInfo, s, r, n_aggrs_per_pset, fd->comm);
 
   /* Gather BG personality infomation onto process 0 */
-    // if (r == 0) 
+    /* if (r == 0) */
     all_procInfo  = ADIOI_BG_ProcInfo_new_n  (s);
     if(s > aggrsInPsetSize)
     {
@@ -112,7 +112,7 @@ ADIOI_BG_gen_agg_ranklist(ADIO_File fd, int n_aggrs_per_pset)
   /* Compute a list of the ranks of chosen IO proxy CN on process 0 */
     if (r == 0) { 
 	ADIOI_BG_compute_agg_ranklist_serial (fd, confInfo, all_procInfo, aggrsInPset);    
-	// ADIOI_BG_ProcInfo_free (all_procInfo);
+	/* ADIOI_BG_ProcInfo_free (all_procInfo);*/
     }
     ADIOI_BG_ProcInfo_free (all_procInfo);
 
@@ -400,7 +400,8 @@ int ADIOI_BG_Calc_aggregator(ADIO_File fd,
 			rank_index,fd->hints->cb_nodes,fd_size,off);
         MPI_Abort(MPI_COMM_WORLD, 1);
     }
-    // DBG_FPRINTF ("ADIOI_BG_Calc_aggregator: rank_index = %d\n", rank_index );
+    /* DBG_FPRINTF ("ADIOI_BG_Calc_aggregator: rank_index = %d\n",
+       rank_index ); */
 
     /* 
      * remember here that even in Rajeev's original code it was the case that
@@ -476,7 +477,8 @@ void ADIOI_BG_GPFS_Calc_file_domains(ADIO_Offset *st_offsets,
         max_end_offset = ADIOI_MAX(max_end_offset, end_offsets[i]);
     }
 
-    // DBG_FPRINTF(stderr, "_calc_file_domains, min_st_offset, max_ = %qd, %qd\n", min_st_offset, max_end_offset );
+    /* DBG_FPRINTF(stderr, "_calc_file_domains, min_st_offset, max_
+       = %qd, %qd\n", min_st_offset, max_end_offset );*/
 
     /* determine the "file domain (FD)" of each process, i.e., the portion of
        the file that will be "owned" by each process */
@@ -903,7 +905,7 @@ for(i=0;i<nprocs;i++)
     MPI_Barrier(fd->comm);
     for (i=0; i<nprocs; i++)
     {
-	// Send these offsets to process i.
+	/* Send these offsets to process i.*/
 	scounts[i] = count_my_req_per_proc[i];
 	if ( scounts[i] == 0 )
 	    sdispls[i] = 0;
@@ -913,7 +915,7 @@ for(i=0;i<nprocs;i++)
 			   (MPIR_Upint)sendBufForOffsets ) / 
 			  (MPIR_Upint)sizeof(ADIO_Offset) );
 
-	// Receive these offsets from process i.
+	/* Receive these offsets from process i.*/
 	rcounts[i] = count_others_req_per_proc[i];
 	if ( rcounts[i] == 0 )
 	    rdispls[i] = 0;
@@ -937,7 +939,7 @@ for(i=0;i<nprocs;i++)
 
     for (i=0; i<nprocs; i++)
     {
-	// Send these lengths to process i.
+	/* Send these lengths to process i.*/
 	scounts[i] = count_my_req_per_proc[i];
 	if ( scounts[i] == 0 )
 	    sdispls[i] = 0;
@@ -947,7 +949,7 @@ for(i=0;i<nprocs;i++)
 			   (MPIR_Upint)sendBufForLens ) / 
 			 (MPIR_Upint) sizeof(int) );
 	
-	// Receive these offsets from process i.
+	/* Receive these offsets from process i. */
 	rcounts[i] = count_others_req_per_proc[i];
 	if ( rcounts[i] == 0 )
 	    rdispls[i] = 0;
