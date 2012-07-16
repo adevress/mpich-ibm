@@ -115,10 +115,12 @@ MPIDI_Recv(void          * buf,
   /* We don't need this because MPIDI_CA_COMPLETE is the initialized default */
   /* MPIDI_Request_setCA(rreq, MPIDI_CA_COMPLETE); */
 
-  if (found)
+  if (unlikely(found))
     {
       MPIDI_RecvMsg_Unexp(rreq, buf, count, datatype);
       mpi_errno = rreq->status.MPI_ERROR;
+      MPIU_THREAD_CS_EXIT(MSGQUEUE,0);
+      MPID_Request_discard(newreq);
     }
   else
     {
@@ -130,8 +132,10 @@ MPIDI_Recv(void          * buf,
           MPID_Datatype_get_ptr(datatype, rreq->mpid.datatype_ptr);
           MPID_Datatype_add_ref(rreq->mpid.datatype_ptr);
         }
+      MPIU_THREAD_CS_EXIT(MSGQUEUE,0);
     }
 
+  /* mutex has been dropped... */
   *request = rreq;
   if (status != MPI_STATUS_IGNORE)
     *status = rreq->status;
@@ -141,10 +145,6 @@ MPIDI_Recv(void          * buf,
     }
   #endif
 
-  MPIU_THREAD_CS_EXIT(MSGQUEUE,0);
-  if (unlikely(found)) {
-    MPID_Request_discard(newreq);
-  }
   return mpi_errno;
 }
 
