@@ -142,6 +142,11 @@ MPIDI_RecvRzvCB(pami_context_t    context,
       MPID_assert(rreq->mpid.uebuflen == 0);
       /* rreq->mpid.uebuf = NULL; */
       /* rreq->mpid.uebuflen = 0; */
+#ifdef OUT_OF_ORDER_HANDLING
+  if (MPIDI_In_cntr[source].n_OutOfOrderMsgs > 0) {
+     MPIDI_Recvq_process_out_of_order_msgs(source, context);
+  }
+#endif
       MPIU_THREAD_CS_EXIT(MSGQUEUE,0);
     }
 
