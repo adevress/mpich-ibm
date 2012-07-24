@@ -996,8 +996,15 @@ static inline void MPID_cc_set(MPID_cc_t *cc_ptr, int val)
 #define MPID_cc_prefetch_is_complete(pf)   (0 == pf)
 #define MPID_cc_decr(cc_ptr_, incomplete_) 				    \
     do {                                                                    \
-	OPA_write_barrier();						    \
+      if ( likely ( MPID_cc_prefetch(cc_ptr_) == 1 ) )                      \
+      {                                                                     \
+        MPID_cc_set(cc_ptr_,0);                                             \
+      }                                                                     \
+      else                                                                  \
+      {                                                                     \
+  	OPA_write_barrier();						    \
 	*(incomplete_) = OPA_fetch_and_decr_int(cc_ptr_) - 1;		    \
+      }                                                                     \
     } while (0)
 /* MT FIXME does this need a HB/HA annotation?  This macro is only used for
  * cancel_send right now. */
