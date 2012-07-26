@@ -999,6 +999,7 @@ static inline void MPID_cc_set(MPID_cc_t *cc_ptr, int val)
       if ( likely ( MPID_cc_prefetch(cc_ptr_) == 1 ) )                      \
       {                                                                     \
         MPID_cc_set(cc_ptr_,0);                                             \
+        *(incomplete_) = 0;                                                  \
       }                                                                     \
       else                                                                  \
       {                                                                     \
