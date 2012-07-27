@@ -251,14 +251,16 @@ ADIOI_BG_persInfo_init(ADIOI_BG_ConfInfo_t *conf,
             
       conf->nAggrs = n_aggrs;
       /*    First pass gets nAggrs = -1 */
-      if(conf->nAggrs <=0 || 
-         MIN(conf->nProcs, conf->ioMaxSize /*virtualPsetSize*/) < conf->nAggrs) 
+      if(conf->nAggrs <=0) 
          conf->nAggrs = ADIOI_BG_NAGG_PSET_DFLT;
-      if(conf->nAggrs > conf->numBridgeRanks) // maybe? * conf->cpuIDsize)
-         conf->nAggrs = conf->numBridgeRanks; // * conf->cpuIDsize;
-   
+      if(conf->ioMaxSize <= conf->nAggrs) 
+	conf->nAggrs = MAX(1,conf->ioMaxSize-1); /* not including bridge itself */
+/*      if(conf->nAggrs > conf->numBridgeRanks) 
+         conf->nAggrs = conf->numBridgeRanks; 
+*/
       conf->aggRatio = 1. * conf->nAggrs / conf->ioMaxSize /*virtualPsetSize*/;
-      if(conf->aggRatio > 1) conf->aggRatio = 1.;
+/*    if(conf->aggRatio > 1) conf->aggRatio = 1.; */
+      TRACE_ERR("n_aggrs %zd, conf->nProcs %zu, conf->ioMaxSize %zu, ADIOI_BG_NAGG_PSET_DFLT %zu,conf->numBridgeRanks %zu,conf->nAggrs %zu\n",(size_t)n_aggrs, (size_t)conf->nProcs, (size_t)conf->ioMaxSize, (size_t)ADIOI_BG_NAGG_PSET_DFLT,(size_t)conf->numBridgeRanks,(size_t)conf->nAggrs);
       TRACE_ERR("Maximum ranks under a bridge rank: %d, minimum: %d, nAggrs: %d, vps: %d, numBridgeRanks: %d pset dflt: %d naggrs: %d ratio: %f\n", maxcompute, mincompute, conf->nAggrs, conf->ioMaxSize /*virtualPsetSize*/, conf->numBridgeRanks, ADIOI_BG_NAGG_PSET_DFLT, conf->nAggrs, conf->aggRatio);
    }
 

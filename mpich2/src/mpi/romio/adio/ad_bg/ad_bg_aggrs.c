@@ -164,7 +164,7 @@ ADIOI_BG_compute_agg_ranklist_serial_do (const ADIOI_BG_ConfInfo_t *confInfo,
 {
     TRACE_ERR("Entering ADIOI_BG_compute_agg_ranklist_serial_do\n");
    /* BES: This should be done in the init routines probably. */
-    int i, j;
+    int i, j, k;
     int aggTotal;
     int distance, numAggs;
     int *aggList;
@@ -193,6 +193,8 @@ ADIOI_BG_compute_agg_ranklist_serial_do (const ADIOI_BG_ConfInfo_t *confInfo,
     * bridge node is an aggregator */
       aggTotal = confInfo->numBridgeRanks * (numAggs+1);
 
+   if(aggTotal>confInfo->nProcs) aggTotal=confInfo->nProcs;
+
    distance = (confInfo->ioMaxSize /*virtualPsetSize*/ / numAggs);
    TRACE_ERR("numBridgeRanks: %d, aggRatio: %f numBridge: %d pset size: %d numAggs: %d distance: %d, aggTotal: %d\n", confInfo->numBridgeRanks, confInfo->aggRatio, confInfo->numBridgeRanks,  confInfo->ioMaxSize /*virtualPsetSize*/, numAggs, distance, aggTotal);
    aggList = (int *)ADIOI_Malloc(aggTotal * sizeof(int));
@@ -209,7 +211,7 @@ ADIOI_BG_compute_agg_ranklist_serial_do (const ADIOI_BG_ConfInfo_t *confInfo,
          aggList[i]=bridgelist[i*confInfo->ioMaxSize /*virtualPsetSize*/].bridge;
          TRACE_ERR("aggList[%d]: %d\n", i, aggList[i]);
          
-         for(j = 0; j < numAggs; j++)
+         for(j = 0, k = 0; j < numAggs; k++)
          {
             /* Sets up a list of nodes which will act as aggregators. numAggs
              * per bridge node total. The list of aggregators is
@@ -221,13 +223,16 @@ ADIOI_BG_compute_agg_ranklist_serial_do (const ADIOI_BG_ConfInfo_t *confInfo,
              * bridgeNode[N]aggr[0]..
              * bridgeNode[N]aggr[N]
              */
-            aggList[i*numAggs+j+confInfo->numBridgeRanks] = bridgelist[i*confInfo->ioMaxSize /*virtualPsetSize*/ + j*distance+1].rank;
-            TRACE_ERR("(post bridge) agglist[%d] -> %d\n", confInfo->numBridgeRanks +i*numAggs+j, aggList[i*numAggs+j+confInfo->numBridgeRanks]);
+	   aggList[i*numAggs+j+confInfo->numBridgeRanks] = bridgelist[i*confInfo->ioMaxSize /*virtualPsetSize*/ + k*distance+1].rank;
+	   TRACE_ERR("%u/%u/%u (post bridge) agglist[%d] -> %d\n",i,j,k, i*numAggs+j+confInfo->numBridgeRanks, aggList[i*numAggs+j+confInfo->numBridgeRanks]);
+	   TRACE_ERR("%u (post bridge) agglist[%d] -> %d\n",i, confInfo->numBridgeRanks +i*numAggs+j, aggList[i*numAggs+j+confInfo->numBridgeRanks]);
+	   if(bridgelist[i*confInfo->ioMaxSize + k*distance+1].rank != aggList[i]) j++;
          }
       }
    }
 
-   memcpy(tmp_ranklist, aggList, (numAggs*confInfo->numBridgeRanks+numAggs)*sizeof(int));
+   TRACE_ERR("memcpy(tmp_ranklist, aggList, (numAggs(%u)*confInfo->numBridgeRanks(%u)+numAggs(%u)) (%u) %u*sizeof(int))\n",numAggs,confInfo->numBridgeRanks,numAggs,(numAggs*confInfo->numBridgeRanks+numAggs),aggTotal);
+   memcpy(tmp_ranklist, aggList, aggTotal*sizeof(int));
    for(i=0;i<aggTotal;i++)
    {
       TRACE_ERR("tmp_ranklist[%d]: %d\n", i, tmp_ranklist[i]);
