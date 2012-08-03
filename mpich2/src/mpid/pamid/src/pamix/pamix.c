@@ -35,7 +35,7 @@
 
 #define MIN(a,b) ((a<b)?a:b)
 
-#if defined(__BGQ__) || defined(__BGP__)
+#ifdef __BGQ__
 #define __BG__
 #endif
 

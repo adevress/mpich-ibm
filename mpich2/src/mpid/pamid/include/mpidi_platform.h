@@ -41,13 +41,6 @@
 
 #define ASYNC_PROGRESS_MODE_DEFAULT 0
 
-#ifdef __BGP__
-#undef  MPIDI_EAGER_LIMIT
-#define MPIDI_EAGER_LIMIT  UINT_MAX
-#define MPIDI_OPTIMIZED_COLLECTIVE_DEFAULT 0
-static const char _ibm_release_version_[] = "BGP";
-#endif
-
 #ifdef __BGQ__
 #define MPIDI_MAX_THREADS     64
 #define MPIDI_MUTEX_L2_ATOMIC 1

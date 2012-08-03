@@ -27,7 +27,7 @@ if test -z "$device_args" ; then
     device_args=none
 fi
 
-#if test "$device_args" = "BGP" || test "$device_args" = "PE"; then
+#if test "$device_args" = "PE"; then
     MPID_MAX_PROCESSOR_NAME=128
 
 #  If you do not want the default value for MPI_MAX_ERROR_STRING, equal 1024,

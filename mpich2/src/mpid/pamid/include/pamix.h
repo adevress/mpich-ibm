@@ -98,7 +98,7 @@ PAMIX_Progress_disable(pami_context_t   context,
                        pamix_progress_t event_type);
 
 
-#if defined(__BGQ__) || defined(__BGP__)
+#ifdef __BGQ__
 
 typedef struct
 {

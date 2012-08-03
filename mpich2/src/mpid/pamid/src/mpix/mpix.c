@@ -38,7 +38,7 @@ MPIX_Init_hw(MPIX_Hardware_t *hw)
   hw->clockMHz = PAMIX_Client_query(MPIDI_Client, PAMI_CLIENT_CLOCK_MHZ).value.intval;
   hw->memSize  = PAMIX_Client_query(MPIDI_Client, PAMI_CLIENT_MEM_SIZE).value.intval;
 
-#if defined(__BGQ__) || defined(__BGP__)
+#ifdef __BGQ__
   int i=0;
   const pamix_torus_info_t *info = PAMIX_Torus_info();
   /* The extension returns a "T" dimension */
@@ -259,7 +259,7 @@ n",rc);
 
 #endif
 
-#if defined(__BGQ__) || defined(__BGP__)
+#ifdef __BGQ__
 
 int
 MPIX_Torus_ndims(int *numdimensions)
