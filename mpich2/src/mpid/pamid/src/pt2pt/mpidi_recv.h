@@ -29,7 +29,6 @@
   #include "../../include/mpidi_datatypes.h"
 #endif*/
 
-
 /**
  * \brief ADI level implemenation of MPI_(I)Recv()
  *
@@ -58,7 +57,7 @@ MPIDI_Recv(void          * buf,
            MPID_Request ** request)
 {
   MPID_Request * rreq;
-  int found;
+  int found = FALSE;
   int mpi_errno = MPI_SUCCESS;
 
   /* ---------------------------------------- */
@@ -69,22 +68,85 @@ MPIDI_Recv(void          * buf,
       MPIDI_RecvMsg_procnull(comm, is_blocking, status, request);
       return MPI_SUCCESS;
     }
+
 #if (MPIDI_STATISTICS)
   MPID_NSTAT(mpid_statp->recvs);
 #endif
+
+#if defined(__BGQ__)
+  /* lock without sync */
+  MPIU_THREAD_CS_ENTER(MSGQUEUE_OPT,0);
+  DCBF_DCBT((&MPIDI_Recvq.posted_tail));
+
   MPIR_Comm_add_ref(comm);
+  MPID_Request *newreq = MPIDI_Request_create2_from_pool();
+
+  if(unlikely(newreq == NULL)) {
+    /* lock without sync */
+    MPIU_THREAD_CS_EXIT(MSGQUEUE_OPT,0);
+    newreq = MPIDI_Request_create2();
+    MPIU_THREAD_CS_ENTER(MSGQUEUE_OPT,0);    
+    DCBF_DCBT((&MPIDI_Recvq.posted_tail));
+  }
+#else
+  MPIR_Comm_add_ref(comm);
+  MPID_Request *newreq = MPIDI_Request_create2();  
+  MPIU_THREAD_CS_ENTER(MSGQUEUE,0);
+#endif
 
   /* ---------------------------------------- */
   /* find our request in the unexpected queue */
   /* or allocate one in the posted queue      */
   /* ---------------------------------------- */
-  MPID_Request *newreq = MPIDI_Request_create2();
-  MPIU_THREAD_CS_ENTER(MSGQUEUE,0);
 #ifndef OUT_OF_ORDER_HANDLING
-  rreq = MPIDI_Recvq_FDU_or_AEP(newreq, rank,
-                                tag,
-                                comm->recvcontext_id + context_offset,
-                                &found);
+  int context_id = comm->recvcontext_id + context_offset;
+  if (unlikely(MPIDI_Recvq.unexpected_head != NULL)) {
+    found = FALSE;
+#if defined(__BGQ__)
+    MPIDI_Mutex_sync();
+#endif
+    rreq = MPIDI_Recvq_FDU(rank, tag, context_id, &found);
+   
+    if (found == TRUE) {   
+      rreq->comm              = comm;
+      rreq->mpid.userbuf      = buf;
+      rreq->mpid.userbufcount = count;
+      rreq->mpid.datatype     = datatype;
+      MPIDI_RecvMsg_Unexp(rreq, buf, count, datatype);
+      mpi_errno = rreq->status.MPI_ERROR;
+
+      MPIU_THREAD_CS_EXIT(MSGQUEUE_OPT,0);
+      MPID_Request_discard(newreq);
+      goto fn_end;
+    }
+  }
+
+  /* A matching request was not found in the unexpected queue,
+     so we need to allocate a new request and add it to the 
+     posted queue */
+  rreq = newreq; 
+  rreq->kind = MPID_REQUEST_RECV;
+  MPIDI_Request_setMatch(rreq, tag, rank, context_id);
+  
+  rreq->comm              = comm;
+  rreq->mpid.userbuf      = buf;
+  rreq->mpid.userbufcount = count;
+  rreq->mpid.datatype     = datatype;
+  /* We don't need this because MPIDI_CA_COMPLETE is the initialized default */
+  /* MPIDI_Request_setCA(rreq, MPIDI_CA_COMPLETE); */
+  
+  /* ----------------------------------------------------------- */
+  /* request not found in unexpected queue, allocated and posted */
+  /* ----------------------------------------------------------- */
+  if (unlikely(HANDLE_GET_KIND(datatype) != HANDLE_KIND_BUILTIN))
+    {
+      MPID_Datatype_get_ptr(datatype, rreq->mpid.datatype_ptr);
+      MPID_Datatype_add_ref(rreq->mpid.datatype_ptr);
+    }
+  
+  /* delay the append to let DCBT complete */
+  MPIDI_Recvq_append(MPIDI_Recvq.posted, rreq);
+  MPIU_THREAD_CS_EXIT(MSGQUEUE_OPT,0);
 #else
   int pami_source;
   if(rank != MPI_ANY_SOURCE) {
@@ -101,7 +163,6 @@ MPIDI_Recv(void          * buf,
                                 tag,
                                 comm->recvcontext_id + context_offset,
                                 &found);
-#endif
 
   /* ----------------------------------------------------------------- */
   /* populate request with our data                                    */
@@ -120,7 +181,6 @@ MPIDI_Recv(void          * buf,
       MPIDI_RecvMsg_Unexp(rreq, buf, count, datatype);
       mpi_errno = rreq->status.MPI_ERROR;
       MPIU_THREAD_CS_EXIT(MSGQUEUE,0);
-      MPID_Request_discard(newreq);
     }
   else
     {
@@ -134,8 +194,10 @@ MPIDI_Recv(void          * buf,
         }
       MPIU_THREAD_CS_EXIT(MSGQUEUE,0);
     }
+#endif
 
   /* mutex has been dropped... */
+ fn_end:
   *request = rreq;
   if (status != MPI_STATUS_IGNORE)
     *status = rreq->status;

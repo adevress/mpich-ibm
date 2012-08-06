@@ -22,11 +22,43 @@
 #ifndef  __src_pt2pt_mpidi_recvq_h__
 #define  __src_pt2pt_mpidi_recvq_h__
 
+/** 
+    \brief We define a new mechanism to synchronize threads that share
+    the receive queue. 
+    Changes to 
+    src/mpid_recvq.h 
+    src/mpid_recvq.c, 
+    src/pt2pt/mpidi_recv.h
+    include/mpidi_thread.h
+
+    These include main threads posting receives and
+    comm. threads processing incoming network packets. We first split
+    posted and unexpected head pointers into two different cache lines
+    (we assume an L1 D-cache line size of 64 bytes). Some changes 
+    for BG/Q only guarded by the __BGQ__ define 
+    1) In the MSGQUEUE mutex msync is called when the
+    mutex is acquired. Pending stores are flushed before the locks are
+    released. 
+    2) All packet processing functions call the above mutex and get 
+    fresh data after the msync
+    3) In addition after all updates to the unexpected head/tail 
+    we call an msync.
+    4) Main optimization: during an mpid_recv call there are no 
+       msyncs (via MSGQUEUE_NOSYNC) and the posted recvq pointer 
+       is flushed and reloaded. The flush followed by the reload gets the 
+       fresh value from the L2 cache. 
+    5) There are checks for unexpected messages by comparing the 
+       unexpected head pointer to NULL. As there are msyncs after the 
+       unexpected head and tail pointers are updated this value 
+       is always current on all the threads after they acquire the mutex. 
+ */
+
 
 struct MPIDI_Recvq_t
 {
   struct MPID_Request * posted_head;      /**< \brief The Head of the Posted queue */
   struct MPID_Request * posted_tail;      /**< \brief The Tail of the Posted queue */
+  char   dummy [48]; /* Force posted queue and unexpected queue to be in different cache lines */
   struct MPID_Request * unexpected_head;  /**< \brief The Head of the Unexpected queue */
   struct MPID_Request * unexpected_tail;  /**< \brief The Tail of the Unexpected queue */
 };
@@ -165,6 +197,42 @@ MPIDI_Recvq_FDU_or_AEP(MPID_Request *newreq, int source, pami_task_t pami_source
 
   return rreq;
 }
+
+#ifndef OUT_OF_ORDER_HANDLING
+/**
+ * \brief Find a request in the unexpected queue and dequeue it, or allocate a new request and enqueue it in the posted queue
+ * \param[in]  source     Find by Sender
+ * \param[in]  tag        Find by Tag
+ * \param[in]  context_id Find by Context ID (communicator)
+ * \param[out] foundp     TRUE iff the request was found
+ * \return     The matching UE request or the new posted request
+ */
+static inline MPID_Request *
+MPIDI_Recvq_FDU_or_AEP_noappend(MPID_Request *newreq, int source, int tag, int context_id, int * foundp)
+{
+  MPID_Request * rreq = NULL;
+  /* We have unexpected messages, so search unexpected queue */
+  if (unlikely(MPIDI_Recvq.unexpected_head != NULL)) {
+#if defined(__BGQ__)
+    /** the comm thread may have added a new unexpected request. Call msync*/
+    MPIDI_Mutex_sync();
+#endif  
+    rreq = MPIDI_Recvq_FDU(source, tag, context_id, foundp);
+    if (*foundp == TRUE)
+      return rreq;
+  }
+
+  /* A matching request was not found in the unexpected queue,
+     so we need to allocate a new request and add it to the
+     posted queue */
+  rreq = newreq;
+  rreq->kind = MPID_REQUEST_RECV;
+  MPIDI_Request_setMatch(rreq, tag, source, context_id);
+  *foundp = FALSE;
+
+  return rreq;
+}
+#endif
 
 
 #ifdef OUT_OF_ORDER_HANDLING

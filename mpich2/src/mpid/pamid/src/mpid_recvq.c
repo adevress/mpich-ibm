@@ -35,7 +35,8 @@
 
 
 /** \brief Structure to group the common recvq pointers */
-struct MPIDI_Recvq_t MPIDI_Recvq;
+/** cache block the receive queue pointers */
+struct MPIDI_Recvq_t MPIDI_Recvq __attribute__((__aligned__(32)));
 
 #ifdef HAVE_DEBUGGER_SUPPORT
 struct MPID_Request ** const MPID_Recvq_posted_head_ptr =
@@ -208,6 +209,9 @@ MPIDI_Recvq_FDUR(MPI_Request req, int source, int tag, int context_id)
     goto fn_exit;
 
   MPIDI_Recvq_remove(MPIDI_Recvq.unexpected, matching_cur_rreq, matching_prev_rreq);
+#if defined(__BGQ__)
+  MPIDI_Mutex_sync();
+#endif  
 
  fn_exit:
 #ifdef USE_STATISTICS
@@ -276,6 +280,10 @@ MPIDI_Recvq_FDU(int source, pami_task_t pami_source, int tag, int context_id, in
             }
 #endif
             MPIDI_Recvq_remove(MPIDI_Recvq.unexpected, rreq, prev_rreq);
+#if defined(__BGQ__)
+	    MPIDI_Mutex_sync();
+#endif
+
             found = TRUE;
 #if (MPIDI_STATISTICS)
             MPID_NSTAT(mpid_statp->earlyArrivalsMatched);
@@ -346,6 +354,9 @@ MPIDI_Recvq_FDU(int source, pami_task_t pami_source, int tag, int context_id, in
             }
 #endif
             MPIDI_Recvq_remove(MPIDI_Recvq.unexpected, rreq, prev_rreq);
+#if defined(__BGQ__)
+	    MPIDI_Mutex_sync();
+#endif  
             found = TRUE;
 #if (MPIDI_STATISTICS)
             MPID_NSTAT(mpid_statp->earlyArrivalsMatched);
@@ -481,6 +492,9 @@ MPIDI_Recvq_AEU(MPID_Request *newreq, int source, pami_task_t pami_source, int t
 #ifndef OUT_OF_ORDER_HANDLING
   MPIDI_Request_setMatch(rreq, tag, source, context_id);
   MPIDI_Recvq_append(MPIDI_Recvq.unexpected, rreq);
+#if defined(__BGQ__)
+  MPIDI_Mutex_sync();
+#endif  
 #else
   MPID_Request *q;
   MPIDI_In_cntr_t *in_cntr;

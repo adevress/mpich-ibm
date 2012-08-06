@@ -101,6 +101,18 @@ void    MPIDI_Request_allocate_pool();
   rh->count --;                                                         \
 })
 
+static inline MPID_Request * MPIDI_Request_tls_alloc_from_pool() {
+  MPID_Request *req;
+  size_t tid = MPIDI_THREAD_ID();   
+  MPIDI_RequestHandle_t *rh = &MPIDI_Process.request_handles[tid]; 
+  if (unlikely(rh->head == NULL))  
+    return NULL;
+  req = rh->head;     
+  rh->head = req->mpid.next;   
+  rh->count --;   
+  return req;
+}
+
 #  define MPIDI_Request_tls_free(req)                                   \
 ({                                                                      \
   size_t tid = MPIDI_THREAD_ID();                                       \
@@ -126,6 +138,10 @@ void    MPIDI_Request_allocate_pool();
   if (req == NULL)                                                      \
     MPID_Abort(NULL, MPI_ERR_NO_SPACE, -1, "Cannot allocate Request");  \
 })
+
+static inline MPID_Request * MPIDI_Request_tls_alloc_from_pool() {
+  return NULL;
+}
 
 #  define MPIDI_Request_tls_free(req) MPIU_Handle_obj_free(&MPID_Request_mem, (req))
 
@@ -215,7 +231,6 @@ MPID_Request_create_inline()
 
   MPIDI_Request_initialize(req);
   req->comm=NULL;
-
   return req;
 }
 
@@ -233,6 +248,27 @@ MPIDI_Request_create2()
   return req;
 }
 
+/**
+ * \brief Create and initialize a new request
+ */
+static inline MPID_Request *
+MPIDI_Request_create2_from_pool()
+{
+  MPID_Request * req = NULL;
+  req = MPIDI_Request_tls_alloc_from_pool(req);
+  if (unlikely(req == NULL))
+    return req;
+  
+  MPID_assert(HANDLE_GET_MPI_KIND(req->handle) == MPID_REQUEST);
+  MPID_cc_set_1(&req->cc);
+  req->cc_ptr = &req->cc;    
+  req->mpid.next = NULL;    
+  MPIU_Object_set_ref(req, 1);    
+  MPIDI_Request_initialize(req);
+  req->comm=NULL;
+  MPIU_Object_set_ref(req, 2);
+  return req;
+}
 
 /**
  * \brief Mark a request as cancel-pending

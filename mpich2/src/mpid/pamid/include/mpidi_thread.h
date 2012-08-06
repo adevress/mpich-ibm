@@ -98,6 +98,11 @@
 #define MPIU_THREAD_CS_MPI_OBJ_EXIT(_context)
 #define MPIU_THREAD_CS_MSGQUEUE_ENTER(_context)
 #define MPIU_THREAD_CS_MSGQUEUE_EXIT(_context)
+#if defined(__BGQ__)
+#define MPIU_THREAD_CS_MSGQUEUE_OPT_ENTER(_context) 
+#define MPIU_THREAD_CS_MSGQUEUE_OPT_EXIT(_context)  
+#define DCBF_DCBT(v)
+#endif
 #define MPIU_THREAD_CS_PAMI_ENTER(_context)
 #define MPIU_THREAD_CS_PAMI_EXIT(_context)
 
@@ -127,8 +132,33 @@
 #define MPIU_THREAD_CS_MEMALLOC_EXIT(_context)      MPIDI_CS_EXIT (4)
 #define MPIU_THREAD_CS_MPI_OBJ_ENTER(context_)      MPIDI_CS_ENTER(5)
 #define MPIU_THREAD_CS_MPI_OBJ_EXIT(context_)       MPIDI_CS_EXIT (5)
+#if defined(__BGQ__)
+#include "l1p/flush.h"
+#define MPIU_THREAD_CS_MSGQUEUE_ENTER(_context)     ({ MPIDI_Mutex_acquire(6); MPIDI_Mutex_sync();})
+#define MPIU_THREAD_CS_MSGQUEUE_EXIT(_context)  \
+({                                              \
+  L1P_FlushRequests();				\
+  MPIDI_Mutex_release (6);                      \
+})
+#define MPIU_THREAD_CS_MSGQUEUE_OPT_ENTER(_context)     ({ MPIDI_Mutex_acquire(6); })
+#define MPIU_THREAD_CS_MSGQUEUE_OPT_EXIT(_context)  \
+({                                              \
+  L1P_FlushRequests();				\
+  MPIDI_Mutex_release (6);                      \
+})
+
+/* On BG/Q we use the dcbt/dcbf optimization to eliminate msync */
+#define DCBF_DCBT(v)  asm volatile ( "dcbf 0,%0,1;"		\
+				     "dcbtct 0,%0,0;"		\
+				     : : "b" (v) : "memory");
+/* We call lock/unlock without msync */
+#else
 #define MPIU_THREAD_CS_MSGQUEUE_ENTER(_context)     MPIDI_CS_ENTER(6)
 #define MPIU_THREAD_CS_MSGQUEUE_EXIT(_context)      MPIDI_CS_EXIT (6)
+#define MPIU_THREAD_CS_MSGQUEUE_OPT_ENTER(_context) MPIDI_CS_ENTER(6)
+#define MPIU_THREAD_CS_MSGQUEUE_OPT_EXIT(_context)  MPIDI_CS_EXIT (6)
+#endif
+
 #define MPIU_THREAD_CS_PAMI_ENTER(_context)         MPIDI_CS_ENTER(7)
 #define MPIU_THREAD_CS_PAMI_EXIT(_context)          MPIDI_CS_EXIT (7)
 
