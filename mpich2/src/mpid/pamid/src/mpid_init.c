@@ -193,17 +193,6 @@ MPIDI_PAMI_client_init(int* rank, int* size, int threading)
   pami_result_t        rc = PAMI_ERROR;
   unsigned             n  = 0;
 
-#ifndef HAVE_ERROR_CHECKING
-#ifdef OUT_OF_ORDER_HANDLING
-  /* fast library only, request lockless mode in PAMI */
-  if (threading == MPI_THREAD_SINGLE)
-    {
-      config.name = PAMI_CLIENT_THREAD_SAFE;
-      config.value.intval = 0;
-      n++;
-    }
-#endif
-#endif
   rc = PAMI_Client_create("MPI", &MPIDI_Client, &config, n);
   MPID_assert_always(rc == PAMI_SUCCESS);
   PAMIX_Initialize(MPIDI_Client);
