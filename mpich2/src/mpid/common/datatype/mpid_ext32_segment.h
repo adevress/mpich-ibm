@@ -50,8 +50,14 @@
 #elif defined(WORDS_LITTLEENDIAN)
 #define BLENDIAN 1
 #else
+#if !defined(__AIX__)
 #if !defined(__BYTE_ORDER) || !defined(__BIG_ENDIAN)
 #error This code assumes that __BYTE_ORDER and __BIG_ENDIAN are defined
+#endif
+#else
+#if !defined(BYTE_ORDER) || !defined(_BIG_ENDIAN)
+#error This code assumes that __BYTE_ORDER and _BIG_ENDIAN are defined
+#endif
 #endif
 /* FIXME: "BLENDIAN" is a non-conforming name - it could conflict with some
    other definition in a non-mpich2 header file */
