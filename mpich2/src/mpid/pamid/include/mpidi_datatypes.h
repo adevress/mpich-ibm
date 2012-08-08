@@ -244,7 +244,7 @@ struct MPIDI_Comm
    * allocating pointers on the stack
    */
   /* For create_taskrange */
-  pami_geometry_range_t *ranges;
+  pami_geometry_range_t range;
   /* For create_tasklist/endpoints if we ever use it */
   pami_task_t *tasks;
   pami_endpoint_t *endpoints;
