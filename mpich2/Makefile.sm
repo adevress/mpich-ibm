@@ -3,6 +3,7 @@ SUBDIRS = . @EXTERNAL_SRC_DIRS@ src
 # Do not include test in the basic build.  
 OTHER_DIRS = test examples
 DOC_SUBDIRS = doc
+NOTSIMPLEMAKE_SUBDIRS = src/mpl src/openpa
 # The all-local target makes sure that when different subsystems are selected
 # for the configure step, the libraries are removed and the object files 
 # cleaned out.  Without this step, it is possible to run make and encounter

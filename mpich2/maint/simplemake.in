@@ -4367,6 +4367,7 @@ sub TargetDependenciesStatic {
 #
 sub TargetDependenciesDynamic {
     my $has_sources = 0;
+    my $ostype=`uname -s`;  #To control dependencies command
 
     # First, are there any sources?
     # a hash in a scalar context is 0 if empty and nonzero otherwise
@@ -4391,7 +4392,7 @@ sub TargetDependenciesDynamic {
 	# But make wants to do the $* substitutions before variable
 	# substitutions
 	printMakeVariable( FD, "MAKE_DEPEND_C", 
-             "\@MAKE_DEPEND_C\@ \$(DEFS) \$(INCLUDES) \$(CPPFLAGS)$newline" );
+             "\@MAKE_DEPEND_C\@ \$(DEFS) \$(INCLUDES) \$(CFLAGS) \$(CPPFLAGS)$newline" );
 	print FD "dependencies: \$(DEPS_DIR)/timestamp$newline";
     }
     else {
@@ -4467,7 +4468,11 @@ in the build directory\n";
 			$srcdirloc = '';
 		    }
 		    print FD "\$(DEPS_DIR)/$depfilename.d: $srcdirloc$sourcefile$newline";
+            if ($ostype =~ /AIX/){
+		    &PrintVerboseOptionCommand( "\$(MAKE_DEPEND_C) $targetOpts $srcdirloc$sourcefile -MF \$(DEPS_DIR)/$depfilename.d", "-", "MAKE_DEPEND_C $sourcefile -MF \$(DEPS_DIR)/$depfilename.d" );
+            }else{
 		    &PrintVerboseOptionCommand( "\$(MAKE_DEPEND_C) $targetOpts $srcdirloc$sourcefile >\$(DEPS_DIR)/$depfilename.d", "-", "MAKE_DEPEND_C $sourcefile > \$(DEPS_DIR)/$depfilename.d" );
+            }
 		}
 	    }
 	}
@@ -4517,7 +4522,11 @@ in the build directory\n";
 		    if (!$found_profilelib) {
 			$targetOpts = "";
 		    }
+            if ($ostype =~ /AIX/){
+		    &PrintVerboseOptionCommand( "\$(MAKE_DEPEND_C) $targetOpts $srcdirloc$sourcefile -MF \$(DEPS_DIR)/$depfilename.d", "-", "MAKE_DEPEND_C $sourcefile -MF \$(DEPS_DIR)/$depfilename.d" );
+            }else{
 		    &PrintVerboseOptionCommand( "\$(MAKE_DEPEND_C) $targetOpts $srcdirloc$sourcefile >\$(DEPS_DIR)/$depfilename.d", "-", "MAKE_DEPEND_C $sourcefile > \$(DEPS_DIR)/$depfilename.d" );
+            }
 		    print FD "\techo \"$makeInclude \$(DEPS_DIR)/$depfilename.d\" >>\$(DEPS_DIR)/newalldeps$newline";
 		}
 	    }
@@ -4548,7 +4557,11 @@ in the build directory\n";
 		    if (!$found_profilelib) {
 			$targetOpts = "";
 		    }
+            if ($ostype =~ /AIX/){
+		    &PrintVerboseOptionCommand( "\$(MAKE_DEPEND_C) $targetOpts $srcdirloc$sourcefile -MF \$(DEPS_DIR)/$depfilename.d", "-", "MAKE_DEPEND_C $sourcefile -MF \$(DEPS_DIR)/$depfilename.d" );
+            }else{
 		    &PrintVerboseOptionCommand( "\$(MAKE_DEPEND_C) $targetOpts $srcdirloc$sourcefile >\$(DEPS_DIR)/$depfilename.d", "-", "MAKE_DEPEND_C $sourcefile > \$(DEPS_DIR)/$depfilename.d" );
+            }
 		    print FD "\techo \"$makeInclude \$(DEPS_DIR)/$depfilename.d\" >>\$(DEPS_DIR)/newalldeps$newline";
 		}
 	    }

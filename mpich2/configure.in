@@ -3047,6 +3047,9 @@ if test "$enable_dependencies" = "default" ; then
 	         SunOS)
 		 enable_dependencies=solaris
 		 ;;
+         AIX)
+         enable_dependencies=xlc_r
+         ;;
 	         *)
 		 # Unrecognized; ignore
 		 ;;
@@ -3076,6 +3079,9 @@ if test "$enable_dependencies" != "no" ; then
         # At least some Solaris SunPro compilers accept -xM1 -MT name, though
 	# they ignore the -MT name argument.
         MAKE_DEPEND_C="cc -xM1"
+    ;;
+    xlc_r)
+    MAKE_DEPEND_C="xlc_r -c -qmakedep"
     ;;
     *)	
         AC_MSG_RESULT([Using $enable_dependencies for MAKE_DEPEND_C])
