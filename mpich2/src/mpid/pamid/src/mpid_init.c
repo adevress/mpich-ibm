@@ -90,6 +90,9 @@ static struct
       .long_header     = PAMI_HINT_DISABLE,
       .recv_immediate  = PAMI_HINT_ENABLE,
       .use_rdma        = PAMI_HINT_DISABLE,
+#ifdef DISABLE_QUEUE_IMMEDIATE
+      .queue_immediate = PAMI_HINT_DISABLE,
+#endif
     },
     .immediate_min     = sizeof(MPIDI_MsgInfo),
   },
@@ -101,6 +104,9 @@ static struct
       .long_header     = PAMI_HINT_DISABLE,
       .recv_immediate  = PAMI_HINT_ENABLE,
       .use_rdma        = PAMI_HINT_DISABLE,
+#ifdef DISABLE_QUEUE_IMMEDIATE
+      .queue_immediate = PAMI_HINT_DISABLE,
+#endif
     },
     .immediate_min     = sizeof(MPIDI_MsgInfo),
   },

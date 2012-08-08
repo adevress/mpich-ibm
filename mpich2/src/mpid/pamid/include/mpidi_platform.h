@@ -62,6 +62,7 @@ static const char _ibm_release_version_[] = "BGP";
 #define PAMIX_IS_LOCAL_TASK_STRIDE  (4)
 #define PAMIX_IS_LOCAL_TASK_BITMASK (0x40)
 static const char _ibm_release_version_[] = "V1R1M1";
+#define DISABLE_QUEUE_IMMEDIATE
 #endif
 
 #ifdef __PE__

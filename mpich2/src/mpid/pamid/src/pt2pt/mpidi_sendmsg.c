@@ -22,6 +22,14 @@
 #include <mpidimpl.h>
 
 
+static void
+MPIDI_SendMsg_eager(pami_context_t    context,
+                    MPID_Request    * sreq,
+                    pami_endpoint_t   dest,
+                    void            * sndbuf,
+                    unsigned          sndlen)
+  __attribute__((__noinline__));
+
 static inline void
 MPIDI_SendMsg_short(pami_context_t    context,
                     MPID_Request    * sreq,
@@ -49,6 +57,13 @@ MPIDI_SendMsg_short(pami_context_t    context,
 
   pami_result_t rc;
   rc = PAMI_Send_immediate(context, &params);
+#ifdef DISABLE_QUEUE_IMMEDIATE
+  if (unlikely(rc == PAMI_EAGAIN))
+    {
+      MPIDI_SendMsg_eager (context, sreq, dest, sndbuf, sndlen);
+      return;
+    }
+#endif
 #ifdef TRACE_ON
   if (rc)
     {
@@ -63,13 +78,6 @@ MPIDI_SendMsg_short(pami_context_t    context,
 #endif
 }
 
-static void
-MPIDI_SendMsg_eager(pami_context_t    context,
-                    MPID_Request    * sreq,
-                    pami_endpoint_t   dest,
-                    void            * sndbuf,
-                    unsigned          sndlen)
-  __attribute__((__noinline__));
 static void
 MPIDI_SendMsg_eager(pami_context_t    context,
                     MPID_Request    * sreq,
