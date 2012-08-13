@@ -580,12 +580,30 @@ MPIDI_Env_setup(int rank, int requested)
   {
     char* names[] = {"PAMID_EAGER", "PAMID_RZV", "MP_EAGER_LIMIT", "PAMI_RVZ", "PAMI_RZV", "PAMI_EAGER", NULL};
     ENV_Unsigned(names, &MPIDI_Process.eager_limit, 3, &found_deprecated_env_var, rank);
+
+    /* The eager limit can not be set to zero as this would force rendezvous
+     * for all transfers, including zero byte transfers that may specify a
+     * NULL send buffer.
+     */
+    if (MPIDI_Process.eager_limit == 0)
+      {
+        MPIDI_Process.eager_limit = 1;
+      }
   }
 
   /* Determine 'local' eager limit */
   {
     char* names[] = {"PAMID_RZV_LOCAL", "PAMID_EAGER_LOCAL", "MP_EAGER_LIMIT_LOCAL", "PAMI_RVZ_LOCAL", "PAMI_RZV_LOCAL", "PAMI_EAGER_LOCAL", NULL};
     ENV_Unsigned(names, &MPIDI_Process.eager_limit_local, 3, &found_deprecated_env_var, rank);
+
+    /* The local eager limit can not be set to zero as this would force
+     * rendezvous for all transfers, including zero byte transfers that may
+     * specify a NULL send buffer.
+     */
+    if (MPIDI_Process.eager_limit_local == 0)
+      {
+        MPIDI_Process.eager_limit_local = 1;
+      }
   }
 
   /* Set the maximum number of outstanding RDMA requests */
