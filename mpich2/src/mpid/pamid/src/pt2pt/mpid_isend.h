@@ -114,12 +114,19 @@ MPID_Isend_inline(const void    * buf,
     {
       pami_context_t context = MPIDI_Context[MPIDI_Context_hash(rank, context_id, 0, ncontexts)];
       pami_result_t rc;
-      rc = PAMI_Context_post(context, &sreq->mpid.post_request, MPIDI_Isend_handoff, sreq);
+      if (context_offset == 0)
+        rc = PAMI_Context_post(context, &sreq->mpid.post_request, MPIDI_Isend_handoff, sreq);
+      else
+        rc = PAMI_Context_post(context, &sreq->mpid.post_request, MPIDI_Isend_handoff_internal, sreq);
       MPID_assert(rc == PAMI_SUCCESS);
+    }
+  else if (context_offset == 0)
+    {
+      MPIDI_Isend_handoff(MPIDI_Context[0], sreq);
     }
   else
     {
-      MPIDI_Isend_handoff(MPIDI_Context[0], sreq);
+      MPIDI_Isend_handoff_internal(MPIDI_Context[0], sreq);
     }
 
   return MPI_SUCCESS;

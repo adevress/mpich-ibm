@@ -278,7 +278,8 @@ MPIDI_SendMsg_process_userdefined_dt(MPID_Request      * sreq,
 static inline void
 MPIDI_SendMsg(pami_context_t   context,
               MPID_Request   * sreq,
-              unsigned         isSync)
+              unsigned         isSync,
+              const unsigned   isInternal)
 {
   /* ------------------------------ */
   /* special case: NULL destination */
@@ -328,6 +329,8 @@ MPIDI_SendMsg(pami_context_t   context,
       MPIDI_SendMsg_process_userdefined_dt(sreq, &sndbuf, &data_sz);
     }
 
+  if (isInternal == 0)
+    {
 
   if (unlikely(PAMIX_Task_is_local(rank) != 0))
     {
@@ -418,6 +421,43 @@ MPIDI_SendMsg(pami_context_t   context,
        }
      #endif
     }
+
+    }
+
+  /* internal only == no send immediate */
+  else
+    {
+      const unsigned eager_limit =
+        PAMIX_Task_is_local(rank)==0?
+          MPIDI_Process.eager_limit:
+          MPIDI_Process.eager_limit_local;
+
+      if (data_sz < eager_limit)
+        {
+          TRACE_ERR("Sending(eager) bytes=%u (eager_limit=%u)\n", data_sz, eager_limit);
+          MPIDI_SendMsg_eager(context,
+                              sreq,
+                              dest,
+                              sndbuf,
+                              data_sz);
+        }
+      else
+        {
+          TRACE_ERR("Sending(RZV) bytes=%u (eager_limit=NA)\n", data_sz);
+          MPIDI_SendMsg_rzv(context,
+                            sreq,
+                            dest,
+                            sndbuf,
+                            data_sz);
+        }
+
+#ifdef MPIDI_STATISTICS
+      if (MPID_cc_is_complete(&sreq->cc))
+        {
+          MPID_NSTAT(mpid_statp->sendsComplete);
+        }
+#endif
+    }
 }
 
 
@@ -442,7 +482,7 @@ MPIDI_Send_handoff(pami_context_t   context,
   MPID_Request * sreq = (MPID_Request*)_sreq;
   MPID_assert(sreq != NULL);
 
-  MPIDI_SendMsg(context, sreq, 0);
+  MPIDI_SendMsg(context, sreq, 0, 0);
   return PAMI_SUCCESS;
 }
 
@@ -454,7 +494,7 @@ MPIDI_Ssend_handoff(pami_context_t   context,
   MPID_Request * sreq = (MPID_Request*)_sreq;
   MPID_assert(sreq != NULL);
 
-  MPIDI_SendMsg(context, sreq, 1);
+  MPIDI_SendMsg(context, sreq, 1, 0);
   return PAMI_SUCCESS;
 }
 
@@ -484,6 +524,21 @@ MPIDI_Isend_handoff(pami_context_t   context,
   MPIDI_Request_initialize(sreq);
 
   /* Since this is only called from MPI_Isend(), it is not synchronous */
-  MPIDI_SendMsg(context, sreq, 0);
+  MPIDI_SendMsg(context, sreq, 0, 0);
+  return PAMI_SUCCESS;
+}
+
+pami_result_t
+MPIDI_Isend_handoff_internal(pami_context_t   context,
+                             void           * _sreq)
+{
+  MPID_Request * sreq = (MPID_Request*)_sreq;
+  MPID_assert(sreq != NULL);
+
+  /* This initializes all the fields not set in MPI_Isend() */
+  MPIDI_Request_initialize(sreq);
+
+  /* Since this is only called from MPI_Isend(), it is not synchronous */
+  MPIDI_SendMsg(context, sreq, 0, 1);
   return PAMI_SUCCESS;
 }

@@ -67,6 +67,7 @@ void MPIDI_Buffer_copy(const void     * const sbuf,
 pami_result_t MPIDI_Send_handoff (pami_context_t context, void * sreq);
 pami_result_t MPIDI_Ssend_handoff(pami_context_t context, void * sreq);
 pami_result_t MPIDI_Isend_handoff(pami_context_t context, void * sreq);
+pami_result_t MPIDI_Isend_handoff_internal(pami_context_t context, void * sreq);
 
 void MPIDI_RecvMsg_procnull(MPID_Comm     * comm,
                             unsigned        is_blocking,
