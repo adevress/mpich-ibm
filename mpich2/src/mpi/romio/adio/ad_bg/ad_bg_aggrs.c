@@ -164,7 +164,7 @@ ADIOI_BG_compute_agg_ranklist_serial_do (const ADIOI_BG_ConfInfo_t *confInfo,
 {
     TRACE_ERR("Entering ADIOI_BG_compute_agg_ranklist_serial_do\n");
    /* BES: This should be done in the init routines probably. */
-    int i, j, k;
+    int i, j;
     int aggTotal;
     int distance, numAggs;
     int *aggList;
@@ -185,7 +185,7 @@ ADIOI_BG_compute_agg_ranklist_serial_do (const ADIOI_BG_ConfInfo_t *confInfo,
    /* In this array, we can pick an appropriate number of midpoints based on
     * our bridgenode index and the number of aggregators */
 
-   numAggs = confInfo->aggRatio * confInfo->ioMaxSize /*virtualPsetSize*/;
+   numAggs = confInfo->aggRatio * confInfo->ioMinSize /*virtualPsetSize*/;
    if(numAggs == 1)
       aggTotal = 1;
    else
@@ -195,8 +195,7 @@ ADIOI_BG_compute_agg_ranklist_serial_do (const ADIOI_BG_ConfInfo_t *confInfo,
 
    if(aggTotal>confInfo->nProcs) aggTotal=confInfo->nProcs;
 
-   distance = (confInfo->ioMaxSize /*virtualPsetSize*/ / numAggs);
-   TRACE_ERR("numBridgeRanks: %d, aggRatio: %f numBridge: %d pset size: %d numAggs: %d distance: %d, aggTotal: %d\n", confInfo->numBridgeRanks, confInfo->aggRatio, confInfo->numBridgeRanks,  confInfo->ioMaxSize /*virtualPsetSize*/, numAggs, distance, aggTotal);
+   TRACE_ERR("numBridgeRanks: %d, aggRatio: %f numBridge: %d pset size: %d/%d numAggs: %d, aggTotal: %d\n", confInfo->numBridgeRanks, confInfo->aggRatio, confInfo->numBridgeRanks,  confInfo->ioMinSize, confInfo->ioMaxSize /*virtualPsetSize*/, numAggs, aggTotal);
    aggList = (int *)ADIOI_Malloc(aggTotal * sizeof(int));
 
 
@@ -206,29 +205,55 @@ ADIOI_BG_compute_agg_ranklist_serial_do (const ADIOI_BG_ConfInfo_t *confInfo,
       aggList[0] = bridgelist[0].bridge;
    else
    {
-      for(i=0; i < confInfo->numBridgeRanks; i++)
-      {
-         aggList[i]=bridgelist[i*confInfo->ioMaxSize /*virtualPsetSize*/].bridge;
-         TRACE_ERR("aggList[%d]: %d\n", i, aggList[i]);
-         
-         for(j = 0, k = 0; j < numAggs; k++)
+     int lastBridge = bridgelist[confInfo->nProcs-1].bridge;
+     int nextBridge = 0, nextAggr = confInfo->numBridgeRanks;
+     int psetSize = 0;
+     int procIndex;
+     for(procIndex=confInfo->nProcs-1; procIndex>=0; procIndex--)
+     {
+       TRACE_ERR("bridgelist[%d].bridge %u/rank %u\n",procIndex,  bridgelist[procIndex].bridge, bridgelist[procIndex].rank);
+       if(lastBridge == bridgelist[procIndex].bridge)
+       {
+         psetSize++;
+         if(procIndex) continue; 
+         else procIndex--;/* procIndex == 0 */
+       }
+       /* Sets up a list of nodes which will act as aggregators. numAggs
+        * per bridge node total. The list of aggregators is
+        * bridgeNode 0
+        * bridgeNode 1
+        * bridgeNode ...
+        * bridgeNode N
+        * bridgeNode[0]aggr[0]
+        * bridgeNode[0]aggr[1]...
+        * bridgeNode[0]aggr[N]...
+        * ...
+        * bridgeNode[N]aggr[0]..
+        * bridgeNode[N]aggr[N]
+        */
+       aggList[nextBridge]=lastBridge;
+       distance = psetSize/numAggs;
+       TRACE_ERR("nextBridge %u is bridge %u, distance %u, size %u\n",nextBridge, aggList[nextBridge],distance,psetSize);
+       if(numAggs>1)
+       {
+         for(j = 0; j < numAggs; j++)
          {
-            /* Sets up a list of nodes which will act as aggregators. numAggs
-             * per bridge node total. The list of aggregators is
-             * bridgeNodes
-             * bridgeNode[0]aggr[0]
-             * bridgeNode[0]aggr[1]...
-             * bridgeNode[0]aggr[N]...
-             * ...
-             * bridgeNode[N]aggr[0]..
-             * bridgeNode[N]aggr[N]
-             */
-	   aggList[i*numAggs+j+confInfo->numBridgeRanks] = bridgelist[i*confInfo->ioMaxSize /*virtualPsetSize*/ + k*distance+1].rank;
-	   TRACE_ERR("%u/%u/%u (post bridge) agglist[%d] -> %d\n",i,j,k, i*numAggs+j+confInfo->numBridgeRanks, aggList[i*numAggs+j+confInfo->numBridgeRanks]);
-	   TRACE_ERR("%u (post bridge) agglist[%d] -> %d\n",i, confInfo->numBridgeRanks +i*numAggs+j, aggList[i*numAggs+j+confInfo->numBridgeRanks]);
-	   if(bridgelist[i*confInfo->ioMaxSize + k*distance+1].rank != aggList[i]) j++;
+           ADIOI_BG_assert(nextAggr<aggTotal);
+           aggList[nextAggr] = bridgelist[procIndex+j*distance+1].rank;
+           TRACE_ERR("agglist[%d] -> bridgelist[%d] = %d\n", nextAggr, procIndex+j*distance+1,aggList[nextAggr]);
+           if(aggList[nextAggr]==lastBridge) /* can't have bridge in the list twice */
+           {  
+             aggList[nextAggr] = bridgelist[procIndex+psetSize].rank; /* take the last one in the pset */
+             TRACE_ERR("replacement agglist[%d] -> bridgelist[%d] = %d\n", nextAggr, procIndex+psetSize,aggList[nextAggr]);
+           }
+           nextAggr++;
          }
-      }
+       }
+       if(procIndex<0) break;
+       lastBridge = bridgelist[procIndex].bridge;
+       psetSize = 1;
+       nextBridge++;
+     }
    }
 
    TRACE_ERR("memcpy(tmp_ranklist, aggList, (numAggs(%u)*confInfo->numBridgeRanks(%u)+numAggs(%u)) (%u) %u*sizeof(int))\n",numAggs,confInfo->numBridgeRanks,numAggs,(numAggs*confInfo->numBridgeRanks+numAggs),aggTotal);
@@ -273,7 +298,6 @@ ADIOI_BG_compute_agg_ranklist_serial ( ADIO_File fd,
 
     naggs= 
     ADIOI_BG_compute_agg_ranklist_serial_do (confInfo, all_procInfo, aggrsInPset, tmp_ranklist);
-
 #   define VERIFY 1
 #   if VERIFY
     DBG_FPRINTF(stderr, "\tconfInfo = min: %3d, max: %3d, naggrs: %3d, bridge: %3d, nprocs: %3d, vpset: %3d, tsize: %3d, ratio: %.4f; naggs = %d\n", 
@@ -364,7 +388,7 @@ int ADIOI_BG_Calc_aggregator(ADIO_File fd,
     int rank_index, rank;
     ADIO_Offset avail_bytes;
     TRACE_ERR("Entering ADIOI_BG_Calc_aggregator\n");
-
+    
     ADIOI_BG_assert ( (off <= fd_end[fd->hints->cb_nodes-1] && off >= min_off && fd_start[0] >= min_off ) );
 
     /* binary search --> rank_index is returned */
@@ -424,7 +448,7 @@ int ADIOI_BG_Calc_aggregator(ADIO_File fd,
 
     /* map our index to a rank */
     /* NOTE: FOR NOW WE DON'T HAVE A MAPPING...JUST DO 0..NPROCS_FOR_COLL */
-    rank = fd->hints->ranklist[rank_index];
+    rank = fd->hints->ranklist[rank_index]; 
     TRACE_ERR("Leaving ADIOI_BG_Calc_aggregator\n");
 
     return rank;
@@ -573,6 +597,7 @@ void ADIOI_BG_GPFS_Calc_file_domains(ADIO_Offset *st_offsets,
 int ADIOI_BG_Aggrs_index( ADIO_File fd, int myrank )
 {
     int i;
+ 
     for (i=0; i<fd->hints->cb_nodes; i++) 
 	if (fd->hints->ranklist[i] == myrank) return i;
     return -1;
@@ -607,7 +632,6 @@ void ADIOI_BG_Calc_my_req(ADIO_File fd, ADIO_Offset *offset_list, ADIO_Offset *l
 #ifdef AGGREGATION_PROFILE
     MPE_Log_event (5024, 0, NULL);
 #endif
-
     *count_my_req_per_proc_ptr = (int *) ADIOI_Calloc(nprocs,sizeof(int)); 
     count_my_req_per_proc = *count_my_req_per_proc_ptr;
 /* count_my_req_per_proc[i] gives the no. of contig. requests of this
@@ -785,7 +809,7 @@ void ADIOI_BG_Calc_others_req(ADIO_File fd, int count_my_req_procs,
 				int *count_others_req_procs_ptr,
 				ADIOI_Access **others_req_ptr)  
 {
-    TRACE_ERR("Entering ADIOI_BG_Calc_others_req\n");
+  TRACE_ERR("Entering ADIOI_BG_Calc_others_req\n");
 /* determine what requests of other processes lie in this process's
    file domain */
 
@@ -822,7 +846,7 @@ void ADIOI_BG_Calc_others_req(ADIO_File fd, int count_my_req_procs,
      */
     count_others_req_per_proc = (int *) ADIOI_Malloc(nprocs*sizeof(int));
 /*     cora2a1=timebase(); */
-for(i=0;i<nprocs;i++)
+/*for(i=0;i<nprocs;i++) ?*/
     MPI_Alltoall(count_my_req_per_proc, 1, MPI_INT,
 		 count_others_req_per_proc, 1, MPI_INT, fd->comm);
 
@@ -905,7 +929,7 @@ for(i=0;i<nprocs;i++)
     if ( sendBufForLens    == (void*)0xFFFFFFFFFFFFFFFF) sendBufForLens    = NULL;
 
     /* Calculate the displacements from the sendBufForOffsets/Lens */
-    MPI_Barrier(fd->comm);
+    MPI_Barrier(fd->comm);/* Why?*/
     for (i=0; i<nprocs; i++)
     {
 	// Send these offsets to process i.
