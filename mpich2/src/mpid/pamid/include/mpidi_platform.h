@@ -54,6 +54,8 @@ static const char _ibm_release_version_[] = "BGP";
 #endif
 
 #ifdef __BGQ__
+#undef  MPIDI_EAGER_LIMIT_LOCAL
+#define MPIDI_EAGER_LIMIT_LOCAL  64
 #define MPIDI_MAX_THREADS     64
 #define MPIDI_MUTEX_L2_ATOMIC 1
 #define MPIDI_BASIC_COLLECTIVE_SELECTION 1
