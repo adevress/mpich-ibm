@@ -391,21 +391,63 @@ MPIDI_SendMsg(pami_context_t   context,
     }
 
 #ifdef OUT_OF_ORDER_HANDLING
-       sreq->mpid.shm=0;
+  sreq->mpid.shm=0;
 #endif
 
 #ifdef WORKAROUND_UNIMPLEMENTED_SEND_IMMEDIATE_OVERFLOW
   if (isInternal == 0)
 #endif
     {
-  if (unlikely(PAMIX_Task_is_local(rank) != 0))
-    {
+      if (unlikely(PAMIX_Task_is_local(rank) != 0))
+        {
+          /*
+           * Always use the short protocol when data_sz is small.
+           */
+          if (likely(data_sz < MPIDI_Process.short_limit))
+            {
+              TRACE_ERR("Sending(short,intranode) bytes=%u (short_limit=%u)\n", data_sz, MPIDI_Process.short_limit);
+              MPIDI_SendMsg_short(context,
+                                  sreq,
+                                  dest,
+                                  sndbuf,
+                                  data_sz,
+                                  isSync);
+            }
+          /*
+           * Use the eager protocol when data_sz is less than the 'local' eager limit.
+           */
+          else if (data_sz < MPIDI_Process.eager_limit_local)
+            {
+              TRACE_ERR("Sending(eager,intranode) bytes=%u (eager_limit_local=%u)\n", data_sz, MPIDI_Process.eager_limit_local);
+              MPIDI_SendMsg_eager(context,
+                                  sreq,
+                                  dest,
+                                  sndbuf,
+                                  data_sz);
+            }
+          /*
+           * Use the default rendezvous protocol (glue implementation that
+           * guarantees no unexpected data).
+           */
+          else
+            {
+              TRACE_ERR("Sending(RZV,intranode) bytes=%u (eager_limit=%u)\n", data_sz, MPIDI_Process.eager_limit);
+#ifdef OUT_OF_ORDER_HANDLING
+              sreq->mpid.shm=1;
+#endif
+              MPIDI_SendMsg_rzv(context,
+                                sreq,
+                                dest,
+                                sndbuf,
+                                data_sz);
+            }
+        }
       /*
        * Always use the short protocol when data_sz is small.
        */
-      if (likely(data_sz < MPIDI_Process.short_limit))
+      else if (likely(data_sz < MPIDI_Process.short_limit))
         {
-          TRACE_ERR("Sending(short,intranode) bytes=%u (short_limit=%u)\n", data_sz, MPIDI_Process.short_limit);
+          TRACE_ERR("Sending(short) bytes=%u (eager_limit=%u)\n", data_sz, MPIDI_Process.eager_limit);
           MPIDI_SendMsg_short(context,
                               sreq,
                               dest,
@@ -414,16 +456,22 @@ MPIDI_SendMsg(pami_context_t   context,
                               isSync);
         }
       /*
-       * Use the eager protocol when data_sz is less than the 'local' eager limit.
+       * Use the eager protocol when data_sz is less than the eager limit.
        */
-      else if (data_sz < MPIDI_Process.eager_limit_local)
+      else if (data_sz < MPIDI_Process.eager_limit)
         {
-          TRACE_ERR("Sending(eager,intranode) bytes=%u (eager_limit_local=%u)\n", data_sz, MPIDI_Process.eager_limit_local);
+          TRACE_ERR("Sending(eager) bytes=%u (eager_limit=%u)\n", data_sz, MPIDI_Process.eager_limit);
           MPIDI_SendMsg_eager(context,
                               sreq,
                               dest,
                               sndbuf,
                               data_sz);
+#ifdef MPIDI_STATISTICS
+          if (MPID_cc_is_complete(&sreq->cc))
+            {
+              MPID_NSTAT(mpid_statp->sendsComplete);
+            }
+#endif
         }
       /*
        * Use the default rendezvous protocol (glue implementation that
@@ -431,73 +479,26 @@ MPIDI_SendMsg(pami_context_t   context,
        */
       else
         {
-          TRACE_ERR("Sending(RZV,intranode) bytes=%u (eager_limit=%u)\n", data_sz, MPIDI_Process.eager_limit);
-#ifdef OUT_OF_ORDER_HANDLING
-          sreq->mpid.shm=1;
+          TRACE_ERR("Sending(RZV) bytes=%u (eager_limit=%u)\n", data_sz, MPIDI_Process.eager_limit);
+          if (likely(data_sz > 0))
+            {
+              MPIDI_SendMsg_rzv(context,
+                                sreq,
+                                dest,
+                                sndbuf,
+                                data_sz);
+            }
+          else
+            {
+              MPIDI_SendMsg_rzv_zerobyte(context, sreq, dest);
+            }
+#ifdef MPIDI_STATISTICS
+          if (MPID_cc_is_complete(&sreq->cc))
+            {
+              MPID_NSTAT(mpid_statp->sendsComplete);
+            }
 #endif
-          MPIDI_SendMsg_rzv(context,
-                            sreq,
-                            dest,
-                            sndbuf,
-                            data_sz);
-      }
-    }
-  /*
-   * Always use the short protocol when data_sz is small.
-   */
-  else if (likely(data_sz < MPIDI_Process.short_limit))
-    {
-      TRACE_ERR("Sending(short) bytes=%u (eager_limit=%u)\n", data_sz, MPIDI_Process.eager_limit);
-      MPIDI_SendMsg_short(context,
-                          sreq,
-                          dest,
-                          sndbuf,
-                          data_sz,
-                          isSync);
-    }
-  /*
-   * Use the eager protocol when data_sz is less than the eager limit.
-   */
-  else if (data_sz < MPIDI_Process.eager_limit)
-    {
-      TRACE_ERR("Sending(eager) bytes=%u (eager_limit=%u)\n", data_sz, MPIDI_Process.eager_limit);
-      MPIDI_SendMsg_eager(context,
-                          sreq,
-                          dest,
-                          sndbuf,
-                          data_sz);
-    #ifdef MPIDI_STATISTICS
-      if (MPID_cc_is_complete(&sreq->cc)) {
-          MPID_NSTAT(mpid_statp->sendsComplete);
-      }
-    #endif
-    }
-  /*
-   * Use the default rendezvous protocol (glue implementation that
-   * guarantees no unexpected data).
-   */
-  else
-    {
-      TRACE_ERR("Sending(RZV) bytes=%u (eager_limit=%u)\n", data_sz, MPIDI_Process.eager_limit);
-      if (likely(data_sz > 0))
-        {
-          MPIDI_SendMsg_rzv(context,
-                            sreq,
-                            dest,
-                            sndbuf,
-                            data_sz);
         }
-      else
-        {
-          MPIDI_SendMsg_rzv_zerobyte(context, sreq, dest);
-        }
-      #ifdef MPIDI_STATISTICS
-         if (MPID_cc_is_complete(&sreq->cc)) {
-             MPID_NSTAT(mpid_statp->sendsComplete);
-       }
-     #endif
-    }
-
     }
 
 #ifdef WORKAROUND_UNIMPLEMENTED_SEND_IMMEDIATE_OVERFLOW
