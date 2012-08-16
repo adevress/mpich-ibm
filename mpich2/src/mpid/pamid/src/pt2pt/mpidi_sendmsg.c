@@ -131,6 +131,7 @@ MPIDI_SendMsg_rzv(pami_context_t    context,
    * to send, is sent as the payload of the request-to-send (RTS)
    * message.
    */
+
 #ifdef USE_PAMI_RDMA
   size_t sndlen_out;
   rc = PAMI_Memregion_create(context,
@@ -204,6 +205,59 @@ MPIDI_SendMsg_rzv(pami_context_t    context,
   rc = PAMI_Send_immediate(context, &params);
   MPID_assert(rc == PAMI_SUCCESS);
 }
+
+
+static void
+MPIDI_SendMsg_rzv_zerobyte(pami_context_t    context,
+                           MPID_Request    * sreq,
+                           pami_endpoint_t   dest)
+  __attribute__((__noinline__));
+static void
+MPIDI_SendMsg_rzv_zerobyte(pami_context_t    context,
+                           MPID_Request    * sreq,
+                           pami_endpoint_t   dest)
+{
+  pami_result_t rc;
+
+  /* Set the isRzv bit in the SEND request. This is important for
+   * canceling requests.
+   */
+  MPIDI_Request_setRzv(sreq, 1);
+
+  /* The rendezvous information, such as the origin/local/sender
+   * node's send buffer and the number of bytes the origin node wishes
+   * to send, is sent as the payload of the request-to-send (RTS)
+   * message.
+   */
+
+  sreq->mpid.envelope.data = NULL;
+  sreq->mpid.envelope.length = 0;
+
+  /* Do not specify a callback function to be invoked when the RTS
+   * message has been sent. The MPI_Send is completed only when the
+   * target/remote/receiver node has matched the receive  and has then
+   * sent a rendezvous acknowledgement (ACK) to the origin node to
+   * signify the end of the transfer.  When the ACK message is received
+   * by the origin node the same callback function is used to complete
+   * the MPI_Send as the non-rendezvous case.
+   */
+  pami_send_immediate_t params = {
+    .dispatch = MPIDI_Protocols_RVZ_zerobyte,
+    .dest     = dest,
+    .header   = {
+      .iov_base = &sreq->mpid.envelope,
+      .iov_len  = sizeof(MPIDI_MsgEnvelope),
+    },
+    .data     = {
+      .iov_base = NULL,
+      .iov_len  = 0,
+    },
+  };
+
+  rc = PAMI_Send_immediate(context, &params);
+  MPID_assert(rc == PAMI_SUCCESS);
+}
+
 
 
 static void
@@ -437,24 +491,38 @@ MPIDI_SendMsg(pami_context_t   context,
                               dest,
                               sndbuf,
                               data_sz);
-        }
-      else
+    #ifdef MPIDI_STATISTICS
+      if (MPID_cc_is_complete(&sreq->cc)) {
+          MPID_NSTAT(mpid_statp->sendsComplete);
+      }
+    #endif
+    }
+  /*
+   * Use the default rendezvous protocol (glue implementation that
+   * guarantees no unexpected data).
+   */
+  else
+    {
+      TRACE_ERR("Sending(RZV) bytes=%u (eager_limit=%u)\n", data_sz, MPIDI_Process.eager_limit);
+      if (likely(data_sz > 0))
         {
-          TRACE_ERR("Sending(RZV) bytes=%u (eager_limit=NA)\n", data_sz);
           MPIDI_SendMsg_rzv(context,
                             sreq,
                             dest,
                             sndbuf,
                             data_sz);
         }
-
-#ifdef MPIDI_STATISTICS
-      if (MPID_cc_is_complete(&sreq->cc))
+      else
         {
-          MPID_NSTAT(mpid_statp->sendsComplete);
+          MPIDI_SendMsg_rzv_zerobyte(context, sreq, dest);
         }
-#endif
+      #ifdef MPIDI_STATISTICS
+         if (MPID_cc_is_complete(&sreq->cc)) {
+             MPID_NSTAT(mpid_statp->sendsComplete);
+       }
+     #endif
     }
+  }
 }
 
 
