@@ -107,6 +107,33 @@ MPIDI_RecvRzvDoneCB(pami_context_t  context,
   MPID_Request_release(rreq);
 }
 
+/**
+ * \brief Message layer callback which is invoked on the target node
+ * of a 'zero-byte' flow-control rendezvous operation.
+ *
+ * \param[in] context Communication context
+ * \param[in] cookie  Completion callback cookie - MPI receive request object
+ * \param[in] result  Status
+ */
+void
+MPIDI_RecvRzvDoneCB_zerobyte(pami_context_t  context,
+                             void          * cookie,
+                             pami_result_t   result)
+{
+  MPID_Request * rreq = (MPID_Request*)cookie;
+  MPID_assert(rreq != NULL);
+
+  /* Is it neccesary to save the original value of the 'type' field ?? */
+  unsigned original_value = MPIDI_Request_getControl(rreq);
+  MPIDI_Request_setControl(rreq, MPIDI_CONTROL_RENDEZVOUS_ACKNOWLEDGE);
+  MPIDI_CtrlSend(context,
+                 &rreq->mpid.envelope.msginfo,
+                 MPIDI_Request_getPeerRank_pami(rreq));
+  MPIDI_Request_setControl(rreq, original_value);
+
+  MPIDI_RecvDoneCB(context, rreq, PAMI_SUCCESS);
+  MPID_Request_release(rreq);
+}
 
 /**
  * \brief Acknowledge an MPI_Ssend()

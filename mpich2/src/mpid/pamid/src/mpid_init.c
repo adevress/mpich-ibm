@@ -95,6 +95,7 @@ static struct
   struct protocol_t Control;
   struct protocol_t WinCtrl;
   struct protocol_t WinAccum;
+  struct protocol_t RVZ_zerobyte;
 } proto_list = {
   .Short = {
     .func = MPIDI_RecvShortAsyncCB,
@@ -180,6 +181,17 @@ static struct
       .recv_immediate  = PAMI_HINT_DISABLE,
     },
     .immediate_min     = sizeof(MPIDI_MsgInfo),
+  },
+  .RVZ_zerobyte = {
+    .func = MPIDI_RecvRzvCB_zerobyte,
+    .dispatch = MPIDI_Protocols_RVZ_zerobyte,
+    .options = {
+      .consistency     = USE_PAMI_CONSISTENCY,
+      .long_header     = PAMI_HINT_DISABLE,
+      .recv_immediate  = PAMI_HINT_ENABLE,
+      .use_rdma        = PAMI_HINT_DISABLE,
+    },
+    .immediate_min     = sizeof(MPIDI_MsgEnvelope),
   },
 };
 
@@ -404,6 +416,7 @@ MPIDI_PAMI_dispath_init()
   MPIDI_PAMI_dispath_set(MPIDI_Protocols_Control,   &proto_list.Control,   NULL);
   MPIDI_PAMI_dispath_set(MPIDI_Protocols_WinCtrl,   &proto_list.WinCtrl,   NULL);
   MPIDI_PAMI_dispath_set(MPIDI_Protocols_WinAccum,  &proto_list.WinAccum,  NULL);
+  MPIDI_PAMI_dispath_set(MPIDI_Protocols_RVZ_zerobyte, &proto_list.RVZ_zerobyte, NULL);
 
   /*
    * The first two protocols are our short protocols: they use

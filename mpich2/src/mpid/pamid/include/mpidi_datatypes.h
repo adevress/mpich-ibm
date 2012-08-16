@@ -110,6 +110,7 @@ enum
     MPIDI_Protocols_Control,
     MPIDI_Protocols_WinCtrl,
     MPIDI_Protocols_WinAccum,
+    MPIDI_Protocols_RVZ_zerobyte,
     MPIDI_Protocols_COUNT,
   };
 
