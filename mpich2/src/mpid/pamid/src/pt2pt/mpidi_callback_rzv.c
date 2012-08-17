@@ -106,6 +106,12 @@ MPIDI_RecvRzvCB_impl(pami_context_t    context,
       rreq->mpid.envelope.data   = envelope->data;
 #endif
       rreq->mpid.envelope.length = envelope->length;
+#ifdef MPIDI_TRACE
+      MPIDI_In_cntr[source].R[(rreq->mpid.idx)].req=rreq;
+      MPIDI_In_cntr[source].R[(rreq->mpid.idx)].rzv=1;
+      MPIDI_In_cntr[source].R[(rreq->mpid.idx)].rlen=envelope->length;
+      MPIDI_In_cntr[source].R[(rreq->mpid.idx)].sync=msginfo->isSync;
+#endif
     }
   /* ----------------------------------------- */
   /* figure out target buffer for request data */
@@ -126,8 +132,14 @@ MPIDI_RecvRzvCB_impl(pami_context_t    context,
       if (is_zero_byte)
         MPIDI_RecvRzvDoneCB_zerobyte(context, rreq, PAMI_SUCCESS);
       else
-        MPIDI_RendezvousTransfer(context, rreq);
-
+        {
+          MPIDI_RendezvousTransfer(context, rreq);
+#ifdef MPIDI_TRACE
+          MPIDI_In_cntr[source].R[(rreq->mpid.idx)].sync_com_in_HH=1;
+          MPIDI_In_cntr[source].R[(rreq->mpid.idx)].matchedInHH=1;
+          MPIDI_In_cntr[source].R[(rreq->mpid.idx)].bufadd=rreq->mpid.userbuf;
+#endif
+        }
       MPID_Request_discard(newreq);
     }
 

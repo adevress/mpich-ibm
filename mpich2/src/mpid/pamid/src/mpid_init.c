@@ -326,6 +326,17 @@ MPIDI_PAMI_context_init(int* threading)
   memset((void *) MPIDI_In_cntr,0, sizeof(MPIDI_In_cntr_t));
   memset((void *) MPIDI_Out_cntr,0, sizeof(MPIDI_Out_cntr_t));
 #endif
+#ifdef MPIDI_TRACE
+      int i; 
+      for (i=0; i < numTasks; i++) {
+          MPIDI_In_cntr[i].R=MPIU_Calloc0(N_MSGS, recv_status);
+          if (MPIDI_In_cntr[i].R==NULL) MPID_abort();
+          MPIDI_In_cntr[i].PR=MPIU_Calloc0(N_MSGS, posted_recv);
+          if (MPIDI_In_cntr[i].PR ==NULL) MPID_abort();
+          MPIDI_Out_cntr[i].S=MPIU_Calloc0(N_MSGS, send_status);
+          if (MPIDI_Out_cntr[i].S ==NULL) MPID_abort();
+      }
+#endif
 
 
   /* ----------------------------------- */

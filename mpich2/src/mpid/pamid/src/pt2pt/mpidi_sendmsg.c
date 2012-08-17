@@ -56,6 +56,15 @@ MPIDI_SendMsg_short(pami_context_t    context,
     }
 #endif
   MPID_assert(rc == PAMI_SUCCESS);
+#ifdef MPIDI_TRACE
+  MPIDI_Out_cntr[dest].S[(sreq->mpid.idx)].mode=params.dispatch;
+ if (!isSync) {
+     MPIDI_Out_cntr[dest].S[(sreq->mpid.idx)].NoComp=1;
+     MPIDI_Out_cntr[dest].S[(sreq->mpid.idx)].sendShort=1;
+ } else
+     MPIDI_Out_cntr[dest].S[(sreq->mpid.idx)].sendEnvelop=1;
+
+#endif
 
   MPIDI_SendDoneCB_inline(context, sreq, PAMI_SUCCESS);
 #if (MPIDI_STATISTICS)
@@ -102,6 +111,10 @@ MPIDI_SendMsg_eager(pami_context_t    context,
   pami_result_t rc;
   rc = PAMI_Send(context, &params);
   MPID_assert(rc == PAMI_SUCCESS);
+#ifdef MPIDI_TRACE
+  MPIDI_Out_cntr[dest].S[(sreq->mpid.idx)].mode=MPIDI_Protocols_Eager;
+  MPIDI_Out_cntr[dest].S[(sreq->mpid.idx)].sendEager=1;
+#endif
 }
 
 
@@ -208,6 +221,14 @@ MPIDI_SendMsg_rzv(pami_context_t    context,
 
   rc = PAMI_Send_immediate(context, &params);
   MPID_assert(rc == PAMI_SUCCESS);
+#ifdef MPIDI_TRACE
+  MPIDI_Out_cntr[dest].S[(sreq->mpid.idx)].bufaddr=sreq->mpid.envelope.data;
+  MPIDI_Out_cntr[dest].S[(sreq->mpid.idx)].mode=MPIDI_Protocols_RVZ;
+  MPIDI_Out_cntr[dest].S[(sreq->mpid.idx)].sendRzv=1;
+  MPIDI_Out_cntr[dest].S[(sreq->mpid.idx)].sendEnvelop=1;
+  MPIDI_Out_cntr[dest].S[(sreq->mpid.idx)].memRegion=sreq->mpid.envelope.memregion_used;
+  MPIDI_Out_cntr[dest].S[(sreq->mpid.idx)].use_pami_get=MPIDI_Process.mp_s_use_pami_get;
+#endif
 }
 
 
@@ -389,6 +410,10 @@ MPIDI_SendMsg(pami_context_t   context,
     {
       MPIDI_SendMsg_process_userdefined_dt(sreq, &sndbuf, &data_sz);
     }
+#ifdef MPIDI_TRACE
+   sreq->mpid.partner_id=dest;
+   GET_REC_S(sreq,context,isSync,data_sz)
+#endif
 
 #ifdef OUT_OF_ORDER_HANDLING
   sreq->mpid.shm=0;
