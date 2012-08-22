@@ -383,16 +383,16 @@ MPIDI_SendMsg(pami_context_t   context,
    */
   pami_endpoint_t dest;
   MPIDI_Context_endpoint(sreq, &dest);
+  pami_task_t  dest_tid;
+  dest_tid=sreq->comm->vcr[rank];
 #if (MPIDI_STATISTICS)
   MPID_NSTAT(mpid_statp->sends);
 #endif
 #ifdef OUT_OF_ORDER_HANDLING
   MPIDI_Out_cntr_t *out_cntr;
-  pami_task_t desttid;
 
-  desttid = PAMIX_Endpoint_query(dest);
   MPIU_THREAD_CS_ENTER(MSGQUEUE,0);
-  out_cntr = &MPIDI_Out_cntr[desttid];
+  out_cntr = &MPIDI_Out_cntr[dest_tid];
   out_cntr->nMsgs++;
   MPIU_THREAD_CS_EXIT(MSGQUEUE,0);
   MPIDI_Request_setMatchSeq(sreq, out_cntr->nMsgs);
@@ -422,7 +422,7 @@ MPIDI_SendMsg(pami_context_t   context,
   if (isInternal == 0)
 #endif
     {
-      if (unlikely(PAMIX_Task_is_local(rank) != 0))
+      if (unlikely(PAMIX_Task_is_local(dest_tid) != 0))
         {
           /*
            * Always use the short protocol when data_sz is small.
@@ -530,7 +530,7 @@ MPIDI_SendMsg(pami_context_t   context,
   else
     {
       const unsigned eager_limit =
-        PAMIX_Task_is_local(rank)==0?
+        PAMIX_Task_is_local(dest_tid)==0?
           MPIDI_Process.eager_limit:
           MPIDI_Process.eager_limit_local;
 
@@ -547,7 +547,7 @@ MPIDI_SendMsg(pami_context_t   context,
         {
           TRACE_ERR("Sending(RZV) bytes=%u (eager_limit=NA)\n", data_sz);
 #ifdef OUT_OF_ORDER_HANDLING
-          sreq->mpid.shm=(PAMIX_Task_is_local(rank)==0);
+          sreq->mpid.shm=(PAMIX_Task_is_local(dest_tid)==0);
 #endif
           MPIDI_SendMsg_rzv(context,
                             sreq,
