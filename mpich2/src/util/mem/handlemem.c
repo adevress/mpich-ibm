@@ -190,6 +190,9 @@ static void *MPIU_Handle_indirect_init( void *(**indirect)[],
 	/* printf( "Creating indirect table with %d pointers to blocks in it\n", indirect_num_blocks ); */
 	*indirect = (void *)MPIU_Calloc(indirect_num_blocks, sizeof(void *));
 	if (!*indirect) {
+	    fprintf(stderr, "Failed creating indirect table of %d pointers\n", 
+		    indirect_num_blocks );
+	    MPIU_Assert(*indirect);
 	    return 0;
 	}
 	*indirect_size = 0;
@@ -197,7 +200,9 @@ static void *MPIU_Handle_indirect_init( void *(**indirect)[],
 
     /* See if we can allocate another block */
     if (*indirect_size >= indirect_num_blocks) {
-        /* printf("Out of space in indirect table\n"); */
+        fprintf(stderr,"Exceeded indirect limit %d (%d)\n",
+		*indirect_size,indirect_num_blocks); 
+	MPIU_Assert(*indirect_size < indirect_num_blocks);
 	return 0;
     }
 
@@ -205,6 +210,9 @@ static void *MPIU_Handle_indirect_init( void *(**indirect)[],
     /* printf("Creating indirect block number %d with %d objects in it\n", *indirect_size, indirect_num_indices); */
     block_ptr = (void *)MPIU_Calloc( indirect_num_indices, obj_size );
     if (!block_ptr) { 
+	fprintf(stderr,"Failed creating indirect block number %d with %d objects in it of size %d\n", 
+		*indirect_size, indirect_num_indices,obj_size); 
+	MPIU_Assert(block_ptr);
 	return 0;
     }
     ptr = (char *)block_ptr;
