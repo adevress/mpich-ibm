@@ -278,7 +278,7 @@ MPIDI_Recvq_FDU(int source, pami_task_t pami_source, int tag, int context_id, in
             MPIDI_Recvq_remove(MPIDI_Recvq.unexpected, rreq, prev_rreq);
             found = TRUE;
 #ifdef MPIDI_TRACE
-            MPIDI_In_cntr[(rreq->mpid.partner_id)].R[(rreq->mpid.idx)].matchedInUQ2=1;
+            MPIDI_Trace_buf[(rreq->mpid.partner_id)].R[(rreq->mpid.idx)].matchedInUQ2=1;
 #endif
             goto fn_exit;
           }
@@ -469,6 +469,11 @@ MPIDI_Recvq_AEU(MPID_Request *newreq, int source, pami_task_t pami_source, int t
   rreq = newreq;
   rreq->kind = MPID_REQUEST_RECV;
 #ifdef  MPIDI_TRACE
+  int idx;
+  idx=(msg_seqno & SEQMASK);
+  recv_status *rstatus;
+  rstatus=&MPIDI_Trace_buf[pami_source].R[idx];
+  memset(rstatus,0,sizeof(recv_status));
   rreq->mpid.envelope.msginfo.MPIseqno=-1;
   rreq->mpid.envelope.length=0;
   rreq->mpid.envelope.data=NULL;
@@ -480,13 +485,6 @@ MPIDI_Recvq_AEU(MPID_Request *newreq, int source, pami_task_t pami_source, int t
   MPID_Request *q;
   MPIDI_In_cntr_t *in_cntr;
   int insert, i;
-#ifdef MPIDI_TRACE
-  int idx;
-  idx=(msg_seqno & SEQMASK);
-  recv_status *rstatus;
-  rstatus=&MPIDI_In_cntr[pami_source].R[idx];
-  memset(rstatus,0,sizeof(recv_status));
-#endif
 
 
   in_cntr = &MPIDI_In_cntr[pami_source];

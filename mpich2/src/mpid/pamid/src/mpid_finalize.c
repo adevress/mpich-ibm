@@ -71,14 +71,15 @@ int MPID_Finalize()
 #ifdef MPIDI_TRACE
  {  int i;
   for (i=0; i< numTasks; i++) {
-      if (MPIDI_In_cntr[i].R)
-          MPIU_Free(MPIDI_In_cntr[i].R);
-      if (MPIDI_In_cntr[i].PR)
-          MPIU_Free(MPIDI_In_cntr[i].PR);
-      if (MPIDI_Out_cntr[i].S)
-          MPIU_Free(MPIDI_Out_cntr[i].S);
+      if (MPIDI_Trace_buf[i].R)
+          MPIU_Free(MPIDI_Trace_buf[i].R);
+      if (MPIDI_Trace_buf[i].PR)
+          MPIU_Free(MPIDI_Trace_buf[i].PR);
+      if (MPIDI_Trace_buf[i].S)
+          MPIU_Free(MPIDI_Trace_buf[i].S);
   }
  }
+ MPIU_Free(MPIDI_Trace_buf);
 #endif
 
 #ifdef OUT_OF_ORDER_HANDLING

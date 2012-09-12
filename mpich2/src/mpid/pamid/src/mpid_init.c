@@ -221,7 +221,7 @@ MPIDI_PAMI_client_init(int* rank, int* size, int threading)
 
 
 static void
-MPIDI_PAMI_context_init(int* threading)
+MPIDI_PAMI_context_init(int* threading, int *size)
 {
   int requested_thread_level;
   requested_thread_level = *threading;
@@ -317,7 +317,7 @@ MPIDI_PAMI_context_init(int* threading)
   TRACE_ERR ("Thread-level=%d, requested=%d\n", *threading, requested_thread_level);
 
 #ifdef OUT_OF_ORDER_HANDLING
-  numTasks  = PAMIX_Client_query(MPIDI_Client, PAMI_CLIENT_NUM_TASKS).value.intval;
+  numTasks  = *size;
   MPIDI_In_cntr = MPIU_Calloc0(numTasks, MPIDI_In_cntr_t);
   if(MPIDI_In_cntr == NULL)
     MPID_abort();
@@ -329,13 +329,16 @@ MPIDI_PAMI_context_init(int* threading)
 #endif
 #ifdef MPIDI_TRACE
       int i; 
+      MPIDI_Trace_buf = MPIU_Calloc0(numTasks, MPIDI_Trace_buf_t);
+      if(MPIDI_Trace_buf == NULL) MPID_abort();
+      memset((void *) MPIDI_Trace_buf,0, sizeof(MPIDI_Trace_buf_t));
       for (i=0; i < numTasks; i++) {
-          MPIDI_In_cntr[i].R=MPIU_Calloc0(N_MSGS, recv_status);
-          if (MPIDI_In_cntr[i].R==NULL) MPID_abort();
-          MPIDI_In_cntr[i].PR=MPIU_Calloc0(N_MSGS, posted_recv);
-          if (MPIDI_In_cntr[i].PR ==NULL) MPID_abort();
-          MPIDI_Out_cntr[i].S=MPIU_Calloc0(N_MSGS, send_status);
-          if (MPIDI_Out_cntr[i].S ==NULL) MPID_abort();
+          MPIDI_Trace_buf[i].R=MPIU_Calloc0(N_MSGS, recv_status);
+          if (MPIDI_Trace_buf[i].R==NULL) MPID_abort();
+          MPIDI_Trace_buf[i].PR=MPIU_Calloc0(N_MSGS, posted_recv);
+          if (MPIDI_Trace_buf[i].PR ==NULL) MPID_abort();
+          MPIDI_Trace_buf[i].S=MPIU_Calloc0(N_MSGS, send_status);
+          if (MPIDI_Trace_buf[i].S ==NULL) MPID_abort();
       }
 #endif
 
@@ -471,7 +474,7 @@ printEnvVars(char *type)
 static void
 MPIDI_PAMI_init(int* rank, int* size, int* threading)
 {
-  MPIDI_PAMI_context_init(threading);
+  MPIDI_PAMI_context_init(threading, size);
 
 
   MPIDI_PAMI_dispath_init();

@@ -235,7 +235,6 @@ struct MPIDI_Request
   uint32_t             shm:16;
 #endif
 #ifdef MPIDI_TRACE
-  int   cur_nMsgs;
   int   partner_id;
   int   idx;
   int   PR_idx;
