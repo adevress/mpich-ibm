@@ -335,7 +335,7 @@ int numTasks=0;
 MPIX_stats_t *mpid_statp=NULL;
 extern MPIDI_printenv_t  *mpich_env;
 #endif
-
+extern int MPIDI_atoi(char* , unsigned int* );
 #define ENV_Deprecated(a, b, c, d, e) ENV_Deprecated__(a, b, c, d, e)
 static inline void
 ENV_Deprecated__(char* name[], unsigned num_supported, unsigned* deprecated, int rank, int NA)
@@ -405,6 +405,7 @@ ENV_Unsigned__(char* name[], unsigned* val, char* string, unsigned num_supported
   ENV_Deprecated(name, num_supported, deprecated, rank, NA);
 
   char * env;
+  int  rc;
 
   unsigned i=0;
   for (;; ++i) {
@@ -415,7 +416,8 @@ ENV_Unsigned__(char* name[], unsigned* val, char* string, unsigned num_supported
       break;
   }
 
-  *val = atoi(env);
+  rc=MPIDI_atoi(env,val);
+  MPID_assert_always(rc == 0);
   if (MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && rank == 0)
     fprintf(stderr, "%s = %u\n", string, *val);
 }
