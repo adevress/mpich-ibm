@@ -469,7 +469,6 @@ static HYD_status launch_procs(void)
     struct HYD_exec *exec;
     struct HYD_pmcd_hdr hdr;
     int sent, closed, pmi_fds[2] = { HYD_FD_UNSET, HYD_FD_UNSET };
-    struct HYDT_topo_cpuset_t cpuset;
     char ftb_event_payload[HYDT_FTB_MAX_PAYLOAD_DATA];
     HYD_status status = HYD_SUCCESS;
 
@@ -510,27 +509,11 @@ static HYD_status launch_procs(void)
         HYD_pmcd_pmip.downstream.pmi_rank[i] = local_to_global_id(i);
     }
 
-    status = HYDT_topo_init(HYD_pmcd_pmip.local.local_binding ?
-                            HYD_pmcd_pmip.local.local_binding :
+    status = HYDT_topo_init(HYD_pmcd_pmip.user_global.topolib,
                             HYD_pmcd_pmip.user_global.binding,
-                            HYD_pmcd_pmip.user_global.topolib);
+                            HYD_pmcd_pmip.user_global.mapping,
+                            HYD_pmcd_pmip.user_global.membind);
     HYDU_ERR_POP(status, "unable to initialize process topology\n");
-
-    if (HYD_pmcd_pmip.user_global.debug) {
-        char *map;
-
-        status = HYDT_topo_get_topomap(&map);
-        HYDU_ERR_POP(status, "error reading topology map\n");
-        if (map)
-            HYDU_dump(stdout, "topomap: %s\n", map);
-        HYDU_FREE(map);
-
-        status = HYDT_topo_get_processmap(&map);
-        HYDU_ERR_POP(status, "error reading process map\n");
-        if (map)
-            HYDU_dump(stdout, "processmap: %s\n", map);
-        HYDU_FREE(map);
-    }
 
     status = HYDT_ckpoint_init(HYD_pmcd_pmip.user_global.ckpointlib,
                                HYD_pmcd_pmip.user_global.ckpoint_num);
@@ -715,13 +698,13 @@ static HYD_status launch_procs(void)
                 client_args[arg++] = HYDU_strdup(exec->exec[j]);
             client_args[arg++] = NULL;
 
-            HYDT_topo_pid_to_cpuset(process_id, &cpuset);
             status = HYDU_create_process(client_args, force_env,
                                          HYD_pmcd_pmip.downstream.pmi_rank[process_id] ? NULL :
                                          &HYD_pmcd_pmip.downstream.in,
                                          &HYD_pmcd_pmip.downstream.out[process_id],
                                          &HYD_pmcd_pmip.downstream.err[process_id],
-                                         &HYD_pmcd_pmip.downstream.pid[process_id], cpuset);
+                                         &HYD_pmcd_pmip.downstream.pid[process_id],
+                                         process_id);
             HYDU_ERR_POP(status, "create process returned error\n");
 
             HYDU_free_strlist(client_args);
@@ -815,7 +798,7 @@ static HYD_status parse_exec_params(char **t_argv)
                             "no executable given and doesn't look like a restart either\n");
 
     /* Set default values */
-    if (HYD_pmcd_pmip.user_global.binding == NULL && HYD_pmcd_pmip.local.local_binding == NULL)
+    if (HYD_pmcd_pmip.user_global.binding == NULL)
         HYD_pmcd_pmip.user_global.binding = HYDU_strdup("none");
 
     if (HYD_pmcd_pmip.user_global.topolib == NULL && HYDRA_DEFAULT_TOPOLIB)

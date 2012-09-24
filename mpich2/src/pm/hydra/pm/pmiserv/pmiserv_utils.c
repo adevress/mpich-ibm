@@ -372,13 +372,22 @@ HYD_status HYD_pmcd_pmi_fill_in_exec_launch_info(struct HYD_pg *pg)
         proxy->exec_launch_info[arg++] = HYDU_strdup(mapping);
 
         if (proxy->node->local_binding) {
-            proxy->exec_launch_info[arg++] = HYDU_strdup("--local-binding");
+            proxy->exec_launch_info[arg++] = HYDU_strdup("--binding");
             proxy->exec_launch_info[arg++] = HYDU_strdup(proxy->node->local_binding);
         }
-
-        if (HYD_server_info.user_global.binding) {
+        else if (HYD_server_info.user_global.binding) {
             proxy->exec_launch_info[arg++] = HYDU_strdup("--binding");
             proxy->exec_launch_info[arg++] = HYDU_strdup(HYD_server_info.user_global.binding);
+        }
+
+        if (HYD_server_info.user_global.mapping) {
+            proxy->exec_launch_info[arg++] = HYDU_strdup("--mapping");
+            proxy->exec_launch_info[arg++] = HYDU_strdup(HYD_server_info.user_global.mapping);
+        }
+
+        if (HYD_server_info.user_global.membind) {
+            proxy->exec_launch_info[arg++] = HYDU_strdup("--membind");
+            proxy->exec_launch_info[arg++] = HYDU_strdup(HYD_server_info.user_global.membind);
         }
 
         if (HYD_server_info.user_global.topolib) {

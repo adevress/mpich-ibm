@@ -207,6 +207,28 @@ static HYD_status binding_fn(char *arg, char ***argv)
     return status;
 }
 
+static HYD_status mapping_fn(char *arg, char ***argv)
+{
+    HYD_status status = HYD_SUCCESS;
+
+    status = HYDU_set_str(arg, &HYD_pmcd_pmip.user_global.mapping, **argv);
+
+    (*argv)++;
+
+    return status;
+}
+
+static HYD_status membind_fn(char *arg, char ***argv)
+{
+    HYD_status status = HYD_SUCCESS;
+
+    status = HYDU_set_str(arg, &HYD_pmcd_pmip.user_global.membind, **argv);
+
+    (*argv)++;
+
+    return status;
+}
+
 static HYD_status topolib_fn(char *arg, char ***argv)
 {
     HYD_status status = HYD_SUCCESS;
@@ -451,17 +473,6 @@ static HYD_status hostname_fn(char *arg, char ***argv)
     return status;
 }
 
-static HYD_status local_binding_fn(char *arg, char ***argv)
-{
-    HYD_status status = HYD_SUCCESS;
-
-    status = HYDU_set_str(arg, &HYD_pmcd_pmip.local.local_binding, **argv);
-
-    (*argv)++;
-
-    return status;
-}
-
 static HYD_status proxy_core_count_fn(char *arg, char ***argv)
 {
     HYD_status status = HYD_SUCCESS;
@@ -629,8 +640,10 @@ struct HYD_arg_match_table HYD_pmcd_pmip_match_table[] = {
     {"pmi-kvsname", pmi_kvsname_fn, NULL},
     {"pmi-spawner-kvsname", pmi_spawner_kvsname_fn, NULL},
     {"pmi-process-mapping", pmi_process_mapping_fn, NULL},
-    {"binding", binding_fn, NULL},
     {"topolib", topolib_fn, NULL},
+    {"binding", binding_fn, NULL},
+    {"mapping", mapping_fn, NULL},
+    {"membind", membind_fn, NULL},
     {"ckpointlib", ckpointlib_fn, NULL},
     {"ckpoint-prefix", ckpoint_prefix_fn, NULL},
     {"ckpoint-num", ckpoint_num_fn, NULL},
@@ -644,7 +657,6 @@ struct HYD_arg_match_table HYD_pmcd_pmip_match_table[] = {
     {"version", version_fn, NULL},
     {"iface-ip-env-name", iface_ip_env_name_fn, NULL},
     {"hostname", hostname_fn, NULL},
-    {"local-binding", local_binding_fn, NULL},
     {"proxy-core-count", proxy_core_count_fn, NULL},
     {"exec", exec_fn, NULL},
     {"exec-appnum", exec_appnum_fn, NULL},

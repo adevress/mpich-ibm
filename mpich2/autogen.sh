@@ -340,7 +340,7 @@ else
     autom4te=${AUTOM4TE:-autom4te}
     automake=${AUTOMAKE:-automake}
     aclocal=${ACLOCAL:-aclocal}
-    if test -z "${LIBTOOLIZE+set}" && glibtoolize --version >/dev/null 2>&1 ; then
+    if test -z "${LIBTOOLIZE+set}" && ( glibtoolize --version ) >/dev/null 2>&1 ; then
         libtoolize=glibtoolize
     else
         libtoolize=${LIBTOOLIZE:-libtoolize}
@@ -1065,7 +1065,7 @@ if [ "$do_build_configure" = "yes" ] ; then
             else
                 echo "------------------------------------------------------------------------"
                 echo 'patching "confdb/depcomp" to support pgcc'
-                patch -f -p0 < confdb/depcomp_pgcc.patch
+                patch -p0 < confdb/depcomp_pgcc.patch
             fi
 	fi
     done

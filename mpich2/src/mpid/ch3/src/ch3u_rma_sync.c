@@ -84,13 +84,8 @@ static MPIU_INSTR_Duration_count *list_block;     /* Inner; while waiting */
 /*
  * These routines provide a default implementation of the MPI RMA operations
  * in terms of the low-level, two-sided channel operations.  A channel
- * may override these functions, on a per-window basis, by defining 
- * USE_CHANNEL_RMA_TABLE and providing the function MPIDI_CH3_RMAWinFnsInit.
- */
-
-/*
- * TODO: 
- * 
+ * may override these functions, on a per-window basis, by overriding
+ * the MPID functions in the RMAFns section of MPID_Win object.
  */
 
 #define SYNC_POST_TAG 100
@@ -1789,6 +1784,94 @@ int MPIDI_Win_unlock(int dest, MPID_Win *win_ptr)
  fn_exit:
     MPIU_Assert( !win_ptr->rma_ops_list_head );
     MPIDI_RMA_FUNC_EXIT(MPID_STATE_MPIDI_WIN_UNLOCK);
+    return mpi_errno;
+    /* --BEGIN ERROR HANDLING-- */
+ fn_fail:
+    goto fn_exit;
+    /* --END ERROR HANDLING-- */
+}
+
+
+#undef FUNCNAME
+#define FUNCNAME MPIDI_Win_lock_all
+#undef FCNAME
+#define FCNAME MPIDI_QUOTE(FUNCNAME)
+int MPIDI_Win_lock_all(int assert, MPID_Win *win_ptr)
+{
+    int mpi_errno = MPI_SUCCESS;
+    MPIDI_STATE_DECL(MPID_STATE_MPIDI_WIN_LOCK_ALL);
+
+    MPIDI_RMA_FUNC_ENTER(MPID_STATE_MPIDI_WIN_LOCK_ALL);
+
+    MPIU_UNREFERENCED_ARG(assert);
+
+    /* Currently defined only for shared memory windows */
+    MPIU_Assert(win_ptr->create_flavor == MPIX_WIN_FLAVOR_SHARED);
+
+    MPIDI_Win_sync(win_ptr);
+
+    win_ptr->lock_granted      = 1;
+    win_ptr->current_lock_type = MPID_LOCK_SHARED_ALL;
+
+fn_exit:
+    MPIDI_RMA_FUNC_EXIT(MPID_STATE_MPIDI_WIN_LOCK_ALL);
+    return mpi_errno;
+    /* --BEGIN ERROR HANDLING-- */
+fn_fail:
+    goto fn_exit;
+    /* --END ERROR HANDLING-- */
+}
+
+
+#undef FUNCNAME
+#define FUNCNAME MPIDI_Win_unlock_all
+#undef FCNAME
+#define FCNAME MPIDI_QUOTE(FUNCNAME)
+int MPIDI_Win_unlock_all(MPID_Win *win_ptr)
+{
+    int mpi_errno = MPI_SUCCESS;
+    MPIDI_STATE_DECL(MPID_STATE_MPIDI_WIN_UNLOCK_ALL);
+
+    MPIDI_RMA_FUNC_ENTER(MPID_STATE_MPIDI_WIN_UNLOCK_ALL);
+
+    /* Currently defined only for shared memory windows */
+    MPIU_Assert(win_ptr->create_flavor == MPIX_WIN_FLAVOR_SHARED);
+    
+    if (! (win_ptr->lock_granted && win_ptr->current_lock_type == MPID_LOCK_SHARED_ALL) ) {
+        mpi_errno = MPI_ERR_LOCKTYPE;
+        goto fn_fail;
+    }
+
+    win_ptr->lock_granted      = 0;
+    win_ptr->current_lock_type = MPID_LOCK_NONE;
+
+    MPIDI_Win_sync(win_ptr);
+
+fn_exit:
+    MPIDI_RMA_FUNC_EXIT(MPID_STATE_MPIDI_WIN_UNLOCK_ALL);
+    return mpi_errno;
+    /* --BEGIN ERROR HANDLING-- */
+fn_fail:
+    goto fn_exit;
+    /* --END ERROR HANDLING-- */
+}
+
+
+#undef FUNCNAME
+#define FUNCNAME MPIDI_Win_sync
+#undef FCNAME
+#define FCNAME MPIDI_QUOTE(FUNCNAME)
+int MPIDI_Win_sync(MPID_Win *win_ptr)
+{
+    int mpi_errno = MPI_SUCCESS;
+    MPIDI_STATE_DECL(MPID_STATE_MPIDI_WIN_SYNC);
+
+    MPIDI_RMA_FUNC_ENTER(MPID_STATE_MPIDI_WIN_SYNC);
+
+    OPA_read_write_barrier();
+
+ fn_exit:
+    MPIDI_RMA_FUNC_EXIT(MPID_STATE_MPIDI_WIN_SYNC);
     return mpi_errno;
     /* --BEGIN ERROR HANDLING-- */
  fn_fail:

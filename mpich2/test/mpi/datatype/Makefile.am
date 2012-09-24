@@ -18,6 +18,7 @@ EXTRA_DIST = testlist
 ## file, we don't need per-target _SOURCES rules, automake will infer them
 ## correctly
 noinst_PROGRAMS =           \
+    hindexed_block          \
     blockindexed-misc       \
     blockindexed-zero-count \
     contents                \
@@ -32,6 +33,7 @@ noinst_PROGRAMS =           \
     indexed-misc            \
     lbub                    \
     localpack               \
+    longdouble              \
     lots-of-types           \
     pairtype-pack           \
     pairtype-size-extent    \

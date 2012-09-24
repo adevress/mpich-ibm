@@ -210,6 +210,7 @@ PMPI_LOCAL int MPIR_Type_get_elements(int *bytes_p,
 		return MPIR_Type_get_elements(bytes_p, count * (*ints), *types);
 		break;
 	    case MPI_COMBINER_INDEXED_BLOCK:
+	    case MPIX_COMBINER_HINDEXED_BLOCK:
 		/* count is first in ints array, blocklength is second */
 		return MPIR_Type_get_elements(bytes_p,
 					      count * ints[0] * ints[1],
@@ -302,7 +303,7 @@ Output Parameter:
 .N Errors
 .N MPI_SUCCESS
 @*/
-int MPI_Get_elements(MPI_Status *status, MPI_Datatype datatype, int *elements)
+int MPI_Get_elements(MPICH2_CONST MPI_Status *status, MPI_Datatype datatype, int *elements)
 {
     int mpi_errno = MPI_SUCCESS, byte_count;
     MPID_Datatype *datatype_ptr = NULL;

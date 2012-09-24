@@ -2,6 +2,15 @@
 /*  
  *  (C) 2001 by Argonne National Laboratory.
  *      See COPYRIGHT in top-level directory.
+ *
+ * Portions of this code were written by Microsoft. Those portions are
+ * Copyright (c) 2007 Microsoft Corporation. Microsoft grants
+ * permission to use, reproduce, prepare derivative works, and to
+ * redistribute to others. The code is licensed "as is." The User
+ * bears the risk of using it. Microsoft gives no express warranties,
+ * guarantees or conditions. To the extent permitted by law, Microsoft
+ * excludes the implied warranties of merchantability, fitness for a
+ * particular purpose and non-infringement.
  */
 #ifndef MPIIMPL_H_INCLUDED
 #define MPIIMPL_H_INCLUDED
@@ -1485,24 +1494,60 @@ MPID_Progress_state;
 /* Windows */
 #ifdef USE_MPID_RMA_TABLE
 struct MPID_Win;
-typedef struct MPIRI_RMA_Ops {
+typedef struct MPID_RMA_Ops {
     int (*Win_free)(struct MPID_Win **);
+
     int (*Put)(const void *, int, MPI_Datatype, int, MPI_Aint, int, MPI_Datatype,
 		struct MPID_Win *);
     int (*Get)(void *, int, MPI_Datatype, int, MPI_Aint, int, MPI_Datatype,
 		struct MPID_Win *);
     int (*Accumulate)(const void *, int, MPI_Datatype, int, MPI_Aint, int,
 		       MPI_Datatype, MPI_Op, struct MPID_Win *);
+
     int (*Win_fence)(int, struct MPID_Win *);
     int (*Win_post)(MPID_Group *, int, struct MPID_Win *);
     int (*Win_start)(MPID_Group *, int, struct MPID_Win *);
     int (*Win_complete)(struct MPID_Win *);
     int (*Win_wait)(struct MPID_Win *);
     int (*Win_test)(struct MPID_Win *, int *);
+
     int (*Win_lock)(int, int, int, struct MPID_Win *);
     int (*Win_unlock)(int, struct MPID_Win *);
-} MPIRI_RMAFns;
-#define MPIRI_RMAFNS_VERSION 2
+
+    /* MPI-3 Functions */
+    int (*Win_attach)(struct MPID_Win *, void *, MPI_Aint);
+    int (*Win_detach)(struct MPID_Win *, const void *);
+    int (*Win_shared_query)(struct MPID_Win *, int, MPI_Aint *, int *, void *);
+
+    int (*Win_lock_all)(int, struct MPID_Win *);
+    int (*Win_unlock_all)(struct MPID_Win *);
+
+    int (*Win_flush)(int, struct MPID_Win *);
+    int (*Win_flush_all)(struct MPID_Win *);
+    int (*Win_flush_local)(int, struct MPID_Win *);
+    int (*Win_flush_local_all)(struct MPID_Win *);
+    int (*Win_sync)(struct MPID_Win *);
+
+    int (*Get_accumulate)(const void *, int , MPI_Datatype, void *, int,
+                          MPI_Datatype, int, MPI_Aint, int, MPI_Datatype, MPI_Op,
+                          struct MPID_Win *);
+    int (*Fetch_and_op)(const void *, void *, MPI_Datatype, int, MPI_Aint, MPI_Op,
+                        struct MPID_Win *);
+    int (*Compare_and_swap)(const void *, const void *, void *, MPI_Datatype, int,
+                            MPI_Aint, struct MPID_Win *);
+
+    int (*Rput)(const void *, int, MPI_Datatype, int, MPI_Aint, int, MPI_Datatype,
+                struct MPID_Win *, MPID_Request**);
+    int (*Rget)(void *, int, MPI_Datatype, int, MPI_Aint, int, MPI_Datatype,
+                struct MPID_Win *, MPID_Request**);
+    int (*Raccumulate)(const void *, int, MPI_Datatype, int, MPI_Aint, int,
+                       MPI_Datatype, MPI_Op, struct MPID_Win *, MPID_Request**);
+    int (*Rget_accumulate)(const void *, int , MPI_Datatype, void *, int,
+                           MPI_Datatype, int, MPI_Aint, int, MPI_Datatype, MPI_Op,
+                           struct MPID_Win *, MPID_Request**);
+
+} MPID_RMAFns;
+#define MPID_RMAFNS_VERSION 2
 /* Note that the memory allocation/free routines do not take a window, 
    so they must be initialized separately, and are a per-run, not per-window
    object.  If the device can manage different kinds of memory allocations,
@@ -1575,15 +1620,25 @@ typedef struct MPID_Win {
 #endif
     /* */
 #ifdef USE_MPID_RMA_TABLE
-    MPIRI_RMAFns RMAFns;
+    MPID_RMAFns RMAFns;
 #endif    
     /* These are COPIES of the values so that addresses to them
        can be returned as attributes.  They are initialized by the
-       MPI_Win_get_attr function */
+       MPI_Win_get_attr function.
+     
+       These values are constant for the lifetime of the window, so
+       this is thread-safe.
+     */
     int  copyDispUnit;
     MPI_Aint copySize;
     
     char          name[MPI_MAX_OBJECT_NAME];  
+
+    int create_flavor;          /* How this window was created */
+    int model;                  /* Separate or Unified */
+    int copyCreateFlavor;
+    int copyModel;
+
   /* Other, device-specific information */
 #ifdef MPID_DEV_WIN_DECL
     MPID_DEV_WIN_DECL
@@ -1593,6 +1648,11 @@ extern MPIU_Object_alloc_t MPID_Win_mem;
 /* Preallocated win objects */
 extern MPID_Win MPID_Win_direct[];
 
+enum MPID_Win_lock_states { 
+    /* LOCKED = 0, 1, ... */
+    MPID_WIN_STATE_UNLOCKED   = -1,
+    MPID_WIN_STATE_LOCKED_ALL = -2
+};
 
 /* ------------------------------------------------------------------------- */
 /* also in mpirma.h ?*/
@@ -1828,7 +1888,7 @@ typedef struct MPID_Collops {
                            MPID_Comm *, int *);
     int (*Scan) (const void*, void*, int, MPI_Datatype, MPI_Op, MPID_Comm *, int * );
     int (*Exscan) (const void*, void*, int, MPI_Datatype, MPI_Op, MPID_Comm *, int * );
-    int (*Reduce_scatter_block) (void*, void*, int, MPI_Datatype, MPI_Op,
+    int (*Reduce_scatter_block) (const void*, void*, int, MPI_Datatype, MPI_Op,
                            MPID_Comm *, int *);
 
     /* MPI-3 nonblocking collectives */
@@ -1877,6 +1937,43 @@ typedef struct MPID_Collops {
                  MPID_Comm *comm_ptr, MPID_Sched_t s);
     int (*Iexscan)(const void *sendbuf, void *recvbuf, int count, MPI_Datatype datatype, MPI_Op op,
                    MPID_Comm *comm_ptr, MPID_Sched_t s);
+
+    struct MPID_Collops *prev_coll_fns; /* when overriding this table, set this to point to the old table */
+
+    /* MPI-3 neighborhood collectives (blocking & nonblocking) */
+    int (*Neighbor_allgather)(const void *sendbuf, int sendcount, MPI_Datatype sendtype,
+                              void *recvbuf, int recvcount, MPI_Datatype recvtype,
+                              MPID_Comm *comm_ptr);
+    int (*Neighbor_allgatherv)(const void *sendbuf, int sendcount, MPI_Datatype sendtype,
+                               void *recvbuf, const int recvcounts[], const int displs[],
+                               MPI_Datatype recvtype, MPID_Comm *comm_ptr);
+    int (*Neighbor_alltoall)(const void *sendbuf, int sendcount, MPI_Datatype sendtype,
+                             void *recvbuf, int recvcount, MPI_Datatype recvtype,
+                             MPID_Comm *comm_ptr);
+    int (*Neighbor_alltoallv)(const void *sendbuf, const int sendcounts[], const int sdispls[],
+                              MPI_Datatype sendtype, void *recvbuf, const int recvcounts[],
+                              const int rdispls[], MPI_Datatype recvtype, MPID_Comm *comm_ptr);
+    int (*Neighbor_alltoallw)(const void *sendbuf, const int sendcounts[], const MPI_Aint sdispls[],
+                              const MPI_Datatype sendtypes[], void *recvbuf, const int recvcounts[],
+                              const MPI_Aint rdispls[], const MPI_Datatype recvtypes[],
+                              MPID_Comm *comm_ptr);
+    int (*Ineighbor_allgather)(const void *sendbuf, int sendcount, MPI_Datatype sendtype,
+                               void *recvbuf, int recvcount, MPI_Datatype recvtype,
+                               MPID_Comm *comm_ptr, MPID_Sched_t s);
+    int (*Ineighbor_allgatherv)(const void *sendbuf, int sendcount, MPI_Datatype sendtype,
+                                void *recvbuf, const int recvcounts[], const int displs[],
+                                MPI_Datatype recvtype, MPID_Comm *comm_ptr, MPID_Sched_t s);
+    int (*Ineighbor_alltoall)(const void *sendbuf, int sendcount, MPI_Datatype sendtype,
+                              void *recvbuf, int recvcount, MPI_Datatype recvtype,
+                              MPID_Comm *comm_ptr, MPID_Sched_t s);
+    int (*Ineighbor_alltoallv)(const void *sendbuf, const int sendcounts[], const int sdispls[],
+                               MPI_Datatype sendtype, void *recvbuf, const int recvcounts[],
+                               const int rdispls[], MPI_Datatype recvtype, MPID_Comm *comm_ptr,
+                               MPID_Sched_t s);
+    int (*Ineighbor_alltoallw)(const void *sendbuf, const int sendcounts[], const MPI_Aint sdispls[],
+                               const MPI_Datatype sendtypes[], void *recvbuf, const int recvcounts[],
+                               const MPI_Aint rdispls[], const MPI_Datatype recvtypes[],
+                               MPID_Comm *comm_ptr, MPID_Sched_t s);
 } MPID_Collops;
 
 #define MPIR_BARRIER_TAG 1
@@ -3067,23 +3164,77 @@ int MPID_Cancel_send(MPID_Request *);
   @*/
 int MPID_Cancel_recv(MPID_Request *);
 
+/* MPI-2 RMA Routines */
+
 int MPID_Win_create(void *, MPI_Aint, int, MPID_Info *, MPID_Comm *,
                     MPID_Win **);
-int MPID_Win_fence(int, MPID_Win *);
-int MPID_Put(void *, int, MPI_Datatype, int, MPI_Aint, int,
-            MPI_Datatype, MPID_Win *); 
-int MPID_Get(void *, int, MPI_Datatype, int, MPI_Aint, int,
-            MPI_Datatype, MPID_Win *);
-int MPID_Accumulate(void *, int, MPI_Datatype, int, MPI_Aint, int, 
-		   MPI_Datatype, MPI_Op, MPID_Win *);
 int MPID_Win_free(MPID_Win **); 
+
+int MPID_Put(void *, int, MPI_Datatype, int, MPI_Aint, int,
+             MPI_Datatype, MPID_Win *); 
+int MPID_Get(void *, int, MPI_Datatype, int, MPI_Aint, int,
+             MPI_Datatype, MPID_Win *);
+int MPID_Accumulate(void *, int, MPI_Datatype, int, MPI_Aint, int, 
+                    MPI_Datatype, MPI_Op, MPID_Win *);
+
+int MPID_Win_fence(int, MPID_Win *);
+int MPID_Win_post(MPID_Group *group_ptr, int assert, MPID_Win *win_ptr);
+int MPID_Win_start(MPID_Group *group_ptr, int assert, MPID_Win *win_ptr);
 int MPID_Win_test(MPID_Win *win_ptr, int *flag);
 int MPID_Win_wait(MPID_Win *win_ptr);
 int MPID_Win_complete(MPID_Win *win_ptr);
-int MPID_Win_post(MPID_Group *group_ptr, int assert, MPID_Win *win_ptr);
-int MPID_Win_start(MPID_Group *group_ptr, int assert, MPID_Win *win_ptr);
+
 int MPID_Win_lock(int lock_type, int dest, int assert, MPID_Win *win_ptr);
 int MPID_Win_unlock(int dest, MPID_Win *win_ptr);
+
+/* MPI-3 RMA Routines */
+
+int MPID_Win_allocate(MPI_Aint size, int disp_unit, MPID_Info *info,
+                      MPID_Comm *comm, void *baseptr, MPID_Win **win);
+int MPID_Win_allocate_shared(MPI_Aint size, MPID_Info *info_ptr, MPID_Comm *comm_ptr,
+                             void **base_ptr, MPID_Win **win_ptr);
+int MPID_Win_shared_query(MPI_Win win, int rank, MPI_Aint *size,
+                          void *baseptr);
+int MPID_Win_create_dynamic(MPID_Info *info, MPID_Comm *comm, MPID_Win **win);
+int MPID_Win_attach(MPID_Win *win, void *base, MPI_Aint size);
+int MPID_Win_detach(MPID_Win *win, const void *base);
+
+int MPID_Get_accumulate(const void *origin_addr, int origin_count,
+                        MPI_Datatype origin_datatype, void *result_addr, int result_count,
+                        MPI_Datatype result_datatype, int target_rank, MPI_Aint target_disp,
+                        int target_count, MPI_Datatype target_datatype, MPI_Op op, MPID_Win *win);
+int MPID_Fetch_and_op(const void *origin_addr, void *result_addr,
+                      MPI_Datatype datatype, int target_rank, MPI_Aint target_disp,
+                      MPI_Op op, MPID_Win *win);
+int MPID_Compare_and_swap(const void *origin_addr, const void *compare_addr,
+                          void *result_addr, MPI_Datatype datatype, int target_rank,
+                          MPI_Aint target_disp, MPID_Win *win);
+int MPID_Rput(const void *origin_addr, int origin_count,
+              MPI_Datatype origin_datatype, int target_rank, MPI_Aint target_disp,
+              int target_count, MPI_Datatype target_datatype, MPID_Win *win,
+              MPI_Request *request);
+int MPID_Rget(void *origin_addr, int origin_count,
+              MPI_Datatype origin_datatype, int target_rank, MPI_Aint target_disp,
+              int target_count, MPI_Datatype target_datatype, MPID_Win *win,
+              MPI_Request *request);
+int MPID_Raccumulate(const void *origin_addr, int origin_count,
+                     MPI_Datatype origin_datatype, int target_rank, MPI_Aint target_disp,
+                     int target_count, MPI_Datatype target_datatype, MPI_Op op, MPID_Win *win,
+                     MPI_Request *request);
+int MPID_Rget_accumulate(const void *origin_addr, int origin_count,
+                         MPI_Datatype origin_datatype, void *result_addr, int result_count,
+                         MPI_Datatype result_datatype, int target_rank, MPI_Aint target_disp,
+                         int target_count, MPI_Datatype target_datatype, MPI_Op op, MPID_Win *win,
+                         MPI_Request *request);
+
+int MPID_Win_lock_all(int assert, MPID_Win *win);
+int MPID_Win_unlock_all(MPID_Win *win);
+int MPID_Win_flush(int rank, MPID_Win *win);
+int MPID_Win_flush_all(MPID_Win *win);
+int MPID_Win_flush_local(int rank, MPID_Win *win);
+int MPID_Win_flush_local_all(MPID_Win *win);
+int MPID_Win_sync(MPID_Win *win);
+
 
 /*@
   MPID_Progress_start - Begin a block of operations that check the completion
@@ -3659,6 +3810,8 @@ extern MPIR_Op_check_dtype_fn *MPIR_Op_check_dtype_table[];
 #define MPIR_MAX(a,b) (((b)>(a))?(b):(a))
 #endif /* MPIR_MAX */
 
+int MPIR_Type_is_rma_atomic(MPI_Datatype type);
+
 int MPIR_Allgather_impl(const void *sendbuf, int sendcount, MPI_Datatype sendtype,
                         void *recvbuf, int recvcount, MPI_Datatype recvtype,
                         MPID_Comm *comm_ptr, int *errflag );
@@ -3773,16 +3926,16 @@ int MPIR_Reduce_scatter_intra(const void *sendbuf, void *recvbuf, const int *rec
 int MPIR_Reduce_scatter_inter(const void *sendbuf, void *recvbuf, const int *recvcnts,
                               MPI_Datatype datatype, MPI_Op op,
                               MPID_Comm *comm_ptr, int *errflag);
-int MPIR_Reduce_scatter_block_impl(void *sendbuf, void *recvbuf, int recvcount,
+int MPIR_Reduce_scatter_block_impl(const void *sendbuf, void *recvbuf, int recvcount,
                                    MPI_Datatype datatype, MPI_Op op, MPID_Comm
                                    *comm_ptr, int *errflag );
-int MPIR_Reduce_scatter_block(void *sendbuf, void *recvbuf, int recvcount,
+int MPIR_Reduce_scatter_block(const void *sendbuf, void *recvbuf, int recvcount,
                               MPI_Datatype datatype, MPI_Op op, MPID_Comm
                               *comm_ptr, int *errflag );
-int MPIR_Reduce_scatter_block_intra(void *sendbuf, void *recvbuf, int recvcount,
+int MPIR_Reduce_scatter_block_intra(const void *sendbuf, void *recvbuf, int recvcount,
                                     MPI_Datatype datatype, MPI_Op op, MPID_Comm
                                     *comm_ptr, int *errflag );
-int MPIR_Reduce_scatter_block_inter(void *sendbuf, void *recvbuf, int recvcount,
+int MPIR_Reduce_scatter_block_inter(const void *sendbuf, void *recvbuf, int recvcount,
                                     MPI_Datatype datatype, MPI_Op op, MPID_Comm
                                     *comm_ptr, int *errflag);
 int MPIR_Reduce_impl(const void *sendbuf, void *recvbuf, int count, MPI_Datatype datatype,
@@ -3859,6 +4012,16 @@ int MPIR_Allreduce_group_intra(void *sendbuf, void *recvbuf, int count,
 
 int MPIR_Barrier_group(MPID_Comm *comm_ptr, MPID_Group *group_ptr, int tag, int *errflag);
 
+
+/* topology impl functions */
+int MPIR_Dist_graph_neighbors_count_impl(MPID_Comm *comm_ptr, int *indegree, int *outdegree, int *weighted);
+int MPIR_Dist_graph_neighbors_impl(MPID_Comm *comm_ptr,
+                                   int maxindegree, int sources[], int sourceweights[],
+                                   int maxoutdegree, int destinations[], int destweights[]);
+int MPIR_Graph_neighbors_count_impl(MPID_Comm *comm_ptr, int rank, int *nneighbors);
+int MPIR_Graph_neighbors_impl(MPID_Comm *comm_ptr, int rank, int maxneighbors, int *neighbors);
+int MPIR_Cart_shift_impl(MPID_Comm *comm_ptr, int direction, int displ, int *source, int *dest);
+
 /* begin impl functions for NBC */
 int MPIR_Ibarrier_impl(MPID_Comm *comm_ptr, MPI_Request *request);
 int MPIR_Ibcast_impl(void *buffer, int count, MPI_Datatype datatype, int root, MPID_Comm *comm_ptr, MPI_Request *request);
@@ -3879,6 +4042,32 @@ int MPIR_Iscan_impl(const void *sendbuf, void *recvbuf, int count, MPI_Datatype 
 int MPIR_Iexscan_impl(const void *sendbuf, void *recvbuf, int count, MPI_Datatype datatype, MPI_Op op, MPID_Comm *comm_ptr, MPI_Request *request);
 /* end impl functions for NBC */
 
+/* begin impl functions for neighborhood collectives */
+int MPIR_Ineighbor_allgather_impl(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void *recvbuf, int recvcount, MPI_Datatype recvtype, MPID_Comm *comm_ptr, MPI_Request *request);
+int MPIR_Ineighbor_allgatherv_impl(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void *recvbuf, const int recvcounts[], const int displs[], MPI_Datatype recvtype, MPID_Comm *comm_ptr, MPI_Request *request);
+int MPIR_Ineighbor_alltoall_impl(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void *recvbuf, int recvcount, MPI_Datatype recvtype, MPID_Comm *comm_ptr, MPI_Request *request);
+int MPIR_Ineighbor_alltoallv_impl(const void *sendbuf, const int sendcounts[], const int sdispls[], MPI_Datatype sendtype, void *recvbuf, const int recvcounts[], const int rdispls[], MPI_Datatype recvtype, MPID_Comm *comm_ptr, MPI_Request *request);
+int MPIR_Ineighbor_alltoallw_impl(const void *sendbuf, const int sendcounts[], const MPI_Aint sdispls[], const MPI_Datatype sendtypes[], void *recvbuf, const int recvcounts[], const MPI_Aint rdispls[], const MPI_Datatype recvtypes[], MPID_Comm *comm_ptr, MPI_Request *request);
+int MPIR_Neighbor_allgather_impl(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void *recvbuf, int recvcount, MPI_Datatype recvtype, MPID_Comm *comm_ptr);
+int MPIR_Neighbor_allgatherv_impl(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void *recvbuf, const int recvcounts[], const int displs[], MPI_Datatype recvtype, MPID_Comm *comm_ptr);
+int MPIR_Neighbor_alltoall_impl(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void *recvbuf, int recvcount, MPI_Datatype recvtype, MPID_Comm *comm_ptr);
+int MPIR_Neighbor_alltoallv_impl(const void *sendbuf, const int sendcounts[], const int sdispls[], MPI_Datatype sendtype, void *recvbuf, const int recvcounts[], const int rdispls[], MPI_Datatype recvtype, MPID_Comm *comm_ptr);
+int MPIR_Neighbor_alltoallw_impl(const void *sendbuf, const int sendcounts[], const MPI_Aint sdispls[], const MPI_Datatype sendtypes[], void *recvbuf, const int recvcounts[], const MPI_Aint rdispls[], const MPI_Datatype recvtypes[], MPID_Comm *comm_ptr);
+/* end impl functions for neighborhood collectives */
+
+/* neighborhood collective default algorithms */
+int MPIR_Neighbor_allgather_default(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void *recvbuf, int recvcount, MPI_Datatype recvtype, MPID_Comm *comm_ptr);
+int MPIR_Neighbor_allgatherv_default(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void *recvbuf, const int recvcounts[], const int displs[], MPI_Datatype recvtype, MPID_Comm *comm_ptr);
+int MPIR_Neighbor_alltoall_default(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void *recvbuf, int recvcount, MPI_Datatype recvtype, MPID_Comm *comm_ptr);
+int MPIR_Neighbor_alltoallv_default(const void *sendbuf, const int sendcounts[], const int sdispls[], MPI_Datatype sendtype, void *recvbuf, const int recvcounts[], const int rdispls[], MPI_Datatype recvtype, MPID_Comm *comm_ptr);
+int MPIR_Neighbor_alltoallw_default(const void *sendbuf, const int sendcounts[], const MPI_Aint sdispls[], const MPI_Datatype sendtypes[], void *recvbuf, const int recvcounts[], const MPI_Aint rdispls[], const MPI_Datatype recvtypes[], MPID_Comm *comm_ptr);
+int MPIR_Ineighbor_allgather_default(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void *recvbuf, int recvcount, MPI_Datatype recvtype, MPID_Comm *comm_ptr, MPID_Sched_t s);
+int MPIR_Ineighbor_allgatherv_default(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void *recvbuf, const int recvcounts[], const int displs[], MPI_Datatype recvtype, MPID_Comm *comm_ptr, MPID_Sched_t s);
+int MPIR_Ineighbor_alltoall_default(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void *recvbuf, int recvcount, MPI_Datatype recvtype, MPID_Comm *comm_ptr, MPID_Sched_t s);
+int MPIR_Ineighbor_alltoallv_default(const void *sendbuf, const int sendcounts[], const int sdispls[], MPI_Datatype sendtype, void *recvbuf, const int recvcounts[], const int rdispls[], MPI_Datatype recvtype, MPID_Comm *comm_ptr, MPID_Sched_t s);
+int MPIR_Ineighbor_alltoallw_default(const void *sendbuf, const int sendcounts[], const MPI_Aint sdispls[], const MPI_Datatype sendtypes[], void *recvbuf, const int recvcounts[], const MPI_Aint rdispls[], const MPI_Datatype recvtypes[], MPID_Comm *comm_ptr, MPID_Sched_t s);
+
+/* nonblocking collective default algorithms */
 int MPIR_Ibcast_intra(void *buffer, int count, MPI_Datatype datatype, int root, MPID_Comm *comm_ptr, MPID_Sched_t s);
 int MPIR_Ibcast_inter(void *buffer, int count, MPI_Datatype datatype, int root, MPID_Comm *comm_ptr, MPID_Sched_t s);
 int MPIR_Ibcast_binomial(void *buffer, int count, MPI_Datatype datatype, int root, MPID_Comm *comm_ptr, MPID_Sched_t s);
@@ -4060,7 +4249,7 @@ int MPIR_Group_range_incl_impl(MPID_Group *group_ptr, int n, int ranges[][3], MP
 int MPIR_Group_translate_ranks_impl(MPID_Group *group_ptr1, int n, const int *ranks1,
                                      MPID_Group *group_ptr2, int *ranks2);
 int MPIR_Group_union_impl(MPID_Group *group_ptr1, MPID_Group *group_ptr2, MPID_Group **new_group_ptr);
-void MPIR_Get_count_impl(MPI_Status *status, MPI_Datatype datatype, int *count);
+void MPIR_Get_count_impl(const MPI_Status *status, MPI_Datatype datatype, int *count);
 void MPIR_Grequest_complete_impl(MPID_Request *request_ptr);
 int MPIR_Grequest_start_impl(MPI_Grequest_query_function *query_fn,
                              MPI_Grequest_free_function *free_fn,
@@ -4079,6 +4268,9 @@ int MPIR_Type_create_indexed_block_impl(int count,
                                         const int array_of_displacements[],
                                         MPI_Datatype oldtype,
                                         MPI_Datatype *newtype);
+int MPIR_Type_create_hindexed_block_impl(int count, int blocklength,
+                                         const MPI_Aint array_of_displacements[],
+                                         MPI_Datatype oldtype, MPI_Datatype *newtype);
 int MPIR_Type_contiguous_impl(int count,
                               MPI_Datatype old_type,
                               MPI_Datatype *new_type_p);

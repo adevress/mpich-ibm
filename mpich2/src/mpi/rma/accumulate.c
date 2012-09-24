@@ -84,7 +84,7 @@ int MPI_Accumulate(MPICH2_CONST void *origin_addr, int origin_count, MPI_Datatyp
         }
         MPID_END_ERROR_CHECKS;
     }
-#   endif
+#   endif /* HAVE_ERROR_CHECKING */
     
     /* Convert MPI object handles to object pointers */
     MPID_Win_get_ptr( win, win_ptr );
@@ -128,6 +128,8 @@ int MPI_Accumulate(MPICH2_CONST void *origin_addr, int origin_count, MPI_Datatyp
 
 	    comm_ptr = win_ptr->comm_ptr;
 	    MPIR_ERRTEST_SEND_RANK(comm_ptr, target_rank, mpi_errno);
+
+            MPIR_ERRTEST_OP(op, mpi_errno);
 
             if (mpi_errno != MPI_SUCCESS) goto fn_fail;
         }
