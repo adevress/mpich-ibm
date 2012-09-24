@@ -42,9 +42,9 @@ int MPID_nem_mx_iSendContig(MPIDI_VC_t *vc, MPID_Request *sreq, void *hdr, MPIDI
 #endif
 
     NEM_MX_ADI_MATCH(match_info); 
-    MPIU_Memcpy(&(sreq->dev.pending_pkt),(char *)hdr,sizeof(MPIDI_CH3_PktGeneric_t));
+    MPIU_Memcpy(&(sreq->dev.pending_pkt),(char *)hdr,sizeof(MPIDI_CH3_Pkt_t));
     mx_iov[0].segment_ptr     = (char *)&(sreq->dev.pending_pkt);
-    mx_iov[0].segment_length  = sizeof(MPIDI_CH3_PktGeneric_t);
+    mx_iov[0].segment_length  = sizeof(MPIDI_CH3_Pkt_t);
     num_seg = 1;
     if(data_sz)
     {
@@ -55,7 +55,7 @@ int MPID_nem_mx_iSendContig(MPIDI_VC_t *vc, MPID_Request *sreq, void *hdr, MPIDI
    
     ret = mx_isend(MPID_nem_mx_local_endpoint,mx_iov,num_seg,VC_FIELD(vc,remote_endpoint_addr),match_info,(void*)sreq,&mx_request);
     MPIU_ERR_CHKANDJUMP1 (ret != MX_SUCCESS, mpi_errno, MPI_ERR_OTHER, "**mx_isend", "**mx_isend %s", mx_strerror (ret));
-    MPID_nem_mx_pending_send_req++;
+    (VC_FIELD(vc,pending_sends)) += 1;
     sreq->ch.vc = vc;
 
  fn_exit:
@@ -101,9 +101,9 @@ int MPID_nem_mx_iStartContigMsg(MPIDI_VC_t *vc, void *hdr, MPIDI_msg_sz_t hdr_sz
     NEM_MX_ADI_MATCH(match_info); 
     /*fprintf(stdout,"[%i]=== Startcontigmsg  sending  (%lx) to %i... \n",MPID_nem_mem_region.rank,match_info,vc->lpid); */
     
-    MPIU_Memcpy(&(sreq->dev.pending_pkt),(char *)hdr,sizeof(MPIDI_CH3_PktGeneric_t));
+    MPIU_Memcpy(&(sreq->dev.pending_pkt),(char *)hdr,sizeof(MPIDI_CH3_Pkt_t));
     mx_iov[0].segment_ptr     = (char *)&(sreq->dev.pending_pkt);
-    mx_iov[0].segment_length  = sizeof(MPIDI_CH3_PktGeneric_t);    
+    mx_iov[0].segment_length  = sizeof(MPIDI_CH3_Pkt_t);    
     num_seg = 1;
     if (data_sz)
     {
@@ -114,7 +114,7 @@ int MPID_nem_mx_iStartContigMsg(MPIDI_VC_t *vc, void *hdr, MPIDI_msg_sz_t hdr_sz
    
     ret = mx_isend(MPID_nem_mx_local_endpoint,mx_iov,num_seg,VC_FIELD(vc,remote_endpoint_addr),match_info,(void *)sreq,&mx_request);
     MPIU_ERR_CHKANDJUMP1 (ret != MX_SUCCESS, mpi_errno, MPI_ERR_OTHER, "**mx_isend", "**mx_isend %s", mx_strerror (ret));
-    MPID_nem_mx_pending_send_req++;
+    (VC_FIELD(vc,pending_sends)) += 1;
     sreq->ch.vc = vc;    
     
  fn_exit:
@@ -155,9 +155,9 @@ int MPID_nem_mx_SendNoncontig(MPIDI_VC_t *vc, MPID_Request *sreq, void *header, 
 #endif
 
     NEM_MX_ADI_MATCH(match_info); 
-    MPIU_Memcpy(&(sreq->dev.pending_pkt),(char *)header,sizeof(MPIDI_CH3_PktGeneric_t));
+    MPIU_Memcpy(&(sreq->dev.pending_pkt),(char *)header,sizeof(MPIDI_CH3_Pkt_t));
     mx_iov[0].segment_ptr     = (char *)&(sreq->dev.pending_pkt);
-    mx_iov[0].segment_length  = sizeof(MPIDI_CH3_PktGeneric_t);
+    mx_iov[0].segment_length  = sizeof(MPIDI_CH3_Pkt_t);
     num_seg = 1;
 
     MPIU_Assert(sreq->dev.segment_first == 0);
@@ -167,9 +167,10 @@ int MPID_nem_mx_SendNoncontig(MPIDI_VC_t *vc, MPID_Request *sreq, void *header, 
         sreq->dev.tmpbuf = MPIU_Malloc((size_t)sreq->dev.segment_size);
         MPID_Segment_pack(sreq->dev.segment_ptr,sreq->dev.segment_first, &last,(char *)(sreq->dev.tmpbuf));
         MPIU_Assert(last == sreq->dev.segment_size);
-        mx_iov[1].segment_ptr = (char *)(sreq->dev.tmpbuf);
+        mx_iov[1].segment_ptr = (char *)(sreq->dev.tmpbuf);        
         mx_iov[1].segment_length = (uint32_t)last;
         num_seg++;
+        (REQ_FIELD(sreq,deltmpbuf)) = TMP_DEL_VALUE;
     }
    
     /*
@@ -205,7 +206,7 @@ int MPID_nem_mx_SendNoncontig(MPIDI_VC_t *vc, MPID_Request *sreq, void *header, 
     ret = mx_isend(MPID_nem_mx_local_endpoint,mx_iov,num_seg,VC_FIELD(vc,remote_endpoint_addr),match_info,(void *)sreq,&mx_request);
     MPIU_ERR_CHKANDJUMP1 (ret != MX_SUCCESS, mpi_errno, MPI_ERR_OTHER, "**mx_isend", "**mx_isend %s", mx_strerror (ret));
 
-    MPID_nem_mx_pending_send_req++;
+    (VC_FIELD(vc,pending_sends)) += 1;
     sreq->ch.vc = vc;
 
  fn_exit:
@@ -286,7 +287,8 @@ int  MPID_nem_mx_directSend(MPIDI_VC_t *vc, const void * buf, int count, MPI_Dat
 		MPIU_ERR_CHKANDJUMP1((sreq->dev.segment_ptr == NULL), mpi_errno, MPI_ERR_OTHER, "**nomem", "**nomem %s", "MPID_Segment_alloc");
 		MPIR_Pack_size_impl(count, datatype, &packsize);
 		sreq->dev.tmpbuf = MPIU_Malloc((size_t) packsize);
-		MPIU_Assert(sreq->dev.tmpbuf);	
+		MPIU_Assert(sreq->dev.tmpbuf);
+	        (REQ_FIELD(sreq,deltmpbuf)) = TMP_DEL_VALUE;
 		MPID_Segment_init(buf, count, datatype, sreq->dev.segment_ptr, 0);
 		last = data_sz;
 		MPID_Segment_pack(sreq->dev.segment_ptr, 0, &last, sreq->dev.tmpbuf);
@@ -304,7 +306,8 @@ int  MPID_nem_mx_directSend(MPIDI_VC_t *vc, const void * buf, int count, MPI_Dat
     ret = mx_isend(MPID_nem_mx_local_endpoint,mx_iov,num_seg,VC_FIELD(vc,remote_endpoint_addr),
 		   mx_matching,(void *)sreq,&(REQ_FIELD(sreq,mx_request)));
     MPIU_ERR_CHKANDJUMP1 (ret != MX_SUCCESS, mpi_errno, MPI_ERR_OTHER, "**mx_isend", "**mx_isend %s", mx_strerror (ret));
-    MPID_nem_mx_pending_send_req++;
+    (VC_FIELD(vc,pending_sends)) += 1;
+
  fn_exit:
     *request = sreq;
     MPIDI_FUNC_EXIT(MPID_STATE_MPID_NEM_MX_DIRECTSEND);
@@ -374,7 +377,8 @@ int  MPID_nem_mx_directSsend(MPIDI_VC_t *vc, const void * buf, int count, MPI_Da
 		MPIU_ERR_CHKANDJUMP1((sreq->dev.segment_ptr == NULL), mpi_errno, MPI_ERR_OTHER, "**nomem", "**nomem %s", "MPID_Segment_alloc");
 		MPIR_Pack_size_impl(count, datatype, &packsize);
 		sreq->dev.tmpbuf = MPIU_Malloc((size_t) packsize);
-		MPIU_Assert(sreq->dev.tmpbuf);	
+		MPIU_Assert(sreq->dev.tmpbuf);
+  	        (REQ_FIELD(sreq,deltmpbuf)) = TMP_DEL_VALUE;
 		MPID_Segment_init(buf, count, datatype, sreq->dev.segment_ptr, 0);
 		last = data_sz;
 		MPID_Segment_pack(sreq->dev.segment_ptr, 0, &last, sreq->dev.tmpbuf);
@@ -392,7 +396,7 @@ int  MPID_nem_mx_directSsend(MPIDI_VC_t *vc, const void * buf, int count, MPI_Da
     ret = mx_issend(MPID_nem_mx_local_endpoint,mx_iov,num_seg,VC_FIELD(vc,remote_endpoint_addr),
 		    mx_matching,(void *)sreq,&(REQ_FIELD(sreq,mx_request)));
     MPIU_ERR_CHKANDJUMP1 (ret != MX_SUCCESS, mpi_errno, MPI_ERR_OTHER, "**mx_isend", "**mx_isend %s", mx_strerror (ret));	
-    MPID_nem_mx_pending_send_req++;
+    (VC_FIELD(vc,pending_sends)) += 1;
 
  fn_exit:
    *request = sreq;
@@ -469,6 +473,7 @@ int MPID_nem_mx_process_sdtype(MPID_Request **sreq_p,  MPI_Datatype datatype,  M
 	}
 	sreq->dev.tmpbuf = MPIU_Malloc(size_to_copy);
 	MPIU_Assert(sreq->dev.tmpbuf);
+        (REQ_FIELD(sreq,deltmpbuf)) = TMP_DEL_VALUE; 
 	for(index = last_entry; index < n_iov; index++)
 	{
 	    MPIU_Memcpy((char *)(sreq->dev.tmpbuf) + offset, iov[index].MPID_IOV_BUF, iov[index].MPID_IOV_LEN);

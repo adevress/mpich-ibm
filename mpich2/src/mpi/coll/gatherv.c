@@ -49,14 +49,14 @@
 #undef FCNAME
 #define FCNAME MPIU_QUOTE(FUNCNAME)
 int MPIR_Gatherv ( 
-	void *sendbuf, 
-	int sendcnt,  
-	MPI_Datatype sendtype, 
-	void *recvbuf, 
-	int *recvcnts, 
-	int *displs, 
-	MPI_Datatype recvtype, 
-	int root, 
+	const void *sendbuf,
+	int sendcnt,
+	MPI_Datatype sendtype,
+	void *recvbuf,
+	const int *recvcnts,
+	const int *displs,
+	MPI_Datatype recvtype,
+	int root,
 	MPID_Comm *comm_ptr,
         int *errflag )
 {
@@ -192,17 +192,19 @@ fn_fail:
 #define FUNCNAME MPIR_Gatherv_impl
 #undef FCNAME
 #define FCNAME MPIU_QUOTE(FUNCNAME)
-int MPIR_Gatherv_impl(void *sendbuf, int sendcnt, MPI_Datatype sendtype,
-                      void *recvbuf, int *recvcnts, int *displs, MPI_Datatype recvtype,
+int MPIR_Gatherv_impl(const void *sendbuf, int sendcnt, MPI_Datatype sendtype,
+                      void *recvbuf, const int *recvcnts, const int *displs, MPI_Datatype recvtype,
                       int root, MPID_Comm *comm_ptr, int *errflag)
 {
     int mpi_errno = MPI_SUCCESS;
         
     if (comm_ptr->coll_fns != NULL && comm_ptr->coll_fns->Gatherv != NULL) {
+	/* --BEGIN USEREXTENSION-- */
 	mpi_errno = comm_ptr->coll_fns->Gatherv(sendbuf, sendcnt, sendtype,
                                                 recvbuf, recvcnts, displs, recvtype,
                                                 root, comm_ptr, errflag);
         if (mpi_errno) MPIU_ERR_POP(mpi_errno);
+	/* --END USEREXTENSION-- */
     } else {
         mpi_errno = MPIR_Gatherv(sendbuf, sendcnt, sendtype,
                                  recvbuf, recvcnts, displs, recvtype,
@@ -256,8 +258,8 @@ Output Parameter:
 .N MPI_ERR_TYPE
 .N MPI_ERR_BUFFER
 @*/
-int MPI_Gatherv(void *sendbuf, int sendcnt, MPI_Datatype sendtype, 
-                void *recvbuf, int *recvcnts, int *displs, 
+int MPI_Gatherv(MPICH2_CONST void *sendbuf, int sendcnt, MPI_Datatype sendtype,
+                void *recvbuf, MPICH2_CONST int *recvcnts, MPICH2_CONST int *displs,
                 MPI_Datatype recvtype, int root, MPI_Comm comm)
 {
     int mpi_errno = MPI_SUCCESS;

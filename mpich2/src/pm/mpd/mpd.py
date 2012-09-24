@@ -57,7 +57,7 @@ from  time    import  ctime
 from  mpdlib  import  mpd_version
 __author__ = "Ralph Butler and Rusty Lusk"
 __date__ = ctime()
-__version__ = "$Revision$"
+__version__ = "$Revision: 1.160 $"
 __version__ += "  " + str(mpd_version())
 __credits__ = ""
 

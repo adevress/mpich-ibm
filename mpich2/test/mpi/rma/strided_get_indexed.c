@@ -17,7 +17,9 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
 #include <mpi.h>
+#include "mpitest.h"
 
 #define XDIM 8
 #define YDIM 1024
@@ -36,7 +38,7 @@ int main(int argc, char **argv) {
     int blk_len[SUB_YDIM];
     MPI_Datatype loc_type, rem_type;
 
-    MPI_Init(&argc, &argv);
+    MTest_Init(&argc, &argv);
 
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &nranks);
@@ -48,8 +50,10 @@ int main(int argc, char **argv) {
     if (rank == 0)
         if (verbose) printf("MPI RMA Strided Get Test:\n");
 
-    for (i = 0; i < XDIM*YDIM; i++)
-        *(win_buf + i) = 1.0 + rank;
+    for (i = 0; i < XDIM*YDIM; i++) {
+        *(win_buf + i) =  1.0 + rank;
+        *(loc_buf + i) = -1.0;
+    }
 
     MPI_Win_create(win_buf, bufsize, 1, MPI_INFO_NULL, MPI_COMM_WORLD, &buf_win);
 
@@ -92,7 +96,7 @@ int main(int argc, char **argv) {
       for (j = 0; j < SUB_YDIM; j++) {
         const double actual   = *(loc_buf + i + j*XDIM);
         const double expected = (1.0 + peer);
-        if (actual - expected > 1e-10) {
+        if (fabs(actual - expected) > 1.0e-10) {
           printf("%d: Data validation failed at [%d, %d] expected=%f actual=%f\n",
               rank, j, i, expected, actual);
           errors++;
@@ -103,8 +107,8 @@ int main(int argc, char **argv) {
     for (i = SUB_XDIM; i < XDIM; i++) {
       for (j = 0; j < SUB_YDIM; j++) {
         const double actual   = *(loc_buf + i + j*XDIM);
-        const double expected = 1.0 + rank;
-        if (actual - expected > 1e-10) {
+        const double expected = -1.0;
+        if (fabs(actual - expected) > 1.0e-10) {
           printf("%d: Data validation failed at [%d, %d] expected=%f actual=%f\n",
               rank, j, i, expected, actual);
           errors++;
@@ -115,8 +119,8 @@ int main(int argc, char **argv) {
     for (i = 0; i < XDIM; i++) {
       for (j = SUB_YDIM; j < YDIM; j++) {
         const double actual   = *(loc_buf + i + j*XDIM);
-        const double expected = 1.0 + rank;
-        if (actual - expected > 1e-10) {
+        const double expected = -1.0;
+        if (fabs(actual - expected) > 1.0e-10) {
           printf("%d: Data validation failed at [%d, %d] expected=%f actual=%f\n",
               rank, j, i, expected, actual);
           errors++;
@@ -129,14 +133,7 @@ int main(int argc, char **argv) {
     MPI_Free_mem(win_buf);
     MPI_Free_mem(loc_buf);
 
+    MTest_Finalize( errors );
     MPI_Finalize();
-
-    if (errors == 0) {
-      if (rank == 0) 
-        printf(" No Errors\n");
-      return 0;
-    } else {
-      printf("%d: Fail\n", rank);
-      return 1;
-    }
+    return MTestReturnValue( errors );
 }

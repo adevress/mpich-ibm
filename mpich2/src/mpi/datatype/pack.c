@@ -27,7 +27,7 @@
 #define FUNCNAME MPIR_Pack_impl
 #undef FCNAME
 #define FCNAME MPIU_QUOTE(FUNCNAME)
-int MPIR_Pack_impl(void *inbuf,
+int MPIR_Pack_impl(const void *inbuf,
                    int incount,
                    MPI_Datatype datatype,
                    void *outbuf,
@@ -142,7 +142,7 @@ int MPIR_Pack_impl(void *inbuf,
 .N MPI_ERR_ARG
 .N MPI_ERR_OTHER
 @*/
-int MPI_Pack(void *inbuf,
+int MPI_Pack(MPICH2_CONST void *inbuf,
 	     int incount,
 	     MPI_Datatype datatype,
 	     void *outbuf,
@@ -219,7 +219,7 @@ int MPI_Pack(void *inbuf,
 	    if (*position < 0) {
 		MPIU_ERR_SETANDJUMP1(mpi_errno,MPI_ERR_ARG,
 				     "**argposneg","**argposneg %d",
-				     *position)
+				     *position);
 	    }
 	    else if (outcount < 0) {
 		MPIU_ERR_SETANDJUMP2(mpi_errno,MPI_ERR_ARG,"**argneg",

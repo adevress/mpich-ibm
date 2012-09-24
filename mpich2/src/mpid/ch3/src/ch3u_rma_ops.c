@@ -15,13 +15,29 @@ MPIU_INSTR_DURATION_DECL(wincreate_allgather);
 MPIU_INSTR_DURATION_DECL(winfree_rs);
 MPIU_INSTR_DURATION_DECL(winfree_complete);
 MPIU_INSTR_DURATION_DECL(rmaqueue_alloc);
+MPIU_INSTR_DURATION_DECL(rmaqueue_set);
 extern void MPIDI_CH3_RMA_InitInstr(void);
 #endif
-extern void MPIDI_CH3_RMA_SetAccImmed( int );
 
 #define MPIDI_PASSIVE_TARGET_DONE_TAG  348297
 #define MPIDI_PASSIVE_TARGET_RMA_TAG 563924
 
+/* 
+ * TODO:
+ * Explore use of alternate allocation mechanisms for the RMA queue elements
+ * (Because profiling has shown that queue element allocation/deallocation
+ * can take a significant amount of time in the RMA operations).
+ *    1: Current approach (uses perm memory malloc/free)
+ *    2: Preallocate and maintain list (use perm memory malloc, but
+ *       free onto window; use first; free on window free)
+ *    3: Preallocate and maintain list (use separate memory, but free to
+ *       thread/process; free in Finalize handler.  Option to use for
+ *       single-threaded to avoid thread overheads)
+ * Possible interface
+ *    int MPIDI_RMAListAlloc(MPIDI_RMA_ops **a,MPID_Win *win)
+ *    int MPIDI_RMAListFree(MPIDI_RMA_ops *a, MPID_Win *win)
+ *    return value is error code (e.g., allocation failure).
+ */
 
 #undef FUNCNAME
 #define FUNCNAME MPIDI_Win_create
@@ -44,18 +60,14 @@ int MPIDI_Win_create(void *base, MPI_Aint size, int disp_unit, MPID_Info *info,
     MPIU_UNREFERENCED_ARG(info);
 
     if(initRMAoptions) {
-	int rc;
 	MPIU_THREADSAFE_INIT_BLOCK_BEGIN(initRMAoptions);
-	/* Default is to enable the use of the immediate accumulate feature */
-	if (!MPL_env2bool( "MPICH_RMA_ACC_IMMED", &rc ))
-	    rc = 1;
-	MPIDI_CH3_RMA_SetAccImmed(rc);
 #ifdef USE_MPIU_INSTR
-    /* Define all instrumentation handle used in the CH3 RMA here*/
+	/* Define all instrumentation handles used in the CH3 RMA here*/
 	MPIU_INSTR_DURATION_INIT(wincreate_allgather,0,"WIN_CREATE:Allgather");
 	MPIU_INSTR_DURATION_INIT(winfree_rs,0,"WIN_FREE:ReduceScatterBlock");
 	MPIU_INSTR_DURATION_INIT(winfree_complete,0,"WIN_FREE:Complete");
 	MPIU_INSTR_DURATION_INIT(rmaqueue_alloc,0,"Allocate RMA Queue element");
+	MPIU_INSTR_DURATION_INIT(rmaqueue_set,0,"Set fields in RMA Queue element");
 	MPIDI_CH3_RMA_InitInstr();
 
 #endif    
@@ -118,6 +130,8 @@ int MPIDI_Win_create(void *base, MPI_Aint size, int disp_unit, MPID_Info *info,
 			mpi_errno, "tmp_buf");
     
     /* FIXME: This needs to be fixed for heterogeneous systems */
+    /* FIXME: If we wanted to validate the transfer as within range at the
+       origin, we'd also need the window size. */
     tmp_buf[3*rank]   = MPIU_PtrToAint(base);
     tmp_buf[3*rank+1] = (MPI_Aint) disp_unit;
     tmp_buf[3*rank+2] = (MPI_Aint) (*win_ptr)->handle;
@@ -225,15 +239,15 @@ int MPIDI_Win_free(MPID_Win **win_ptr)
 #define FUNCNAME MPIDI_Put
 #undef FCNAME
 #define FCNAME MPIDI_QUOTE(FUNCNAME)
-int MPIDI_Put(void *origin_addr, int origin_count, MPI_Datatype
+int MPIDI_Put(const void *origin_addr, int origin_count, MPI_Datatype
             origin_datatype, int target_rank, MPI_Aint target_disp,
             int target_count, MPI_Datatype target_datatype, MPID_Win *win_ptr)
 {
     int mpi_errno = MPI_SUCCESS;
-    int dt_contig, rank, predefined;
+    int dt_contig ATTRIBUTE((unused)), rank, predefined;
     MPIDI_RMA_ops *new_ptr;
     MPID_Datatype *dtp;
-    MPI_Aint dt_true_lb;
+    MPI_Aint dt_true_lb ATTRIBUTE((unused));
     MPIDI_msg_sz_t data_sz;
     MPIU_CHKPMEM_DECL(1);
     MPIDI_STATE_DECL(MPID_STATE_MPIDI_PUT);
@@ -271,17 +285,22 @@ int MPIDI_Put(void *origin_addr, int origin_count, MPI_Datatype
 	    win_ptr->rma_ops_list_head = new_ptr;
 	win_ptr->rma_ops_list_tail = new_ptr;
 
+	MPIU_INSTR_DURATION_START(rmaqueue_set);
 	/* FIXME: For contig and very short operations, use a streamlined op */
 	new_ptr->next = NULL;  
 	new_ptr->type = MPIDI_RMA_PUT;
-	new_ptr->origin_addr = origin_addr;
+        /* Cast away const'ness for the origin address, as the
+         * MPIDI_RMA_ops structure is used for both PUT and GET like
+         * operations */
+	new_ptr->origin_addr = (void *) origin_addr;
 	new_ptr->origin_count = origin_count;
 	new_ptr->origin_datatype = origin_datatype;
 	new_ptr->target_rank = target_rank;
 	new_ptr->target_disp = target_disp;
 	new_ptr->target_count = target_count;
 	new_ptr->target_datatype = target_datatype;
-	
+	MPIU_INSTR_DURATION_END(rmaqueue_set);
+
 	/* if source or target datatypes are derived, increment their
 	   reference counts */ 
 	MPIDI_CH3I_DATATYPE_IS_PREDEFINED(origin_datatype, predefined);
@@ -321,8 +340,8 @@ int MPIDI_Get(void *origin_addr, int origin_count, MPI_Datatype
 {
     int mpi_errno = MPI_SUCCESS;
     MPIDI_msg_sz_t data_sz;
-    int dt_contig, rank, predefined;
-    MPI_Aint dt_true_lb;
+    int dt_contig ATTRIBUTE((unused)), rank, predefined;
+    MPI_Aint dt_true_lb ATTRIBUTE((unused));
     MPIDI_RMA_ops *new_ptr;
     MPID_Datatype *dtp;
     MPIU_CHKPMEM_DECL(1);
@@ -362,6 +381,7 @@ int MPIDI_Get(void *origin_addr, int origin_count, MPI_Datatype
 	    win_ptr->rma_ops_list_head = new_ptr;
 	win_ptr->rma_ops_list_tail = new_ptr;
             
+	MPIU_INSTR_DURATION_START(rmaqueue_set);
 	/* FIXME: For contig and very short operations, use a streamlined op */
 	new_ptr->next = NULL;  
 	new_ptr->type = MPIDI_RMA_GET;
@@ -372,6 +392,7 @@ int MPIDI_Get(void *origin_addr, int origin_count, MPI_Datatype
 	new_ptr->target_disp = target_disp;
 	new_ptr->target_count = target_count;
 	new_ptr->target_datatype = target_datatype;
+	MPIU_INSTR_DURATION_END(rmaqueue_set);
 	
 	/* if source or target datatypes are derived, increment their
 	   reference counts */ 
@@ -406,15 +427,15 @@ int MPIDI_Get(void *origin_addr, int origin_count, MPI_Datatype
 #define FUNCNAME MPIDI_Accumulate
 #undef FCNAME
 #define FCNAME MPIDI_QUOTE(FUNCNAME)
-int MPIDI_Accumulate(void *origin_addr, int origin_count, MPI_Datatype
+int MPIDI_Accumulate(const void *origin_addr, int origin_count, MPI_Datatype
                     origin_datatype, int target_rank, MPI_Aint target_disp,
                     int target_count, MPI_Datatype target_datatype, MPI_Op op,
                     MPID_Win *win_ptr)
 {
     int mpi_errno=MPI_SUCCESS;
     MPIDI_msg_sz_t data_sz;
-    int dt_contig, rank, origin_predefined, target_predefined;
-    MPI_Aint dt_true_lb;
+    int dt_contig ATTRIBUTE((unused)), rank, origin_predefined, target_predefined;
+    MPI_Aint dt_true_lb ATTRIBUTE((unused));
     MPIDI_RMA_ops *new_ptr;
     MPID_Datatype *dtp;
     MPIU_CHKLMEM_DECL(2);
@@ -459,7 +480,9 @@ int MPIDI_Accumulate(void *origin_addr, int origin_count, MPI_Datatype
 	
 	if (origin_predefined && target_predefined)
 	{    
-	    (*uop)(origin_addr, (char *) win_ptr->base + win_ptr->disp_unit *
+            /* Cast away const'ness for origin_address in order to
+             * avoid changing the prototype for MPI_User_function */
+	    (*uop)((void *) origin_addr, (char *) win_ptr->base + win_ptr->disp_unit *
 		   target_disp, &target_count, &target_datatype);
 	}
 	else
@@ -472,7 +495,8 @@ int MPIDI_Accumulate(void *origin_addr, int origin_count, MPI_Datatype
 	    int vec_len, i, type_size, count;
 	    MPI_Datatype type;
 	    MPI_Aint true_lb, true_extent, extent;
-	    void *tmp_buf=NULL, *source_buf, *target_buf;
+	    void *tmp_buf=NULL, *target_buf;
+            const void *source_buf;
 	    
 	    if (origin_datatype != target_datatype)
 	    {
@@ -551,10 +575,13 @@ int MPIDI_Accumulate(void *origin_addr, int origin_count, MPI_Datatype
 
 	/* If predefined and contiguous, use a simplified element */
 	if (origin_predefined && target_predefined && enableShortACC) {
+	    MPIU_INSTR_DURATION_START(rmaqueue_set);
 	    new_ptr->next = NULL;
 	    new_ptr->type = MPIDI_RMA_ACC_CONTIG;
 	    /* Only the information needed for the contig/predefined acc */
-	    new_ptr->origin_addr = origin_addr;
+            /* Cast away const'ness for origin_address as
+             * MPIDI_RMA_ops contain both PUT and GET like ops */
+	    new_ptr->origin_addr = (void *) origin_addr;
 	    new_ptr->origin_count = origin_count;
 	    new_ptr->origin_datatype = origin_datatype;
 	    new_ptr->target_rank = target_rank;
@@ -562,12 +589,16 @@ int MPIDI_Accumulate(void *origin_addr, int origin_count, MPI_Datatype
 	    new_ptr->target_count = target_count;
 	    new_ptr->target_datatype = target_datatype;
 	    new_ptr->op = op;
+	    MPIU_INSTR_DURATION_END(rmaqueue_set);
 	    goto fn_exit;
 	}
 
+	MPIU_INSTR_DURATION_START(rmaqueue_set);
 	new_ptr->next = NULL;  
 	new_ptr->type = MPIDI_RMA_ACCUMULATE;
-	new_ptr->origin_addr = origin_addr;
+        /* Cast away const'ness for origin_address as MPIDI_RMA_ops
+         * contain both PUT and GET like ops */
+	new_ptr->origin_addr = (void *) origin_addr;
 	new_ptr->origin_count = origin_count;
 	new_ptr->origin_datatype = origin_datatype;
 	new_ptr->target_rank = target_rank;
@@ -575,6 +606,7 @@ int MPIDI_Accumulate(void *origin_addr, int origin_count, MPI_Datatype
 	new_ptr->target_count = target_count;
 	new_ptr->target_datatype = target_datatype;
 	new_ptr->op = op;
+	MPIU_INSTR_DURATION_END(rmaqueue_set);
 	
 	/* if source or target datatypes are derived, increment their
 	   reference counts */ 

@@ -13,12 +13,22 @@
 #include <gmr.h>
 
 
+/* -- begin weak symbols block -- */
+#if defined(HAVE_PRAGMA_WEAK)
+#  pragma weak ARMCI_Access_begin = PARMCI_Access_begin
+#elif defined(HAVE_PRAGMA_HP_SEC_DEF)
+#  pragma _HP_SECONDARY_DEF PARMCI_Access_begin ARMCI_Access_begin
+#elif defined(HAVE_PRAGMA_CRI_DUP)
+#  pragma _CRI duplicate ARMCI_Access_begin as PARMCI_Access_begin
+#endif
+/* -- end weak symbols block -- */
+
 /** Declare the start of a local access epoch.  This allows direct access to
   * data in local memory.
   *
   * @param[in] ptr Pointer to the allocation that will be accessed directly 
   */
-void ARMCI_Access_begin(void *ptr) {
+void PARMCI_Access_begin(void *ptr) {
   gmr_t *mreg;
 
   mreg = gmr_lookup(ptr, ARMCI_GROUP_WORLD.rank);
@@ -31,6 +41,16 @@ void ARMCI_Access_begin(void *ptr) {
 }
 
 
+/* -- begin weak symbols block -- */
+#if defined(HAVE_PRAGMA_WEAK)
+#  pragma weak ARMCI_Access_end = PARMCI_Access_end
+#elif defined(HAVE_PRAGMA_HP_SEC_DEF)
+#  pragma _HP_SECONDARY_DEF PARMCI_Access_end ARMCI_Access_end
+#elif defined(HAVE_PRAGMA_CRI_DUP)
+#  pragma _CRI duplicate ARMCI_Access_end as PARMCI_Access_end
+#endif
+/* -- end weak symbols block -- */
+
 /** Declare the end of a local access epoch.
   *
   * \note MPI-2 does not allow multiple locks at once, so you can have only one
@@ -39,7 +59,7 @@ void ARMCI_Access_begin(void *ptr) {
   *
   * @param[in] ptr Pointer to the allocation that was accessed directly 
   */
-void ARMCI_Access_end(void *ptr) {
+void PARMCI_Access_end(void *ptr) {
   gmr_t *mreg;
 
   mreg = gmr_lookup(ptr, ARMCI_GROUP_WORLD.rank);
@@ -95,6 +115,16 @@ int ARMCIX_Mode_get(void *ptr) {
 }
 
 
+/* -- begin weak symbols block -- */
+#if defined(HAVE_PRAGMA_WEAK)
+#  pragma weak ARMCI_Get = PARMCI_Get
+#elif defined(HAVE_PRAGMA_HP_SEC_DEF)
+#  pragma _HP_SECONDARY_DEF PARMCI_Get ARMCI_Get
+#elif defined(HAVE_PRAGMA_CRI_DUP)
+#  pragma _CRI duplicate ARMCI_Get as PARMCI_Get
+#endif
+/* -- end weak symbols block -- */
+
 /** One-sided get operation.
   *
   * @param[in] src    Source address (remote)
@@ -103,31 +133,28 @@ int ARMCIX_Mode_get(void *ptr) {
   * @param[in] target Process id to target
   * @return           0 on success, non-zero on failure
   */
-int ARMCI_Get(void *src, void *dst, int size, int target) {
+int PARMCI_Get(void *src, void *dst, int size, int target) {
   gmr_t *src_mreg, *dst_mreg;
 
   src_mreg = gmr_lookup(src, target);
-  dst_mreg = gmr_lookup(dst, ARMCI_GROUP_WORLD.rank);
+
+  /* If NOGUARD is set, assume the buffer is not shared */
+  if (ARMCII_GLOBAL_STATE.shr_buf_method != ARMCII_SHR_BUF_NOGUARD)
+    dst_mreg = gmr_lookup(dst, ARMCI_GROUP_WORLD.rank);
+  else
+    dst_mreg = NULL;
 
   ARMCII_Assert_msg(src_mreg != NULL, "Invalid remote pointer");
 
   /* Local operation */
-  if (target == ARMCI_GROUP_WORLD.rank) {
-    if (ARMCII_GLOBAL_STATE.shr_buf_method != ARMCII_SHR_BUF_NOGUARD) {
-      if (dst_mreg) gmr_dla_lock(dst_mreg);  /* FIXME: Is this a hold-while wait?  Probably need an extra copy to be safe.. */
-      gmr_dla_lock(src_mreg);
-    }
-
+  if (target == ARMCI_GROUP_WORLD.rank && dst_mreg == NULL) {
+    gmr_dla_lock(src_mreg);
     ARMCI_Copy(src, dst, size);
-    
-    if (ARMCII_GLOBAL_STATE.shr_buf_method != ARMCII_SHR_BUF_NOGUARD) {
-      if (dst_mreg) gmr_dla_unlock(dst_mreg);
-      gmr_dla_unlock(src_mreg);
-    }
+    gmr_dla_unlock(src_mreg);
   }
 
   /* Origin buffer is private */
-  else if (dst_mreg == NULL || ARMCII_GLOBAL_STATE.shr_buf_method == ARMCII_SHR_BUF_NOGUARD) {
+  else if (dst_mreg == NULL) {
     gmr_lock(src_mreg, target);
     gmr_get(src_mreg, src, dst, size, target);
     gmr_unlock(src_mreg, target);
@@ -156,6 +183,16 @@ int ARMCI_Get(void *src, void *dst, int size, int target) {
 }
 
 
+/* -- begin weak symbols block -- */
+#if defined(HAVE_PRAGMA_WEAK)
+#  pragma weak ARMCI_Put = PARMCI_Put
+#elif defined(HAVE_PRAGMA_HP_SEC_DEF)
+#  pragma _HP_SECONDARY_DEF PARMCI_Put ARMCI_Put
+#elif defined(HAVE_PRAGMA_CRI_DUP)
+#  pragma _CRI duplicate ARMCI_Put as PARMCI_Put
+#endif
+/* -- end weak symbols block -- */
+
 /** One-sided put operation.
   *
   * @param[in] src    Source address (remote)
@@ -164,31 +201,28 @@ int ARMCI_Get(void *src, void *dst, int size, int target) {
   * @param[in] target Process id to target
   * @return           0 on success, non-zero on failure
   */
-int ARMCI_Put(void *src, void *dst, int size, int target) {
+int PARMCI_Put(void *src, void *dst, int size, int target) {
   gmr_t *src_mreg, *dst_mreg;
 
-  src_mreg = gmr_lookup(src, ARMCI_GROUP_WORLD.rank);
   dst_mreg = gmr_lookup(dst, target);
+
+  /* If NOGUARD is set, assume the buffer is not shared */
+  if (ARMCII_GLOBAL_STATE.shr_buf_method != ARMCII_SHR_BUF_NOGUARD)
+    src_mreg = gmr_lookup(src, ARMCI_GROUP_WORLD.rank);
+  else
+    src_mreg = NULL;
 
   ARMCII_Assert_msg(dst_mreg != NULL, "Invalid remote pointer");
 
   /* Local operation */
-  if (target == ARMCI_GROUP_WORLD.rank) {
-    if (ARMCII_GLOBAL_STATE.shr_buf_method != ARMCII_SHR_BUF_NOGUARD) {
-      gmr_dla_lock(dst_mreg);
-      if (src_mreg) gmr_dla_lock(src_mreg);
-    }
-
+  if (target == ARMCI_GROUP_WORLD.rank && src_mreg == NULL) {
+    gmr_dla_lock(dst_mreg);
     ARMCI_Copy(src, dst, size);
-    
-    if (ARMCII_GLOBAL_STATE.shr_buf_method != ARMCII_SHR_BUF_NOGUARD) {
-      gmr_dla_unlock(dst_mreg);
-      if (src_mreg) gmr_dla_unlock(src_mreg);
-    }
+    gmr_dla_unlock(dst_mreg);
   }
 
   /* Origin buffer is private */
-  else if (src_mreg == NULL || ARMCII_GLOBAL_STATE.shr_buf_method == ARMCII_SHR_BUF_NOGUARD) {
+  else if (src_mreg == NULL) {
     gmr_lock(dst_mreg, target);
     gmr_put(dst_mreg, src, dst, size, target);
     gmr_unlock(dst_mreg, target);
@@ -218,6 +252,16 @@ int ARMCI_Put(void *src, void *dst, int size, int target) {
 }
 
 
+/* -- begin weak symbols block -- */
+#if defined(HAVE_PRAGMA_WEAK)
+#  pragma weak ARMCI_Acc = PARMCI_Acc
+#elif defined(HAVE_PRAGMA_HP_SEC_DEF)
+#  pragma _HP_SECONDARY_DEF PARMCI_Acc ARMCI_Acc
+#elif defined(HAVE_PRAGMA_CRI_DUP)
+#  pragma _CRI duplicate ARMCI_Acc as PARMCI_Acc
+#endif
+/* -- end weak symbols block -- */
+
 /** One-sided accumulate operation.
   *
   * @param[in] datatype ARMCI data type for the accumulate operation (see armci.h)
@@ -229,13 +273,18 @@ int ARMCI_Put(void *src, void *dst, int size, int target) {
   * @param[in] proc     Process id to target
   * @return             0 on success, non-zero on failure
   */
-int ARMCI_Acc(int datatype, void *scale, void *src, void *dst, int bytes, int proc) {
+int PARMCI_Acc(int datatype, void *scale, void *src, void *dst, int bytes, int proc) {
   void  *src_buf;
   int    count, type_size, scaled, src_is_locked = 0;
   MPI_Datatype type;
   gmr_t *src_mreg, *dst_mreg;
 
-  src_mreg = gmr_lookup(src, ARMCI_GROUP_WORLD.rank);
+  /* If NOGUARD is set, assume the buffer is not shared */
+  if (ARMCII_GLOBAL_STATE.shr_buf_method != ARMCII_SHR_BUF_NOGUARD)
+    src_mreg = gmr_lookup(src, ARMCI_GROUP_WORLD.rank);
+  else
+    src_mreg = NULL;
+
   dst_mreg = gmr_lookup(dst, proc);
 
   ARMCII_Assert_msg(dst_mreg != NULL, "Invalid remote pointer");
@@ -245,7 +294,7 @@ int ARMCI_Acc(int datatype, void *scale, void *src, void *dst, int bytes, int pr
 
   scaled = ARMCII_Buf_acc_is_scaled(datatype, scale);
 
-  if (src_mreg && ARMCII_GLOBAL_STATE.shr_buf_method != ARMCII_SHR_BUF_NOGUARD) {
+  if (src_mreg) {
     gmr_dla_lock(src_mreg);
     src_is_locked = 1;
   }
@@ -297,6 +346,16 @@ int ARMCI_Acc(int datatype, void *scale, void *src, void *dst, int bytes, int pr
 }
 
 
+/* -- begin weak symbols block -- */
+#if defined(HAVE_PRAGMA_WEAK)
+#  pragma weak ARMCI_Put_flag = PARMCI_Put_flag
+#elif defined(HAVE_PRAGMA_HP_SEC_DEF)
+#  pragma _HP_SECONDARY_DEF PARMCI_Put_flag ARMCI_Put_flag
+#elif defined(HAVE_PRAGMA_CRI_DUP)
+#  pragma _CRI duplicate ARMCI_Put_flag as PARMCI_Put_flag
+#endif
+/* -- end weak symbols block -- */
+
 /** One-sided copy of data from the source to the destination.  Set a flag on
   * the remote process when the transfer is complete.
   *
@@ -308,10 +367,10 @@ int ARMCI_Acc(int datatype, void *scale, void *src, void *dst, int bytes, int pr
   * @param[in] proc  Process id of the target
   * @return          0 on success, non-zero on failure
   */
-int ARMCI_Put_flag(void *src, void* dst, int size, int *flag, int value, int proc) {
-  ARMCI_Put(src, dst, size, proc);
-  ARMCI_Fence(proc);
-  ARMCI_Put(&value, flag, sizeof(int), proc);
+int PARMCI_Put_flag(void *src, void* dst, int size, int *flag, int value, int proc) {
+  PARMCI_Put(src, dst, size, proc);
+  PARMCI_Fence(proc);
+  PARMCI_Put(&value, flag, sizeof(int), proc);
 
   return 0;
 }

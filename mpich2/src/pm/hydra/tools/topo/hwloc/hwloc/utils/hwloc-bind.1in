@@ -1,5 +1,5 @@
 .\" -*- nroff -*-
-.\" Copyright © 2009-2010 INRIA.  All rights reserved.
+.\" Copyright © 2009-2010 inria.  All rights reserved.
 .\" Copyright © 2010 Université of Bordeaux
 .\" Copyright © 2009-2010 Cisco Systems, Inc.  All rights reserved.
 .\" See COPYING in top-level directory.
@@ -28,12 +28,17 @@ Use following arguments for CPU binding (default).
 .TP
 \fB\-\-membind\fR
 Use following arguments for memory binding.
+If \fB\-\-mempolicy\fR is not also given,
+the default policy is bind.
 .TP
 \fB\-\-mempolicy\fR <policy>
 Change the memory binding policy.
 The available policies are default, firsttouch, bind, interleave
 replicate and nexttouch.
-If a binding set is given, the default policy is bind.
+This option is only meaningful when an actual binding is also given
+with \fB\-\-membind\fR.
+If \fB\-\-membind\fR is given without \fB\-\-mempolicy\fR,
+the default policy is bind.
 .TP
 \fB\-\-get\fR
 Report the current bindings.
@@ -66,8 +71,10 @@ take OS/physical indexes instead of logical indexes
 take logical indexes instead of physical/OS indexes (default)
 .TP
 \fB\-\-taskset\fR
-Manipulate CPU set strings in the format recognized by the taskset command-line
+Display CPU set strings in the format recognized by the taskset command-line
 program instead of hwloc-specific CPU set string format.
+This option has no impact on the format of input CPU set strings,
+both formats are always accepted.
 .TP
 \fB\-v\fR
 Verbose output.
@@ -150,6 +157,14 @@ To run on the first socket, except on its second and fifth cores:
 To run anywhere except on the first socket:
 
     hwloc-bind all ~socket:0 echo hello
+
+To run on a core near the network interface named eth0:
+
+    hwloc-bind os=eth0 echo hello
+
+To run on a core near the PCI device whose bus ID is 0000:01:02.0:
+
+    hwloc-bind pci=0000:01:02.0 echo hello
 
 To bind memory on second memory node and run on first node (when supported by the OS):
 

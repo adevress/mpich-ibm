@@ -11,7 +11,7 @@ mpdman does NOT run as a standalone console program;
 from time import ctime
 __author__ = "Ralph Butler and Rusty Lusk"
 __date__ = ctime()
-__version__ = "$Revision$"
+__version__ = "$Revision: 1.160 $"
 __credits__ = ""
 
 

@@ -1,4 +1,4 @@
-# Copyright © 2009-2010 INRIA.  All rights reserved.
+# Copyright © 2009-2010 inria.  All rights reserved.
 # Copyright © 2009-2011 Université Bordeaux 1
 # Copyright © 2009-2010 Cisco Systems, Inc.  All rights reserved.
 # See COPYING in top-level directory.
@@ -11,12 +11,15 @@ AM_LDFLAGS = $(HWLOC_LDFLAGS)
 # By default, it shows the output of `lstopo - -v'.
 sysfs_outputs = \
 		2amd64-2n.output \
+		2i386-2t-hugepagesizecount.xml.output \
 		2ps3-2t.output \
 		4ia64-4s.output \
 		4ppc-4c.output \
 		256ppc-8n8s4t.output \
 		256ppc-8n8s4t-nocache.output \
 		256ppc-8n8s4t-nosys.output \
+		32amd64-4s2n4c-cgroup.output \
+		32amd64-4s2n4c-cgroup.xml.output \
 		32ppc-4n4c2c.output \
 		8amd64-4n2c.output  \
 		8em64t-4c2t.output \
@@ -42,22 +45,29 @@ sysfs_outputs = \
 		48amd64-4d2n6c-sparse.output \
 		64fake-4n2s2ca2c2t.output \
 		96em64t-4n4d3ca2co.output \
+		96em64t-4n4d3ca2co-forcecpuinfo.output \
 		128ia64-17n4s2c.output \
 		256ia64-64n2s2c.output \
 		4qs22-2s2t.output \
 		2s390-2c.output \
-		1alpha.output
+		20s390-2g6s4c.output \
+		1alpha.output \
+		2arm-2c.output
 
 # Each output `xyz.output' must have a corresponding tarball `xyz.tar.bz2'
 # or a corresponding `xyz.source' specifying which tarball to use
 sysfs_tarballs = \
 		2amd64-2n.tar.bz2 \
+		2i386-2t-hugepagesizecount.tar.bz2 \
+		2i386-2t-hugepagesizecount.xml.source \
 		2ps3-2t.tar.bz2 \
 		4ia64-4s.tar.bz2 \
 		4ppc-4c.tar.bz2 \
 		256ppc-8n8s4t.tar.bz2 \
 		256ppc-8n8s4t-nocache.source \
 		256ppc-8n8s4t-nosys.source \
+		32amd64-4s2n4c-cgroup.tar.bz2 \
+		32amd64-4s2n4c-cgroup.xml.source \
 		32ppc-4n4c2c.tar.bz2 \
 		8amd64-4n2c.tar.bz2  \
 		8em64t-4c2t.tar.bz2 \
@@ -83,13 +93,16 @@ sysfs_tarballs = \
 		48amd64-4d2n6c-sparse.tar.bz2 \
 		64fake-4n2s2ca2c2t.tar.bz2 \
 		96em64t-4n4d3ca2co.tar.bz2 \
+		96em64t-4n4d3ca2co-forcecpuinfo.source \
 		128ia64-17n4s2c.tar.bz2 \
 		256ia64-64n2s2c.tar.bz2 \
 		4qs22-2s2t.tar.bz2 \
 		2s390-2c.tar.bz2 \
-		1alpha.tar.bz2
+		20s390-2g6s4c.tar.bz2 \
+		1alpha.tar.bz2 \
+		2arm-2c.tar.bz2
 
-# Each `xyz.output' may have a corresponding exclude `xyz.exclude'
+# Each output `xyz.output' may have a corresponding exclude `xyz.exclude'
 sysfs_excludes = \
 		256ppc-8n8s4t-nocache.exclude \
 		256ppc-8n8s4t-nosys.exclude
@@ -97,13 +110,23 @@ sysfs_excludes = \
 # Each output `xyz.output' may have a corresponding `xyz.options'
 # file modifying the behavior of lstopo
 sysfs_options = \
+		2i386-2t-hugepagesizecount.xml.options \
 		16amd64-8n2c-cpusets.xml.options \
 		16amd64-8n2c-cpusets_noadmin.options \
 		16em64t-4s2c2t-offlines.xml.options \
 		16em64t-4s2c2t-offlines_noadmin.options \
 		16em64t-4s2c2t_ncaches.options \
 		16em64t-4s2c2t_merge.options \
-		16em64t-4s2c2t.xml.options
+		16em64t-4s2c2t.xml.options \
+		32amd64-4s2n4c-cgroup.xml.options
+
+# Each output `xyz.output' may have a corresponding `xyz.env'
+# modifying the environment of lsopo
+sysfs_envs = \
+		2i386-2t-hugepagesizecount.xml.env \
+		32amd64-4s2n4c-cgroup.env \
+		32amd64-4s2n4c-cgroup.xml.env \
+		96em64t-4n4d3ca2co-forcecpuinfo.env
 
 if HWLOC_BUILD_TESTS
 if HWLOC_HAVE_OPENAT
@@ -113,7 +136,7 @@ endif HWLOC_HAVE_BUNZIPP
 endif HWLOC_HAVE_OPENAT
 endif HWLOC_BUILD_TESTS
 
-EXTRA_DIST = $(sysfs_outputs) $(sysfs_tarballs) $(sysfs_excludes) $(sysfs_options)
+EXTRA_DIST = $(sysfs_outputs) $(sysfs_tarballs) $(sysfs_excludes) $(sysfs_options) $(sysfs_envs)
 
 TESTS_ENVIRONMENT = $(builddir)/test-topology.sh
 
@@ -121,6 +144,7 @@ TESTS_ENVIRONMENT = $(builddir)/test-topology.sh
 bin_SCRIPTS = hwloc-gather-topology
 
 install-exec-hook:
-	$(SED) -e 's/abs_top_builddir\/utils/bindir/' -e '/abs_top_builddir/d' -i $(DESTDIR)$(bindir)/hwloc-gather-topology
+	$(SED) -e 's/abs_top_builddir\/utils/bindir/' -e '/abs_top_builddir/d' $(DESTDIR)$(bindir)/hwloc-gather-topology > $(DESTDIR)$(bindir)/hwloc-gather-topology.tmp && mv -f $(DESTDIR)$(bindir)/hwloc-gather-topology.tmp $(DESTDIR)$(bindir)/hwloc-gather-topology
+	chmod +x $(DESTDIR)$(bindir)/hwloc-gather-topology
 
 SUBDIRS = gather

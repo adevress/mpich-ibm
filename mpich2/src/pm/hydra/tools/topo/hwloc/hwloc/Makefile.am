@@ -1,4 +1,4 @@
-# Copyright © 2009      INRIA.  All rights reserved.
+# Copyright © 2009      inria.  All rights reserved.
 # Copyright © 2009      Université Bordeaux 1
 # Copyright © 2009-2010 Cisco Systems, Inc.  All rights reserved.
 # See COPYING in top-level directory.
@@ -9,7 +9,7 @@ ACLOCAL_AMFLAGS = -I ./config
 
 SUBDIRS = src include
 if HWLOC_BUILD_STANDALONE
-SUBDIRS += utils tests doc
+# SUBDIRS += utils tests doc
 endif
 
 # Do not let automake automatically add the non-standalone dirs to the
@@ -20,6 +20,11 @@ DIST_SUBDIRS = $(SUBDIRS)
 if HWLOC_BUILD_STANDALONE
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = hwloc.pc
+endif
+
+# Only install the valgrind suppressions file if we're building in standalone mode
+if HWLOC_BUILD_STANDALONE
+dist_pkgdata_DATA = contrib/hwloc-valgrind.supp
 endif
 
 #

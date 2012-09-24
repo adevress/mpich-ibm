@@ -7,6 +7,10 @@
 #include "mpiimpl.h"
 #include "topo.h"
 
+static int unweighted_dummy = 0x46618;
+/* cannot ==NULL, would be ambiguous */
+int * const MPI_UNWEIGHTED = &unweighted_dummy;
+
 /* Keyval for topology information */
 static int MPIR_Topology_keyval = MPI_KEYVAL_INVALID;  
 
@@ -187,8 +191,10 @@ fn_exit:
     /* Return mpi_errno in case one of the copy array functions failed */
     return mpi_errno;
 fn_fail:
+    /* --BEGIN ERROR HANDLING-- */
     MPIU_CHKPMEM_REAP();
     goto fn_exit;
+    /* --END ERROR HANDLING-- */
 }
 
 #undef FUNCNAME

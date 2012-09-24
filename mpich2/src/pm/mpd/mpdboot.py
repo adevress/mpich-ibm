@@ -52,7 +52,7 @@ warnings.filterwarnings('ignore', '.*the popen2 module is deprecated.*', Depreca
 from time import ctime
 __author__ = "Ralph Butler and Rusty Lusk"
 __date__ = ctime()
-__version__ = "$Revision$"
+__version__ = "$Revision: 1.49 $"
 __credits__ = ""
 
 import re

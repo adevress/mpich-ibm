@@ -52,9 +52,12 @@ int MPID_nem_mx_cancel_send(MPIDI_VC_t *vc, MPID_Request *sreq);
 int MPID_nem_mx_cancel_recv(MPIDI_VC_t *vc, MPID_Request *rreq);
 int MPID_nem_mx_probe(MPIDI_VC_t *vc,  int source, int tag, MPID_Comm *comm, int context_offset, MPI_Status *status);
 int MPID_nem_mx_iprobe(MPIDI_VC_t *vc,  int source, int tag, MPID_Comm *comm, int context_offset, int *flag, MPI_Status *status);
+int MPID_nem_mx_improbe(MPIDI_VC_t *vc,  int source, int tag, MPID_Comm *comm, int context_offset, int *flag, 
+			MPID_Request **message, MPI_Status *status);
 
 int MPID_nem_mx_anysource_iprobe(int tag, MPID_Comm *comm, int context_offset, int *flag, MPI_Status *status);
-
+int MPID_nem_mx_anysource_improbe(int tag, MPID_Comm *comm, int context_offset, int *flag,
+				  MPID_Request **message,MPI_Status *status);
 /* Callback routine for unex msgs in MX */
 mx_unexp_handler_action_t MPID_nem_mx_get_adi_msg(void *context,mx_endpoint_addr_t source,
 						  uint64_t match_info,uint32_t length,void *data);
@@ -72,7 +75,6 @@ int MPID_nem_mx_process_rdtype(MPID_Request **rreq_p, MPID_Datatype * dt_ptr, MP
 int MPID_nem_mx_send_conn_info (MPIDI_VC_t *vc);
 
 extern mx_endpoint_t MPID_nem_mx_local_endpoint;
-extern int           MPID_nem_mx_pending_send_req;
 extern uint32_t      MPID_NEM_MX_FILTER;
 extern uint64_t      MPID_nem_mx_local_nic_id;
 extern uint32_t      MPID_nem_mx_local_endpoint_id;
@@ -90,7 +92,8 @@ typedef struct
     /* The following is used to actually send messages */
     mx_endpoint_addr_t remote_endpoint_addr;
     /* Poster recv pointer for anysource management*/
-    int             (* recv_posted)(MPID_Request *req, void *vc);
+    /* int             (* recv_posted)(MPID_Request *req, void *vc); */
+    int                pending_sends;
 } MPID_nem_mx_vc_area;
 
 /* accessor macro to private fields in VC */
@@ -102,8 +105,10 @@ typedef struct
 typedef struct 
 {
     mx_request_t mx_request; 
+    int          deltmpbuf;
 } MPID_nem_mx_req_area;
 
+#define TMP_DEL_VALUE 111
 /* accessor macro to private fields in REQ */
 #define REQ_FIELD(reqp, field) (((MPID_nem_mx_req_area *)((reqp)->ch.netmod_area.padding))->field)
 
@@ -112,7 +117,7 @@ struct MPID_nem_mx_internal_req
 {
    MPIU_OBJECT_HEADER; /* adds (unused) handle and ref_count fields */
    MPID_Request_kind_t    kind;       /* used   */
-   MPIDI_CH3_PktGeneric_t pending_pkt;
+   MPIDI_CH3_Pkt_t        pending_pkt;
    MPIDI_VC_t            *vc;
    void                  *tmpbuf;
    MPIDI_msg_sz_t         tmpbuf_sz;

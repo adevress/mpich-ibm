@@ -12,6 +12,15 @@
 #include <debug.h>
 #include <gmr.h>
 
+/* -- begin weak symbols block -- */
+#if defined(HAVE_PRAGMA_WEAK)
+#  pragma weak ARMCI_Init = PARMCI_Init
+#elif defined(HAVE_PRAGMA_HP_SEC_DEF)
+#  pragma _HP_SECONDARY_DEF PARMCI_Init ARMCI_Init
+#elif defined(HAVE_PRAGMA_CRI_DUP)
+#  pragma _CRI duplicate ARMCI_Init as PARMCI_Init
+#endif
+/* -- end weak symbols block -- */
 
 /** Initialize ARMCI.  MPI must be initialized before this can be called.  It
   * invalid to make ARMCI calls before initialization.  Collective on the world
@@ -19,7 +28,7 @@
   *
   * @return            Zero on success
   */
-int ARMCI_Init(void) {
+int PARMCI_Init(void) {
   char *var;
 
   /* GA/TCGMSG end up calling ARMCI_Init() multiple times. */
@@ -53,13 +62,13 @@ int ARMCI_Init(void) {
 
   /* Group formation options */
 
+  ARMCII_GLOBAL_STATE.cache_rank_translation=ARMCII_Getenv_bool("ARMCI_CACHE_RANK_TRANSLATION", 1);
   if (ARMCII_Getenv("ARMCI_NONCOLLECTIVE_GROUPS"))
     ARMCII_GLOBAL_STATE.noncollective_groups = ARMCII_Getenv_bool("ARMCI_NONCOLLECTIVE_GROUPS", 0);
 
   /* Check for IOV flags */
 
   ARMCII_GLOBAL_STATE.iov_checks           = ARMCII_Getenv_bool("ARMCI_IOV_CHECKS", 0);
-  ARMCII_GLOBAL_STATE.no_mpi_bottom        = ARMCII_Getenv_bool("ARMCI_IOV_NO_MPI_BOTTOM", 0);
   ARMCII_GLOBAL_STATE.iov_batched_limit    = ARMCII_Getenv_int("ARMCI_IOV_BATCHED_LIMIT", 0);
 
   if (ARMCII_GLOBAL_STATE.iov_batched_limit < 0) {
@@ -117,12 +126,7 @@ int ARMCI_Init(void) {
   /* Setup groups and communicators */
 
   MPI_Comm_dup(MPI_COMM_WORLD, &ARMCI_GROUP_WORLD.comm);
-  MPI_Comm_rank(ARMCI_GROUP_WORLD.comm, &ARMCI_GROUP_WORLD.rank);
-  MPI_Comm_size(ARMCI_GROUP_WORLD.comm, &ARMCI_GROUP_WORLD.size);
-
-  if (ARMCII_GLOBAL_STATE.noncollective_groups)
-    MPI_Comm_dup(MPI_COMM_WORLD, &ARMCI_GROUP_WORLD.noncoll_pgroup_comm);
-
+  ARMCII_Group_init_from_comm(&ARMCI_GROUP_WORLD);
   ARMCI_GROUP_DEFAULT = ARMCI_GROUP_WORLD;
 
   /* Create GOP operators */
@@ -143,31 +147,26 @@ int ARMCI_Init(void) {
 
       printf("ARMCI-MPI initialized with %d process%s, MPI v%d.%d\n", ARMCI_GROUP_WORLD.size, ARMCI_GROUP_WORLD.size > 1 ? "es":"", major, minor);
 #ifdef NO_SEATBELTS
-      printf("  NO_SEATBELTS         = ENABLED\n");
+      printf("  NO_SEATBELTS           = ENABLED\n");
 #endif
-      printf("  STRIDED_METHOD       = %s\n", ARMCII_Strided_methods_str[ARMCII_GLOBAL_STATE.strided_method]);
-      printf("  IOV_METHOD           = %s\n", ARMCII_Iov_methods_str[ARMCII_GLOBAL_STATE.iov_method]);
+      printf("  STRIDED_METHOD         = %s\n", ARMCII_Strided_methods_str[ARMCII_GLOBAL_STATE.strided_method]);
+      printf("  IOV_METHOD             = %s\n", ARMCII_Iov_methods_str[ARMCII_GLOBAL_STATE.iov_method]);
 
       if (   ARMCII_GLOBAL_STATE.iov_method == ARMCII_IOV_BATCHED
           || ARMCII_GLOBAL_STATE.iov_method == ARMCII_IOV_AUTO)
       {
         if (ARMCII_GLOBAL_STATE.iov_batched_limit > 0)
-          printf("  IOV_BATCHED_LIMIT    = %d\n", ARMCII_GLOBAL_STATE.iov_batched_limit);
+          printf("  IOV_BATCHED_LIMIT      = %d\n", ARMCII_GLOBAL_STATE.iov_batched_limit);
         else
-          printf("  IOV_BATCHED_LIMIT    = UNLIMITED\n");
+          printf("  IOV_BATCHED_LIMIT      = UNLIMITED\n");
       }
 
-      if (   ARMCII_GLOBAL_STATE.iov_method == ARMCII_IOV_DIRECT
-          || ARMCII_GLOBAL_STATE.iov_method == ARMCII_IOV_AUTO)
-      {
-        printf("  IOV_NO_MPI_BOTTOM    = %s\n", ARMCII_GLOBAL_STATE.no_mpi_bottom        ? "TRUE" : "FALSE");
-      }
-
-      printf("  IOV_CHECKS           = %s\n", ARMCII_GLOBAL_STATE.iov_checks             ? "TRUE" : "FALSE");
-      printf("  SHR_BUF_METHOD       = %s\n", ARMCII_Shr_buf_methods_str[ARMCII_GLOBAL_STATE.shr_buf_method]);
-      printf("  NONCOLLECTIVE_GROUPS = %s\n", ARMCII_GLOBAL_STATE.noncollective_groups   ? "TRUE" : "FALSE");
-      printf("  DEBUG_ALLOC          = %s\n", ARMCII_GLOBAL_STATE.debug_alloc            ? "TRUE" : "FALSE");
-      printf("  FLUSH_BARRIERS       = %s\n", ARMCII_GLOBAL_STATE.debug_flush_barriers   ? "TRUE" : "FALSE");
+      printf("  IOV_CHECKS             = %s\n", ARMCII_GLOBAL_STATE.iov_checks             ? "TRUE" : "FALSE");
+      printf("  SHR_BUF_METHOD         = %s\n", ARMCII_Shr_buf_methods_str[ARMCII_GLOBAL_STATE.shr_buf_method]);
+      printf("  NONCOLLECTIVE_GROUPS   = %s\n", ARMCII_GLOBAL_STATE.noncollective_groups   ? "TRUE" : "FALSE");
+      printf("  CACHE_RANK_TRANSLATION = %s\n", ARMCII_GLOBAL_STATE.cache_rank_translation ? "TRUE" : "FALSE");
+      printf("  DEBUG_ALLOC            = %s\n", ARMCII_GLOBAL_STATE.debug_alloc            ? "TRUE" : "FALSE");
+      printf("  FLUSH_BARRIERS         = %s\n", ARMCII_GLOBAL_STATE.debug_flush_barriers   ? "TRUE" : "FALSE");
       printf("\n");
       fflush(NULL);
     }
@@ -179,6 +178,16 @@ int ARMCI_Init(void) {
 }
 
 
+/* -- begin weak symbols block -- */
+#if defined(HAVE_PRAGMA_WEAK)
+#  pragma weak ARMCI_Init_args = PARMCI_Init_args
+#elif defined(HAVE_PRAGMA_HP_SEC_DEF)
+#  pragma _HP_SECONDARY_DEF PARMCI_Init_args ARMCI_Init_args
+#elif defined(HAVE_PRAGMA_CRI_DUP)
+#  pragma _CRI duplicate ARMCI_Init_args as PARMCI_Init_args
+#endif
+/* -- end weak symbols block -- */
+
 /** Initialize ARMCI.  MPI must be initialized before this can be called.  It
   * is invalid to make ARMCI calls before initialization.  Collective on the
   * world group.
@@ -187,17 +196,46 @@ int ARMCI_Init(void) {
   * @param[inout] argv Command line arguments
   * @return            Zero on success
   */
-int ARMCI_Init_args(int *argc, char ***argv) {
-  return ARMCI_Init();
+int PARMCI_Init_args(int *argc, char ***argv) {
+  return PARMCI_Init();
 }
 
+
+/* -- begin weak symbols block -- */
+#if defined(HAVE_PRAGMA_WEAK)
+#  pragma weak ARMCI_Initialized = PARMCI_Initialized
+#elif defined(HAVE_PRAGMA_HP_SEC_DEF)
+#  pragma _HP_SECONDARY_DEF PARMCI_Initialized ARMCI_Initialized
+#elif defined(HAVE_PRAGMA_CRI_DUP)
+#  pragma _CRI duplicate ARMCI_Initialized as PARMCI_Initialized
+#endif
+/* -- end weak symbols block -- */
+
+/** Check if ARMCI has been initialized.
+  *
+  * @return Non-zero if ARMCI has been initialized.
+  */
+int PARMCI_Initialized(void) {
+  return ARMCII_GLOBAL_STATE.init_count > 0;
+}
+
+
+/* -- begin weak symbols block -- */
+#if defined(HAVE_PRAGMA_WEAK)
+#  pragma weak ARMCI_Finalize = PARMCI_Finalize
+#elif defined(HAVE_PRAGMA_HP_SEC_DEF)
+#  pragma _HP_SECONDARY_DEF PARMCI_Finalize ARMCI_Finalize
+#elif defined(HAVE_PRAGMA_CRI_DUP)
+#  pragma _CRI duplicate ARMCI_Finalize as PARMCI_Finalize
+#endif
+/* -- end weak symbols block -- */
 
 /** Finalize ARMCI.  Must be called before MPI is finalized.  ARMCI calls are
   * not valid after finalization.  Collective on world group.
   *
   * @return            Zero on success
   */
-int ARMCI_Finalize(void) {
+int PARMCI_Finalize(void) {
   int nfreed;
 
   /* GA/TCGMSG end up calling ARMCI_Finalize() multiple times. */
@@ -227,10 +265,7 @@ int ARMCI_Finalize(void) {
 
   ARMCI_Cleanup();
 
-  MPI_Comm_free(&ARMCI_GROUP_WORLD.comm);
-
-  if (ARMCII_GLOBAL_STATE.noncollective_groups)
-    MPI_Comm_free(&ARMCI_GROUP_WORLD.noncoll_pgroup_comm);
+  ARMCI_Group_free(&ARMCI_GROUP_WORLD);
 
   return 0;
 }

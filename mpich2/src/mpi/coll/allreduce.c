@@ -99,8 +99,10 @@ static inline int allreduce_intra_or_coll_fn(void *sendbuf, void *recvbuf, int c
     int mpi_errno = MPI_SUCCESS;
 
     if (comm_ptr->coll_fns != NULL && comm_ptr->coll_fns->Allreduce != NULL) {
+	/* --BEGIN USEREXTENSION-- */
 	mpi_errno = comm_ptr->coll_fns->Allreduce(sendbuf, recvbuf, count, datatype, op, comm_ptr, errflag);
         if (mpi_errno) MPIU_ERR_POP(mpi_errno);
+	/* --END USEREXTENSION-- */
     } else {
         mpi_errno = MPIR_Allreduce_intra(sendbuf, recvbuf, count, datatype, op, comm_ptr, errflag);
         if (mpi_errno) MPIU_ERR_POP(mpi_errno);
@@ -120,7 +122,7 @@ static inline int allreduce_intra_or_coll_fn(void *sendbuf, void *recvbuf, int c
 #undef FCNAME
 #define FCNAME MPIU_QUOTE(FUNCNAME)
 int MPIR_Allreduce_intra ( 
-    void *sendbuf, 
+    const void *sendbuf,
     void *recvbuf, 
     int count, 
     MPI_Datatype datatype, 
@@ -128,8 +130,8 @@ int MPIR_Allreduce_intra (
     MPID_Comm *comm_ptr,
     int *errflag )
 {
-    int is_homogeneous;
 #ifdef MPID_HAS_HETERO
+    int is_homogeneous;
     int rc;
 #endif
     int        comm_size, rank, type_size;
@@ -214,10 +216,11 @@ int MPIR_Allreduce_intra (
 #endif
             
     
-    is_homogeneous = 1;
 #ifdef MPID_HAS_HETERO
     if (comm_ptr->is_hetero)
         is_homogeneous = 0;
+    else
+        is_homogeneous = 1;
 #endif
     
 #ifdef MPID_HAS_HETERO
@@ -558,7 +561,7 @@ int MPIR_Allreduce_intra (
 #undef FCNAME
 #define FCNAME MPIU_QUOTE(FUNCNAME)
 int MPIR_Allreduce_inter ( 
-    void *sendbuf, 
+    const void *sendbuf,
     void *recvbuf, 
     int count, 
     MPI_Datatype datatype, 
@@ -663,8 +666,8 @@ int MPIR_Allreduce_inter (
 #define FUNCNAME MPIR_Allreduce
 #undef FCNAME
 #define FCNAME MPIU_QUOTE(FUNCNAME)
-int MPIR_Allreduce(void *sendbuf, void *recvbuf, int count, MPI_Datatype datatype, MPI_Op op, MPID_Comm *comm_ptr,
-                   int *errflag)
+int MPIR_Allreduce(const void *sendbuf, void *recvbuf, int count, MPI_Datatype datatype,
+                   MPI_Op op, MPID_Comm *comm_ptr, int *errflag)
 {
     int mpi_errno = MPI_SUCCESS;
 
@@ -694,15 +697,17 @@ fn_fail:
 #define FUNCNAME MPIR_Allreduce_impl
 #undef FCNAME
 #define FCNAME MPIU_QUOTE(FUNCNAME)
-int MPIR_Allreduce_impl(void *sendbuf, void *recvbuf, int count, MPI_Datatype datatype, MPI_Op op, MPID_Comm *comm_ptr,
+int MPIR_Allreduce_impl(const void *sendbuf, void *recvbuf, int count, MPI_Datatype datatype, MPI_Op op, MPID_Comm *comm_ptr,
                         int *errflag)
 {
     int mpi_errno = MPI_SUCCESS;
 
     if (comm_ptr->coll_fns != NULL && comm_ptr->coll_fns->Allreduce != NULL)
     {
+	/* --BEGIN USEREXTENSION-- */
 	mpi_errno = comm_ptr->coll_fns->Allreduce(sendbuf, recvbuf, count, datatype, op, comm_ptr, errflag);
         if (mpi_errno) MPIU_ERR_POP(mpi_errno);
+	/* --END USEREXTENSION-- */
     }
     else
     {
@@ -758,8 +763,8 @@ Output Parameter:
 .N MPI_ERR_OP
 .N MPI_ERR_COMM
 @*/
-int MPI_Allreduce ( void *sendbuf, void *recvbuf, int count, 
-		    MPI_Datatype datatype, MPI_Op op, MPI_Comm comm )
+int MPI_Allreduce(MPICH2_CONST void *sendbuf, void *recvbuf, int count,
+                  MPI_Datatype datatype, MPI_Op op, MPI_Comm comm)
 {
     static const char FCNAME[] = "MPI_Allreduce";
     int mpi_errno = MPI_SUCCESS;

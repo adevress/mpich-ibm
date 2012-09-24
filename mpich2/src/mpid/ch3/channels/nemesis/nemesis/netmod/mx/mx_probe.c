@@ -102,6 +102,22 @@ int MPID_nem_mx_iprobe(MPIDI_VC_t *vc,  int source, int tag, MPID_Comm *comm, in
 }
 
 
+#undef FUNCNAME
+#define FUNCNAME MPID_nem_mx_improbe
+#undef FCNAME
+#define FCNAME MPIDI_QUOTE(FUNCNAME)
+int MPID_nem_mx_improbe(MPIDI_VC_t *vc,  int source, int tag, MPID_Comm *comm, int context_offset, int *flag, MPID_Request **message, MPI_Status *status)
+{
+    int mpi_errno = MPI_SUCCESS;
+
+    /* not currently implemented for MX */
+    MPIU_ERR_SET(mpi_errno, MPI_ERR_INTERN, "**nomprobe");
+
+ fn_exit:
+    return mpi_errno;
+ fn_fail: ATTRIBUTE((unused))
+    goto fn_exit;
+}
 
 
 #undef FUNCNAME
@@ -111,4 +127,14 @@ int MPID_nem_mx_iprobe(MPIDI_VC_t *vc,  int source, int tag, MPID_Comm *comm, in
 int MPID_nem_mx_anysource_iprobe(int tag, MPID_Comm *comm, int context_offset, int *flag, MPI_Status *status)
 {
     return MPID_nem_mx_iprobe(NULL, MPI_ANY_SOURCE, tag, comm, context_offset, flag, status);
+}
+
+
+#undef FUNCNAME
+#define FUNCNAME MPID_nem_mx_anysource_iprobe
+#undef FCNAME
+#define FCNAME MPIU_QUOTE(FUNCNAME)
+int MPID_nem_mx_anysource_improbe(int tag, MPID_Comm *comm, int context_offset, int *flag, MPID_Request **message, MPI_Status *status)
+{
+    return MPID_nem_mx_improbe(NULL, MPI_ANY_SOURCE, tag, comm, context_offset, flag, message, status);
 }

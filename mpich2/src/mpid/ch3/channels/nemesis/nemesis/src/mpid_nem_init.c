@@ -49,7 +49,7 @@ MPID_nem_init(int pg_rank, MPIDI_PG_t *pg_p, int has_parent ATTRIBUTE((unused)))
     int    num_local       = -1;
     int   *local_procs     = NULL;
     int    local_rank      = -1;
-    int    index;
+    int    idx;
     int    i;
     char  *publish_bc_orig = NULL;
     char  *bc_val          = NULL;
@@ -68,7 +68,7 @@ MPID_nem_init(int pg_rank, MPIDI_PG_t *pg_p, int has_parent ATTRIBUTE((unused)))
        packet.  This is needed because we no longer include channel
        packet types in the CH3 packet types to allow dynamic channel
        loading. */
-    MPIU_Assert(sizeof(MPIDI_CH3_nem_pkt_t) <= sizeof(MPIDI_CH3_PktGeneric_t));
+    MPIU_Assert(sizeof(MPIDI_CH3_nem_pkt_t) <= sizeof(MPIDI_CH3_Pkt_t));
 
     /* The MPID_nem_cell_rel_ptr_t defined in mpid_nem_datatypes.h
        should only contain a OPA_ptr_t.  This is to check that
@@ -111,22 +111,22 @@ MPID_nem_init(int pg_rank, MPIDI_PG_t *pg_p, int has_parent ATTRIBUTE((unused)))
     MPIU_CHKPMEM_MALLOC (MPID_nem_mem_region.ext_ranks, int *, MPID_nem_mem_region.ext_procs * sizeof(int), mpi_errno, "mem_region ext ranks");
     MPID_nem_mem_region.next           = NULL;
 
-    for (index = 0 ; index < num_procs; index++)
+    for (idx = 0 ; idx < num_procs; idx++)
     {
-	MPID_nem_mem_region.local_ranks[index] = MPID_NEM_NON_LOCAL;
+	MPID_nem_mem_region.local_ranks[idx] = MPID_NEM_NON_LOCAL;
     }
-    for (index = 0; index < num_local; index++)
+    for (idx = 0; idx < num_local; idx++)
     {
-	grank = local_procs[index];
-	MPID_nem_mem_region.local_ranks[grank] = index;
+	grank = local_procs[idx];
+	MPID_nem_mem_region.local_ranks[grank] = idx;
     }
 
-    index = 0;
+    idx = 0;
     for(grank = 0 ; grank < num_procs ; grank++)
     {
 	if(!MPID_NEM_IS_LOCAL(grank))
 	{
-	    MPID_nem_mem_region.ext_ranks[index++] = grank;
+	    MPID_nem_mem_region.ext_ranks[idx++] = grank;
 	}
     }
 
@@ -219,10 +219,10 @@ MPID_nem_init(int pg_rank, MPIDI_PG_t *pg_p, int has_parent ATTRIBUTE((unused)))
     MPID_nem_queue_init(MPID_nem_mem_region.FreeQ[pg_rank]);
     
     /* Init and enqueue our free cells */
-    for (index = 0; index < MPID_NEM_NUM_CELLS; ++index)
+    for (idx = 0; idx < MPID_NEM_NUM_CELLS; ++idx)
     {
-	MPID_nem_cell_init(&(MPID_nem_mem_region.Elements[index]));
-	MPID_nem_queue_enqueue(MPID_nem_mem_region.FreeQ[pg_rank], &(MPID_nem_mem_region.Elements[index]));
+	MPID_nem_cell_init(&(MPID_nem_mem_region.Elements[idx]));
+	MPID_nem_queue_enqueue(MPID_nem_mem_region.FreeQ[pg_rank], &(MPID_nem_mem_region.Elements[idx]));
     }
 
     /* network init */
@@ -235,21 +235,21 @@ MPID_nem_init(int pg_rank, MPIDI_PG_t *pg_p, int has_parent ATTRIBUTE((unused)))
     }
 
     /* set default route for external processes through network */
-    for (index = 0 ; index < MPID_nem_mem_region.ext_procs ; index++)
+    for (idx = 0 ; idx < MPID_nem_mem_region.ext_procs ; idx++)
     {
-	grank = MPID_nem_mem_region.ext_ranks[index];
+	grank = MPID_nem_mem_region.ext_ranks[idx];
 	MPID_nem_mem_region.FreeQ[grank] = NULL;
 	MPID_nem_mem_region.RecvQ[grank] = NULL;
     }
 
 
     /* set route for local procs through shmem */
-    for (index = 0; index < num_local; index++)
+    for (idx = 0; idx < num_local; idx++)
     {
-	grank = local_procs[index];
-	MPID_nem_mem_region.FreeQ[grank] = &free_queues_p[index];
-	MPID_nem_mem_region.RecvQ[grank] = &recv_queues_p[index];
-        
+	grank = local_procs[idx];
+	MPID_nem_mem_region.FreeQ[grank] = &free_queues_p[idx];
+	MPID_nem_mem_region.RecvQ[grank] = &recv_queues_p[idx];
+
 	MPIU_Assert(MPID_NEM_ALIGNED(MPID_nem_mem_region.FreeQ[grank], MPID_NEM_CACHE_LINE_LEN));
 	MPIU_Assert(MPID_NEM_ALIGNED(MPID_nem_mem_region.RecvQ[grank], MPID_NEM_CACHE_LINE_LEN));
     }
@@ -286,8 +286,8 @@ MPID_nem_init(int pg_rank, MPIDI_PG_t *pg_p, int has_parent ATTRIBUTE((unused)))
 	{
 	    MPID_nem_mem_region.mailboxes.in [i] = &fastboxes_p[MAILBOX_INDEX(i, local_rank)];
 	    MPID_nem_mem_region.mailboxes.out[i] = &fastboxes_p[MAILBOX_INDEX(local_rank, i)];
-	    MPID_nem_mem_region.mailboxes.in [i]->common.flag.value = 0;
-	    MPID_nem_mem_region.mailboxes.out[i]->common.flag.value = 0;
+	    OPA_store_int(&MPID_nem_mem_region.mailboxes.in [i]->common.flag.value, 0);
+	    OPA_store_int(&MPID_nem_mem_region.mailboxes.out[i]->common.flag.value, 0);
 	}
     }
 #undef MAILBOX_INDEX
@@ -363,7 +363,7 @@ MPID_nem_vc_init (MPIDI_VC_t *vc)
     vc_ch->ckpt_restart_vc    = NULL;
 #endif
     vc_ch->pending_pkt_len    = 0;
-    MPIU_CHKPMEM_MALLOC (vc_ch->pending_pkt, MPIDI_CH3_PktGeneric_t *, sizeof (MPIDI_CH3_PktGeneric_t), mpi_errno, "pending_pkt");
+    MPIU_CHKPMEM_MALLOC (vc_ch->pending_pkt, MPIDI_CH3_Pkt_t *, sizeof (MPIDI_CH3_Pkt_t), mpi_errno, "pending_pkt");
 
     /* We do different things for vcs in the COMM_WORLD pg vs other pgs
        COMM_WORLD vcs may use shared memory, and already have queues allocated
@@ -451,7 +451,15 @@ MPID_nem_vc_init (MPIDI_VC_t *vc)
         vc_ch->lmt_active_lmt      = NULL;
         vc_ch->lmt_enqueued        = FALSE;
 
-        vc->eager_max_msg_sz = MPID_NEM_MPICH2_DATA_LEN - sizeof(MPIDI_CH3_Pkt_t);
+        if (MPIR_PARAM_SHM_EAGER_MAX_SZ == -1)
+            vc->eager_max_msg_sz = MPID_NEM_MPICH2_DATA_LEN - sizeof(MPIDI_CH3_Pkt_t);
+        else
+            vc->eager_max_msg_sz = MPIR_PARAM_SHM_EAGER_MAX_SZ;
+
+        if (MPIR_PARAM_SHM_READY_EAGER_MAX_SZ == -2)
+            vc->ready_eager_max_msg_sz = vc->eager_max_msg_sz; /* force local ready sends to use LMT */
+        else
+            vc->ready_eager_max_msg_sz = MPIR_PARAM_SHM_READY_EAGER_MAX_SZ;
 
         MPIU_DBG_MSG(VC, VERBOSE, "vc using shared memory");
     }

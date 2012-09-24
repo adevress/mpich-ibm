@@ -52,7 +52,9 @@ static int sorttype_compare(const void *v1, const void *v2) {
     else if (s1->orig_idx < s2->orig_idx)
         return -1;
 
+    /* --BEGIN ERROR HANDLING-- */
     return 0; /* should never happen */
+    /* --END ERROR HANDLING-- */
 }
 #endif
 
@@ -76,6 +78,7 @@ static void MPIU_Sort_inttable( sorttype *keytable, int size )
     else
 #endif
     {
+        /* --BEGIN USEREXTENSION-- */
         /* fall through to insertion sort if qsort is unavailable/disabled */
         for (i = 1; i < size; ++i) {
             tmp = keytable[i];
@@ -93,6 +96,7 @@ static void MPIU_Sort_inttable( sorttype *keytable, int size )
             }
             keytable[j+1] = tmp;
         }
+        /* --END USEREXTENSION-- */
     }
 }
 
@@ -349,8 +353,6 @@ int MPIR_Comm_split_impl(MPID_Comm *comm_ptr, int color, int key, MPID_Comm **ne
 	}
         MPIU_THREAD_CS_EXIT(MPI_OBJ, comm_ptr);
 
-        /* Notify the device of this new communicator */
-	MPID_Dev_comm_create_hook( *newcomm_ptr );
         mpi_errno = MPIR_Comm_commit(*newcomm_ptr);
         if (mpi_errno) MPIU_ERR_POP(mpi_errno);
     }

@@ -30,6 +30,8 @@
 /* Add the ch3 packet definitions */
 #include "mpidpkt.h"
 
+#include "mpid_sched.h"
+
 /* We need to match the size of MPIR_Pint to the relevant Format control
  */
 #define MPIDI_MSG_SZ_FMT MPIR_PINT_FMT_DEC_SPEC
@@ -42,6 +44,10 @@
    !defined(gethostname)
 int gethostname(char *name, size_t len);
 # endif
+
+/* group of processes detected to have failed.  This is a subset of
+   comm_world group. */
+extern MPID_Group *MPIDI_Failed_procs_group;
 
 extern int MPIDI_Use_pmi2_api;
 
@@ -372,6 +378,23 @@ extern MPIDI_Process_t MPIDI_Process;
      MPIDI_CH3_REQUEST_INIT(rreq_);\
 }
 
+/* creates a new, trivially complete recv request that is suitable for
+ * returning when a user passed MPI_PROC_NULL */
+#define MPIDI_Request_create_null_rreq(rreq_, mpi_errno_, FAIL_)           \
+    do {                                                                   \
+        (rreq_) = MPID_Request_create();                                   \
+        if ((rreq_) != NULL) {                                             \
+            MPIU_Object_set_ref((rreq_), 1);                               \
+            /* MT FIXME should these be handled by MPID_Request_create? */ \
+            MPID_cc_set(&(rreq_)->cc, 0);                                  \
+            (rreq_)->kind = MPID_REQUEST_RECV;                             \
+            MPIR_Status_set_procnull(&(rreq_)->status);                    \
+        }                                                                  \
+        else {                                                             \
+            MPIU_ERR_SETANDJUMP(mpi_errno_,MPI_ERR_OTHER,"**nomemreq");    \
+        }                                                                  \
+    } while (0)
+
 #define MPIDI_REQUEST_MSG_MASK (0x3 << MPIDI_REQUEST_MSG_SHIFT)
 #define MPIDI_REQUEST_MSG_SHIFT 0
 #define MPIDI_REQUEST_NO_MSG 0
@@ -509,11 +532,21 @@ extern MPIDI_Process_t MPIDI_Process;
   ------------------*/
 #define MPIDI_Comm_get_vc(comm_, rank_, vcp_) *(vcp_) = (comm_)->vcr[(rank_)]
 
+#ifdef USE_MPIDI_DBG_PRINT_VC
+void MPIDI_DBG_PrintVC(MPIDI_VC_t *vc);
+void MPIDI_DBG_PrintVCState2(MPIDI_VC_t *vc, MPIDI_VC_State_t new_state);
+void MPIDI_DBG_PrintVCState(MPIDI_VC_t *vc);
+#else
+#define MPIDI_DBG_PrintVC(vc)
+#define MPIDI_DBG_PrintVCState2(vc, new_state)
+#define MPIDI_DBG_PrintVCState(vc)
+#endif
+
 #define MPIDI_Comm_get_vc_set_active(comm_, rank_, vcp_) do {           \
         *(vcp_) = (comm_)->vcr[(rank_)];                                \
         if ((*(vcp_))->state == MPIDI_VC_STATE_INACTIVE)                \
         {                                                               \
-            MPIU_DBG_PrintVCState2(*(vcp_), MPIDI_VC_STATE_ACTIVE);     \
+            MPIDI_DBG_PrintVCState2(*(vcp_), MPIDI_VC_STATE_ACTIVE);     \
             MPIDI_CHANGE_VC_STATE((*(vcp_)), ACTIVE);                   \
         }                                                               \
     } while(0)
@@ -598,7 +631,7 @@ do {                                            \
         *(vcp_) = &(pg_)->vct[rank_];                                   \
         if ((*(vcp_))->state == MPIDI_VC_STATE_INACTIVE)                \
         {                                                               \
-            MPIU_DBG_PrintVCState2(*(vcp_), MPIDI_VC_STATE_ACTIVE);     \
+            MPIDI_DBG_PrintVCState2(*(vcp_), MPIDI_VC_STATE_ACTIVE);     \
             MPIDI_CHANGE_VC_STATE((*(vcp_)), ACTIVE);                   \
         }                                                               \
     } while(0)
@@ -684,11 +717,15 @@ typedef struct MPIDI_Comm_ops
 		                  MPI_Status *status);
     int (*iprobe)(struct MPIDI_VC *vc,  int source, int tag, MPID_Comm *comm, int context_offset,
 		  int *flag, MPI_Status *status);
-   
+    int (*improbe)(struct MPIDI_VC *vc,  int source, int tag, MPID_Comm *comm, int context_offset,
+                   int *flag, MPID_Request **message, MPI_Status *status);
 } MPIDI_Comm_ops_t;
 
 extern int (*MPIDI_Anysource_iprobe_fn)(int tag, MPID_Comm * comm, int context_offset, int *flag,
                                         MPI_Status * status);
+extern int (*MPIDI_Anysource_improbe_fn)(int tag, MPID_Comm * comm, int context_offset,
+                                         int *flag, MPID_Request **message,
+                                         MPI_Status * status);
 #endif
 
 typedef struct MPIDI_VC
@@ -745,7 +782,9 @@ typedef struct MPIDI_VC
 
     /* eager message threshold */
     int eager_max_msg_sz;
-    
+    /* eager message threshold for ready sends.  -1 means there's no limit */
+    int ready_eager_max_msg_sz;
+ 
     /* noncontiguous send function pointer.  Called to send a
        noncontiguous message.  Caller must initialize
        sreq->dev.segment, _first and _size.  Contiguous messages are
@@ -754,7 +793,7 @@ typedef struct MPIDI_VC
 			      void *header, MPIDI_msg_sz_t hdr_sz );
 
 #ifdef ENABLE_COMM_OVERRIDES
-    MPIDI_Comm_ops_t *comm_ops;    
+    MPIDI_Comm_ops_t *comm_ops;
 #endif
 
     /* Rather than have each channel define its own fields for the 
@@ -933,13 +972,13 @@ int MPIDI_PrintConnStrToFile( FILE *fd, const char *file, int line,
      MPIU_DBG_MSG_FMT(CH3_CONNECT,TYPICAL,(MPIU_DBG_FDEST, \
      "vc=%p: Setting state (vc) from %s to %s, vcchstate is %s", \
                  _vc, MPIDI_VC_GetStateString((_vc)->state), \
-                 #_newstate, MPIU_CALL(MPIDI_CH3,VC_GetStateString( (_vc) ))) );\
+                 #_newstate, MPIDI_CH3_VC_GetStateString( (_vc) ))); \
 } while (0)
 
 #define MPIU_DBG_VCCHSTATECHANGE(_vc,_newstate) \
      MPIU_DBG_MSG_FMT(CH3_CONNECT,TYPICAL,(MPIU_DBG_FDEST, \
      "vc=%p: Setting state (ch) from %s to %s, vc state is %s", \
-	   _vc, MPIU_CALL(MPIDI_CH3,VC_GetStateString((_vc))), \
+           _vc, MPIDI_CH3_VC_GetStateString((_vc)), \
            #_newstate, MPIDI_VC_GetStateString( (_vc)->state )) )
 
 #define MPIU_DBG_CONNSTATECHANGE(_vc,_conn,_newstate) \
@@ -975,8 +1014,8 @@ void MPIDI_dbg_printf(int, char *, char *, ...);
 void MPIDI_err_printf(char *, char *, ...);
 
 /* FIXME: This does not belong here */
-#ifdef USE_MPIU_DBG_PRINT_VC
-extern char *MPIU_DBG_parent_str;
+#ifdef USE_MPIDI_DBG_PRINT_VC
+extern char *MPIDI_DBG_parent_str;
 #endif
 
 #if defined(MPICH_DBG_OUTPUT)
@@ -1033,7 +1072,7 @@ int MPIDI_Isend_self(const void *, int, MPI_Datatype, int, int, MPID_Comm *,
 int MPIDI_Comm_connect(const char *, MPID_Info *, int, MPID_Comm *, MPID_Comm **);
 int MPIDI_Comm_accept(const char *, MPID_Info *, int, MPID_Comm *, MPID_Comm **);
 
-int MPIDI_Comm_spawn_multiple(int, char **, char ***, int *, MPID_Info **, 
+int MPIDI_Comm_spawn_multiple(int, char **, char ***, const int *, MPID_Info **,
 			      int, MPID_Comm *, MPID_Comm **, int *);
 
 
@@ -1075,15 +1114,15 @@ int MPIDI_CH3U_Comm_FinishPending( MPID_Comm * );
 
 /* This structure defines a module that handles the routines that 
    work with MPI-2 RMA ops */
-typedef struct MPIDI_RMA_Ops {
+typedef struct MPIDI_RMAFns {
     int (*Win_create)(void *, MPI_Aint, int, MPID_Info *, MPID_Comm *,
-		      MPID_Win **, struct MPIDI_RMA_Ops *);
+		      MPID_Win **, struct MPIDI_RMAFns *);
     int (*Win_free)(MPID_Win **);
-    int (*Put)(void *, int, MPI_Datatype, int, MPI_Aint, int, MPI_Datatype, 
+    int (*Put)(const void *, int, MPI_Datatype, int, MPI_Aint, int, MPI_Datatype,
 		MPID_Win *);
     int (*Get)(void *, int, MPI_Datatype, int, MPI_Aint, int, MPI_Datatype, 
 		MPID_Win *);
-    int (*Accumulate)(void *, int, MPI_Datatype, int, MPI_Aint, int, 
+    int (*Accumulate)(const void *, int, MPI_Datatype, int, MPI_Aint, int,
 		       MPI_Datatype, MPI_Op, MPID_Win *);
     int (*Win_fence)(int, MPID_Win *);
     int (*Win_post)(MPID_Group *, int, MPID_Win *);
@@ -1116,11 +1155,11 @@ int MPIDI_CH3_RMAFnsInit( MPIDI_RMAFns * );
 int MPIDI_Win_create(void *, MPI_Aint, int, MPID_Info *, MPID_Comm *,
                     MPID_Win ** );
 int MPIDI_Win_fence(int, MPID_Win *);
-int MPIDI_Put(void *, int, MPI_Datatype, int, MPI_Aint, int,
+int MPIDI_Put(const void *, int, MPI_Datatype, int, MPI_Aint, int,
             MPI_Datatype, MPID_Win *); 
 int MPIDI_Get(void *, int, MPI_Datatype, int, MPI_Aint, int,
             MPI_Datatype, MPID_Win *);
-int MPIDI_Accumulate(void *, int, MPI_Datatype, int, MPI_Aint, int, 
+int MPIDI_Accumulate(const void *, int, MPI_Datatype, int, MPI_Aint, int,
 		   MPI_Datatype,  MPI_Op, MPID_Win *);
 int MPIDI_Win_free(MPID_Win **); 
 int MPIDI_Win_wait(MPID_Win *win_ptr);
@@ -1141,13 +1180,13 @@ int MPIDI_CH3_Win_create(void *base, MPI_Aint size, int disp_unit,
 int MPIDI_CH3_Free_mem(void *ptr);
 void MPIDI_CH3_Cleanup_mem(void);
 int MPIDI_CH3_Win_free(MPID_Win **win_ptr);
-int MPIDI_CH3_Put(void *origin_addr, int origin_count, MPI_Datatype
+int MPIDI_CH3_Put(const void *origin_addr, int origin_count, MPI_Datatype
             origin_datatype, int target_rank, MPI_Aint target_disp,
             int target_count, MPI_Datatype target_datatype, MPID_Win *win_ptr);
 int MPIDI_CH3_Get(void *origin_addr, int origin_count, MPI_Datatype
             origin_datatype, int target_rank, MPI_Aint target_disp,
             int target_count, MPI_Datatype target_datatype, MPID_Win *win_ptr);
-int MPIDI_CH3_Accumulate(void *origin_addr, int origin_count, MPI_Datatype
+int MPIDI_CH3_Accumulate(const void *origin_addr, int origin_count, MPI_Datatype
                     origin_datatype, int target_rank, MPI_Aint target_disp,
                     int target_count, MPI_Datatype target_datatype, MPI_Op op,
                     MPID_Win *win_ptr);
@@ -1203,9 +1242,7 @@ int MPIDI_CH3I_Progress_finalize(void);
  */
 
 /* This allows the channel to define an alternate to the 
-   completion counter.  The dllchannel uses this to access the 
-   counter through a pointer.  Others could use this to provide
-   more complex operations */
+   completion counter.  */
 #ifndef MPIDI_CH3I_INCR_PROGRESS_COMPLETION_COUNT
 #define MPIDI_CH3I_INCR_PROGRESS_COMPLETION_COUNT                                \
     do {                                                                         \
@@ -1431,15 +1468,14 @@ int MPIDI_CH3_Connection_terminate(MPIDI_VC_t * vc);
    MPID_Comm_connect and accept */
 int MPIDI_CH3_Connect_to_root(const char *, MPIDI_VC_t **);
 
-/* keyval for COMM_WORLD attribute holding list of failed processes */
-extern int MPICH_ATTR_FAILED_PROCESSES;
-
-
 /*
  * Channel utility prototypes
  */
+int MPIDI_CH3U_Recvq_init(void);
 int MPIDI_CH3U_Recvq_FU(int, int, int, MPI_Status * );
 MPID_Request * MPIDI_CH3U_Recvq_FDU(MPI_Request, MPIDI_Message_match *);
+MPID_Request * MPIDI_CH3U_Recvq_FDU_matchonly(int source, int tag, int context_id, MPID_Comm *comm,
+                                   int *foundp);
 MPID_Request * MPIDI_CH3U_Recvq_FDU_or_AEP(int source, int tag, 
                                           int context_id, MPID_Comm *comm, void *user_buf,
                                            int user_count, MPI_Datatype datatype, int * foundp);
@@ -1448,6 +1484,7 @@ MPID_Request * MPIDI_CH3U_Recvq_FDP_or_AEU(MPIDI_Message_match * match,
 					   int * found);
 int MPIDI_CH3U_Recvq_count_unexp(void);
 int MPIDI_CH3U_Complete_posted_with_error(MPIDI_VC_t *vc);
+int MPIDI_CH3U_Complete_disabled_anysources(void);
 
 
 int MPIDI_CH3U_Request_load_send_iov(MPID_Request * const sreq, 
@@ -1465,6 +1502,18 @@ int MPIDI_CH3U_Post_data_receive_found(MPID_Request * rreqp);
 int MPIDI_CH3U_Post_data_receive_unexpected(MPID_Request * rreqp);
 int MPIDI_CH3U_Receive_data_found(MPID_Request *rreq, char *buf, MPIDI_msg_sz_t *buflen, int *complete);
 int MPIDI_CH3U_Receive_data_unexpected(MPID_Request * rreq, char *buf, MPIDI_msg_sz_t *buflen, int *complete);
+
+/* Initialization routine for ch3u_comm.c */
+int MPIDI_CH3I_Comm_init(void);
+
+int MPIDI_CH3I_Comm_handle_failed_procs(MPID_Group *new_failed_procs);
+
+/* The functions below allow channels to register functions to be
+   called immediately after a communicator has been created, and
+   immediately before a communicator is to be destroyed.
+ */
+int MPIDI_CH3U_Comm_register_create_hook(int (*hook_fn)(struct MPID_Comm *, void *), void *param);
+int MPIDI_CH3U_Comm_register_destroy_hook(int (*hook_fn)(struct MPID_Comm *, void *), void *param);
 
 /* FIXME: This is a macro! */
 #ifndef MPIDI_CH3_Request_add_ref

@@ -21,7 +21,6 @@ static void init_ui_mpich_info(void)
     HYD_ui_mpich_info.ppn = -1;
     HYD_ui_mpich_info.ckpoint_int = -1;
     HYD_ui_mpich_info.print_all_exitcodes = -1;
-    HYD_ui_mpich_info.ranks_per_proc = -1;
     HYD_ui_mpich_info.sort_order = NONE;
 }
 
@@ -776,32 +775,6 @@ static HYD_status rmk_fn(char *arg, char ***argv)
     goto fn_exit;
 }
 
-static void ranks_per_proc_help_fn(void)
-{
-    printf("\n");
-    printf("-ranks-per-proc: MPI ranks to assign per launched process\n\n");
-}
-
-static HYD_status ranks_per_proc_fn(char *arg, char ***argv)
-{
-    HYD_status status = HYD_SUCCESS;
-
-    if (reading_config_file && HYD_ui_mpich_info.ranks_per_proc != -1) {
-        /* global variable already set; ignore */
-        goto fn_exit;
-    }
-
-    status = HYDU_set_int(arg, &HYD_ui_mpich_info.ranks_per_proc, atoi(**argv));
-    HYDU_ERR_POP(status, "error setting ranks per process\n");
-
-  fn_exit:
-    (*argv)++;
-    return status;
-
-  fn_fail:
-    goto fn_exit;
-}
-
 static void binding_help_fn(void)
 {
     printf("\n");
@@ -1083,7 +1056,7 @@ static HYD_status info_fn(char *arg, char ***argv)
                        "    Launchers available:                     %s\n",
                        HYDRA_AVAILABLE_LAUNCHERS);
     HYDU_dump_noprefix(stdout,
-                       "    Topology libraries available:             %s\n",
+                       "    Topology libraries available:            %s\n",
                        HYDRA_AVAILABLE_TOPOLIBS);
     HYDU_dump_noprefix(stdout,
                        "    Resource management kernels available:   %s\n",
@@ -1268,6 +1241,32 @@ static HYD_status order_nodes_fn(char *arg, char ***argv)
     goto fn_exit;
 }
 
+static void localhost_help_fn(void)
+{
+    printf("\n");
+    printf("-localhost: Local hostname to use for the launching node\n\n");
+}
+
+static HYD_status localhost_fn(char *arg, char ***argv)
+{
+    HYD_status status = HYD_SUCCESS;
+
+    if (reading_config_file && HYD_server_info.localhost) {
+        /* global variable already set; ignore */
+        goto fn_exit;
+    }
+
+    status = HYDU_set_str(arg, &HYD_server_info.localhost, **argv);
+    HYDU_ERR_POP(status, "error setting local hostname\n");
+
+  fn_exit:
+    (*argv)++;
+    return status;
+
+  fn_fail:
+    goto fn_exit;
+}
+
 static HYD_status set_default_values(void)
 {
     char *tmp;
@@ -1297,9 +1296,6 @@ static HYD_status set_default_values(void)
 
     if (HYD_ui_mpich_info.print_all_exitcodes == -1)
         HYD_ui_mpich_info.print_all_exitcodes = 0;
-
-    if (HYD_ui_mpich_info.ranks_per_proc == -1)
-        HYD_ui_mpich_info.ranks_per_proc = 1;
 
     if (HYD_server_info.enable_profiling == -1)
         HYD_server_info.enable_profiling = 0;
@@ -1365,6 +1361,13 @@ static HYD_status set_default_values(void)
 static HYD_status process_config_token(char *token, int newline, struct HYD_node **node_list)
 {
     static int idx = 0;
+
+    if (idx && newline && strcmp(config_argv[idx - 1], ":")) {
+        /* If this is a newline, but not the first one, and the
+         * previous token was not a ":", add an executable delimiter
+         * ':' */
+        config_argv[idx++] = HYDU_strdup(":");
+    }
 
     config_argv[idx++] = HYDU_strdup(token);
     config_argv[idx] = NULL;
@@ -1520,13 +1523,6 @@ HYD_status HYD_uii_mpx_get_parameters(char **t_argv)
     HYDU_append_env_to_list("GFORTRAN_UNBUFFERED_PRECONNECTED", "y",
                             &HYD_server_info.user_global.global_env.system);
 
-    /* If auto-cleanup is disabled, ask MPICH2 to enabled
-     * FT-collective returns */
-    if (HYD_server_info.user_global.auto_cleanup == 0) {
-        HYDU_append_env_to_list("MPICH_ENABLE_COLL_FT_RET", "1",
-                                &HYD_server_info.user_global.global_env.system);
-    }
-
   fn_exit:
     HYDU_FUNC_EXIT();
     return status;
@@ -1587,9 +1583,6 @@ static struct HYD_arg_match_table match_table[] = {
     /* Resource management kernel options */
     {"rmk", rmk_fn, rmk_help_fn},
 
-    /* Hybrid programming options */
-    {"ranks-per-proc", ranks_per_proc_fn, ranks_per_proc_help_fn},
-
     /* Topology options */
     {"binding", binding_fn, binding_help_fn},
     {"topolib", topolib_fn, topolib_help_fn},
@@ -1618,6 +1611,7 @@ static struct HYD_arg_match_table match_table[] = {
     {"disable-hostname-propagation", hostname_propagation_fn, hostname_propagation_help_fn},
     {"enable-hostname-propagation", hostname_propagation_fn, hostname_propagation_help_fn},
     {"order-nodes", order_nodes_fn, order_nodes_help_fn},
+    {"localhost", localhost_fn, localhost_help_fn},
 
     {"\0", NULL}
 };

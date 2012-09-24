@@ -79,10 +79,6 @@ static void usage(void)
            HYDRA_AVAILABLE_RMKS);
 
     printf("\n");
-    printf("  Hybrid programming options:\n");
-    printf("    -ranks-per-proc                  assign so many ranks to each process\n");
-
-    printf("\n");
     printf("  Processor topology options:\n");
     printf("    -binding                         process-to-core binding mode\n");
     printf("    -topolib                         processor topology library (%s)\n",
@@ -118,6 +114,7 @@ static void usage(void)
     printf("    -disable-auto-cleanup            don't cleanup processes on error\n");
     printf("    -disable-hostname-propagation    let MPICH2 auto-detect the hostname\n");
     printf("    -order-nodes                     order nodes as ascending/descending cores\n");
+    printf("    -localhost                       local hostname for the launching node\n");
 
     printf("\n");
     printf("Please see the intructions provided at\n");
@@ -128,20 +125,14 @@ static void usage(void)
 static void signal_cb(int signum)
 {
     struct HYD_cmd cmd;
+    static int sigint_count = 0;
     int sent, closed;
 
     HYDU_FUNC_ENTER();
 
-    if (signum == SIGINT) {
-        /* SIGINT is a special signal which we don't send to the
-         * proxies directly. This is our fallback path if something
-         * went wrong with Hydra and the user wants to abort. */
-        cmd.type = HYD_CLEANUP;
-        HYDU_sock_write(HYD_server_info.cleanup_pipe[1], &cmd, sizeof(cmd), &sent, &closed);
-    }
-    else if (signum == SIGALRM) {
-        /* SIGALRM is special signal that indicates that a checkpoint
-         * needs to be initiated */
+    /* SIGALRM is a special signal that indicates that a checkpoint
+     * needs to be initiated */
+    if (signum == SIGALRM) {
         if (HYD_server_info.user_global.ckpoint_prefix == NULL) {
             HYDU_dump(stderr, "No checkpoint prefix provided\n");
             return;
@@ -153,15 +144,28 @@ static void signal_cb(int signum)
 #endif /* HAVE_ALARM */
 
         cmd.type = HYD_CKPOINT;
-        HYDU_sock_write(HYD_server_info.cleanup_pipe[1], &cmd, sizeof(cmd), &sent, &closed);
-    }
-    else {
-        /* All other signals are forwarded to the user */
-        cmd.type = HYD_SIGNAL;
-        cmd.signum = signum;
-        HYDU_sock_write(HYD_server_info.cleanup_pipe[1], &cmd, sizeof(cmd), &sent, &closed);
+        HYDU_sock_write(HYD_server_info.cmd_pipe[1], &cmd, sizeof(cmd), &sent, &closed);
+
+        goto fn_exit;
     }
 
+    cmd.type = HYD_SIGNAL;
+    cmd.signum = signum;
+
+    /* SIGINT is a partially special signal. The first time we see it,
+     * we will send it to the processes. The next time, we will treat
+     * it as a SIGKILL (user convenience to force kill processes). */
+    if (signum == SIGINT && ++sigint_count > 1)
+        cmd.type = HYD_CLEANUP;
+    else if (signum == SIGINT) {
+        /* First Ctrl-C */
+        HYDU_dump(stdout, "Sending Ctrl-C to processes as requested\n");
+        HYDU_dump(stdout, "Press Ctrl-C again to force abort\n");
+    }
+
+    HYDU_sock_write(HYD_server_info.cmd_pipe[1], &cmd, sizeof(cmd), &sent, &closed);
+
+  fn_exit:
     HYDU_FUNC_EXIT();
     return;
 }
@@ -240,7 +244,7 @@ int main(int argc, char **argv)
     status = HYDU_set_common_signals(signal_cb);
     HYDU_ERR_POP(status, "unable to set signal\n");
 
-    if (pipe(HYD_server_info.cleanup_pipe) < 0)
+    if (pipe(HYD_server_info.cmd_pipe) < 0)
         HYDU_ERR_SETANDJUMP(status, HYD_INTERNAL_ERROR, "pipe error\n");
 
     status = HYDT_ftb_init();
@@ -296,6 +300,21 @@ int main(int argc, char **argv)
         }
     }
 
+    /*
+     * If this is a checkpoint-restart, if the user specified the
+     * number of processes, we already have a dummy executable. If the
+     * number of processes came from the RMK, our executable list is
+     * still NULL; a dummy executable needs to be created.
+     */
+    if (HYD_uii_mpx_exec_list == NULL) {
+        HYDU_ASSERT(HYD_server_info.user_global.ckpoint_prefix, status);
+
+        /* create a dummy executable */
+        status = HYDU_alloc_exec(&HYD_uii_mpx_exec_list);
+        HYDU_ERR_POP(status, "unable to allocate exec\n");
+        HYD_uii_mpx_exec_list->appnum = 0;
+    }
+
     if (HYD_server_info.user_global.debug)
         for (node = HYD_server_info.node_list; node; node = node->next)
             HYDU_dump_noprefix(stdout, "host: %s\n", node->hostname);
@@ -316,6 +335,10 @@ int main(int argc, char **argv)
     }
 
     if (reset_rmk) {
+        /* Reassign node IDs to each node */
+        for (node = HYD_server_info.node_list, i = 0; node; node = node->next, i++)
+            node->node_id = i;
+
         /* Reinitialize the bootstrap server with the "user" RMK, so
          * it knows that we are not using the node list provided by
          * the RMK */
@@ -326,10 +349,6 @@ int main(int argc, char **argv)
                                 HYDT_bsci_info.enablex, HYDT_bsci_info.debug);
         HYDU_ERR_POP(status, "unable to reinitialize the bootstrap server\n");
     }
-
-    /* Assign a node ID to each node */
-    for (node = HYD_server_info.node_list, i = 0; node; node = node->next, i++)
-        node->node_id = i;
 
     /* If the number of processes is not given, we allocate all the
      * available nodes to each executable */
@@ -356,25 +375,34 @@ int main(int argc, char **argv)
     for (proxy = HYD_server_info.pg_list.proxy_list; proxy; proxy = proxy->next)
         HYD_server_info.pg_list.pg_core_count += proxy->node->core_count;
 
-    /* See if the node list contains a remotely accessible localhost */
-    for (proxy = HYD_server_info.pg_list.proxy_list; proxy; proxy = proxy->next) {
-        int is_local, remote_access;
+    /* If the user didn't specify a local hostname, try to find one in
+     * the list of nodes passed to us */
+    if (HYD_server_info.localhost == NULL) {
+        /* See if the node list contains a remotely accessible localhost */
+        for (node = HYD_server_info.node_list; node; node = node->next) {
+            int is_local, remote_access;
 
-        status = HYDU_sock_is_local(proxy->node->hostname, &is_local);
-        HYDU_ERR_POP(status, "unable to check if %s is local\n", proxy->node->hostname);
+            status = HYDU_sock_is_local(node->hostname, &is_local);
+            HYDU_ERR_POP(status, "unable to check if %s is local\n", node->hostname);
 
-        if (is_local) {
-            status = HYDU_sock_remote_access(proxy->node->hostname, &remote_access);
-            HYDU_ERR_POP(status, "unable to check if %s is remotely accessible\n",
-                         proxy->node->hostname);
+            if (is_local) {
+                status = HYDU_sock_remote_access(node->hostname, &remote_access);
+                HYDU_ERR_POP(status, "unable to check if %s is remotely accessible\n",
+                             node->hostname);
 
-            if (remote_access)
-                break;
+                if (remote_access)
+                    break;
+            }
+        }
+
+        if (node)
+            HYD_server_info.localhost = HYDU_strdup(node->hostname);
+        else {
+            HYDU_MALLOC(HYD_server_info.localhost, char *, MAX_HOSTNAME_LEN, status);
+            status = HYDU_gethostname(HYD_server_info.localhost);
+            HYDU_ERR_POP(status, "unable to get local hostname\n");
         }
     }
-
-    if (proxy)
-        HYD_server_info.local_hostname = HYDU_strdup(proxy->node->hostname);
 
     if (HYD_server_info.user_global.debug)
         HYD_uiu_print_params();
@@ -461,8 +489,10 @@ int main(int argc, char **argv)
     else if (status != HYD_SUCCESS)
         return -1;
     else if (WIFSIGNALED(exit_status)) {
-        printf("APPLICATION TERMINATED WITH THE EXIT STRING: %s (signal %d)\n",
+        printf("YOUR APPLICATION TERMINATED WITH THE EXIT STRING: %s (signal %d)\n",
                strsignal(WTERMSIG(exit_status)), WTERMSIG(exit_status));
+        printf("This typically refers to a problem with your application.\n");
+        printf("Please see the FAQ page for debugging suggestions\n");
         return exit_status;
     }
     else if (WIFEXITED(exit_status)) {

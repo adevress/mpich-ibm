@@ -87,11 +87,8 @@ void *MPIR_Breakpoint(void);
    library that the debugger can load in order to access information about
    the parallel program, such as message queues */
 #ifdef HAVE_DEBUGGER_SUPPORT
-#undef MPICH_INFODLL_LOC
 #ifdef MPICH_INFODLL_LOC
 char MPIR_dll_name[] = MPICH_INFODLL_LOC;
-#else
-char MPIR_dll_name[] = "libtvmpich2.so";
 #endif
 #endif
 
@@ -361,8 +358,7 @@ void MPIR_Sendq_remember( MPID_Request *req,
 	if (!p) {
 	    /* Just ignore it */
             req->mpid.next = NULL;
-            MPIU_THREAD_CS_EXIT(HANDLE,req);
-	    return;
+            goto fn_exit;
 	}
     }
     p->sreq       = req;
@@ -374,6 +370,7 @@ void MPIR_Sendq_remember( MPID_Request *req,
     MPIR_Sendq_head = p;
     if (p->next) p->next->prev = p;
     req->mpid.next = (MPID_Request *)p; /* overload 'next' for debugger SEND queue */
+fn_exit:
     MPIU_THREAD_CS_EXIT(HANDLE,req);
 }
 

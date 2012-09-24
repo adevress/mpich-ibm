@@ -26,8 +26,9 @@ gmr_t *gmr_list = NULL;
   * @param[in]  group      Group on which to perform allocation.
   * @return                Pointer to the memory region object.
   */
-gmr_t *gmr_create(int local_size, void **base_ptrs, ARMCI_Group *group) {
-  int           i, aggregate_size;
+gmr_t *gmr_create(gmr_size_t local_size, void **base_ptrs, ARMCI_Group *group) {
+  int           i;
+  gmr_size_t    aggregate_size;
   int           alloc_me, alloc_nproc;
   int           world_me, world_nproc;
   MPI_Group     world_group, alloc_group;
@@ -101,7 +102,7 @@ gmr_t *gmr_create(int local_size, void **base_ptrs, ARMCI_Group *group) {
     return NULL;
   }
 
-  MPI_Win_create(alloc_slices[alloc_me].base, local_size, 1, MPI_INFO_NULL, group->comm, &mreg->window);
+  MPI_Win_create(alloc_slices[alloc_me].base, (MPI_Aint) local_size, 1, MPI_INFO_NULL, group->comm, &mreg->window);
 
   /* Populate the base pointers array */
   for (i = 0; i < alloc_nproc; i++)
@@ -182,7 +183,7 @@ void gmr_destroy(gmr_t *mreg, ARMCI_Group *group) {
     return;
 
   /* Translate world rank to group rank */
-  search_proc_out_grp = ARMCII_Translate_absolute_to_group(group->comm, search_proc_out);
+  search_proc_out_grp = ARMCII_Translate_absolute_to_group(group, search_proc_out);
 
   /* Broadcast the base address */
   MPI_Bcast(&search_base, sizeof(void*), MPI_BYTE, search_proc_out_grp, group->comm);
@@ -262,8 +263,8 @@ gmr_t *gmr_lookup(void *ptr, int proc) {
     ARMCII_Assert(proc < mreg->nslices);
 
     if (proc < mreg->nslices) {
-      const uint8_t *base = mreg->slices[proc].base;
-      const int      size = mreg->slices[proc].size;
+      const uint8_t   *base = mreg->slices[proc].base;
+      const gmr_size_t size = mreg->slices[proc].size;
 
       if ((uint8_t*) ptr >= base && (uint8_t*) ptr < base + size)
         break;
@@ -307,17 +308,18 @@ int gmr_put(gmr_t *mreg, void *src, void *dst, int size, int proc) {
 int gmr_put_typed(gmr_t *mreg, void *src, int src_count, MPI_Datatype src_type,
     void *dst, int dst_count, MPI_Datatype dst_type, int proc) {
 
-  int disp, grp_proc;
+  int        grp_proc;
+  gmr_size_t disp;
   MPI_Aint lb, extent;
 
-  grp_proc = ARMCII_Translate_absolute_to_group(mreg->group.comm, proc);
+  grp_proc = ARMCII_Translate_absolute_to_group(&mreg->group, proc);
   ARMCII_Assert(grp_proc >= 0);
 
   // Calculate displacement from beginning of the window
   if (dst == MPI_BOTTOM) 
     disp = 0;
   else
-    disp = (int) ((uint8_t*)dst - (uint8_t*)mreg->slices[proc].base);
+    disp = (gmr_size_t) ((uint8_t*)dst - (uint8_t*)mreg->slices[proc].base);
 
   // Perform checks
   MPI_Type_get_true_extent(dst_type, &lb, &extent);
@@ -325,7 +327,7 @@ int gmr_put_typed(gmr_t *mreg, void *src, int src_count, MPI_Datatype src_type,
   ARMCII_Assert_msg(disp >= 0 && disp < mreg->slices[proc].size, "Invalid remote address");
   ARMCII_Assert_msg(disp + dst_count*extent <= mreg->slices[proc].size, "Transfer is out of range");
 
-  MPI_Put(src, src_count, src_type, grp_proc, disp, dst_count, dst_type, mreg->window);
+  MPI_Put(src, src_count, src_type, grp_proc, (MPI_Aint) disp, dst_count, dst_type, mreg->window);
 
   return 0;
 }
@@ -362,17 +364,18 @@ int gmr_get(gmr_t *mreg, void *src, void *dst, int size, int proc) {
 int gmr_get_typed(gmr_t *mreg, void *src, int src_count, MPI_Datatype src_type,
     void *dst, int dst_count, MPI_Datatype dst_type, int proc) {
 
-  int disp, grp_proc;
+  int        grp_proc;
+  gmr_size_t disp;
   MPI_Aint lb, extent;
 
-  grp_proc = ARMCII_Translate_absolute_to_group(mreg->group.comm, proc);
+  grp_proc = ARMCII_Translate_absolute_to_group(&mreg->group, proc);
   ARMCII_Assert(grp_proc >= 0);
 
   // Calculate displacement from beginning of the window
   if (src == MPI_BOTTOM) 
     disp = 0;
   else
-    disp = (int) ((uint8_t*)src - (uint8_t*)mreg->slices[proc].base);
+    disp = (gmr_size_t) ((uint8_t*)src - (uint8_t*)mreg->slices[proc].base);
 
   // Perform checks
   MPI_Type_get_true_extent(src_type, &lb, &extent);
@@ -380,7 +383,7 @@ int gmr_get_typed(gmr_t *mreg, void *src, int src_count, MPI_Datatype src_type,
   ARMCII_Assert_msg(disp >= 0 && disp < mreg->slices[proc].size, "Invalid remote address");
   ARMCII_Assert_msg(disp + src_count*extent <= mreg->slices[proc].size, "Transfer is out of range");
 
-  MPI_Get(dst, dst_count, dst_type, grp_proc, disp, src_count, src_type, mreg->window);
+  MPI_Get(dst, dst_count, dst_type, grp_proc, (MPI_Aint) disp, src_count, src_type, mreg->window);
 
   return 0;
 }
@@ -418,17 +421,18 @@ int gmr_accumulate(gmr_t *mreg, void *src, void *dst, int count, MPI_Datatype ty
 int gmr_accumulate_typed(gmr_t *mreg, void *src, int src_count, MPI_Datatype src_type,
     void *dst, int dst_count, MPI_Datatype dst_type, int proc) {
 
-  int disp, grp_proc;
+  int        grp_proc;
+  gmr_size_t disp;
   MPI_Aint lb, extent;
 
-  grp_proc = ARMCII_Translate_absolute_to_group(mreg->group.comm, proc);
+  grp_proc = ARMCII_Translate_absolute_to_group(&mreg->group, proc);
   ARMCII_Assert(grp_proc >= 0);
 
   // Calculate displacement from beginning of the window
   if (dst == MPI_BOTTOM) 
     disp = 0;
   else
-    disp = (int) ((uint8_t*)dst - (uint8_t*)mreg->slices[proc].base);
+    disp = (gmr_size_t) ((uint8_t*)dst - (uint8_t*)mreg->slices[proc].base);
 
   // Perform checks
   MPI_Type_get_true_extent(dst_type, &lb, &extent);
@@ -436,7 +440,7 @@ int gmr_accumulate_typed(gmr_t *mreg, void *src, int src_count, MPI_Datatype src
   ARMCII_Assert_msg(disp >= 0 && disp < mreg->slices[proc].size, "Invalid remote address");
   ARMCII_Assert_msg(disp + dst_count*extent <= mreg->slices[proc].size, "Transfer is out of range");
 
-  MPI_Accumulate(src, src_count, src_type, grp_proc, disp, dst_count, dst_type, MPI_SUM, mreg->window);
+  MPI_Accumulate(src, src_count, src_type, grp_proc, (MPI_Aint) disp, dst_count, dst_type, MPI_SUM, mreg->window);
 
   return 0;
 }
@@ -449,8 +453,8 @@ int gmr_accumulate_typed(gmr_t *mreg, void *src, int src_count, MPI_Datatype src
   * @return             0 on success, non-zero on failure
   */
 void gmr_lock(gmr_t *mreg, int proc) {
-  int grp_proc = ARMCII_Translate_absolute_to_group(mreg->group.comm, proc);
-  int grp_me   = ARMCII_Translate_absolute_to_group(mreg->group.comm, ARMCI_GROUP_WORLD.rank);
+  int grp_proc = ARMCII_Translate_absolute_to_group(&mreg->group, proc);
+  int grp_me   = ARMCII_Translate_absolute_to_group(&mreg->group, ARMCI_GROUP_WORLD.rank);
   int lock_assert, lock_mode;
 
   ARMCII_Assert(grp_proc >= 0 && grp_me >= 0);
@@ -500,8 +504,8 @@ void gmr_lock(gmr_t *mreg, int proc) {
   * @return             0 on success, non-zero on failure
   */
 void gmr_unlock(gmr_t *mreg, int proc) {
-  int grp_proc = ARMCII_Translate_absolute_to_group(mreg->group.comm, proc);
-  int grp_me   = ARMCII_Translate_absolute_to_group(mreg->group.comm, ARMCI_GROUP_WORLD.rank);
+  int grp_proc = ARMCII_Translate_absolute_to_group(&mreg->group, proc);
+  int grp_me   = ARMCII_Translate_absolute_to_group(&mreg->group, ARMCI_GROUP_WORLD.rank);
 
   ARMCII_Assert(grp_proc >= 0 && grp_me >= 0);
   ARMCII_Assert(mreg->lock_state == GMR_LOCK_EXCLUSIVE || mreg->lock_state == GMR_LOCK_SHARED);
@@ -532,7 +536,7 @@ void gmr_unlock(gmr_t *mreg, int proc) {
   * @return             0 on success, non-zero on failure
   */
 void gmr_dla_lock(gmr_t *mreg) {
-  int grp_proc = ARMCII_Translate_absolute_to_group(mreg->group.comm, ARMCI_GROUP_WORLD.rank);
+  int grp_proc = ARMCII_Translate_absolute_to_group(&mreg->group, ARMCI_GROUP_WORLD.rank);
 
   ARMCII_Assert(grp_proc >= 0);
   ARMCII_Assert(mreg->lock_state == GMR_LOCK_UNLOCKED || mreg->lock_state == GMR_LOCK_DLA);
@@ -558,7 +562,7 @@ void gmr_dla_lock(gmr_t *mreg) {
   * @param[in] mreg     Memory region
   */
 void gmr_dla_unlock(gmr_t *mreg) {
-  int grp_proc = ARMCII_Translate_absolute_to_group(mreg->group.comm, ARMCI_GROUP_WORLD.rank);
+  int grp_proc = ARMCII_Translate_absolute_to_group(&mreg->group, ARMCI_GROUP_WORLD.rank);
 
   ARMCII_Assert(grp_proc >= 0);
   ARMCII_Assert(mreg->lock_state == GMR_LOCK_DLA);

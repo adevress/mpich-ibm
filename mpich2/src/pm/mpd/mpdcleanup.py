@@ -16,7 +16,7 @@ This is useful in case the mpd crashed badly and did not remove it, which it nor
 from time import ctime
 __author__ = "Ralph Butler and Rusty Lusk"
 __date__ = ctime()
-__version__ = "$Revision$"
+__version__ = "$Revision: 1.11 $"
 __credits__ = ""
 
 

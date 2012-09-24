@@ -28,7 +28,7 @@
 #define FUNCNAME MPIR_Cart_rank_impl
 #undef FCNAME
 #define FCNAME MPIU_QUOTE(FUNCNAME)
-void MPIR_Cart_rank_impl(MPIR_Topology *cart_ptr, int *coords, int *rank)
+void MPIR_Cart_rank_impl(MPIR_Topology *cart_ptr, const int *coords, int *rank)
 {
     int i, ndims, coord, multiplier;
 
@@ -86,7 +86,7 @@ Notes:
 .N MPI_ERR_RANK
 .N MPI_ERR_ARG
 @*/
-int MPI_Cart_rank(MPI_Comm comm, int *coords, int *rank)
+int MPI_Cart_rank(MPI_Comm comm, MPICH2_CONST int *coords, int *rank)
 {
     int mpi_errno = MPI_SUCCESS;
     MPID_Comm *comm_ptr = NULL;
@@ -144,7 +144,7 @@ int MPI_Cart_rank(MPI_Comm comm, int *coords, int *rank)
 		    coord = coords[i];
 		    MPIU_ERR_CHKANDJUMP3(
 			(coord < 0 || coord >= cart_ptr->topo.cart.dims[i] ), mpi_errno, MPI_ERR_ARG, "**cartcoordinvalid",
-			"**cartcoordinvalid %d %d %d",i, coords[i], cart_ptr->topo.cart.dims[i]-1 )
+			"**cartcoordinvalid %d %d %d",i, coords[i], cart_ptr->topo.cart.dims[i]-1 );
 		}
 	    }
 	}

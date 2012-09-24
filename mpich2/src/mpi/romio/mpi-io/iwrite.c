@@ -41,7 +41,7 @@ Output Parameters:
 #include "mpiu_greq.h"
 #endif
 
-int MPI_File_iwrite(MPI_File mpi_fh, void *buf, int count, 
+int MPI_File_iwrite(MPI_File mpi_fh, MPICH2_CONST void *buf, int count,
 		    MPI_Datatype datatype, MPI_Request *request)
 {
     int error_code=MPI_SUCCESS;
@@ -52,6 +52,7 @@ int MPI_File_iwrite(MPI_File mpi_fh, void *buf, int count,
     HPMP_IO_START(fl_xmpi, BLKMPIFILEIWRITE, TRDTSYSTEM, mpi_fh, datatype,
 		  count);
 #endif /* MPI_hpux */
+
 
     error_code = MPIOI_File_iwrite(mpi_fh, (MPI_Offset) 0, ADIO_INDIVIDUAL,
 				   buf, count, datatype, myname, request);
@@ -73,7 +74,7 @@ int MPI_File_iwrite(MPI_File mpi_fh, void *buf, int count,
 int MPIOI_File_iwrite(MPI_File mpi_fh,
 		      MPI_Offset offset,
 		      int file_ptr_type,
-		      void *buf,
+		      const void *buf,
 		      int count,
 		      MPI_Datatype datatype,
 		      char *myname,
@@ -87,7 +88,6 @@ int MPIOI_File_iwrite(MPI_File mpi_fh,
     MPI_Offset nbytes=0;
 
     MPIU_THREAD_CS_ENTER(ALLFUNC,);
-
     fh = MPIO_File_resolve(mpi_fh);
 
     /* --BEGIN ERROR HANDLING-- */
@@ -160,7 +160,6 @@ int MPIOI_File_iwrite(MPI_File mpi_fh,
     }
 fn_exit:
     MPIU_THREAD_CS_EXIT(ALLFUNC,);
-
     return error_code;
 }
 #endif

@@ -1,6 +1,6 @@
 /*
- * Copyright © 2010 INRIA.  All rights reserved.
- * Copyright © 2010-2011 Université Bordeaux 1
+ * Copyright © 2010-2011 inria.  All rights reserved.
+ * Copyright © 2010-2012 Université Bordeaux 1
  * Copyright © 2010-2011 Cisco Systems, Inc.  All rights reserved.
  * See COPYING in top-level directory.
  *
@@ -18,8 +18,10 @@
 #include <hwloc.h>
 #include <private/private.h>
 #include <private/debug.h>
-#include <private/cpuid.h>
 #include <private/misc.h>
+
+#if defined(HWLOC_HAVE_CPUID)
+#include <private/cpuid.h>
 
 struct cacheinfo {
   unsigned type;
@@ -28,7 +30,7 @@ struct cacheinfo {
 
   unsigned linesize;
   unsigned linepart;
-  unsigned ways;
+  int ways;
   unsigned sets;
   unsigned size;
 };
@@ -82,10 +84,13 @@ static void fill_amd_cache(struct procinfo *infos, unsigned level, unsigned cpui
     cache->nbthreads_sharing = infos->max_log_proc;
   cache->linesize = cpuid & 0xff;
   cache->linepart = 0;
-  if (level == 1)
+  if (level == 1) {
     cache->ways = (cpuid >> 16) & 0xff;
-  else {
-    static const unsigned ways_tab[] = { 0, 1, 2, 0, 4, 0, 8, 0, 16, 0, 32, 48, 64, 96, 128, 0 };
+    if (cache->ways == 0xff)
+      /* Fully associative */
+      cache->ways = -1;
+  } else {
+    static const unsigned ways_tab[] = { 0, 1, 2, 0, 4, 0, 8, 0, 16, 0, 32, 48, 64, 96, 128, -1 };
     unsigned ways = (cpuid >> 12) & 0xf;
     cache->ways = ways_tab[ways];
   }
@@ -159,7 +164,6 @@ static void look_proc(struct procinfo *infos, unsigned highest_cpuid, unsigned h
 
   /* AMD doesn't actually provide 0x04 information */
   if (cpuid_type != amd && highest_cpuid >= 0x04) {
-    cachenum = 0;
     for (cachenum = 0; ; cachenum++) {
       unsigned type;
       eax = 0x04;
@@ -203,7 +207,12 @@ static void look_proc(struct procinfo *infos, unsigned highest_cpuid, unsigned h
 
       cache->linesize = linesize = (ebx & 0xfff) + 1;
       cache->linepart = linepart = ((ebx >> 12) & 0x3ff) + 1;
-      cache->ways = ways = ((ebx >> 22) & 0x3ff) + 1;
+      ways = ((ebx >> 22) & 0x3ff) + 1;
+      if (eax & (1 << 9))
+        /* Fully associative */
+        cache->ways = -1;
+      else
+        cache->ways = ways;
       cache->sets = sets = ecx + 1;
       cache->size = linesize * linepart * ways * sets;
 
@@ -313,7 +322,7 @@ static void summarize(hwloc_topology_t topology, struct procinfo *infos, unsigne
       if (infos[one].otherids[level] != UINT_MAX) {
 	hwloc_bitmap_t unknowns_cpuset = hwloc_bitmap_dup(complete_cpuset);
 	hwloc_bitmap_t unknown_cpuset;
-	hwloc_obj_t unknown;
+	hwloc_obj_t unknown_obj;
 
 	while ((i = hwloc_bitmap_first(unknowns_cpuset)) != (unsigned) -1) {
 	  unsigned unknownid = infos[i].otherids[level];
@@ -325,12 +334,12 @@ static void summarize(hwloc_topology_t topology, struct procinfo *infos, unsigne
 	      hwloc_bitmap_clr(unknowns_cpuset, j);
 	    }
 	  }
-	  unknown = hwloc_alloc_setup_object(HWLOC_OBJ_MISC, unknownid);
-	  unknown->cpuset = unknown_cpuset;
-	  unknown->os_level = level;
+	  unknown_obj = hwloc_alloc_setup_object(HWLOC_OBJ_MISC, unknownid);
+	  unknown_obj->cpuset = unknown_cpuset;
+	  unknown_obj->os_level = level;
 	  hwloc_debug_2args_bitmap("os unknown%d %u has cpuset %s\n",
 	      level, unknownid, unknown_cpuset);
-	  hwloc_insert_object_by_cpuset(topology, unknown);
+	  hwloc_insert_object_by_cpuset(topology, unknown_obj);
 	}
 	hwloc_bitmap_free(unknowns_cpuset);
       }
@@ -425,6 +434,7 @@ static void summarize(hwloc_topology_t topology, struct procinfo *infos, unsigne
           cache->attr->cache.depth = level;
           cache->attr->cache.size = infos[i].cache[l].size;
           cache->attr->cache.linesize = infos[i].cache[l].linesize;
+          cache->attr->cache.associativity = infos[i].cache[l].ways;
           cache->cpuset = cache_cpuset;
           hwloc_debug_2args_bitmap("os L%u cache %u has cpuset %s\n",
               level, cacheid, cache_cpuset);
@@ -450,8 +460,9 @@ static void summarize(hwloc_topology_t topology, struct procinfo *infos, unsigne
 #define AMD_EBX ('A' | ('u'<<8) | ('t'<<16) | ('h'<<24))
 #define AMD_EDX ('e' | ('n'<<8) | ('t'<<16) | ('i'<<24))
 #define AMD_ECX ('c' | ('A'<<8) | ('M'<<16) | ('D'<<24))
+#endif
 
-void hwloc_look_x86(struct hwloc_topology *topology, unsigned nbprocs)
+void hwloc_look_x86(struct hwloc_topology *topology, unsigned nbprocs __hwloc_attribute_unused)
 {
     /* This function must always be here, but it's ok if it's empty. */
 #if defined(HWLOC_HAVE_CPUID)
@@ -526,10 +537,12 @@ void hwloc_look_x86(struct hwloc_topology *topology, unsigned nbprocs)
   }
 #endif
 
-  hwloc_add_object_info(topology->levels[0][0], "Backend", "x86");
+  hwloc_obj_add_info(topology->levels[0][0], "Backend", "x86");
 
+#if defined(HWLOC_HAVE_CPUID)
  free:
   if (NULL != infos) {
       free(infos);
   }
+#endif
 }

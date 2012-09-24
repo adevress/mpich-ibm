@@ -7,12 +7,18 @@
 #ifndef HYDRA_H_INCLUDED
 #define HYDRA_H_INCLUDED
 
+/* hydra_config.h must come first, otherwise feature macros like _USE_GNU that
+ * were defined by AC_USE_SYSTEM_EXTENSIONS will not be defined yet when mpl.h
+ * indirectly includes features.h.  This leads to a mismatch between the
+ * behavior determined by configure and the behavior actually caused by
+ * "#include"ing unistd.h, for example. */
+#include "hydra_config.h"
+
 #include "mpl.h"
 
 extern char *HYD_dbg_prefix;
 
 #include <stdio.h>
-#include "hydra_config.h"
 
 #if defined NEEDS_POSIX_FOR_SIGACTION
 #define _POSIX_SOURCE
@@ -117,6 +123,7 @@ extern char *HYD_dbg_prefix;
 #define HYD_NUM_TMP_STRINGS 1000
 
 #define HYD_DEFAULT_RETRY_COUNT (10)
+#define HYD_CONNECT_DELAY (10)
 
 #define dprintf(...)
 
@@ -158,6 +165,11 @@ extern char **environ;
 #define HYD_SILENT_ERROR(status) (((status) == HYD_GRACEFUL_ABORT) || ((status) == HYD_TIMED_OUT))
 
 #define HYDRA_NAMESERVER_DEFAULT_PORT 6392
+
+enum HYD_bool {
+    HYD_FALSE = 0,
+    HYD_TRUE = 1
+};
 
 /* fd state */
 enum HYD_fd_state {
@@ -564,6 +576,7 @@ HYD_status HYDU_sock_cloexec(int fd);
 
 #define HYDU_MALLOC(p, type, size, status)                              \
     {                                                                   \
+        (p) = NULL; /* initialize p in case assert fails */             \
         HYDU_ASSERT(size, status);                                      \
         (p) = (type) HYDU_malloc((size));                               \
         if ((p) == NULL)                                                \

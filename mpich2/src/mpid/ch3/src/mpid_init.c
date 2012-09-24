@@ -16,8 +16,8 @@
 #endif
 
 /* FIXME: This does not belong here */
-#ifdef USE_MPIU_DBG_PRINT_VC
-char *MPIU_DBG_parent_str = "?";
+#ifdef USE_MPIDI_DBG_PRINT_VC
+char *MPIDI_DBG_parent_str = "?";
 #endif
 
 /* FIXME: the PMI init function should ONLY do the PMI operations, not the 
@@ -36,11 +36,53 @@ static int InitPG( int *argc_p, char ***argv_p,
 static int MPIDI_CH3I_PG_Compare_ids(void * id1, void * id2);
 static int MPIDI_CH3I_PG_Destroy(MPIDI_PG_t * pg );
 
-int MPICH_ATTR_FAILED_PROCESSES = MPI_KEYVAL_INVALID;
-static int failed_procs_delete_fn(MPI_Comm comm, int keyval, void *attr_val, void *extra_data);
 
 MPIDI_Process_t MPIDI_Process = { NULL };
 MPIDI_CH3U_SRBuf_element_t * MPIDI_CH3U_SRBuf_pool = NULL;
+
+#undef FUNCNAME
+#define FUNCNAME split_type
+#undef FCNAME
+#define FCNAME MPIDI_QUOTE(FUNCNAME)
+static int split_type(MPID_Comm * comm_ptr, int stype, int key,
+                      MPID_Info *info_ptr, MPID_Comm ** newcomm_ptr)
+{
+    MPID_Node_id_t id;
+    MPIR_Rank_t nid;
+    int mpi_errno = MPI_SUCCESS;
+
+    mpi_errno = MPID_Get_node_id(comm_ptr, comm_ptr->rank, &id);
+    if (mpi_errno) MPIU_ERR_POP(mpi_errno);
+
+    nid = id;
+    mpi_errno = MPIR_Comm_split_impl(comm_ptr, nid, key, newcomm_ptr);
+    if (mpi_errno) MPIU_ERR_POP(mpi_errno);
+
+  fn_exit:
+    return mpi_errno;
+
+    /* --BEGIN ERROR HANDLING-- */
+  fn_fail:
+    goto fn_exit;
+    /* --END ERROR HANDLING-- */
+}
+
+static MPID_CommOps comm_fns = {
+    split_type
+};
+
+static int finalize_failed_procs_group(void *param)
+{
+    int mpi_errno = MPI_SUCCESS;
+    if (MPIDI_Failed_procs_group != MPID_Group_empty) {
+        mpi_errno = MPIR_Group_free_impl(MPIDI_Failed_procs_group);
+        if (mpi_errno) MPIU_ERR_POP(mpi_errno);
+    }
+    
+ fn_fail:
+    return mpi_errno;
+}
+
 
 #undef FUNCNAME
 #define FUNCNAME MPID_Init
@@ -56,10 +98,17 @@ int MPID_Init(int *argc, char ***argv, int requested, int *provided,
     int pg_size;
     MPID_Comm * comm;
     int p;
-    int *attr_val = NULL;
     MPIDI_STATE_DECL(MPID_STATE_MPID_INIT);
 
     MPIDI_FUNC_ENTER(MPID_STATE_MPID_INIT);
+
+    /* initialization routine for ch3u_comm.c */
+    mpi_errno = MPIDI_CH3I_Comm_init();
+    if (mpi_errno) MPIU_ERR_POP(mpi_errno);
+    
+    /* init group of failed processes, and set finalize callback */
+    MPIDI_Failed_procs_group = MPID_Group_empty;
+    MPIR_Add_finalize(finalize_failed_procs_group, NULL, MPIR_FINALIZE_CALLBACK_PRIO-1);
 
     /* FIXME: This is a good place to check for environment variables
        and command line options that may control the device */
@@ -75,21 +124,11 @@ int MPID_Init(int *argc, char ***argv, int requested, int *provided,
     }
 #endif
     
-#if 1
-    /* This is a sanity check because we define a generic packet size
-     */
-    if (sizeof(MPIDI_CH3_PktGeneric_t) < sizeof(MPIDI_CH3_Pkt_t)) {
-	fprintf( stderr, "Internal error - packet definition is too small.  Generic is %ld bytes, MPIDI_CH3_Pkt_t is %ld\n", (long int)sizeof(MPIDI_CH3_PktGeneric_t),
-		 (long int)sizeof(MPIDI_CH3_Pkt_t) );
-	exit(1);
-    }
-#endif
-
     /*
      * Set global process attributes.  These can be overridden by the channel 
      * if necessary.
      */
-    MPIR_Process.attrs.tag_ub          = MPIDI_TAG_UB;
+    MPIR_Process.attrs.tag_ub = MPIDI_TAG_UB; /* see also mpidpre.h:NOTE-T1 */
 
     /* If the channel requires any setup before making any other 
        channel calls (including CH3_PG_Init), the channel will define
@@ -127,6 +166,9 @@ int MPID_Init(int *argc, char ***argv, int requested, int *provided,
     /* Initialize FTB after PMI init */
     mpi_errno = MPIDU_Ftb_init();
     if (mpi_errno) MPIU_ERR_POP(mpi_errno);
+
+    /* Override split_type */
+    MPID_Comm_fns = &comm_fns;
     
     /*
      * Let the channel perform any necessary initialization
@@ -134,10 +176,14 @@ int MPID_Init(int *argc, char ***argv, int requested, int *provided,
      * the basic information about the job has been extracted from PMI (e.g.,
      * the size and rank of this process, and the process group id)
      */
-    mpi_errno = MPIU_CALL(MPIDI_CH3,Init(has_parent, pg, pg_rank));
+    mpi_errno = MPIDI_CH3_Init(has_parent, pg, pg_rank);
     if (mpi_errno != MPI_SUCCESS) {
 	MPIU_ERR_SETANDJUMP(mpi_errno,MPI_ERR_OTHER, "**ch3|ch3_init");
     }
+
+    /* setup receive queue statistics */
+    mpi_errno = MPIDI_CH3U_Recvq_init();
+    if (mpi_errno) MPIU_ERR_POP(mpi_errno);
 
     /*
      * Initialize the MPI_COMM_WORLD object
@@ -169,7 +215,6 @@ int MPID_Init(int *argc, char ***argv, int requested, int *provided,
 	MPID_VCR_Dup(&pg->vct[p], &comm->vcr[p]);
     }
 
-    MPID_Dev_comm_create_hook (comm);
     mpi_errno = MPIR_Comm_commit(comm);
     if (mpi_errno) MPIU_ERR_POP(mpi_errno);
 
@@ -197,7 +242,6 @@ int MPID_Init(int *argc, char ***argv, int requested, int *provided,
     
     MPID_VCR_Dup(&pg->vct[pg_rank], &comm->vcr[0]);
 
-    MPID_Dev_comm_create_hook (comm);
     mpi_errno = MPIR_Comm_commit(comm);
     if (mpi_errno) MPIU_ERR_POP(mpi_errno);
 
@@ -216,7 +260,6 @@ int MPID_Init(int *argc, char ***argv, int requested, int *provided,
     comm->vcrt = MPIR_Process.comm_world->vcrt;
     comm->vcr  = MPIR_Process.comm_world->vcr;
     
-    MPID_Dev_comm_create_hook (comm);
     mpi_errno = MPIR_Comm_commit(comm);
     if (mpi_errno) MPIU_ERR_POP(mpi_errno);
 #endif
@@ -267,7 +310,7 @@ int MPID_Init(int *argc, char ***argv, int requested, int *provided,
 	MPIR_Process.comm_parent = comm;
 	MPIU_Assert(MPIR_Process.comm_parent != NULL);
 	MPIU_Strncpy(comm->name, "MPI_COMM_PARENT", MPI_MAX_OBJECT_NAME);
-	
+        
 	/* FIXME: Check that this intercommunicator gets freed in MPI_Finalize
 	   if not already freed.  */
     }
@@ -284,17 +327,6 @@ int MPID_Init(int *argc, char ***argv, int requested, int *provided,
 	    MPICH_THREAD_LEVEL : requested;
     }
 
-    /* create attribute to list failed processes */
-    mpi_errno = MPIR_Comm_create_keyval_impl(MPI_COMM_NULL_COPY_FN,
-                                             failed_procs_delete_fn,
-                                             &MPICH_ATTR_FAILED_PROCESSES, 0);
-    if (mpi_errno) MPIU_ERR_POP(mpi_errno);
-    attr_val = MPIU_Malloc(sizeof(int));
-    if (!attr_val) { MPIU_CHKMEM_SETERR(mpi_errno, sizeof(int), "attr_val"); goto fn_fail; }
-    *attr_val = MPI_PROC_NULL;
-    mpi_errno = MPIR_Comm_set_attr_impl(MPIR_Process.comm_world, MPICH_ATTR_FAILED_PROCESSES, attr_val, MPIR_ATTR_PTR);
-    if (mpi_errno) MPIU_ERR_POP(mpi_errno);
-    
   fn_exit:
     MPIDI_FUNC_EXIT(MPID_STATE_MPID_INIT);
     return mpi_errno;
@@ -310,7 +342,7 @@ int MPID_Init(int *argc, char ***argv, int requested, int *provided,
 int MPID_InitCompleted( void )
 {
     int mpi_errno;
-    mpi_errno = MPIU_CALL(MPIDI_CH3,InitCompleted());
+    mpi_errno = MPIDI_CH3_InitCompleted();
     return mpi_errno;
 }
 
@@ -472,8 +504,8 @@ static int InitPG( int *argc, char ***argv,
     }
 
     /* FIXME: Who is this for and where does it belong? */
-#ifdef USE_MPIU_DBG_PRINT_VC
-    MPIU_DBG_parent_str = (*has_parent) ? "+" : "";
+#ifdef USE_MPIDI_DBG_PRINT_VC
+    MPIDI_DBG_parent_str = (*has_parent) ? "+" : "";
 #endif
 
     /* FIXME: has_args and has_env need to come from PMI eventually... */
@@ -563,19 +595,6 @@ static int MPIDI_CH3I_PG_Destroy(MPIDI_PG_t * pg)
 	MPIU_Free(pg->id);
     }
     
-    return MPI_SUCCESS;
-}
-
-static int failed_procs_delete_fn(MPI_Comm comm ATTRIBUTE((unused)),
-                                  int keyval ATTRIBUTE((unused)),
-                                  void *attr_val,
-                                  void *extra_data ATTRIBUTE((unused)))
-{
-    MPIU_UNREFERENCED_ARG(comm);
-    MPIU_UNREFERENCED_ARG(keyval);
-    MPIU_UNREFERENCED_ARG(extra_data);
-
-    MPIU_Free(attr_val);
     return MPI_SUCCESS;
 }
 

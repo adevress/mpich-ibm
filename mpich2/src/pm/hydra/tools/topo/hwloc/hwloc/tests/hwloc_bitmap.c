@@ -1,6 +1,6 @@
 /*
  * Copyright © 2009 CNRS
- * Copyright © 2009-2011 INRIA.  All rights reserved.
+ * Copyright © 2009-2011 inria.  All rights reserved.
  * Copyright © 2009 Université Bordeaux 1
  * Copyright © 2011 Cisco Systems, Inc.  All rights reserved.
  * See COPYING in top-level directory.
@@ -95,6 +95,51 @@ int main(void)
   hwloc_bitmap_clr_range(set, 0, 34);
   assert(hwloc_bitmap_weight(set) == 0);
   assert(hwloc_bitmap_first(set) == -1);
+  hwloc_bitmap_free(set);
+
+  /* check miscellaneous other functions */
+  set = hwloc_bitmap_alloc();
+  /* from_ulong */
+  hwloc_bitmap_from_ulong(set, 0x0ff0);
+  assert(hwloc_bitmap_first(set) == 4);
+  assert(hwloc_bitmap_last(set) == 11);
+  assert(hwloc_bitmap_weight(set) == 8);
+  assert(hwloc_bitmap_to_ith_ulong(set, 0) == 0xff0);
+  assert(hwloc_bitmap_to_ith_ulong(set, 1) == 0);
+  /* from_ith_ulong */
+  hwloc_bitmap_zero(set);
+  assert(hwloc_bitmap_weight(set) == 0);
+  hwloc_bitmap_from_ith_ulong(set, 2, 0xff00);
+  assert(hwloc_bitmap_weight(set) == 8);
+  assert(hwloc_bitmap_to_ith_ulong(set, 0) == 0);
+  assert(hwloc_bitmap_to_ith_ulong(set, 1) == 0);
+  assert(hwloc_bitmap_to_ith_ulong(set, 2) == 0xff00);
+  assert(hwloc_bitmap_to_ith_ulong(set, 3) == 0);
+  /* allbut and not */
+  hwloc_bitmap_allbut(set, 153);
+  assert(hwloc_bitmap_weight(set) == -1);
+  hwloc_bitmap_not(set, set);
+  assert(hwloc_bitmap_weight(set) == 1);
+  assert(hwloc_bitmap_first(set) == 153);
+  assert(hwloc_bitmap_last(set) == 153);
+  /* clr_range */
+  hwloc_bitmap_fill(set);
+  hwloc_bitmap_clr_range(set, 178, 3589);
+  hwloc_bitmap_not(set, set);
+  assert(hwloc_bitmap_weight(set) == 3589-178+1);
+  assert(hwloc_bitmap_first(set) == 178);
+  assert(hwloc_bitmap_last(set) == 3589);
+  /* singlify */
+  hwloc_bitmap_zero(set);
+  hwloc_bitmap_set_range(set, 0, 127);
+  assert(hwloc_bitmap_weight(set) == 128);
+  hwloc_bitmap_not(set, set);
+  assert(hwloc_bitmap_weight(set) == -1);
+  hwloc_bitmap_singlify(set);
+  assert(hwloc_bitmap_weight(set) == 1);
+  assert(hwloc_bitmap_first(set) == 128);
+  assert(hwloc_bitmap_last(set) == 128);
+
   hwloc_bitmap_free(set);
 
   return 0;

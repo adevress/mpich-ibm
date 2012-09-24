@@ -538,7 +538,6 @@ int MPIDI_CH3_ReqHandler_ReloadIOV( MPIDI_VC_t *vc ATTRIBUTE((unused)),
 static int create_derived_datatype(MPID_Request *req, MPID_Datatype **dtp)
 {
     MPIDI_RMA_dtype_info *dtype_info;
-    void *dataloop;
     MPID_Datatype *new_dtp;
     int mpi_errno=MPI_SUCCESS;
     MPI_Aint ptrdiff;
@@ -547,8 +546,6 @@ static int create_derived_datatype(MPID_Request *req, MPID_Datatype **dtp)
     MPIDI_FUNC_ENTER(MPID_STATE_CREATE_DERIVED_DATATYPE);
 
     dtype_info = req->dev.dtype_info;
-    /* FIXME: What is this variable for (it is never referenced)? */
-    dataloop   = req->dev.dataloop;
 
     /* allocate new datatype object and handle */
     new_dtp = (MPID_Datatype *) MPIU_Handle_obj_alloc(&MPID_Datatype_mem);
@@ -911,8 +908,7 @@ int MPIDI_CH3I_Send_pt_rma_done_pkt(MPIDI_VC_t *vc, MPI_Win source_win_handle)
 
     /* Because this is in a packet handler, it is already within a critical section */	
     /* MPIU_THREAD_CS_ENTER(CH3COMM,vc); */
-    mpi_errno = MPIU_CALL(MPIDI_CH3,iStartMsg(vc, pt_rma_done_pkt,
-					      sizeof(*pt_rma_done_pkt), &req));
+    mpi_errno = MPIDI_CH3_iStartMsg(vc, pt_rma_done_pkt, sizeof(*pt_rma_done_pkt), &req);
     /* MPIU_THREAD_CS_EXIT(CH3COMM,vc); */
     if (mpi_errno != MPI_SUCCESS) {
 	MPIU_ERR_SETANDJUMP(mpi_errno,MPI_ERR_OTHER,"**ch3|rmamsg");
@@ -1018,7 +1014,7 @@ static int do_simple_get(MPID_Win *win_ptr, MPIDI_Win_lock_queue *lock_queue)
     
     /* Because this is in a packet handler, it is already within a critical section */	
     /* MPIU_THREAD_CS_ENTER(CH3COMM,vc); */
-    mpi_errno = MPIU_CALL(MPIDI_CH3,iSendv(lock_queue->vc, req, iov, 2));
+    mpi_errno = MPIDI_CH3_iSendv(lock_queue->vc, req, iov, 2);
     /* MPIU_THREAD_CS_EXIT(CH3COMM,vc); */
     /* --BEGIN ERROR HANDLING-- */
     if (mpi_errno != MPI_SUCCESS)

@@ -21,7 +21,6 @@
 #include <nm_public.h>
 #include <nm_sendrecv_interface.h>
 #include <nm_sampling.h>
-#include <pm2_common.h>
 #include "mpid_nem_impl.h"
 
 int MPID_nem_newmad_init (MPIDI_PG_t *pg_p, int pg_rank, char **bc_val_p, int *val_max_sz_p);
@@ -52,11 +51,13 @@ int MPID_nem_newmad_probe(MPIDI_VC_t *vc,  int source, int tag, MPID_Comm *comm,
 			  int context_offset, MPI_Status *status);
 int MPID_nem_newmad_iprobe(MPIDI_VC_t *vc,  int source, int tag, MPID_Comm *comm, 
 			   int context_offset, int *flag, MPI_Status *status);
+int MPID_nem_newmad_improbe(MPIDI_VC_t *vc,  int source, int tag, MPID_Comm *comm, int context_offset, int *flag, MPID_Request **message, MPI_Status *status);
 /* Any source management */
 void MPID_nem_newmad_anysource_posted(MPID_Request *rreq);
 int MPID_nem_newmad_anysource_matched(MPID_Request *rreq);
 int MPID_nem_newmad_anysource_iprobe(int tag, MPID_Comm *comm, int context_offset, int *flag, MPI_Status *status);
-
+int MPID_nem_newmad_anysource_improbe(int tag, MPID_Comm *comm, int context_offset, int *flag,
+				      MPID_Request **message,MPI_Status *status);
 /* Callbacks for events */
 void MPID_nem_newmad_get_adi_msg(nm_sr_event_t event, const nm_sr_event_info_t*info);
 
@@ -77,6 +78,7 @@ typedef struct
 {
     char                     url[MPID_NEM_NMAD_MAX_SIZE];
     mpid_nem_newmad_p_gate_t p_gate;
+    int                      pending_sends;
 } MPID_nem_newmad_vc_area;
 /* accessor macro to private fields in VC */
 #define VC_FIELD(vcp, field) (((MPID_nem_newmad_vc_area *)VC_CH(((vcp)))->netmod_area.padding)->field)
@@ -88,7 +90,12 @@ typedef struct
 {
     nm_sr_request_t newmad_req;
     struct iovec   *iov;
+    int             iov_to_delete;
+    int             deltmpbuf;
 } MPID_nem_newmad_req_area;
+
+#define TMP_DEL_VALUE 111
+
 /* accessor macro to private fields in REQ */
 #define REQ_FIELD(reqp, field) (((MPID_nem_newmad_req_area *)((reqp)->ch.netmod_area.padding))->field)
 
@@ -97,7 +104,7 @@ struct MPID_nem_newmad_internal_req
 {
    MPIU_OBJECT_HEADER; /* adds (unused) handle and ref_count fields */
    MPID_Request_kind_t    kind;       /* used   */
-   MPIDI_CH3_PktGeneric_t pending_pkt;
+   MPIDI_CH3_Pkt_t        pending_pkt;
    MPIDI_VC_t            *vc;
    void                  *tmpbuf;
    MPIDI_msg_sz_t         tmpbuf_sz;
@@ -199,7 +206,6 @@ typedef int16_t Nmad_Nem_tag_t;
 #define NEM_NMAD_ADI_MATCH(_match)                        NEM_NMAD_SET_MATCH(_match,0,0,NEM_NMAD_INTRA_CTXT)
 
 extern nm_session_t mpid_nem_newmad_session;
-extern int          mpid_nem_newmad_pending_send_req;
 
 #define NMAD_IOV_MAX_DEPTH (256) /* NM_SO_PREALLOC_IOV_LEN */
 /*#define DEBUG*/
