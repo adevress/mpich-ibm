@@ -63,7 +63,6 @@ if test -z "$mpich2_top_srcdir" ; then
     fi
 fi
 AC_SUBST(mpich2_top_srcdir)
-AC_SUBST(master_top_srcdir)
 
 # these (in particular master_top_srcdir) are needed to regenerate
 # the f90 files from the f77 files

@@ -95,10 +95,8 @@ int indexed_zeroblock_first_test(void)
     if (lb != sizeof(int)) {
 	if (verbose) {
 	    fprintf(stderr,
-		    "lb mismatch; is "
-		    MPI_AINT_FMT_DEC_SPEC
-		    ", should be %d\n",
-		    lb, (int) sizeof(int));
+		    "lb mismatch; is %d, should be %d\n",
+		    (int) lb, (int) sizeof(int));
 	}
 	errs++;
     }
@@ -106,10 +104,8 @@ int indexed_zeroblock_first_test(void)
     if (ub != 5 * sizeof(int)) {
 	if (verbose) {
 	    fprintf(stderr,
-		    "ub mismatch; is "
-		    MPI_AINT_FMT_DEC_SPEC
-		    ", should be %d\n",
-		    ub, (int) (5 * sizeof(int)));
+		    "ub mismatch; is %d, should be %d\n",
+		    (int) ub, (int) (5 * sizeof(int)));
 	}
 	errs++;
     }
@@ -141,10 +137,8 @@ int indexed_zeroblock_middle_test(void)
     if (lb != sizeof(int)) {
 	if (verbose) {
 	    fprintf(stderr,
-		    "lb mismatch; is "
-		    MPI_AINT_FMT_DEC_SPEC
-		    ", should be %d\n",
-		    lb, (int) sizeof(int));
+		    "lb mismatch; is %d, should be %d\n",
+		    (int) lb, (int) sizeof(int));
 	}
 	errs++;
     }
@@ -152,10 +146,8 @@ int indexed_zeroblock_middle_test(void)
     if (ub != 5 * sizeof(int)) {
 	if (verbose) {
 	    fprintf(stderr,
-		    "ub mismatch; is "
-		    MPI_AINT_FMT_DEC_SPEC
-		    ", should be %d\n",
-		    ub, (int) (5 * sizeof(int)));
+		    "ub mismatch; is %d, should be %d\n",
+		    (int) ub, (int) (5 * sizeof(int)));
 	}
 	errs++;
     }
@@ -187,10 +179,8 @@ int indexed_zeroblock_last_test(void)
     if (lb != sizeof(int)) {
 	if (verbose) {
 	    fprintf(stderr,
-		    "lb mismatch; is "
-		    MPI_AINT_FMT_DEC_SPEC
-		    ", should be %d\n",
-		    lb, (int) sizeof(int));
+		    "lb mismatch; is %d, should be %d\n",
+		    (int) lb, (int) sizeof(int));
 	}
 	errs++;
     }
@@ -198,10 +188,8 @@ int indexed_zeroblock_last_test(void)
     if (ub != 5 * sizeof(int)) {
 	if (verbose) {
 	    fprintf(stderr,
-		    "ub mismatch; is "
-		    MPI_AINT_FMT_DEC_SPEC
-		    ", should be %d\n",
-		    ub, (int) (5 * sizeof(int)));
+		    "ub mismatch; is %d, should be %d\n",
+		    (int) ub, (int) (5 * sizeof(int)));
 	}
 	errs++;
     }

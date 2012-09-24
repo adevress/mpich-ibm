@@ -46,7 +46,7 @@ int main( int argc, char *argv[] )
     /* Create the corresponding message buffers */
     MPI_Type_extent( dtype, &extent );
     for (i=0; i<MAX_MSGS; i++) {
-	bufs[i] = (int *)malloc( (size_t)extent );
+	bufs[i] = (int *)malloc( extent );
 	if (!bufs[i]) {
 	    fprintf( stderr, "Unable to allocate buffer %d of size %ld\n", 
 		    	i, (long)extent );

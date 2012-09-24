@@ -63,7 +63,7 @@ $closeXMLOutput = 1;     # Set to false to leave XML output file open to
                          # accept additional data
 $verbose = 0;            # Set to true to get more output
 $showProgress = 0;       # Set to true to get a "." with each run program.
-$newline = "\n";       # Set to \r\n for Windows-friendly, \n for Unix only
+$newline = "\r\n";       # Set to \r\n for Windows-friendly, \n for Unix only
 $batchRun = 0;           # Set to true to batch the execution of the tests
                          # (i.e., run them together, then test output, 
                          # rather than build/run/check for each test)

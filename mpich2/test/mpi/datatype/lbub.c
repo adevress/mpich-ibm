@@ -149,7 +149,7 @@ int int_with_lb_ub_test(void)
 
     if (aval != 9) {
 	errs++;
-	if (verbose) fprintf(stderr, "  extent of type = " MPI_AINT_FMT_DEC_SPEC "; should be %d\n", aval, 9);
+	if (verbose) fprintf(stderr, "  extent of type = %ld; should be %d\n", (long) aval, 9);
     }
     
     err = MPI_Type_lb(eviltype, &aval);
@@ -161,7 +161,7 @@ int int_with_lb_ub_test(void)
 
     if (aval != -3) {
 	errs++;
-	if (verbose) fprintf(stderr, "  lb of type = " MPI_AINT_FMT_DEC_SPEC "; should be %d\n", aval, -3);
+	if (verbose) fprintf(stderr, "  lb of type = %d; should be %d\n", (int) aval, -3);
     }
 
     err = MPI_Type_get_extent(eviltype, &lb, &extent);
@@ -173,14 +173,14 @@ int int_with_lb_ub_test(void)
 
     if (lb != -3) {
 	errs++;
-	if (verbose) fprintf(stderr, "  lb of type = " MPI_AINT_FMT_DEC_SPEC "; should be %d\n",
-			     aval, -3);
+	if (verbose) fprintf(stderr, "  lb of type = %d; should be %d\n",
+			     (int) aval, -3);
     }
 
     if (extent != 9) {
 	errs++;
-	if (verbose) fprintf(stderr, "  extent of type = " MPI_AINT_FMT_DEC_SPEC "; should be %d\n",
-			     extent, 9);
+	if (verbose) fprintf(stderr, "  extent of type = %d; should be %d\n",
+			     (int) extent, 9);
     }
 
     err = MPI_Type_ub(eviltype, &aval);
@@ -192,7 +192,7 @@ int int_with_lb_ub_test(void)
 
     if (aval != 6) {
 	errs++;
-	if (verbose) fprintf(stderr, "  ub of type = " MPI_AINT_FMT_DEC_SPEC "; should be %d\n", aval, 6);
+	if (verbose) fprintf(stderr, "  ub of type = %d; should be %d\n", (int) aval, 6);
     }
 
     err = MPI_Type_get_true_extent(eviltype, &true_lb, &aval);
@@ -204,12 +204,12 @@ int int_with_lb_ub_test(void)
 
     if (true_lb != 0) {
 	errs++;
-	if (verbose) fprintf(stderr, "  true_lb of type = " MPI_AINT_FMT_DEC_SPEC "; should be %d\n", true_lb, 0);
+	if (verbose) fprintf(stderr, "  true_lb of type = %d; should be %d\n", (int) true_lb, 0);
     }
 
     if (aval != 4) {
 	errs++;
-	if (verbose) fprintf(stderr, "  true extent of type = " MPI_AINT_FMT_DEC_SPEC "; should be %d\n", aval, 4);
+	if (verbose) fprintf(stderr, "  true extent of type = %d; should be %d\n", (int) aval, 4);
     }
     
     MPI_Type_free(&eviltype);
@@ -261,7 +261,8 @@ int contig_of_int_with_lb_ub_test(void)
 
     if (val != 12) {
 	errs++;
-	if (verbose) fprintf(stderr, "  size of type = " MPI_AINT_FMT_DEC_SPEC "; should be %d\n", val, 12);
+	if (verbose) fprintf(stderr, "  size of type = %d; should be %d\n", 
+			     val, 12);
     }
 
     err = MPI_Type_extent(eviltype, &aval);
@@ -273,7 +274,7 @@ int contig_of_int_with_lb_ub_test(void)
 
     if (aval != 27) {
 	errs++;
-	if (verbose) fprintf(stderr, "  extent of type = " MPI_AINT_FMT_DEC_SPEC "; should be %d\n", aval, 27);
+	if (verbose) fprintf(stderr, "  extent of type = %d; should be %d\n", (int) aval, 27);
 	if (verbose) fprintf( stderr, " for type %s\n", typemapstring );
     }
     
@@ -286,7 +287,7 @@ int contig_of_int_with_lb_ub_test(void)
 
     if (aval != -3) {
 	errs++;
-	if (verbose) fprintf(stderr, "  lb of type = " MPI_AINT_FMT_DEC_SPEC " from Type_lb; should be %d in %s\n", aval, -3, typemapstring );
+	if (verbose) fprintf(stderr, "  lb of type = %d from Type_lb; should be %d in %s\n", (int) aval, -3, typemapstring );
     }
 
     err = MPI_Type_get_extent(eviltype, &lb, &extent);
@@ -298,14 +299,14 @@ int contig_of_int_with_lb_ub_test(void)
 
     if (lb != -3) {
 	errs++;
-	if (verbose) fprintf(stderr, "  lb of type = " MPI_AINT_FMT_DEC_SPEC " from Type_get_extent; should be %d in %s\\n",
-			     aval, -3, typemapstring );
+	if (verbose) fprintf(stderr, "  lb of type = %d from Type_get_extent; should be %d in %s\n",
+			     (int) aval, -3, typemapstring );
     }
 
     if (extent != 27) {
 	errs++;
-	if (verbose) fprintf(stderr, "  extent of type = " MPI_AINT_FMT_DEC_SPEC " from Type_get_extent; should be %d in %s\n",
-			     extent, 27, typemapstring);
+	if (verbose) fprintf(stderr, "  extent of type = %d from Type_get_extent; should be %d in %s\n",
+			     (int) extent, 27, typemapstring);
     }
 
     err = MPI_Type_ub(eviltype, &aval);
@@ -317,7 +318,7 @@ int contig_of_int_with_lb_ub_test(void)
 
     if (aval != 24) {
 	errs++;
-	if (verbose) fprintf(stderr, "  ub of type = " MPI_AINT_FMT_DEC_SPEC " in Type_ub; should be %d in %s\n", aval, 24, typemapstring);
+	if (verbose) fprintf(stderr, "  ub of type = %d in Type_ub; should be %din %s\n", (int) aval, 24, typemapstring);
     }
 
     err = MPI_Type_get_true_extent(eviltype, &true_lb, &aval);
@@ -329,12 +330,12 @@ int contig_of_int_with_lb_ub_test(void)
 
     if (true_lb != 0) {
 	errs++;
-	if (verbose) fprintf(stderr, "  true_lb of type = " MPI_AINT_FMT_DEC_SPEC "; should be %d in %s\n", true_lb, 0, typemapstring);
+	if (verbose) fprintf(stderr, "  true_lb of type = %d; should be %d in %s\n", (int) true_lb, 0, typemapstring);
     }
 
     if (aval != 22) {
 	errs++;
-	if (verbose) fprintf(stderr, "  true extent of type = " MPI_AINT_FMT_DEC_SPEC "; should be %d in %s\n", aval, 22, typemapstring);
+	if (verbose) fprintf(stderr, "  true extent of type = %d; should be %d in %s\n", (int) aval, 22, typemapstring);
     }
 
     MPI_Type_free( &inttype );
@@ -399,7 +400,7 @@ int contig_negextent_of_int_with_lb_ub_test(void)
 
     if (aval != 9) {
 	errs++;
-	if (verbose) fprintf(stderr, "  extent of type = " MPI_AINT_FMT_DEC_SPEC "; should be %d\n", aval, 9);
+	if (verbose) fprintf(stderr, "  extent of type = %d; should be %d\n", (int) aval, 9);
     }
     
     err = MPI_Type_lb(eviltype, &aval);
@@ -411,7 +412,7 @@ int contig_negextent_of_int_with_lb_ub_test(void)
 
     if (aval != -12) {
 	errs++;
-	if (verbose) fprintf(stderr, "  lb of type = " MPI_AINT_FMT_DEC_SPEC "; should be %d\n", aval, -12);
+	if (verbose) fprintf(stderr, "  lb of type = %d; should be %d\n", (int) aval, -12);
     }
 
     err = MPI_Type_get_extent(eviltype, &lb, &extent);
@@ -423,14 +424,14 @@ int contig_negextent_of_int_with_lb_ub_test(void)
 
     if (lb != -12) {
 	errs++;
-	if (verbose) fprintf(stderr, "  lb of type = " MPI_AINT_FMT_DEC_SPEC "; should be %d\n",
-			     aval, -12);
+	if (verbose) fprintf(stderr, "  lb of type = %d; should be %d\n",
+			     (int) aval, -12);
     }
 
     if (extent != 9) {
 	errs++;
-	if (verbose) fprintf(stderr, "  extent of type = " MPI_AINT_FMT_DEC_SPEC "; should be %d\n",
-			     extent, 9);
+	if (verbose) fprintf(stderr, "  extent of type = %d; should be %d\n",
+			     (int) extent, 9);
     }
 
     err = MPI_Type_ub(eviltype, &aval);
@@ -442,7 +443,7 @@ int contig_negextent_of_int_with_lb_ub_test(void)
 
     if (aval != -3) {
 	errs++;
-	if (verbose) fprintf(stderr, "  ub of type = " MPI_AINT_FMT_DEC_SPEC "; should be %d\n", aval, -3);
+	if (verbose) fprintf(stderr, "  ub of type = %d; should be %d\n", (int) aval, -3);
     }
 
     err = MPI_Type_get_true_extent(eviltype, &true_lb, &aval);
@@ -454,12 +455,12 @@ int contig_negextent_of_int_with_lb_ub_test(void)
 
     if (true_lb != -18) {
 	errs++;
-	if (verbose) fprintf(stderr, "  true_lb of type = " MPI_AINT_FMT_DEC_SPEC "; should be %d\n", true_lb, -18);
+	if (verbose) fprintf(stderr, "  true_lb of type = %d; should be %d\n", (int) true_lb, -18);
     }
 
     if (aval != 22) {
 	errs++;
-	if (verbose) fprintf(stderr, "  true extent of type = " MPI_AINT_FMT_DEC_SPEC "; should be %d\n", aval, 22);
+	if (verbose) fprintf(stderr, "  true extent of type = %d; should be %d\n", (int) aval, 22);
     }
 
     MPI_Type_free( &inttype );
@@ -518,7 +519,7 @@ int vector_of_int_with_lb_ub_test(void)
 
     if (aval != 27) {
 	errs++;
-	if (verbose) fprintf(stderr, "  extent of type = " MPI_AINT_FMT_DEC_SPEC "; should be %d\n", aval, 27);
+	if (verbose) fprintf(stderr, "  extent of type = %d; should be %d\n", (int) aval, 27);
     }
     
     err = MPI_Type_lb(eviltype, &aval);
@@ -530,7 +531,7 @@ int vector_of_int_with_lb_ub_test(void)
 
     if (aval != -3) {
 	errs++;
-	if (verbose) fprintf(stderr, "  lb of type = " MPI_AINT_FMT_DEC_SPEC "; should be %d\n", aval, -3);
+	if (verbose) fprintf(stderr, "  lb of type = %d; should be %d\n", (int) aval, -3);
     }
 
     err = MPI_Type_get_extent(eviltype, &lb, &extent);
@@ -542,14 +543,14 @@ int vector_of_int_with_lb_ub_test(void)
 
     if (lb != -3) {
 	errs++;
-	if (verbose) fprintf(stderr, "  lb of type = " MPI_AINT_FMT_DEC_SPEC "; should be %d\n",
-			     aval, -3);
+	if (verbose) fprintf(stderr, "  lb of type = %d; should be %d\n",
+			     (int) aval, -3);
     }
 
     if (extent != 27) {
 	errs++;
-	if (verbose) fprintf(stderr, "  extent of type = " MPI_AINT_FMT_DEC_SPEC "; should be %d\n",
-			     extent, 27);
+	if (verbose) fprintf(stderr, "  extent of type = %d; should be %d\n",
+			     (int) extent, 27);
     }
 
     err = MPI_Type_ub(eviltype, &aval);
@@ -561,7 +562,7 @@ int vector_of_int_with_lb_ub_test(void)
 
     if (aval != 24) {
 	errs++;
-	if (verbose) fprintf(stderr, "  ub of type = " MPI_AINT_FMT_DEC_SPEC "; should be %d\n", aval, 24);
+	if (verbose) fprintf(stderr, "  ub of type = %d; should be %d\n", (int) aval, 24);
     }
 
     err = MPI_Type_get_true_extent(eviltype, &true_lb, &aval);
@@ -573,12 +574,12 @@ int vector_of_int_with_lb_ub_test(void)
 
     if (true_lb != 0) {
 	errs++;
-	if (verbose) fprintf(stderr, "  true_lb of type = " MPI_AINT_FMT_DEC_SPEC "; should be %d\n", true_lb, 0);
+	if (verbose) fprintf(stderr, "  true_lb of type = %d; should be %d\n", (int) true_lb, 0);
     }
 
     if (aval != 22) {
 	errs++;
-	if (verbose) fprintf(stderr, "  true extent of type = " MPI_AINT_FMT_DEC_SPEC "; should be %d\n", aval, 22);
+	if (verbose) fprintf(stderr, "  true extent of type = %d; should be %d\n", (int) aval, 22);
     }
 
     MPI_Type_free( &inttype );
@@ -640,7 +641,7 @@ int vector_blklen_of_int_with_lb_ub_test(void)
 
     if (aval != 54) {
 	errs++;
-	if (verbose) fprintf(stderr, "  extent of type = " MPI_AINT_FMT_DEC_SPEC "; should be %d\n", aval, 54);
+	if (verbose) fprintf(stderr, "  extent of type = %d; should be %d\n", (int) aval, 54);
     }
     
     err = MPI_Type_lb(eviltype, &aval);
@@ -652,7 +653,7 @@ int vector_blklen_of_int_with_lb_ub_test(void)
 
     if (aval != -3) {
 	errs++;
-	if (verbose) fprintf(stderr, "  lb of type = " MPI_AINT_FMT_DEC_SPEC "; should be %d\n", aval, -3);
+	if (verbose) fprintf(stderr, "  lb of type = %d; should be %d\n", (int) aval, -3);
 	if (verbose) MTestPrintError( err  );
     }
 
@@ -665,14 +666,14 @@ int vector_blklen_of_int_with_lb_ub_test(void)
 
     if (lb != -3) {
 	errs++;
-	if (verbose) fprintf(stderr, "  lb of type = " MPI_AINT_FMT_DEC_SPEC "; should be %d\n",
-			     aval, -3);
+	if (verbose) fprintf(stderr, "  lb of type = %d; should be %d\n",
+			     (int) aval, -3);
     }
 
     if (extent != 54) {
 	errs++;
-	if (verbose) fprintf(stderr, "  extent of type = " MPI_AINT_FMT_DEC_SPEC "; should be %d\n",
-			     extent, 54);
+	if (verbose) fprintf(stderr, "  extent of type = %d; should be %d\n",
+			     (int) extent, 54);
     }
 
     err = MPI_Type_ub(eviltype, &aval);
@@ -684,7 +685,7 @@ int vector_blklen_of_int_with_lb_ub_test(void)
 
     if (aval != 51) {
 	errs++;
-	if (verbose) fprintf(stderr, "  ub of type = " MPI_AINT_FMT_DEC_SPEC "; should be %d\n", aval, 51);
+	if (verbose) fprintf(stderr, "  ub of type = %d; should be %d\n", (int) aval, 51);
     }
 
     err = MPI_Type_get_true_extent(eviltype, &true_lb, &aval);
@@ -696,12 +697,12 @@ int vector_blklen_of_int_with_lb_ub_test(void)
 
     if (true_lb != 0) {
 	errs++;
-	if (verbose) fprintf(stderr, "  true_lb of type = " MPI_AINT_FMT_DEC_SPEC "; should be %d\n", true_lb, 0);
+	if (verbose) fprintf(stderr, "  true_lb of type = %d; should be %d\n", (int) true_lb, 0);
     }
 
     if (aval != 49) {
 	errs++;
-	if (verbose) fprintf(stderr, "  true extent of type = " MPI_AINT_FMT_DEC_SPEC "; should be %d\n", aval, 49);
+	if (verbose) fprintf(stderr, "  true extent of type = %d; should be %d\n", (int) aval, 49);
     }
 
     MPI_Type_free( &inttype );
@@ -763,7 +764,7 @@ int vector_blklen_stride_of_int_with_lb_ub_test(void)
 
     if (aval != 126) {
 	errs++;
-	if (verbose) fprintf(stderr, "  extent of type = " MPI_AINT_FMT_DEC_SPEC "; should be %d\n", aval, 126);
+	if (verbose) fprintf(stderr, "  extent of type = %d; should be %d\n", (int) aval, 126);
     }
     
     err = MPI_Type_lb(eviltype, &aval);
@@ -775,7 +776,7 @@ int vector_blklen_stride_of_int_with_lb_ub_test(void)
 
     if (aval != -3) {
 	errs++;
-	if (verbose) fprintf(stderr, "  lb of type = " MPI_AINT_FMT_DEC_SPEC "; should be %d\n", aval, -3);
+	if (verbose) fprintf(stderr, "  lb of type = %d; should be %d\n", (int) aval, -3);
     }
 
     err = MPI_Type_get_extent(eviltype, &lb, &extent);
@@ -787,14 +788,14 @@ int vector_blklen_stride_of_int_with_lb_ub_test(void)
 
     if (lb != -3) {
 	errs++;
-	if (verbose) fprintf(stderr, "  lb of type = " MPI_AINT_FMT_DEC_SPEC "; should be %d\n",
-			     aval, -3);
+	if (verbose) fprintf(stderr, "  lb of type = %d; should be %d\n",
+			     (int) aval, -3);
     }
 
     if (extent != 126) {
 	errs++;
-	if (verbose) fprintf(stderr, "  extent of type = " MPI_AINT_FMT_DEC_SPEC "; should be %d\n",
-			     extent, 126);
+	if (verbose) fprintf(stderr, "  extent of type = %d; should be %d\n",
+			     (int) extent, 126);
     }
 
     err = MPI_Type_ub(eviltype, &aval);
@@ -806,7 +807,7 @@ int vector_blklen_stride_of_int_with_lb_ub_test(void)
 
     if (aval != 123) {
 	errs++;
-	if (verbose) fprintf(stderr, "  ub of type = " MPI_AINT_FMT_DEC_SPEC "; should be %d\n", aval, 123);
+	if (verbose) fprintf(stderr, "  ub of type = %d; should be %d\n", (int) aval, 123);
     }
 
     err = MPI_Type_get_true_extent(eviltype, &true_lb, &aval);
@@ -818,12 +819,12 @@ int vector_blklen_stride_of_int_with_lb_ub_test(void)
 
     if (true_lb != 0) {
 	errs++;
-	if (verbose) fprintf(stderr, "  true_lb of type = " MPI_AINT_FMT_DEC_SPEC "; should be %d\n", true_lb, 0);
+	if (verbose) fprintf(stderr, "  true_lb of type = %d; should be %d\n", (int) true_lb, 0);
     }
 
     if (aval != 121) {
 	errs++;
-	if (verbose) fprintf(stderr, "  true extent of type = " MPI_AINT_FMT_DEC_SPEC "; should be %d\n", aval, 121);
+	if (verbose) fprintf(stderr, "  true extent of type = %d; should be %d\n", (int) aval, 121);
     }
 
     MPI_Type_free( &inttype );
@@ -882,7 +883,7 @@ int vector_blklen_negstride_of_int_with_lb_ub_test(void)
 
     if (aval != 126) {
 	errs++;
-	if (verbose) fprintf(stderr, "  extent of type = " MPI_AINT_FMT_DEC_SPEC "; should be %d\n", aval, 126);
+	if (verbose) fprintf(stderr, "  extent of type = %d; should be %d\n", (int) aval, 126);
     }
     
     err = MPI_Type_lb(eviltype, &aval);
@@ -894,7 +895,7 @@ int vector_blklen_negstride_of_int_with_lb_ub_test(void)
 
     if (aval != -93) {
 	errs++;
-	if (verbose) fprintf(stderr, "  lb of type = " MPI_AINT_FMT_DEC_SPEC "; should be %d\n", aval, -93);
+	if (verbose) fprintf(stderr, "  lb of type = %d; should be %d\n", (int) aval, -93);
     }
 
     err = MPI_Type_get_extent(eviltype, &lb, &extent);
@@ -906,14 +907,14 @@ int vector_blklen_negstride_of_int_with_lb_ub_test(void)
 
     if (lb != -93) {
 	errs++;
-	if (verbose) fprintf(stderr, "  lb of type = " MPI_AINT_FMT_DEC_SPEC "; should be %d\n",
-			     aval, -93);
+	if (verbose) fprintf(stderr, "  lb of type = %d; should be %d\n",
+			     (int) aval, -93);
     }
 
     if (extent != 126) {
 	errs++;
-	if (verbose) fprintf(stderr, "  extent of type = " MPI_AINT_FMT_DEC_SPEC "; should be %d\n",
-			     extent, 126);
+	if (verbose) fprintf(stderr, "  extent of type = %d; should be %d\n",
+			     (int) extent, 126);
     }
 
     err = MPI_Type_ub(eviltype, &aval);
@@ -925,7 +926,7 @@ int vector_blklen_negstride_of_int_with_lb_ub_test(void)
 
     if (aval != 33) {
 	errs++;
-	if (verbose) fprintf(stderr, "  ub of type = " MPI_AINT_FMT_DEC_SPEC "; should be %d\n", aval, 33);
+	if (verbose) fprintf(stderr, "  ub of type = %d; should be %d\n", (int) aval, 33);
     }
 
     err = MPI_Type_get_true_extent(eviltype, &true_lb, &aval);
@@ -937,12 +938,12 @@ int vector_blklen_negstride_of_int_with_lb_ub_test(void)
 
     if (true_lb != -90) {
 	errs++;
-	if (verbose) fprintf(stderr, "  true_lb of type = " MPI_AINT_FMT_DEC_SPEC "; should be %d\n", true_lb, -90);
+	if (verbose) fprintf(stderr, "  true_lb of type = %d; should be %d\n", (int) true_lb, -90);
     }
 
     if (aval != 121) {
 	errs++;
-	if (verbose) fprintf(stderr, "  true extent of type = " MPI_AINT_FMT_DEC_SPEC "; should be %d\n", aval, 121);
+	if (verbose) fprintf(stderr, "  true extent of type = %d; should be %d\n", (int) aval, 121);
     }
 
     MPI_Type_free( &inttype );
@@ -994,7 +995,7 @@ int int_with_negextent_test(void)
 
     if (aval != -9) {
 	errs++;
-	if (verbose) fprintf(stderr, "  extent of type = " MPI_AINT_FMT_DEC_SPEC "; should be %d\n", aval, -9);
+	if (verbose) fprintf(stderr, "  extent of type = %d; should be %d\n", (int) aval, -9);
     }
     
     err = MPI_Type_lb(eviltype, &aval);
@@ -1006,7 +1007,7 @@ int int_with_negextent_test(void)
 
     if (aval != 6) {
 	errs++;
-	if (verbose) fprintf(stderr, "  lb of type = " MPI_AINT_FMT_DEC_SPEC "; should be %d\n", aval, 6);
+	if (verbose) fprintf(stderr, "  lb of type = %d; should be %d\n", (int) aval, 6);
     }
 
     err = MPI_Type_get_extent(eviltype, &lb, &extent);
@@ -1018,14 +1019,14 @@ int int_with_negextent_test(void)
 
     if (lb != 6) {
 	errs++;
-	if (verbose) fprintf(stderr, "  lb of type = " MPI_AINT_FMT_DEC_SPEC "; should be %d\n",
-			     aval, 6);
+	if (verbose) fprintf(stderr, "  lb of type = %d; should be %d\n",
+			     (int) aval, 6);
     }
 
     if (extent != -9) {
 	errs++;
-	if (verbose) fprintf(stderr, "  extent of type = " MPI_AINT_FMT_DEC_SPEC "; should be %d\n",
-			     extent, -9);
+	if (verbose) fprintf(stderr, "  extent of type = %d; should be %d\n",
+			     (int) extent, -9);
     }
 
     err = MPI_Type_ub(eviltype, &aval);
@@ -1037,7 +1038,7 @@ int int_with_negextent_test(void)
 
     if (aval != -3) {
 	errs++;
-	if (verbose) fprintf(stderr, "  ub of type = " MPI_AINT_FMT_DEC_SPEC "; should be %d\n", aval, -3);
+	if (verbose) fprintf(stderr, "  ub of type = %d; should be %d\n", (int) aval, -3);
     }
 
     err = MPI_Type_get_true_extent(eviltype, &true_lb, &aval);
@@ -1049,12 +1050,12 @@ int int_with_negextent_test(void)
 
     if (true_lb != 0) {
 	errs++;
-	if (verbose) fprintf(stderr, "  true_lb of type = " MPI_AINT_FMT_DEC_SPEC "; should be %d\n", true_lb, 0);
+	if (verbose) fprintf(stderr, "  true_lb of type = %d; should be %d\n", (int) true_lb, 0);
     }
 
     if (aval != 4) {
 	errs++;
-	if (verbose) fprintf(stderr, "  true extent of type = " MPI_AINT_FMT_DEC_SPEC "; should be %d\n", aval, 4);
+	if (verbose) fprintf(stderr, "  true extent of type = %d; should be %d\n", (int) aval, 4);
     }
     
     MPI_Type_free(&eviltype);
@@ -1114,7 +1115,7 @@ int vector_blklen_stride_negextent_of_int_with_lb_ub_test(void)
 
     if (aval != 108) {
 	errs++;
-	if (verbose) fprintf(stderr, "  extent of type = " MPI_AINT_FMT_DEC_SPEC "; should be %d\n", aval, 108);
+	if (verbose) fprintf(stderr, "  extent of type = %d; should be %d\n", (int) aval, 108);
     }
     
     err = MPI_Type_lb(eviltype, &aval);
@@ -1126,7 +1127,7 @@ int vector_blklen_stride_negextent_of_int_with_lb_ub_test(void)
 
     if (aval != -111) {
 	errs++;
-	if (verbose) fprintf(stderr, "  lb of type = " MPI_AINT_FMT_DEC_SPEC "; should be %d\n", aval, -111);
+	if (verbose) fprintf(stderr, "  lb of type = %d; should be %d\n", (int) aval, -111);
     }
 
     err = MPI_Type_get_extent(eviltype, &lb, &extent);
@@ -1138,14 +1139,14 @@ int vector_blklen_stride_negextent_of_int_with_lb_ub_test(void)
 
     if (lb != -111) {
 	errs++;
-	if (verbose) fprintf(stderr, "  lb of type = " MPI_AINT_FMT_DEC_SPEC "; should be %d\n",
-			     aval, -111);
+	if (verbose) fprintf(stderr, "  lb of type = %d; should be %d\n",
+			     (int) aval, -111);
     }
 
     if (extent != 108) {
 	errs++;
-	if (verbose) fprintf(stderr, "  extent of type = " MPI_AINT_FMT_DEC_SPEC "; should be %d\n",
-			     extent, 108);
+	if (verbose) fprintf(stderr, "  extent of type = %d; should be %d\n",
+			     (int) extent, 108);
     }
 
     err = MPI_Type_ub(eviltype, &aval);
@@ -1157,7 +1158,7 @@ int vector_blklen_stride_negextent_of_int_with_lb_ub_test(void)
 
     if (aval != -3) {
 	errs++;
-	if (verbose) fprintf(stderr, "  ub of type = " MPI_AINT_FMT_DEC_SPEC "; should be %d\n", aval, -3);
+	if (verbose) fprintf(stderr, "  ub of type = %d; should be %d\n", (int) aval, -3);
     }
 
     err = MPI_Type_get_true_extent(eviltype, &true_lb, &aval);
@@ -1169,12 +1170,12 @@ int vector_blklen_stride_negextent_of_int_with_lb_ub_test(void)
 
     if (true_lb != -117) {
 	errs++;
-	if (verbose) fprintf(stderr, "  true_lb of type = " MPI_AINT_FMT_DEC_SPEC "; should be %d\n", true_lb, -117);
+	if (verbose) fprintf(stderr, "  true_lb of type = %d; should be %d\n", (int) true_lb, -117);
     }
 
     if (aval != 121) {
 	errs++;
-	if (verbose) fprintf(stderr, "  true extent of type = " MPI_AINT_FMT_DEC_SPEC "; should be %d\n", aval, 121);
+	if (verbose) fprintf(stderr, "  true extent of type = %d; should be %d\n", (int) aval, 121);
     }
 
     MPI_Type_free( &inttype );
@@ -1233,7 +1234,7 @@ int vector_blklen_negstride_negextent_of_int_with_lb_ub_test(void)
 
     if (aval != 108) {
 	errs++;
-	if (verbose) fprintf(stderr, "  extent of type = " MPI_AINT_FMT_DEC_SPEC "; should be %d\n", aval, 108);
+	if (verbose) fprintf(stderr, "  extent of type = %ld; should be %d\n", (long) aval, 108);
     }
     
     err = MPI_Type_lb(eviltype, &aval);
@@ -1245,7 +1246,7 @@ int vector_blklen_negstride_negextent_of_int_with_lb_ub_test(void)
 
     if (aval != -21) {
 	errs++;
-	if (verbose) fprintf(stderr, "  lb of type = " MPI_AINT_FMT_DEC_SPEC "; should be %d\n", aval, -21);
+	if (verbose) fprintf(stderr, "  lb of type = %ld; should be %d\n", (long) aval, -21);
     }
 
     err = MPI_Type_get_extent(eviltype, &lb, &extent);
@@ -1257,14 +1258,14 @@ int vector_blklen_negstride_negextent_of_int_with_lb_ub_test(void)
 
     if (lb != -21) {
 	errs++;
-	if (verbose) fprintf(stderr, "  lb of type = " MPI_AINT_FMT_DEC_SPEC "; should be %d\n",
-			     aval, -21);
+	if (verbose) fprintf(stderr, "  lb of type = %ld; should be %d\n",
+			     (long) aval, -21);
     }
 
     if (extent != 108) {
 	errs++;
-	if (verbose) fprintf(stderr, "  extent of type = " MPI_AINT_FMT_DEC_SPEC "; should be %d\n",
-			     extent, 108);
+	if (verbose) fprintf(stderr, "  extent of type = %ld; should be %d\n",
+			     (long) extent, 108);
     }
 
 
@@ -1277,7 +1278,7 @@ int vector_blklen_negstride_negextent_of_int_with_lb_ub_test(void)
 
     if (aval != 87) {
 	errs++;
-	if (verbose) fprintf(stderr, "  ub of type = " MPI_AINT_FMT_DEC_SPEC "; should be %d\n", aval, 87);
+	if (verbose) fprintf(stderr, "  ub of type = %ld; should be %d\n", (long) aval, 87);
     }
 
     err = MPI_Type_get_true_extent(eviltype, &true_lb, &aval);
@@ -1289,12 +1290,12 @@ int vector_blklen_negstride_negextent_of_int_with_lb_ub_test(void)
 
     if (true_lb != -27) {
 	errs++;
-	if (verbose) fprintf(stderr, "  true_lb of type = " MPI_AINT_FMT_DEC_SPEC "; should be %d\n", true_lb, -27);
+	if (verbose) fprintf(stderr, "  true_lb of type = %ld; should be %d\n", (long) true_lb, -27);
     }
 
     if (aval != 121) {
 	errs++;
-	if (verbose) fprintf(stderr, "  true extent of type = " MPI_AINT_FMT_DEC_SPEC "; should be %d\n", aval, 121);
+	if (verbose) fprintf(stderr, "  true extent of type = %ld; should be %d\n", (long) aval, 121);
     }
 
     MPI_Type_free( &inttype );

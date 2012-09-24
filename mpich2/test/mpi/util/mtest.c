@@ -295,7 +295,7 @@ static void *MTestTypeContigInit( MTestDatatype *mtype )
 	int  i, totsize;
 	merr = MPI_Type_extent( mtype->datatype, &size );
 	if (merr) MTestPrintError( merr );
-	totsize = (int)size * mtype->count;
+	totsize = size * mtype->count;
 	if (!mtype->buf) {
 	    mtype->buf = (void *) malloc( totsize );
 	}
@@ -331,7 +331,7 @@ static void *MTestTypeContigInitRecv( MTestDatatype *mtype )
 	int  i, totsize;
 	merr = MPI_Type_extent( mtype->datatype, &size );
 	if (merr) MTestPrintError( merr );
-	totsize = (int)size * mtype->count;
+	totsize = size * mtype->count;
 	if (!mtype->buf) {
 	    mtype->buf = (void *) malloc( totsize );
 	}
@@ -371,7 +371,7 @@ static int MTestTypeContigCheckbuf( MTestDatatype *mtype )
     if (p) {
 	merr = MPI_Type_extent( mtype->datatype, &size );
 	if (merr) MTestPrintError( merr );
-	totsize = (int)size * mtype->count;
+	totsize = size * mtype->count;
 	for (i=0; i<totsize; i++) {
 	    expected = (0xff ^ (i & 0xff));
 	    if (p[i] != expected) {
@@ -402,7 +402,7 @@ static void *MTestTypeVectorInit( MTestDatatype *mtype )
 
 	merr = MPI_Type_extent( mtype->datatype, &size );
 	if (merr) MTestPrintError( merr );
-	totsize	   = mtype->count * (int)size;
+	totsize	   = mtype->count * size;
 	if (!mtype->buf) {
 	    mtype->buf = (void *) malloc( totsize );
 	}
@@ -469,7 +469,7 @@ static void *MTestTypeIndexedInit( MTestDatatype *mtype )
 	merr = MPI_Type_extent( mtype->datatype, &totsize );
 	if (merr) MTestPrintError( merr );
 	if (!mtype->buf) {
-	    mtype->buf = (void *) malloc( (int)totsize );
+	    mtype->buf = (void *) malloc( totsize );
 	}
 	p = (signed char *)(mtype->buf);
 	if (!p) {
@@ -523,7 +523,7 @@ static void *MTestTypeIndexedInitRecv( MTestDatatype *mtype )
 	merr = MPI_Type_extent( mtype->datatype, &totsize );
 	if (merr) MTestPrintError( merr );
 	if (!mtype->buf) {
-	    mtype->buf = (void *) malloc( (int)totsize );
+	    mtype->buf = (void *) malloc( totsize );
 	}
 	p = (signed char *)(mtype->buf);
 	if (!p) {

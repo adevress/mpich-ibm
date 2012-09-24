@@ -24,7 +24,7 @@ int main( int argc, char *argv[] )
 	    fprintf( stderr, 
 		  "Test requires 8 processes (16 prefered) only %d provided\n",
 		     size );
-            MPI_Abort( MPI_COMM_WORLD, 1 );
+	    errs++;
 	}
 
 	/* 16 members, this process is rank 0, return in group 1 */
