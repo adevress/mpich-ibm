@@ -8,6 +8,8 @@
 #include "mpiimpl.h"
 #include "mpicomm.h"
 
+#define MPIR_INTERCOMM_CREATE_TAG 0
+
 /* -- Begin Profiling Symbol Block for routine MPI_Intercomm_create */
 #if defined(HAVE_PRAGMA_WEAK)
 #pragma weak MPI_Intercomm_create = PMPI_Intercomm_create
@@ -192,8 +194,9 @@ int MPIR_Intercomm_create_impl(MPID_Comm *local_comm_ptr, int local_leader,
 
     MPID_MPI_FUNC_ENTER(MPID_STATE_MPIR_INTERCOMM_CREATE_IMPL);
 
-    /* Shift tag into the tagged coll space */
-    cts_tag = tag | MPIR_Process.tagged_coll_mask;
+    /* Shift tag into the tagged coll space (tag provided by the user 
+       is ignored as of MPI 3.0) */
+    cts_tag = MPIR_INTERCOMM_CREATE_TAG | MPIR_Process.tagged_coll_mask;
 
     /*
      * Error checking for this routine requires care.  Because this
@@ -495,7 +498,6 @@ int MPI_Intercomm_create(MPI_Comm local_comm, int local_leader,
         {
             MPIR_ERRTEST_COMM_TAG(tag, mpi_errno);
 	    MPIR_ERRTEST_COMM(local_comm, mpi_errno);
-            if (mpi_errno) goto fn_fail;
 	}
         MPID_END_ERROR_CHECKS;
     }
@@ -519,13 +521,13 @@ int MPI_Intercomm_create(MPI_Comm local_comm, int local_leader,
 		    MPIU_ERR_SET2(mpi_errno,MPI_ERR_RANK, 
 				  "**ranklocal", "**ranklocal %d %d", 
 				  local_leader, local_comm_ptr->local_size - 1 );
+                    /* If local_comm_ptr is not valid, it will be reset to null */
+                    if (mpi_errno) goto fn_fail;
 		}
 		if (local_comm_ptr->rank == local_leader) {
 		    MPIR_ERRTEST_COMM(peer_comm, mpi_errno);
 		}
 	    }
-	    /* If local_comm_ptr is not valid, it will be reset to null */
-            if (mpi_errno) goto fn_fail;
         }
         MPID_END_ERROR_CHECKS;
     }

@@ -140,9 +140,6 @@ int MPIDI_Datatype_to_pami(MPI_Datatype        dt,
       {
          switch(dt)
          {
-            case MPI_2REAL:             *pdt = PAMI_TYPE_LOC_2FLOAT;     break;
-            case MPI_2DOUBLE_PRECISION: *pdt = PAMI_TYPE_LOC_2DOUBLE;    break;
-            case MPI_2INTEGER:
             case MPI_2INT:              *pdt = PAMI_TYPE_LOC_2INT;       break;
             case MPI_FLOAT_INT:         *pdt = PAMI_TYPE_LOC_FLOAT_INT;  break;
             case MPI_DOUBLE_INT:        *pdt = PAMI_TYPE_LOC_DOUBLE_INT; break;
@@ -150,6 +147,14 @@ int MPIDI_Datatype_to_pami(MPI_Datatype        dt,
 
             case MPI_LONG_INT:          *pdt = PAMI_TYPE_LOC_LONG_INT;   break;
             case MPI_LONG_DOUBLE_INT:   *pdt = PAMI_TYPE_LOC_LONGDOUBLE_INT;  break;
+            default:
+              /* The following is needed to catch missing fortran bindings */
+              if (dt == MPI_2REAL)
+                *pdt = PAMI_TYPE_LOC_2FLOAT;
+              else if (dt == MPI_2DOUBLE_PRECISION)
+                *pdt = PAMI_TYPE_LOC_2DOUBLE;
+              else if (dt == MPI_2INTEGER)
+                *pdt = PAMI_TYPE_LOC_2INT;
          }
          /* 
           * There are some 2-element types that PAMI doesn't support, so we 

@@ -25,7 +25,6 @@
 #include <limits.h>
 #include <pamix.h>
 
-#include <mpid_config.h>
 #define PAMIX_assert_always(x) assert(x)
 #if ASSERT_LEVEL==0
 #define PAMIX_assert(x)

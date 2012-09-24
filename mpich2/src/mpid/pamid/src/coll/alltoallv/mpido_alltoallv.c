@@ -32,13 +32,13 @@ static void cb_alltoallv(void *ctxt, void *clientdata, pami_result_t err)
 }
 
 
-int MPIDO_Alltoallv(void *sendbuf,
-                   int *sendcounts,
-                   int *senddispls,
+int MPIDO_Alltoallv(const void *sendbuf,
+                   const int *sendcounts,
+                   const int *senddispls,
                    MPI_Datatype sendtype,
                    void *recvbuf,
-                   int *recvcounts,
-                   int *recvdispls,
+                   const int *recvcounts,
+                   const int *recvdispls,
                    MPI_Datatype recvtype,
                    MPID_Comm *comm_ptr,
                    int *mpierrno)
@@ -110,22 +110,22 @@ int MPIDO_Alltoallv(void *sendbuf,
       if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL))
          fprintf(stderr,"alltoallv MPI_IN_PLACE buffering\n");
       alltoallv.cmd.xfer_alltoallv_int.stype = rtype;
-      alltoallv.cmd.xfer_alltoallv_int.sdispls = recvdispls;
-      alltoallv.cmd.xfer_alltoallv_int.stypecounts = recvcounts;
+      alltoallv.cmd.xfer_alltoallv_int.sdispls = (int *) recvdispls;
+      alltoallv.cmd.xfer_alltoallv_int.stypecounts = (int *) recvcounts;
       alltoallv.cmd.xfer_alltoallv_int.sndbuf = (char *)recvbuf+rdt_true_lb;
    }
    else
    {
       MPIDI_Datatype_get_info(1, sendtype, snd_contig, sndtypelen, sdt, sdt_true_lb);
       alltoallv.cmd.xfer_alltoallv_int.stype = stype;
-      alltoallv.cmd.xfer_alltoallv_int.sdispls = senddispls;
-      alltoallv.cmd.xfer_alltoallv_int.stypecounts = sendcounts;
+      alltoallv.cmd.xfer_alltoallv_int.sdispls = (int *) senddispls;
+      alltoallv.cmd.xfer_alltoallv_int.stypecounts = (int *) sendcounts;
       alltoallv.cmd.xfer_alltoallv_int.sndbuf = (char *)sendbuf+sdt_true_lb;
    }
    alltoallv.cmd.xfer_alltoallv_int.rcvbuf = (char *)recvbuf+rdt_true_lb;
       
-   alltoallv.cmd.xfer_alltoallv_int.rdispls = recvdispls;
-   alltoallv.cmd.xfer_alltoallv_int.rtypecounts = recvcounts;
+   alltoallv.cmd.xfer_alltoallv_int.rdispls = (int *) recvdispls;
+   alltoallv.cmd.xfer_alltoallv_int.rtypecounts = (int *) recvcounts;
    alltoallv.cmd.xfer_alltoallv_int.rtype = rtype;
 
    if(unlikely(queryreq == MPID_COLL_ALWAYS_QUERY || queryreq == MPID_COLL_CHECK_FN_REQUIRED))

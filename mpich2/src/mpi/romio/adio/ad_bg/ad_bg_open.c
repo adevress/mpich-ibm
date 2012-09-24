@@ -135,7 +135,7 @@ static void scaleable_stat(ADIO_File fd)
 	rc = statfs(fd->filename,&bg_statfs);
 	if (rc >= 0)
 	{
-	    DBGV_FPRINTF(stderr,"Successful statfs '%s'.  Magic number=%#X\n",
+	    DBGV_FPRINTF(stderr,"Successful statfs '%s'.  Magic number=%#lX\n",
 		    fd->filename,bg_statfs.f_type);
 	    buf[1] = bg_statfs.f_type;
 	}
@@ -147,7 +147,7 @@ static void scaleable_stat(ADIO_File fd)
 	    rc = statfs(dir,&bg_statfs);
 	    if (rc >= 0)
 	    {
-		DBGV_FPRINTF(stderr,"Successful statfs '%s'.  Magic number=%#X\n",dir,bg_statfs.f_type);
+		DBGV_FPRINTF(stderr,"Successful statfs '%s'.  Magic number=%#lX\n",dir,bg_statfs.f_type);
 		buf[1] = bg_statfs.f_type;
 	    }
 	    else

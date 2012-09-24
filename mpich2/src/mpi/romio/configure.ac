@@ -22,12 +22,10 @@ dnl scripts.
 AC_CONFIG_AUX_DIR([confdb])
 AC_CONFIG_MACRO_DIR([confdb])
 
-AM_INIT_AUTOMAKE([-Wall -Werror foreign 1.11 silent-rules subdir-objects])
+AM_INIT_AUTOMAKE([-Wall -Werror foreign 1.12.3 silent-rules subdir-objects])
 AM_MAINTAINER_MODE([enable])
 
-# automake 1.12 seems to require this, but automake 1.11 doesn't recognize it
-# must come before LT_INIT
-m4_ifdef([AM_PROG_AR],[AM_PROG_AR])
+AM_PROG_AR
 
 LT_INIT([])
 # Non-verbose make by default
@@ -140,7 +138,7 @@ dnl An m4 macro for use with m4_foreach_w and friends.  You should modify this
 dnl list if you want to add a known file system.  The list is just whitespace
 dnl separated, so you can use newlines and tabs as well.
 m4_define([known_filesystems_m4_w],
-          [nfs ufs pfs pvfs pvfs2 testfs xfs panfs gridftp lustre bgl bglockless zoidfs hfs piofs sfs])dnl
+          [nfs ufs pfs pvfs pvfs2 testfs xfs panfs gridftp lustre bg bgl bglockless zoidfs hfs piofs sfs])dnl
 dnl
 dnl An m4 macro for use with m4_foreach and friends.  Expands to a quoted list of
 dnl quoted elements.  A bit easier to use without unintended expansion than the
@@ -1173,6 +1171,7 @@ AM_CONDITIONAL([BUILD_AD_]m4_toupper(defn([fs])),[test x$file_system_]defn([fs])
 AC_MSG_CHECKING([configured file systems])
 AC_MSG_RESULT([$FILE_SYSTEM])
 
+
 if test -n "$file_system_nfs" ; then
     AC_DEFINE(ROMIO_NFS,1,[Define for ROMIO with NFS])
     AC_MSG_WARN([File locks may not work with NFS.  See the Installation and
@@ -1192,10 +1191,17 @@ if test -n "$file_system_bg"; then
     AC_DEFINE(ROMIO_BG,1,[Define for ROMIO with BG])
 fi
 if test -n "$file_system_bglockless"; then
-    if test x"$file_system_bg" = x -a test x"$file_system_bgl" = x; then
-	    AC_MSG_ERROR("bglockless requested without bgl or bg")
+    if test x"$file_system_bgl" != x; then
+        AC_DEFINE(ROMIO_BGLOCKLESS,1,[Define for lock-free ROMIO with BGL])
     fi
-    AC_DEFINE(ROMIO_BGLOCKLESS,1,[Define for lock-free ROMIO with BG])
+
+    if test x"$file_system_bg" != x; then
+        AC_DEFINE(ROMIO_BGLOCKLESS,1,[Define for lock-free ROMIO with BG])
+    fi
+
+    if test x"$ROMIO_BGLOCKLESS" -ne x1; then
+        AC_MSG_ERROR("bglockless requested without [bgl|bg]")
+    fi
 fi
 if test -n "$file_system_hfs"; then
     AC_DEFINE(ROMIO_HFS,1,[Define for ROMIO with HFS])
@@ -1344,7 +1350,7 @@ if test -n "$file_system_gridftp"; then
 	AC_DEFINE(ROMIO_GRIDFTP, 1, [Define for ROMIO with gridftp])
 fi
 
-if test -n "$file_system_bgl"; then
+if test -n "$file_system_bgl" -o -n "$file_system_bg"; then
     SYSDEP_INC=-I${prefix}/include
 else
     SYSDEP_INC=
@@ -2172,9 +2178,6 @@ AC_SUBST(ROMIO_TCPPFLAGS)
 AC_SUBST(ROMIO_TFFLAGS)
 AC_SUBST(MPIRUN)
 AC_SUBST(FORTRAN_TEST)
-dnl
-dnl Dependency handling
-AC_SUBST(MAKE_DEPEND_C)
 dnl
 dnl Support shared libraries
 if test -z "$ENABLE_SHLIB" ; then

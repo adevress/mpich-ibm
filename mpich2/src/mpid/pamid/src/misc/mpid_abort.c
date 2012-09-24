@@ -20,7 +20,7 @@
  * \brief Handle general operations assosicated with erroneous job termination
  */
 #include <mpidimpl.h>
-#include "mpix.h"
+#include <mpix.h>
 
 /**
  * \brief The central parts of the MPID_Abort() call

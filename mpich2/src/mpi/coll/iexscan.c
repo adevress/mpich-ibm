@@ -255,7 +255,6 @@ int MPIX_Iexscan(const void *sendbuf, void *recvbuf, int count, MPI_Datatype dat
             MPIR_ERRTEST_COMM(comm, mpi_errno);
 
             /* TODO more checks may be appropriate */
-            if (mpi_errno != MPI_SUCCESS) goto fn_fail;
         }
         MPID_END_ERROR_CHECKS
     }
@@ -275,7 +274,9 @@ int MPIX_Iexscan(const void *sendbuf, void *recvbuf, int count, MPI_Datatype dat
                 MPID_Datatype *datatype_ptr = NULL;
                 MPID_Datatype_get_ptr(datatype, datatype_ptr);
                 MPID_Datatype_valid_ptr(datatype_ptr, mpi_errno);
+                if (mpi_errno != MPI_SUCCESS) goto fn_fail;
                 MPID_Datatype_committed_ptr(datatype_ptr, mpi_errno);
+                if (mpi_errno != MPI_SUCCESS) goto fn_fail;
             }
 
             if (HANDLE_GET_KIND(op) != HANDLE_KIND_BUILTIN) {
@@ -284,12 +285,12 @@ int MPIX_Iexscan(const void *sendbuf, void *recvbuf, int count, MPI_Datatype dat
                 MPID_Op_valid_ptr(op_ptr, mpi_errno);
             }
             else if (HANDLE_GET_KIND(op) == HANDLE_KIND_BUILTIN) {
-                mpi_errno = ( * MPIR_Op_check_dtype_table[op%16 - 1] )(datatype);
+                mpi_errno = ( * MPIR_OP_HDL_TO_DTYPE_FN(op) )(datatype);
             }
+            if (mpi_errno != MPI_SUCCESS) goto fn_fail;
 
             MPIR_ERRTEST_ARGNULL(request,"request", mpi_errno);
             /* TODO more checks may be appropriate (counts, in_place, buffer aliasing, etc) */
-            if (mpi_errno != MPI_SUCCESS) goto fn_fail;
         }
         MPID_END_ERROR_CHECKS
     }

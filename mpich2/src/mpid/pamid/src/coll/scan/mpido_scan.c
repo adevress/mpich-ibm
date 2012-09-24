@@ -29,12 +29,12 @@ static void scan_cb_done(void *ctxt, void *clientdata, pami_result_t err)
    TRACE_ERR("cb_scan enter, active: %u\n", (*active));
    (*active)--;
 }
-int MPIDO_Doscan(void *sendbuf, void *recvbuf, 
+int MPIDO_Doscan(const void *sendbuf, void *recvbuf, 
                int count, MPI_Datatype datatype,
                MPI_Op op, MPID_Comm * comm_ptr, int *mpierrno, int exflag);
 
 
-int MPIDO_Scan(void *sendbuf, void *recvbuf, 
+int MPIDO_Scan(const void *sendbuf, void *recvbuf, 
                int count, MPI_Datatype datatype,
                MPI_Op op, MPID_Comm * comm_ptr, int *mpierrno)
 {
@@ -43,7 +43,7 @@ int MPIDO_Scan(void *sendbuf, void *recvbuf,
 }
 
    
-int MPIDO_Exscan(void *sendbuf, void *recvbuf, 
+int MPIDO_Exscan(const void *sendbuf, void *recvbuf, 
                int count, MPI_Datatype datatype,
                MPI_Op op, MPID_Comm * comm_ptr, int *mpierrno)
 {
@@ -51,7 +51,7 @@ int MPIDO_Exscan(void *sendbuf, void *recvbuf,
                 op, comm_ptr, mpierrno, 1);
 }
 
-int MPIDO_Doscan(void *sendbuf, void *recvbuf, 
+int MPIDO_Doscan(const void *sendbuf, void *recvbuf, 
                int count, MPI_Datatype datatype,
                MPI_Op op, MPID_Comm * comm_ptr, int *mpierrno, int exflag)
 {

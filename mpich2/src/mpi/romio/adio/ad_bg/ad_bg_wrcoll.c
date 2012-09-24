@@ -18,6 +18,8 @@
 #include "ad_bg_pset.h"
 #include "ad_bg_aggrs.h"
 
+#include "mpitypedefs.h"
+
 #ifdef AGGREGATION_PROFILE
 #include "mpe.h"
 #endif
@@ -26,14 +28,14 @@
 #endif
 
 /* prototypes of functions used for collective writes only. */
-static void ADIOI_Exch_and_write(ADIO_File fd, void *buf, MPI_Datatype
+static void ADIOI_Exch_and_write(ADIO_File fd, const void *buf, MPI_Datatype
                          datatype, int nprocs, int myrank, ADIOI_Access
                          *others_req, ADIO_Offset *offset_list,
                          ADIO_Offset *len_list, int contig_access_count, ADIO_Offset
                          min_st_offset, ADIO_Offset fd_size,
                          ADIO_Offset *fd_start, ADIO_Offset *fd_end,
                          int *buf_idx, int *error_code);
-static void ADIOI_W_Exchange_data(ADIO_File fd, void *buf, char *write_buf,
+static void ADIOI_W_Exchange_data(ADIO_File fd, const void *buf, char *write_buf,
                          ADIOI_Flatlist_node *flat_buf, ADIO_Offset 
                          *offset_list, ADIO_Offset *len_list, int *send_size, 
                          int *recv_size, ADIO_Offset off, int size,
@@ -48,7 +50,7 @@ static void ADIOI_W_Exchange_data(ADIO_File fd, void *buf, char *write_buf,
                          int *done_to_proc, int *hole, int iter, 
                          MPI_Aint buftype_extent, int *buf_idx, int *error_code);
 static void ADIOI_W_Exchange_data_alltoallv(
-		ADIO_File fd, void *buf, 
+		ADIO_File fd, const void *buf, 
 		char *write_buf,					/* 1 */
 		ADIOI_Flatlist_node *flat_buf, 
 		ADIO_Offset *offset_list, 
@@ -66,7 +68,7 @@ static void ADIOI_W_Exchange_data_alltoallv(
 		int *done_to_proc, int *hole, 				/* 4 */
 		int iter, MPI_Aint buftype_extent, int *buf_idx,
 		int *error_code);
-static void ADIOI_Fill_send_buffer(ADIO_File fd, void *buf, ADIOI_Flatlist_node
+static void ADIOI_Fill_send_buffer(ADIO_File fd, const void *buf, ADIOI_Flatlist_node
                            *flat_buf, char **send_buf, ADIO_Offset 
                            *offset_list, ADIO_Offset *len_list, int *send_size, 
                            MPI_Request *requests, int *sent_to_proc, 
@@ -77,7 +79,7 @@ static void ADIOI_Fill_send_buffer(ADIO_File fd, void *buf, ADIOI_Flatlist_node
                            int *send_buf_idx, int *curr_to_proc, 
                            int *done_to_proc, int iter, 
                            MPI_Aint buftype_extent);
-static void ADIOI_Fill_send_buffer_nosend(ADIO_File fd, void *buf, ADIOI_Flatlist_node
+static void ADIOI_Fill_send_buffer_nosend(ADIO_File fd, const void *buf, ADIOI_Flatlist_node
                            *flat_buf, char **send_buf, ADIO_Offset 
                            *offset_list, ADIO_Offset *len_list, int *send_size, 
                            MPI_Request *requests, int *sent_to_proc, 
@@ -93,7 +95,7 @@ static void ADIOI_Heap_merge(ADIOI_Access *others_req, int *count,
                       int nprocs, int nprocs_recv, int total_elements);
 
 
-void ADIOI_BG_WriteStridedColl(ADIO_File fd, void *buf, int count,
+void ADIOI_BG_WriteStridedColl(ADIO_File fd, const void *buf, int count,
                        MPI_Datatype datatype, int file_ptr_type,
                        ADIO_Offset offset, ADIO_Status *status, int
                        *error_code)
@@ -421,7 +423,7 @@ void ADIOI_BG_WriteStridedColl(ADIO_File fd, void *buf, int count,
 /* If successful, error_code is set to MPI_SUCCESS.  Otherwise an error
  * code is created and returned in error_code.
  */
-static void ADIOI_Exch_and_write(ADIO_File fd, void *buf, MPI_Datatype
+static void ADIOI_Exch_and_write(ADIO_File fd, const void *buf, MPI_Datatype
 				 datatype, int nprocs, 
 				 int myrank,
 				 ADIOI_Access
@@ -732,7 +734,7 @@ static void ADIOI_Exch_and_write(ADIO_File fd, void *buf, MPI_Datatype
 /* Sets error_code to MPI_SUCCESS if successful, or creates an error code
  * in the case of error.
  */
-static void ADIOI_W_Exchange_data(ADIO_File fd, void *buf, char *write_buf,
+static void ADIOI_W_Exchange_data(ADIO_File fd, const void *buf, char *write_buf,
 				  ADIOI_Flatlist_node *flat_buf, ADIO_Offset 
 				  *offset_list, ADIO_Offset *len_list, int *send_size, 
 				  int *recv_size, ADIO_Offset off, int size,
@@ -1022,7 +1024,7 @@ static void ADIOI_W_Exchange_data(ADIO_File fd, void *buf, char *write_buf,
     ADIOI_BUF_INCR \
 }
 
-static void ADIOI_Fill_send_buffer(ADIO_File fd, void *buf, ADIOI_Flatlist_node
+static void ADIOI_Fill_send_buffer(ADIO_File fd, const void *buf, ADIOI_Flatlist_node
                            *flat_buf, char **send_buf, ADIO_Offset 
                            *offset_list, ADIO_Offset *len_list, int *send_size, 
                            MPI_Request *requests, int *sent_to_proc, 
@@ -1251,7 +1253,7 @@ static void ADIOI_Heap_merge(ADIOI_Access *others_req, int *count,
 
 
 static void ADIOI_W_Exchange_data_alltoallv(
-		ADIO_File fd, void *buf, 
+		ADIO_File fd, const void *buf, 
 		char *write_buf,					/* 1 */
 		ADIOI_Flatlist_node *flat_buf, 
 		ADIO_Offset *offset_list, 
@@ -1421,7 +1423,7 @@ static void ADIOI_W_Exchange_data_alltoallv(
     return; 
 }   
 
-static void ADIOI_Fill_send_buffer_nosend(ADIO_File fd, void *buf, ADIOI_Flatlist_node
+static void ADIOI_Fill_send_buffer_nosend(ADIO_File fd, const void *buf, ADIOI_Flatlist_node
                            *flat_buf, char **send_buf, ADIO_Offset 
                            *offset_list, ADIO_Offset *len_list, int *send_size, 
                            MPI_Request *requests, int *sent_to_proc, 

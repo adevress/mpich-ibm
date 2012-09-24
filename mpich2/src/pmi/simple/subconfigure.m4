@@ -1,4 +1,5 @@
 [#] start of __file__
+dnl MPICH2_SUBCFG_AFTER=src/pmi
 
 AC_DEFUN([PAC_SUBCFG_PREREQ_]PAC_SUBCFG_AUTO_SUFFIX,[
 ])
@@ -8,9 +9,6 @@ AC_DEFUN([PAC_SUBCFG_BODY_]PAC_SUBCFG_AUTO_SUFFIX,[
 AM_CONDITIONAL([BUILD_PMI_SIMPLE],[test "x$pmi_name" = "xsimple"])
 
 AM_COND_IF([BUILD_PMI_SIMPLE],[
-AC_ARG_ENABLE(pmiport,
-[--enable-pmiport - Allow PMI interface to use a host-port pair to contact
-                   for PMI services],,enable_pmiport=default)
 if test "$enable_pmiport" != "no" ; then
    enable_pmiport=yes
 fi

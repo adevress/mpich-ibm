@@ -47,7 +47,7 @@ static void allgather_cb_done(void *ctxt, void *clientdata, pami_result_t err)
  *       - The datatype parameters needed added to the function signature
  */
 /* ****************************************************************** */
-int MPIDO_Allgather_allreduce(void *sendbuf,
+int MPIDO_Allgather_allreduce(const void *sendbuf,
 			      int sendcount,
 			      MPI_Datatype sendtype,
 			      void *recvbuf,
@@ -99,7 +99,7 @@ int MPIDO_Allgather_allreduce(void *sendbuf,
  *       - Tree broadcast
  */
 /* ****************************************************************** */
-int MPIDO_Allgather_bcast(void *sendbuf,
+int MPIDO_Allgather_bcast(const void *sendbuf,
 			  int sendcount,
 			  MPI_Datatype sendtype,
 			  void *recvbuf,
@@ -158,7 +158,7 @@ int MPIDO_Allgather_bcast(void *sendbuf,
  *       - The datatype parameters needed added to the function signature
  */
 /* ****************************************************************** */
-int MPIDO_Allgather_alltoall(void *sendbuf,
+int MPIDO_Allgather_alltoall(const void *sendbuf,
 			     int sendcount,
 			     MPI_Datatype sendtype,
 			     void *recvbuf,
@@ -203,7 +203,7 @@ int MPIDO_Allgather_alltoall(void *sendbuf,
   }
 
 /* TODO: Change to PAMI */
-  rc = MPIR_Alltoallv(a2a_sendbuf,
+  rc = MPIR_Alltoallv((const void *)a2a_sendbuf,
 		       a2a_sendcounts,
 		       a2a_senddispls,
 		       MPI_CHAR,
@@ -221,7 +221,7 @@ int MPIDO_Allgather_alltoall(void *sendbuf,
 
 
 int
-MPIDO_Allgather(void *sendbuf,
+MPIDO_Allgather(const void *sendbuf,
                 int sendcount,
                 MPI_Datatype sendtype,
                 void *recvbuf,

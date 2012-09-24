@@ -20,6 +20,7 @@
  * \brief Normal job startup code
  */
 #include <mpidimpl.h>
+#include "mpidi_platform.h"
 #include "onesided/mpidi_onesided.h"
 
 #if (MPIDI_STATISTICS || MPIDI_PRINTENV)

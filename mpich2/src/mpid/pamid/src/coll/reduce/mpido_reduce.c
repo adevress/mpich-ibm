@@ -30,7 +30,7 @@ static void reduce_cb_done(void *ctxt, void *clientdata, pami_result_t err)
    (*active)--;
 }
 
-int MPIDO_Reduce(void *sendbuf, 
+int MPIDO_Reduce(const void *sendbuf, 
                  void *recvbuf, 
                  int count, 
                  MPI_Datatype datatype,

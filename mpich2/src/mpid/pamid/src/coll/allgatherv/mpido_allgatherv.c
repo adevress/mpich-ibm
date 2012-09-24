@@ -46,13 +46,13 @@ static void allred_cb_done(void *ctxt, void *clientdata, pami_result_t err)
  *       - Tree allreduce is availible (for max performance)
  */
 /* ****************************************************************** */
-int MPIDO_Allgatherv_allreduce(void *sendbuf,
+int MPIDO_Allgatherv_allreduce(const void *sendbuf,
 			       int sendcount,
 			       MPI_Datatype sendtype,
 			       void *recvbuf,
-			       int *recvcounts,
+			       const int *recvcounts,
 			       int buffer_sum,
-			       int *displs,
+			       const int *displs,
 			       MPI_Datatype recvtype,
 			       MPI_Aint send_true_lb,
 			       MPI_Aint recv_true_lb,
@@ -112,13 +112,13 @@ int MPIDO_Allgatherv_allreduce(void *sendbuf,
  *       ? Binomial broadcast
  */
 /* ****************************************************************** */
-int MPIDO_Allgatherv_bcast(void *sendbuf,
+int MPIDO_Allgatherv_bcast(const void *sendbuf,
 			   int sendcount,
 			   MPI_Datatype sendtype,
 			   void *recvbuf,
-			   int *recvcounts,
+			   const int *recvcounts,
 			   int buffer_sum,
-			   int *displs,
+			   const int *displs,
 			   MPI_Datatype recvtype,
 			   MPI_Aint send_true_lb,
 			   MPI_Aint recv_true_lb,
@@ -171,13 +171,13 @@ int MPIDO_Allgatherv_bcast(void *sendbuf,
  */
 /* ****************************************************************** */
 
-int MPIDO_Allgatherv_alltoall(void *sendbuf,
+int MPIDO_Allgatherv_alltoall(const void *sendbuf,
 			      int sendcount,
 			      MPI_Datatype sendtype,
 			      void *recvbuf,
 			      int *recvcounts,
 			      int buffer_sum,
-			      int *displs,
+			      const int *displs,
 			      MPI_Datatype recvtype,
 			      MPI_Aint send_true_lb,
 			      MPI_Aint recv_true_lb,
@@ -238,12 +238,12 @@ int MPIDO_Allgatherv_alltoall(void *sendbuf,
 
 
 int
-MPIDO_Allgatherv(void *sendbuf,
+MPIDO_Allgatherv(const void *sendbuf,
 		 int sendcount,
 		 MPI_Datatype sendtype,
 		 void *recvbuf,
-		 int *recvcounts,
-		 int *displs,
+		 const int *recvcounts,
+		 const int *displs,
 		 MPI_Datatype recvtype,
 		 MPID_Comm * comm_ptr,
                  int *mpierrno)
@@ -402,8 +402,8 @@ MPIDO_Allgatherv(void *sendbuf,
       allgatherv.cmd.xfer_allgatherv_int.stype = stype;
       allgatherv.cmd.xfer_allgatherv_int.rtype = rtype;
       allgatherv.cmd.xfer_allgatherv_int.stypecount = scount;
-      allgatherv.cmd.xfer_allgatherv_int.rtypecounts = recvcounts;
-      allgatherv.cmd.xfer_allgatherv_int.rdispls = displs;
+      allgatherv.cmd.xfer_allgatherv_int.rtypecounts = (int *) recvcounts;
+      allgatherv.cmd.xfer_allgatherv_int.rdispls = (int *) displs;
 
       if(unlikely (comm_ptr->mpid.user_selected_type[PAMI_XFER_ALLGATHERV_INT] == MPID_COLL_ALWAYS_QUERY ||
                    comm_ptr->mpid.user_selected_type[PAMI_XFER_ALLGATHERV_INT] == MPID_COLL_CHECK_FN_REQUIRED))
@@ -477,7 +477,7 @@ MPIDO_Allgatherv(void *sendbuf,
        fprintf(stderr,"Using alltoall allgatherv type %u.\n",
                comm_ptr->mpid.user_selected_type[PAMI_XFER_ALLGATHERV_INT]);
      rc = MPIDO_Allgatherv_alltoall(sendbuf, sendcount, sendtype,
-             recvbuf, recvcounts, buffer_sum, displs, recvtype,
+             recvbuf, (int *)recvcounts, buffer_sum, displs, recvtype,
              send_true_lb, recv_true_lb, send_size, recv_size,
              comm_ptr, mpierrno);
      MPIDI_Update_last_algorithm(comm_ptr, "ALLGATHERV_OPT_ALLTOALL");

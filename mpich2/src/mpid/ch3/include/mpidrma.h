@@ -6,6 +6,29 @@
 #if !defined(MPICH_MPIDRMA_H_INCLUDED)
 #define MPICH_MPIDRMA_H_INCLUDED
 
+typedef enum MPIDI_RMA_Op_type_e {
+    MPIDI_RMA_PUT               = 23,
+    MPIDI_RMA_GET               = 24,
+    MPIDI_RMA_ACCUMULATE        = 25,
+    MPIDI_RMA_LOCK              = 26,
+    MPIDI_RMA_ACC_CONTIG        = 27,
+    MPIDI_RMA_GET_ACCUMULATE    = 28,
+    MPIDI_RMA_COMPARE_AND_SWAP  = 29,
+    MPIDI_RMA_FETCH_AND_OP      = 30
+} MPIDI_RMA_Op_type_t;
+
+/* Special case RMA operations */
+
+enum MPIDI_RMA_Datatype_e {
+    MPIDI_RMA_DATATYPE_BASIC    = 50,
+    MPIDI_RMA_DATATYPE_DERIVED  = 51
+};
+
+enum MPID_Lock_state_e {
+    MPID_LOCK_NONE              = 0,
+    MPID_LOCK_SHARED_ALL        = 1
+};
+
 /*
  * RMA Declarations.  We should move these into something separate from
  * a Request.
@@ -35,9 +58,7 @@ typedef struct MPIDI_RMA_ops {
        least in most cases (if, as a result of the sync/ops/sync sequence,
        a different packet type is needed, it can be extracted from the 
        information otherwise stored). */
-    /* FIXME: Use enum for RMA op type? */
-    int type;  /* MPIDI_RMA_PUT, MPID_REQUEST_GET,
-		  MPIDI_RMA_ACCUMULATE, MPIDI_RMA_LOCK */
+    MPIDI_RMA_Op_type_t type;
     void *origin_addr;
     int origin_count;
     MPI_Datatype origin_datatype;
@@ -51,6 +72,12 @@ typedef struct MPIDI_RMA_ops {
     struct MPID_Request *request;
     MPIDI_RMA_dtype_info dtype_info;
     void *dataloop;
+    void *result_addr;
+    int result_count;
+    MPI_Datatype result_datatype;
+    void *compare_addr;
+    int compare_count;
+    MPI_Datatype compare_datatype;
 } MPIDI_RMA_ops;
 
 typedef struct MPIDI_PT_single_op {

@@ -29,7 +29,8 @@ MPI_User_function *MPIR_Op_table[] = { MPIR_MAXF, MPIR_MINF, MPIR_SUM,
                                        MPIR_PROD, MPIR_LAND,
                                        MPIR_BAND, MPIR_LOR, MPIR_BOR,
                                        MPIR_LXOR, MPIR_BXOR,
-                                       MPIR_MINLOC, MPIR_MAXLOC, };
+                                       MPIR_MINLOC, MPIR_MAXLOC, 
+                                       MPIR_REPLACE, MPIR_NO_OP };
 
 MPIR_Op_check_dtype_fn *MPIR_Op_check_dtype_table[] = {
     MPIR_MAXF_check_dtype, MPIR_MINF_check_dtype,
@@ -37,7 +38,8 @@ MPIR_Op_check_dtype_fn *MPIR_Op_check_dtype_table[] = {
     MPIR_PROD_check_dtype, MPIR_LAND_check_dtype,
     MPIR_BAND_check_dtype, MPIR_LOR_check_dtype, MPIR_BOR_check_dtype,
     MPIR_LXOR_check_dtype, MPIR_BXOR_check_dtype,
-    MPIR_MINLOC_check_dtype, MPIR_MAXLOC_check_dtype, }; 
+    MPIR_MINLOC_check_dtype, MPIR_MAXLOC_check_dtype,
+    MPIR_REPLACE_check_dtype, MPIR_NO_OP_check_dtype }; 
 
 
 /* This is the default implementation of allreduce. The algorithm is:
@@ -783,7 +785,6 @@ int MPI_Allreduce(MPICH2_CONST void *sendbuf, void *recvbuf, int count,
         MPID_BEGIN_ERROR_CHECKS;
         {
 	    MPIR_ERRTEST_COMM(comm, mpi_errno);
-            if (mpi_errno != MPI_SUCCESS) goto fn_fail;
 	}
         MPID_END_ERROR_CHECKS;
     }
@@ -809,7 +810,9 @@ int MPI_Allreduce(MPICH2_CONST void *sendbuf, void *recvbuf, int count,
             if (HANDLE_GET_KIND(datatype) != HANDLE_KIND_BUILTIN) {
                 MPID_Datatype_get_ptr(datatype, datatype_ptr);
                 MPID_Datatype_valid_ptr( datatype_ptr, mpi_errno );
+                if (mpi_errno != MPI_SUCCESS) goto fn_fail;
                 MPID_Datatype_committed_ptr( datatype_ptr, mpi_errno );
+                if (mpi_errno != MPI_SUCCESS) goto fn_fail;
             }
 
 	    if (comm_ptr->comm_kind == MPID_INTERCOMM)
@@ -821,15 +824,13 @@ int MPI_Allreduce(MPICH2_CONST void *sendbuf, void *recvbuf, int count,
             MPIR_ERRTEST_RECVBUF_INPLACE(recvbuf, count, mpi_errno);
 	    MPIR_ERRTEST_USERBUFFER(recvbuf,count,datatype,mpi_errno);
 
-	    if (mpi_errno != MPI_SUCCESS) goto fn_fail;
-
             if (HANDLE_GET_KIND(op) != HANDLE_KIND_BUILTIN) {
                 MPID_Op_get_ptr(op, op_ptr);
                 MPID_Op_valid_ptr( op_ptr, mpi_errno );
             }
             if (HANDLE_GET_KIND(op) == HANDLE_KIND_BUILTIN) {
                 mpi_errno = 
-                    ( * MPIR_Op_check_dtype_table[op%16 - 1] )(datatype); 
+                    ( * MPIR_OP_HDL_TO_DTYPE_FN(op) )(datatype); 
             }
 	    if (count != 0) {
 		MPIR_ERRTEST_ALIAS_COLL(sendbuf, recvbuf, mpi_errno);

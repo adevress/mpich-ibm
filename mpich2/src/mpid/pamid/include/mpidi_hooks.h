@@ -52,8 +52,8 @@ typedef size_t              MPIDI_msg_sz_t;
 #define MPID_DEV_WIN_DECL        struct MPIDI_Win     mpid;
 
 #define HAVE_DEV_COMM_HOOK
-#define MPID_Dev_comm_create_hook(a)  ({ void MPIDI_Comm_create (MPID_Comm *comm); MPIDI_Comm_create (a); })
-#define MPID_Dev_comm_destroy_hook(a) ({ void MPIDI_Comm_destroy(MPID_Comm *comm); MPIDI_Comm_destroy(a); })
+#define MPID_Dev_comm_create_hook(a)  ({ int MPIDI_Comm_create (MPID_Comm *comm); MPIDI_Comm_create (a); })
+#define MPID_Dev_comm_destroy_hook(a) ({ int MPIDI_Comm_destroy(MPID_Comm *comm); MPIDI_Comm_destroy(a); })
 
 
 #endif

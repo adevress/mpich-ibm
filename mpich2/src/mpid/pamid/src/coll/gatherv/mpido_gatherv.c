@@ -30,12 +30,12 @@ static void cb_gatherv(void *ctxt, void *clientdata, pami_result_t err)
    (*active)--;
 }
 
-int MPIDO_Gatherv(void *sendbuf, 
+int MPIDO_Gatherv(const void *sendbuf, 
                   int sendcount, 
                   MPI_Datatype sendtype,
                   void *recvbuf, 
-                  int *recvcounts, 
-                  int *displs, 
+                  const int *recvcounts, 
+                  const int *displs, 
                   MPI_Datatype recvtype,
                   int root, 
                   MPID_Comm * comm_ptr, 
@@ -74,7 +74,7 @@ int MPIDO_Gatherv(void *sendbuf,
 
    MPIDI_Datatype_get_info(1, recvtype, contig, rsize, dt_ptr, recv_true_lb);
    rbuf = (char *)recvbuf + recv_true_lb;
-   sbuf = sendbuf;
+   sbuf = (void *) sendbuf;
 
    pami_xfer_t gatherv;
 
@@ -83,8 +83,8 @@ int MPIDO_Gatherv(void *sendbuf,
    gatherv.cmd.xfer_gatherv_int.root = MPID_VCR_GET_LPID(comm_ptr->vcr, root);
    gatherv.cmd.xfer_gatherv_int.rcvbuf = rbuf;
    gatherv.cmd.xfer_gatherv_int.rtype = rtype;
-   gatherv.cmd.xfer_gatherv_int.rtypecounts = recvcounts;
-   gatherv.cmd.xfer_gatherv_int.rdispls = displs;
+   gatherv.cmd.xfer_gatherv_int.rtypecounts = (int *) recvcounts;
+   gatherv.cmd.xfer_gatherv_int.rdispls = (int *) displs;
 
    gatherv.cmd.xfer_gatherv_int.sndbuf = NULL;
    gatherv.cmd.xfer_gatherv_int.stype = stype;

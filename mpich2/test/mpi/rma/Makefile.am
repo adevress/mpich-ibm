@@ -77,10 +77,36 @@ noinst_PROGRAMS =          \
     window_creation        \
     win_flavors            \
     win_shared             \
-    win_shared_noncontig
+    win_shared_noncontig   \
+    win_shared_noncontig_put \
+    win_dynamic_acc        \
+    get_acc_local          \
+    compare_and_swap       \
+    linked_list            \
+    linked_list_fop        \
+    fetch_and_op_char      \
+    fetch_and_op_short     \
+    fetch_and_op_int       \
+    fetch_and_op_long      \
+    fetch_and_op_double    \
+    fetch_and_op_long_double
 
 strided_acc_indexed_LDADD       = $(LDADD) -lm
 strided_acc_onelock_LDADD       = $(LDADD) -lm
 strided_acc_subarray_LDADD      = $(LDADD) -lm
 strided_get_indexed_LDADD       = $(LDADD) -lm
 strided_putget_indexed_LDADD    = $(LDADD) -lm
+
+fetch_and_op_char_CFLAGS        = -DFOP_TYPE_CHAR
+fetch_and_op_short_CFLAGS       = -DFOP_TYPE_SHORT
+fetch_and_op_int_CFLAGS         = -DFOP_TYPE_INT
+fetch_and_op_long_CFLAGS        = -DFOP_TYPE_LONG
+fetch_and_op_double_CFLAGS      = -DFOP_TYPE_DOUBLE
+fetch_and_op_long_double_CFLAGS = -DFOP_TYPE_LONG_DOUBLE
+
+fetch_and_op_char_SOURCES        = fetch_and_op.c
+fetch_and_op_short_SOURCES       = fetch_and_op.c
+fetch_and_op_int_SOURCES         = fetch_and_op.c
+fetch_and_op_long_SOURCES        = fetch_and_op.c
+fetch_and_op_double_SOURCES      = fetch_and_op.c
+fetch_and_op_long_double_SOURCES = fetch_and_op.c

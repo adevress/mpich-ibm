@@ -33,7 +33,7 @@ static void cb_alltoall(void *ctxt, void *clientdata, pami_result_t err)
 }
 
 
-int MPIDO_Alltoall(void *sendbuf,
+int MPIDO_Alltoall(const void *sendbuf,
                    int sendcount,
                    MPI_Datatype sendtype,
                    void *recvbuf,

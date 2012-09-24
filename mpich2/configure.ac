@@ -101,24 +101,8 @@ dnl    MPICH2_ENABLE_F77
 dnl    MPICH2_ENABLE_FC
 dnl    MPICH2_ENABLE_CXX
 dnl
-dnl The file name here refers to a file in the source being configured
-dnl In later versions of autoconf, the binding of AC_INIT changed (!!!)
-dnl The original version was AC_INIT(a source file)
-dnl The later version is AC_INIT(package,version,[bug-report],[tarname])
-dnl
 dnl Note that no executable statements are allowed (and any are silently 
 dnl dropped) before AC_INIT.
-dnl
-dnl AC_INIT requires an explicit version number
-dnl Args are package name, version, bug report, and tar file name
-dnl All must be literals
-dnl Note that AC_PACKAGE_STRING is not a command but must be defined(!)
-dnl Unfortunately, setting the PACKAGE names is not compatible with
-dnl AC_CONFIG_SUBDIRS, since the resulting values in the generated
-dnl conf file will not be consistent.
-dnl define([AC_PACKAGE_STRING],[MPICH2 1.0.6])
-dnl AC_INIT(mpich2,1.0.6,mpich2-maint@mcs.anl.gov,mpich2-1.0.6)
-dnl Use the oldstyle AC_INIT instead
 
 m4_include([maint/version.m4])
 dnl 2nd arg is intentionally underquoted
@@ -334,10 +318,6 @@ dnl setup top-level argument handling
 AC_ARG_ENABLE(echo, 
 	AC_HELP_STRING([--enable-echo], [Turn on strong echoing. The default is enable=no.]),
 	set -x)
-
-AC_ARG_ENABLE(dynamiclibs,
-	AC_HELP_STRING([--enable-dynamiclibs], [Enable the use of dynamic libraries
-                       by the devices that support them]),,enable_dynamiclibs=no)
 
 AC_ARG_ENABLE(error-checking,
 [  --enable-error-checking=level
@@ -640,12 +620,10 @@ dnl We would like to pass -Werror, but we are cheating in the "examples/"
 dnl directory and overriding the user-flags like CFLAGS, which automake-1.12
 dnl warns about.  Long-term we may need to use a hand-written Makefile.in or
 dnl something else in this special dir.
-AM_INIT_AUTOMAKE([-Wall foreign 1.11 silent-rules subdir-objects])
+AM_INIT_AUTOMAKE([-Wall foreign 1.12.3 silent-rules subdir-objects])
 AM_MAINTAINER_MODE([enable])
 
-# automake 1.12 seems to require this, but automake 1.11 doesn't recognize it
-# must come before LT_INIT
-m4_ifdef([AM_PROG_AR],[AM_PROG_AR])
+AM_PROG_AR
 
 LT_INIT([disable-shared])
 # Non-verbose make by default
@@ -719,11 +697,7 @@ AC_SUBST(master_top_builddir)
 AC_SUBST(master_top_srcdir)
 export master_top_builddir
 export master_top_srcdir
-# ----------------------------------------------------------------------------
-# We create this file to allow other configures to find the "master" 
-# top builddir
-rm -f .mpich2
-date > .mpich2
+
 # ----------------------------------------------------------------------------
 # with-device
 if test "$with_device" = "default" ; then
@@ -1504,10 +1478,6 @@ if test "$with_cross" != "no" ; then
 	. confcross
 	rm -f confcross      
     fi
-fi
-
-if test "$enable_nmpi_as_mpi" = yes ; then
-   AC_DEFINE(USE_MPI_FOR_NMPI,1,[Define if the NMPI names should use MPI instead of PMPI])
 fi
 
 # This goes here because we need the top_srcdir
@@ -2768,74 +2738,6 @@ if test "$pac_cv_cc_has___func__" != "yes" ; then
 pac_cv_cc_has___FUNCTION__=no)])
 fi
 
-# ----------------------------------------------------------------------------
-# Attempt to support dependency handling
-# ----------------------------------------------------------------------------
-# Set a default for MAKE_DEPEND_C
-MAKE_DEPEND_C=true
-AC_SUBST(MAKE_DEPEND_C)
-AC_ARG_ENABLE(dependencies,
-	AC_HELP_STRING([--enable-dependencies],
-		[Generate dependencies for sourcefiles.  This requires
-		that the Makefile.in files are also created to support
-		dependencies (see autogen.sh)]),,enable_dependencies=default)
-
-if test -z "$enable_dependencies" ; then 
-   enable_dependencies=default
-fi
-if test "$enable_dependencies" = "default" ; then
-    # Try to use gcc if available
-    enable_dependencies=no
-    if test "$ac_cv_prog_gcc" != "yes" ; then 
-         # See if gcc is available
-	 AC_CHECK_PROGS(GCC,gcc)
-	 if test -n "$GCC" ; then 
-	     enable_dependencies=gcc
-         else 
-	     # Try for another form, based on the stock compiler on the
-	     # given system
-	     ostype=`uname -s`
-	     case "$ostype" in
-	         SunOS)
-		 enable_dependencies=solaris
-		 ;;
-	         *)
-		 # Unrecognized; ignore
-		 ;;
-	     esac
-         fi
-    else
-	enable_dependencies=gcc
-    fi
-    # We use this to indicate that we use gcc for dependencies,
-    # even if a different compiler (e.g., pgcc) is selected for
-    # compiling the code.  This will normally be adequate, even
-    # if gcc points to different system header files, we're really
-    # only interested in dependencies on the MPICH2 source files.
-    if test "$enable_dependencies" = "gcc" ; then
-        AC_MSG_RESULT([Using gcc to determine dependencies])
-    fi
-fi
-if test "$enable_dependencies" != "no" ; then
-   case "$enable_dependencies" in
-   gcc|yes)
-        # Ensure that the profiling libraries get their targets into
-	# the files.  Use -MMD if you want the file in the build directory
-	# instead of a subdirectory
-        MAKE_DEPEND_C="gcc -MM"
-    ;;
-    solaris)
-        # At least some Solaris SunPro compilers accept -xM1 -MT name, though
-	# they ignore the -MT name argument.
-        MAKE_DEPEND_C="cc -xM1"
-    ;;
-    *)	
-        AC_MSG_RESULT([Using $enable_dependencies for MAKE_DEPEND_C])
-        MAKE_DEPEND_C="$enable_dependencies"
-    ;;	
-    esac		
-fi
-export MAKE_DEPEND_C
 # ----------------------------------------------------------------------------
 # Check on support for long double and long long types.  Do this before the
 # structure alignment test because it will test for including those
@@ -5907,8 +5809,6 @@ if test -z "$modincbuild_dir" ; then
     modincbuild_dir=`pwd`/src/binding/f90
 fi
 
-AC_OUTPUT_COMMANDS([chmod +x doc/mansrc/createhtmlindex])
-
 dnl
 dnl If we rerun configure, place a file in the lib directory with the
 dnl date.  We can use this to avoid rebuilding the library when
@@ -6055,7 +5955,6 @@ AC_OUTPUT(Makefile \
           doc/smpd/Makefile \
           doc/userguide/Makefile \
           doc/windev/Makefile \
-	  test/commands/cmdtests \
-	  doc/mansrc/createhtmlindex)
+          test/commands/cmdtests)
 
 echo 'Configuration completed.'

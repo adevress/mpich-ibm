@@ -24,7 +24,8 @@
 #define __include_mpidimpl_h__
 
 #include <mpiimpl.h>
+#include "mpid_sched.h"
 #include "pamix.h"
-#include "mpix.h"
+#include <mpix.h>
 
 #endif

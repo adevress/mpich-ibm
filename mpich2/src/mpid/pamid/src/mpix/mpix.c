@@ -82,17 +82,19 @@ void MPIX_Dump_stacks()
   void *array[SIZE];
   size_t i;
   size_t size    = backtrace(array, SIZE);
-  char **strings = backtrace_symbols(array, size);
+  char **bt_strings = backtrace_symbols(array, size);
   fprintf(stderr, "Dumping %zd frames:\n", size - 1);
   for (i = 1; i < size; i++)
     {
-      if (strings != NULL)
-        fprintf(stderr, "\tFrame %zd: %p: %s\n", i, array[i], strings[i]);
+      if (bt_strings != NULL)
+        fprintf(stderr, "\tFrame %zd: %p: %s\n", i, array[i], bt_strings[i]);
       else
         fprintf(stderr, "\tFrame %zd: %p\n", i, array[i]);
     }
-
-  free(strings); /* Since this is not allocated by MPIU_Malloc, do not use MPIU_Free */
+  /* This is #ifdef'd out:  In debug libraries, it causes a compile error. */
+#if 0
+  free(bt_strings); /* Since this is not allocated by MPIU_Malloc, do not use MPIU_Free */
+#endif
 }
 #else
 void MPIX_Dump_stacks(){}

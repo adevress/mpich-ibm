@@ -38,14 +38,16 @@ void geom_destroy_cb_done(void *ctxt, void *data, pami_result_t err)
    (*active)--;
 }
 
-void MPIDI_Comm_create (MPID_Comm *comm)
+int MPIDI_Comm_create (MPID_Comm *comm)
 {
   MPIDI_Coll_comm_create(comm);
+  return MPI_SUCCESS;
 }
 
-void MPIDI_Comm_destroy (MPID_Comm *comm)
+int MPIDI_Comm_destroy (MPID_Comm *comm)
 {
   MPIDI_Coll_comm_destroy(comm);
+  return MPI_SUCCESS;
 }
 
 typedef struct MPIDI_Post_geom_create

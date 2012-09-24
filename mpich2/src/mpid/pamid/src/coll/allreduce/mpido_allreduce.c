@@ -32,7 +32,7 @@ static void cb_allreduce(void *ctxt, void *clientdata, pami_result_t err)
    (*active)--;
 }
 
-int MPIDO_Allreduce(void *sendbuf,
+int MPIDO_Allreduce(const void *sendbuf,
                     void *recvbuf,
                     int count,
                     MPI_Datatype dt,
@@ -94,7 +94,7 @@ int MPIDO_Allreduce(void *sendbuf,
          fprintf(stderr,"allreduce MPI_IN_PLACE buffering\n");
       sbuf = recvbuf;
    }
-   else sbuf = sendbuf;
+   else sbuf = (void *)sendbuf;
 
    allred.cb_done = cb_allreduce;
    allred.cookie = (void *)&active;

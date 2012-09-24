@@ -25,6 +25,7 @@
 
 #include <mpidimpl.h>
 #include "../mpid_recvq.h"
+#include "mpid_datatype.h"
 /*#ifdef MPIDI_STATISTICS
   #include "../../include/mpidi_datatypes.h"
 #endif*/

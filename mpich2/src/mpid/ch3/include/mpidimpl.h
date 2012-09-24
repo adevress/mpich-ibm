@@ -1120,7 +1120,7 @@ int MPIDI_CH3U_Comm_FinishPending( MPID_Comm * );
 typedef struct MPIDI_CH3U_Win_fns_s {
     int (*create)(void *, MPI_Aint, int, MPID_Info *, MPID_Comm *, MPID_Win **);
     int (*allocate)(MPI_Aint, int, MPID_Info *, MPID_Comm *, void *, MPID_Win **);
-    int (*allocate_shared)(MPI_Aint, MPID_Info *, MPID_Comm *, void **, MPID_Win **);
+    int (*allocate_shared)(MPI_Aint, int, MPID_Info *, MPID_Comm *, void **, MPID_Win **);
     int (*create_dynamic)(MPID_Info *, MPID_Comm *, MPID_Win **);
 } MPIDI_CH3U_Win_fns_t;
 
@@ -1135,26 +1135,10 @@ int MPIDI_CH3U_Win_create(void *, MPI_Aint, int, MPID_Info *, MPID_Comm *,
                          MPID_Win **);
 int MPIDI_CH3U_Win_allocate(MPI_Aint size, int disp_unit, MPID_Info *info,
                            MPID_Comm *comm, void *baseptr, MPID_Win **win);
-int MPIDI_CH3U_Win_allocate_shared(MPI_Aint size, MPID_Info *info_ptr, MPID_Comm *comm_ptr,
-                                  void **baseptr, MPID_Win **win_ptr);
+int MPIDI_CH3U_Win_allocate_shared(MPI_Aint size, int disp_unit, MPID_Info *info_ptr,
+                                   MPID_Comm *comm_ptr, void **baseptr, MPID_Win **win_ptr);
 int MPIDI_CH3U_Win_create_dynamic(MPID_Info *info, MPID_Comm *comm, MPID_Win **win);
 
-
-/* FIXME: These are specific to the RMA code and should be in the RMA 
-   header file. */
-#define MPIDI_RMA_PUT 23
-#define MPIDI_RMA_GET 24
-#define MPIDI_RMA_ACCUMULATE 25
-#define MPIDI_RMA_LOCK 26
-
-/* Special case RMA operations */
-#define MPIDI_RMA_ACC_CONTIG 27
-
-#define MPIDI_RMA_DATATYPE_BASIC 50
-#define MPIDI_RMA_DATATYPE_DERIVED 51
-
-#define MPID_LOCK_NONE 0
-#define MPID_LOCK_SHARED_ALL 1
 
 /* MPI RMA Utility functions */
 
@@ -1725,17 +1709,6 @@ int MPIDI_CH3_Pre_init (int *setvals, int *has_parent, int *rank, int *size);
 int MPIDI_CH3_Init(int has_parent, MPIDI_PG_t *pg_ptr, int pg_rank );
 
 /*@
-  MPIDI_CH3_PreLoad - Setup a channel before calling MPIDI_CH3_Init
-
-  Notes:
-  This routine is called only if the channel defines 'HAVE_CH3_PRELOAD' .
-  It may be used to perform any initialization that is required before any
-  of the channel routines may be used.
-
-  @*/
-int MPIDI_CH3_PreLoad( void );
-
-/*@
   MPIDI_CH3_Finalize - Shutdown the channel implementation.
 
   Return value:
@@ -1810,6 +1783,14 @@ int MPIDI_CH3_PktHandler_Accumulate( MPIDI_VC_t *, MPIDI_CH3_Pkt_t *,
 				     MPIDI_msg_sz_t *, MPID_Request ** );
 int MPIDI_CH3_PktHandler_Accumulate_Immed( MPIDI_VC_t *, MPIDI_CH3_Pkt_t *, 
 				     MPIDI_msg_sz_t *, MPID_Request ** );
+int MPIDI_CH3_PktHandler_CAS( MPIDI_VC_t *, MPIDI_CH3_Pkt_t *, 
+                              MPIDI_msg_sz_t *, MPID_Request ** );
+int MPIDI_CH3_PktHandler_CASResp( MPIDI_VC_t *, MPIDI_CH3_Pkt_t *, 
+                                  MPIDI_msg_sz_t *, MPID_Request ** );
+int MPIDI_CH3_PktHandler_FOP( MPIDI_VC_t *, MPIDI_CH3_Pkt_t *, 
+                              MPIDI_msg_sz_t *, MPID_Request ** );
+int MPIDI_CH3_PktHandler_FOPResp( MPIDI_VC_t *, MPIDI_CH3_Pkt_t *, 
+                                  MPIDI_msg_sz_t *, MPID_Request ** );
 int MPIDI_CH3_PktHandler_Get( MPIDI_VC_t *, MPIDI_CH3_Pkt_t *, 
 			      MPIDI_msg_sz_t *, MPID_Request ** );
 int MPIDI_CH3_PktHandler_GetResp( MPIDI_VC_t *, MPIDI_CH3_Pkt_t *, 
@@ -1914,6 +1895,7 @@ int MPIDI_CH3_ReqHandler_SinglePutAccumComplete( MPIDI_VC_t *, MPID_Request *,
 						 int * );
 int MPIDI_CH3_ReqHandler_GetRespDerivedDTComplete( MPIDI_VC_t *, 
 						   MPID_Request *, int * );
+int MPIDI_CH3_ReqHandler_FOPComplete( MPIDI_VC_t *, MPID_Request *, int * );
 
 /* Send Handlers */
 int MPIDI_CH3_ReqHandler_SendReloadIOV( MPIDI_VC_t *vc, MPID_Request *sreq, 

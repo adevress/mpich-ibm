@@ -316,18 +316,18 @@ static const MPI_Datatype mpich_mpi_datatype_null MPICH_ATTR_TYPE_TAG_MUST_BE_NU
 #define MPI_KEYVAL_INVALID 0x24000000
 
 /* MPI-3 window flavors */
-enum MPIR_Win_flavor_type {
+typedef enum MPIR_Win_flavor_e {
     MPIX_WIN_FLAVOR_CREATE      = 1,
     MPIX_WIN_FLAVOR_ALLOCATE    = 2,
     MPIX_WIN_FLAVOR_DYNAMIC     = 3,
     MPIX_WIN_FLAVOR_SHARED      = 4
-};
+} MPIR_Win_flavor_t;
 
 /* MPI-3 window consistency models */
-enum MPIR_Win_model_type {
+typedef enum MPIR_Win_model_e {
     MPIX_WIN_SEPARATE   = 1,
     MPIX_WIN_UNIFIED    = 2
-};
+} MPIR_Win_model_t;
 
 /* Upper bound on the overhead in bsend for each message buffer */
 #define MPI_BSEND_OVERHEAD @BSEND_OVERHEAD@
@@ -997,7 +997,7 @@ int MPI_Win_wait(MPI_Win);
 /* MPI-3 One-Sided Communication Routines */
 int MPIX_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
                       MPI_Comm comm, void *baseptr, MPI_Win *win);
-int MPIX_Win_allocate_shared(MPI_Aint size, MPI_Info info, MPI_Comm comm,
+int MPIX_Win_allocate_shared(MPI_Aint size, int disp_unit, MPI_Info info, MPI_Comm comm,
                              void *baseptr, MPI_Win *win);
 int MPIX_Win_shared_query(MPI_Win win, int rank, MPI_Aint *size, int *disp_unit, void *baseptr);
 int MPIX_Win_create_dynamic(MPI_Info info, MPI_Comm comm, MPI_Win *win);
@@ -1227,6 +1227,15 @@ int MPIX_Comm_group_failed(MPI_Comm, MPI_Group *);
 int MPIX_Comm_remote_group_failed(MPI_Comm, MPI_Group *);
 int MPIX_Comm_reenable_anysource(MPI_Comm, MPI_Group *);
 
+/* RMA Mutexes extension declarations: */
+struct mpixi_mutex_s;
+typedef struct mpixi_mutex_s * MPIX_Mutex;
+
+int MPIX_Mutex_create(int count, MPI_Comm comm, MPIX_Mutex *hdl);
+int MPIX_Mutex_free(MPIX_Mutex *hdl);
+int MPIX_Mutex_lock(MPIX_Mutex hdl, int mutex, int proc);
+int MPIX_Mutex_unlock(MPIX_Mutex hdl, int mutex, int proc);
+
 /* MPI-3 MPI_T interface, currently available as MPIX_T extensions */
 
 /* The MPI_T routines are available only in C bindings - tell tools that they
@@ -1345,6 +1354,10 @@ int PMPI_Group_compare(MPI_Group, MPI_Group, int *);
 int PMPIX_Comm_group_failed(MPI_Comm, MPI_Group *);
 int PMPIX_Comm_reenable_anysource(MPI_Comm, MPI_Group *);
 int PMPIX_Comm_remote_group_failed(MPI_Comm, MPI_Group *);
+int PMPIX_Mutex_create(int count, MPI_Comm comm, MPIX_Mutex *hdl);
+int PMPIX_Mutex_free(MPIX_Mutex *hdl);
+int PMPIX_Mutex_lock(MPIX_Mutex hdl, int mutex, int proc);
+int PMPIX_Mutex_unlock(MPIX_Mutex hdl, int mutex, int proc);
 int PMPI_Comm_group(MPI_Comm, MPI_Group *);
 int PMPI_Group_union(MPI_Group, MPI_Group, MPI_Group *);
 int PMPI_Group_intersection(MPI_Group, MPI_Group, MPI_Group *);
@@ -1444,7 +1457,7 @@ int PMPI_Win_wait(MPI_Win);
 /* MPI-3 One-Sided Communication Routines */
 int PMPIX_Win_allocate(MPI_Aint size, int disp_unit, MPI_Info info,
                        MPI_Comm comm, void *baseptr, MPI_Win *win);
-int PMPIX_Win_allocate_shared(MPI_Aint size, MPI_Info info, MPI_Comm comm,
+int PMPIX_Win_allocate_shared(MPI_Aint size, int disp_unit, MPI_Info info, MPI_Comm comm,
                               void *baseptr, MPI_Win *win);
 int PMPIX_Win_shared_query(MPI_Win win, int rank, MPI_Aint *size, int *disp_unit, void *baseptr);
 int PMPIX_Win_create_dynamic(MPI_Info info, MPI_Comm comm, MPI_Win *win);

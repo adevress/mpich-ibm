@@ -28,6 +28,8 @@
 #ifndef __include_mpidi_macros_h__
 #define __include_mpidi_macros_h__
 
+#include "mpidi_datatypes.h"
+#include "mpidi_externs.h"
 
 #ifdef TRACE_ON
 #ifdef __GNUC__
@@ -70,7 +72,7 @@ _dt_contig_out, _data_sz_out, _dt_ptr, _dt_true_lb)             \
 
 /* Add some error checking for size eventually */
 #define MPIDI_Update_last_algorithm(_comm, _name) \
-{ strncpy( (_comm)->mpid.last_algorithm, (_name), strlen((_name))+1); }
+({ strncpy( (_comm)->mpid.last_algorithm, (_name), strlen((_name))+1); })
 
 
 /**
@@ -105,10 +107,10 @@ _dt_contig_out, _data_sz_out, _dt_ptr, _dt_true_lb)             \
   vcr[index];                                   \
 })
 #define MPID_GPID_Get(comm_ptr, rank, gpid)             \
-{                                                       \
+({                                                      \
   gpid[0] = 0;                                          \
   gpid[1] = MPID_VCR_GET_LPID(comm_ptr->vcr, rank);     \
-}
+})
 
 
 static inline void

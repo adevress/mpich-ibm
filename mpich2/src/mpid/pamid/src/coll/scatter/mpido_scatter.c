@@ -98,7 +98,7 @@ int MPIDO_Scatter_bcast(void * sendbuf,
 }
 
 
-int MPIDO_Scatter(void *sendbuf,
+int MPIDO_Scatter(const void *sendbuf,
                   int sendcount,
                   MPI_Datatype sendtype,
                   void *recvbuf,

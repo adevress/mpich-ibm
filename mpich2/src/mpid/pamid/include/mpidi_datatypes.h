@@ -32,6 +32,10 @@
 #include <pami_ext_pe.h>
 #endif
 
+#include "mpidi_constants.h"
+#include "mpidi_platform.h"
+#include "pami.h"
+
 #if (MPIU_HANDLE_ALLOCATION_METHOD == MPIU_HANDLE_ALLOCATION_THREAD_LOCAL) && defined(__BGQ__)
 struct MPID_Request;
 typedef struct
@@ -172,7 +176,7 @@ typedef struct
   uint16_t    MPIctxt;     /**< match context          */
 
   union {
-    uint16_t   flags;
+    uint16_t  flags;
     struct {
       unsigned control:3;  /**< message type for control protocols */
       unsigned isSync:1;   /**< set for sync sends     */

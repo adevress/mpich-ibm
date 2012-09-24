@@ -120,7 +120,7 @@ int MPIDO_Gather_reduce(void * sendbuf,
 
 /* works for simple data types, assumes fast reduce is available */
 
-int MPIDO_Gather(void *sendbuf,
+int MPIDO_Gather(const void *sendbuf,
                  int sendcount,
                  MPI_Datatype sendtype,
                  void *recvbuf,

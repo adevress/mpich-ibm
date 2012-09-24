@@ -692,12 +692,43 @@ extern MPID_Errhandler MPID_Errhandler_direct[];
   'MPID_Copy_function' and 'MPID_Delete_function' capture the differences
   in a single union type.
 
-  Notes:
-  One potential user error is to access an attribute in one language (say
-  Fortran) that was created in another (say C).  We could add a check and
-  generate an error message in this case; note that this would have to 
-  be an option, because (particularly when accessing the attribute from C), 
-  it may be what the user intended, and in any case, it is a valid operation.
+  The above comment is out of date but has never been updated as it should
+  have to match the introduction of a different interface.  Beware!
+
+  Notes: 
+  
+  In the original design, retrieving a attribute from a different
+  language that set it was thought to be an error.  The MPI Forum
+  decided that this should be allowed, and after much discussion, the
+  behavior was defined.  Thus, we need to record what sort of
+  attribute was provided, and be able to properly return the correct
+  value in each case.  See MPI 2.2, Section 16.3.7 (Attributes) for
+  specific requirements.  One consequence of this is that the value
+  that is returned may have a different length that how it was set.
+  On little-endian platforms (e.g., x86), this doesn't cause much of a
+  problem, because the address is that of the least significant byte,
+  and the lower bytes have the data that is needed in the case that
+  the desired attribute type is shorter than the stored attribute.
+  However, on a big-endian platform (e.g., IBM POWER), since the most
+  significant bytes are stored first, depending on the length of the
+  result type, the address of the result may not be the beginning of
+  the memory area.  For example, assume that an MPI_Fint is 4 bytes
+  and a void * (and a Fortran INTEGER of kind MPI_ADDRESS_KIND) is 8
+  bytes, and let the attribute store the value in an 8 byte integer in
+  a field named "value".  On a little-endian platform, the address of
+  the value is always the beginning of the field "value".  On a
+  big-endian platform, the address of the value is the beginning of
+  the field if the return type is a pointer (e.g., from C) or Fortran
+  (KIND=MPI_ADDRESS_KIND), and the address of the beginning of the
+  field + 4 if the return type is a Fortran 77 integer (and, as
+  specified above, an MPI_Fint is 4 bytes shorter than a void *).
+
+  For the big-endian case, it is possible to manage these shifts (using
+  WORDS_LITTLEENDIAN to detect the big-endian case).  Alternatively,
+  at a small cost in space, copies in variables of the correct length
+  can be maintained.  At this writing, the code in src/mpi/attr makes
+  use of WORDS_LITTLEENDIAN to provide the appropriate code for the most
+  common cases.
 
   T*/
 /*TAttrOverview.tex
@@ -1634,10 +1665,10 @@ typedef struct MPID_Win {
     
     char          name[MPI_MAX_OBJECT_NAME];  
 
-    int create_flavor;          /* How this window was created */
-    int model;                  /* Separate or Unified */
-    int copyCreateFlavor;
-    int copyModel;
+    MPIR_Win_flavor_t create_flavor;
+    MPIR_Win_model_t  model;
+    MPIR_Win_flavor_t copyCreateFlavor;
+    MPIR_Win_model_t  copyModel;
 
   /* Other, device-specific information */
 #ifdef MPID_DEV_WIN_DECL
@@ -3191,9 +3222,9 @@ int MPID_Win_unlock(int dest, MPID_Win *win_ptr);
 
 int MPID_Win_allocate(MPI_Aint size, int disp_unit, MPID_Info *info,
                       MPID_Comm *comm, void *baseptr, MPID_Win **win);
-int MPID_Win_allocate_shared(MPI_Aint size, MPID_Info *info_ptr, MPID_Comm *comm_ptr,
+int MPID_Win_allocate_shared(MPI_Aint size, int disp_unit, MPID_Info *info_ptr, MPID_Comm *comm_ptr,
                              void **base_ptr, MPID_Win **win_ptr);
-int MPID_Win_shared_query(MPI_Win win, int rank, MPI_Aint *size,
+int MPID_Win_shared_query(MPID_Win *win, int rank, MPI_Aint *size, int *disp_unit,
                           void *baseptr);
 int MPID_Win_create_dynamic(MPID_Info *info, MPID_Comm *comm, MPID_Win **win);
 int MPID_Win_attach(MPID_Win *win, void *base, MPI_Aint size);
@@ -3212,20 +3243,20 @@ int MPID_Compare_and_swap(const void *origin_addr, const void *compare_addr,
 int MPID_Rput(const void *origin_addr, int origin_count,
               MPI_Datatype origin_datatype, int target_rank, MPI_Aint target_disp,
               int target_count, MPI_Datatype target_datatype, MPID_Win *win,
-              MPI_Request *request);
+              MPID_Request **request);
 int MPID_Rget(void *origin_addr, int origin_count,
               MPI_Datatype origin_datatype, int target_rank, MPI_Aint target_disp,
               int target_count, MPI_Datatype target_datatype, MPID_Win *win,
-              MPI_Request *request);
+              MPID_Request **request);
 int MPID_Raccumulate(const void *origin_addr, int origin_count,
                      MPI_Datatype origin_datatype, int target_rank, MPI_Aint target_disp,
                      int target_count, MPI_Datatype target_datatype, MPI_Op op, MPID_Win *win,
-                     MPI_Request *request);
+                     MPID_Request **request);
 int MPID_Rget_accumulate(const void *origin_addr, int origin_count,
                          MPI_Datatype origin_datatype, void *result_addr, int result_count,
                          MPI_Datatype result_datatype, int target_rank, MPI_Aint target_disp,
                          int target_count, MPI_Datatype target_datatype, MPI_Op op, MPID_Win *win,
-                         MPI_Request *request);
+                         MPID_Request **request);
 
 int MPID_Win_lock_all(int assert, MPID_Win *win);
 int MPID_Win_unlock_all(MPID_Win *win);
@@ -3782,6 +3813,8 @@ void MPIR_LXOR  ( void *, void *, int *, MPI_Datatype * ) ;
 void MPIR_BXOR  ( void *, void *, int *, MPI_Datatype * ) ;
 void MPIR_MAXLOC  ( void *, void *, int *, MPI_Datatype * ) ;
 void MPIR_MINLOC  ( void *, void *, int *, MPI_Datatype * ) ;
+void MPIR_REPLACE  ( void *, void *, int *, MPI_Datatype * ) ;
+void MPIR_NO_OP  ( void *, void *, int *, MPI_Datatype * ) ;
 
 int MPIR_MAXF_check_dtype  ( MPI_Datatype ) ;
 int MPIR_MINF_check_dtype ( MPI_Datatype ) ;
@@ -3795,12 +3828,17 @@ int MPIR_LXOR_check_dtype ( MPI_Datatype ) ;
 int MPIR_BXOR_check_dtype  ( MPI_Datatype ) ;
 int MPIR_MAXLOC_check_dtype  ( MPI_Datatype ) ;
 int MPIR_MINLOC_check_dtype  ( MPI_Datatype ) ;
+int MPIR_REPLACE_check_dtype  ( MPI_Datatype ) ;
+int MPIR_NO_OP_check_dtype  ( MPI_Datatype ) ;
 
-#define MPIR_PREDEF_OP_COUNT 12
+#define MPIR_PREDEF_OP_COUNT 14
 extern MPI_User_function *MPIR_Op_table[];
 
 typedef int (MPIR_Op_check_dtype_fn) ( MPI_Datatype ); 
 extern MPIR_Op_check_dtype_fn *MPIR_Op_check_dtype_table[];
+
+#define MPIR_OP_HDL_TO_FN(op) MPIR_Op_table[((op)&0xf) - 1]
+#define MPIR_OP_HDL_TO_DTYPE_FN(op) MPIR_Op_check_dtype_table[((op)&0xf) - 1]
 
 #if !defined MPIR_MIN
 #define MPIR_MIN(a,b) (((a)>(b))?(b):(a))
@@ -3811,6 +3849,7 @@ extern MPIR_Op_check_dtype_fn *MPIR_Op_check_dtype_table[];
 #endif /* MPIR_MAX */
 
 int MPIR_Type_is_rma_atomic(MPI_Datatype type);
+int MPIR_Compare_equal(const void *a, const void *b, MPI_Datatype type);
 
 int MPIR_Allgather_impl(const void *sendbuf, int sendcount, MPI_Datatype sendtype,
                         void *recvbuf, int recvcount, MPI_Datatype recvtype,

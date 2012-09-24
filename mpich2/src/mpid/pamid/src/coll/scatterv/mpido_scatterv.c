@@ -226,9 +226,9 @@ static void cb_scatterv(void *ctxt, void *clientdata, pami_result_t err)
    (*active)--;
 }
 
-int MPIDO_Scatterv(void *sendbuf,
-                   int *sendcounts,
-                   int *displs,
+int MPIDO_Scatterv(const void *sendbuf,
+                   const int *sendcounts,
+                   const int *displs,
                    MPI_Datatype sendtype,
                    void *recvbuf,
                    int recvcount,
@@ -339,9 +339,9 @@ int MPIDO_Scatterv(void *sendbuf,
    scatterv.cmd.xfer_scatterv_int.sndbuf = sbuf;
    scatterv.cmd.xfer_scatterv_int.stype = stype;
    scatterv.cmd.xfer_scatterv_int.rtype = rtype;
-   scatterv.cmd.xfer_scatterv_int.stypecounts = sendcounts;
+   scatterv.cmd.xfer_scatterv_int.stypecounts = (int *) sendcounts;
    scatterv.cmd.xfer_scatterv_int.rtypecount = recvcount;
-   scatterv.cmd.xfer_scatterv_int.sdispls = displs;
+   scatterv.cmd.xfer_scatterv_int.sdispls = (int *) displs;
 
    if(unlikely(queryreq == MPID_COLL_ALWAYS_QUERY || queryreq == MPID_COLL_CHECK_FN_REQUIRED))
    {

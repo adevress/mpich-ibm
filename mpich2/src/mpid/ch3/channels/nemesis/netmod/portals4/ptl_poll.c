@@ -33,7 +33,7 @@ int MPID_nem_ptl_poll_init(void)
         recvbuf_le[i].uid = PTL_UID_ANY;
         recvbuf_le[i].options = (PTL_LE_OP_PUT | PTL_LE_USE_ONCE |
                                  PTL_LE_EVENT_UNLINK_DISABLE | PTL_LE_EVENT_LINK_DISABLE);
-        ret = PtlLEAppend(MPIDI_nem_ptl_ni, MPIDI_nem_ptl_pt, &recvbuf_le[i], PTL_PRIORITY_LIST, (void *)(uint64_t)i,
+        ret = PtlLEAppend(MPIDI_nem_ptl_ni, MPIDI_nem_ptl_control_pt, &recvbuf_le[i], PTL_PRIORITY_LIST, (void *)(uint64_t)i,
                           &recvbuf_le_handle[i]);
         MPIU_ERR_CHKANDJUMP(ret, mpi_errno, MPI_ERR_OTHER, "**ptlmeappend");
     }
@@ -92,7 +92,29 @@ int MPID_nem_ptl_poll(int is_blocking_poll)
         if (ret == PTL_EQ_EMPTY)
             break;
         MPIU_ERR_CHKANDJUMP(ret, mpi_errno, MPI_ERR_OTHER, "**ptleqget");
+        switch (event.type) {
+            MPID_Request * const req = e->user_ptr;
+        case PTL_EVENT_PUT:
+        case PTL_EVENT_GET:
+        case PTL_EVENT_ACK:
+        case PTL_EVENT_REPLY:
+        case PTL_EVENT_SEARCH:
+            mpi_errno = REQ_PTL(sreq)->event_handler(e);
+            if (mpi_errno) MPIU_ERR_POP(mpi_errno);
+            break;
+        case PTL_EVENT_PUT_OVERFLOW:
+            MPIU_ERR_INTERNALANDJUMP(mpi_errno, "Overflow event");
+            break
+        default:
+            MPIU_ERR_INTERNALANDJUMP(mpi_errno, "Unexpected event type");
+        }
+    }
+    
+    
+        
+        
 
+#if 0 /* used for non-matching message passing */
         switch (event.type) {
         case PTL_EVENT_PUT:
             if (event.ni_fail_type) {
@@ -107,7 +129,7 @@ int MPID_nem_ptl_poll(int is_blocking_poll)
             mpi_errno = MPID_nem_handle_pkt(vc, event.start, event.rlength);
             if (mpi_errno) MPIU_ERR_POP(mpi_errno);
             assert(event.start == recvbuf[(uint64_t)event.user_ptr]);
-            ret = PtlLEAppend(MPIDI_nem_ptl_ni, MPIDI_nem_ptl_pt, &recvbuf_le[(uint64_t)event.user_ptr],
+            ret = PtlLEAppend(MPIDI_nem_ptl_ni, MPIDI_nem_ptl_control_pt, &recvbuf_le[(uint64_t)event.user_ptr],
                               PTL_PRIORITY_LIST, event.user_ptr, &recvbuf_le_handle[(uint64_t)event.user_ptr]);
             MPIU_ERR_CHKANDJUMP(ret, mpi_errno, MPI_ERR_OTHER, "**ptlmeappend");
             break;
@@ -118,7 +140,7 @@ int MPID_nem_ptl_poll(int is_blocking_poll)
                 assert(0);
             }
             MPIU_DBG_MSG(CH3_CHANNEL, VERBOSE, "Send completed");
-            mpi_errno = MPID_nem_ptl_send_completed(event.user_ptr);
+            mpi_errno = MPID_nem_ptl_ev_send_handler(&event);
             if (mpi_errno) MPIU_ERR_POP(mpi_errno);
             break;
         case PTL_EVENT_ACK:
@@ -134,7 +156,9 @@ int MPID_nem_ptl_poll(int is_blocking_poll)
             printf("Got unexpected event %d\n", event.type);
             break;
         }
-    };
+    }
+#endif
+
 
  fn_exit:
     /* MPIDI_FUNC_EXIT(MPID_STATE_MPID_NEM_PTL_POLL); */

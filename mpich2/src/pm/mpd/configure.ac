@@ -25,7 +25,7 @@ AH_TOP([/* -*- Mode: C; c-basic-offset:4 ; -*- */
 ])
 AH_BOTTOM([#endif])
 
-AM_INIT_AUTOMAKE([-Wall -Werror foreign 1.11 silent-rules subdir-objects no-installinfo no-installman])
+AM_INIT_AUTOMAKE([-Wall -Werror foreign 1.12.3 silent-rules subdir-objects no-installinfo no-installman])
 # first_pm_name is set and exported by the top level configure
 AM_CONDITIONAL([PRIMARY_PM_MPD],[test "X$first_pm_name" = "Xmpd"])
 
@@ -192,9 +192,6 @@ dnl Output:
 # Starting output
 MPD_HOME=`pwd`
 AC_SUBST(MPD_HOME)
-dnl
-dnl Dependency handling
-AC_SUBST(MAKE_DEPEND_C)
 
 # AC_OUTPUT_COMMANDS(chmod +x startdaemons)
 AC_OUTPUT(Makefile)

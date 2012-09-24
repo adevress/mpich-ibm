@@ -23,10 +23,11 @@
 #include "mpe.h"
 #endif
 
+#include "mpidi_macros.h"
+
 #ifdef USE_DBG_LOGGING
   #define AGG_DEBUG 1
 #endif
-
 
 static int aggrsInPsetSize=0;
 static int *aggrsInPset=NULL;

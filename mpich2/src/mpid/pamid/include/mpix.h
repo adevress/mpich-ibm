@@ -17,7 +17,7 @@
 /*  (C)Copyright IBM Corp.  2007, 2011  */
 /**
  * \file include/mpix.h
- * \brief Blue Gene extensions to the MPI Spec
+ * \brief PAMI device extensions to the MPI Spec
  *
  * These functions generally use MPI functions and internal APIs to
  * expose extra information relating to the specific system on which

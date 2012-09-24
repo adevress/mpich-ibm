@@ -247,8 +247,7 @@ Output Parameters:
  */
 static void ADIO_FileSysType_fncall(const char *filename, int *fstype, int *error_code)
 {
-#ifndef ROMIO_NTFS
-    char *dir;
+#if defined (ROMIO_HAVE_STRUCT_STATVFS_WITH_F_BASETYPE) || defined (HAVE_STRUCT_STATFS) || defined (ROMIO_HAVE_STRUCT_STAT_WITH_ST_FSTYPE)
     int err;
 #endif
 
@@ -277,6 +276,7 @@ static void ADIO_FileSysType_fncall(const char *filename, int *fstype, int *erro
 	 *
 	 * ADIO_FileSysType_parentdir tries to deal with both cases.
 	 */
+        char *dir;
 	ADIO_FileSysType_parentdir(filename, &dir);
 	err = statvfs(dir, &vfsbuf);
 
@@ -321,6 +321,7 @@ static void ADIO_FileSysType_fncall(const char *filename, int *fstype, int *erro
     } while (err && (errno == ESTALE));
 
     if (err && (errno == ENOENT)) {
+        char *dir;
 	ADIO_FileSysType_parentdir(filename, &dir);
 	err = statfs(dir, &fsbuf);
 	ADIOI_Free(dir);
@@ -443,6 +444,7 @@ static void ADIO_FileSysType_fncall(const char *filename, int *fstype, int *erro
     } while (err && (errno == ESTALE));
 
     if (err && (errno == ENOENT)) {
+        char *dir;
 	ADIO_FileSysType_parentdir(filename, &dir);
 	err = stat(dir, &sbuf);
 	ADIOI_Free(dir);

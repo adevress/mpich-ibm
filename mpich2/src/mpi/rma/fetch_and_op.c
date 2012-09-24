@@ -79,7 +79,6 @@ int MPIX_Fetch_and_op(const void *origin_addr, void *result_addr,
         MPID_BEGIN_ERROR_CHECKS;
         {
             MPIR_ERRTEST_WIN(win, mpi_errno);
-            if (mpi_errno != MPI_SUCCESS) goto fn_fail;
         }
         MPID_END_ERROR_CHECKS;
     }
@@ -99,10 +98,11 @@ int MPIX_Fetch_and_op(const void *origin_addr, void *result_addr,
             MPID_Win_valid_ptr( win_ptr, mpi_errno );
             if (mpi_errno) goto fn_fail;
 
-            MPIR_ERRTEST_ARGNULL(origin_addr, "origin_addr", mpi_errno);
-            MPIR_ERRTEST_ARGNULL(result_addr, "result_addr", mpi_errno);
-            if (mpi_errno) goto fn_fail;
+            if (op != MPIX_NO_OP) {
+                MPIR_ERRTEST_ARGNULL(origin_addr, "origin_addr", mpi_errno);
+            }
 
+            MPIR_ERRTEST_ARGNULL(result_addr, "result_addr", mpi_errno);
             MPIR_ERRTEST_DATATYPE(datatype, "datatype", mpi_errno);
 
             if (HANDLE_GET_KIND(datatype) != HANDLE_KIND_BUILTIN)
@@ -110,20 +110,18 @@ int MPIX_Fetch_and_op(const void *origin_addr, void *result_addr,
                 MPIU_ERR_SETANDJUMP(mpi_errno, MPI_ERR_TYPE, "**typenotpredefined");
             }
 
-            MPIR_ERRTEST_DISP(target_disp, mpi_errno);
+            if (win_ptr->create_flavor != MPIX_WIN_FLAVOR_DYNAMIC)
+                MPIR_ERRTEST_DISP(target_disp, mpi_errno);
 
             comm_ptr = win_ptr->comm_ptr;
             MPIR_ERRTEST_SEND_RANK(comm_ptr, target_rank, mpi_errno);
 
             MPIR_ERRTEST_OP(op, mpi_errno);
-            if (mpi_errno != MPI_SUCCESS) goto fn_fail;
 
             if (HANDLE_GET_KIND(op) != HANDLE_KIND_BUILTIN)
             {
                 MPIU_ERR_SETANDJUMP(mpi_errno, MPI_ERR_OP, "**opnotpredefined");
             }
-
-            if (mpi_errno != MPI_SUCCESS) goto fn_fail;
         }
         MPID_END_ERROR_CHECKS;
     }

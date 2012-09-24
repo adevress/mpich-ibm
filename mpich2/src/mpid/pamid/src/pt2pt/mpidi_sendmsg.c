@@ -144,7 +144,6 @@ MPIDI_SendMsg_rzv(pami_context_t    context,
    * to send, is sent as the payload of the request-to-send (RTS)
    * message.
    */
-
 #ifdef USE_PAMI_RDMA
   size_t sndlen_out;
   rc = PAMI_Memregion_create(context,

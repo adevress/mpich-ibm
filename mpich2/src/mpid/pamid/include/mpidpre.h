@@ -33,10 +33,11 @@
 #include <pthread.h>
 #include <unistd.h>
 
-#include <mpid_config.h>
-#include <mpid_dataloop.h>
+#include "mpid_dataloop.h"
 #include <pami.h>
 
+/* provides "pre" typedefs and such for NBC scheduling mechanism */
+#include "mpid_sched_pre.h"
 
 /** \brief Creates a compile error if the condition is false. */
 #define MPID_assert_static(expr) ({ switch(0){case 0:case expr:;} })

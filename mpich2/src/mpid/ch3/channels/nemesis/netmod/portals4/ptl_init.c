@@ -1,4 +1,4 @@
-/* -*- Mode: C; c-basic-offset:4 ; -*- */
+/* -*- Mode: C; c-basic-offset:4 ; indent-tabs-mode:nil ; -*- */
 /*
  *  (C) 2012 by Argonne National Laboratory.
  *      See COPYRIGHT in top-level directory.
@@ -11,9 +11,10 @@
 #endif
 
 #define EQ_COUNT 100
-#define NID_KEY "NID"
-#define PID_KEY "PID"
-#define PTI_KEY "PTI"
+#define NID_KEY  "NID"
+#define PID_KEY  "PID"
+#define PTI_KEY  "PTI"
+#define PTIC_KEY "PTIC"
 
 static int ptl_init(MPIDI_PG_t *pg_p, int pg_rank, char **bc_val_p, int *val_max_sz_p);
 static int ptl_finalize(void);
@@ -22,6 +23,8 @@ static int connect_to_root(const char *business_card, MPIDI_VC_t *new_vc);
 static int vc_init(MPIDI_VC_t *vc);
 static int vc_destroy(MPIDI_VC_t *vc);
 static int vc_terminate(MPIDI_VC_t *vc);
+
+static ptl_process_t my_ptl_id;
 
 MPID_nem_netmod_funcs_t MPIDI_nem_portals4_funcs = {
     ptl_init,
@@ -32,7 +35,32 @@ MPID_nem_netmod_funcs_t MPIDI_nem_portals4_funcs = {
     vc_init,
     vc_destroy,
     vc_terminate,
-    NULL /* anysource iprobe */
+    MPID_nem_ptl_anysource_iprobe,
+    MPID_nem_ptl_anysource_improbe
+};
+
+static MPIDI_Comm_ops_t comm_ops = {
+    MPID_nem_ptl_recv_posted,   /* recv_posted */
+
+    MPID_nem_ptl_isend,         /* send */
+    MPID_nem_ptl_isend,         /* rsend */
+    MPID_nem_ptl_issend,        /* ssend */
+    MPID_nem_ptl_isend,         /* isend */
+    MPID_nem_ptl_isend,         /* irsend */
+    MPID_nem_ptl_issend,        /* issend */
+
+    NULL,                       /* send_init */
+    NULL,                       /* bsend_init */
+    NULL,                       /* rsend_init */
+    NULL,                       /* ssend_init */
+    NULL,                       /* startall */
+
+    MPID_nem_ptl_cancel_send,   /* cancel_send */
+    MPID_nem_ptl_cancel_recv,   /* cancel_recv */
+
+    MPID_nem_ptl_probe,         /* probe */
+    MPID_nem_ptl_iprobe,        /* iprobe */
+    MPID_nem_ptl_improbe        /* improbe */
 };
 
 
@@ -44,7 +72,6 @@ static int ptl_init(MPIDI_PG_t *pg_p, int pg_rank, char **bc_val_p, int *val_max
 {
     int mpi_errno = MPI_SUCCESS;
     int ret;
-    ptl_process_t my_id;
     MPIDI_STATE_DECL(MPID_STATE_PTL_INIT);
 
     MPIDI_FUNC_ENTER(MPID_STATE_PTL_INIT);
@@ -56,17 +83,23 @@ static int ptl_init(MPIDI_PG_t *pg_p, int pg_rank, char **bc_val_p, int *val_max
     ret = PtlInit();
     MPIU_ERR_CHKANDJUMP(ret, mpi_errno, MPI_ERR_OTHER, "**ptlinit");
     
-    ret = PtlNIInit(PTL_IFACE_DEFAULT, PTL_NI_NO_MATCHING | PTL_NI_PHYSICAL,
+    ret = PtlNIInit(PTL_IFACE_DEFAULT, PTL_NI_MATCHING | PTL_NI_PHYSICAL,
                     PTL_PID_ANY, NULL, NULL, &MPIDI_nem_ptl_ni);
     MPIU_ERR_CHKANDJUMP(ret, mpi_errno, MPI_ERR_OTHER, "**ptlniinit");
 
     ret = PtlEQAlloc(MPIDI_nem_ptl_ni, EQ_COUNT, &MPIDI_nem_ptl_eq);
     MPIU_ERR_CHKANDJUMP(ret, mpi_errno, MPI_ERR_OTHER, "**ptleqalloc");
 
-    ret = PtlPTAlloc(MPIDI_nem_ptl_ni, 0, MPIDI_nem_ptl_eq, PTL_PT_ANY, &MPIDI_nem_ptl_pt);
+    /* allocate portal for matching messages */
+    ret = PtlPTAlloc(MPIDI_nem_ptl_ni, PTL_PT_ONLY_USE_ONCE | PTL_PT_ONLY_TRUNCATE | PTL_PT_FLOW_CONTROL, MPIDI_nem_ptl_eq,
+                     PTL_PT_ANY, &MPIDI_nem_ptl_pt);
     MPIU_ERR_CHKANDJUMP(ret, mpi_errno, MPI_ERR_OTHER, "**ptlptalloc");
 
-    ret = PtlGetId(MPIDI_nem_ptl_ni, &my_id);
+    /* allocate portal for MPICH control messages */
+    ret = PtlPTAlloc(MPIDI_nem_ptl_ni, PTL_PT_ONLY_USE_ONCE | PTL_PT_ONLY_TRUNCATE | PTL_PT_FLOW_CONTROL, MPIDI_nem_ptl_eq,
+                     PTL_PT_ANY, &MPIDI_nem_ptl_control_pt);
+
+    ret = PtlGetId(MPIDI_nem_ptl_ni, &my_ptl_id);
     MPIU_ERR_CHKANDJUMP(ret, mpi_errno, MPI_ERR_OTHER, "**ptlgetid");
     MPIU_DBG_MSG_FMT(CH3_CHANNEL, VERBOSE, (MPIU_DBG_FDEST, "Allocated NI and PT id=(%#x,%#x) pt=%#x",
                                             my_id.phys.nid, my_id.phys.pid, MPIDI_nem_ptl_pt));
@@ -74,7 +107,10 @@ static int ptl_init(MPIDI_PG_t *pg_p, int pg_rank, char **bc_val_p, int *val_max
     /* create business card */
     mpi_errno = get_business_card(pg_rank, bc_val_p, val_max_sz_p);
     if (mpi_errno) MPIU_ERR_POP(mpi_errno);
-    
+
+    mpi_errno = MPIDI_CH3I_Register_anysource_notification(MPID_nem_ptl_anysource_posted, MPID_nem_ptl_anysource_matched);
+    if (mpi_errno) MPIU_ERR_POP(mpi_errno);
+
     /* init other modules */
     mpi_errno = MPID_nem_ptl_poll_init();
     if (mpi_errno) MPIU_ERR_POP(mpi_errno);
@@ -134,26 +170,28 @@ static int get_business_card(int my_rank, char **bc_val_p, int *val_max_sz_p)
 {
     int mpi_errno = MPI_SUCCESS;
     int str_errno = MPIU_STR_SUCCESS;
-    ptl_process_t my_id;
     int ret;
     MPIDI_STATE_DECL(MPID_STATE_GET_BUSINESS_CARD);
 
     MPIDI_FUNC_ENTER(MPID_STATE_GET_BUSINESS_CARD);
 
-    ret = PtlGetId(MPIDI_nem_ptl_ni, &my_id);
-    MPIU_ERR_CHKANDJUMP(ret, mpi_errno, MPI_ERR_OTHER, "**ptlgetid");
-    
-    str_errno = MPIU_Str_add_binary_arg(bc_val_p, val_max_sz_p, NID_KEY, (char *)&my_id.phys.nid, sizeof(my_id.phys.nid));
+    str_errno = MPIU_Str_add_binary_arg(bc_val_p, val_max_sz_p, NID_KEY, (char *)&my_ptl_id.phys.nid, sizeof(my_ptl_id.phys.nid));
     if (str_errno) {
         MPIU_ERR_CHKANDJUMP(str_errno == MPIU_STR_NOMEM, mpi_errno, MPI_ERR_OTHER, "**buscard_len");
         MPIU_ERR_SETANDJUMP(mpi_errno, MPI_ERR_OTHER, "**buscard");
     }
-    str_errno = MPIU_Str_add_binary_arg(bc_val_p, val_max_sz_p, PID_KEY, (char *)&my_id.phys.pid, sizeof(my_id.phys.pid));
+    str_errno = MPIU_Str_add_binary_arg(bc_val_p, val_max_sz_p, PID_KEY, (char *)&my_ptl_id.phys.pid, sizeof(my_ptl_id.phys.pid));
     if (str_errno) {
         MPIU_ERR_CHKANDJUMP(str_errno == MPIU_STR_NOMEM, mpi_errno, MPI_ERR_OTHER, "**buscard_len");
         MPIU_ERR_SETANDJUMP(mpi_errno, MPI_ERR_OTHER, "**buscard");
     }
     str_errno = MPIU_Str_add_binary_arg(bc_val_p, val_max_sz_p, PTI_KEY, (char *)&MPIDI_nem_ptl_pt, sizeof(MPIDI_nem_ptl_pt));
+    if (str_errno) {
+        MPIU_ERR_CHKANDJUMP(str_errno == MPIU_STR_NOMEM, mpi_errno, MPI_ERR_OTHER, "**buscard_len");
+        MPIU_ERR_SETANDJUMP(mpi_errno, MPI_ERR_OTHER, "**buscard");
+    }
+    str_errno = MPIU_Str_add_binary_arg(bc_val_p, val_max_sz_p, PTIC_KEY, (char *)&MPIDI_nem_ptl_control_pt,
+                                        sizeof(MPIDI_nem_ptl_control_pt));
     if (str_errno) {
         MPIU_ERR_CHKANDJUMP(str_errno == MPIU_STR_NOMEM, mpi_errno, MPI_ERR_OTHER, "**buscard_len");
         MPIU_ERR_SETANDJUMP(mpi_errno, MPI_ERR_OTHER, "**buscard");
@@ -200,9 +238,15 @@ static int vc_init(MPIDI_VC_t *vc)
 
     MPIDI_FUNC_ENTER(MPID_STATE_VC_INIT);
 
+    /* */
+    MPIU_Assert(vc->lpid < NPTL_MAX_PROCS);
+    
     vc->sendNoncontig_fn   = MPID_nem_ptl_SendNoncontig;
     vc_ch->iStartContigMsg = MPID_nem_ptl_iStartContigMsg;
     vc_ch->iSendContig     = MPID_nem_ptl_iSendContig;
+
+    if (MPIR_PARAM_COMM_OVERRIDES) /* allow feature to be disabled at runtime */
+        vc->comm_ops = &comm_ops;
 
     vc_ch->next = NULL;
     vc_ch->prev = NULL;
@@ -232,7 +276,7 @@ static int vc_destroy(MPIDI_VC_t *vc)
 #define FUNCNAME MPID_nem_ptl_get_id_from_bc
 #undef FCNAME
 #define FCNAME MPIU_QUOTE(FUNCNAME)
-int MPID_nem_ptl_get_id_from_bc(const char *business_card, ptl_process_t *id, ptl_pt_index_t *pt)
+int MPID_nem_ptl_get_id_from_bc(const char *business_card, ptl_process_t *id, ptl_pt_index_t *pt, ptl_pt_index_t *ptc)
 {
     int mpi_errno = MPI_SUCCESS;
     int ret;
@@ -248,6 +292,9 @@ int MPID_nem_ptl_get_id_from_bc(const char *business_card, ptl_process_t *id, pt
     MPIU_ERR_CHKANDJUMP(ret != MPIU_STR_SUCCESS || len != sizeof(id->phys.pid), mpi_errno, MPI_ERR_OTHER, "**badbusinesscard");
 
     ret = MPIU_Str_get_binary_arg(business_card, PTI_KEY, (char *)pt, sizeof(pt), &len);
+    MPIU_ERR_CHKANDJUMP(ret != MPIU_STR_SUCCESS || len != sizeof(*pt), mpi_errno, MPI_ERR_OTHER, "**badbusinesscard");
+
+    ret = MPIU_Str_get_binary_arg(business_card, PTIC_KEY, (char *)ptc, sizeof(ptc), &len);
     MPIU_ERR_CHKANDJUMP(ret != MPIU_STR_SUCCESS || len != sizeof(*pt), mpi_errno, MPI_ERR_OTHER, "**badbusinesscard");
 
  fn_exit:

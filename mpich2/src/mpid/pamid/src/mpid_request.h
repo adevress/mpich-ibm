@@ -23,6 +23,7 @@
 #ifndef __src_mpid_request_h__
 #define __src_mpid_request_h__
 
+#include "mpid_datatype.h"
 
 /**
  * \addtogroup MPID_REQUEST
@@ -276,6 +277,8 @@ MPID_Request_discard_inline(MPID_Request *req)
     MPIDI_Request_tls_free(req);
 }
 
+#define MPID_REQUEST_SET_COMPLETED(req_) \
+  MPIDI_Request_complete_inline(req_)
 
 static inline void
 MPIDI_Request_complete_inline(MPID_Request *req)
