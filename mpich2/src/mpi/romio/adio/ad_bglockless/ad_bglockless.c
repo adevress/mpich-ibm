@@ -42,4 +42,3 @@ struct ADIOI_Fns_struct ADIO_BGLOCKLESS_operations = {
     ADIOI_GEN_Delete, /* Delete */
     ADIOI_BGLOCKLESS_Feature  /* Features */
 };
-
