@@ -142,9 +142,7 @@ int MPI_Unpack_external(MPICH2_CONST char *datarep,
     {
 	mpi_errno = MPIR_Err_create_code(
 	    mpi_errno, MPIR_ERR_RECOVERABLE, FCNAME, __LINE__, MPI_ERR_OTHER, "**mpi_unpack_external",
-	    "**mpi_unpack_external %s %p %L %p %p %d %D", datarep, inbuf, 
-	    MPI_MPI_AINT_CAST_TO_LONG_LONG insize, 
-	    position, outbuf, outcount, datatype);
+	    "**mpi_unpack_external %s %p %d %p %p %d %D", datarep, inbuf, insize, position, outbuf, outcount, datatype);
     }
 #   endif
     mpi_errno = MPIR_Err_return_comm(NULL, FCNAME, mpi_errno);

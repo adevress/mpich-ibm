@@ -156,8 +156,7 @@ int MPI_Pack_external(MPICH2_CONST char *datarep,
     {
 	mpi_errno = MPIR_Err_create_code(
 	    mpi_errno, MPIR_ERR_RECOVERABLE, FCNAME, __LINE__, MPI_ERR_OTHER, "**mpi_pack_external",
-	    "**mpi_pack_external %s %p %d %D %p %L %p", 
-	    datarep, inbuf, incount, datatype, outbuf, MPI_MPI_AINT_CAST_TO_LONG_LONG outcount, position);
+	    "**mpi_pack_external %s %p %d %D %p %d %p", datarep, inbuf, incount, datatype, outbuf, outcount, position);
     }
 #   endif
     mpi_errno = MPIR_Err_return_comm(0, FCNAME, mpi_errno);
