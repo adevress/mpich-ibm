@@ -2570,6 +2570,9 @@ on all link lines (consider adding it to LDFLAGS)])
 fi
 AC_SUBST(debugger_dir)
 
+# used by automakefiles to conditionally build the DLL
+AM_CONDITIONAL([BUILD_DEBUGGER_DLL], [test x$BUILD_TVDLL = xyes])
+
 # ----------------------------------------------------------------------------
 
 nameserv_name=""
