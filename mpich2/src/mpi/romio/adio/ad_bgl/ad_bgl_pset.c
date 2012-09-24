@@ -39,10 +39,10 @@ ADIOI_BGL_ProcInfo_free( ADIOI_BGL_ProcInfo_t *info )
     if (info != NULL) ADIOI_Free (info);
 }
 
-#warning static void ADIOI_BGL_ProcInfo_set(ADIOI_BGL_ProcInfo_t *info, const DCMF_Hardware_t *hw, int r)
-static void ADIOI_BGL_ProcInfo_set(ADIOI_BGL_ProcInfo_t *info,  int r)
+static
+void 
+ADIOI_BGL_ProcInfo_set(ADIOI_BGL_ProcInfo_t *info, const DCMF_Hardware_t *hw, int r)
 {
-   #if 0
     info->psetNum    = hw->idOfPset;
     info->xInPset    = hw->xCoord;
     info->yInPset    = hw->yCoord;
@@ -50,8 +50,6 @@ static void ADIOI_BGL_ProcInfo_set(ADIOI_BGL_ProcInfo_t *info,  int r)
     info->cpuid      = hw->tCoord;
     info->rank       = r;
     info->rankInPset = hw->rankInPset;
-   #endif
-   ;
 }
 
 
@@ -63,10 +61,10 @@ ADIOI_BGL_ConfInfo_new ()
     return p;
 }
 
-#warning static void ADIOI_BGL_ConfInfo_set(ADIOI_BGL_ConfInfo_t *info, const DCMF_Hardware_t *hw, int s, int n_aggrs)
-static void ADIOI_BGL_ConfInfo_set(ADIOI_BGL_ConfInfo_t *info, int s, int n_aggrs)
+static
+void
+ADIOI_BGL_ConfInfo_set(ADIOI_BGL_ConfInfo_t *info, const DCMF_Hardware_t *hw, int s, int n_aggrs)
 {
-   #if 0
     info->PsetSize        = hw->sizeOfPset;
     info->numPsets        = (hw->xSize * hw->ySize *
 					hw->zSize) / hw->sizeOfPset;
@@ -83,8 +81,6 @@ static void ADIOI_BGL_ConfInfo_set(ADIOI_BGL_ConfInfo_t *info, int s, int n_aggr
 
     info->aggRatio        = 1. * info->nAggrs / info->virtualPsetSize;
     if (info->aggRatio > 1) info->aggRatio = 1.;
-    #endif 
-    ;
 }
 
 void
@@ -98,11 +94,11 @@ ADIOI_BGL_persInfo_init(ADIOI_BGL_ConfInfo_t *conf,
 			ADIOI_BGL_ProcInfo_t *proc, 
 			int s, int r, int n_aggrs)
 {
-#warning    DCMF_Hardware_t hw;
-#warning    DCMF_Hardware(&hw);
+    DCMF_Hardware_t hw;
+    DCMF_Hardware(&hw);
 
-    ADIOI_BGL_ConfInfo_set (conf,  s, n_aggrs);
-    ADIOI_BGL_ProcInfo_set (proc,  r);
+    ADIOI_BGL_ConfInfo_set (conf, &hw, s, n_aggrs);
+    ADIOI_BGL_ProcInfo_set (proc, &hw, r);
 }
 
 void 

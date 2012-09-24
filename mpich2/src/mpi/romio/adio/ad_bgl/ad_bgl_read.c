@@ -16,9 +16,6 @@
 #include "adio_extern.h"
 
 #include "ad_bgl_tuning.h"
-#ifdef AGGREGATION_PROFILE
-#include "mpe.h"
-#endif
 
 void ADIOI_BGL_ReadContig(ADIO_File fd, void *buf, int count, 
                      MPI_Datatype datatype, int file_ptr_type,
@@ -27,9 +24,6 @@ void ADIOI_BGL_ReadContig(ADIO_File fd, void *buf, int count,
     int err=-1, datatype_size;
     ADIO_Offset len;
     static char myname[] = "ADIOI_BGL_READCONTIG";
-#ifdef AGGREGATION_PROFILE
-    MPE_Log_event (5034, 0, NULL);
-#endif
 #if BGL_PROFILE
 		/* timing */
 		double io_time, io_time2;
@@ -124,9 +118,6 @@ void ADIOI_BGL_ReadContig(ADIO_File fd, void *buf, int count,
 #endif
 
     *error_code = MPI_SUCCESS;
-#ifdef AGGREGATION_PROFILE
-    MPE_Log_event (5035, 0, NULL);
-#endif
 }
 
 
