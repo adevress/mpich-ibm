@@ -117,6 +117,20 @@ int MPIDO_Bcast(void *buffer,
          comm_ptr->mpid.opt_protocol_md[PAMI_XFER_BROADCAST][0].name,
          comm_ptr->mpid.opt_protocol_md[PAMI_XFER_BROADCAST][1].name);
 
+      if(comm_ptr->mpid.cutoff_size[PAMI_XFER_BROADCAST][1] != 0)/* SSS: There is FCA cutoff (FCA only sets cutoff for [PAMI_XFER_BROADCAST][1]) */
+      {
+        if(data_size <= comm_ptr->mpid.cutoff_size[PAMI_XFER_BROADCAST][1])
+        {
+          my_bcast = comm_ptr->mpid.opt_protocol[PAMI_XFER_BROADCAST][1];
+          my_bcast_md = &comm_ptr->mpid.opt_protocol_md[PAMI_XFER_BROADCAST][1];
+          queryreq = comm_ptr->mpid.must_query[PAMI_XFER_BROADCAST][1];
+        }
+        else
+        {
+          return MPIR_Bcast_intra(buffer, count, datatype, root, comm_ptr, mpierrno);
+        }
+      }
+
       if(data_size > comm_ptr->mpid.cutoff_size[PAMI_XFER_BROADCAST][0])
       {
          my_bcast = comm_ptr->mpid.opt_protocol[PAMI_XFER_BROADCAST][1];

@@ -85,11 +85,15 @@ int MPIDO_Reduce(const void *sendbuf,
    reduce.cookie = (void *)&reduce_active;
    if(comm_ptr->mpid.user_selected_type[PAMI_XFER_REDUCE] == MPID_COLL_OPTIMIZED)
    {
-      TRACE_ERR("Optimized Reduce (%s) was pre-selected\n",
-         comm_ptr->mpid.opt_protocol_md[PAMI_XFER_REDUCE][0].name);
-      my_reduce    = comm_ptr->mpid.opt_protocol[PAMI_XFER_REDUCE][0];
-      my_reduce_md = &comm_ptr->mpid.opt_protocol_md[PAMI_XFER_REDUCE][0];
-      queryreq     = comm_ptr->mpid.must_query[PAMI_XFER_REDUCE][0];
+      if((comm_ptr->mpid.cutoff_size[PAMI_XFER_REDUCE][0] == 0) || 
+          (comm_ptr->mpid.cutoff_size[PAMI_XFER_REDUCE][0] >= tsize && comm_ptr->mpid.cutoff_size[PAMI_XFER_REDUCE][0] > 0))
+      {
+        TRACE_ERR("Optimized Reduce (%s) was pre-selected\n",
+           comm_ptr->mpid.opt_protocol_md[PAMI_XFER_REDUCE][0].name);
+        my_reduce    = comm_ptr->mpid.opt_protocol[PAMI_XFER_REDUCE][0];
+        my_reduce_md = &comm_ptr->mpid.opt_protocol_md[PAMI_XFER_REDUCE][0];
+        queryreq     = comm_ptr->mpid.must_query[PAMI_XFER_REDUCE][0];
+      }
    }
    else
    {

@@ -28,7 +28,7 @@
 #include <mpidimpl.h>
 
 
-static int MPIDI_Check_FCA_envvar(char *string)
+static int MPIDI_Check_FCA_envvar(char *string, int *user_range_hi)
 {
    char *env = getenv("MP_MPI_PAMI_FOR");
    if(env != NULL)
@@ -36,19 +36,38 @@ static int MPIDI_Check_FCA_envvar(char *string)
       if(strcasecmp(env, "ALL") == 0)
          return 1;
       int len = strlen(env);
+      len++;
       char *temp = MPIU_Malloc(sizeof(char) * len);
       char *ptrToFree = temp;
       strcpy(temp, env);
       char *sepptr;
       for(sepptr = temp; (sepptr = strsep(&temp, ",")) != NULL ; )
       {
-         if(strcasecmp(sepptr, string) == 0)
+         char *subsepptr, *temp_sepptr;
+         temp_sepptr = sepptr;
+         subsepptr = strsep(&temp_sepptr, ":");
+         if(temp_sepptr != NULL)/* SSS: There is a a colon for this collective */
          {
-            MPIU_Free(ptrToFree);
-            return 1;
+             if(strcasecmp(subsepptr, string) == 0)
+             {
+                *user_range_hi = atoi(temp_sepptr);
+                MPIU_Free(ptrToFree);
+                return 1;
+             }
+             else
+                sepptr++;
          }
          else
-            sepptr++;
+         { 
+             if(strcasecmp(sepptr, string) == 0)
+             {
+                *user_range_hi = -1;
+                MPIU_Free(ptrToFree);
+                return 1;
+             }
+             else
+                sepptr++;
+         }
       }
       /* We didn't find it, but the end var was set, so return 0 */
       MPIU_Free(ptrToFree);
@@ -71,11 +90,12 @@ MPIDI_Coll_comm_check_FCA(char *coll_name,
 {                        
    int opt_proto = -1;
    int i;
+   int user_range_hi = -1;/* SSS: By default we assume user hasn't defined a range_hi (cutoff_size) */
 #ifdef TRACE_ON
    char *envstring = getenv("MP_MPI_PAMI_FOR");
 #endif
    TRACE_ERR("Checking for %s in %s\n", coll_name, envstring);
-   int check_var = MPIDI_Check_FCA_envvar(coll_name);
+   int check_var = MPIDI_Check_FCA_envvar(coll_name, &user_range_hi);
    if(check_var == 1)
    {
       TRACE_ERR("Found %s\n",coll_name);
@@ -99,6 +119,10 @@ MPIDI_Coll_comm_check_FCA(char *coll_name,
                   &comm_ptr->mpid.coll_metadata[pami_xfer][0][opt_proto],
                   sizeof(pami_metadata_t));
             comm_ptr->mpid.must_query[pami_xfer][proto_num] = query_type;
+            if(user_range_hi != -1)
+              comm_ptr->mpid.cutoff_size[pami_xfer][proto_num] = user_range_hi;
+            else
+              comm_ptr->mpid.cutoff_size[pami_xfer][proto_num] = 0;
             comm_ptr->mpid.user_selected_type[pami_xfer] = MPID_COLL_OPTIMIZED;
       }                                                                                           
       else /* see if it is in the must query list instead */
@@ -122,6 +146,10 @@ MPIDI_Coll_comm_check_FCA(char *coll_name,
                   &comm_ptr->mpid.coll_metadata[pami_xfer][1][opt_proto],
                   sizeof(pami_metadata_t));
             comm_ptr->mpid.must_query[pami_xfer][proto_num] = query_type;
+            if(user_range_hi != -1)
+              comm_ptr->mpid.cutoff_size[pami_xfer][proto_num] = user_range_hi;
+            else
+              comm_ptr->mpid.cutoff_size[pami_xfer][proto_num] = 0;
             comm_ptr->mpid.user_selected_type[pami_xfer] = MPID_COLL_OPTIMIZED;
          }
          else /* that protocol doesn't exist */
@@ -643,7 +671,9 @@ void MPIDI_Comm_coll_select(MPID_Comm *comm_ptr)
       for(i = 0; i < comm_ptr->mpid.coll_count[PAMI_XFER_ALLREDUCE][1]; i++)
       {
          char *pname="...none...";
-         if(MPIDI_Check_FCA_envvar("ALLREDUCE") == 1)
+         int user_range_hi = -1;
+         int fca_enabled = 0;
+         if((fca_enabled = MPIDI_Check_FCA_envvar("ALLREDUCE", &user_range_hi)) == 1)
             pname = "I1:Allreduce:FCA:FCA";
          else if(use_threaded_collectives)
             pname = "I0:MultiCombineDput:-:MU";
@@ -667,6 +697,10 @@ void MPIDI_Comm_coll_select(MPID_Comm *comm_ptr)
                   sizeof(pami_metadata_t));
             comm_ptr->mpid.query_allred_ismm = MPID_COLL_QUERY;
             comm_ptr->mpid.user_selected_type[PAMI_XFER_ALLREDUCE] = MPID_COLL_OPTIMIZED;
+            if(fca_enabled && user_range_hi != -1)
+              comm_ptr->mpid.cutoff_size[PAMI_XFER_ALLREDUCE][0] = user_range_hi;
+            else
+              comm_ptr->mpid.cutoff_size[PAMI_XFER_ALLREDUCE][0] = 0;
             opt_proto = i;
 
          }
@@ -700,7 +734,8 @@ void MPIDI_Comm_coll_select(MPID_Comm *comm_ptr)
       for(i = 0; i < comm_ptr->mpid.coll_count[PAMI_XFER_ALLREDUCE][1]; i++)
       {
          char *pname;
-         int pickFCA = MPIDI_Check_FCA_envvar("ALLREDUCE");
+         int user_range_hi = -1;
+         int pickFCA = MPIDI_Check_FCA_envvar("ALLREDUCE", &user_range_hi);
          if(pickFCA == 1)
             pname = "I1:Allreduce:FCA:FCA";
          else 
@@ -717,6 +752,9 @@ void MPIDI_Comm_coll_select(MPID_Comm *comm_ptr)
             if(pickFCA == 1)
             {
               comm_ptr->mpid.must_query[PAMI_XFER_ALLREDUCE][0] = MPID_COLL_CHECK_FN_REQUIRED;
+              if(user_range_hi != -1)
+                comm_ptr->mpid.cutoff_size[PAMI_XFER_ALLREDUCE][0] = user_range_hi;
+              else
               comm_ptr->mpid.cutoff_size[PAMI_XFER_ALLREDUCE][0] = 0;/*SSS: Always use opt_protocol[0] for FCA*/
               /*SSS: Otherwise another protocol may get selected in mpido_allreduce if we don't set this flag here*/
               comm_ptr->mpid.must_query[PAMI_XFER_ALLREDUCE][1] = MPID_COLL_CHECK_FN_REQUIRED;

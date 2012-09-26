@@ -367,8 +367,18 @@ MPIDO_Allgather(const void *sendbuf,
       allgather.cmd.xfer_allgather.rtypecount = recv_size;
       if(comm_ptr->mpid.user_selected_type[PAMI_XFER_ALLGATHER] == MPID_COLL_OPTIMIZED)
       {
-         allgather.algorithm = comm_ptr->mpid.opt_protocol[PAMI_XFER_ALLGATHER][0];
-         my_md = &comm_ptr->mpid.opt_protocol_md[PAMI_XFER_ALLGATHER][0];
+        if((comm_ptr->mpid.cutoff_size[PAMI_XFER_ALLGATHER][0] == 0) || 
+	    (comm_ptr->mpid.cutoff_size[PAMI_XFER_ALLGATHER][0] > 0 && comm_ptr->mpid.cutoff_size[PAMI_XFER_ALLGATHER][0] >= send_size))
+        {
+           allgather.algorithm = comm_ptr->mpid.opt_protocol[PAMI_XFER_ALLGATHER][0];
+           my_md = &comm_ptr->mpid.opt_protocol_md[PAMI_XFER_ALLGATHER][0];
+        }
+        else
+        {
+           return MPIR_Allgather(sendbuf, sendcount, sendtype,
+                       recvbuf, recvcount, recvtype,
+                       comm_ptr, mpierrno);
+        }
       }
       else
       {

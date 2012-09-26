@@ -386,9 +386,17 @@ MPIDO_Allgatherv(const void *sendbuf,
       allgatherv.cb_done = allgatherv_cb_done;
       allgatherv.cookie = (void *)&allgatherv_active;
       if(comm_ptr->mpid.user_selected_type[PAMI_XFER_ALLGATHERV_INT] == MPID_COLL_OPTIMIZED)
-      {  
-        allgatherv.algorithm = comm_ptr->mpid.opt_protocol[PAMI_XFER_ALLGATHERV_INT][0];
-        my_md = &comm_ptr->mpid.opt_protocol_md[PAMI_XFER_ALLGATHERV_INT][0];
+      {
+        if((comm_ptr->mpid.cutoff_size[PAMI_XFER_ALLGATHERV_INT][0] == 0) || 
+	    (comm_ptr->mpid.cutoff_size[PAMI_XFER_ALLGATHERV_INT][0] > 0 && comm_ptr->mpid.cutoff_size[PAMI_XFER_ALLGATHERV_INT][0] >= send_size))
+        {		
+          allgatherv.algorithm = comm_ptr->mpid.opt_protocol[PAMI_XFER_ALLGATHERV_INT][0];
+          my_md = &comm_ptr->mpid.opt_protocol_md[PAMI_XFER_ALLGATHERV_INT][0];
+        }
+        else
+          return MPIR_Allgatherv(sendbuf, sendcount, sendtype,
+                       recvbuf, recvcounts, displs, recvtype,
+                       comm_ptr, mpierrno);
       }
       else
       {  

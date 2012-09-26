@@ -150,9 +150,13 @@ int MPIDO_Allreduce(const void *sendbuf,
 		 (comm_ptr->mpid.must_query[PAMI_XFER_ALLREDUCE][0] == MPID_COLL_QUERY) ||
 		 (comm_ptr->mpid.must_query[PAMI_XFER_ALLREDUCE][0] ==  MPID_COLL_ALWAYS_QUERY))
          {
-            my_allred = comm_ptr->mpid.opt_protocol[PAMI_XFER_ALLREDUCE][0];
-            my_allred_md = &comm_ptr->mpid.opt_protocol_md[PAMI_XFER_ALLREDUCE][0];
-            alg_selected = 1;
+            if((comm_ptr->mpid.cutoff_size[PAMI_XFER_ALLREDUCE][0] == 0) || 
+			(count <= comm_ptr->mpid.cutoff_size[PAMI_XFER_ALLREDUCE][0] && comm_ptr->mpid.cutoff_size[PAMI_XFER_ALLREDUCE][0] > 0))
+            {
+              my_allred = comm_ptr->mpid.opt_protocol[PAMI_XFER_ALLREDUCE][0];
+              my_allred_md = &comm_ptr->mpid.opt_protocol_md[PAMI_XFER_ALLREDUCE][0];
+              alg_selected = 1;
+            }
          }
       }
       else
@@ -176,9 +180,13 @@ int MPIDO_Allreduce(const void *sendbuf,
 		 (comm_ptr->mpid.must_query[PAMI_XFER_ALLREDUCE][0] == MPID_COLL_QUERY) ||
 		 (comm_ptr->mpid.must_query[PAMI_XFER_ALLREDUCE][0] == MPID_COLL_ALWAYS_QUERY))
          {
-            my_allred = comm_ptr->mpid.opt_protocol[PAMI_XFER_ALLREDUCE][0];
-            my_allred_md = &comm_ptr->mpid.opt_protocol_md[PAMI_XFER_ALLREDUCE][0];
-            alg_selected = 1;
+            if((comm_ptr->mpid.cutoff_size[PAMI_XFER_ALLREDUCE][0] == 0) || 
+               (count <= comm_ptr->mpid.cutoff_size[PAMI_XFER_ALLREDUCE][0] && comm_ptr->mpid.cutoff_size[PAMI_XFER_ALLREDUCE][0] > 0))
+            {			
+              my_allred = comm_ptr->mpid.opt_protocol[PAMI_XFER_ALLREDUCE][0];
+              my_allred_md = &comm_ptr->mpid.opt_protocol_md[PAMI_XFER_ALLREDUCE][0];
+              alg_selected = 1;
+            }
          }
       }
       TRACE_ERR("Alg selected: %d\n", alg_selected);
