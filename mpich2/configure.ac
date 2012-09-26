@@ -435,6 +435,9 @@ if test $smpcoll = "yes" ; then
    AC_DEFINE(USE_SMP_COLLECTIVES,1,[define to enable SMP/multi-core aware collectives])
 fi
 
+AC_ARG_ENABLE(versioning,
+	AC_HELP_STRING([--enable-versioning], [Enable library versioning]),,enable_versioning=yes)
+
 dnl The environment variable MPICH_DEBUGLIBNAME may be used to
 dnl override the default name of the library that the debugger will
 dnl load to access the MPICH2 internal data structures.
@@ -636,6 +639,16 @@ m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 if test "X$enable_shared" = "Xno" ; then
     enable_wrapper_rpath=no
 fi
+
+# Enable libtool style library versioning
+# or allow for the creation of versionless libraries
+if test "$enable_versioning" = "yes" ; then
+   ABIVERSIONFLAGS="-version-info \$(ABIVERSION)"
+else
+   ABIVERSIONFLAGS="-avoid-version"
+fi
+export ABIVERSIONFLAGS
+AC_SUBST(ABIVERSIONFLAGS)
 
 dnl AC_PROG_{CXX,F77,FC} must come early in configure.ac in order to avoid some
 dnl esoteric autoconf macro expansion errors
