@@ -58,8 +58,8 @@ int MPIDO_Reduce(const void *sendbuf,
 
 
    pami_xfer_t reduce;
-   pami_algorithm_t my_reduce;
-   pami_metadata_t *my_reduce_md;
+   pami_algorithm_t my_reduce=0;
+   pami_metadata_t *my_reduce_md=NULL;
    int queryreq = 0;
    volatile unsigned reduce_active = 1;
 
