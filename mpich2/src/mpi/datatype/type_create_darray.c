@@ -403,9 +403,16 @@ int MPI_Type_create_darray(int size,
         MPID_BEGIN_ERROR_CHECKS;
         {
 	    /* Check parameters */
-	    MPIR_ERRTEST_ARGNEG(rank, "rank", mpi_errno);
-	    MPIR_ERRTEST_ARGNONPOS(size, "size", mpi_errno);
-	    MPIR_ERRTEST_ARGNONPOS(ndims, "ndims", mpi_errno);
+	    MPIR_ERRTEST_ARGNONPOS(size, "size", mpi_errno, MPI_ERR_ARG);
+	    if(rank < 0 || rank >= size) {
+	       mpi_errno = MPIR_Err_create_code(MPI_SUCCESS, MPIR_ERR_RECOVERABLE,
+	                       FCNAME, __LINE__, MPI_ERR_RANK,
+	                       "**argrange","**argrange %s %d %d",
+	                       "rank", rank, (size-1));
+	       goto fn_fail;
+	    }
+
+	    MPIR_ERRTEST_ARGNONPOS(ndims, "ndims", mpi_errno, MPI_ERR_DIMS);
 
 	    MPIR_ERRTEST_ARGNULL(array_of_gsizes, "array_of_gsizes", mpi_errno);
 	    MPIR_ERRTEST_ARGNULL(array_of_distribs, "array_of_distribs", mpi_errno);
@@ -423,9 +430,10 @@ int MPI_Type_create_darray(int size,
                 goto fn_fail;
 	    }
 
+	    tmp_size = 1;
 	    for (i=0; mpi_errno == MPI_SUCCESS && i < ndims; i++) {
-		MPIR_ERRTEST_ARGNONPOS(array_of_gsizes[i], "gsize", mpi_errno);
-		MPIR_ERRTEST_ARGNONPOS(array_of_psizes[i], "psize", mpi_errno);
+		MPIR_ERRTEST_ARGNONPOS(array_of_gsizes[i], "gsize", mpi_errno, MPI_ERR_ARG);
+		MPIR_ERRTEST_ARGNONPOS(array_of_psizes[i], "psize", mpi_errno, MPI_ERR_ARG);
 
 		if ((array_of_distribs[i] != MPI_DISTRIBUTE_NONE) &&
 		    (array_of_distribs[i] != MPI_DISTRIBUTE_BLOCK) &&
@@ -468,7 +476,21 @@ int MPI_Type_create_darray(int size,
 						     i, array_of_psizes[i]);
                     goto fn_fail;
 		}
+
+	        tmp_size *= array_of_psizes[i];
 	    }
+
+	    if(tmp_size != size)
+	    {
+		mpi_errno = MPIR_Err_create_code(MPI_SUCCESS,
+						MPIR_ERR_RECOVERABLE,
+						FCNAME,
+						__LINE__,
+						MPI_ERR_ARG,
+						"**arg",
+						"**arg %s","array_of_psizes");
+               goto fn_fail;
+           }
 
 	    /* TODO: GET THIS CHECK IN ALSO */
 
