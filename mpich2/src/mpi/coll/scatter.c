@@ -174,8 +174,8 @@ int MPIR_Scatter_intra (
                     if (mpi_errno) {
                         /* for communication errors, just record the error but continue */
                         *errflag = TRUE;
-                        MPIU_ERR_SET(mpi_errno, MPI_ERR_OTHER, "**fail");
                         MPIU_ERR_ADD(mpi_errno_ret, mpi_errno);
+                        MPIU_ERR_POP(mpi_errno);
                     }
                 }
                 else {
@@ -184,9 +184,9 @@ int MPIR_Scatter_intra (
                     if (mpi_errno) {
                         /* for communication errors, just record the error but continue */
                         *errflag = TRUE;
-                        MPIU_ERR_SET(mpi_errno, MPI_ERR_OTHER, "**fail");
-                        MPIU_ERR_ADD(mpi_errno_ret, mpi_errno);
                         curr_cnt = 0;
+                        MPIU_ERR_ADD(mpi_errno_ret, mpi_errno);
+                        MPIU_ERR_POP(mpi_errno);
                     } else
                         /* the recv size is larger than what may be sent in
                            some cases. query amount of data actually received */
@@ -231,8 +231,8 @@ int MPIR_Scatter_intra (
                 if (mpi_errno) {
                     /* for communication errors, just record the error but continue */
                     *errflag = TRUE;
-                    MPIU_ERR_SET(mpi_errno, MPI_ERR_OTHER, "**fail");
                     MPIU_ERR_ADD(mpi_errno_ret, mpi_errno);
+                    MPIU_ERR_POP(mpi_errno);
                 }
                 curr_cnt -= send_subtree_cnt;
             }
@@ -338,9 +338,9 @@ int MPIR_Scatter_intra (
                 if (mpi_errno) {
                     /* for communication errors, just record the error but continue */
                     *errflag = TRUE;
-                    MPIU_ERR_SET(mpi_errno, MPI_ERR_OTHER, "**fail");
-                    MPIU_ERR_ADD(mpi_errno_ret, mpi_errno);
                     curr_cnt = 0;
+                    MPIU_ERR_ADD(mpi_errno_ret, mpi_errno);
+                    MPIU_ERR_POP(mpi_errno);
                 } else
                     /* the recv size is larger than what may be sent in
                        some cases. query amount of data actually received */
@@ -369,8 +369,8 @@ int MPIR_Scatter_intra (
                 if (mpi_errno) {
                     /* for communication errors, just record the error but continue */
                     *errflag = TRUE;
-                    MPIU_ERR_SET(mpi_errno, MPI_ERR_OTHER, "**fail");
                     MPIU_ERR_ADD(mpi_errno_ret, mpi_errno);
+                    MPIU_ERR_POP(mpi_errno);
                 }
                 curr_cnt -= send_subtree_cnt;
             }
