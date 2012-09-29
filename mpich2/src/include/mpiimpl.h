@@ -584,7 +584,8 @@ typedef struct MPID_Info {
 } MPID_Info;
 extern MPIU_Object_alloc_t MPID_Info_mem;
 /* Preallocated info objects */
-extern MPID_Info MPID_Info_direct[];
+#define MPID_INFO_PREALLOC 8
+extern MPID_Info MPID_Info_direct[MPID_INFO_PREALLOC];
 /* ------------------------------------------------------------------------- */
 
 /* ------------------------------------------------------------------------- */
@@ -648,8 +649,10 @@ typedef struct MPID_Errhandler {
 } MPID_Errhandler;
 extern MPIU_Object_alloc_t MPID_Errhandler_mem;
 /* Preallocated errhandler objects */
-extern MPID_Errhandler MPID_Errhandler_builtin[];
-extern MPID_Errhandler MPID_Errhandler_direct[];
+#define MPID_ERRHANDLER_N_BUILTIN 3
+#define MPID_ERRHANDLER_PREALLOC 8
+extern MPID_Errhandler MPID_Errhandler_builtin[MPID_ERRHANDLER_N_BUILTIN];
+extern MPID_Errhandler MPID_Errhandler_direct[MPID_ERRHANDLER_PREALLOC];
 
 /* We never reference count the builtin error handler objects, regardless of how
  * we decide to reference count the other predefined objects.  If we get to the
@@ -1054,8 +1057,9 @@ typedef struct MPID_Group {
 extern MPIU_Object_alloc_t MPID_Group_mem;
 /* Preallocated group objects */
 #define MPID_GROUP_N_BUILTIN 1
+#define MPID_GROUP_PREALLOC 8
 extern MPID_Group MPID_Group_builtin[MPID_GROUP_N_BUILTIN];
-extern MPID_Group MPID_Group_direct[];
+extern MPID_Group MPID_Group_direct[MPID_GROUP_PREALLOC];
 
 /* Object for empty group */
 extern MPID_Group * const MPID_Group_empty;
@@ -1261,8 +1265,9 @@ int MPIR_Comm_release_always(MPID_Comm *comm_ptr, int isDisconnect);
    if needed in MPI_Finalize.  Having a separate version of comm_world
    avoids possible interference with User code */
 #define MPID_COMM_N_BUILTIN 3
+#define MPID_COMM_PREALLOC 8
 extern MPID_Comm MPID_Comm_builtin[MPID_COMM_N_BUILTIN];
-extern MPID_Comm MPID_Comm_direct[];
+extern MPID_Comm MPID_Comm_direct[MPID_COMM_PREALLOC];
 /* This is the handle for the internal MPI_COMM_WORLD .  The "2" at the end
    of the handle is 3-1 (e.g., the index in the builtin array) */
 #define MPIR_ICOMM_WORLD  ((MPI_Comm)0x44000002)
@@ -1455,7 +1460,15 @@ typedef struct MPID_Request {
 
 extern MPIU_Object_alloc_t MPID_Request_mem;
 /* Preallocated request objects */
-extern MPID_Request MPID_Request_direct[];
+#ifndef MPID_REQUEST_PREALLOC
+#if (MPIU_THREAD_GRANULARITY == MPIU_THREAD_GRANULARITY_GLOBAL)
+#define  MPID_REQUEST_PREALLOC 16
+#elif (MPIU_HANDLE_ALLOCATION_METHOD == MPIU_HANDLE_ALLOCATION_THREAD_LOCAL)
+#define  MPID_REQUEST_PREALLOC 512
+#endif
+#endif
+extern MPID_Request MPID_Request_direct[MPID_REQUEST_PREALLOC];
+
 
 #define MPIR_Request_add_ref( _req ) \
     do { MPIU_Object_add_ref( _req ); } while (0)

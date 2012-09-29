@@ -315,6 +315,55 @@
             MPIU_ERR_SETANDSTMT(err_,errclass_,goto fn_fail,gmsg_);     \
         }                                                               \
     }
+#define MPIR_ERRTEST_BUILTIN_HANDLE_EXIST(handle_, bmsk_, kind_) {\
+    int index = 0, count = 0;\
+    count = sizeof(MPID_##kind_##_builtin)/sizeof(MPID_##kind_); \
+    index = (handle_) & (bmsk_);        \
+    if(index < count) is_exist = 1;     \
+}
+#define MPIR_ERRTEST_DIRECT_HANDLE_EXIST(handle_, kind_) {\
+    int index = 0, count = 0;\
+    count = sizeof(MPID_##kind_##_direct)/sizeof(MPID_##kind_); \
+    if(HANDLE_INDEX(handle_) < count) is_exist = 1;     \
+}
+#define MPIR_ERRTEST_INDIRECT_HANDLE_EXIST(handle_, kind_) {\
+    if((HANDLE_GET_MPI_KIND(handle_) == (MPID_##kind_##_mem).kind ) || \
+        (HANDLE_BLOCK(handle_) < (MPID_##kind_##_mem).indirect_size)) {\
+        is_exist = 1;   \
+    }   \
+}
+
+/* For MPI_Comm, MPI_Group, MPI_Errhandler, and MPI_Op, there are some built in objects */
+#define MPIR_ERRTEST_B_HANDLE_EXIST(handle_, kind_, bmsk_, err_, errclass_, gmsg_){\
+    int handle_kind = HANDLE_GET_KIND(handle_);               \
+    int is_exist = 0;   \
+    if (handle_kind == HANDLE_KIND_BUILTIN) {\
+    MPIR_ERRTEST_BUILTIN_HANDLE_EXIST(handle_,bmsk_, kind_);             \
+    }   \
+    else if (handle_kind == HANDLE_KIND_DIRECT)  {           \
+    MPIR_ERRTEST_DIRECT_HANDLE_EXIST(handle_,kind_);       \
+    }   \
+    else if (handle_kind == HANDLE_KIND_INDIRECT){           \
+    MPIR_ERRTEST_INDIRECT_HANDLE_EXIST(handle_,kind_);       \
+    }   \
+    if(is_exist == 0){  \
+        MPIU_ERR_SETANDSTMT(err_,errclass_,goto fn_fail,gmsg_);\
+    } \
+}
+
+#define MPIR_ERRTEST_HANDLE_EXIST(handle_, kind_,err_, errclass_, gmsg_){\
+    int handle_kind = HANDLE_GET_KIND(handle_);               \
+    int is_exist = 0;   \
+    if (handle_kind == HANDLE_KIND_DIRECT)  {           \
+        MPIR_ERRTEST_DIRECT_HANDLE_EXIST(handle_,kind_);       \
+    }   \
+    else if (handle_kind == HANDLE_KIND_INDIRECT){           \
+        MPIR_ERRTEST_INDIRECT_HANDLE_EXIST(handle_,kind_);       \
+    }   \
+    if(is_exist == 0){  \
+        MPIU_ERR_SETANDSTMT(err_,errclass_,goto fn_fail,gmsg_);\
+    } \
+}
 /* --END ERROR MACROS-- */
 
 #define MPIR_ERRTEST_OP(op,err)                                         \
@@ -331,6 +380,7 @@
     }                                                                   \
     else {                                                              \
         MPIR_ERRTEST_VALID_HANDLE(group,MPID_GROUP,err,MPI_ERR_GROUP,"**group"); \
+        MPIR_ERRTEST_B_HANDLE_EXIST(group, Group, 0x03ffffff, err, MPI_ERR_GROUP,"**group");\
     }
 
 #define MPIR_ERRTEST_COMM(comm_, err_)					\
@@ -342,6 +392,7 @@
         else								\
         {                                                               \
             MPIR_ERRTEST_VALID_HANDLE((comm_), MPID_COMM, (err_), MPI_ERR_COMM, "**comm"); \
+            MPIR_ERRTEST_B_HANDLE_EXIST((comm_),Comm, 0x03ffffff, (err_), MPI_ERR_COMM, "**comm"); \
         }                                                               \
     }
 
@@ -366,6 +417,7 @@
         else								\
         {                                                               \
             MPIR_ERRTEST_VALID_HANDLE((request_), MPID_REQUEST, (err_), MPI_ERR_REQUEST, "**request"); \
+            MPIR_ERRTEST_HANDLE_EXIST((request_), Request, (err_), MPI_ERR_REQUEST, "**request");      \
         }                                                               \
     }
 
@@ -374,6 +426,7 @@
         if ((request_) != MPI_REQUEST_NULL)                             \
         {                                                               \
             MPIR_ERRTEST_VALID_HANDLE((request_), MPID_REQUEST, (err_), MPI_ERR_REQUEST, "**request"); \
+            MPIR_ERRTEST_HANDLE_EXIST((request_), Request, (err_), MPI_ERR_REQUEST, "**request");      \
         }                                                               \
     }
 
@@ -401,17 +454,20 @@
     else {								\
         MPIR_ERRTEST_VALID_HANDLE(errhandler_,MPID_ERRHANDLER,		\
 				  err_,MPI_ERR_ARG,"**errhandler");	\
+        MPIR_ERRTEST_B_HANDLE_EXIST((errhandler_),Errhandler,0x3,   \
+                                (err_), MPI_ERR_ARG, "**errhandler");\
     }
 
 #define MPIR_ERRTEST_INFO(info_, err_)					\
     {									\
         if ((info_) == MPI_INFO_NULL)					\
         {                                                               \
-            MPIU_ERR_SETANDSTMT(err_, MPI_ERR_ARG,goto fn_fail, "**infonull"); \
+            MPIU_ERR_SETANDSTMT(err_, MPI_ERR_INFO,goto fn_fail, "**infonull"); \
         }                                                               \
         else								\
         {                                                               \
-            MPIR_ERRTEST_VALID_HANDLE((info_), MPID_INFO, (err_), MPI_ERR_ARG, "**info"); \
+            MPIR_ERRTEST_VALID_HANDLE((info_), MPID_INFO, (err_), MPI_ERR_INFO, "**info"); \
+            MPIR_ERRTEST_HANDLE_EXIST((info_),Info, (err_), MPI_ERR_INFO, "**info");		\
         }                                                               \
     }
 
@@ -419,7 +475,8 @@
     {									\
         if ((info_) != MPI_INFO_NULL)					\
         {                                                               \
-            MPIR_ERRTEST_VALID_HANDLE((info_), MPID_INFO, (err_), MPI_ERR_ARG, "**info"); \
+            MPIR_ERRTEST_VALID_HANDLE((info_), MPID_INFO, (err_), MPI_ERR_INFO, "**info"); \
+            MPIR_ERRTEST_HANDLE_EXIST((info_),Info, (err_), MPI_ERR_INFO, "**info");	   \
         }                                                               \
     }
 
