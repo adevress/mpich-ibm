@@ -32,6 +32,7 @@
 #include "mpidi_util.h"
 
 /* Short hand for sizes */
+#define ONE  (1)
 #define ONEK (1<<10)
 #define ONEM (1<<20)
 #define ONEG (1<<30)
@@ -783,7 +784,7 @@ void MPIDI_print_statistics() {
 /****************************************************************/
 /* function MPIDI_uppers converts a passed string to upper case */
 /****************************************************************/
-void MPIDI_uppers(char *s)
+void MPIDI_toupper(char *s)
 {
    int i;
    if (s != NULL) {
@@ -1037,7 +1038,7 @@ int MPIDI_scan_str3(char *my_str, char fir_c, char sec_c, char thr_c, char *mult
 */
 int MPIDI_checkit(int myval, char myunits, unsigned int *mygoodval)
 {
-  int multiplier;                   /*units multiplier for entered value*/
+  int multiplier = ONE;             /*units multiplier for entered value*/
 
   if (myunits == 'G') {             /*if units is G*/
     if (myval>4) return 1;          /*entered value can't be greater than 4*/
@@ -1080,8 +1081,7 @@ int MPIDI_atoi(char* str_in, unsigned int* val)
    int  letter=0, retval=0;
 
    /***********************************/
-   /* Check for letter, if none, atoi */
-   /* MPCI will check limits          */
+   /* Check for letter                */
    /***********************************/
    for (i=0; i<strlen(str_in); i++) {
       if (!isdigit(str_in[i])) {
@@ -1100,7 +1100,7 @@ int MPIDI_atoi(char* str_in, unsigned int* val)
       /***********************************/
       /* Check for K or M.               */
       /***********************************/
-      MPIDI_uppers(str_in);
+      MPIDI_toupper(str_in);
       retval = MPIDI_scan_str(str_in, 'M', 'K', &size_mult, tempbuf);
 
       if ( retval == 0) {
