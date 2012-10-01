@@ -335,7 +335,6 @@ int numTasks=0;
 MPIX_stats_t *mpid_statp=NULL;
 extern MPIDI_printenv_t  *mpich_env;
 #endif
-extern int MPIDI_atoi(char* , unsigned int* );
 #define ENV_Deprecated(a, b, c, d, e) ENV_Deprecated__(a, b, c, d, e)
 static inline void
 ENV_Deprecated__(char* name[], unsigned num_supported, unsigned* deprecated, int rank, int NA)
