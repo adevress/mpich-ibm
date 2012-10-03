@@ -691,10 +691,7 @@ int MPID_Init(int * argc,
   TRACE_ERR("calling comm_create on comm world %p\n", MPIR_Process.comm_world);
   MPIR_Process.comm_world->mpid.geometry = MPIDI_Process.world_geometry;
   MPIR_Process.comm_world->mpid.parent   = PAMI_GEOMETRY_NULL;
-  MPIDI_Comm_create(MPIR_Process.comm_world);
-  MPIDI_Comm_world_setup();
-
-
+  MPIR_Comm_commit(MPIR_Process.comm_world);
   /* ------------------------------- */
   /* Initialize timer data           */
   /* ------------------------------- */

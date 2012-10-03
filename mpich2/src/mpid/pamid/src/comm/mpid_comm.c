@@ -292,16 +292,3 @@ void MPIDI_Coll_comm_destroy(MPID_Comm *comm)
 */ 
    TRACE_ERR("MPIDI_Coll_comm_destroy exit\n");
 }
-
-
-
-void MPIDI_Comm_world_setup()
-{
-  TRACE_ERR("MPIDI_Comm_world_setup enter\n");
-
-  /* Anything special required for COMM_WORLD goes here */
-   MPID_Comm *comm;
-   comm = MPIR_Process.comm_world;
-
-  TRACE_ERR("MPIDI_Comm_world_setup exit\n");
-}

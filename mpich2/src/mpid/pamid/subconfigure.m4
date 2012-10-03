@@ -126,7 +126,9 @@ if test "${pamid_platform}" = "BGQ" ; then
   dnl PAC_APPEND_FLAG([-all-static], [WRAPPER_LDFLAGS])
 fi
 
-
+if test "${pamid_platform}" = "PE" ; then
+        MPID_MAX_ERROR_STRING=512
+fi
 #
 # Check for gnu-style option to enable all warnings; if specified, then
 # add gnu option to treat all warnings as errors.
