@@ -162,11 +162,11 @@ AM_DISABLE_STATIC
 AM_PROG_LIBTOOL([win32-dll])
 LT_LANG([C])
 
+## Enable creation of libtool-style versioning or no versioning
 AC_ARG_ENABLE(versioning,
-	AC_HELP_STRING([--enable-versioning], [Enable library versioning]),,enable_versioning=yes)
+        [AC_HELP_STRING([--enable-versioning],[Enable library versioning])],,
+        [enable_versioning=yes])
 
-# Enable libtool style library versioning
-# or allow for the creation of versionless libraries
 if test "$enable_versioning" = "yes" ; then
    libhwloc_so_versionflags="-version-info \$(libhwloc_so_version)"
 else

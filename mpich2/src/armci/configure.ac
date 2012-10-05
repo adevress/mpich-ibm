@@ -171,11 +171,11 @@ if test $enable_weak_symbols = "yes" ; then
     fi
 fi
 
+## Enable creation of libtool-style versioning or no versioning
 AC_ARG_ENABLE(versioning,
-	AC_HELP_STRING([--enable-versioning], [Enable library versioning]),,enable_versioning=yes)
+        [AC_HELP_STRING([--enable-versioning],[Enable library versioning])],,
+        [enable_versioning=yes])
 
-# Enable libtool style library versioning
-# or allow for the creation of versionless libraries
 if test "$enable_versioning" = "yes" ; then
    libarmci_abi_versionflags="-version-info \$(libarmci_abi_version)"
 else

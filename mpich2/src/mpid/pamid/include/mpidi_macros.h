@@ -106,10 +106,12 @@ _dt_contig_out, _data_sz_out, _dt_ptr, _dt_true_lb)             \
 ({                                              \
   vcr[index];                                   \
 })
+
 #define MPID_GPID_Get(comm_ptr, rank, gpid)             \
 ({                                                      \
   gpid[1] = MPID_VCR_GET_LPID(comm_ptr->vcr, rank);     \
   gpid[0] = 0;                                          \
+  MPI_SUCCESS; /* return success from macro */          \
 })
 
 

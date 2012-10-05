@@ -116,14 +116,12 @@ if test "${pamid_platform}" = "BGQ" ; then
   PAC_APPEND_FLAG([-lpthread],   [WRAPPER_LIBS])
   PAC_APPEND_FLAG([-lstdc++],    [WRAPPER_LIBS])
 
-  #
   # For some reason, on bgq, libtool will incorrectly attempt a static link
   # of libstdc++.so unless this '-all-static' option is used. This seems to
   # be a problem specific to libstdc++.
   #
-  # Only the 'cpi' executable has this problem.
-  #
-  dnl PAC_APPEND_FLAG([-all-static], [WRAPPER_LDFLAGS])
+  # Only the 'cpi' and 'mpich2version' executables have this problem.
+  MPID_LIBTOOL_STATIC_FLAG="-all-static"
 fi
 
 if test "${pamid_platform}" = "PE" ; then

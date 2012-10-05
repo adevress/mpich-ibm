@@ -14,7 +14,9 @@ AC_CONFIG_MACRO_DIR([confdb])
 
 AM_INIT_AUTOMAKE([-Wall -Werror foreign color-tests 1.12.3])
 
-AM_PROG_AR
+# automake 1.12 seems to require this, but automake 1.11 doesn't recognize it
+# must come before LT_INIT
+m4_ifdef([AM_PROG_AR],[AM_PROG_AR])
 
 LT_PREREQ([2.2.6])
 
@@ -408,11 +410,11 @@ else
     AC_MSG_RESULT([no])
 fi
 
+## Enable creation of libtool-style versioning or no versioning
 AC_ARG_ENABLE(versioning,
-	AC_HELP_STRING([--enable-versioning], [Enable library versioning]),,enable_versioning=yes)
+        [AC_HELP_STRING([--enable-versioning],[Enable library versioning])],,
+        [enable_versioning=yes])
 
-# Enable libtool style library versioning
-# or allow for the creation of versionless libraries
 if test "$enable_versioning" = "yes" ; then
    libopa_so_versionflags="-version-info \$(libopa_so_version)"
 else
