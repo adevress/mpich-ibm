@@ -89,10 +89,25 @@ if test "${pamid_platform}" = "BGQ" ; then
       PAC_APPEND_FLAG([-I${bgq_driver}/spi/include],            [CPPFLAGS])
       PAC_APPEND_FLAG([-I${bgq_driver}/spi/include/kernel/cnk], [CPPFLAGS])
 
-      PAC_APPEND_FLAG([-I${bgq_driver}],                        [WRAPPER_CPPFLAGS])
-      PAC_APPEND_FLAG([-I${bgq_driver}/comm/sys/include],       [WRAPPER_CPPFLAGS])
-      PAC_APPEND_FLAG([-I${bgq_driver}/spi/include],            [WRAPPER_CPPFLAGS])
-      PAC_APPEND_FLAG([-I${bgq_driver}/spi/include/kernel/cnk], [WRAPPER_CPPFLAGS])
+      PAC_APPEND_FLAG([-I${bgq_driver}],                        [WRAPPER_CFLAGS])
+      PAC_APPEND_FLAG([-I${bgq_driver}],                        [WRAPPER_CXXFLAGS])
+      PAC_APPEND_FLAG([-I${bgq_driver}],                        [WRAPPER_FCFLAGS])
+      PAC_APPEND_FLAG([-I${bgq_driver}],                        [WRAPPER_FFLAGS])
+
+      PAC_APPEND_FLAG([-I${bgq_driver}/comm/sys/include],       [WRAPPER_CFLAGS])
+      PAC_APPEND_FLAG([-I${bgq_driver}/comm/sys/include],       [WRAPPER_CXXFLAGS])
+      PAC_APPEND_FLAG([-I${bgq_driver}/comm/sys/include],       [WRAPPER_FCFLAGS])
+      PAC_APPEND_FLAG([-I${bgq_driver}/comm/sys/include],       [WRAPPER_FFLAGS])
+
+      PAC_APPEND_FLAG([-I${bgq_driver}/spi/include],            [WRAPPER_CFLAGS])
+      PAC_APPEND_FLAG([-I${bgq_driver}/spi/include],            [WRAPPER_CXXFLAGS])
+      PAC_APPEND_FLAG([-I${bgq_driver}/spi/include],            [WRAPPER_FCFLAGS])
+      PAC_APPEND_FLAG([-I${bgq_driver}/spi/include],            [WRAPPER_FFLAGS])
+
+      PAC_APPEND_FLAG([-I${bgq_driver}/spi/include/kernel/cnk], [WRAPPER_CFLAGS])
+      PAC_APPEND_FLAG([-I${bgq_driver}/spi/include/kernel/cnk], [WRAPPER_CXXFLAGS])
+      PAC_APPEND_FLAG([-I${bgq_driver}/spi/include/kernel/cnk], [WRAPPER_FCFLAGS])
+      PAC_APPEND_FLAG([-I${bgq_driver}/spi/include/kernel/cnk], [WRAPPER_FFLAGS])
 
       PAC_APPEND_FLAG([-L${bgq_driver}/spi/lib],                [LDFLAGS])
 
