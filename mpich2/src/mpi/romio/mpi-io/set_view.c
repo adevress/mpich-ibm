@@ -96,6 +96,7 @@ int MPI_File_set_view(MPI_File mpi_fh, MPI_Offset disp, MPI_Datatype etype,
 	error_code = MPIO_Err_return_file(fh, error_code);
 	goto fn_exit;
     }
+    MPIR_ERRTEST_INFO_OR_NULL(info, error_code);
     /* --END ERROR HANDLING-- */
 
     MPI_Type_size(filetype, &filetype_size);

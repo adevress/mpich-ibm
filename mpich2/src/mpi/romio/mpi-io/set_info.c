@@ -32,6 +32,10 @@ Input Parameters:
 
 .N fortran
 @*/
+#undef FUNCNAME
+#define FUNCNAME MPI_File_set_info
+#undef FCNAME
+#define FCNAME MPIDI_QUOTE(FUNCNAME)
 int MPI_File_set_info(MPI_File mpi_fh, MPI_Info info)
 {
     int error_code;
@@ -44,6 +48,7 @@ int MPI_File_set_info(MPI_File mpi_fh, MPI_Info info)
 
     /* --BEGIN ERROR HANDLING-- */
     MPIO_CHECK_FILE_HANDLE(fh, myname, error_code);
+    MPIR_ERRTEST_INFO(info, error_code);
     /* --END ERROR HANDLING-- */
 
     /* set new info */
@@ -59,4 +64,9 @@ fn_exit:
     MPIU_THREAD_CS_EXIT(ALLFUNC,);
 
     return error_code;
+fn_fail:
+    /* --BEGIN ERROR HANDLING-- */
+    error_code = MPIO_Err_return_file(mpi_fh, error_code);
+    goto fn_exit;
+    /* --END ERROR HANDLING-- */
 }

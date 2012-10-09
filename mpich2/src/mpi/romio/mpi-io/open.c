@@ -43,6 +43,10 @@ Output Parameters:
 
 .N fortran
 @*/
+#undef FUNCNAME
+#define FUNCNAME MPI_File_open
+#undef FCNAME
+#define FCNAME MPIDI_QUOTE(FUNCNAME)
 int MPI_File_open(MPI_Comm comm, MPICH2_CONST char *filename, int amode,
                   MPI_Info info, MPI_File *fh)
 {
@@ -60,13 +64,8 @@ int MPI_File_open(MPI_Comm comm, MPICH2_CONST char *filename, int amode,
     MPIU_THREAD_CS_ENTER(ALLFUNC,);
 
     /* --BEGIN ERROR HANDLING-- */
-    if (comm == MPI_COMM_NULL)
-    {
-	error_code = MPIO_Err_create_code(MPI_SUCCESS, MPIR_ERR_RECOVERABLE,
-					  myname, __LINE__, MPI_ERR_COMM,
-					  "**comm", 0);
-	goto fn_fail;
-    }
+    MPIR_ERRTEST_COMM(comm, error_code);
+    MPIR_ERRTEST_INFO_OR_NULL(info, error_code);
     /* --END ERROR HANDLING-- */
 
     MPI_Comm_test_inter(comm, &flag);
