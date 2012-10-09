@@ -51,26 +51,27 @@ MPIDI_Process_t  MPIDI_Process = {
     .limits = {
       .application = {
         .eager = {
-          .remote          = MPIDI_EAGER_LIMIT,
-          .local           = MPIDI_EAGER_LIMIT_LOCAL,
+          .remote        = MPIDI_EAGER_LIMIT,
+          .local         = MPIDI_EAGER_LIMIT_LOCAL,
         },
         .immediate = {
-          .remote          = MPIDI_SHORT_LIMIT,
-          .local           = MPIDI_SHORT_LIMIT,
+          .remote        = MPIDI_SHORT_LIMIT,
+          .local         = MPIDI_SHORT_LIMIT,
         },
       },
       .internal = {
         .eager = {
-          .remote          = MPIDI_EAGER_LIMIT,
-          .local           = MPIDI_EAGER_LIMIT_LOCAL,
+          .remote        = MPIDI_EAGER_LIMIT,
+          .local         = MPIDI_EAGER_LIMIT_LOCAL,
         },
         .immediate = {
-          .remote          = MPIDI_SHORT_LIMIT,
-          .local           = MPIDI_SHORT_LIMIT,
+          .remote        = MPIDI_SHORT_LIMIT,
+          .local         = MPIDI_SHORT_LIMIT,
         },
       },
     },
   },
+  .disable_internal_eager_scale = MPIDI_DISABLE_INTERNAL_EAGER_SCALE,
 #if (MPIDI_STATISTICS || MPIDI_PRINTENV)
   .mp_infolevel        = 0,
   .mp_statistics       = 0,
@@ -237,6 +238,18 @@ MPIDI_PAMI_client_init(int* rank, int* size, int threading)
   *rank = PAMIX_Client_query(MPIDI_Client, PAMI_CLIENT_TASK_ID  ).value.intval;
   MPIR_Process.comm_world->rank = *rank; /* Set the rank early to make tracing better */
   *size = PAMIX_Client_query(MPIDI_Client, PAMI_CLIENT_NUM_TASKS).value.intval;
+
+  /* --------------------------------------------------------------- */
+  /* Determine if the eager point-to-point protocol for internal mpi */
+  /* operations should be disabled.                                  */
+  /* --------------------------------------------------------------- */
+  if (MPIDI_Process.disable_internal_eager_scale <= *size)
+    {
+      MPIDI_Process.pt2pt.limits.internal.eager.remote     = 0;
+      MPIDI_Process.pt2pt.limits.internal.eager.local      = 0;
+      MPIDI_Process.pt2pt.limits.internal.immediate.remote = 0;
+      MPIDI_Process.pt2pt.limits.internal.immediate.local  = 0;
+    }
 }
 
 
@@ -353,7 +366,6 @@ MPIDI_PAMI_context_init(int* threading)
   memset((void *) MPIDI_In_cntr,0, sizeof(MPIDI_In_cntr_t));
   memset((void *) MPIDI_Out_cntr,0, sizeof(MPIDI_Out_cntr_t));
 #endif
-
 
   /* ----------------------------------- */
   /*  Create the communication contexts  */
@@ -523,6 +535,7 @@ MPIDI_PAMI_init(int* rank, int* size, int* threading)
              "        remote, local   : %u, %u\n"
              "  rma_pending           : %u\n"
              "  shmem_pt2pt           : %u\n"
+             "  disable_internal_eager_scale : %u\n"
 #if (MPIDI_STATISTICS || MPIDI_PRINTENV)
              "  mp_infolevel : %u\n"
              "  mp_statistics: %u\n"
@@ -547,6 +560,7 @@ MPIDI_PAMI_init(int* rank, int* size, int* threading)
              MPIDI_Process.pt2pt.limits_array[7],
              MPIDI_Process.rma_pending,
              MPIDI_Process.shmem_pt2pt,
+             MPIDI_Process.disable_internal_eager_scale,
 #if (MPIDI_STATISTICS || MPIDI_PRINTENV)
              MPIDI_Process.mp_infolevel,
              MPIDI_Process.mp_statistics,
