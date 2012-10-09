@@ -53,6 +53,18 @@
 static const char _ibm_release_version_[] = "BGP";
 #endif
 
+/*
+ * The default behavior is to disable (ignore) 'internal vs application' and
+ * 'local vs remote' point-to-point limits. The only limits provided are the
+ * 'immediate' and  'eager (rzv)' limits.
+ */
+#define MPIDI_PT2PT_LIMIT(is_internal,is_eager,is_local)                        \
+({                                                                              \
+  MPIDI_Process.pt2pt.limits_lookup[0][is_eager][0];                            \
+})
+
+
+
 #ifdef __BGQ__
 #undef  MPIDI_EAGER_LIMIT_LOCAL
 #define MPIDI_EAGER_LIMIT_LOCAL  64
@@ -60,10 +72,21 @@ static const char _ibm_release_version_[] = "BGP";
 #define MPIDI_MUTEX_L2_ATOMIC 1
 #define MPIDI_BASIC_COLLECTIVE_SELECTION 1
 #define MPIDI_OPTIMIZED_COLLECTIVE_DEFAULT 1
+
 #define PAMIX_IS_LOCAL_TASK
 #define PAMIX_IS_LOCAL_TASK_STRIDE  (4)
 #define PAMIX_IS_LOCAL_TASK_BITMASK (0x40)
-static const char _ibm_release_version_[] = "V1R1M1";
+static const char _ibm_release_version_[] = "V1R1M2";
+
+/*
+ * Enable both 'internal vs application' and 'local vs remote' point-to-point
+ * limits, in addition to the 'immediate' and 'eager (rzv)' point-to-point limits.
+ */
+#undef MPIDI_PT2PT_LIMIT
+#define MPIDI_PT2PT_LIMIT(is_internal,is_eager,is_local)                        \
+({                                                                              \
+  MPIDI_Process.pt2pt.limits_lookup[is_internal][is_eager][is_local];           \
+})
 #endif
 
 #ifdef __PE__
@@ -71,6 +94,8 @@ static const char _ibm_release_version_[] = "V1R1M1";
 #define USE_PAMI_CONSISTENCY PAMI_HINT_DISABLE
 #undef  MPIDI_EAGER_LIMIT
 #define MPIDI_EAGER_LIMIT 65536
+#undef  MPIDI_EAGER_LIMIT_LOCAL
+#define MPIDI_EAGER_LIMIT_LOCAL  1048576
 #define OUT_OF_ORDER_HANDLING 1
 #define MPIDI_STATISTICS      1
 #define MPIDI_PRINTENV        1
@@ -81,9 +106,21 @@ static const char _ibm_release_version_[] = "V1R1M1";
 #define MPIDI_BASIC_COLLECTIVE_SELECTION 1
 #define MPIDI_BANNER          1
 #define MPIDI_NO_ASSERT       1
+
+/* 'is local task' extension and limits */
 #define PAMIX_IS_LOCAL_TASK
 #define PAMIX_IS_LOCAL_TASK_STRIDE  (1)
 #define PAMIX_IS_LOCAL_TASK_BITMASK (0x01)
+
+/*
+ * Enable only the 'local vs remote' point-to-point limits, in addition to the
+ * 'immediate' and 'eager (rzv)' point-to-point limits.
+ */
+#undef MPIDI_PT2PT_LIMIT
+#define MPIDI_PT2PT_LIMIT(is_internal,is_eager,is_local)                        \
+({                                                                              \
+  MPIDI_Process.pt2pt.limits_lookup[0][is_eager][is_local];                     \
+})
 
 /* When the Pok build team extracts this file from CMVC, %W% will expand to */
 /* a string with the current release, for example ppe_rbarlx.               */
