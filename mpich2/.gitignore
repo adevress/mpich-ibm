@@ -4695,6 +4695,7 @@ test/mpi/attr/.svn/
 test/mpi/basic/.svn/
 test/mpi/coll/.svn/
 test/mpi/comm/.svn/
+test/mpi/confdb/.svn/
 test/mpi/configargs/.svn/
 test/mpi/cxx/.svn/
 test/mpi/cxx/attr/.svn/
