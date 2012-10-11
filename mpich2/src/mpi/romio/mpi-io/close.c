@@ -33,7 +33,8 @@ Input Parameters:
 @*/
 int MPI_File_close(MPI_File *mpi_fh)
 {
-    int error_code;
+    int error_code = MPI_SUCCESS;
+    int rank;
     ADIO_File fh;
     static char myname[] = "MPI_FILE_CLOSE";
 #ifdef MPI_hpux
@@ -50,6 +51,8 @@ int MPI_File_close(MPI_File *mpi_fh)
     MPIO_CHECK_FILE_HANDLE(fh, myname, error_code);
     /* --END ERROR HANDLING-- */
 
+    MPI_Comm_rank(fh->comm, &rank);
+
     if (ADIO_Feature(fh, ADIO_SHARED_FP)) 
     {
 	ADIOI_Free((fh)->shared_fp_fname);
@@ -61,7 +64,7 @@ int MPI_File_close(MPI_File *mpi_fh)
 	}
 	if ((fh)->shared_fp_fd != ADIO_FILE_NULL) {
 	    MPI_File *mpi_fh_shared = &(fh->shared_fp_fd);
-	    ADIO_Close((fh)->shared_fp_fd, &error_code);
+	    ADIO_Close((fh)->shared_fp_fd, (rank == fh->hints->ranklist[0]), &error_code);
     	    MPIO_File_free(mpi_fh_shared);
 	    /* --BEGIN ERROR HANDLING-- */
 	    if (error_code != MPI_SUCCESS) goto fn_fail;
@@ -77,7 +80,7 @@ int MPI_File_close(MPI_File *mpi_fh)
     error_code = PMPI_File_set_errhandler(*mpi_fh, MPI_ERRORS_RETURN);
     if (error_code != MPI_SUCCESS) goto fn_fail;
 
-    ADIO_Close(fh, &error_code);
+    ADIO_Close(fh, (rank == fh->hints->ranklist[0]), &error_code);
     MPIO_File_free(mpi_fh);
     /* --BEGIN ERROR HANDLING-- */
     if (error_code != MPI_SUCCESS) goto fn_fail;

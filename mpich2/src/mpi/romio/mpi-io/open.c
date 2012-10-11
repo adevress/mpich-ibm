@@ -167,7 +167,8 @@ int MPI_File_open(MPI_Comm comm, MPICH2_CONST char *filename, int amode,
 			                  myname, __LINE__, 
 					  MPI_ERR_UNSUPPORTED_OPERATION,
 					  "**iosequnsupported", 0);
-	ADIO_Close(*fh, &error_code);
+	MPI_Comm_rank(dupcomm, &rank);
+	ADIO_Close(*fh, (rank == (*fh)->hints->ranklist[0]), &error_code);
 	goto fn_fail;
     }
 

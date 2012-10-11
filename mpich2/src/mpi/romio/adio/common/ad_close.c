@@ -12,9 +12,9 @@
 #include <unistd.h>
 #endif
 
-void ADIO_Close(ADIO_File fd, int *error_code)
+void ADIO_Close(ADIO_File fd, int is_agg, int *error_code)
 {
-    int i, j, k, combiner, myrank, err, is_contig;
+    int i, j, k, combiner, myrank, err = MPI_SUCCESS, is_contig;
     static char myname[] = "ADIO_CLOSE";
 
     if (fd->async_count) {
@@ -51,10 +51,15 @@ void ADIO_Close(ADIO_File fd, int *error_code)
 	 * that rank 0 does not have access to the file. make sure only an
 	 * aggregator deletes the file.*/
 	MPI_Comm_rank(fd->comm, &myrank);
-	if (myrank == fd->hints->ranklist[0]) {
+	if (is_agg) {
 		ADIO_Delete(fd->filename, &err);
 	}
 	MPI_Barrier(fd->comm);
+	MPI_Bcast(&err, 1, MPI_INT, fd->hints->ranklist[0], fd->comm);
+	if( err != MPI_SUCCESS){
+		*error_code = err;
+		return;
+	}
     }
 
     if (fd->fortran_handle != -1) {
