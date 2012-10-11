@@ -62,7 +62,8 @@ int MPI_File_create_errhandler(MPI_File_errhandler_fn *function,
     {
         MPID_BEGIN_ERROR_CHECKS;
         {
-	    MPIR_ERRTEST_ARGNULL(function, "function", mpi_errno);
+	    MPIU_ERR_CHKANDJUMP1(!(function), mpi_errno, MPI_ERR_OTHER,
+			"**nullptr",  "**nullptr %s", "function");
 	    MPIR_ERRTEST_ARGNULL(errhandler, "errhandler", mpi_errno);
         }
         MPID_END_ERROR_CHECKS;
