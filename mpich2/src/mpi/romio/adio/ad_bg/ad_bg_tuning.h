@@ -60,7 +60,7 @@ extern int 	bgmpio_timing2;
 extern int 	bgmpio_comm;
 extern int 	bgmpio_tunegather;
 extern int 	bgmpio_tuneblocking;
-extern long bglocklessmpio_f_type;
+extern long bglocklessmpio_f_type[2];
 
 
 /* set internal variables for tuning environment variables */

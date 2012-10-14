@@ -171,7 +171,8 @@ static void scaleable_stat(ADIO_File fd)
 
     /* data from statfs */
    if ((bg_statfs.f_type == GPFS_SUPER_MAGIC) ||
-       (bg_statfs.f_type == bglocklessmpio_f_type))
+       (bg_statfs.f_type == bglocklessmpio_f_type[0]) ||
+       (bg_statfs.f_type == bglocklessmpio_f_type[1]))
    {
       ((ADIOI_BG_fs*)fd->fs_ptr)->fsync_aggr = 
             ADIOI_BG_FSYNC_AGGREGATION_ENABLED;
