@@ -1728,3 +1728,10 @@ mpich2/www/www3/MPI_Win_unlock.html
 mpich2/www/www3/MPI_Win_wait.html
 mpich2/www/www3/MPI_Wtick.html
 mpich2/www/www3/MPI_Wtime.html
+mpich2/test/mpi/confdb/ar-lib
+mpich2/test/mpi/confdb/config.guess
+mpich2/test/mpi/confdb/config.sub
+mpich2/test/mpi/confdb/depcomp
+mpich2/test/mpi/confdb/install-sh
+mpich2/test/mpi/confdb/missing
+mpich2/test/mpi/f90/attr/attrmpi1f90.f90
