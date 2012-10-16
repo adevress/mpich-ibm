@@ -31,8 +31,8 @@
 #define MPIDI_SHORT_LIMIT  555
 /** This is set to 4 BGQ torus packets (+1, because of the way it is compared) */
 #define MPIDI_EAGER_LIMIT  2049
-/** This is set to 1 which effectively disables the eager protocol for non-zero-byte local transfers */
-#define MPIDI_EAGER_LIMIT_LOCAL  1
+/** This is set to 0 which effectively disables the eager protocol for local transfers */
+#define MPIDI_EAGER_LIMIT_LOCAL  0
 /* Default features */
 #define USE_PAMI_RDMA 1
 #define USE_PAMI_CONSISTENCY PAMI_HINT_ENABLE
@@ -64,8 +64,6 @@ static const char _ibm_release_version_[] = "BGP";
 #define PAMIX_IS_LOCAL_TASK_STRIDE  (4)
 #define PAMIX_IS_LOCAL_TASK_BITMASK (0x40)
 static const char _ibm_release_version_[] = "V1R1M1";
-#undef MPIDI_EAGER_LIMIT_LOCAL
-#define MPIDI_EAGER_LIMIT_LOCAL 64
 #endif
 
 #ifdef __PE__
