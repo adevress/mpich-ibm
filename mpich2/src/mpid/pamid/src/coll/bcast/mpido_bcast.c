@@ -40,6 +40,7 @@ int MPIDO_Bcast(void *buffer,
                 int *mpierrno)
 {
    TRACE_ERR("in mpido_bcast\n");
+   const size_t BCAST_LIMIT = 0x40000000;
    int data_size, data_contig, rc;
    void *data_buffer    = NULL,
         *noncontig_buff = NULL;
@@ -54,6 +55,42 @@ int MPIDO_Bcast(void *buffer,
       MPIDI_Update_last_algorithm(comm_ptr,"BCAST_NONE");
       return MPI_SUCCESS;
    }
+
+   MPIDI_Datatype_get_info(1, datatype,
+	   data_contig, data_size, data_ptr, data_true_lb); /* size of one datatype */
+
+   if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0))
+     fprintf(stderr,"bcast count %d, size %d(%zu/%#zX), root %d, buffer %p\n",count,data_size, (size_t)data_size*(size_t)count, (size_t)data_size*(size_t)count,root,buffer);
+
+   if(unlikely( (size_t)data_size*(size_t)count > BCAST_LIMIT) )
+   {
+      void *new_buffer=buffer;
+      int new_count, c;
+      new_count = (int)BCAST_LIMIT/data_size;
+      MPID_assert(new_count > 0);
+      if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0))
+	fprintf(stderr,"Recursive/split bcast for size %u, count %u\n",data_size,new_count);
+      for(c=1; ((size_t)c*(size_t)new_count) <= (size_t)count; ++c)
+      {
+	/*	fprintf(stderr,"Nex bcast for count %d, %d,  %d, %d\n",new_count,c, c*new_count, count);*/
+         rc= MPIDO_Bcast(new_buffer,
+                         new_count,
+                         datatype,
+                         root,
+                         comm_ptr,
+                         mpierrno);
+         if(rc != MPI_SUCCESS) return rc;
+	 new_buffer = (char*)new_buffer + (size_t)data_size*(size_t)new_count;
+      }
+      new_count = count % new_count; /* 0 is ok, just returns no-op */
+      return MPIDO_Bcast(new_buffer,
+                         new_count,
+                         datatype,
+                         root,
+                         comm_ptr,
+                         mpierrno);
+   }
+
    if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_BROADCAST] == MPID_COLL_USE_MPICH)
    {
       if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0))
