@@ -295,7 +295,9 @@ MPIDI_Recvq_FDP(size_t source, pami_task_t pami_source, int tag, int context_id,
         rreq->mpid.idx=idx;
         rreq->mpid.partner_id=pami_source;
 #endif
+#ifdef OUT_OF_ORDER_HANDLING
         MPIDI_Request_setPeerRank_pami(rreq, pami_source);
+#endif
         MPIDI_Recvq_remove(MPIDI_Recvq.posted, rreq, prev_rreq);
 #ifdef USE_STATISTICS
         MPIDI_Statistics_time(MPIDI_Statistics.recvq.unexpected_search, search_length);

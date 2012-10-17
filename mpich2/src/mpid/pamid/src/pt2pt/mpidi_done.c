@@ -105,7 +105,7 @@ MPIDI_RecvDoneCB(pami_context_t   context,
   MPIDI_Request_complete_norelease(rreq);
   /* caller must release rreq, after unlocking MSGQUEUE (if held) */
 #ifdef OUT_OF_ORDER_HANDLING
-  int source;
+  pami_task_t source;
   source = MPIDI_Request_getPeerRank_pami(rreq);
   if (MPIDI_In_cntr[source].n_OutOfOrderMsgs > 0) {
      MPIDI_Recvq_process_out_of_order_msgs(source, context);
