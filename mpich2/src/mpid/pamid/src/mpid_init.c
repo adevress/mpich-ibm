@@ -247,7 +247,7 @@ MPIDI_PAMI_client_init(int* rank, int* size, int threading)
     char * env = getenv("PAMID_DISABLE_INTERNAL_EAGER_TASK_LIMIT");
     if (env != NULL)
       {
-        size_t i, n = strlen(env);
+        size_t n = strlen(env);
         char * tmp = (char *) MPIU_Malloc(n+1);
         strncpy(tmp,env,n);
         if (n>0) tmp[n]=0;
