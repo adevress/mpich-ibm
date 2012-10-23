@@ -88,7 +88,7 @@ static const char _ibm_release_version_[] = "BGP";
 
 #define PAMIX_IS_LOCAL_TASK
 #define PAMIX_IS_LOCAL_TASK_STRIDE  (4)
-#define PAMIX_IS_LOCAL_TASK_BITMASK (0x40)
+#define PAMIX_IS_LOCAL_TASK_SHIFT   (6)
 static const char _ibm_release_version_[] = "V1R1M2";
 
 /*
@@ -133,7 +133,7 @@ static const char _ibm_release_version_[] = "V1R1M2";
 /* 'is local task' extension and limits */
 #define PAMIX_IS_LOCAL_TASK
 #define PAMIX_IS_LOCAL_TASK_STRIDE  (1)
-#define PAMIX_IS_LOCAL_TASK_BITMASK (0x01)
+#define PAMIX_IS_LOCAL_TASK_SHIFT   (0)
 
 /*
  * Enable only the 'local vs remote' point-to-point eager limits.
