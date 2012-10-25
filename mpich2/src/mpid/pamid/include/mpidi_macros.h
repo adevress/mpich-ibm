@@ -31,6 +31,9 @@
 #include "mpidi_datatypes.h"
 #include "mpidi_externs.h"
 
+extern int MPIU_Token_on();
+#define TOKEN_FLOW_CONTROL_ON (TOKEN_FLOW_CONTROL & MPIU_Token_on())
+
 #ifdef TRACE_ON
 #ifdef __GNUC__
 #define TRACE_ALL(fd, format, ...) fprintf(fd, "%s:%u (%d) " format, __FILE__, __LINE__, MPIR_Process.comm_world->rank, ##__VA_ARGS__)

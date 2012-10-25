@@ -179,6 +179,16 @@ MPIDI_Recvq_FDU_or_AEP(MPID_Request *newreq, int source, pami_task_t pami_source
   return rreq;
 }
 
+#ifdef TOKEN_FLOW_CONTROL
+typedef struct MPIDI_Token_cntr {
+    uint16_t unmatched;          /* no. of unmatched EA messages              */
+    uint16_t rettoks;            /* no. of tokens to be returned              */
+    int  tokens;                 /* no. of tokens available-pairwise          */
+    int  n_tokenStarved;         /* no. of times token starvation occured     */
+} MPIDI_Token_cntr_t;
+
+MPIDI_Token_cntr_t  *MPIDI_Token_cntr;
+#endif
 
 #ifdef OUT_OF_ORDER_HANDLING
 
@@ -285,6 +295,7 @@ MPIDI_Recvq_FDP(size_t source, pami_task_t pami_source, int tag, int context_id,
         rreq->mpid.idx=idx;
         rreq->mpid.partner_id=pami_source;
 #endif
+        MPIDI_Request_setPeerRank_pami(rreq, pami_source);
         MPIDI_Recvq_remove(MPIDI_Recvq.posted, rreq, prev_rreq);
 #ifdef USE_STATISTICS
         MPIDI_Statistics_time(MPIDI_Statistics.recvq.unexpected_search, search_length);

@@ -134,7 +134,7 @@ typedef struct {
         int idx = (seqNo & SEQMASK);                            \
         bzero(&MPIDI_Trace_buf[dest].S[idx],sizeof(send_status));\
         sstatus=&MPIDI_Trace_buf[dest].S[idx];                  \
-        sstatus->req    = sreq;                                 \
+        sstatus->req    = (void *)sreq;                         \
         sstatus->tag    = sreq->mpid.envelope.msginfo.MPItag;   \
         sstatus->dest   = sreq->mpid.peer_pami;                 \
         sstatus->rank   = sreq->mpid.peer_comm;                 \
