@@ -204,13 +204,17 @@ static void ADIO_FileSysType_parentdir(const char *filename, char **dirnamep)
 }
 #endif /* ROMIO_NTFS */
 
-#if defined(ROMIO_BGL) 
+#if defined(ROMIO_BGL) || defined(ROMIO_BG)
 		    /* BlueGene support for lockless i/o (necessary for PVFS.
 		      possibly beneficial for others, unless data sieving
 		      writes desired) */
 
 /* BlueGene environment variables can override lockless selection.*/
+#ifdef ROMIO_BG
+extern void ad_bg_get_env_vars();
+#else
 extern void ad_bgl_get_env_vars();
+#endif
 extern long bglocklessmpio_f_type;
 
 static void check_for_lockless_exceptions(long stat_type, int *fstype)
@@ -221,27 +225,6 @@ static void check_for_lockless_exceptions(long stat_type, int *fstype)
      */ 
     if (stat_type == bglocklessmpio_f_type) 
       /* use lock-free driver on bluegene to support specified fs (defaults to pvfs2) */
-      *fstype = ADIO_BGLOCKLESS; 
-}
-#endif
-#if defined(ROMIO_BG)
-		    /* BlueGene support for lockless i/o (necessary for PVFS and GPFS,
-		      possibly beneficial for others, unless data sieving
-		      writes desired) */
-
-/* BlueGene environment variables can override lockless selection.*/
-extern void ad_bg_get_env_vars();
-extern long bglocklessmpio_f_type[2];
-
-static void check_for_lockless_exceptions(long stat_type, int *fstype)
-{
-    /* exception for lockless file systems.  (PVFS2/GPFS are the defaults in ad_bg_tuning.)
-     * The BGLOCKLESS_F_TYPE environment variable will override it by specifying 
-     * the appropriate file system magic number here. 
-     */ 
-    if ((stat_type == bglocklessmpio_f_type[0]) ||
-	(stat_type == bglocklessmpio_f_type[1]) )
-      /* use lock-free driver on bluegene to support specified fs (defaults to pvfs2 & gpfs) */
       *fstype = ADIO_BGLOCKLESS; 
 }
 #endif

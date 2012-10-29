@@ -26,16 +26,13 @@
   #define PVFS2_SUPER_MAGIC (0x20030528)
 #endif
 
-#if !defined(GPFS_SUPER_MAGIC)
-  #define GPFS_SUPER_MAGIC (0x47504653)
-#endif
 
 int 	bgmpio_timing;
 int 	bgmpio_timing2;
 int 	bgmpio_comm;
 int 	bgmpio_tunegather;
 int 	bgmpio_tuneblocking;
-long    bglocklessmpio_f_type[2];
+long    bglocklessmpio_f_type;
 
 double	bgmpio_prof_cw    [BGMPIO_CIO_LAST];
 double	bgmpio_prof_cr    [BGMPIO_CIO_LAST];
@@ -80,11 +77,9 @@ double	bgmpio_prof_cr    [BGMPIO_CIO_LAST];
  *   "bg:" or "bglockless:") on a file name will override this environment
  *   variable.  Possible values:
  *   - 0xnnnnnnnn - Any valid file system type (or "magic number") from
- *                  statfs() field f_type.  This overrides all defaults.
- *   - The defaults are to run ad_bglockless on both 
- *                  - 0x20030528 (PVFS2_SUPER_MAGIC) and 
- *                  - 0x47504653 (GPFS_SUPER_MAGIC)
- *                  Both of these are overridden if a new value is set.
+ *                  statfs() field f_type.
+ *   - The default is 0x20030528 (PVFS2_SUPER_MAGIC)
+ *
 */
 void ad_bg_get_env_vars() {
     char *x, *dummy;
@@ -104,19 +99,11 @@ void ad_bg_get_env_vars() {
     bgmpio_tuneblocking = 1;
     x = getenv( "BGMPIO_TUNEBLOCKING" ); 
     if (x) bgmpio_tuneblocking = atoi(x);
+    bglocklessmpio_f_type = PVFS2_SUPER_MAGIC;
     x = getenv( "BGLOCKLESSMPIO_F_TYPE" ); 
-    if (x) 
-      {
-	bglocklessmpio_f_type[0]=bglocklessmpio_f_type[1] = strtol(x,&dummy,0);
-      }
-    else
-      {
-	bglocklessmpio_f_type[0] = GPFS_SUPER_MAGIC;
-	bglocklessmpio_f_type[1] = PVFS2_SUPER_MAGIC;
-      }
-    DBG_FPRINTF(stderr,"BGLOCKLESSMPIO_F_TYPE=%ld/%#lX or =%ld/%#lX\n",
-		bglocklessmpio_f_type[0],bglocklessmpio_f_type[0],
-		bglocklessmpio_f_type[1],bglocklessmpio_f_type[1]);
+    if (x) bglocklessmpio_f_type = strtol(x,&dummy,0);
+    DBG_FPRINTF(stderr,"BGLOCKLESSMPIO_F_TYPE=%ld/%#lX\n",
+            bglocklessmpio_f_type,bglocklessmpio_f_type);
 }
 
 /* report timing breakdown for MPI I/O collective call */
