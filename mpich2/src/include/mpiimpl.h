@@ -1938,6 +1938,7 @@ typedef struct MPID_Collops {
 
     /* MPI-3 nonblocking collectives */
     int (*Ibarrier)(MPID_Comm *comm_ptr, MPID_Sched_t s);
+    int (*Ibarrier_optimized)(MPID_Comm *comm_ptr, MPID_Request **request);
     int (*Ibcast)(void *buffer, int count, MPI_Datatype datatype, int root,
                   MPID_Comm *comm_ptr, MPID_Sched_t s);
     int (*Igather)(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void *recvbuf,

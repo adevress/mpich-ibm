@@ -518,6 +518,9 @@ void MPIDI_Comm_coll_query(MPID_Comm *comm)
    comm->coll_fns->Neighbor_alltoallv    = MPIR_Neighbor_alltoallv_default;
    comm->coll_fns->Neighbor_alltoallw    = MPIR_Neighbor_alltoallw_default;
 
+   /* MPI-3 Support, optimized collectives hooked in */
+   comm->coll_fns->Ibarrier_optimized    = MPIDO_Ibarrier;
+
    TRACE_ERR("MPIDI_Comm_coll_query exit\n");
 }
 

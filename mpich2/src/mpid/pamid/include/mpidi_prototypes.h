@@ -209,6 +209,7 @@ void MPIDI_Coll_register    (void);
 
 int MPIDO_Bcast(void *buffer, int count, MPI_Datatype dt, int root, MPID_Comm *comm_ptr, int *mpierrno);
 int MPIDO_Barrier(MPID_Comm *comm_ptr, int *mpierrno);
+int MPIDO_Ibarrier(MPID_Comm *comm_ptr, MPID_Request **request);
 
 int MPIDO_Allreduce(const void *sbuffer, void *rbuffer, int count,
                     MPI_Datatype datatype, MPI_Op op, MPID_Comm *comm_ptr, int *mpierrno);
