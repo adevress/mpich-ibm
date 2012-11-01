@@ -49,38 +49,43 @@ int MPIDO_Bcast(void *buffer,
    MPID_Datatype *data_ptr;
    MPID_Segment segment;
    MPIDI_Post_coll_t bcast_post;
-//   MPIDI_Post_coll_t allred_post; // eventually for preallreduces
+   struct MPIDI_Comm *mpid = &(comm_ptr->mpid);
+   int rank = comm_ptr->rank;
+
+
+   MPIDI_Datatype_get_info(count, datatype,
+               data_contig, data_size, data_ptr, data_true_lb);
+
    if(count == 0)
    {
       MPIDI_Update_last_algorithm(comm_ptr,"BCAST_NONE");
       return MPI_SUCCESS;
    }
-
-   MPIDI_Datatype_get_info(1, datatype,
-	   data_contig, data_size, data_ptr, data_true_lb); /* size of one datatype */
-
-   if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0))
-     fprintf(stderr,"bcast count %d, size %d(%zu/%#zX), root %d, buffer %p\n",count,data_size, (size_t)data_size*(size_t)count, (size_t)data_size*(size_t)count,root,buffer);
-
-   if(unlikely( (size_t)data_size*(size_t)count > BCAST_LIMIT) )
+   if(mpid->user_selectedvar[PAMI_XFER_BROADCAST] == MPID_COLL_USE_MPICH || data_size == 0)
    {
+     if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && rank == 0))
+       fprintf(stderr,"Using MPICH bcast algorithm\n");
+      return MPIR_Bcast_intra(buffer, count, datatype, root, comm_ptr, mpierrno);
+   }
+
+   if(unlikely( (size_t)data_size > BCAST_LIMIT) )
+   {
+      int data_size_one = data_size/count;
       void *new_buffer=buffer;
       int new_count, c;
-      new_count = (int)BCAST_LIMIT/data_size;
+      new_count = (int)BCAST_LIMIT/data_size_one;
       MPID_assert(new_count > 0);
-      if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0))
-	fprintf(stderr,"Recursive/split bcast for size %u, count %u\n",data_size,new_count);
+
       for(c=1; ((size_t)c*(size_t)new_count) <= (size_t)count; ++c)
       {
-	/*	fprintf(stderr,"Nex bcast for count %d, %d,  %d, %d\n",new_count,c, c*new_count, count);*/
-         rc= MPIDO_Bcast(new_buffer,
-                         new_count,
-                         datatype,
-                         root,
-                         comm_ptr,
-                         mpierrno);
-         if(rc != MPI_SUCCESS) return rc;
-	 new_buffer = (char*)new_buffer + (size_t)data_size*(size_t)new_count;
+        if ((rc = MPIDO_Bcast(new_buffer,
+                        new_count,
+                        datatype,
+                        root,
+                        comm_ptr,
+                              mpierrno)) != MPI_SUCCESS)
+         return rc;
+	 new_buffer = (char*)new_buffer + (size_t)data_size_one*(size_t)new_count;
       }
       new_count = count % new_count; /* 0 is ok, just returns no-op */
       return MPIDO_Bcast(new_buffer,
@@ -91,41 +96,38 @@ int MPIDO_Bcast(void *buffer,
                          mpierrno);
    }
 
-   if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_BROADCAST] == MPID_COLL_USE_MPICH)
-   {
-      if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0))
-         fprintf(stderr,"Using MPICH bcast algorithm\n");
-      return MPIR_Bcast_intra(buffer, count, datatype, root, comm_ptr, mpierrno);
-   }
-
-   MPIDI_Datatype_get_info(count, datatype,
-               data_contig, data_size, data_ptr, data_true_lb);
+   //   if(mpid->user_selectedvar[PAMI_XFER_BROADCAST] == MPID_COLL_USE_MPICH || data_size == 0)
+   //{
+     //if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && rank == 0))
+     //  fprintf(stderr,"Using MPICH bcast algorithm\n");
+     // return MPIR_Bcast_intra(buffer, count, datatype, root, comm_ptr, mpierrno);
+   //}
 
    /* If the user has constructed some weird 0-length datatype but 
     * count is not 0, we'll let mpich handle it */
-   if(unlikely( data_size == 0) )
-   {
-      if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0))
-         fprintf(stderr,"Using MPICH bcast algorithm for data_size 0\n");
-      return MPIR_Bcast_intra(buffer, count, datatype, root, comm_ptr, mpierrno);
-   }
+   //      if(unlikely( data_size == 0) )
+   //{
+     // if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && rank == 0))
+   //    fprintf(stderr,"Using MPICH bcast algorithm for data_size 0\n");
+   //return MPIR_Bcast_intra(buffer, count, datatype, root, comm_ptr, mpierrno);
+   //}
    data_buffer = buffer + data_true_lb;
 
    if(!data_contig)
    {
-      if(comm_ptr->rank == root)
-         TRACE_ERR("noncontig data\n");
+     if(rank == root)
+       TRACE_ERR("noncontig data\n");
       noncontig_buff = MPIU_Malloc(data_size);
       data_buffer = noncontig_buff;
       if(noncontig_buff == NULL)
       {
-         fprintf(stderr,
-            "Pack: Tree Bcast cannot allocate local non-contig pack buffer\n");
+        //    fprintf(stderr,
+        //  "Pack: Tree Bcast cannot allocate local non-contig pack buffer\n");
 //         MPIX_Dump_stacks();
          MPID_Abort(NULL, MPI_ERR_NO_SPACE, 1,
             "Fatal:  Cannot allocate pack buffer");
       }
-      if(comm_ptr->rank == root)
+      if(rank == root)
       {
          DLOOP_Offset last = data_size;
          MPID_Segment_init(buffer, count, datatype, &segment, 0);
@@ -141,40 +143,40 @@ int MPIDO_Bcast(void *buffer,
    bcast.cb_done = cb_bcast;
    bcast.cookie = (void *)&active;
    bcast.cmd.xfer_broadcast.root = MPID_VCR_GET_LPID(comm_ptr->vcr, root);
-   bcast.algorithm = comm_ptr->mpid.user_selected[PAMI_XFER_BROADCAST];
+   bcast.algorithm = mpid->user_selected[PAMI_XFER_BROADCAST];
    bcast.cmd.xfer_broadcast.buf = data_buffer;
    bcast.cmd.xfer_broadcast.type = PAMI_TYPE_BYTE;
    /* Needs to be sizeof(type)*count since we are using bytes as * the generic type */
    bcast.cmd.xfer_broadcast.typecount = data_size;
 
 #ifdef MPIDI_BASIC_COLLECTIVE_SELECTION
-   if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_BROADCAST] == MPID_COLL_SELECTED)
+   if(mpid->user_selectedvar[PAMI_XFER_BROADCAST] == MPID_COLL_SELECTED)
    {
       TRACE_ERR("Optimized bcast (%s) and (%s) were pre-selected\n",
-         comm_ptr->mpid.opt_protocol_md[PAMI_XFER_BROADCAST][0].name,
-         comm_ptr->mpid.opt_protocol_md[PAMI_XFER_BROADCAST][1].name);
+         mpid->opt_protocol_md[PAMI_XFER_BROADCAST][0].name,
+         mpid->opt_protocol_md[PAMI_XFER_BROADCAST][1].name);
 
-      if(data_size > comm_ptr->mpid.cutoff_size[PAMI_XFER_BROADCAST][0])
+      if(data_size > mpid->cutoff_size[PAMI_XFER_BROADCAST][0])
       {
-         my_bcast = comm_ptr->mpid.opt_protocol[PAMI_XFER_BROADCAST][1];
-         my_bcast_md = &comm_ptr->mpid.opt_protocol_md[PAMI_XFER_BROADCAST][1];
-         queryreq = comm_ptr->mpid.must_query[PAMI_XFER_BROADCAST][1];
+         my_bcast = mpid->opt_protocol[PAMI_XFER_BROADCAST][1];
+         my_bcast_md = &mpid->opt_protocol_md[PAMI_XFER_BROADCAST][1];
+         queryreq = mpid->must_query[PAMI_XFER_BROADCAST][1];
       }
       else
       {
-         my_bcast = comm_ptr->mpid.opt_protocol[PAMI_XFER_BROADCAST][0];
-         my_bcast_md = &comm_ptr->mpid.opt_protocol_md[PAMI_XFER_BROADCAST][0];
-         queryreq = comm_ptr->mpid.must_query[PAMI_XFER_BROADCAST][0];
+         my_bcast = mpid->opt_protocol[PAMI_XFER_BROADCAST][0];
+         my_bcast_md = &mpid->opt_protocol_md[PAMI_XFER_BROADCAST][0];
+         queryreq = mpid->must_query[PAMI_XFER_BROADCAST][0];
       }
    }
    else
 #endif
    {
       TRACE_ERR("Optimized bcast (%s) was specified by user\n",
-         comm_ptr->mpid.user_metadata[PAMI_XFER_BROADCAST].name);
-      my_bcast =  comm_ptr->mpid.user_selected[PAMI_XFER_BROADCAST];
-      my_bcast_md = &comm_ptr->mpid.user_metadata[PAMI_XFER_BROADCAST];
-      queryreq = comm_ptr->mpid.user_selectedvar[PAMI_XFER_BROADCAST];
+         mpid->user_metadata[PAMI_XFER_BROADCAST].name);
+      my_bcast =  mpid->user_selected[PAMI_XFER_BROADCAST];
+      my_bcast_md = &mpid->user_metadata[PAMI_XFER_BROADCAST];
+      queryreq = mpid->user_selectedvar[PAMI_XFER_BROADCAST];
    }
 
    bcast.algorithm = my_bcast;
@@ -197,7 +199,7 @@ int MPIDO_Bcast(void *buffer,
       my_bcast_md->name);
    MPIDI_Update_last_algorithm(comm_ptr, my_bcast_md->name);
 
-   if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0))
+   if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && rank == 0))
    {
       unsigned long long int threadID;
       MPIU_Thread_id_t tid;
@@ -226,7 +228,7 @@ int MPIDO_Bcast(void *buffer,
    if(!data_contig)
    {
       TRACE_ERR("cleaning up noncontig\n");
-      if(comm_ptr->rank != root)
+      if(rank != root)
          MPIR_Localcopy(noncontig_buff, data_size, MPI_CHAR,
                         buffer,         count,     datatype);
       MPIU_Free(noncontig_buff);

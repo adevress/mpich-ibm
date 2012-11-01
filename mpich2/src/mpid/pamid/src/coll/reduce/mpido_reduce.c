@@ -72,12 +72,13 @@ int MPIDO_Reduce(void *sendbuf,
 
    MPIDI_Datatype_get_info(count, datatype, dt_contig, tsize, dt_null, true_lb);
    rbuf = recvbuf + true_lb;
+   sbuf = sendbuf + true_lb;
    if(sendbuf == MPI_IN_PLACE) 
    {
       sbuf = rbuf;
    }
-   else
-      sbuf = sendbuf + true_lb;
+   //else
+
 
    reduce.cb_done = reduce_cb_done;
    reduce.cookie = (void *)&reduce_active;

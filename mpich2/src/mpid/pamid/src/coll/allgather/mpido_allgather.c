@@ -234,6 +234,7 @@ MPIDO_Allgather(void *sendbuf,
    * *********************************
    */
 //  MPIDO_Coll_config config = {1,1,1,1,1,1};
+  struct MPIDI_Comm *mpdcomm = &(comm_ptr->mpid);
    int config[6], i;
    MPID_Datatype * dt_null = NULL;
    MPI_Aint send_true_lb = 0;
@@ -251,7 +252,7 @@ MPIDO_Allgather(void *sendbuf,
    allred.cookie = (void *)&allred_active;
    /* Pick an algorithm that is guaranteed to work for the pre-allreduce */
    /* TODO: This needs selection for fast(er|est) allreduce protocol */
-   allred.algorithm = comm_ptr->mpid.coll_algorithm[PAMI_XFER_ALLREDUCE][0][0]; 
+   allred.algorithm = mpdcomm->coll_algorithm[PAMI_XFER_ALLREDUCE][0][0]; 
    allred.cmd.xfer_allreduce.sndbuf = (void *)config;
    allred.cmd.xfer_allreduce.stype = PAMI_TYPE_SIGNED_INT;
    allred.cmd.xfer_allreduce.rcvbuf = (void *)config;
@@ -263,15 +264,15 @@ MPIDO_Allgather(void *sendbuf,
   char use_tree_reduce, use_alltoall, use_bcast, use_pami, use_opt;
   char *rbuf = NULL, *sbuf = NULL;
 
-  char *allgathers = comm_ptr->mpid.allgathers;
+  char *allgathers = mpdcomm->allgathers;
    use_alltoall = allgathers[2];
    use_tree_reduce = allgathers[0];
    use_bcast = allgathers[1];
-   //   use_alltoall = comm_ptr->mpid.allgathers[2];
-   //use_tree_reduce = comm_ptr->mpid.allgathers[0];
-   //use_bcast = comm_ptr->mpid.allgathers[1];
+   //   use_alltoall = mpdcomm->allgathers[2];
+   //use_tree_reduce = mpdcomm->allgathers[0];
+   //use_bcast = mpdcomm->allgathers[1];
    use_pami = 
-      (comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLGATHER] == MPID_COLL_USE_MPICH) ? 0 : 1;
+      (mpdcomm->user_selectedvar[PAMI_XFER_ALLGATHER] == MPID_COLL_USE_MPICH) ? 0 : 1;
    if(sendbuf == MPI_IN_PLACE) use_pami = 0;
    use_opt = use_alltoall || use_tree_reduce || use_bcast || use_pami;
 
@@ -279,8 +280,8 @@ MPIDO_Allgather(void *sendbuf,
    TRACE_ERR("flags before: b: %d a: %d t: %d p: %d\n", use_bcast, use_alltoall, use_tree_reduce, use_pami);
    if(!use_opt)
    {
-      if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0))
-         fprintf(stderr,"Using MPICH allgather algorithm\n");
+     if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0))
+       fprintf(stderr,"Using MPICH allgather algorithm\n");
       TRACE_ERR("No options set/available; using MPICH for allgather\n");
       MPIDI_Update_last_algorithm(comm_ptr, "ALLGATHER_MPICH");
       return MPIR_Allgather(sendbuf, sendcount, sendtype,
@@ -301,6 +302,7 @@ MPIDO_Allgather(void *sendbuf,
    send_size = recv_size;
    rbuf = (char *)recvbuf+recv_true_lb;
 
+   sbuf = recvbuf;
    if(sendbuf != MPI_IN_PLACE)
    {
       MPIDI_Datatype_get_info(sendcount,
@@ -311,10 +313,10 @@ MPIDO_Allgather(void *sendbuf,
                             send_true_lb);
       sbuf = (char *)sendbuf+send_true_lb;
    }
-   else
-   {
-      sbuf = recvbuf;
-   }
+   //   else
+   //{
+   // sbuf = recvbuf;
+   //}
 //   fprintf(stderr,"sendount: %d, recvcount: %d send_size: %zd recv_size: %zd\n", sendcount, recvcount, send_size, recv_size);
 
   /* verify everyone's datatype contiguity */
@@ -326,7 +328,7 @@ MPIDO_Allgather(void *sendbuf,
                !((long)sendbuf & 0x0F) && !((long)recvbuf & 0x0F);
 
       /* #warning need to determine best allreduce for short messages */
-      if(comm_ptr->mpid.preallreduces[MPID_ALLGATHER_PREALLREDUCE])
+      if(mpdcomm->preallreduces[MPID_ALLGATHER_PREALLREDUCE])
       {
          TRACE_ERR("Preallreducing in allgather\n");
          if(MPIDI_Process.context_post)
@@ -374,23 +376,23 @@ MPIDO_Allgather(void *sendbuf,
       allgather.cmd.xfer_allgather.stypecount = send_size;
       allgather.cmd.xfer_allgather.rtypecount = recv_size;
 #ifndef __PE__ 
-      allgather.algorithm = comm_ptr->mpid.user_selected[PAMI_XFER_ALLGATHER];
+      allgather.algorithm = mpdcomm->user_selected[PAMI_XFER_ALLGATHER];
 #else
-      allgather.algorithm = comm_ptr->mpid.opt_protocol[PAMI_XFER_ALLGATHER][0];
+      allgather.algorithm = mpdcomm->opt_protocol[PAMI_XFER_ALLGATHER][0];
 #endif
-      if(unlikely( comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLGATHER] == MPID_COLL_ALWAYS_QUERY ||
-                   comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLGATHER] == MPID_COLL_CHECK_FN_REQUIRED))
+      if(unlikely( mpdcomm->user_selectedvar[PAMI_XFER_ALLGATHER] == MPID_COLL_ALWAYS_QUERY ||
+                   mpdcomm->user_selectedvar[PAMI_XFER_ALLGATHER] == MPID_COLL_CHECK_FN_REQUIRED))
       {
          metadata_result_t result = {0};
          TRACE_ERR("Querying allgather protocol %s, type was: %d\n",
-            comm_ptr->mpid.user_metadata[PAMI_XFER_ALLGATHER].name,
-            comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLGATHER]);
-         result = comm_ptr->mpid.user_metadata[PAMI_XFER_ALLGATHER].check_fn(&allgather);
+            mpdcomm->user_metadata[PAMI_XFER_ALLGATHER].name,
+            mpdcomm->user_selectedvar[PAMI_XFER_ALLGATHER]);
+         result = mpdcomm->user_metadata[PAMI_XFER_ALLGATHER].check_fn(&allgather);
          TRACE_ERR("bitmask: %#X\n", result.bitmask);
          if(!result.bitmask)
          {
             fprintf(stderr,"Query failed for %s.\n",
-               comm_ptr->mpid.user_metadata[PAMI_XFER_ALLGATHER].name);
+               mpdcomm->user_metadata[PAMI_XFER_ALLGATHER].name);
          }
       }
 
@@ -403,13 +405,13 @@ MPIDO_Allgather(void *sendbuf,
          threadID = (unsigned long long int)tid;
          fprintf(stderr,"<%llx> Using protocol %s for allgather on %u\n", 
                  threadID,
-                 comm_ptr->mpid.user_metadata[PAMI_XFER_ALLGATHER].name,
+                 mpdcomm->user_metadata[PAMI_XFER_ALLGATHER].name,
               (unsigned) comm_ptr->context_id);
       }
       if(MPIDI_Process.context_post)
       {
          TRACE_ERR("Posting allgather, context: %d, algoname: %s\n", 0,
-         comm_ptr->mpid.user_metadata[PAMI_XFER_ALLGATHER].name);
+         mpdcomm->user_metadata[PAMI_XFER_ALLGATHER].name);
          MPIDI_Post_coll_t allgather_post;
          allgather_post.coll_struct = &allgather;
          rc = PAMI_Context_post(MPIDI_Context[0], &allgather_post.state, MPIDI_Pami_post_wrapper, (void *)&allgather_post);
@@ -421,7 +423,7 @@ MPIDO_Allgather(void *sendbuf,
          rc = PAMI_Collective(MPIDI_Context[0], (pami_xfer_t *)&allgather);
       }
       MPIDI_Update_last_algorithm(comm_ptr,
-      comm_ptr->mpid.user_metadata[PAMI_XFER_ALLGATHER].name);
+      mpdcomm->user_metadata[PAMI_XFER_ALLGATHER].name);
 
       MPID_PROGRESS_WAIT_WHILE(allgather_active);
       TRACE_ERR("Allgather done\n");

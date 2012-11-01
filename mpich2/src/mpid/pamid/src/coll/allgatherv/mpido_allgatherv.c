@@ -92,8 +92,8 @@ int MPIDO_Allgatherv_allreduce(void *sendbuf,
    /* TODO: Change to PAMI allreduce */
   rc = MPIDO_Allreduce(MPI_IN_PLACE,
 		       startbuf,
-		       buffer_sum/sizeof(int),
-		       MPI_INT,
+		       buffer_sum/sizeof(unsigned),
+		       MPI_UNSIGNED,
 		       MPI_BOR,
 		       comm_ptr,
                        mpierrno);
@@ -367,7 +367,7 @@ MPIDO_Allgatherv(void *sendbuf,
 
       use_tree_reduce = comm_ptr->mpid.allgathervs[0] &&
          config[MPID_RECV_CONTIG] && config[MPID_SEND_CONTIG] &&
-         config[MPID_RECV_CONTINUOUS] && buffer_sum % sizeof(int) == 0;
+         config[MPID_RECV_CONTINUOUS] && buffer_sum % sizeof(unsigned) == 0;
 
       use_alltoall = comm_ptr->mpid.allgathervs[2] &&
          config[MPID_RECV_CONTIG] && config[MPID_SEND_CONTIG];

@@ -58,7 +58,10 @@ int MPIDO_Allreduce(void *sendbuf,
    pami_algorithm_t my_allred;
    pami_metadata_t *my_allred_md = (pami_metadata_t *)NULL;
    int alg_selected = 0;
-
+   unsigned verbosity = MPIDI_Process.verbose;
+   struct MPIDI_Comm *mpid = &(comm_ptr->mpid);
+   int rank = comm_ptr->rank;
+   int selected_type = mpid->user_selectedvar[PAMI_XFER_ALLREDUCE];
    if(likely(dt == MPI_DOUBLE || dt == MPI_DOUBLE_PRECISION))
    {
       rc = MPI_SUCCESS;
@@ -73,27 +76,28 @@ int MPIDO_Allreduce(void *sendbuf,
    }
    else rc = MPIDI_Datatype_to_pami(dt, &pdt, op, &pop, &mu);
 
-  if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0))
-      fprintf(stderr,"allred rc %u,count %d, Datatype %p, op %p, mu %u, selectedvar %u != %u, sendbuf %p, recvbuf %p\n",
-              rc, count, pdt, pop, mu, 
-              (unsigned)comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLREDUCE],MPID_COLL_USE_MPICH, sendbuf, recvbuf);
+   if(unlikely(verbosity >= MPIDI_VERBOSE_DETAILS_ALL && rank == 0))
+    fprintf(stderr,"allred rc %u,count %d, Datatype %p, op %p, mu %u, selectedvar %u != %u, sendbuf %p, recvbuf %p\n",
+            rc, count, pdt, pop, mu, 
+            (unsigned)selected_type,MPID_COLL_USE_MPICH, sendbuf, recvbuf);
       /* convert to metadata query */
   /* Punt count 0 allreduce to MPICH. Let them do whatever's 'right' */
   if(unlikely(rc != MPI_SUCCESS || (count==0) ||
-	      comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLREDUCE] == MPID_COLL_USE_MPICH))
+	      selected_type == MPID_COLL_USE_MPICH))
    {
-      if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0))
+      if(unlikely(verbosity >= MPIDI_VERBOSE_DETAILS_ALL && rank == 0))
          fprintf(stderr,"Using MPICH allreduce type %u.\n",
-                 comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLREDUCE]);
+                 selected_type);
       MPIDI_Update_last_algorithm(comm_ptr, "ALLREDUCE_MPICH");
       return MPIR_Allreduce(sendbuf, recvbuf, count, dt, op, comm_ptr, mpierrno);
    }
 
+  sbuf = sendbuf;
   if(unlikely(sendbuf == MPI_IN_PLACE))
    {
       sbuf = recvbuf;
    }
-   else sbuf = sendbuf;
+
 
    allred.cb_done = cb_allreduce;
    allred.cookie = (void *)&active;
@@ -107,91 +111,91 @@ int MPIDO_Allreduce(void *sendbuf,
 
 #ifdef MPIDI_BASIC_COLLECTIVE_SELECTION
    TRACE_ERR("Allreduce - Basic Collective Selection\n");
-   if(likely(comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLREDUCE] == MPID_COLL_SELECTED))
+   if(likely(selected_type == MPID_COLL_SELECTED))
    {
      if(likely(pop == PAMI_DATA_SUM || pop == PAMI_DATA_MAX || pop == PAMI_DATA_MIN))
       {
          /* double protocol works on all message sizes */
-         if(likely(pdt == PAMI_TYPE_DOUBLE && comm_ptr->mpid.query_allred_dsmm == MPID_COLL_QUERY))
+         if(likely(pdt == PAMI_TYPE_DOUBLE && mpid->query_allred_dsmm == MPID_COLL_QUERY))
          {
-            my_allred = comm_ptr->mpid.cached_allred_dsmm;
-            my_allred_md = &comm_ptr->mpid.cached_allred_dsmm_md;
+            my_allred = mpid->cached_allred_dsmm;
+            my_allred_md = &mpid->cached_allred_dsmm_md;
             alg_selected = 1;
          }
-         else if(pdt == PAMI_TYPE_UNSIGNED_INT && comm_ptr->mpid.query_allred_ismm == MPID_COLL_QUERY)
+         else if(pdt == PAMI_TYPE_UNSIGNED_INT && mpid->query_allred_ismm == MPID_COLL_QUERY)
          {
-            my_allred = comm_ptr->mpid.cached_allred_ismm;
-            my_allred_md = &comm_ptr->mpid.cached_allred_ismm_md;
+            my_allred = mpid->cached_allred_ismm;
+            my_allred_md = &mpid->cached_allred_ismm_md;
             alg_selected = 1;
          }
          /* The integer protocol at >1 ppn requires small messages only */
-         else if(pdt == PAMI_TYPE_UNSIGNED_INT && comm_ptr->mpid.query_allred_ismm == MPID_COLL_CHECK_FN_REQUIRED &&
-                 count <= comm_ptr->mpid.cutoff_size[PAMI_XFER_ALLREDUCE][0])
+         else if(pdt == PAMI_TYPE_UNSIGNED_INT && mpid->query_allred_ismm == MPID_COLL_CHECK_FN_REQUIRED &&
+                 count <= mpid->cutoff_size[PAMI_XFER_ALLREDUCE][0])
          {
-            my_allred = comm_ptr->mpid.cached_allred_ismm;
-            my_allred_md = &comm_ptr->mpid.cached_allred_ismm_md;
+            my_allred = mpid->cached_allred_ismm;
+            my_allred_md = &mpid->cached_allred_ismm_md;
             alg_selected = 1;
          }
-         else if(comm_ptr->mpid.must_query[PAMI_XFER_ALLREDUCE][0] == MPID_COLL_NOQUERY &&
-                 count <= comm_ptr->mpid.cutoff_size[PAMI_XFER_ALLREDUCE][0])
+         else if(mpid->must_query[PAMI_XFER_ALLREDUCE][0] == MPID_COLL_NOQUERY &&
+                 count <= mpid->cutoff_size[PAMI_XFER_ALLREDUCE][0])
          {
-            my_allred = comm_ptr->mpid.opt_protocol[PAMI_XFER_ALLREDUCE][0];
-            my_allred_md = &comm_ptr->mpid.opt_protocol_md[PAMI_XFER_ALLREDUCE][0];
+            my_allred = mpid->opt_protocol[PAMI_XFER_ALLREDUCE][0];
+            my_allred_md = &mpid->opt_protocol_md[PAMI_XFER_ALLREDUCE][0];
             alg_selected = 1;
          }
-         else if(comm_ptr->mpid.must_query[PAMI_XFER_ALLREDUCE][1] == MPID_COLL_NOQUERY &&
-                 count > comm_ptr->mpid.cutoff_size[PAMI_XFER_ALLREDUCE][0])
+         else if(mpid->must_query[PAMI_XFER_ALLREDUCE][1] == MPID_COLL_NOQUERY &&
+                 count > mpid->cutoff_size[PAMI_XFER_ALLREDUCE][0])
          {
-            my_allred = comm_ptr->mpid.opt_protocol[PAMI_XFER_ALLREDUCE][1];
-            my_allred_md = &comm_ptr->mpid.opt_protocol_md[PAMI_XFER_ALLREDUCE][1];
+            my_allred = mpid->opt_protocol[PAMI_XFER_ALLREDUCE][1];
+            my_allred_md = &mpid->opt_protocol_md[PAMI_XFER_ALLREDUCE][1];
             alg_selected = 1;
          }
-         else if((comm_ptr->mpid.must_query[PAMI_XFER_ALLREDUCE][0] == MPID_COLL_CHECK_FN_REQUIRED) ||
-		 (comm_ptr->mpid.must_query[PAMI_XFER_ALLREDUCE][0] == MPID_COLL_QUERY) ||
-		 (comm_ptr->mpid.must_query[PAMI_XFER_ALLREDUCE][0] ==  MPID_COLL_ALWAYS_QUERY))
+         else if((mpid->must_query[PAMI_XFER_ALLREDUCE][0] == MPID_COLL_CHECK_FN_REQUIRED) ||
+		 (mpid->must_query[PAMI_XFER_ALLREDUCE][0] == MPID_COLL_QUERY) ||
+		 (mpid->must_query[PAMI_XFER_ALLREDUCE][0] ==  MPID_COLL_ALWAYS_QUERY))
          {
-            my_allred = comm_ptr->mpid.opt_protocol[PAMI_XFER_ALLREDUCE][0];
-            my_allred_md = &comm_ptr->mpid.opt_protocol_md[PAMI_XFER_ALLREDUCE][0];
+            my_allred = mpid->opt_protocol[PAMI_XFER_ALLREDUCE][0];
+            my_allred_md = &mpid->opt_protocol_md[PAMI_XFER_ALLREDUCE][0];
             alg_selected = 1;
          }
       }
       else
       {
          /* so we aren't one of the key ops... */
-         if(comm_ptr->mpid.must_query[PAMI_XFER_ALLREDUCE][0] == MPID_COLL_NOQUERY &&
-            count <= comm_ptr->mpid.cutoff_size[PAMI_XFER_ALLREDUCE][0])
+         if(mpid->must_query[PAMI_XFER_ALLREDUCE][0] == MPID_COLL_NOQUERY &&
+            count <= mpid->cutoff_size[PAMI_XFER_ALLREDUCE][0])
          {
-            my_allred = comm_ptr->mpid.opt_protocol[PAMI_XFER_ALLREDUCE][0];
-            my_allred_md = &comm_ptr->mpid.opt_protocol_md[PAMI_XFER_ALLREDUCE][0];
+            my_allred = mpid->opt_protocol[PAMI_XFER_ALLREDUCE][0];
+            my_allred_md = &mpid->opt_protocol_md[PAMI_XFER_ALLREDUCE][0];
             alg_selected = 1;
          }
-         else if(comm_ptr->mpid.must_query[PAMI_XFER_ALLREDUCE][1] == MPID_COLL_NOQUERY &&
-                 count > comm_ptr->mpid.cutoff_size[PAMI_XFER_ALLREDUCE][0])
+         else if(mpid->must_query[PAMI_XFER_ALLREDUCE][1] == MPID_COLL_NOQUERY &&
+                 count > mpid->cutoff_size[PAMI_XFER_ALLREDUCE][0])
          {
-            my_allred = comm_ptr->mpid.opt_protocol[PAMI_XFER_ALLREDUCE][1];
-            my_allred_md = &comm_ptr->mpid.opt_protocol_md[PAMI_XFER_ALLREDUCE][1];
+            my_allred = mpid->opt_protocol[PAMI_XFER_ALLREDUCE][1];
+            my_allred_md = &mpid->opt_protocol_md[PAMI_XFER_ALLREDUCE][1];
             alg_selected = 1;
          }
-         else if((comm_ptr->mpid.must_query[PAMI_XFER_ALLREDUCE][0] == MPID_COLL_CHECK_FN_REQUIRED) ||
-		 (comm_ptr->mpid.must_query[PAMI_XFER_ALLREDUCE][0] == MPID_COLL_QUERY) ||
-		 (comm_ptr->mpid.must_query[PAMI_XFER_ALLREDUCE][0] == MPID_COLL_ALWAYS_QUERY))
+         else if((mpid->must_query[PAMI_XFER_ALLREDUCE][0] == MPID_COLL_CHECK_FN_REQUIRED) ||
+		 (mpid->must_query[PAMI_XFER_ALLREDUCE][0] == MPID_COLL_QUERY) ||
+		 (mpid->must_query[PAMI_XFER_ALLREDUCE][0] == MPID_COLL_ALWAYS_QUERY))
          {
-            my_allred = comm_ptr->mpid.opt_protocol[PAMI_XFER_ALLREDUCE][0];
-            my_allred_md = &comm_ptr->mpid.opt_protocol_md[PAMI_XFER_ALLREDUCE][0];
+            my_allred = mpid->opt_protocol[PAMI_XFER_ALLREDUCE][0];
+            my_allred_md = &mpid->opt_protocol_md[PAMI_XFER_ALLREDUCE][0];
             alg_selected = 1;
          }
       }
       TRACE_ERR("Alg selected: %d\n", alg_selected);
       if(likely(alg_selected))
       {
-	if(unlikely(comm_ptr->mpid.must_query[PAMI_XFER_ALLREDUCE][0] == MPID_COLL_CHECK_FN_REQUIRED))
+	if(unlikely(mpid->must_query[PAMI_XFER_ALLREDUCE][0] == MPID_COLL_CHECK_FN_REQUIRED))
         {
            if(my_allred_md->check_fn != NULL)/*This should always be the case in FCA.. Otherwise punt to mpich*/
            {
               metadata_result_t result = {0};
               TRACE_ERR("querying allreduce algorithm %s, type was %d\n",
                  my_allred_md->name,
-                 comm_ptr->mpid.must_query[PAMI_XFER_ALLREDUCE]);
+                 mpid->must_query[PAMI_XFER_ALLREDUCE]);
               result = my_allred_md->check_fn(&allred);
               TRACE_ERR("bitmask: %#X\n", result.bitmask);
               /* \todo Ignore check_correct.values.nonlocal until we implement the
@@ -206,21 +210,21 @@ int MPIDO_Allreduce(void *sendbuf,
               else
               {
                  alg_selected = 0;
-                 if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0))
+                 if(unlikely(verbosity >= MPIDI_VERBOSE_DETAILS_ALL && rank == 0))
                     fprintf(stderr,"check_fn failed for %s.\n", my_allred_md->name);
               }
            }
          else alg_selected = 0;
 	}
-	else if(unlikely(((comm_ptr->mpid.must_query[PAMI_XFER_ALLREDUCE][0] == MPID_COLL_QUERY) ||
-			  (comm_ptr->mpid.must_query[PAMI_XFER_ALLREDUCE][0] == MPID_COLL_ALWAYS_QUERY))))
+	else if(unlikely(((mpid->must_query[PAMI_XFER_ALLREDUCE][0] == MPID_COLL_QUERY) ||
+			  (mpid->must_query[PAMI_XFER_ALLREDUCE][0] == MPID_COLL_ALWAYS_QUERY))))
         {
            if(my_allred_md->check_fn != NULL)/*This should always be the case in FCA.. Otherwise punt to mpich*/
            {
               metadata_result_t result = {0};
               TRACE_ERR("querying allreduce algorithm %s, type was %d\n",
                  my_allred_md->name,
-                 comm_ptr->mpid.must_query[PAMI_XFER_ALLREDUCE]);
+                 mpid->must_query[PAMI_XFER_ALLREDUCE]);
               result = my_allred_md->check_fn(&allred);
               TRACE_ERR("bitmask: %#X\n", result.bitmask);
               /* \todo Ignore check_correct.values.nonlocal until we implement the
@@ -235,7 +239,7 @@ int MPIDO_Allreduce(void *sendbuf,
               else
               {
                  alg_selected = 0;
-                 if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0))
+                 if(unlikely(verbosity >= MPIDI_VERBOSE_DETAILS_ALL && rank == 0))
                     fprintf(stderr,"check_fn failed for %s.\n", my_allred_md->name);
               }
            }
@@ -253,7 +257,7 @@ int MPIDO_Allreduce(void *sendbuf,
                  allred.algorithm = my_allred; /* query algorithm successfully selected */
                else
 		 {
-		   if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0))
+		   if(unlikely(verbosity >= MPIDI_VERBOSE_DETAILS_ALL && rank == 0))
                      fprintf(stderr,"message size (%u) outside range (%zu<->%zu) for %s.\n",
                              data_size,
                              my_allred_md->range_lo,
@@ -275,12 +279,12 @@ int MPIDO_Allreduce(void *sendbuf,
    else
 #endif
    {
-      my_allred = comm_ptr->mpid.user_selected[PAMI_XFER_ALLREDUCE];
-      my_allred_md = &comm_ptr->mpid.user_metadata[PAMI_XFER_ALLREDUCE];
+      my_allred = mpid->user_selected[PAMI_XFER_ALLREDUCE];
+      my_allred_md = &mpid->user_metadata[PAMI_XFER_ALLREDUCE];
       allred.algorithm = my_allred;
-      if(comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLREDUCE] == MPID_COLL_QUERY ||
-         comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLREDUCE] == MPID_COLL_ALWAYS_QUERY ||
-         comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLREDUCE] == MPID_COLL_CHECK_FN_REQUIRED)
+      if(selected_type == MPID_COLL_QUERY ||
+         selected_type == MPID_COLL_ALWAYS_QUERY ||
+         selected_type == MPID_COLL_CHECK_FN_REQUIRED)
       {
          if(my_allred_md->check_fn != NULL)
          {
@@ -289,8 +293,8 @@ int MPIDO_Allreduce(void *sendbuf,
             metadata_result_t result = {0};
             TRACE_ERR("querying allreduce algorithm %s, type was %d\n",
                my_allred_md->name,
-               comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLREDUCE]);
-            result = comm_ptr->mpid.user_metadata[PAMI_XFER_ALLREDUCE].check_fn(&allred);
+               selected_type);
+            result = mpid->user_metadata[PAMI_XFER_ALLREDUCE].check_fn(&allred);
             TRACE_ERR("bitmask: %#X\n", result.bitmask);
             /* \todo Ignore check_correct.values.nonlocal until we implement the
                'pre-allreduce allreduce' or the 'safe' environment flag.
@@ -300,7 +304,7 @@ int MPIDO_Allreduce(void *sendbuf,
             if(!result.bitmask)
                alg_selected = 1; /* query algorithm successfully selected */
             else 
-               if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0))
+               if(unlikely(verbosity >= MPIDI_VERBOSE_DETAILS_ALL && rank == 0))
                   fprintf(stderr,"check_fn failed for %s.\n", my_allred_md->name);
          }
          else /* no check_fn, manually look at the metadata fields */
@@ -316,7 +320,7 @@ int MPIDO_Allreduce(void *sendbuf,
                   (my_allred_md->range_hi >= data_size))
                   alg_selected = 1; /* query algorithm successfully selected */
                else
-                 if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0))
+                 if(unlikely(verbosity >= MPIDI_VERBOSE_DETAILS_ALL && rank == 0))
                      fprintf(stderr,"message size (%u) outside range (%zu<->%zu) for %s.\n",
                              data_size,
                              my_allred_md->range_lo,
@@ -332,13 +336,13 @@ int MPIDO_Allreduce(void *sendbuf,
 
    if(unlikely(!alg_selected)) /* must be fallback to MPICH */
    {
-      if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0))
+      if(unlikely(verbosity >= MPIDI_VERBOSE_DETAILS_ALL && rank == 0))
          fprintf(stderr,"Using MPICH allreduce\n");
       MPIDI_Update_last_algorithm(comm_ptr, "ALLREDUCE_MPICH");
       return MPIR_Allreduce(sendbuf, recvbuf, count, dt, op, comm_ptr, mpierrno);
    }
 
-   if(unlikely(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL && comm_ptr->rank == 0))
+   if(unlikely(verbosity >= MPIDI_VERBOSE_DETAILS_ALL && rank == 0))
    {
       unsigned long long int threadID;
       MPIU_Thread_id_t tid;
