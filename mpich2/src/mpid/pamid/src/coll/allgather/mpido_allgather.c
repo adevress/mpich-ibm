@@ -64,7 +64,6 @@ int MPIDO_Allgather_allreduce(void *sendbuf,
   int rc, rank;
   char *startbuf = NULL;
   char *destbuf = NULL;
-
   rank = comm_ptr->rank;
 
   startbuf   = (char *) recvbuf + recv_true_lb;
@@ -81,11 +80,11 @@ int MPIDO_Allgather_allreduce(void *sendbuf,
   /* TODO: Change to PAMI */
   rc = MPIDO_Allreduce(MPI_IN_PLACE,
 		       startbuf,
-		       recv_size/sizeof(int),
-		       MPI_INT,
+		       recv_size/sizeof(unsigned),
+		       MPI_UNSIGNED,
 		       MPI_BOR,
 		       comm_ptr,
-           mpierrno);
+                       mpierrno);
 
   return rc;
 }
@@ -264,9 +263,13 @@ MPIDO_Allgather(void *sendbuf,
   char use_tree_reduce, use_alltoall, use_bcast, use_pami, use_opt;
   char *rbuf = NULL, *sbuf = NULL;
 
-   use_alltoall = comm_ptr->mpid.allgathers[2];
-   use_tree_reduce = comm_ptr->mpid.allgathers[0];
-   use_bcast = comm_ptr->mpid.allgathers[1];
+  char *allgathers = comm_ptr->mpid.allgathers;
+   use_alltoall = allgathers[2];
+   use_tree_reduce = allgathers[0];
+   use_bcast = allgathers[1];
+   //   use_alltoall = comm_ptr->mpid.allgathers[2];
+   //use_tree_reduce = comm_ptr->mpid.allgathers[0];
+   //use_bcast = comm_ptr->mpid.allgathers[1];
    use_pami = 
       (comm_ptr->mpid.user_selectedvar[PAMI_XFER_ALLGATHER] == MPID_COLL_USE_MPICH) ? 0 : 1;
    if(sendbuf == MPI_IN_PLACE) use_pami = 0;
@@ -343,17 +346,17 @@ MPIDO_Allgather(void *sendbuf,
      }
 
 
-       use_alltoall = comm_ptr->mpid.allgathers[2] &&
+       use_alltoall = allgathers[2] &&
             config[MPID_RECV_CONTIG] && config[MPID_SEND_CONTIG];;
 
       /* Note: some of the glue protocols use recv_size*comm_size rather than 
        * recv_size so we use that for comparison here, plus we pass that in
        * to those protocols. */
-       use_tree_reduce = comm_ptr->mpid.allgathers[0] &&
+       use_tree_reduce =  allgathers[0] &&
          config[MPID_RECV_CONTIG] && config[MPID_SEND_CONTIG] &&
-         config[MPID_RECV_CONTINUOUS] && (recv_size*comm_size % sizeof(int) == 0);
+         config[MPID_RECV_CONTINUOUS] && (recv_size*comm_size%sizeof(unsigned)) == 0;
 
-       use_bcast = comm_ptr->mpid.allgathers[1];
+       use_bcast = allgathers[1];
 
        TRACE_ERR("flags after: b: %d a: %d t: %d p: %d\n", use_bcast, use_alltoall, use_tree_reduce, use_pami);
    }
