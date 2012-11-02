@@ -867,7 +867,7 @@ static int MPIDU_Sched_progress_state(struct MPIDU_Sched_state *state, int *made
 
             /* TODO refactor into a sched_complete routine? */
             MPID_REQUEST_SET_COMPLETED(s->req);
-            MPID_Request_release(s->req);
+            /* MPID_Request_release(s->req); */
             s->req = NULL;
             MPIU_Free(s->entries);
             MPIU_Free(s);
