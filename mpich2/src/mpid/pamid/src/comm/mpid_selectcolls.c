@@ -507,6 +507,7 @@ void MPIDI_Comm_coll_query(MPID_Comm *comm)
    comm->coll_fns->Ialltoall             = MPIR_Ialltoall_intra;
    comm->coll_fns->Ialltoallv            = MPIR_Ialltoallv_intra;
    comm->coll_fns->Ialltoallw            = MPIR_Ialltoallw_intra;
+   comm->coll_fns->Iallreduce            = MPIR_Iallreduce_intra;
    comm->coll_fns->Ireduce               = MPIR_Ireduce_intra;
    comm->coll_fns->Ireduce_scatter       = MPIR_Ireduce_scatter_intra;
    comm->coll_fns->Ireduce_scatter_block = MPIR_Ireduce_scatter_block_intra;
