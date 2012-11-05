@@ -41,7 +41,7 @@ int MPIDO_Bcast(void *buffer,
 {
    TRACE_ERR("in mpido_bcast\n");
    const size_t BCAST_LIMIT =      0x40000000;
-   int data_size, data_contig, rc;
+   int data_contig, rc;
    void *data_buffer    = NULL,
         *noncontig_buff = NULL;
    volatile unsigned active = 1;
@@ -90,8 +90,7 @@ int MPIDO_Bcast(void *buffer,
    }
 
    /* Must re-calculate data_size based on count for byte bcast processing */
-   MPIDI_Datatype_get_info(count, datatype,
-               data_contig, data_size, data_ptr, data_true_lb);
+   const int data_size = data_size_one*count;
 
    if(selected_type == MPID_COLL_USE_MPICH || data_size == 0)
    {
