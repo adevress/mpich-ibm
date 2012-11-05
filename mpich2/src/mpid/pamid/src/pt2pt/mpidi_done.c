@@ -163,10 +163,14 @@ void MPIDI_Recvq_process_out_of_order_msgs(pami_task_t src, pami_context_t conte
       if (matched)  {
         /* process a completed message i.e. data is in EA   */
         if (TOKEN_FLOW_CONTROL_ON) {
+           #if TOKEN_FLOW_CONTROL
            if ((ooreq->mpid.uebuflen) && (!(ooreq->mpid.envelope.msginfo.isRzv))) {
                MPIDI_Token_cntr[src].unmatched--;
-               MPIDI_Update_rettoks(src,(ooreq->mpid.envelope.msginfo.MPIseqno));
+               MPIDI_Update_rettoks(src);
            }
+           #else
+           MPID_assert_always(0);
+           #endif
          }
         if (MPIDI_Request_getMatchSeq(ooreq) == (in_cntr->nMsgs+ 1))
           in_cntr->nMsgs++;

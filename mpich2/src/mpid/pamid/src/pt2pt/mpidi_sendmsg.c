@@ -24,11 +24,7 @@
 #define min(a,b) (((a) < (b)) ? (a) : (b))
 #endif
 
-int MPIU_Token_on() {
-    return MPIDI_Process.is_token_flow_control_on;
-}
-
-#ifdef TOKEN_FLOW_CONTROL
+#if TOKEN_FLOW_CONTROL
 #define MPIDI_Piggy_back_tokens    MPIDI_Piggy_back_tokens_inline
 static inline void *
 MPIDI_Piggy_back_tokens_inline(int dest,MPID_Request *shd,size_t len)
@@ -508,6 +504,7 @@ if (!TOKEN_FLOW_CONTROL_ON) {
     }
   else
     {  /* TOKEN_FLOW_CONTROL_ON  */
+    #if TOKEN_FLOW_CONTROL
     if (!(sreq->mpid.userbufcount))
        {
 #ifdef MPIDI_TRACE
@@ -628,6 +625,9 @@ if (!TOKEN_FLOW_CONTROL_ON) {
 #endif
     }
   }
+    #else
+    MPID_assert_always(0);
+    #endif /* TOKEN_FLOW_CONTROL */
  }
 }
 

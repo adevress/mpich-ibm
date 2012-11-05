@@ -54,7 +54,7 @@ MPIDI_RecvShortCB(pami_context_t    context,
   const MPIDI_MsgInfo *msginfo = (const MPIDI_MsgInfo *)_msginfo;
   MPID_Request * rreq = NULL;
   pami_task_t source;
-#ifdef TOKEN_FLOW_CONTROL
+#if TOKEN_FLOW_CONTROL
   int          rettoks=0;
 #endif
 
@@ -80,11 +80,17 @@ MPIDI_RecvShortCB(pami_context_t    context,
 #if (MPIDI_STATISTICS)
          MPID_NSTAT(mpid_statp->earlyArrivals);
 #endif
-     if (TOKEN_FLOW_CONTROL_ON) {
-         if (MPIDI_MUST_RETURN_TOKENS(source)) {
+     if (TOKEN_FLOW_CONTROL_ON)
+       {
+         #if TOKEN_FLOW_CONTROL
+         if (MPIDI_MUST_RETURN_TOKENS(source))
+           {
              rettoks=MPIDI_Token_cntr[source].rettoks;
              MPIDI_Token_cntr[source].rettoks=0;
-          }
+           }
+         #else
+         MPID_assert_always(0);
+         #endif
      }
       MPIU_THREAD_CS_EXIT(MSGQUEUE,0);
       MPID_Request *newreq = MPIDI_Request_create2();
@@ -92,15 +98,22 @@ MPIDI_RecvShortCB(pami_context_t    context,
       if (sndlen)
       {
         newreq->mpid.uebuflen = sndlen;
-        if (!TOKEN_FLOW_CONTROL_ON) {
+        if (!TOKEN_FLOW_CONTROL_ON)
+          {
             newreq->mpid.uebuf = MPIU_Malloc(sndlen);
             newreq->mpid.uebuf_malloc = mpiuMalloc;
-        } else {
+          }
+        else
+          {
+            #if TOKEN_FLOW_CONTROL
             MPIU_THREAD_CS_ENTER(MSGQUEUE,0);
             newreq->mpid.uebuf = MPIDI_mm_alloc(sndlen);
             newreq->mpid.uebuf_malloc = mpidiBufMM;
             MPIU_THREAD_CS_EXIT(MSGQUEUE,0);
-        }
+            #else
+            MPID_assert_always(0);
+            #endif
+          }
         MPID_assert(newreq->mpid.uebuf != NULL);
       }
       MPIU_THREAD_CS_ENTER(MSGQUEUE,0);
@@ -114,9 +127,14 @@ MPIDI_RecvShortCB(pami_context_t    context,
       {
         MPIDI_Callback_process_unexp(newreq, context, msginfo, sndlen, sender, sndbuf, NULL, isSync);
         /* request is always complete now */
-        if (TOKEN_FLOW_CONTROL_ON && sndlen) {
+        if (TOKEN_FLOW_CONTROL_ON && sndlen)
+          {
+            #if TOKEN_FLOW_CONTROL
             MPIDI_Token_cntr[source].unmatched++;
-        }
+            #else
+            MPID_assert_always(0);
+            #endif
+          }
         MPIU_THREAD_CS_EXIT(MSGQUEUE,0);
         MPID_Request_release(newreq);
         goto fn_exit_short;
@@ -132,9 +150,14 @@ MPIDI_RecvShortCB(pami_context_t    context,
 #if (MPIDI_STATISTICS)
      MPID_NSTAT(mpid_statp->earlyArrivalsMatched);
 #endif
-      if (TOKEN_FLOW_CONTROL_ON && sndlen) {
-          MPIDI_Update_rettoks(source,(msginfo->MPIseqno));
-      }
+      if (TOKEN_FLOW_CONTROL_ON && sndlen)
+        {
+          #if TOKEN_FLOW_CONTROL
+          MPIDI_Update_rettoks(source);
+          #else
+          MPID_assert_always(0);
+          #endif
+        }
       MPIU_THREAD_CS_EXIT(MSGQUEUE,0);
     }
 

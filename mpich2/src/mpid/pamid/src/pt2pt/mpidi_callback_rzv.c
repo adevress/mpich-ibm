@@ -46,7 +46,7 @@ MPIDI_RecvRzvCB_impl(pami_context_t    context,
   MPID_Request * rreq = NULL;
   int found;
   pami_task_t source;
-#ifdef TOKEN_FLOW_CONTROL
+#if TOKEN_FLOW_CONTROL
   int  rettoks=0;
 #endif
 
@@ -117,10 +117,15 @@ MPIDI_RecvRzvCB_impl(pami_context_t    context,
   MPIDI_Trace_buf[source].R[(rreq->mpid.idx)].rlen=envelope->length;
   MPIDI_Trace_buf[source].R[(rreq->mpid.idx)].sync=msginfo->isSync;
 #endif
-     if ((TOKEN_FLOW_CONTROL_ON) && (MPIDI_MUST_RETURN_TOKENS(sender))) {
+     if ((TOKEN_FLOW_CONTROL_ON) && (MPIDI_MUST_RETURN_TOKENS(sender)))
+       {
+         #if TOKEN_FLOW_CONTROL
          rettoks=MPIDI_Token_cntr[sender].rettoks;
          MPIDI_Token_cntr[sender].rettoks=0;
-     }
+         #else
+         MPID_assert_always(0);
+         #endif
+       }
     }
   /* ----------------------------------------- */
   /* figure out target buffer for request data */
@@ -175,7 +180,9 @@ MPIDI_RecvRzvCB_impl(pami_context_t    context,
 #endif
       MPIU_THREAD_CS_EXIT(MSGQUEUE,0);
     }
-   MPIDI_Return_tokens(context, source, rettoks);
+#if TOKEN_FLOW_CONTROL
+  MPIDI_Return_tokens(context, source, rettoks);
+#endif
   /* ---------------------------------------- */
   /*  Signal that the recv has been started.  */
   /* ---------------------------------------- */

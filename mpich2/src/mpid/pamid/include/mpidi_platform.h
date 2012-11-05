@@ -159,7 +159,7 @@ static const char _ibm_release_version_[] = "%W%";
 
 #endif
 
-#ifdef TOKEN_FLOW_CONTROL
+#if TOKEN_FLOW_CONTROL
 #define BUFFER_MEM_DEFAULT (1<<26)          /* 64MB                         */
 #define BUFFER_MEM_MAX     (1<<26)          /* 64MB                         */
 #define ONE_SHARED_SEGMENT (1<<28)          /* 256MB                        */

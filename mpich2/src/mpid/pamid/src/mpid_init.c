@@ -27,10 +27,10 @@
 #include "mpidi_platform.h"
 #include "onesided/mpidi_onesided.h"
 
-# ifdef TOKEN_FLOW_CONTROL
+#if TOKEN_FLOW_CONTROL
   extern int MPIDI_mm_init(int,uint *,unsigned long *);
   extern int MPIDI_tfctrl_enabled;
-# endif
+#endif
 
 #if (MPIDI_STATISTICS || MPIDI_PRINTENV)
   pami_extension_t pe_extension;
@@ -93,11 +93,8 @@ MPIDI_Process_t  MPIDI_Process = {
     },
   },
   .disable_internal_eager_scale = MPIDI_DISABLE_INTERNAL_EAGER_SCALE,
-#ifdef TOKEN_FLOW_CONTROL
+#if TOKEN_FLOW_CONTROL
   .mp_buf_mem          = BUFFER_MEM_DEFAULT,
-  .is_token_flow_control_on = 0,
-#else
-  .mp_buf_mem          = 0,
   .is_token_flow_control_on = 0,
 #endif
 #if (MPIDI_STATISTICS || MPIDI_PRINTENV)
@@ -393,14 +390,20 @@ MPIDI_PAMI_context_init(int* threading, int *size)
   memset((void *) MPIDI_Out_cntr,0, sizeof(MPIDI_Out_cntr_t));
 #endif
 
-if (TOKEN_FLOW_CONTROL_ON) {
-  int i;
-  MPIDI_mm_init(numTasks,&MPIDI_Process.pt2pt.limits.application.eager.remote,&MPIDI_Process.mp_buf_mem);
-  MPIDI_Token_cntr = MPIU_Calloc0(numTasks, MPIDI_Token_cntr_t);
-  memset((void *) MPIDI_Token_cntr,0, (sizeof(MPIDI_Token_cntr_t) * numTasks));
-  for (i=0; i < numTasks; i++) {
-      MPIDI_Token_cntr[i].tokens=MPIDI_tfctrl_enabled;
-  }
+if (TOKEN_FLOW_CONTROL_ON)
+  {
+    #if TOKEN_FLOW_CONTROL
+    int i;
+    MPIDI_mm_init(numTasks,&MPIDI_Process.pt2pt.limits.application.eager.remote,&MPIDI_Process.mp_buf_mem);
+    MPIDI_Token_cntr = MPIU_Calloc0(numTasks, MPIDI_Token_cntr_t);
+    memset((void *) MPIDI_Token_cntr,0, (sizeof(MPIDI_Token_cntr_t) * numTasks));
+    for (i=0; i < numTasks; i++)
+      {
+        MPIDI_Token_cntr[i].tokens=MPIDI_tfctrl_enabled;
+      }
+    #else
+    MPID_assert_always(0);
+    #endif
 }
 
 #ifdef MPIDI_TRACE
@@ -614,8 +617,13 @@ MPIDI_PAMI_init(int* rank, int* size, int* threading)
              MPIDI_Process.rma_pending,
              MPIDI_Process.shmem_pt2pt,
              MPIDI_Process.disable_internal_eager_scale,
+#if TOKEN_FLOW_CONTROL             
              MPIDI_Process.mp_buf_mem,
              MPIDI_Process.is_token_flow_control_on,
+#else
+             0,
+             0,
+#endif
 #if (MPIDI_STATISTICS || MPIDI_PRINTENV)
              MPIDI_Process.mp_infolevel,
              MPIDI_Process.mp_statistics,

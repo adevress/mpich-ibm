@@ -38,7 +38,7 @@
 
 
 extern MPIU_Object_alloc_t MPID_Request_mem;
-#ifdef TOKEN_FLOW_CONTROL
+#if TOKEN_FLOW_CONTROL
 extern void MPIDI_mm_free(void *,size_t);
 #endif
 typedef enum {mpiuMalloc=1,mpidiBufMM} MPIDI_mallocType;
@@ -269,13 +269,13 @@ MPID_Request_release_inline(MPID_Request *req)
     if (req->mpid.uebuf_malloc== mpiuMalloc) {
         MPIU_Free(req->mpid.uebuf);
     }
-#   ifdef TOKEN_FLOW_CONTROL
+#if TOKEN_FLOW_CONTROL
     else if (req->mpid.uebuf_malloc == mpidiBufMM) {
         MPIU_THREAD_CS_ENTER(MSGQUEUE,0);
         MPIDI_mm_free(req->mpid.uebuf,req->mpid.uebuflen);
         MPIU_THREAD_CS_EXIT(MSGQUEUE,0);
     }
-#   endif
+#endif
     MPIDI_Request_tls_free(req);
   }
 }
@@ -288,13 +288,13 @@ MPID_Request_discard_inline(MPID_Request *req)
     if (req->mpid.uebuf_malloc == mpiuMalloc) {
         MPIU_Free(req->mpid.uebuf);
     }
-#   ifdef TOKEN_FLOW_CONTROL
+#if TOKEN_FLOW_CONTROL
     else if (req->mpid.uebuf_malloc == mpidiBufMM) {
         MPIU_THREAD_CS_ENTER(MSGQUEUE,0);
         MPIDI_mm_free(req->mpid.uebuf,req->mpid.uebuflen);
         MPIU_THREAD_CS_EXIT(MSGQUEUE,0);
     }
-#   endif
+#endif
     MPIDI_Request_tls_free(req);
 }
 

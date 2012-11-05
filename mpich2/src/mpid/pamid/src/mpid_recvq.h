@@ -179,7 +179,7 @@ MPIDI_Recvq_FDU_or_AEP(MPID_Request *newreq, int source, pami_task_t pami_source
   return rreq;
 }
 
-#ifdef TOKEN_FLOW_CONTROL
+#if TOKEN_FLOW_CONTROL
 typedef struct MPIDI_Token_cntr {
     uint16_t unmatched;          /* no. of unmatched EA messages              */
     uint16_t rettoks;            /* no. of tokens to be returned              */

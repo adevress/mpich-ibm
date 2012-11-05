@@ -397,7 +397,7 @@ MPIDI_ControlCB(pami_context_t    context,
     case MPIDI_CONTROL_RENDEZVOUS_ACKNOWLEDGE:
       MPIDI_RzvAck_proc(context, msginfo, senderrank);
       break;
-#ifdef TOKEN_FLOW_CONTROL
+#if TOKEN_FLOW_CONTROL
     case MPIDI_CONTROL_RETURN_TOKENS:
       MPIU_THREAD_CS_ENTER(MSGQUEUE,0);
       MPIDI_Token_cntr[sender].tokens += msginfo->alltokens;

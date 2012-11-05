@@ -31,7 +31,7 @@
 #endif*/
 
 
-#ifdef TOKEN_FLOW_CONTROL
+#if TOKEN_FLOW_CONTROL
 extern MPIDI_Out_cntr_t *MPIDI_Out_cntr;
 extern int MPIDI_tfctrl_hwmark;
 extern void *MPIDI_mm_alloc(size_t);
@@ -84,7 +84,7 @@ MPIDI_Receive_tokens_inline(const MPIDI_MsgInfo *m, int dest)
     }
 
 static inline void *
-MPIDI_Update_rettoks_inline(int source, int seqno)
+MPIDI_Update_rettoks_inline(int source) 
  {
      MPIDI_Token_cntr[source].rettoks++;
  }
@@ -98,11 +98,11 @@ MPIDI_Alloc_lock_inline(void *buf,size_t size)
  }
 
 #else
-#define MPIDI_Return_tokens
-#define MPIDI_Receive_tokens
-#define MPIDI_Update_rettoks
-#define MPIDI_MUST_RETURN_TOKENS
-#define MPIDI_Alloc_lock
+#define MPIDI_Return_tokens(x,y,z)
+#define MPIDI_Receive_tokens(x,y)
+#define MPIDI_Update_rettoks(x)
+#define MPIDI_MUST_RETURN_TOKENS(x) (0)
+#define MPIDI_Alloc_lock(x,y)
 #endif
 
 /**
@@ -202,10 +202,14 @@ MPIDI_Recv(void          * buf,
       MPIDI_RecvMsg_Unexp(rreq, buf, count, datatype);
       mpi_errno = rreq->status.MPI_ERROR;
       if (TOKEN_FLOW_CONTROL_ON) {
+         #if TOKEN_FLOW_CONTROL
          if ((rreq->mpid.uebuflen) && (!(rreq->mpid.envelope.msginfo.isRzv))) {
            MPIDI_Token_cntr[(rreq->mpid.peer_pami)].unmatched--;
-           MPIDI_Update_rettoks((rreq->mpid.peer_pami),(rreq->mpid.envelope.msginfo.MPIseqno));
+           MPIDI_Update_rettoks(rreq->mpid.peer_pami);
          }
+         #else
+         MPID_assert_always(0);
+         #endif
       }
       MPIU_THREAD_CS_EXIT(MSGQUEUE,0);
       MPID_Request_discard(newreq);

@@ -711,7 +711,7 @@ MPIDI_Env_setup(int rank, int requested)
     ENV_Unsigned(names, &MPIDI_Process.pt2pt.limits.application.eager.remote, 3, &found_deprecated_env_var, rank);
     ENV_Unsigned(names, &MPIDI_Process.pt2pt.limits.internal.eager.remote, 3, NULL, rank);
   }
-#ifdef TOKEN_FLOW_CONTROL
+#if TOKEN_FLOW_CONTROL
   /* Determine if users set eager limit  */
   {
     MPIDI_set_eager_limit(&MPIDI_Process.pt2pt.limits.application.eager.remote);
@@ -1009,10 +1009,12 @@ MPIDI_Env_setup(int rank, int requested)
 #endif
   }
     {
+#if TOKEN_FLOW_CONTROL
       char* names[] = {"MP_USE_TOKEN_FLOW_CONTROL", NULL};
       ENV_Char(names, &MPIDI_Process.is_token_flow_control_on);
       if (!MPIDI_Process.is_token_flow_control_on)
            MPIDI_Process.mp_buf_mem=0;
+#endif
     }
   /* Exit if any deprecated environment variables were specified. */
   if (found_deprecated_env_var)
@@ -1029,19 +1031,21 @@ MPIDI_Env_setup(int rank, int requested)
 }
 
 
-int  MPIDI_set_eager_limit(unsigned int *eager_limit) {
+int  MPIDI_set_eager_limit(unsigned int *eager_limit)
+{
      char *cp;
      int  val;
-
-     if (cp = getenv("MP_EAGER_LIMIT")) {
+     cp = getenv("MP_EAGER_LIMIT");
+     if (cp)
+       {
          application_set_eager_limit=1;
          if ( MPIDI_atoi(cp, &val) == 0 )
-             *eager_limit=val;
-     }
+           *eager_limit=val;
+       }
      return 0;
 }
 
-#ifdef TOKEN_FLOW_CONTROL
+#if TOKEN_FLOW_CONTROL
    /*****************************************************************/
    /* Check for MP_BUFFER_MEM, if the value is not set by the user, */
    /* then set the value with the default of 64 MB.                 */

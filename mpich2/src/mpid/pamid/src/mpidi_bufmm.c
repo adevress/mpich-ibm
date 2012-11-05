@@ -41,7 +41,7 @@
  /*   buffers. There are FLEX_NUM number of buffers from the        */
  /*   FLEX_COUNT number of smallest buffers. So, for example, if    */
  /*   MIN_SIZE is 16, FLEX_COUNT is 4, and FLEX_NUM is 256 then     */
- /*   there are buffers of /*   size 16, 32, 64, and 128 preallocted*/
+ /*   there are buffers of size 16, 32, 64, and 128 preallocted     */
  /*   (256 buffers each). These buffers are arranged into stacks.   */
  /*                                                                 */
  /*   If the system runs out of preallocated buffers or the size    */
@@ -66,7 +66,7 @@
 #define YES 1
 int application_set_eager_limit=0;
 
-#ifdef TOKEN_FLOW_CONTROL
+#if TOKEN_FLOW_CONTROL
 #define BUFFER_MEM_MAX    (1<<26)   /* 64MB */
 #define MAX_BUF_BKT_SIZE  (1<<18)   /* Max eager_limit is 256K              */
 #define MIN_BUF_BKT_SIZE  (64)
@@ -654,4 +654,4 @@ void MPIDI_mm_free(void *ptr, size_t size)
    printf("MPIDI_mm_free:     %p \n",ptr);
 #  endif
 }
-#endif   /* #ifdef TOKEN_FLOW_CONTROL   */
+#endif   /* #if TOKEN_FLOW_CONTROL   */

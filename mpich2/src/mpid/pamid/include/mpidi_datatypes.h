@@ -81,7 +81,7 @@ typedef struct
     MPIDI_pt2pt_limits_t limits;
   } pt2pt;
   unsigned disable_internal_eager_scale; /**< The number of tasks at which point eager will be disabled */
-#ifdef TOKEN_FLOW_CONTROL
+#if TOKEN_FLOW_CONTROL
   unsigned long long mp_buf_mem;
   unsigned is_token_flow_control_on;
 #endif
@@ -220,7 +220,7 @@ typedef struct
 #ifdef OUT_OF_ORDER_HANDLING
   unsigned    MPIseqno;    /**< match seqno            */
 #endif
-#ifdef TOKEN_FLOW_CONTROL
+#if TOKEN_FLOW_CONTROL
   unsigned    alltokens;   /* control:MPIDI_CONTROL_RETURN_TOKENS  */
 #endif
 } MPIDI_MsgInfo;
