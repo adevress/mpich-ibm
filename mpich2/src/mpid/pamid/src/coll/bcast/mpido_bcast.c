@@ -51,19 +51,26 @@ int MPIDO_Bcast(void *buffer,
    MPIDI_Post_coll_t bcast_post;
    const struct MPIDI_Comm* const mpid = &(comm_ptr->mpid);
    const int rank = comm_ptr->rank;
+#if ASSERT_LEVEL==0
+   /* We can't afford the tracing in ndebug/performance libraries */
+#else
    const unsigned verbose = (MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL) && (rank == 0);
+#endif
    const int selected_type = mpid->user_selectedvar[PAMI_XFER_BROADCAST];
 
    /* Must calculate data_size based on count=1 in case it's total size is > integer */
    int data_size_one;
    MPIDI_Datatype_get_info(1, datatype,
 			   data_contig, data_size_one, data_ptr, data_true_lb);
-
+   /* do this calculation once and use twice */
+   const size_t data_size_sz = (size_t)data_size_one*(size_t)count;
+#if ASSERT_LEVEL==0
+#else
    if(unlikely(verbose))
      fprintf(stderr,"bcast count %d, size %d (%#zX), root %d, buffer %p\n",
 	     count,data_size_one, (size_t)data_size_one*(size_t)count, root,buffer);
-
-   if(unlikely( ((size_t)data_size_one*(size_t)count) > BCAST_LIMIT) )
+#endif
+   if(unlikely( data_size_sz > BCAST_LIMIT) )
    {
       void *new_buffer=buffer;
       int c, new_count = (int)BCAST_LIMIT/data_size_one;
@@ -89,13 +96,19 @@ int MPIDO_Bcast(void *buffer,
                          mpierrno);
    }
 
-   /* Must re-calculate data_size based on count for byte bcast processing */
-   const int data_size = data_size_one*count;
+   /* Must use data_size based on count for byte bcast processing.
+      Previously calculated as a size_t but large data_sizes were 
+      handled above so this cast to int should be fine here.  
+   */
+   const int data_size = (int)data_size_sz;
 
    if(selected_type == MPID_COLL_USE_MPICH || data_size == 0)
    {
+#if ASSERT_LEVEL==0
+#else
      if(unlikely(verbose))
        fprintf(stderr,"Using MPICH bcast algorithm\n");
+#endif
       MPIDI_Update_last_algorithm(comm_ptr,"MPICH");
       return MPIR_Bcast_intra(buffer, count, datatype, root, comm_ptr, mpierrno);
    }
@@ -174,13 +187,18 @@ int MPIDO_Bcast(void *buffer,
       TRACE_ERR("bitmask: %#X\n", result.bitmask);
       if(!result.bitmask)
       {
+#if ASSERT_LEVEL==0
+#else
 	if(unlikely(verbose))
 	  fprintf(stderr,"Using MPICH bcast algorithm\n");
+#endif
 	MPIDI_Update_last_algorithm(comm_ptr,"MPICH");
 	return MPIR_Bcast_intra(buffer, count, datatype, root, comm_ptr, mpierrno);
       }
    }
 
+#if ASSERT_LEVEL==0
+#else
    if(unlikely(verbose))
    {
       unsigned long long int threadID;
@@ -192,6 +210,7 @@ int MPIDO_Bcast(void *buffer,
               my_bcast_md->name,
               (unsigned) comm_ptr->context_id);
    }
+#endif
    if(MPIDI_Process.context_post)
    {
       bcast_post.coll_struct = &bcast;
