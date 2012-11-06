@@ -56,12 +56,16 @@ int MPIDO_Allreduce(void *sendbuf,
    volatile unsigned active = 1;
    pami_xfer_t allred;
    pami_algorithm_t my_allred;
-   pami_metadata_t *my_allred_md = (pami_metadata_t *)NULL;
+   const pami_metadata_t *my_allred_md = (pami_metadata_t *)NULL;
    int alg_selected = 0;
-   unsigned verbosity = MPIDI_Process.verbose;
-   struct MPIDI_Comm *mpid = &(comm_ptr->mpid);
-   int rank = comm_ptr->rank;
-   int selected_type = mpid->user_selectedvar[PAMI_XFER_ALLREDUCE];
+   const int rank = comm_ptr->rank;
+#if ASSERT_LEVEL==0
+   /* We can't afford the tracing in ndebug/performance libraries */
+#else
+    const unsigned verbosity = (MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL) && (rank == 0);
+#endif
+   const struct MPIDI_Comm* const mpid = &(comm_ptr->mpid);
+   const int selected_type = mpid->user_selectedvar[PAMI_XFER_ALLREDUCE];
    if(likely(dt == MPI_DOUBLE || dt == MPI_DOUBLE_PRECISION))
    {
       rc = MPI_SUCCESS;
@@ -76,18 +80,24 @@ int MPIDO_Allreduce(void *sendbuf,
    }
    else rc = MPIDI_Datatype_to_pami(dt, &pdt, op, &pop, &mu);
 
-   if(unlikely(verbosity >= MPIDI_VERBOSE_DETAILS_ALL && rank == 0))
+#if ASSERT_LEVEL==0
+#else
+    if(unlikely(verbosity))
     fprintf(stderr,"allred rc %u,count %d, Datatype %p, op %p, mu %u, selectedvar %u != %u, sendbuf %p, recvbuf %p\n",
             rc, count, pdt, pop, mu, 
             (unsigned)selected_type,MPID_COLL_USE_MPICH, sendbuf, recvbuf);
+#endif
       /* convert to metadata query */
   /* Punt count 0 allreduce to MPICH. Let them do whatever's 'right' */
   if(unlikely(rc != MPI_SUCCESS || (count==0) ||
 	      selected_type == MPID_COLL_USE_MPICH))
    {
-      if(unlikely(verbosity >= MPIDI_VERBOSE_DETAILS_ALL && rank == 0))
+#if ASSERT_LEVEL==0
+#else
+     if(unlikely(verbosity))
          fprintf(stderr,"Using MPICH allreduce type %u.\n",
                  selected_type);
+#endif
       MPIDI_Update_last_algorithm(comm_ptr, "ALLREDUCE_MPICH");
       return MPIR_Allreduce(sendbuf, recvbuf, count, dt, op, comm_ptr, mpierrno);
    }
@@ -210,8 +220,11 @@ int MPIDO_Allreduce(void *sendbuf,
               else
               {
                  alg_selected = 0;
-                 if(unlikely(verbosity >= MPIDI_VERBOSE_DETAILS_ALL && rank == 0))
+#if ASSERT_LEVEL==0
+#else
+                 if(unlikely(verbosity))
                     fprintf(stderr,"check_fn failed for %s.\n", my_allred_md->name);
+#endif
               }
            }
          else alg_selected = 0;
@@ -239,8 +252,11 @@ int MPIDO_Allreduce(void *sendbuf,
               else
               {
                  alg_selected = 0;
-                 if(unlikely(verbosity >= MPIDI_VERBOSE_DETAILS_ALL && rank == 0))
+#if ASSERT_LEVEL==0
+#else
+                 if(unlikely(verbosity))
                     fprintf(stderr,"check_fn failed for %s.\n", my_allred_md->name);
+#endif
               }
            }
 	   else /* no check_fn, manually look at the metadata fields */
@@ -257,12 +273,15 @@ int MPIDO_Allreduce(void *sendbuf,
                  allred.algorithm = my_allred; /* query algorithm successfully selected */
                else
 		 {
-		   if(unlikely(verbosity >= MPIDI_VERBOSE_DETAILS_ALL && rank == 0))
+#if ASSERT_LEVEL==0
+#else
+		   if(unlikely(verbosity))
                      fprintf(stderr,"message size (%u) outside range (%zu<->%zu) for %s.\n",
                              data_size,
                              my_allred_md->range_lo,
                              my_allred_md->range_hi,
                              my_allred_md->name);
+#endif
 		   alg_selected = 0;
 		 }
 	     }
@@ -303,9 +322,12 @@ int MPIDO_Allreduce(void *sendbuf,
             result.check.nonlocal = 0; /* #warning REMOVE THIS WHEN IMPLEMENTED */
             if(!result.bitmask)
                alg_selected = 1; /* query algorithm successfully selected */
+#if ASSERT_LEVEL==0
+#else
             else 
-               if(unlikely(verbosity >= MPIDI_VERBOSE_DETAILS_ALL && rank == 0))
+	      if(unlikely(verbosity))
                   fprintf(stderr,"check_fn failed for %s.\n", my_allred_md->name);
+#endif
          }
          else /* no check_fn, manually look at the metadata fields */
          {
@@ -319,13 +341,16 @@ int MPIDO_Allreduce(void *sendbuf,
                if((my_allred_md->range_lo <= data_size) &&
                   (my_allred_md->range_hi >= data_size))
                   alg_selected = 1; /* query algorithm successfully selected */
+#if ASSERT_LEVEL==0
+#else
                else
-                 if(unlikely(verbosity >= MPIDI_VERBOSE_DETAILS_ALL && rank == 0))
+                 if(unlikely(verbosity))
                      fprintf(stderr,"message size (%u) outside range (%zu<->%zu) for %s.\n",
                              data_size,
                              my_allred_md->range_lo,
                              my_allred_md->range_hi,
                              my_allred_md->name);
+#endif
             }
             /* \todo check the rest of the metadata */
          }
@@ -336,13 +361,18 @@ int MPIDO_Allreduce(void *sendbuf,
 
    if(unlikely(!alg_selected)) /* must be fallback to MPICH */
    {
-      if(unlikely(verbosity >= MPIDI_VERBOSE_DETAILS_ALL && rank == 0))
+#if ASSERT_LEVEL==0
+#else
+     if(unlikely(verbosity))
          fprintf(stderr,"Using MPICH allreduce\n");
+#endif
       MPIDI_Update_last_algorithm(comm_ptr, "ALLREDUCE_MPICH");
       return MPIR_Allreduce(sendbuf, recvbuf, count, dt, op, comm_ptr, mpierrno);
    }
 
-   if(unlikely(verbosity >= MPIDI_VERBOSE_DETAILS_ALL && rank == 0))
+#if ASSERT_LEVEL==0
+#else
+   if(unlikely(verbosity))
    {
       unsigned long long int threadID;
       MPIU_Thread_id_t tid;
@@ -353,6 +383,7 @@ int MPIDO_Allreduce(void *sendbuf,
               my_allred_md->name,
               (unsigned) comm_ptr->context_id);
    }
+#endif
    if(unlikely(MPIDI_Process.context_post))
    {
      MPIDI_Post_coll_t allred_post;
