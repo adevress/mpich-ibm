@@ -290,7 +290,7 @@ MPIDI_RecvCB(pami_context_t    context,
           else
             {
               #if TOKEN_FLOW_CONTROL
-              MPIDI_Alloc_lock(rreq->mpid.uebuf,sndlen);
+              MPIDI_Alloc_lock(&rreq->mpid.uebuf,sndlen);
               rreq->mpid.uebuf_malloc = mpidiBufMM;
               #else
               MPID_assert_always(0);

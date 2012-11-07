@@ -92,7 +92,7 @@ int MPID_Finalize()
 
  if (TOKEN_FLOW_CONTROL_ON)
    {
-     #if TOKEN_FLOW_CONTROL_ON
+     #if TOKEN_FLOW_CONTROL
      extern char *EagerLimit;
      
      if (EagerLimit) MPIU_Free(EagerLimit);

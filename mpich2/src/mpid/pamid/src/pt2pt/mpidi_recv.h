@@ -90,10 +90,10 @@ MPIDI_Update_rettoks_inline(int source)
  }
 
 static inline void *
-MPIDI_Alloc_lock_inline(void *buf,size_t size)
+MPIDI_Alloc_lock_inline(void **buf,size_t size)
  {
        MPIU_THREAD_CS_ENTER(MSGQUEUE,0);
-       (buf) = (void *) MPIDI_mm_alloc(size);
+       (*buf) = (void *) MPIDI_mm_alloc(size);
        MPIU_THREAD_CS_EXIT(MSGQUEUE,0);
  }
 
