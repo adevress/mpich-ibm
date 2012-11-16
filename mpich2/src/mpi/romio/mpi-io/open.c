@@ -50,7 +50,7 @@ Output Parameters:
 int MPI_File_open(MPI_Comm comm, MPICH2_CONST char *filename, int amode,
                   MPI_Info info, MPI_File *fh)
 {
-    int error_code, file_system, flag, tmp_amode=0, rank;
+    int error_code = MPI_SUCCESS, file_system, flag, tmp_amode=0, rank;
     char *tmp;
     MPI_Comm dupcomm;
     ADIOI_Fns *fsops;
@@ -64,15 +64,15 @@ int MPI_File_open(MPI_Comm comm, MPICH2_CONST char *filename, int amode,
     MPIU_THREAD_CS_ENTER(ALLFUNC,);
 
     /* --BEGIN ERROR HANDLING-- */
-    MPIR_ERRTEST_COMM(comm, error_code);
-    MPIR_ERRTEST_INFO_OR_NULL(info, error_code);
+    if(info != MPI_INFO_NULL)
+        MPIO_CHECK_INFO(info, error_code);
     /* --END ERROR HANDLING-- */
 
-    MPI_Comm_test_inter(comm, &flag);
+    error_code = MPI_Comm_test_inter(comm, &flag);
     /* --BEGIN ERROR HANDLING-- */
-    if (flag)
+    if (error_code || flag)
     {
-	error_code = MPIO_Err_create_code(MPI_SUCCESS, MPIR_ERR_RECOVERABLE,
+	error_code = MPIO_Err_create_code(error_code, MPIR_ERR_RECOVERABLE,
 					  myname, __LINE__, MPI_ERR_COMM, 
 					  "**commnotintra", 0);
 	goto fn_fail;

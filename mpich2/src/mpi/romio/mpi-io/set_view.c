@@ -96,7 +96,10 @@ int MPI_File_set_view(MPI_File mpi_fh, MPI_Offset disp, MPI_Datatype etype,
 	error_code = MPIO_Err_return_file(fh, error_code);
 	goto fn_exit;
     }
-    MPIR_ERRTEST_INFO_OR_NULL(info, error_code);
+
+    if(info != MPI_INFO_NULL){
+        MPIO_CHECK_INFO(info, error_code);
+    }
     /* --END ERROR HANDLING-- */
 
     MPI_Type_size(filetype, &filetype_size);
@@ -182,4 +185,9 @@ fn_exit:
     MPIU_THREAD_CS_EXIT(ALLFUNC,);
 
     return error_code;
+fn_fail:
+	/* --BEGIN ERROR HANDLING-- */
+	error_code = MPIO_Err_return_file(fh, error_code);
+	goto fn_exit;
+	/* --END ERROR HANDLING-- */
 }
