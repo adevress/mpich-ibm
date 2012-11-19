@@ -68,6 +68,11 @@ int MPI_File_set_view(MPI_File mpi_fh, MPI_Offset disp, MPI_Datatype etype,
 	error_code = MPIO_Err_return_file(fh, error_code);
 	goto fn_exit;
     }
+    error_code = MPIR_Datatype_iscommitted(etype);
+    if(error_code != MPI_SUCCESS){
+	    error_code = MPIO_Err_return_file(fh, error_code);
+    	goto fn_exit;
+    }
 
     if (filetype == MPI_DATATYPE_NULL) {
 	error_code = MPIO_Err_create_code(MPI_SUCCESS, MPIR_ERR_RECOVERABLE,
@@ -75,6 +80,11 @@ int MPI_File_set_view(MPI_File mpi_fh, MPI_Offset disp, MPI_Datatype etype,
 					  "**iofiletype", 0);
 	error_code = MPIO_Err_return_file(fh, error_code);
 	goto fn_exit;
+    }
+    error_code = MPIR_Datatype_iscommitted(filetype);
+    if(error_code != MPI_SUCCESS){
+	    error_code = MPIO_Err_return_file(fh, error_code);
+    	goto fn_exit;
     }
 
     if ((fh->access_mode & MPI_MODE_SEQUENTIAL) &&
@@ -106,7 +116,7 @@ int MPI_File_set_view(MPI_File mpi_fh, MPI_Offset disp, MPI_Datatype etype,
     MPI_Type_size(etype, &etype_size);
 
     /* --BEGIN ERROR HANDLING-- */
-    if (filetype_size % etype_size != 0)
+    if (etype_size != 0 && filetype_size % etype_size != 0)
     {
 	error_code = MPIO_Err_create_code(MPI_SUCCESS, MPIR_ERR_RECOVERABLE,
 					  myname, __LINE__, MPI_ERR_ARG,
