@@ -59,8 +59,6 @@ int MPIDO_Alltoall(const void *sendbuf,
    const struct MPIDI_Comm* const mpid = &(comm_ptr->mpid);
    const int selected_type = mpid->user_selected_type[PAMI_XFER_ALLTOALL];
 
-   if(sendbuf == MPI_IN_PLACE) 
-     pamidt = 0; /* Disable until ticket #632 is fixed */
    if(sendbuf != MPI_IN_PLACE)
    {
       MPIDI_Datatype_get_info(1, sendtype, snd_contig, sndlen, sdt, sdt_true_lb);
