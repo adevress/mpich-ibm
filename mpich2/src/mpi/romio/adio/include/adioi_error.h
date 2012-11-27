@@ -50,10 +50,6 @@ if (datatype == MPI_DATATYPE_NULL) {				\
 				      myname, __LINE__,		\
 				      MPI_ERR_TYPE, 		\
 				      "**dtypenull", 0);	\
-}else{                                                       \
-    error_code = MPIR_Datatype_iscommitted(datatype);       \
-}                                                           \
-if(error_code != MPI_SUCCESS) {                             \
     error_code = MPIO_Err_return_file(fh, error_code);		\
     goto fn_exit;                                               \
 }

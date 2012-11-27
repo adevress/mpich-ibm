@@ -332,24 +332,3 @@ void MPIR_DatatypeAttrFinalize( void )
 			  MPIR_FINALIZE_CALLBACK_PRIO-1);
     }
 }
-
-int MPIR_Datatype_iscommitted(MPI_Datatype datatype)
-{
-    int mpi_errno = MPI_SUCCESS;
-
-    MPIR_ERRTEST_DATATYPE(datatype, "datatype", mpi_errno);
-    if (HANDLE_GET_KIND(datatype) == HANDLE_KIND_BUILTIN)
-        return MPI_SUCCESS;
-    else  {
-        MPID_Datatype *datatype_ptr = NULL;
-        MPID_Datatype_get_ptr(datatype, datatype_ptr);
-        MPID_Datatype_valid_ptr( datatype_ptr, mpi_errno );
-        if (mpi_errno != MPI_SUCCESS)
-            MPIU_ERR_POP(mpi_errno);
-        MPID_Datatype_committed_ptr( datatype_ptr, mpi_errno );
-        if (mpi_errno != MPI_SUCCESS)
-            MPIU_ERR_POP(mpi_errno);
-    }
-fn_fail:
-    return mpi_errno;
-}
