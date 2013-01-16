@@ -167,7 +167,7 @@ dnl but generate warning messages, or have different interpretations
 dnl (which seems to make __attribute__ just as bad as #pragma) 
 dnl For example, the Intel icc compiler accepts __attribute__ and
 dnl __attribute__((pure)) but generates warnings for __attribute__((format...))
-if test "$GCC" = "yes" ; then
+dnl if test "$GCC" = "yes" ; then
     AC_CACHE_CHECK([whether __attribute__ allowed],
 pac_cv_gnu_attr_pure,[
 AC_TRY_COMPILE([int foo(int) __attribute__ ((pure));],[int a;],
@@ -179,7 +179,7 @@ pac_cv_gnu_attr_format=yes,pac_cv_gnu_attr_format=no)])
     if test "$pac_cv_gnu_attr_pure" = "yes" -a "$pac_cv_gnu_attr_format" = "yes" ; then
         AC_DEFINE(HAVE_GCC_ATTRIBUTE,1,[Define if GNU __attribute__ is supported])
     fi
-fi
+dnl fi
 
 dnl Check to make sure that the compiler rejects bogus inline assembly
 dnl statements.  If it does not, then we need to be careful below when
