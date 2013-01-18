@@ -556,3 +556,4 @@ MPIDO_Allgather(const void *sendbuf,
                          recvbuf, recvcount, recvtype,
                          comm_ptr, mpierrno);
 }
+

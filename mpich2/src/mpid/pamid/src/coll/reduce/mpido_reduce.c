@@ -220,3 +220,4 @@ int MPIDO_Reduce(const void *sendbuf,
    TRACE_ERR("Reduce done\n");
    return 0;
 }
+

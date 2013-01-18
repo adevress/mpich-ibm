@@ -420,8 +420,6 @@ int MPIDO_Scatterv(const void *sendbuf,
 }
 
 
-
-
 #if 0
 /* remove the glue-based optimized scattervs for now. */
 

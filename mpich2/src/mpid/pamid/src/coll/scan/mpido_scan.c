@@ -240,3 +240,4 @@ int MPIDO_Doscan(const void *sendbuf, void *recvbuf,
    TRACE_ERR("Scan done\n");
    return rc;
 }
+

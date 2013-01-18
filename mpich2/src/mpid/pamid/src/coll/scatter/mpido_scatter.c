@@ -299,7 +299,6 @@ int MPIDO_Scatter(const void *sendbuf,
 }
 
 
-
 #if 0 /* old glue-based scatter-via-bcast */
 
   /* Assume glue protocol sucks for now.... Needs work if not or to enable */
