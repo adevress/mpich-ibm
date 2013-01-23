@@ -224,7 +224,7 @@ int MPIDO_Gather(const void *sendbuf,
      if(unlikely(verbose))
        fprintf(stderr,"gather MPI_IN_PLACE buffering\n");
      gather.cmd.xfer_gather.stypecount = recv_bytes;
-     gather.cmd.xfer_gather.sndbuf = (char *)recvbuf + recv_bytes*rank;
+     gather.cmd.xfer_gather.sndbuf = PAMI_IN_PLACE;
    }
    else
    {

@@ -219,7 +219,7 @@ int MPIDO_Scatter(const void *sendbuf,
        fprintf(stderr,"scatter MPI_IN_PLACE buffering\n");
      MPIDI_Datatype_get_info(sendcount, sendtype, contig,
                              nbytes, data_ptr, true_lb);
-     scatter.cmd.xfer_scatter.rcvbuf = (char *)sendbuf + nbytes*rank;
+     scatter.cmd.xfer_scatter.rcvbuf = PAMI_IN_PLACE;
      scatter.cmd.xfer_scatter.rtype = stype;
      scatter.cmd.xfer_scatter.rtypecount = sendcount;
    }

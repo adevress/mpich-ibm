@@ -379,7 +379,7 @@ MPIDO_Allgatherv(const void *sendbuf,
    {
      if(unlikely(verbose))
        fprintf(stderr,"allgatherv MPI_IN_PLACE buffering\n");
-     sbuf = (char *)recvbuf+displs[rank]*recv_size;
+     sbuf = PAMI_IN_PLACE;
      send_true_lb = recv_true_lb;
      stype = rtype;
      scount = recvcounts[rank];

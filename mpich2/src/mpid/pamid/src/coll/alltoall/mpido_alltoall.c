@@ -119,7 +119,7 @@ int MPIDO_Alltoall(const void *sendbuf,
          fprintf(stderr,"alltoall MPI_IN_PLACE buffering\n");
       alltoall.cmd.xfer_alltoall.stype = rtype;
       alltoall.cmd.xfer_alltoall.stypecount = recvcount;
-      alltoall.cmd.xfer_alltoall.sndbuf = (char *)recvbuf + rdt_true_lb;
+      alltoall.cmd.xfer_alltoall.sndbuf = PAMI_IN_PLACE;
    }
    else
    {

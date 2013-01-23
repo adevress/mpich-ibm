@@ -364,8 +364,9 @@ MPIDO_Allgather(const void *sendbuf,
    send_bytes = recv_bytes;
    rbuf = (char *)recvbuf+recv_true_lb;
 
-   sbuf = (char *)recvbuf+recv_bytes*rank;
-   if(sendbuf != MPI_IN_PLACE)
+   if(sendbuf == MPI_IN_PLACE)
+     sbuf = PAMI_IN_PLACE;
+   else
    {
      if(unlikely(verbose))
          fprintf(stderr,"allgather MPI_IN_PLACE buffering\n");

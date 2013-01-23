@@ -112,7 +112,7 @@ int MPIDO_Alltoallv(const void *sendbuf,
       alltoallv.cmd.xfer_alltoallv_int.stype = rtype;
       alltoallv.cmd.xfer_alltoallv_int.sdispls = (int *) recvdispls;
       alltoallv.cmd.xfer_alltoallv_int.stypecounts = (int *) recvcounts;
-      alltoallv.cmd.xfer_alltoallv_int.sndbuf = (char *)recvbuf+rdt_true_lb;
+      alltoallv.cmd.xfer_alltoallv_int.sndbuf = PAMI_IN_PLACE;
    }
    else
    {

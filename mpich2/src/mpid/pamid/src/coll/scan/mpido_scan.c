@@ -140,7 +140,7 @@ int MPIDO_Doscan(const void *sendbuf, void *recvbuf,
    {
       if(unlikely(verbose))
          fprintf(stderr,"scan MPI_IN_PLACE buffering\n");
-      sbuf = rbuf;
+      sbuf = PAMI_IN_PLACE;
    }
    else
    {
