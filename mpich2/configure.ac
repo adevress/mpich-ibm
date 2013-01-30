@@ -1132,8 +1132,12 @@ if test "$MPID_NO_SPAWN" = yes ; then
 fi
 
 # MPL
+AC_ARG_VAR([MPLLIBNAME],[can be used to override the name of the MPL library (default: "mpl")])
+MPLLIBNAME=${MPLLIBNAME:-"mpl"}
+export MPLLIBNAME
+AC_SUBST(MPLLIBNAME)
 PAC_CONFIG_SUBDIR(src/mpl,,AC_MSG_ERROR(MPL configure failed))
-PAC_PREPEND_FLAG([-lmpl], [WRAPPER_LIBS])
+PAC_PREPEND_FLAG([-l${MPLLIBNAME}], [WRAPPER_LIBS])
 PAC_APPEND_FLAG([-I${master_top_builddir}/src/mpl/include], [CPPFLAGS])
 PAC_APPEND_FLAG([-I${use_top_srcdir}/src/mpl/include], [CPPFLAGS])
 EXTERNAL_SRC_DIRS="$EXTERNAL_SRC_DIRS src/mpl"
@@ -5266,6 +5270,7 @@ export CFLAGS
 export FCFLAGS
 export LDFLAGS
 export OPALIBNAME
+export MPLLIBNAME
 # Make sure that any Fortran 77 and Fortran 90 compilers are exported to 
 # the subdir builds (in particular, ROMIO may try to use the Fortran 90
 # compiler to determine the Fortran 90 KINDS for MPI_OFFSET_KIND).

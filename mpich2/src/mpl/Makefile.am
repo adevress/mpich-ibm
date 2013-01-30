@@ -7,15 +7,15 @@
 ACLOCAL_AMFLAGS = -I confdb
 AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_builddir)/include
 
-lib_LTLIBRARIES = libmpl.la
-libmpl_la_SOURCES = src/mplstr.c src/mpltrmem.c src/mplenv.c
-libmpl_la_LDFLAGS = ${libmpl_so_versionflags}
+lib_LTLIBRARIES = lib@MPLLIBNAME@.la
+lib@MPLLIBNAME@_la_SOURCES = src/mplstr.c src/mpltrmem.c src/mplenv.c
+lib@MPLLIBNAME@_la_LDFLAGS = ${libmpl_so_versionflags}
 
 MPL_TESTS = strsep
 TESTS = $(MPL_TESTS)
 check_PROGRAMS = $(MPL_TESTS)
 strsep_SOURCES = test/strsep.c
-strsep_LDADD = libmpl.la
+strsep_LDADD = lib@MPLLIBNAME@.la
 
 mpl_headers =              \
     include/mpl.h          \
@@ -34,7 +34,7 @@ endif !MPL_EMBEDDED_MODE
 
 # --------------------------------------------------------------------------
 .PHONY: coverage
-gcov_sources = $(libmpl_la_SOURCES)
+gcov_sources = $(lib@MPLLIBNAME@_la_SOURCES)
 # assumes that these sources were compiled appropriately ("-fprofile-arcs"
 # and "-ftest-coverage")
 coverage:
