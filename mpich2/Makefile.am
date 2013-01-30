@@ -14,6 +14,7 @@ AM_FCFLAGS =
 include_HEADERS =
 nodist_include_HEADERS =
 nodist_noinst_HEADERS =
+modinc_HEADERS =
 BUILT_SOURCES =
 bin_PROGRAMS =
 bin_SCRIPTS =
