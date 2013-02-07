@@ -111,6 +111,7 @@ typedef struct
     unsigned collectives;  /**< Enable optimized collective functions. */
     unsigned subcomms;
     unsigned select_colls; /**< Enable collective selection */
+    unsigned memory;
   }
   optimized;
 
