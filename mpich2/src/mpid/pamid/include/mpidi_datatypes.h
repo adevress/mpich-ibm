@@ -108,10 +108,10 @@ typedef struct
 
   struct
   {
-    unsigned collectives;  /**< Enable optimized collective functions. */
-    unsigned subcomms;
+    unsigned collectives;  /**< Enable PAMI optimized collective functions. */
+    unsigned subcomms;     /**< Enable hardware optimized subcomm's */
     unsigned select_colls; /**< Enable collective selection */
-    unsigned memory;
+    unsigned memory;       /**< Enable memory optimized subcomm's */
   }
   optimized;
 
