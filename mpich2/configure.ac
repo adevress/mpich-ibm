@@ -1144,6 +1144,16 @@ AC_ARG_WITH([mpl-prefix],
                              distributed with MPICH2.])],
             [],dnl action-if-given
             [with_mpl_prefix=embedded]) dnl action-if-not-given
+AC_ARG_WITH([mpl-includedir],
+            [AS_HELP_STRING([[--with-mpl-includedir[=DIR]]],
+                            [use the MPL header files installed in DIR,
+                             rather than the ones  in [mpl-prefix]/include.  Pass
+                             "embedded" to force usage of the MPL source
+                             distributed with MPICH2.])],
+            [],dnl action-if-given
+            [with_mpl_includedir=embedded]) dnl action-if-not-given
+
+
 mpldir=""
 AC_SUBST([mpldir])
 mplsrcdir=""
@@ -1161,11 +1171,15 @@ if test "$with_mpl_prefix" = "embedded" ; then
     mpllibdir="${master_top_builddir}/src/mpl"
     mplsrcdir="${master_top_builddir}/src/mpl"
 else
+    if test "$with_mpl_includedir" = "embedded" ; then
+      with_mpl_includedir="${with_mpl_prefix}/include"
+    fi
+
     # The user specified an already-installed MPL; just sanity check, don't
     # subconfigure it
-    AS_IF([test -s "${with_mpl_prefix}/include/mplconfig.h"],
+    AS_IF([test -s "${with_mpl_includedir}/mplconfig.h"],
           [:],[AC_MSG_ERROR([the MPL installation in "${with_mpl_prefix}" appears broken])])
-    PAC_APPEND_FLAG([-I${with_mpl_prefix}/include],[CPPFLAGS])
+    PAC_APPEND_FLAG([-I${with_mpl_includedir}],[CPPFLAGS])
     PAC_PREPEND_FLAG([-l${MPLLIBNAME}],[WRAPPER_LIBS])
     PAC_APPEND_FLAG([-L${with_mpl_prefix}/lib],[WRAPPER_LDFLAGS])
     mpllibdir="${with_mpl_prefix}/lib"
@@ -1256,6 +1270,7 @@ else
     fi
     PAC_APPEND_FLAG([-L${with_openpa_prefix}/lib],[WRAPPER_LDFLAGS])
 fi
+
 
 # ----------------------------------------------------------------------------
 # Threads
