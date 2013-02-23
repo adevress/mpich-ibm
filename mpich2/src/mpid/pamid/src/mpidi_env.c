@@ -117,6 +117,7 @@
  *   - 0 - Some optimized protocols may be disabled.
  *   - 1 - All performance optimized protocols will be enabled when available
  * 
+ *  
  * - PAMID_VERBOSE - Increases the amount of information dumped during an
  *   MPI_Abort() call and during varoius MPI function calls.  Possible values:
  *   - 0 - No additional information is dumped.
