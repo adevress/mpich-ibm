@@ -6065,12 +6065,6 @@ AC_OUTPUT(Makefile \
 	  src/env/mpif90.sh \
 	  src/env/mpif90.conf \
 	  src/env/mpif90.bash \
-	  src/env/mpif95.sh \
-	  src/env/mpif95.conf \
-	  src/env/mpif95.bash \
-	  src/env/mpif2003.sh \
-	  src/env/mpif2003.conf \
-	  src/env/mpif2003.bash \
           src/env/parkill \
 	  src/util/dbg/getfuncstack \
           src/include/mpi.h \
