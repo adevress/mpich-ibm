@@ -287,6 +287,14 @@ void MPIDI_Coll_comm_destroy(MPID_Comm *comm)
    for(i=0;i<PAMI_XFER_COUNT;i++)
    {
      TRACE_ERR("Freeing algo/meta %d\n", i);
+     /* When allocating comm->mpid.coll_algorithm, we skip allocations for
+       AM collectives. Also there is no explicit initialization of 
+       comm->mpid.coll_algorithm to NULLs. This may cause MPIU_TestFree to
+       cause problems when freeing. We skip AM collectives here as we skip
+       allocating them in MPIDI_Comm_coll_query */
+     if(i == PAMI_XFER_AMBROADCAST || i == PAMI_XFER_AMSCATTER ||
+        i == PAMI_XFER_AMGATHER || i == PAMI_XFER_AMREDUCE)
+         continue;
      MPIU_TestFree(&comm->mpid.coll_algorithm[i][0]);
      MPIU_TestFree(&comm->mpid.coll_algorithm[i][1]);
      MPIU_TestFree(&comm->mpid.coll_metadata[i][0]);
