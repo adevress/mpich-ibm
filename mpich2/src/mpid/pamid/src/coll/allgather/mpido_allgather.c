@@ -98,7 +98,7 @@ int MPIDO_Allgather_allreduce(const void *sendbuf,
 
     for(i = 0; i < (send_size/sizeof(int)); ++i) 
       tmpsbuf[i] = (double)sibuf[i];
-    
+    /* Switch to comm->coll_fns->fn() */
     rc = MPIDO_Allreduce(MPI_IN_PLACE,
 			 tmprbuf,
 			 recv_size/sizeof(int),
@@ -124,6 +124,7 @@ int MPIDO_Allgather_allreduce(const void *sendbuf,
   memset(destbuf + send_size, 0, recv_size - (rank + 1) * send_size);
 
   if (sendtype == MPI_DOUBLE && recvtype == MPI_DOUBLE)
+    /* Switch to comm->coll_fns->fn() */
     rc = MPIDO_Allreduce(MPI_IN_PLACE,
 			 startbuf,
 			 recv_size/sizeof(double),
@@ -132,6 +133,7 @@ int MPIDO_Allgather_allreduce(const void *sendbuf,
 			 comm_ptr,
 			 mpierrno);
   else
+    /* Switch to comm->coll_fns->fn() */
     rc = MPIDO_Allreduce(MPI_IN_PLACE,
 			 startbuf,
 			 recv_size/sizeof(int),
@@ -190,7 +192,7 @@ int MPIDO_Allgather_bcast(const void *sendbuf,
   for (i = 0; i < np; i++)
   {
     void *destbuf = recvbuf + i * recvcount * extent;
-    /* TODO: Change to PAMI */
+    /* Switch to comm->coll_fns->fn() */
     rc = MPIDO_Bcast(destbuf,
                      recvcount,
                      recvtype,
@@ -259,6 +261,7 @@ int MPIDO_Allgather_alltoall(const void *sendbuf,
   }
 
 
+  /* Switch to comm->coll_fns->fn() */
   rc = MPIDO_Alltoallv((const void *)a2a_sendbuf,
                        a2a_sendcounts,
                        a2a_senddispls,
@@ -364,12 +367,9 @@ MPIDO_Allgather(const void *sendbuf,
    send_bytes = recv_bytes;
    rbuf = (char *)recvbuf+recv_true_lb;
 
-   if(sendbuf == MPI_IN_PLACE)
-     sbuf = PAMI_IN_PLACE;
-   else
+   sbuf = PAMI_IN_PLACE;
+   if(sendbuf != MPI_IN_PLACE)
    {
-     if(unlikely(verbose))
-         fprintf(stderr,"allgather MPI_IN_PLACE buffering\n");
       MPIDI_Datatype_get_info(sendcount,
                             sendtype,
                             config[MPID_SEND_CONTIG],
@@ -378,6 +378,9 @@ MPIDO_Allgather(const void *sendbuf,
                             send_true_lb);
       sbuf = (char *)sendbuf+send_true_lb;
    }
+   else
+     if(unlikely(verbose))
+         fprintf(stderr,"allgather MPI_IN_PLACE buffering\n");
 
   /* verify everyone's datatype contiguity */
   /* Check buffer alignment now, since we're pre-allreducing anyway */

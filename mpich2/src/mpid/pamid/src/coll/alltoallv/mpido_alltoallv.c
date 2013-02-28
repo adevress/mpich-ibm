@@ -62,10 +62,13 @@ int MPIDO_Alltoallv(const void *sendbuf,
    const struct MPIDI_Comm* const mpid = &(comm_ptr->mpid);
    const int selected_type = mpid->user_selected_type[PAMI_XFER_ALLTOALLV_INT];
 
-   if(MPIDI_Datatype_to_pami(sendtype, &stype, -1, NULL, &tmp) != MPI_SUCCESS)
+   if((sendbuf != MPI_IN_PLACE) && (MPIDI_Datatype_to_pami(sendtype, &stype, -1, NULL, &tmp) != MPI_SUCCESS))
       pamidt = 0;
    if(MPIDI_Datatype_to_pami(recvtype, &rtype, -1, NULL, &tmp) != MPI_SUCCESS)
       pamidt = 0;
+
+   MPIDI_Datatype_get_info(1, recvtype, rcv_contig, rcvtypelen, rdt, rdt_true_lb);
+   if(!rcv_contig) pamidt = 0;
 
    if((selected_type == MPID_COLL_USE_MPICH) ||
        pamidt == 0)
@@ -76,8 +79,6 @@ int MPIDO_Alltoallv(const void *sendbuf,
                             recvbuf, recvcounts, recvdispls, recvtype,
                             comm_ptr, mpierrno);
    }
-
-   MPIDI_Datatype_get_info(1, recvtype, rcv_contig, rcvtypelen, rdt, rdt_true_lb);
 
    pami_xfer_t alltoallv;
    pami_algorithm_t my_alltoallv;
@@ -138,25 +139,30 @@ int MPIDO_Alltoallv(const void *sendbuf,
         /* process metadata bits */
          if((!my_md->check_correct.values.inplace) && (sendbuf == MPI_IN_PLACE))
             result.check.unspecified = 1;
-/*         MPI_Aint data_true_lb;
-         MPID_Datatype *data_ptr;
-         int data_size, data_contig;
-         MPIDI_Datatype_get_info(??, sendtype, data_contig, data_size, data_ptr, data_true_lb); 
-         if((my_md->range_lo <= data_size) &&
-            (my_md->range_hi >= data_size))
-            ; *//* ok, algorithm selected */
-/*         else
+/* Can't check ranges like this.  Non-local.  Comment out for now.
+         if(my_md->check_correct.values.rangeminmax)
          {
-            result.check.range = 1;
-            if(unlikely(verbose))
-            {   
-               fprintf(stderr,"message size (%u) outside range (%zu<->%zu) for %s.\n",
-                       data_size,
-                       my_md->range_lo,
-                       my_md->range_hi,
-                       my_md->name);
+            MPI_Aint data_true_lb;
+            MPID_Datatype *data_ptr;
+            int data_size, data_contig;
+            MPIDI_Datatype_get_info(??, sendtype, data_contig, data_size, data_ptr, data_true_lb); 
+            if((my_md->range_lo <= data_size) &&
+               (my_md->range_hi >= data_size))
+               ; 
+            else
+            {
+               result.check.range = 1;
+               if(unlikely(verbose))
+               {   
+                  fprintf(stderr,"message size (%u) outside range (%zu<->%zu) for %s.\n",
+                          data_size,
+                          my_md->range_lo,
+                          my_md->range_hi,
+                          my_md->name);
+               }
             }
-         }*/
+         }
+*/
       }
       else /* calling the check fn is sufficient */
          result = my_md->check_fn(&alltoallv);
