@@ -286,54 +286,44 @@ struct MPIDI_Comm
 {
   pami_geometry_t geometry; /**< Geometry component for collectives      */
   pami_geometry_t parent; /**< The parent geometry this communicator came from */
-  pami_algorithm_t *coll_algorithm[PAMI_XFER_COUNT][2];
-  pami_metadata_t *coll_metadata[PAMI_XFER_COUNT][2];
-  char coll_count[PAMI_XFER_COUNT][2];
-  pami_algorithm_t user_selected[PAMI_XFER_COUNT];
-  /* no way to tell if user_selected[] is NULL */
-  /* could probably union these two though? */
-  char user_selected_type[PAMI_XFER_COUNT];
-  pami_metadata_t user_metadata[PAMI_XFER_COUNT];
-  char last_algorithm[100];
-  char preallreduces[MPID_NUM_PREALLREDUCES];
-  /* \todo Need to figure out how to deal with algorithms above the pami level */
-  char allgathers[4];
-  char allgathervs[4];
-  char scattervs[2];
-  char optgather, optscatter, optreduce;
-  unsigned num_requests;
-  /* These need to be freed at geom destroy, so we need to store them
-   * inside the communicator struct until destroy time rather than
-   * allocating pointers on the stack
-   */
-  /* For create_taskrange */
-  pami_geometry_range_t range;
-  /* For create_tasklist/endpoints if we ever use it */
-  pami_task_t *tasks;
-  pami_endpoint_t *endpoints;
-  /* There are some protocols where the optimized protocol always works and
-   * is the best performance */
-  /* Assume we have small vs large cutoffs vs medium for some protocols */
-  pami_algorithm_t opt_protocol[PAMI_XFER_COUNT][2];
-  int must_query[PAMI_XFER_COUNT][2];
-  pami_metadata_t opt_protocol_md[PAMI_XFER_COUNT][2];
-  int cutoff_size[PAMI_XFER_COUNT][2];
   /* Our best allreduce protocol always works on 
    * doubles and sum/min/max. Since that is a common
    * occurance let's cache that protocol and call
    * it without checking.  Any other dt/op must be 
    * checked */ 
-  pami_algorithm_t cached_allreduce;
-  pami_metadata_t cached_allreduce_md;
-  int query_cached_allreduce; 
+  int                   cached_allreduce_type; 
+  pami_algorithm_t      cached_allreduce;
+  pami_metadata_t       cached_allreduce_md;
 
-  union tasks_descrip_t {
-    /* For create_taskrange */
-    pami_geometry_range_t *ranges;
-    /* For create_tasklist/endpoints if we ever use it */
-    pami_task_t *tasks;
-    pami_endpoint_t *endpoints;
-  } tasks_descriptor;
+  const char *          last_algorithm; /* Last algorithm used (for MPIX_Get_last_algorithm_name */
+
+  /* Glue (or user) selected optimized collective protocols.  
+     Assume we have small vs large cutoffs for some protocols, so two protocols each */
+  int                   optimized_algorithm_type[PAMI_XFER_COUNT][2];
+  pami_algorithm_t      optimized_algorithm[PAMI_XFER_COUNT][2];
+  pami_metadata_t       optimized_algorithm_metadata[PAMI_XFER_COUNT][2];
+  int                   optimized_algorithm_cutoff_size[PAMI_XFER_COUNT][2];
+
+  /* Algorithm/metadata lists queried from the geometry */
+  char                  num_algorithms[PAMI_XFER_COUNT][2];
+  pami_algorithm_t     *algorithm_list[PAMI_XFER_COUNT][2];
+  pami_metadata_t      *algorithm_metadata_list[PAMI_XFER_COUNT][2];
+
+  /* Glue level protocol flags */
+  char preallreduces[MPID_NUM_PREALLREDUCES];
+  char allgathers[3];
+  char allgathervs[3];
+  char scattervs[2];
+  char optgather[2], optscatter, optreduce;
+
+  /* Current (asyncflowctl countdown) request number. Init'd to MPIDI_Process.optimized.num_requests */
+  unsigned num_requests; 
+
+  /* For create_taskrange */
+  pami_geometry_range_t range;
+  /* A list of task.  Either a pointer to MPICH vcr or a copy of MPICH vc depending on dynamic tasking. */
+  pami_task_t *tasks;
+
 };
 
 

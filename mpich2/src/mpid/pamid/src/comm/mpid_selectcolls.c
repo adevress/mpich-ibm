@@ -28,73 +28,43 @@ static char* MPIDI_Coll_type_name(int i)
 {
   switch(i)
   {
-  case 0: return("Broadcast");
-  case 1: return("Allreduce");
-  case 2: return("Reduce");
-  case 3: return("Allgather");
-  case 4: return("Allgatherv");
-  case 5: return("Allgatherv_int");
-  case 6: return("Scatter");
-  case 7: return("Scatterv");
-  case 8: return("Scatterv_int");
-  case 9: return("Gather");
-  case 10: return("Gatherv");
-  case 11: return("Gatherv_int");
-  case 12: return("Barrier");
-  case 13: return("Alltoall");
-  case 14: return("Alltoallv");
-  case 15: return("Alltoallv_int");
-  case 16: return("Scan");
-  case 17: return("Reduce_scatter");
+  case PAMI_XFER_BROADCAST      : return("Broadcast");
+  case PAMI_XFER_ALLREDUCE      : return("Allreduce");
+  case PAMI_XFER_REDUCE         : return("Reduce");
+  case PAMI_XFER_ALLGATHER      : return("Allgather");
+  case PAMI_XFER_ALLGATHERV     : return("Allgatherv_size_t");
+  case PAMI_XFER_ALLGATHERV_INT : return("Allgatherv");
+  case PAMI_XFER_SCATTER        : return("Scatter");
+  case PAMI_XFER_SCATTERV       : return("Scatterv_size_t");
+  case PAMI_XFER_SCATTERV_INT   : return("Scatterv");
+  case PAMI_XFER_GATHER         : return("Gather");
+  case PAMI_XFER_GATHERV        : return("Gatherv_size_t");
+  case PAMI_XFER_GATHERV_INT    : return("Gatherv");
+  case PAMI_XFER_BARRIER        : return("Barrier");
+  case PAMI_XFER_ALLTOALL       : return("Alltoall");
+  case PAMI_XFER_ALLTOALLV      : return("Alltoallv_size_t");
+  case PAMI_XFER_ALLTOALLV_INT  : return("Alltoallv");
+  case PAMI_XFER_SCAN           : return("Scan");
+  case PAMI_XFER_REDUCE_SCATTER : return("Reduce_scatter");
   default: return("AM Collective");
   }
 }
-static void MPIDI_Update_coll(pami_algorithm_t coll, 
-                              int type,
-                              int index,
-                              MPID_Comm *comm);
 
-static void MPIDI_Update_coll(pami_algorithm_t coll, 
-                              int type,  /* must query vs always works */
-                              int index,
-                              MPID_Comm *comm)
+static void MPIDI_Update_optimized_algorithm(pami_algorithm_t coll, 
+                                                 int type,  /* must query vs always works */
+                                                 int index,
+                                                 MPID_Comm *comm)
 {
 
-  comm->mpid.user_selected_type[coll] = type;
+  comm->mpid.optimized_algorithm_type[coll][0] = type;
   TRACE_ERR("Update_coll for protocol %s, type: %d index: %d\n", 
-            comm->mpid.coll_metadata[coll][type][index].name, type, index);
+            comm->mpid.algorithm_metadata_list[coll][type][index].name, type, index);
 
-  /* Are we in the 'must query' list? If so determine how "bad" it is */
-  if(type == MPID_COLL_QUERY)
-  {
-    /* First, is a check always required? */
-    if(comm->mpid.coll_metadata[coll][type][index].check_correct.values.checkrequired)
-    {
-      TRACE_ERR("Protocol %s check_fn required always\n", comm->mpid.coll_metadata[coll][type][index].name);
-      /* We must have a check_fn */
-      MPID_assert_always(comm->mpid.coll_metadata[coll][type][index].check_fn !=NULL);
-      comm->mpid.user_selected_type[coll] = MPID_COLL_CHECK_FN_REQUIRED;
-    }
-    else if(comm->mpid.coll_metadata[coll][type][index].check_fn != NULL)
-    {
-      /* For now, if there's a check_fn we will always call it and not cache.
-         We *could* be smarter about this eventually.                        */
-      TRACE_ERR("Protocol %s setting to always query/call check_fn\n", comm->mpid.coll_metadata[coll][type][index].name);
-      comm->mpid.user_selected_type[coll] = MPID_COLL_CHECK_FN_REQUIRED;
-    }
-    else /* No check fn but we still need to check metadata bits (query protocol)  */
-    {
-      TRACE_ERR("Protocol %s setting to always query/no check_fn\n", comm->mpid.coll_metadata[coll][type][index].name);
-      comm->mpid.user_selected_type[coll] = MPID_COLL_ALWAYS_QUERY;
-    }
+  comm->mpid.optimized_algorithm[coll][0] = 
+  comm->mpid.algorithm_list[coll][type][index];
 
-  }
-
-  comm->mpid.user_selected[coll] = 
-  comm->mpid.coll_algorithm[coll][type][index];
-
-  memcpy(&comm->mpid.user_metadata[coll],
-         &comm->mpid.coll_metadata[coll][type][index],
+  memcpy(&comm->mpid.optimized_algorithm_metadata[coll][0],
+         &comm->mpid.algorithm_metadata_list[coll][type][index],
          sizeof(pami_metadata_t));
 }
 
@@ -136,44 +106,46 @@ static int MPIDI_Check_protocols(char *names[], MPID_Comm *comm, char *name, int
     {
       TRACE_ERR("Selecting MPICH for %s\n", name);
       if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm->rank == 0)
-        fprintf(stderr,"Selecting MPICH for %d (%s)\n", constant, name);
-      comm->mpid.user_selected_type[constant] = MPID_COLL_USE_MPICH;
-      comm->mpid.user_selected[constant] = 0;
+        fprintf(stderr,"Selecting MPICH as user selected protocol for %s on comm %p\n", name, comm);
+      comm->mpid.optimized_algorithm_type[constant][0] = MPID_COLL_USE_MPICH;
+      comm->mpid.optimized_algorithm[constant][0] = 0;
       return 0;
     }
 
-    for(i=0; i < comm->mpid.coll_count[constant][0];i++)
+    for(i=0; i < comm->mpid.num_algorithms[constant][0];i++)
     {
-      if(strncasecmp(envopts, comm->mpid.coll_metadata[constant][0][i].name,strlen(envopts)) == 0)
+      if(strncasecmp(envopts, comm->mpid.algorithm_metadata_list[constant][0][i].name,strlen(envopts)) == 0)
       {
-        MPIDI_Update_coll(constant, MPID_COLL_NOQUERY, i, comm);
+        MPIDI_Update_optimized_algorithm(constant, MPID_COLL_NOQUERY, i, comm);
         if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm->rank == 0)
-          fprintf(stderr,"setting %s as default %s for comm %p\n", comm->mpid.coll_metadata[constant][0][i].name, name, comm);
+          fprintf(stderr,"Setting %s as user selected protocol for %s on comm %p\n", comm->mpid.algorithm_metadata_list[constant][0][i].name, name, comm);
         return 0;
       }
     }
-    for(i=0; i < comm->mpid.coll_count[constant][1];i++)
+    for(i=0; i < comm->mpid.num_algorithms[constant][1];i++)
     {
-      if(strncasecmp(envopts, comm->mpid.coll_metadata[constant][1][i].name,strlen(envopts)) == 0)
+      if(strncasecmp(envopts, comm->mpid.algorithm_metadata_list[constant][1][i].name,strlen(envopts)) == 0)
       {
         TRACE_ERR("Calling updatecoll...\n");
-        MPIDI_Update_coll(constant, MPID_COLL_QUERY, i, comm);
+        MPIDI_Update_optimized_algorithm(constant, MPID_COLL_QUERY, i, comm);
         TRACE_ERR("Done calling update coll\n");
         if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm->rank == 0)
-          fprintf(stderr,"setting (query required protocol) %s as default %s for comm %p\n", comm->mpid.coll_metadata[constant][1][i].name, name, comm);
+          fprintf(stderr,"Setting %s as user selected (query) protocol for %s on comm %p\n", comm->mpid.algorithm_metadata_list[constant][1][i].name, name, comm);
         return 0;
       }
     }
     /* An envvar was specified, so we should probably use MPICH of we can't find
      * the specified protocol */
     TRACE_ERR("Specified protocol %s was unavailable; using MPICH for %s\n", envopts, name);
-    comm->mpid.user_selected_type[constant] = MPID_COLL_USE_MPICH;
-    comm->mpid.user_selected[constant] = 0;
+    comm->mpid.optimized_algorithm_type[constant][0] = MPID_COLL_USE_MPICH;
+    comm->mpid.optimized_algorithm[constant][0] = 0;
     return 0;
   }
-  /* Looks like we didn't get anything, set NOSELECTION so automated selection can pick something */
-  comm->mpid.user_selected_type[constant] = MPID_COLL_NOSELECTION; 
-  comm->mpid.user_selected[constant] = 0;
+  /* USE WHATEVER DEFAULTS ARE ALREADY SET.
+     Looks like we didn't get anything, set NOSELECTION so automated selection can pick something
+  comm->mpid.optimized_algorithm_type[constant][0] = MPID_COLL_DEFAULT; 
+  comm->mpid.optimized_algorithm[constant][0] = 0; 
+   */ 
   return 0;
 }
 
@@ -192,27 +164,42 @@ void MPIDI_Comm_coll_envvars(MPID_Comm *comm)
       continue;
 
     /* Initialize to noselection instead of noquery for PE/FCA stuff. Is this the right answer? */
-    comm->mpid.user_selected_type[i] = MPID_COLL_NOSELECTION;
-    if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm->rank == 0)
-      fprintf(stderr,"Setting up collective %d on comm %p\n", i, comm);
-    if((comm->mpid.coll_count[i][0] == 0) && (comm->mpid.coll_count[i][1] == 0))
+    comm->mpid.optimized_algorithm_type[i][1] = MPID_COLL_USE_MPICH;
+    if(/* PAMID glue doesn't use these, so don't report them (it's misleading) */
+       i == PAMI_XFER_ALLGATHERV ||
+       i == PAMI_XFER_SCATTERV ||
+       i == PAMI_XFER_GATHERV ||
+       i == PAMI_XFER_ALLTOALLV ||
+       i == PAMI_XFER_REDUCE_SCATTER)
+        ;/* noop */
+    else if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm->rank == 0)
+      fprintf(stderr,"Setting up collective %d (%s) on comm %p\n", i,  MPIDI_Coll_type_name(i),comm);
+    if((comm->mpid.num_algorithms[i][0] == 0) && (comm->mpid.num_algorithms[i][1] == 0))
     {
-      comm->mpid.user_selected_type[i] = MPID_COLL_USE_MPICH;
-      comm->mpid.user_selected[i] = 0;
+      comm->mpid.optimized_algorithm_type[i][0] = MPID_COLL_USE_MPICH;
+      comm->mpid.optimized_algorithm[i][0] = 0;
     }
-    else if(comm->mpid.coll_count[i][0] != 0)
+    else if(comm->mpid.num_algorithms[i][0] != 0)
     {
-      comm->mpid.user_selected[i] = comm->mpid.coll_algorithm[i][0][0];
-      memcpy(&comm->mpid.user_metadata[i], &comm->mpid.coll_metadata[i][0][0],
+      comm->mpid.optimized_algorithm[i][0] = comm->mpid.algorithm_list[i][0][0];
+      memcpy(&comm->mpid.optimized_algorithm_metadata[i][0], &comm->mpid.algorithm_metadata_list[i][0][0],
              sizeof(pami_metadata_t));
+      comm->mpid.optimized_algorithm_type[i][0] = MPID_COLL_DEFAULT;
     }
     else
     {
-      MPIDI_Update_coll(i, MPID_COLL_QUERY, 0, comm);
-      /* even though it's a query protocol, say NOSELECTION 
-   so the optcoll selection will override (maybe) */
-      comm->mpid.user_selected_type[i] = MPID_COLL_NOSELECTION;
+      comm->mpid.optimized_algorithm[i][0] = comm->mpid.algorithm_list[i][1][0];
+      memcpy(&comm->mpid.optimized_algorithm_metadata[i][0], &comm->mpid.algorithm_metadata_list[i][1][0],
+             sizeof(pami_metadata_t));
+      comm->mpid.optimized_algorithm_type[i][0] = MPID_COLL_DEFAULT_QUERY;
     }
+    /* No cutoff, by default, for whatever we selected above */
+    comm->mpid.optimized_algorithm_cutoff_size[i][0] = 0; 
+
+    /* Init 'large message' protocol fields to MPICH even though they shouldn't be used (no cutoff set) */
+    comm->mpid.optimized_algorithm_type[i][1] = MPID_COLL_USE_MPICH;
+    comm->mpid.optimized_algorithm[i][1] = 0;
+    comm->mpid.optimized_algorithm_cutoff_size[i][1] = 0; 
   }
 
 
@@ -389,16 +376,28 @@ void MPIDI_Comm_coll_envvars(MPID_Comm *comm)
     MPIDI_Check_protocols(names, comm, "allgatherv", PAMI_XFER_ALLGATHERV_INT);
   }
 
-  TRACE_ERR("CHecking gather\n");
-  comm->mpid.optgather = 0;
+  TRACE_ERR("Checking gather\n");
+  comm->mpid.optgather[0] = comm->mpid.optgather[1] = 0;
   envopts = getenv("PAMID_COLLECTIVE_GATHER");
   if(envopts != NULL)
   {
-    if(strcasecmp(envopts, "GLUE_REDUCE") == 0)
+    if(strcasecmp(envopts, "GLUE_ALLGATHER") == 0)
+    {
+      if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm->rank == 0)
+        fprintf(stderr,"Selecting glue allgather for gather\n");
+      comm->mpid.optgather[1] = 1;
+    }
+    else if(strcasecmp(envopts, "GLUE_REDUCE") == 0)
     {
       if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm->rank == 0)
         fprintf(stderr,"Selecting glue reduce for gather\n");
-      comm->mpid.optgather = 1;
+      comm->mpid.optgather[0] = 1;
+    }
+    else if(strcasecmp(envopts, "GLUE_ALLREDUCE") == 0)
+    {
+      if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm->rank == 0)
+        fprintf(stderr,"Selecting glue allreduce for gather\n");
+      comm->mpid.optgather[0] = 2;
     }
   }
   { /* In addition to glue protocols, check for other PAMI protocols and check for PE now */
@@ -433,34 +432,31 @@ void MPIDI_Comm_coll_query(MPID_Comm *comm)
       continue;
     }
 
-    comm->mpid.coll_count[i][0] = 0;
-    comm->mpid.coll_count[i][1] = 0;
+    comm->mpid.num_algorithms[i][0] = 0;
+    comm->mpid.num_algorithms[i][1] = 0;
     if(num_algorithms[0] || num_algorithms[1])
     {
-      comm->mpid.coll_algorithm[i][0] = (pami_algorithm_t *)
+      comm->mpid.algorithm_list[i][0] = (pami_algorithm_t *)
                                         MPIU_Malloc(sizeof(pami_algorithm_t) * num_algorithms[0]);
-      comm->mpid.coll_metadata[i][0] = (pami_metadata_t *)
-                                       MPIU_Malloc(sizeof(pami_metadata_t) * num_algorithms[0]);
-      comm->mpid.coll_algorithm[i][1] = (pami_algorithm_t *)
+      comm->mpid.algorithm_metadata_list[i][0] = (pami_metadata_t *)
+                                                 MPIU_Malloc(sizeof(pami_metadata_t) * num_algorithms[0]);
+      comm->mpid.algorithm_list[i][1] = (pami_algorithm_t *)
                                         MPIU_Malloc(sizeof(pami_algorithm_t) * num_algorithms[1]);
-      comm->mpid.coll_metadata[i][1] = (pami_metadata_t *)
-                                       MPIU_Malloc(sizeof(pami_metadata_t) * num_algorithms[1]);
-      comm->mpid.coll_count[i][0] = num_algorithms[0];
-      comm->mpid.coll_count[i][1] = num_algorithms[1];
+      comm->mpid.algorithm_metadata_list[i][1] = (pami_metadata_t *)
+                                                 MPIU_Malloc(sizeof(pami_metadata_t) * num_algorithms[1]);
+      comm->mpid.num_algorithms[i][0] = num_algorithms[0];
+      comm->mpid.num_algorithms[i][1] = num_algorithms[1];
 
       /* Despite the bad name, this looks at algorithms associated with
        * the geometry, NOT inherent physical properties of the geometry*/
 
-      /* BES TODO I am assuming all contexts have the same algorithms. Probably
-       * need to investigate that assumption
-       */
       rc = PAMI_Geometry_algorithms_query(geom,
                                           i,
-                                          comm->mpid.coll_algorithm[i][0],
-                                          comm->mpid.coll_metadata[i][0],
+                                          comm->mpid.algorithm_list[i][0],
+                                          comm->mpid.algorithm_metadata_list[i][0],
                                           num_algorithms[0],
-                                          comm->mpid.coll_algorithm[i][1],
-                                          comm->mpid.coll_metadata[i][1],
+                                          comm->mpid.algorithm_list[i][1],
+                                          comm->mpid.algorithm_metadata_list[i][1],
                                           num_algorithms[1]);
       if(rc != PAMI_SUCCESS)
       {
@@ -468,12 +464,20 @@ void MPIDI_Comm_coll_query(MPID_Comm *comm)
         continue;
       }
 
+      if(/* PAMID glue doesn't use these, so don't report them (it's misleading) */
+         i == PAMI_XFER_ALLGATHERV ||
+         i == PAMI_XFER_SCATTERV ||
+         i == PAMI_XFER_GATHERV ||
+         i == PAMI_XFER_ALLTOALLV ||
+         i == PAMI_XFER_REDUCE_SCATTER)
+        continue;
+
       if(MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_0 && comm->rank == 0)
       {
         for(j = 0; j < num_algorithms[0]; j++)
-          fprintf(stderr,"comm[%p] coll type %d (%s), algorithm %d 0: %s\n", comm, i, MPIDI_Coll_type_name(i), j, comm->mpid.coll_metadata[i][0][j].name);
+          fprintf(stderr,"comm[%p] coll type %d (%s), algorithm %d 0: %s\n", comm, i, MPIDI_Coll_type_name(i), j, comm->mpid.algorithm_metadata_list[i][0][j].name);
         for(j = 0; j < num_algorithms[1]; j++)
-          fprintf(stderr,"comm[%p] coll type %d (%s), algorithm %d 1: %s\n", comm, i, MPIDI_Coll_type_name(i), j, comm->mpid.coll_metadata[i][1][j].name);
+          fprintf(stderr,"comm[%p] coll type %d (%s), algorithm %d 1: %s\n", comm, i, MPIDI_Coll_type_name(i), j, comm->mpid.algorithm_metadata_list[i][1][j].name);
         if(i == PAMI_XFER_ALLGATHERV_INT || i == PAMI_XFER_ALLGATHER)
         {
           fprintf(stderr,"comm[%p] coll type %d (%s), \"glue\" algorithm: GLUE_ALLREDUCE\n", comm, i, MPIDI_Coll_type_name(i));
@@ -491,6 +495,12 @@ void MPIDI_Comm_coll_query(MPID_Comm *comm)
         }
         if(i == PAMI_XFER_REDUCE)
         {
+          fprintf(stderr,"comm[%p] coll type %d (%s), \"glue\" algorithm: GLUE_ALLREDUCE\n", comm, i, MPIDI_Coll_type_name(i));
+        }
+        if(i == PAMI_XFER_GATHER)
+        {
+          fprintf(stderr,"comm[%p] coll type %d (%s), \"glue\" algorithm: GLUE_ALLGATHER\n", comm, i, MPIDI_Coll_type_name(i));
+          fprintf(stderr,"comm[%p] coll type %d (%s), \"glue\" algorithm: GLUE_REDUCE\n", comm, i, MPIDI_Coll_type_name(i));
           fprintf(stderr,"comm[%p] coll type %d (%s), \"glue\" algorithm: GLUE_ALLREDUCE\n", comm, i, MPIDI_Coll_type_name(i));
         }
       }

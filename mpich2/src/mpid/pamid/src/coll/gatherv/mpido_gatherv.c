@@ -59,7 +59,7 @@ int MPIDO_Gatherv(const void *sendbuf,
   const unsigned verbose = (MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL) && (rank == 0);
 #endif
   const struct MPIDI_Comm* const mpid = &(comm_ptr->mpid);
-  const int selected_type = mpid->user_selected_type[PAMI_XFER_GATHERV_INT];
+  const int optimized_algorithm_type = mpid->optimized_algorithm_type[PAMI_XFER_GATHERV_INT][0];
 
   /* Check for native PAMI types and MPI_IN_PLACE on sendbuf */
   /* MPI_IN_PLACE is a nonlocal decision. We will need a preallreduce if we ever have
@@ -69,7 +69,7 @@ int MPIDO_Gatherv(const void *sendbuf,
   if(MPIDI_Datatype_to_pami(recvtype, &rtype, -1, NULL, &tmp) != MPI_SUCCESS)
     pamidt = 0;
 
-  if(pamidt == 0 || selected_type == MPID_COLL_USE_MPICH)
+  if(pamidt == 0 || optimized_algorithm_type == MPID_COLL_USE_MPICH)
   {
     if(unlikely(verbose))
       fprintf(stderr,"Using MPICH gatherv algorithm\n");
@@ -120,28 +120,17 @@ int MPIDO_Gatherv(const void *sendbuf,
   const pami_metadata_t *my_md = (pami_metadata_t *)NULL;
   int queryreq = 0;
 
-  if(selected_type == MPID_COLL_OPTIMIZED)
-  {
-    TRACE_ERR("Optimized gatherv %s was selected\n",
-              mpid->opt_protocol_md[PAMI_XFER_GATHERV_INT][0].name);
-    my_gatherv = mpid->opt_protocol[PAMI_XFER_GATHERV_INT][0];
-    my_md = &mpid->opt_protocol_md[PAMI_XFER_GATHERV_INT][0];
-    queryreq = mpid->must_query[PAMI_XFER_GATHERV_INT][0];
-  }
-  else
-  {
-    TRACE_ERR("Optimized gatherv %s was set by user\n",
-              mpid->user_metadata[PAMI_XFER_GATHERV_INT].name);
-    my_gatherv = mpid->user_selected[PAMI_XFER_GATHERV_INT];
-    my_md = &mpid->user_metadata[PAMI_XFER_GATHERV_INT];
-    queryreq = selected_type;
-  }
+  TRACE_ERR("Optimized gatherv %s was selected\n",
+            mpid->optimized_algorithm_metadata[PAMI_XFER_GATHERV_INT][0].name);
+  my_gatherv = mpid->optimized_algorithm[PAMI_XFER_GATHERV_INT][0];
+  my_md = &mpid->optimized_algorithm_metadata[PAMI_XFER_GATHERV_INT][0];
+  queryreq = mpid->optimized_algorithm_type[PAMI_XFER_GATHERV_INT][0];
 
   gatherv.algorithm = my_gatherv;
 
 
-  if(unlikely(queryreq == MPID_COLL_ALWAYS_QUERY || 
-              queryreq == MPID_COLL_CHECK_FN_REQUIRED))
+  if(unlikely(queryreq == MPID_COLL_QUERY || 
+              queryreq == MPID_COLL_DEFAULT_QUERY))
   {
     metadata_result_t result = {0};
     TRACE_ERR("querying gatherv protocol %s, type was %d\n", 
@@ -225,6 +214,7 @@ int MPIDO_Gatherv(const void *sendbuf,
 }
 
 
+#ifndef __BGQ__
 int MPIDO_Gatherv_simple(const void *sendbuf, 
                          int sendcount, 
                          MPI_Datatype sendtype,
@@ -375,8 +365,8 @@ int MPIDO_Gatherv_simple(const void *sendbuf,
 
   const pami_metadata_t *my_gatherv_md;
 
-  gatherv.algorithm = mpid->coll_algorithm[PAMI_XFER_GATHERV_INT][0][0];
-  my_gatherv_md = &mpid->coll_metadata[PAMI_XFER_GATHERV_INT][0][0];
+  gatherv.algorithm = mpid->algorithm_list[PAMI_XFER_GATHERV_INT][0][0];
+  my_gatherv_md = &mpid->algorithm_metadata_list[PAMI_XFER_GATHERV_INT][0][0];
 
   MPIDI_Update_last_algorithm(comm_ptr, my_gatherv_md->name);
 
@@ -442,4 +432,4 @@ MPIDO_CSWrapper_gatherv(pami_xfer_t *gatherv,
   return rc;
 
 }
-
+#endif

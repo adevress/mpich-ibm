@@ -57,7 +57,7 @@ int MPIDO_Bcast(void *buffer,
 #else
   const unsigned verbose = (MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL) && (rank == 0);
 #endif
-  const int selected_type = mpid->user_selected_type[PAMI_XFER_BROADCAST];
+  const int optimized_algorithm_type = mpid->optimized_algorithm_type[PAMI_XFER_BROADCAST][0];
 
   /* Must calculate data_size based on count=1 in case it's total size is > integer */
   int data_size_one;
@@ -100,7 +100,7 @@ int MPIDO_Bcast(void *buffer,
   */
   const int data_size = (int)data_size_sz;
 
-  if(selected_type == MPID_COLL_USE_MPICH || data_size == 0)
+  if(optimized_algorithm_type == MPID_COLL_USE_MPICH || data_size == 0)
   {
     if(unlikely(verbose))
       fprintf(stderr,"Using MPICH bcast algorithm\n");
@@ -135,58 +135,48 @@ int MPIDO_Bcast(void *buffer,
   bcast.cb_done = cb_bcast;
   bcast.cookie = (void *)&active;
   bcast.cmd.xfer_broadcast.root = MPID_VCR_GET_LPID(comm_ptr->vcr, root);
-  bcast.algorithm = mpid->user_selected[PAMI_XFER_BROADCAST];
+  bcast.algorithm = mpid->optimized_algorithm[PAMI_XFER_BROADCAST][0];
   bcast.cmd.xfer_broadcast.buf = data_buffer;
   bcast.cmd.xfer_broadcast.type = PAMI_TYPE_BYTE;
   /* Needs to be sizeof(type)*count since we are using bytes as * the generic type */
   bcast.cmd.xfer_broadcast.typecount = data_size;
 
-  if(selected_type == MPID_COLL_OPTIMIZED)
+  TRACE_ERR("Optimized bcast (%s) and (%s) were pre-selected\n",
+            mpid->optimized_algorithm_metadata[PAMI_XFER_BROADCAST][0].name,
+            mpid->optimized_algorithm_metadata[PAMI_XFER_BROADCAST][1].name);
+
+  if(mpid->optimized_algorithm_cutoff_size[PAMI_XFER_BROADCAST][1] != 0)/* SSS: There is FCA cutoff (FCA only sets cutoff for [PAMI_XFER_BROADCAST][1]) */
   {
-    TRACE_ERR("Optimized bcast (%s) and (%s) were pre-selected\n",
-              mpid->opt_protocol_md[PAMI_XFER_BROADCAST][0].name,
-              mpid->opt_protocol_md[PAMI_XFER_BROADCAST][1].name);
-
-    if(mpid->cutoff_size[PAMI_XFER_BROADCAST][1] != 0)/* SSS: There is FCA cutoff (FCA only sets cutoff for [PAMI_XFER_BROADCAST][1]) */
+    if(data_size <= mpid->optimized_algorithm_cutoff_size[PAMI_XFER_BROADCAST][1])
     {
-      if(data_size <= mpid->cutoff_size[PAMI_XFER_BROADCAST][1])
-      {
-        my_bcast = mpid->opt_protocol[PAMI_XFER_BROADCAST][1];
-        my_md = &mpid->opt_protocol_md[PAMI_XFER_BROADCAST][1];
-        queryreq = mpid->must_query[PAMI_XFER_BROADCAST][1];
-      }
-      else
-      {
-        return MPIR_Bcast_intra(buffer, count, datatype, root, comm_ptr, mpierrno);
-      }
-    }
-
-    if(data_size > mpid->cutoff_size[PAMI_XFER_BROADCAST][0])
-    {
-      my_bcast = mpid->opt_protocol[PAMI_XFER_BROADCAST][1];
-      my_md = &mpid->opt_protocol_md[PAMI_XFER_BROADCAST][1];
-      queryreq = mpid->must_query[PAMI_XFER_BROADCAST][1];
+      my_bcast = mpid->optimized_algorithm[PAMI_XFER_BROADCAST][1];
+      my_md = &mpid->optimized_algorithm_metadata[PAMI_XFER_BROADCAST][1];
+      queryreq = mpid->optimized_algorithm_type[PAMI_XFER_BROADCAST][1];
     }
     else
     {
-      my_bcast = mpid->opt_protocol[PAMI_XFER_BROADCAST][0];
-      my_md = &mpid->opt_protocol_md[PAMI_XFER_BROADCAST][0];
-      queryreq = mpid->must_query[PAMI_XFER_BROADCAST][0];
+      return MPIR_Bcast_intra(buffer, count, datatype, root, comm_ptr, mpierrno);
     }
+  }
+
+  if((mpid->optimized_algorithm_cutoff_size[PAMI_XFER_BROADCAST][0] != 0) &&
+     (data_size > mpid->optimized_algorithm_cutoff_size[PAMI_XFER_BROADCAST][0]))
+  {
+    my_bcast = mpid->optimized_algorithm[PAMI_XFER_BROADCAST][1];
+    my_md = &mpid->optimized_algorithm_metadata[PAMI_XFER_BROADCAST][1];
+    queryreq = mpid->optimized_algorithm_type[PAMI_XFER_BROADCAST][1];
   }
   else
   {
-    TRACE_ERR("Bcast (%s) was specified by user\n",
-              mpid->user_metadata[PAMI_XFER_BROADCAST].name);
-    my_bcast =  mpid->user_selected[PAMI_XFER_BROADCAST];
-    my_md = &mpid->user_metadata[PAMI_XFER_BROADCAST];
-    queryreq = selected_type;
+    my_bcast = mpid->optimized_algorithm[PAMI_XFER_BROADCAST][0];
+    my_md = &mpid->optimized_algorithm_metadata[PAMI_XFER_BROADCAST][0];
+    queryreq = mpid->optimized_algorithm_type[PAMI_XFER_BROADCAST][0];
   }
 
   bcast.algorithm = my_bcast;
 
-  if(unlikely(queryreq == MPID_COLL_ALWAYS_QUERY ||
-              queryreq == MPID_COLL_CHECK_FN_REQUIRED))
+  if(unlikely(queryreq == MPID_COLL_QUERY ||
+              queryreq == MPID_COLL_DEFAULT_QUERY))
   {
     metadata_result_t result = {0};
     TRACE_ERR("querying bcast protocol %s, type was: %d\n",
@@ -269,6 +259,7 @@ int MPIDO_Bcast(void *buffer,
 }
 
 
+#ifndef __BGQ__
 int MPIDO_Bcast_simple(void *buffer,
                        int count,
                        MPI_Datatype datatype,
@@ -335,12 +326,12 @@ int MPIDO_Bcast_simple(void *buffer,
   bcast.cb_done = cb_bcast;
   bcast.cookie = (void *)&active;
   bcast.cmd.xfer_broadcast.root = MPID_VCR_GET_LPID(comm_ptr->vcr, root);
-  bcast.algorithm = mpid->coll_algorithm[PAMI_XFER_BROADCAST][0][0];
+  bcast.algorithm = mpid->algorithm_list[PAMI_XFER_BROADCAST][0][0];
   bcast.cmd.xfer_broadcast.buf = data_buffer;
   bcast.cmd.xfer_broadcast.type = PAMI_TYPE_BYTE;
   /* Needs to be sizeof(type)*count since we are using bytes as * the generic type */
   bcast.cmd.xfer_broadcast.typecount = data_size;
-  my_bcast_md = &mpid->coll_metadata[PAMI_XFER_BROADCAST][0][0];
+  my_bcast_md = &mpid->algorithm_metadata_list[PAMI_XFER_BROADCAST][0][0];
 
   MPIDI_Context_post(MPIDI_Context[0], &bcast_post.state, MPIDI_Pami_post_wrapper, (void *)&bcast);
   MPIDI_Update_last_algorithm(comm_ptr, my_bcast_md->name);
@@ -380,4 +371,4 @@ MPIDO_CSWrapper_bcast(pami_xfer_t *bcast,
     bcast->cb_done(NULL, bcast->cookie, PAMI_SUCCESS);
   return rc;
 }
-
+#endif

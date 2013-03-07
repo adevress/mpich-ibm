@@ -42,7 +42,7 @@ int MPIDO_Barrier(MPID_Comm *comm_ptr, int *mpierrno)
   const pami_metadata_t *my_md = (pami_metadata_t *)NULL;
   int queryreq = 0;
   const struct MPIDI_Comm* const mpid = &(comm_ptr->mpid);
-  const int selected_type = mpid->user_selected_type[PAMI_XFER_BARRIER];
+  const int optimized_algorithm_type = mpid->optimized_algorithm_type[PAMI_XFER_BARRIER][0];
 #if ASSERT_LEVEL==0
   /* We can't afford the tracing in ndebug/performance libraries */
   const unsigned verbose = 0;
@@ -50,7 +50,7 @@ int MPIDO_Barrier(MPID_Comm *comm_ptr, int *mpierrno)
   const unsigned verbose = (MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL) && (comm_ptr->rank == 0);
 #endif
 
-  if(unlikely(selected_type == MPID_COLL_USE_MPICH))
+  if(unlikely(optimized_algorithm_type == MPID_COLL_USE_MPICH))
   {
     if(unlikely(verbose))
       fprintf(stderr,"Using MPICH barrier\n");
@@ -60,25 +60,15 @@ int MPIDO_Barrier(MPID_Comm *comm_ptr, int *mpierrno)
 
   barrier.cb_done = cb_barrier;
   barrier.cookie = (void *)&active;
-  if(likely(selected_type == MPID_COLL_OPTIMIZED))
-  {
-    TRACE_ERR("Optimized barrier (%s) was pre-selected\n", mpid->opt_protocol_md[PAMI_XFER_BARRIER][0].name);
-    my_barrier = mpid->opt_protocol[PAMI_XFER_BARRIER][0];
-    my_md = &mpid->opt_protocol_md[PAMI_XFER_BARRIER][0];
-    queryreq = mpid->must_query[PAMI_XFER_BARRIER][0];
-  }
-  else
-  {
-    TRACE_ERR("Barrier (%s) was specified by user\n", mpid->user_metadata[PAMI_XFER_BARRIER].name);
-    my_barrier = mpid->user_selected[PAMI_XFER_BARRIER];
-    my_md = &mpid->user_metadata[PAMI_XFER_BARRIER];
-    queryreq = selected_type;
-  }
+  TRACE_ERR("Optimized barrier (%s) was pre-selected\n", mpid->optimized_algorithm_metadata[PAMI_XFER_BARRIER][0].name);
+  my_barrier = mpid->optimized_algorithm[PAMI_XFER_BARRIER][0];
+  my_md = &mpid->optimized_algorithm_metadata[PAMI_XFER_BARRIER][0];
+  queryreq = mpid->optimized_algorithm_type[PAMI_XFER_BARRIER][0];
 
   barrier.algorithm = my_barrier;
   /* There is no support for query-required barrier protocols here */
-  MPID_assert(queryreq != MPID_COLL_ALWAYS_QUERY);
-  MPID_assert(queryreq != MPID_COLL_CHECK_FN_REQUIRED);
+  MPID_assert(queryreq != MPID_COLL_QUERY);
+  MPID_assert(queryreq != MPID_COLL_DEFAULT_QUERY);
 
   if(unlikely(verbose))
   {
@@ -102,6 +92,7 @@ int MPIDO_Barrier(MPID_Comm *comm_ptr, int *mpierrno)
 }
 
 
+#ifndef __BGQ__
 int MPIDO_Barrier_simple(MPID_Comm *comm_ptr, int *mpierrno)
 {
   TRACE_ERR("Entering MPIDO_Barrier_optimized\n");
@@ -114,8 +105,8 @@ int MPIDO_Barrier_simple(MPID_Comm *comm_ptr, int *mpierrno)
 
   barrier.cb_done = cb_barrier;
   barrier.cookie = (void *)&active;
-  my_barrier = mpid->coll_algorithm[PAMI_XFER_BARRIER][0][0];
-  my_barrier_md = &mpid->coll_metadata[PAMI_XFER_BARRIER][0][0];
+  my_barrier = mpid->algorithm_list[PAMI_XFER_BARRIER][0][0];
+  my_barrier_md = &mpid->algorithm_metadata_list[PAMI_XFER_BARRIER][0][0];
   barrier.algorithm = my_barrier;
 
 
@@ -143,4 +134,4 @@ MPIDO_CSWrapper_barrier(pami_xfer_t *barrier,
   return rc;
 
 }
-
+#endif

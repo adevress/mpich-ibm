@@ -63,7 +63,7 @@ int MPIDO_Alltoallv(const void *sendbuf,
   const unsigned verbose = (MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL) && (rank == 0);
 #endif
   const struct MPIDI_Comm* const mpid = &(comm_ptr->mpid);
-  const int selected_type = mpid->user_selected_type[PAMI_XFER_ALLTOALLV_INT];
+  const int optimized_algorithm_type = mpid->optimized_algorithm_type[PAMI_XFER_ALLTOALLV_INT][0];
   const int size = comm_ptr->local_size;
   int sendcontinuous , recvcontinuous=0;
   size_t recv_size=0, send_size=0;
@@ -77,7 +77,7 @@ int MPIDO_Alltoallv(const void *sendbuf,
   const int *precvcounts = recvcounts; /* pointer to counts to use as pami parmi */
   const int *psendcounts = sendcounts; /* pointer to counts to use as pami parmi */
   int inplace = sendbuf == MPI_IN_PLACE? 1 : 0;
-  if(selected_type == MPID_COLL_USE_MPICH)
+  if(optimized_algorithm_type == MPID_COLL_USE_MPICH)
   {
     if(unlikely(verbose))
       fprintf(stderr,"Using MPICH alltoallv algorithm\n");
@@ -105,7 +105,7 @@ int MPIDO_Alltoallv(const void *sendbuf,
       {
         lsenddispls[i]= sndtypelen * totalsendcount;
         totalsendcount += sendcounts[i];
-        if(senddispls[i] != (senddispls[i-1] + (sendcounts[i-1]*sndtypelen)))
+        if(senddispls[i] != (senddispls[i-1] + (sendcounts[i-1])))
           sendcontinuous = 0;
         lsendcounts[i]= sndtypelen * sendcounts[i];
       }
@@ -159,7 +159,7 @@ int MPIDO_Alltoallv(const void *sendbuf,
     {
       lrecvdispls[i]= rcvtypelen * totalrecvcount;
       totalrecvcount += recvcounts[i];
-      if(recvdispls[i] != (recvdispls[i-1] + (recvcounts[i-1]*rcvtypelen)))
+      if(recvdispls[i] != (recvdispls[i-1] + (recvcounts[i-1])))
         recvcontinuous = 0;
       lrecvcounts[i]= rcvtypelen * recvcounts[i];
     }
@@ -189,7 +189,7 @@ int MPIDO_Alltoallv(const void *sendbuf,
       {
         lsenddispls[i]= rcvtypelen * totalsendcount;
         totalsendcount += recvcounts[i];
-        if(recvdispls[i] != (recvdispls[i-1] + (recvcounts[i-1]*rcvtypelen)))
+        if(recvdispls[i] != (recvdispls[i-1] + (recvcounts[i-1])))
           sendcontinuous = 0;
         lsendcounts[i]= rcvtypelen * recvcounts[i];
       }
@@ -233,20 +233,10 @@ int MPIDO_Alltoallv(const void *sendbuf,
   const pami_metadata_t *my_md = (pami_metadata_t *)NULL;
   int queryreq = 0;
 
-  if(selected_type == MPID_COLL_OPTIMIZED)
-  {
-    TRACE_ERR("Optimized alltoallv was selected\n");
-    my_alltoallv = mpid->opt_protocol[PAMI_XFER_ALLTOALLV_INT][0];
-    my_md = &mpid->opt_protocol_md[PAMI_XFER_ALLTOALLV_INT][0];
-    queryreq = mpid->must_query[PAMI_XFER_ALLTOALLV_INT][0];
-  }
-  else
-  { /* is this purely an else? or do i need to check for some other selectedvar... */
-    TRACE_ERR("Alltoallv specified by user\n");
-    my_alltoallv = mpid->user_selected[PAMI_XFER_ALLTOALLV_INT];
-    my_md = &mpid->user_metadata[PAMI_XFER_ALLTOALLV_INT];
-    queryreq = selected_type;
-  }
+  TRACE_ERR("Optimized alltoallv was selected\n");
+  my_alltoallv = mpid->optimized_algorithm[PAMI_XFER_ALLTOALLV_INT][0];
+  my_md = &mpid->optimized_algorithm_metadata[PAMI_XFER_ALLTOALLV_INT][0];
+  queryreq = mpid->optimized_algorithm_type[PAMI_XFER_ALLTOALLV_INT][0];
   alltoallv.algorithm = my_alltoallv;
   char *pname = my_md->name;
 
@@ -276,8 +266,8 @@ int MPIDO_Alltoallv(const void *sendbuf,
   alltoallv.cmd.xfer_alltoallv_int.rtypecounts = (int *) precvcounts;
   alltoallv.cmd.xfer_alltoallv_int.rtype = rtype;
 
-  if(unlikely(queryreq == MPID_COLL_ALWAYS_QUERY || 
-              queryreq == MPID_COLL_CHECK_FN_REQUIRED))
+  if(unlikely(queryreq == MPID_COLL_QUERY || 
+              queryreq == MPID_COLL_DEFAULT_QUERY))
   {
     metadata_result_t result = {0};
     TRACE_ERR("querying alltoallv protocol %s, type was %d\n", pname, queryreq);
@@ -391,6 +381,7 @@ int MPIDO_Alltoallv(const void *sendbuf,
 }
 
 
+#ifndef __BGQ__
 int MPIDO_Alltoallv_simple(const void *sendbuf,
                            const int *sendcounts,
                            const int *senddispls,
@@ -461,9 +452,9 @@ int MPIDO_Alltoallv_simple(const void *sendbuf,
 
   pami_xfer_t alltoallv;
   const pami_metadata_t *my_alltoallv_md;
-  my_alltoallv_md = &mpid->coll_metadata[PAMI_XFER_ALLTOALLV_INT][0][0];
+  my_alltoallv_md = &mpid->algorithm_metadata_list[PAMI_XFER_ALLTOALLV_INT][0][0];
 
-  alltoallv.algorithm = mpid->coll_algorithm[PAMI_XFER_ALLTOALLV_INT][0][0];
+  alltoallv.algorithm = mpid->algorithm_list[PAMI_XFER_ALLTOALLV_INT][0][0];
   char *pname = my_alltoallv_md->name;
 
   alltoallv.cb_done = cb_alltoallv;
@@ -530,4 +521,4 @@ MPIDO_CSWrapper_alltoallv(pami_xfer_t *alltoallv,
   return rc;
 
 }
-
+#endif

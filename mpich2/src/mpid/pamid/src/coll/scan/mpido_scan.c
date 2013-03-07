@@ -46,7 +46,7 @@ int MPIDO_Iscan(const void *sendbuf, void *recvbuf,
                 int count, MPI_Datatype datatype,
                 MPI_Op op, MPID_Comm * comm_ptr, MPID_Request **request)
 {
-  /*if (unlikely((data_size == 0) || (user_selected_type == MPID_COLL_USE_MPICH)))*/
+  /*if (unlikely((data_size == 0) || (optimized_algorithm_type == MPID_COLL_USE_MPICH)))*/
   {
     /*
      * If the mpich mpir non-blocking collectives are enabled, return without
@@ -113,18 +113,18 @@ int MPIDO_Doscan(const void *sendbuf, void *recvbuf,
   const unsigned verbose = (MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL) && (comm_ptr->rank == 0);
 #endif
   const struct MPIDI_Comm* const mpid = &(comm_ptr->mpid);
-  const int selected_type = mpid->user_selected_type[PAMI_XFER_SCAN];
+  const int optimized_algorithm_type = mpid->optimized_algorithm_type[PAMI_XFER_SCAN][0];
 
   rc = MPIDI_Datatype_to_pami(datatype, &pdt, op, &pop, &mu);
   if(unlikely(verbose))
     fprintf(stderr,"rc %u, dt: %p, op: %p, mu: %u, selectedvar %u != %u (MPICH)\n",
             rc, pdt, pop, mu, 
-            (unsigned)selected_type, MPID_COLL_USE_MPICH);
+            (unsigned)optimized_algorithm_type, MPID_COLL_USE_MPICH);
 
   pami_xfer_t scan;
   volatile unsigned scan_active = 1;
 
-  if((selected_type == MPID_COLL_USE_MPICH || rc != MPI_SUCCESS))
+  if((optimized_algorithm_type == MPID_COLL_USE_MPICH || rc != MPI_SUCCESS))
   {
     if(unlikely(verbose))
       fprintf(stderr,"Using MPICH scan algorithm (exflag %d)\n",exflag);
@@ -149,18 +149,9 @@ int MPIDO_Doscan(const void *sendbuf, void *recvbuf,
 
   scan.cb_done = scan_cb_done;
   scan.cookie = (void *)&scan_active;
-  if(selected_type == MPID_COLL_OPTIMIZED)
-  {
-    scan.algorithm = mpid->opt_protocol[PAMI_XFER_SCAN][0];
-    my_md = &mpid->opt_protocol_md[PAMI_XFER_SCAN][0];
-    queryreq     = mpid->must_query[PAMI_XFER_SCAN][0];
-  }
-  else
-  {
-    scan.algorithm = mpid->user_selected[PAMI_XFER_SCAN];
-    my_md = &mpid->user_metadata[PAMI_XFER_SCAN];
-    queryreq     = selected_type;
-  }
+  scan.algorithm = mpid->optimized_algorithm[PAMI_XFER_SCAN][0];
+  my_md = &mpid->optimized_algorithm_metadata[PAMI_XFER_SCAN][0];
+  queryreq     = mpid->optimized_algorithm_type[PAMI_XFER_SCAN][0];
   scan.cmd.xfer_scan.sndbuf = sbuf;
   scan.cmd.xfer_scan.rcvbuf = rbuf;
   scan.cmd.xfer_scan.stype = pdt;
@@ -171,13 +162,13 @@ int MPIDO_Doscan(const void *sendbuf, void *recvbuf,
   scan.cmd.xfer_scan.exclusive = exflag;
 
 
-  if(unlikely(queryreq == MPID_COLL_ALWAYS_QUERY ||
-              queryreq == MPID_COLL_CHECK_FN_REQUIRED))
+  if(unlikely(queryreq == MPID_COLL_QUERY ||
+              queryreq == MPID_COLL_DEFAULT_QUERY))
   {
     metadata_result_t result = {0};
     TRACE_ERR("Querying scan protocol %s, type was %d\n",
               my_md->name,
-              selected_type);
+              optimized_algorithm_type);
     if(my_md->check_fn == NULL)
     {
       /* process metadata bits */
@@ -253,6 +244,7 @@ int MPIDO_Doscan(const void *sendbuf, void *recvbuf,
 }
 
 
+#ifndef __BGQ__
 int MPIDO_Doscan_simple(const void *sendbuf, void *recvbuf, 
                         int count, MPI_Datatype datatype,
                         MPI_Op op, MPID_Comm * comm_ptr, int *mpierrno, int exflag)
@@ -311,8 +303,8 @@ int MPIDO_Doscan_simple(const void *sendbuf, void *recvbuf,
 
   scan.cb_done = scan_cb_done;
   scan.cookie = (void *)&scan_active;
-  scan.algorithm = mpid->coll_algorithm[PAMI_XFER_SCAN][0][0];
-  my_md = &mpid->coll_metadata[PAMI_XFER_SCAN][0][0];
+  scan.algorithm = mpid->algorithm_list[PAMI_XFER_SCAN][0][0];
+  my_md = &mpid->algorithm_metadata_list[PAMI_XFER_SCAN][0][0];
   scan.cmd.xfer_scan.sndbuf = sbuf;
   scan.cmd.xfer_scan.rcvbuf = rbuf;
   scan.cmd.xfer_scan.stype = pdt;
@@ -380,4 +372,5 @@ MPIDO_CSWrapper_scan(pami_xfer_t *scan,
   return rc;
 
 }
+#endif
 

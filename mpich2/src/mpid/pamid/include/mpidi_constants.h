@@ -46,11 +46,11 @@ enum
 enum
   {
     MPID_SEND_CONTIG     = 0, /**< Contiguous send buffer */
-    MPID_RECV_CONTIG     = 1, /**< Contiguous recv buffer */
-    MPID_RECV_CONTINUOUS = 2, /**< Continuous recv buffer */
-    MPID_LARGECOUNT      = 3, /**< Total send count is "large" */
-    MPID_MEDIUMCOUNT     = 4, /**< Total send count is "medium" */
-    MPID_ALIGNEDBUFFER   = 5, /**< Buffers are 16b aligned */
+    MPID_SEND_CONTINUOUS = 1, /**< Continuous send buffer */
+    MPID_RECV_CONTIG     = 2, /**< Contiguous recv buffer */
+    MPID_RECV_CONTINUOUS = 3, /**< Continuous recv buffer */
+    MPID_LARGECOUNT      = 4, /**< Total send count is "large" */
+    MPID_MEDIUMCOUNT     = 5, /**< Total send count is "medium" */
   };
 
 enum
@@ -66,15 +66,15 @@ enum
 
 enum /* The type of protocol selected */
   {
-    MPID_COLL_NOQUERY           = 0,
-    MPID_COLL_QUERY             = 1,
-    /* Can we cache stuff? If not set to ALWAYS_QUERY */
-    MPID_COLL_ALWAYS_QUERY      = 2,
-    MPID_COLL_CHECK_FN_REQUIRED = 3,
-    MPID_COLL_USE_MPICH         = 4,
-    MPID_COLL_NOSELECTION       = 5,
-    MPID_COLL_OPTIMIZED         = 6,
-  };
+    /* User (env var) or mpid_optcoll selected algorithms                   */
+    /* (numeric order matters-low values are 'optimized', high are defaults */
+    MPID_COLL_NOQUERY           = 0, /* always works algorithm list         */
+    MPID_COLL_QUERY             = 1, /* must query algorithm list           */
+    MPID_COLL_USE_MPICH         = 2, /* MPICH (non-PAMI) default algorithm  */
+    /* Collectives 'default' to first available query/no-query protocol     */
+    MPID_COLL_DEFAULT           = 3, /* No user selection or override       */
+    MPID_COLL_DEFAULT_QUERY     = 4, /* No user selection or override       */
+  } ;
 
 enum
  {

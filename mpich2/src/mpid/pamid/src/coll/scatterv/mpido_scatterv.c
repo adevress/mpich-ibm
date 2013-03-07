@@ -211,12 +211,6 @@ int MPIDO_Scatterv_alltoallv(void * sendbuf,
   return rc;
 }
 
-static void allred_cb_done(void *ctxt, void *clientdata, pami_result_t err)
-{
-  unsigned *active = (unsigned *)clientdata;
-  (*active)--;
-}
-
 
 static void cb_scatterv(void *ctxt, void *clientdata, pami_result_t err)
 {
@@ -241,8 +235,6 @@ int MPIDO_Scatterv(const void *sendbuf,
   MPID_Datatype *dt_ptr = NULL;
   MPI_Aint send_true_lb=0, recv_true_lb;
   char *sbuf, *rbuf;
-  volatile unsigned allred_active = 1;
-  pami_xfer_t allred;
   int optscatterv[3];
   pami_type_t stype, rtype;
   const int rank = comm_ptr->rank;
@@ -253,21 +245,9 @@ int MPIDO_Scatterv(const void *sendbuf,
   const unsigned verbose = (MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL) && (rank == 0);
 #endif
   const struct MPIDI_Comm* const mpid = &(comm_ptr->mpid);
-  const int selected_type = mpid->user_selected_type[PAMI_XFER_SCATTERV_INT];
+  const int optimized_algorithm_type = mpid->optimized_algorithm_type[PAMI_XFER_SCATTERV_INT][0];
 
-  allred.cb_done = allred_cb_done;
-  allred.cookie = (void *)&allred_active;
-  allred.algorithm = mpid->coll_algorithm[PAMI_XFER_ALLREDUCE][0][0];
-  allred.cmd.xfer_allreduce.sndbuf = (void *)optscatterv;
-  allred.cmd.xfer_allreduce.stype = PAMI_TYPE_SIGNED_INT;
-  allred.cmd.xfer_allreduce.rcvbuf = (void *)optscatterv;
-  allred.cmd.xfer_allreduce.rtype = PAMI_TYPE_SIGNED_INT;
-  allred.cmd.xfer_allreduce.stypecount = 3;
-  allred.cmd.xfer_allreduce.rtypecount = 3; 
-  allred.cmd.xfer_allreduce.op = PAMI_DATA_BAND;
-
-
-  if(selected_type == MPID_COLL_USE_MPICH)
+  if(optimized_algorithm_type == MPID_COLL_USE_MPICH)
   {
     if(unlikely(verbose))
       fprintf(stderr,"Using MPICH scatterv algorithm\n");
@@ -284,22 +264,11 @@ int MPIDO_Scatterv(const void *sendbuf,
   volatile unsigned scatterv_active = 1;
   int queryreq = 0;
 
-  if(selected_type == MPID_COLL_OPTIMIZED)
-  {
-    TRACE_ERR("Optimized scatterv %s was selected\n",
-              mpid->opt_protocol_md[PAMI_XFER_SCATTERV_INT][0].name);
-    my_scatterv = mpid->opt_protocol[PAMI_XFER_SCATTERV_INT][0];
-    my_md = &mpid->opt_protocol_md[PAMI_XFER_SCATTERV_INT][0];
-    queryreq = mpid->must_query[PAMI_XFER_SCATTERV_INT][0];
-  }
-  else
-  {
-    TRACE_ERR("User selected %s for scatterv\n",
-              mpid->user_selected[PAMI_XFER_SCATTERV_INT]);
-    my_scatterv = mpid->user_selected[PAMI_XFER_SCATTERV_INT];
-    my_md = &mpid->user_metadata[PAMI_XFER_SCATTERV_INT];
-    queryreq = selected_type;
-  }
+  TRACE_ERR("Optimized scatterv %s was selected\n",
+            mpid->optimized_algorithm_metadata[PAMI_XFER_SCATTERV_INT][0].name);
+  my_scatterv = mpid->optimized_algorithm[PAMI_XFER_SCATTERV_INT][0];
+  my_md = &mpid->optimized_algorithm_metadata[PAMI_XFER_SCATTERV_INT][0];
+  queryreq = mpid->optimized_algorithm_type[PAMI_XFER_SCATTERV_INT][0];
 
   if((recvbuf != MPI_IN_PLACE) && MPIDI_Datatype_to_pami(recvtype, &rtype, -1, NULL, &tmp) != MPI_SUCCESS)
     pamidt = 0;
@@ -307,7 +276,7 @@ int MPIDO_Scatterv(const void *sendbuf,
   if(MPIDI_Datatype_to_pami(sendtype, &stype, -1, NULL, &tmp) != MPI_SUCCESS)
     pamidt = 0;
 
-  if(pamidt == 0 || selected_type == MPID_COLL_USE_MPICH)
+  if(pamidt == 0 || optimized_algorithm_type == MPID_COLL_USE_MPICH)
   {
     if(unlikely(verbose))
       fprintf(stderr,"Using MPICH scatterv algorithm\n");
@@ -351,8 +320,8 @@ int MPIDO_Scatterv(const void *sendbuf,
   scatterv.cmd.xfer_scatterv_int.rtypecount = recvcount;
   scatterv.cmd.xfer_scatterv_int.sdispls = (int *) displs;
 
-  if(unlikely(queryreq == MPID_COLL_ALWAYS_QUERY || 
-              queryreq == MPID_COLL_CHECK_FN_REQUIRED))
+  if(unlikely(queryreq == MPID_COLL_QUERY || 
+              queryreq == MPID_COLL_DEFAULT_QUERY))
   {
     metadata_result_t result = {0};
     TRACE_ERR("querying scatterv protocol %s, type was %d\n",
@@ -434,6 +403,7 @@ int MPIDO_Scatterv(const void *sendbuf,
   return 0;
 }
 
+#ifndef __BGQ__
 int MPIDO_Scatterv_simple(const void *sendbuf,
                           const int *sendcounts,
                           const int *displs,
@@ -562,8 +532,8 @@ int MPIDO_Scatterv_simple(const void *sendbuf,
   scatterv.cookie = (void *)&scatterv_active;
   scatterv.cmd.xfer_scatterv_int.root = MPID_VCR_GET_LPID(comm_ptr->vcr, root);
 
-  scatterv.algorithm = mpid->coll_algorithm[PAMI_XFER_SCATTERV_INT][0][0];
-  my_scatterv_md = &mpid->coll_metadata[PAMI_XFER_SCATTERV_INT][0][0];
+  scatterv.algorithm = mpid->algorithm_list[PAMI_XFER_SCATTERV_INT][0][0];
+  my_scatterv_md = &mpid->algorithm_metadata_list[PAMI_XFER_SCATTERV_INT][0][0];
 
   scatterv.cmd.xfer_scatterv_int.rcvbuf = rbuf;
   scatterv.cmd.xfer_scatterv_int.sndbuf = sbuf;
@@ -704,11 +674,8 @@ else
 /* set the internal control flow to disable internal star tuning */
 if(mpid->preallreduces[MPID_SCATTERV_PREALLREDUCE])
 {
-  MPIDI_Post_coll_t allred_post;
-  rc = MPIDI_Context_post(MPIDI_Context[0], &allred_post.state,
-                          MPIDI_Pami_post_wrapper, (void *)&allred);
-
-  MPID_PROGRESS_WAIT_WHILE(allred_active);
+  /* Switch to comm->coll_fns->fn() */
+  MPIDO_Allreduce(MPI_IN_PLACE, optscatterv, 3, MPI_INTEGER, MPI_BAND, comm_ptr, mpierrno);
 }
 /* reset flag */
 
@@ -763,4 +730,5 @@ else
                        recvbuf, recvcount, recvtype,
                        root, comm_ptr, mpierrno);
 }
+#endif
 #endif

@@ -22,6 +22,8 @@
 
 #include <mpidimpl.h>
 
+#define MAX_ALLGATHER_BUFFER_SIZE  (1024*1024*2) /* arbitrary - TODO tune it? */
+
 static void cb_gather(void *ctxt, void *clientdata, pami_result_t err)
 {
   unsigned *active = (unsigned *)clientdata;
@@ -37,7 +39,7 @@ static void cb_allred(void *ctxt, void *clientdata, pami_result_t err)
   MPIDI_Progress_signal();
   (*active)--;
 }
-int MPIDO_Gather_reduce(void * sendbuf,
+int MPIDO_Gather_reduce(const void *sendbuf,
                         int sendcount,
                         MPI_Datatype sendtype,
                         void *recvbuf,
@@ -45,7 +47,8 @@ int MPIDO_Gather_reduce(void * sendbuf,
                         MPI_Datatype recvtype,
                         int root,
                         MPID_Comm * comm_ptr,
-                        int *mpierrno)
+                        int *mpierrno,
+                        char reduce)
 {
   MPID_Datatype * data_ptr;
   MPI_Aint true_lb;
@@ -53,13 +56,30 @@ int MPIDO_Gather_reduce(void * sendbuf,
   const int size = comm_ptr->local_size;
   int rc, sbytes, rbytes, contig;
   char *tempbuf = NULL;
-  char *inplacetemp = NULL;
+  MPI_Datatype reduce_type  = (sendtype == MPI_DOUBLE)? MPI_DOUBLE     : MPI_INT;
+  MPI_Op reduce_op          = (sendtype == MPI_DOUBLE)? MPI_SUM        : MPI_BOR;
+  unsigned reduce_type_size = (sendtype == MPI_DOUBLE)? sizeof(double) : sizeof(int);
+#if ASSERT_LEVEL==0
+  /* We can't afford the tracing in ndebug/performance libraries */
+  const unsigned verbose = 0;
+#else
+  const unsigned verbose = (MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL) && ((rank == root) || (rank == root+1));
+#endif
+  const struct MPIDI_Comm* const mpid = &(comm_ptr->mpid);
 
-  MPIDI_Datatype_get_info(sendcount, sendtype, contig,
-                          sbytes, data_ptr, true_lb);
 
   MPIDI_Datatype_get_info(recvcount, recvtype, contig,
                           rbytes, data_ptr, true_lb);
+  if(sendbuf != MPI_IN_PLACE)
+  {
+    MPIDI_Datatype_get_info(sendcount, sendtype, contig,
+                            sbytes, data_ptr, true_lb);
+  }
+  else
+    sbytes = rbytes;
+
+  if(unlikely(verbose))
+    fprintf(stderr,"gather over %s: recv %u(%u), send %u(%u), size %u, reduce_type_size %u\n",reduce==1?"reduce":"allreduce",recvcount, rbytes, sendcount, sbytes, size, reduce_type_size);
 
   if(rank == root)
   {
@@ -70,22 +90,16 @@ int MPIDO_Gather_reduce(void * sendbuf,
       memset(tempbuf, 0, sbytes * size * sizeof(char));
       memcpy(tempbuf+(rank * sbytes), sendbuf, sbytes);
     }
-    /* copy our contribution temporarily, zero the buffer, put it back */
-    /* this will likely suck */
+    /* zero before/after our in place contribution */
     else
     {
-      inplacetemp = MPIU_Malloc(rbytes * sizeof(char));
-      memcpy(inplacetemp, recvbuf+(rank * rbytes), rbytes);
-      memset(tempbuf, 0, sbytes * size * sizeof(char));
-      memcpy(tempbuf+(rank * rbytes), inplacetemp, rbytes);
-      MPIU_Free(inplacetemp);
+      /* Init before my sdata */
+      memset(tempbuf, 0, (rank * sbytes) * sizeof(char));
+      /* Init after my sdata */
+      int endsbytes = (rank * sbytes)+ sbytes; 
+      memset(tempbuf+endsbytes, 0, ((rbytes*size)-endsbytes) * sizeof(char));
     }
   }
-  /* everyone might need to speciifcally allocate a tempbuf, or
-   * we might need to make sure we don't end up at mpich in the
-   * mpido_() functions - seems to be a problem?
-   */
-
   /* If we aren't root, malloc tempbuf and zero it,
    * then copy our contribution to the right spot in the big buffer */
   else
@@ -103,22 +117,30 @@ int MPIDO_Gather_reduce(void * sendbuf,
     memcpy(tempbuf+(rank*sbytes), sendbuf, sbytes);
   }
   /* Switch to comm->coll_fns->fn() */
-  rc = MPIDO_Reduce(MPI_IN_PLACE,
-                    tempbuf,
-                    (sbytes * size)/4,
-                    MPI_INT,
-                    MPI_BOR,
-                    root,
-                    comm_ptr,
-                    mpierrno);
+  if(reduce==1)
+    rc = MPIDO_Reduce(rank==root?MPI_IN_PLACE:tempbuf,
+                      rank==root?tempbuf:NULL,
+                      (sbytes * size)/reduce_type_size,
+                      reduce_type,
+                      reduce_op,
+                      root,
+                      comm_ptr,
+                      mpierrno);
+  else if(reduce==2)
+    rc = MPIDO_Allreduce(MPI_IN_PLACE,
+                         tempbuf,
+                         (sbytes * size)/reduce_type_size,
+                         reduce_type,
+                         reduce_op,
+                         comm_ptr,
+                         mpierrno);
+  else abort();
 
   if(rank != root)
     MPIU_Free(tempbuf);
 
   return rc;
 }
-
-/* works for simple data types, assumes fast reduce is available */
 
 int MPIDO_Gather(const void *sendbuf,
                  int sendcount,
@@ -130,102 +152,185 @@ int MPIDO_Gather(const void *sendbuf,
                  MPID_Comm *comm_ptr,
                  int *mpierrno)
 {
+  void *snd_noncontig_buff = NULL, *rcv_noncontig_buff = NULL, *sbuf = NULL, *rbuf = NULL;
   MPID_Datatype * data_ptr;
   MPI_Aint true_lb = 0;
   pami_xfer_t gather;
   MPIDI_Post_coll_t gather_post;
-  int use_opt = 1, contig=0, send_bytes=-1, recv_bytes = 0;
+  double use_glue = 1.0;
+  int why = 0,rcontig=0,scontig=0, send_bytes=-1, recv_bytes = 0;
   const int rank = comm_ptr->rank;
   const int size = comm_ptr->local_size;
 #if ASSERT_LEVEL==0
   /* We can't afford the tracing in ndebug/performance libraries */
   const unsigned verbose = 0;
 #else
-  const unsigned verbose = (MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL) && (rank == 0);
+  const unsigned verbose = (MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL) && ((rank == root) || (rank == root+1));
 #endif
   const struct MPIDI_Comm* const mpid = &(comm_ptr->mpid);
-  const int selected_type = mpid->user_selected_type[PAMI_XFER_GATHER];
+  const int optimized_algorithm_type = mpid->optimized_algorithm_type[PAMI_XFER_GATHER][0];
+  const char glue_reduce = mpid->optgather[0];
+  const char glue_allgather = mpid->optgather[1];
+  double rcvvals[3] = {0.0,0.0,0.0}; /* for coordinating the root recv parms with senders for glue protocols */
+  if(glue_allgather)
+  {
+    if(rank == root)
+    {
+      MPIDI_Datatype_get_info(1, recvtype, rcontig,
+                              recv_bytes, data_ptr, true_lb);
+      rcvvals[0] = recv_bytes * 1.0;            /* recv data size */
+      rcvvals[1] = rcontig    * 1.0;            /* recv extent to check if non-contig */
+      rcvvals[2] = recvcount * recv_bytes * 1.0;/* bytes per participant */
+    }
+    MPIDO_Allreduce(MPI_IN_PLACE,
+                    rcvvals,
+                    3,
+                    MPI_DOUBLE,
+                    MPI_MAX,
+                    comm_ptr,
+                    mpierrno);
+    if(unlikely(verbose))
+    {
+      fprintf(stderr,"Checking protocol GLUE_ALLGATHER for gather recv bytes %f, contig %f, recv buffer size %f\n",rcvvals[0],rcvvals[1],rcvvals[2]);
+    }
+    if((rcvvals[1] == 0.0) || ((rcvvals[2]*size) > MAX_ALLGATHER_BUFFER_SIZE)) /* Not going to handle noncontig recvs with GLUE_ALLGATHER */
+    {
+      MPIDI_Update_last_algorithm(comm_ptr, "GLUE_ALLGATHER");
+      if(rank != root)
+      {
+        if(unlikely(verbose))
+        {
+          MPIDI_Datatype_get_info(sendcount, sendtype, scontig,
+                                  send_bytes, data_ptr, true_lb);
+          fprintf(stderr,"Using protocol GLUE_ALLGATHER for gather (non-root),size %d, root %d, recv count %d, recv_bytes %d, sendcount %d, send_bytes %d, contig %d\n",size, root, recvcount, recv_bytes, sendcount, send_bytes/sendcount,scontig);
+        }
+        void* tmp = MPIU_Malloc((size_t)rcvvals[2]*size);
+        MPIDO_Allgather(sendbuf,
+                        sendcount,
+                        sendtype,
+                        tmp,
+                        (int)rcvvals[2],
+                        MPI_CHAR,
+                        comm_ptr,
+                        mpierrno);
+        MPIU_Free(tmp);
+        return 0;
+      }
+      else
+      {
+        if(unlikely(verbose))
+        {
+          if((sendbuf != MPI_IN_PLACE) && sendtype != MPI_DATATYPE_NULL && sendcount >= 0)
+          {
+            MPIDI_Datatype_get_info(1, sendtype, scontig,
+                                    send_bytes, data_ptr, true_lb);
+          }
+          fprintf(stderr,"Using protocol GLUE_ALLGATHER for gather,size %d, root %d, recv count %d, recv_bytes %d, sendcount %d, send_bytes %d, contig %d\n",size, root, recvcount, recv_bytes, sendcount, send_bytes, scontig);
+        }
+        return MPIDO_Allgather(sendbuf,
+                               sendcount,
+                               sendtype,
+                               recvbuf,
+                               recvcount,
+                               recvtype,
+                               comm_ptr,
+                               mpierrno);
+      }
 
+    }
+  }
   if(rank == root)
   {
     if(recvtype != MPI_DATATYPE_NULL && recvcount >= 0)
     {
-      MPIDI_Datatype_get_info(recvcount, recvtype, contig,
+      MPIDI_Datatype_get_info(recvcount, recvtype, rcontig,
                               recv_bytes, data_ptr, true_lb);
-      if(!contig || ((recv_bytes * size) % sizeof(int))) /* ? */
-        use_opt = 0;
+      if(!rcontig || ((recv_bytes * size) % sizeof(int))) /* ? */
+      {
+        why = __LINE__;  
+        use_glue = 0.0;
+      }
     }
     else
-      use_opt = 0;
+    {
+      why = __LINE__;  
+      use_glue = 0.0;
+    }
+    if(unlikely(verbose))
+      fprintf(stderr,"Root of gather glue_reduce %x, selected type %d, use_glue %f, recv count %d, recv bytes %du, size %d, contig %d\n",glue_reduce,optimized_algorithm_type, use_glue, recvcount, recv_bytes, size, rcontig);
   }
+
 
   if((sendbuf != MPI_IN_PLACE) && sendtype != MPI_DATATYPE_NULL && sendcount >= 0)
   {
-    MPIDI_Datatype_get_info(sendcount, sendtype, contig,
+    MPIDI_Datatype_get_info(sendcount, sendtype, scontig,
                             send_bytes, data_ptr, true_lb);
-    if(!contig || ((send_bytes * size) % sizeof(int)))
-      use_opt = 0;
+    if(!scontig || ((send_bytes * size) % sizeof(int)))
+    {
+      why = __LINE__;  
+      use_glue = 0.0;
+    }
+    if(unlikely(verbose))
+      fprintf(stderr,"gather(%u) glue_reduce %x, selected type %d, use_glue %f(%u), send count %d, send bytes %d, size %d, contig %d\n",__LINE__, glue_reduce,optimized_algorithm_type, use_glue, why, sendcount, send_bytes, size, scontig);
   }
   else
   {
     if(sendbuf == MPI_IN_PLACE)
       send_bytes = recv_bytes;
-    if(sendtype == MPI_DATATYPE_NULL || sendcount == 0)
+    else if(sendtype == MPI_DATATYPE_NULL || sendcount == 0)
     {
       send_bytes = 0;
-      use_opt = 0;
+      why = __LINE__;  
+      use_glue = 0.0;
     }
+    if(unlikely(verbose))
+      fprintf(stderr,"gather(%u) glue_reduce %x, selected type %d, use_glue %f(%u), send count %d, send bytes %d, size %d, contig %d\n",__LINE__, glue_reduce,optimized_algorithm_type, use_glue, why, sendcount, send_bytes, size, scontig);
   }
 
-  if(!mpid->optgather &&
-     selected_type == MPID_COLL_USE_MPICH)
+  if(!glue_reduce &&
+     optimized_algorithm_type == MPID_COLL_USE_MPICH)
   {
     MPIDI_Update_last_algorithm(comm_ptr, "GATHER_MPICH");
     if(unlikely(verbose))
-      fprintf(stderr,"Using MPICH gather algorithm (01) opt %x, selected type %d\n",mpid->optgather,selected_type);
+      fprintf(stderr,"Using MPICH gather algorithm (glue_reduce=%x), selected type %d\n",glue_reduce,optimized_algorithm_type);
     return MPIR_Gather(sendbuf, sendcount, sendtype,
                        recvbuf, recvcount, recvtype,
                        root, comm_ptr, mpierrno);
   }
-  if(mpid->preallreduces[MPID_GATHER_PREALLREDUCE])
+  if(glue_reduce)
   {
+//if(mpid->preallreduces[MPID_GATHER_PREALLREDUCE])
+  {
+    /* Switch to comm->coll_fns->fn() */
+    MPIDO_Allreduce(MPI_IN_PLACE, &use_glue, 1, MPI_DOUBLE, MPI_MIN, comm_ptr, mpierrno);
+    if(!use_glue) why = __LINE__;
     if(unlikely(verbose))
-      fprintf(stderr,"MPID_GATHER_PREALLREDUCE opt %x, selected type %d, use_opt %d\n",mpid->optgather,selected_type, use_opt);
-    volatile unsigned allred_active = 1;
-    pami_xfer_t allred;
-    MPIDI_Post_coll_t allred_post;
-    allred.cb_done = cb_allred;
-    allred.cookie = (void *)&allred_active;
-    /* Guaranteed to work allreduce */
-    allred.algorithm = mpid->coll_algorithm[PAMI_XFER_ALLREDUCE][0][0];
-    allred.cmd.xfer_allreduce.sndbuf = (void *)PAMI_IN_PLACE;
-    allred.cmd.xfer_allreduce.stype = PAMI_TYPE_SIGNED_INT;
-    allred.cmd.xfer_allreduce.rcvbuf = (void *)&use_opt;
-    allred.cmd.xfer_allreduce.rtype = PAMI_TYPE_SIGNED_INT;
-    allred.cmd.xfer_allreduce.stypecount = 1;
-    allred.cmd.xfer_allreduce.rtypecount = 1;
-    allred.cmd.xfer_allreduce.op = PAMI_DATA_BAND;
-
-    MPIDI_Context_post(MPIDI_Context[0], &allred_post.state,
-                       MPIDI_Pami_post_wrapper, (void *)&allred);
-    MPID_PROGRESS_WAIT_WHILE(allred_active);
-    if(unlikely(verbose))
-      fprintf(stderr,"MPID_GATHER_PREALLREDUCE opt %x, selected type %d, use_opt %d\n",mpid->optgather,selected_type, use_opt);
+      fprintf(stderr,"MPID_GATHER_PREALLREDUCE glue_reduce %x, selected type %d, use_glue %f, why %d\n",glue_reduce,optimized_algorithm_type, use_glue,why);
   }
 
-  if(mpid->optgather)
-  {
-    if(use_opt)
+//    if(unlikely(verbose))
+//      fprintf(stderr,"GLUE gather glue_reduce %x, selected type %d, use_glue %f, why %d\n",glue_reduce,optimized_algorithm_type, use_glue, why);
+    if(use_glue)
     {
-      MPIDI_Update_last_algorithm(comm_ptr, "GLUE_REDUCDE");
-      abort();
-      /* GLUE_REDUCE ? */
+      if(unlikely(verbose))
+        fprintf(stderr,"Using protocol %s for gather, root %d\n",glue_reduce==1?"GLUE_REDUCE":"GLUE_ALLREDUCE", root);
+      MPIDI_Update_last_algorithm(comm_ptr, glue_reduce==1?"GLUE_REDUCE":"GLUE_ALLREDUCE");
+      return MPIDO_Gather_reduce(sendbuf,
+                                 sendcount,
+                                 sendtype,
+                                 recvbuf,
+                                 (rank == root)?recvcount:sendcount,
+                                 (rank == root)?recvtype:sendtype,
+                                 root,
+                                 comm_ptr,
+                                 mpierrno,
+                                 glue_reduce);
     }
     else
     {
       MPIDI_Update_last_algorithm(comm_ptr, "GATHER_MPICH");
       if(unlikely(verbose))
-        fprintf(stderr,"Using MPICH gather algorithm (02) opt %x, selected type %d, use_opt %d\n",mpid->optgather,selected_type, use_opt);
+        fprintf(stderr,"Using MPICH gather algorithm (glue_reduce=%x), selected type %d, use_glue %f\n",glue_reduce,optimized_algorithm_type, use_glue);
       return MPIR_Gather(sendbuf, sendcount, sendtype,
                          recvbuf, recvcount, recvtype,
                          root, comm_ptr, mpierrno);
@@ -259,26 +364,15 @@ int MPIDO_Gather(const void *sendbuf,
   gather.cmd.xfer_gather.rtypecount = recv_bytes;
 
   /* If glue-level protocols are good, this will require some changes */
-  if(selected_type == MPID_COLL_OPTIMIZED)
-  {
-    TRACE_ERR("Optimized gather (%s) was pre-selected\n",
-              mpid->opt_protocol_md[PAMI_XFER_GATHER][0].name);
-    my_gather = mpid->opt_protocol[PAMI_XFER_GATHER][0];
-    my_md = &mpid->opt_protocol_md[PAMI_XFER_GATHER][0];
-    queryreq = mpid->must_query[PAMI_XFER_GATHER][0];
-  }
-  else
-  {
-    TRACE_ERR("Optimized gather (%s) was specified by user\n",
-              mpid->user_metadata[PAMI_XFER_GATHER].name);
-    my_gather = mpid->user_selected[PAMI_XFER_GATHER];
-    my_md = &mpid->user_metadata[PAMI_XFER_GATHER];
-    queryreq = selected_type;
-  }
+  TRACE_ERR("Optimized gather (%s) was pre-selected\n",
+            mpid->optimized_algorithm_metadata[PAMI_XFER_GATHER][0].name);
+  my_gather = mpid->optimized_algorithm[PAMI_XFER_GATHER][0];
+  my_md = &mpid->optimized_algorithm_metadata[PAMI_XFER_GATHER][0];
+  queryreq = mpid->optimized_algorithm_type[PAMI_XFER_GATHER][0];
 
   gather.algorithm = my_gather;
-  if(unlikely(queryreq == MPID_COLL_ALWAYS_QUERY || 
-              queryreq == MPID_COLL_CHECK_FN_REQUIRED))
+  if(unlikely(queryreq == MPID_COLL_QUERY || 
+              queryreq == MPID_COLL_DEFAULT_QUERY))
   {
     metadata_result_t result = {0};
     TRACE_ERR("querying gather protocol %s, type was %d\n",
@@ -338,9 +432,7 @@ int MPIDO_Gather(const void *sendbuf,
     }
   }
 
-  MPIDI_Update_last_algorithm(comm_ptr,
-                              mpid->user_metadata[PAMI_XFER_GATHER].name);
-
+  MPIDI_Update_last_algorithm(comm_ptr, my_md->name);
 
   if(unlikely(verbose))
   {
@@ -365,6 +457,7 @@ int MPIDO_Gather(const void *sendbuf,
 }
 
 
+#ifndef __BGQ__
 int MPIDO_Gather_simple(const void *sendbuf,
                         int sendcount,
                         MPI_Datatype sendtype,
@@ -491,8 +584,8 @@ int MPIDO_Gather_simple(const void *sendbuf,
   gather.cmd.xfer_gather.rcvbuf = (void *)rbuf;
   gather.cmd.xfer_gather.rtype = PAMI_TYPE_BYTE;
   gather.cmd.xfer_gather.rtypecount = recv_size;
-  gather.algorithm = mpid->coll_algorithm[PAMI_XFER_GATHER][0][0];
-  my_gather_md = &mpid->coll_metadata[PAMI_XFER_GATHER][0][0];
+  gather.algorithm = mpid->algorithm_list[PAMI_XFER_GATHER][0][0];
+  my_gather_md = &mpid->algorithm_metadata_list[PAMI_XFER_GATHER][0][0];
 
   MPIDI_Update_last_algorithm(comm_ptr,
                               my_gather_md->name);
@@ -548,4 +641,4 @@ MPIDO_CSWrapper_gather(pami_xfer_t *gather,
   return rc;
 
 }
-
+#endif

@@ -57,7 +57,7 @@ int MPIDO_Alltoall(const void *sendbuf,
   const unsigned verbose = (MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL) && (comm_ptr->rank == 0);
 #endif
   const struct MPIDI_Comm* const mpid = &(comm_ptr->mpid);
-  const int selected_type = mpid->user_selected_type[PAMI_XFER_ALLTOALL];
+  const int optimized_algorithm_type = mpid->optimized_algorithm_type[PAMI_XFER_ALLTOALL][0];
 
   if(sendbuf != MPI_IN_PLACE)
   {
@@ -78,7 +78,7 @@ int MPIDO_Alltoall(const void *sendbuf,
   if(MPIDI_Datatype_to_pami(recvtype, &rtype, -1, NULL, &tmp) != MPI_SUCCESS)
     pamidt = 0;
 
-  if((selected_type == MPID_COLL_USE_MPICH) ||
+  if((optimized_algorithm_type == MPID_COLL_USE_MPICH) ||
      pamidt == 0)
   {
     if(unlikely(verbose))
@@ -93,20 +93,10 @@ int MPIDO_Alltoall(const void *sendbuf,
   pami_algorithm_t my_alltoall;
   const pami_metadata_t *my_md = (pami_metadata_t *)NULL;
   int queryreq = 0;
-  if(selected_type == MPID_COLL_OPTIMIZED)
-  {
-    TRACE_ERR("Optimized alltoall was pre-selected\n");
-    my_alltoall = mpid->opt_protocol[PAMI_XFER_ALLTOALL][0];
-    my_md = &mpid->opt_protocol_md[PAMI_XFER_ALLTOALL][0];
-    queryreq = mpid->must_query[PAMI_XFER_ALLTOALL][0];
-  }
-  else
-  {
-    TRACE_ERR("Alltoall was specified by user\n");
-    my_alltoall = mpid->user_selected[PAMI_XFER_ALLTOALL];
-    my_md = &mpid->user_metadata[PAMI_XFER_ALLTOALL];
-    queryreq = selected_type;
-  }
+  TRACE_ERR("Optimized alltoall was pre-selected\n");
+  my_alltoall = mpid->optimized_algorithm[PAMI_XFER_ALLTOALL][0];
+  my_md = &mpid->optimized_algorithm_metadata[PAMI_XFER_ALLTOALL][0];
+  queryreq = mpid->optimized_algorithm_type[PAMI_XFER_ALLTOALL][0];
   char *pname = my_md->name;
   TRACE_ERR("Using alltoall protocol %s\n", pname);
 
@@ -132,8 +122,8 @@ int MPIDO_Alltoall(const void *sendbuf,
   alltoall.cmd.xfer_alltoall.rtypecount = recvcount;
   alltoall.cmd.xfer_alltoall.rtype = rtype;
 
-  if(unlikely(queryreq == MPID_COLL_ALWAYS_QUERY || 
-              queryreq == MPID_COLL_CHECK_FN_REQUIRED))
+  if(unlikely(queryreq == MPID_COLL_QUERY || 
+              queryreq == MPID_COLL_DEFAULT_QUERY))
   {
     metadata_result_t result = {0};
     TRACE_ERR("querying alltoall protocol %s, query level was %d\n", pname,
@@ -212,6 +202,7 @@ int MPIDO_Alltoall(const void *sendbuf,
 }
 
 
+#ifndef __BGQ__
 int MPIDO_Alltoall_simple(const void *sendbuf,
                           int sendcount,
                           MPI_Datatype sendtype,
@@ -295,14 +286,14 @@ int MPIDO_Alltoall_simple(const void *sendbuf,
 
   pami_xfer_t alltoall;
   const pami_metadata_t *my_alltoall_md;
-  my_alltoall_md = &mpid->coll_metadata[PAMI_XFER_ALLTOALL][0][0];
+  my_alltoall_md = &mpid->algorithm_metadata_list[PAMI_XFER_ALLTOALL][0][0];
 
   char *pname = my_alltoall_md->name;
   TRACE_ERR("Using alltoall protocol %s\n", pname);
 
   alltoall.cb_done = cb_alltoall;
   alltoall.cookie = (void *)&active;
-  alltoall.algorithm = mpid->coll_algorithm[PAMI_XFER_ALLTOALL][0][0];
+  alltoall.algorithm = mpid->algorithm_list[PAMI_XFER_ALLTOALL][0][0];
   alltoall.cmd.xfer_alltoall.stype = PAMI_TYPE_BYTE;/* stype is ignored when sndbuf == PAMI_IN_PLACE */
   alltoall.cmd.xfer_alltoall.stypecount = send_size;
   alltoall.cmd.xfer_alltoall.sndbuf = sbuf;
@@ -365,4 +356,4 @@ MPIDO_CSWrapper_alltoall(pami_xfer_t *alltoall,
   return rc;
 
 }
-
+#endif

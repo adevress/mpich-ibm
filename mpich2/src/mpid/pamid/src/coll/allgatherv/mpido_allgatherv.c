@@ -29,13 +29,6 @@ static void allgatherv_cb_done(void *ctxt, void *clientdata, pami_result_t err)
   (*active)--;
 }
 
-static void allred_cb_done(void *ctxt, void *clientdata, pami_result_t err)
-{
-  int *active = (int *)clientdata;
-  (*active)--;
-}
-
-
 /* ****************************************************************** */
 /**
  * \brief Use (tree) MPIDO_Allreduce() to do a fast Allgatherv operation
@@ -323,10 +316,8 @@ MPIDO_Allgatherv(const void *sendbuf,
 #else
   const unsigned verbose = (MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL) && (rank == 0);
 #endif
-  const int selected_type = mpid->user_selected_type[PAMI_XFER_ALLGATHERV_INT];
+  const int optimized_algorithm_type = mpid->optimized_algorithm_type[PAMI_XFER_ALLGATHERV_INT][0];
 
-  pami_xfer_t allred;
-  volatile unsigned allred_active = 1;
   volatile unsigned allgatherv_active = 1;
   pami_type_t stype, rtype;
   int tmp;
@@ -334,21 +325,11 @@ MPIDO_Allgatherv(const void *sendbuf,
 
   for(i=0;i<6;i++) config[i] = 1;
 
-  allred.cb_done = allred_cb_done;
-  allred.cookie = (void *)&allred_active;
-  allred.algorithm = mpid->coll_algorithm[PAMI_XFER_ALLREDUCE][0][0];
-  allred.cmd.xfer_allreduce.sndbuf = (void *)config;
-  allred.cmd.xfer_allreduce.stype = PAMI_TYPE_SIGNED_INT;
-  allred.cmd.xfer_allreduce.rcvbuf = (void *)config;
-  allred.cmd.xfer_allreduce.rtype = PAMI_TYPE_SIGNED_INT;
-  allred.cmd.xfer_allreduce.stypecount = 6;
-  allred.cmd.xfer_allreduce.rtypecount = 6;
-  allred.cmd.xfer_allreduce.op = PAMI_DATA_BAND;
 
   use_alltoall = mpid->allgathervs[2];
   use_tree_reduce = mpid->allgathervs[0];
   use_bcast = mpid->allgathervs[1];
-  use_pami = selected_type != MPID_COLL_USE_MPICH;
+  use_pami = optimized_algorithm_type != MPID_COLL_USE_MPICH;
 
   if((sendbuf != MPI_IN_PLACE) && (MPIDI_Datatype_to_pami(sendtype, &stype, -1, NULL, &tmp) != MPI_SUCCESS))
     use_pami = 0;
@@ -361,7 +342,7 @@ MPIDO_Allgatherv(const void *sendbuf,
   {
     if(unlikely(verbose))
       fprintf(stderr,"Using MPICH allgatherv type %u.\n",
-              selected_type);
+              optimized_algorithm_type);
     TRACE_ERR("Using MPICH Allgatherv\n");
     MPIDI_Update_last_algorithm(comm_ptr, "ALLGATHERV_MPICH");
     return MPIR_Allgatherv(sendbuf, sendcount, sendtype,
@@ -378,10 +359,9 @@ MPIDO_Allgatherv(const void *sendbuf,
 
   if(sendbuf == MPI_IN_PLACE)
   {
+    sbuf = PAMI_IN_PLACE;
     if(unlikely(verbose))
       fprintf(stderr,"allgatherv MPI_IN_PLACE buffering\n");
-    sbuf = PAMI_IN_PLACE;
-    send_true_lb = recv_true_lb;
     stype = rtype;
     scount = recvcounts[rank];
     send_size = recv_size * scount; 
@@ -422,11 +402,8 @@ MPIDO_Allgatherv(const void *sendbuf,
     /* disable with "safe allgatherv" env var */
     if(mpid->preallreduces[MPID_ALLGATHERV_PREALLREDUCE])
     {
-      MPIDI_Post_coll_t allred_post;
-      MPIDI_Context_post(MPIDI_Context[0], &allred_post.state,
-                         MPIDI_Pami_post_wrapper, (void *)&allred);
-
-      MPID_PROGRESS_WAIT_WHILE(allred_active);
+      /* Switch to comm->coll_fns->fn() */
+      MPIDO_Allreduce(MPI_IN_PLACE, config, 6, MPI_INTEGER, MPI_BAND, comm_ptr, mpierrno);
     }
 
     use_tree_reduce = mpid->allgathervs[0] &&
@@ -444,26 +421,17 @@ MPIDO_Allgatherv(const void *sendbuf,
     pami_xfer_t allgatherv;
     allgatherv.cb_done = allgatherv_cb_done;
     allgatherv.cookie = (void *)&allgatherv_active;
-    if(selected_type == MPID_COLL_OPTIMIZED)
+    if((mpid->optimized_algorithm_cutoff_size[PAMI_XFER_ALLGATHERV_INT][0] == 0) || 
+       (mpid->optimized_algorithm_cutoff_size[PAMI_XFER_ALLGATHERV_INT][0] > 0 && mpid->optimized_algorithm_cutoff_size[PAMI_XFER_ALLGATHERV_INT][0] >= send_size))
     {
-      if((mpid->cutoff_size[PAMI_XFER_ALLGATHERV_INT][0] == 0) || 
-         (mpid->cutoff_size[PAMI_XFER_ALLGATHERV_INT][0] > 0 && mpid->cutoff_size[PAMI_XFER_ALLGATHERV_INT][0] >= send_size))
-      {
-        allgatherv.algorithm = mpid->opt_protocol[PAMI_XFER_ALLGATHERV_INT][0];
-        my_md = &mpid->opt_protocol_md[PAMI_XFER_ALLGATHERV_INT][0];
-        queryreq     = mpid->must_query[PAMI_XFER_ALLGATHERV_INT][0];
-      }
-      else
-        return MPIR_Allgatherv(sendbuf, sendcount, sendtype,
-                               recvbuf, recvcounts, displs, recvtype,
-                               comm_ptr, mpierrno);
+      allgatherv.algorithm = mpid->optimized_algorithm[PAMI_XFER_ALLGATHERV_INT][0];
+      my_md = &mpid->optimized_algorithm_metadata[PAMI_XFER_ALLGATHERV_INT][0];
+      queryreq     = mpid->optimized_algorithm_type[PAMI_XFER_ALLGATHERV_INT][0];
     }
     else
-    {
-      allgatherv.algorithm = mpid->user_selected[PAMI_XFER_ALLGATHERV_INT];
-      my_md = &mpid->user_metadata[PAMI_XFER_ALLGATHERV_INT];
-      queryreq     = selected_type;
-    }
+      return MPIR_Allgatherv(sendbuf, sendcount, sendtype,
+                             recvbuf, recvcounts, displs, recvtype,
+                             comm_ptr, mpierrno);
 
     allgatherv.cmd.xfer_allgatherv_int.sndbuf = sbuf;
     allgatherv.cmd.xfer_allgatherv_int.rcvbuf = rbuf;
@@ -474,12 +442,12 @@ MPIDO_Allgatherv(const void *sendbuf,
     allgatherv.cmd.xfer_allgatherv_int.rtypecounts = (int *) recvcounts;
     allgatherv.cmd.xfer_allgatherv_int.rdispls = (int *) displs;
 
-    if(unlikely (queryreq == MPID_COLL_ALWAYS_QUERY ||
-                 queryreq == MPID_COLL_CHECK_FN_REQUIRED))
+    if(unlikely (queryreq == MPID_COLL_QUERY ||
+                 queryreq == MPID_COLL_DEFAULT_QUERY))
     {
       metadata_result_t result = {0};
       TRACE_ERR("Querying allgatherv_int protocol %s, type was %d\n", my_md->name,
-                selected_type);
+                optimized_algorithm_type);
       if(my_md->check_fn == NULL)
       {
         /* process metadata bits */
@@ -561,7 +529,7 @@ MPIDO_Allgatherv(const void *sendbuf,
   {
     if(unlikely(verbose))
       fprintf(stderr,"Using tree reduce allgatherv type %u.\n",
-              selected_type);
+              optimized_algorithm_type);
     rc = MPIDO_Allgatherv_allreduce(sendbuf, sendcount, sendtype,
                                     recvbuf, recvcounts, buffer_sum, displs, recvtype,
                                     send_true_lb, recv_true_lb, send_size, recv_size,
@@ -574,7 +542,7 @@ MPIDO_Allgatherv(const void *sendbuf,
   {
     if(unlikely(verbose))
       fprintf(stderr,"Using bcast allgatherv type %u.\n",
-              selected_type);
+              optimized_algorithm_type);
     rc = MPIDO_Allgatherv_bcast(sendbuf, sendcount, sendtype,
                                 recvbuf, recvcounts, buffer_sum, displs, recvtype,
                                 send_true_lb, recv_true_lb, send_size, recv_size,
@@ -587,7 +555,7 @@ MPIDO_Allgatherv(const void *sendbuf,
   {
     if(unlikely(verbose))
       fprintf(stderr,"Using alltoall allgatherv type %u.\n",
-              selected_type);
+              optimized_algorithm_type);
     rc = MPIDO_Allgatherv_alltoall(sendbuf, sendcount, sendtype,
                                    recvbuf, (int *)recvcounts, buffer_sum, displs, recvtype,
                                    send_true_lb, recv_true_lb, send_size, recv_size,
@@ -598,7 +566,7 @@ MPIDO_Allgatherv(const void *sendbuf,
 
   if(unlikely(verbose))
     fprintf(stderr,"Using MPICH allgatherv type %u.\n",
-            selected_type);
+            optimized_algorithm_type);
   TRACE_ERR("Using MPICH for Allgatherv\n");
   MPIDI_Update_last_algorithm(comm_ptr, "ALLGATHERV_MPICH");
   return MPIR_Allgatherv(sendbuf, sendcount, sendtype,
@@ -606,6 +574,7 @@ MPIDO_Allgatherv(const void *sendbuf,
                          comm_ptr, mpierrno);
 }
 
+#ifndef __BGQ__
 int
 MPIDO_Allgatherv_simple(const void *sendbuf,
                         int sendcount,
@@ -709,8 +678,8 @@ MPIDO_Allgatherv_simple(const void *sendbuf,
   allgatherv.cmd.xfer_allgatherv_int.stypecount = scount;
   allgatherv.cmd.xfer_allgatherv_int.rtypecounts = (int *) recvcounts;
   allgatherv.cmd.xfer_allgatherv_int.rdispls = (int *) displs;
-  allgatherv.algorithm = mpid->coll_algorithm[PAMI_XFER_ALLGATHERV_INT][0][0];
-  my_md = &mpid->coll_metadata[PAMI_XFER_ALLGATHERV_INT][0][0];
+  allgatherv.algorithm = mpid->algorithm_list[PAMI_XFER_ALLGATHERV_INT][0][0];
+  my_md = &mpid->algorithm_metadata_list[PAMI_XFER_ALLGATHERV_INT][0][0];
 
   TRACE_ERR("Calling allgatherv via %s()\n", MPIDI_Process.context_post.active>0?"PAMI_Collective":"PAMI_Context_post");
   MPIDI_Post_coll_t allgatherv_post;
@@ -759,4 +728,4 @@ MPIDO_CSWrapper_allgatherv(pami_xfer_t *allgatherv,
 
 
 }
-
+#endif

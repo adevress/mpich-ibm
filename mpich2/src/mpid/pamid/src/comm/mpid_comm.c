@@ -260,10 +260,31 @@ void MPIDI_Coll_comm_create(MPID_Comm *comm)
    TRACE_ERR("Querying protocols\n");
    /* Determine what protocols are available for this comm/geom */
    /* These two functions moved to mpid_collselect.c */
-   MPIDI_Comm_coll_query(comm);
+   MPIDI_Comm_coll_query(comm); /* allocates algorithm lists */
    MPIDI_Comm_coll_envvars(comm);
    if(MPIDI_Process.optimized.select_colls)
       MPIDI_Comm_coll_select(comm);
+
+#ifdef __BGQ__
+   /* BGQ is done with algorithm lists */
+   for(i=0;i<PAMI_XFER_COUNT;i++)
+   {
+     TRACE_ERR("Freeing algo/meta %d\n", i);
+     /* When allocating comm->mpid.algorithm_list, we skip allocations for
+       AM collectives. Also there is no explicit initialization of 
+       comm->mpid.algorithm_list to NULLs. This may cause MPIU_TestFree to
+       cause problems when freeing. We skip AM collectives here as we skip
+       allocating them in MPIDI_Comm_coll_query */
+     if(i == PAMI_XFER_AMBROADCAST || i == PAMI_XFER_AMSCATTER ||
+        i == PAMI_XFER_AMGATHER || i == PAMI_XFER_AMREDUCE)
+         continue;
+
+     MPIU_TestFree(&comm->mpid.algorithm_list[i][0]);
+     MPIU_TestFree(&comm->mpid.algorithm_list[i][1]);
+     MPIU_TestFree(&comm->mpid.algorithm_metadata_list[i][0]);
+     MPIU_TestFree(&comm->mpid.algorithm_metadata_list[i][1]);
+   }
+#endif
    TRACE_ERR("mpir barrier\n");
    int mpierrno;
    /* Switch to comm->coll_fns->fn() */
@@ -291,22 +312,27 @@ void MPIDI_Coll_comm_destroy(MPID_Comm *comm)
     return;
 
    MPIU_TestFree(&comm->coll_fns);
+
+#ifndef __BGQ__
+   /* non-BGQ (collective selection) is done with algorithm lists */
    for(i=0;i<PAMI_XFER_COUNT;i++)
    {
      TRACE_ERR("Freeing algo/meta %d\n", i);
-     /* When allocating comm->mpid.coll_algorithm, we skip allocations for
+     /* When allocating comm->mpid.algorithm_list, we skip allocations for
        AM collectives. Also there is no explicit initialization of 
-       comm->mpid.coll_algorithm to NULLs. This may cause MPIU_TestFree to
+       comm->mpid.algorithm_list to NULLs. This may cause MPIU_TestFree to
        cause problems when freeing. We skip AM collectives here as we skip
        allocating them in MPIDI_Comm_coll_query */
      if(i == PAMI_XFER_AMBROADCAST || i == PAMI_XFER_AMSCATTER ||
-        i == PAMI_XFER_AMGATHER || i == PAMI_XFER_AMREDUCE)
+         i == PAMI_XFER_AMGATHER || i == PAMI_XFER_AMREDUCE)
          continue;
-     MPIU_TestFree(&comm->mpid.coll_algorithm[i][0]);
-     MPIU_TestFree(&comm->mpid.coll_algorithm[i][1]);
-     MPIU_TestFree(&comm->mpid.coll_metadata[i][0]);
-     MPIU_TestFree(&comm->mpid.coll_metadata[i][1]);
+
+     MPIU_TestFree(&comm->mpid.algorithm_list[i][0]);
+     MPIU_TestFree(&comm->mpid.algorithm_list[i][1]);
+     MPIU_TestFree(&comm->mpid.algorithm_metadata_list[i][0]);
+     MPIU_TestFree(&comm->mpid.algorithm_metadata_list[i][1]);
    }
+#endif
 
    TRACE_ERR("Destroying geometry\n");
 

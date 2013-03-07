@@ -35,7 +35,7 @@ int MPIDO_Ibcast(void *buffer,
 
    const unsigned is_root_rank = (comm_ptr->rank == root);
    const unsigned user_selected_type =
-     comm_ptr->mpid.user_selected_type[PAMI_XFER_BROADCAST];
+     comm_ptr->mpid.optimized_algorithm_type[PAMI_XFER_BROADCAST][0];
 
    int data_size, data_contig;
    MPI_Aint data_true_lb = 0;

@@ -24,12 +24,6 @@
 #include <mpidimpl.h>
 
 
-static void allred_cb_done(void *ctxt, void *clientdata, pami_result_t err)
-{
-  int *active = (int *)clientdata;
-  (*active)--;
-}
-
 static void allgather_cb_done(void *ctxt, void *clientdata, pami_result_t err)
 {
   int *active = (int *)clientdata;
@@ -293,51 +287,40 @@ MPIDO_Allgather(const void *sendbuf,
    * *********************************
    */
   const struct MPIDI_Comm* const mpid = &(comm_ptr->mpid);
-  int config[6], i;
+  double config[6];
+  int i;
   MPID_Datatype * dt_null = NULL;
   MPI_Aint send_true_lb = 0;
   MPI_Aint recv_true_lb = 0;
   int rc, comm_size = comm_ptr->local_size;
   size_t send_bytes = 0;
   size_t recv_bytes = 0;
-  volatile unsigned allred_active = 1;
   volatile unsigned allgather_active = 1;
-  pami_xfer_t allred;
   const int rank = comm_ptr->rank;
+  const int size = comm_ptr->local_size;
   int queryreq = 0;
 #if ASSERT_LEVEL==0
   /* We can't afford the tracing in ndebug/performance libraries */
   const unsigned verbose = 0;
 #else
-  const unsigned verbose = (MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL) && (rank == 0);
+  const unsigned verbose = (MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL) && ((rank == 0) || (rank == 1));
 #endif
-  const int selected_type = mpid->user_selected_type[PAMI_XFER_ALLGATHER];
+  const int optimized_algorithm_type = mpid->optimized_algorithm_type[PAMI_XFER_ALLGATHER][0];
 
-  for(i=0;i<6;i++) config[i] = 1;
+  for(i=0;i<6;i++) config[i] = 1.0;
   const pami_metadata_t *my_md = (pami_metadata_t *)NULL;
 
 
-  allred.cb_done = allred_cb_done;
-  allred.cookie = (void *)&allred_active;
-  /* Pick an algorithm that is guaranteed to work for the pre-allreduce */
-  /* TODO: This needs selection for fast(er|est) allreduce protocol */
-  allred.algorithm = mpid->coll_algorithm[PAMI_XFER_ALLREDUCE][0][0]; 
-  allred.cmd.xfer_allreduce.sndbuf = (void *)config;
-  allred.cmd.xfer_allreduce.stype = PAMI_TYPE_SIGNED_INT;
-  allred.cmd.xfer_allreduce.rcvbuf = (void *)config;
-  allred.cmd.xfer_allreduce.rtype = PAMI_TYPE_SIGNED_INT;
-  allred.cmd.xfer_allreduce.stypecount = 6;
-  allred.cmd.xfer_allreduce.rtypecount = 6;
-  allred.cmd.xfer_allreduce.op = PAMI_DATA_BAND;
 
   char use_tree_reduce, use_alltoall, use_bcast, use_pami, use_opt;
   char *rbuf = NULL, *sbuf = NULL;
+  void *snd_noncontig_buff = NULL, *rcv_noncontig_buff = NULL;
 
   const char * const allgathers = mpid->allgathers;
   use_alltoall = allgathers[2];
   use_tree_reduce = allgathers[0];
   use_bcast = allgathers[1];
-  use_pami = (selected_type == MPID_COLL_USE_MPICH) ? 0 : 1;
+  use_pami = (optimized_algorithm_type == MPID_COLL_USE_MPICH) ? 0 : 1;
   use_opt = use_alltoall || use_tree_reduce || use_bcast || use_pami;
 
 
@@ -356,65 +339,98 @@ MPIDO_Allgather(const void *sendbuf,
     return MPI_SUCCESS;
 
   /* Gather datatype information */
+  int rcontig = 0, scontig = 0;
   MPIDI_Datatype_get_info(recvcount,
                           recvtype,
-                          config[MPID_RECV_CONTIG],
+                          rcontig,
                           recv_bytes,
                           dt_null,
                           recv_true_lb);
 
+  config[MPID_RECV_CONTIG] = rcontig? 1.0 : 0.0;
+  config[MPID_RECV_CONTINUOUS] = config[MPID_RECV_CONTIG];
+
   send_bytes = recv_bytes;
   rbuf = (char *)recvbuf+recv_true_lb;
+
+  if(!rcontig)
+  {
+    rcv_noncontig_buff = MPIU_Malloc(recv_bytes * size);
+    rbuf = rcv_noncontig_buff;
+    if(rcv_noncontig_buff == NULL)
+    {
+      MPID_Abort(NULL, MPI_ERR_NO_SPACE, 1,
+                 "Fatal:  Cannot allocate pack buffer");
+    }
+    if(sendbuf == MPI_IN_PLACE)
+    {
+      size_t extent;
+      MPID_Datatype_get_extent_macro(recvtype,extent);
+      MPIR_Localcopy(recvbuf + (rank*recvcount*extent), recvcount, recvtype,
+                     rcv_noncontig_buff + (rank*recv_bytes), recv_bytes,MPI_CHAR);
+    }
+  }
 
   sbuf = PAMI_IN_PLACE;
   if(sendbuf != MPI_IN_PLACE)
   {
     MPIDI_Datatype_get_info(sendcount,
                             sendtype,
-                            config[MPID_SEND_CONTIG],
+                            scontig, 
                             send_bytes,
                             dt_null,
                             send_true_lb);
+    config[MPID_SEND_CONTIG] = scontig? 1.0 : 0.0;
     sbuf = (char *)sendbuf+send_true_lb;
+    config[MPID_SEND_CONTINUOUS] = config[MPID_SEND_CONTIG];
+    if(!scontig)
+    {
+      snd_noncontig_buff = MPIU_Malloc(send_bytes);
+      sbuf = snd_noncontig_buff;
+      if(snd_noncontig_buff == NULL)
+      {
+        MPID_Abort(NULL, MPI_ERR_NO_SPACE, 1,
+                   "Fatal:  Cannot allocate pack buffer");
+      }
+      MPIR_Localcopy(sendbuf,            sendcount,  sendtype, 
+                     snd_noncontig_buff, send_bytes, MPI_CHAR);
+    }
   }
   else
     if(unlikely(verbose))
-    fprintf(stderr,"allgather MPI_IN_PLACE buffering\n");
+      fprintf(stderr,"allgather MPI_IN_PLACE buffering\n");
+
+  if(unlikely(verbose))
+    fprintf(stderr,"allgather recvcount %d, recv_bytes %zd, rcontig %d, sendcount %d, send_bytes %zd, scontig %d\n",
+            recvcount,recv_bytes,rcontig,sendcount,send_bytes,scontig);
 
   /* verify everyone's datatype contiguity */
-  /* Check buffer alignment now, since we're pre-allreducing anyway */
-  /* Only do this if one of the glue protocols is likely to be used */
   if(use_alltoall || use_tree_reduce || use_bcast)
   {
-    config[MPID_ALIGNEDBUFFER] =
-    !((long)sendbuf & 0x0F) && !((long)recvbuf & 0x0F);
-
     /* #warning need to determine best allreduce for short messages */
     if(mpid->preallreduces[MPID_ALLGATHER_PREALLREDUCE])
     {
-      TRACE_ERR("Preallreducing in allgather\n");
-      MPIDI_Post_coll_t allred_post;
-      MPIDI_Context_post(MPIDI_Context[0], &allred_post.state,
-                         MPIDI_Pami_post_wrapper, (void *)&allred);
-
-      MPID_PROGRESS_WAIT_WHILE(allred_active);
+      MPIDO_Allreduce(MPI_IN_PLACE, config, 6, MPI_DOUBLE, MPI_MIN, comm_ptr, mpierrno);
     }
 
-
     use_alltoall = allgathers[2] &&
-                   config[MPID_RECV_CONTIG] && config[MPID_SEND_CONTIG];;
+                   (config[MPID_RECV_CONTIG]==1.0) && (config[MPID_SEND_CONTIG]==1.0);
 
     /* Note: some of the glue protocols use recv_bytes*comm_size rather than 
      * recv_bytes so we use that for comparison here, plus we pass that in
      * to those protocols. */
     use_tree_reduce =  allgathers[0] &&
-                       config[MPID_RECV_CONTIG] && config[MPID_SEND_CONTIG] &&
-                       config[MPID_RECV_CONTINUOUS] && (recv_bytes*comm_size%sizeof(unsigned)) == 0;
+                       (config[MPID_RECV_CONTIG]==1.0) && (config[MPID_SEND_CONTIG]==1.0) &&
+                       (config[MPID_RECV_CONTINUOUS]==1.0) && (recv_bytes*comm_size%sizeof(unsigned)) == 0;
 
     use_bcast = allgathers[1];
 
     TRACE_ERR("flags after: b: %d a: %d t: %d p: %d\n", use_bcast, use_alltoall, use_tree_reduce, use_pami);
   }
+  if(unlikely(verbose))
+    fprintf(stderr,"allgather config %f,%f,%f,%f,%f,%f use_alltoall %d, use_tree_reduce %d, use_bcast %d, use_pami %d \n",
+            config[0],config[1],config[2],config[3],config[4],config[5],use_alltoall, use_tree_reduce, use_bcast, use_pami);
+
   if(use_pami)
   {
     TRACE_ERR("Using PAMI-level allgather protocol\n");
@@ -427,36 +443,27 @@ MPIDO_Allgather(const void *sendbuf,
     allgather.cmd.xfer_allgather.rtype = PAMI_TYPE_BYTE;
     allgather.cmd.xfer_allgather.stypecount = send_bytes;
     allgather.cmd.xfer_allgather.rtypecount = recv_bytes;
-    if(selected_type == MPID_COLL_OPTIMIZED)
+    if((mpid->optimized_algorithm_cutoff_size[PAMI_XFER_ALLGATHER][0] == 0) || 
+       (mpid->optimized_algorithm_cutoff_size[PAMI_XFER_ALLGATHER][0] > 0 && mpid->optimized_algorithm_cutoff_size[PAMI_XFER_ALLGATHER][0] >= send_bytes))
     {
-      if((mpid->cutoff_size[PAMI_XFER_ALLGATHER][0] == 0) || 
-         (mpid->cutoff_size[PAMI_XFER_ALLGATHER][0] > 0 && mpid->cutoff_size[PAMI_XFER_ALLGATHER][0] >= send_bytes))
-      {
-        allgather.algorithm = mpid->opt_protocol[PAMI_XFER_ALLGATHER][0];
-        my_md = &mpid->opt_protocol_md[PAMI_XFER_ALLGATHER][0];
-        queryreq     = mpid->must_query[PAMI_XFER_ALLGATHER][0];
-      }
-      else
-      {
-        return MPIR_Allgather(sendbuf, sendcount, sendtype,
-                              recvbuf, recvcount, recvtype,
-                              comm_ptr, mpierrno);
-      }
+      allgather.algorithm = mpid->optimized_algorithm[PAMI_XFER_ALLGATHER][0];
+      my_md = &mpid->optimized_algorithm_metadata[PAMI_XFER_ALLGATHER][0];
+      queryreq     = mpid->optimized_algorithm_type[PAMI_XFER_ALLGATHER][0];
     }
     else
     {
-      allgather.algorithm = mpid->user_selected[PAMI_XFER_ALLGATHER];
-      my_md = &mpid->user_metadata[PAMI_XFER_ALLGATHER];
-      queryreq     = selected_type;
+      return MPIR_Allgather(sendbuf, sendcount, sendtype,
+                            recvbuf, recvcount, recvtype,
+                            comm_ptr, mpierrno);
     }
 
-    if(unlikely( queryreq == MPID_COLL_ALWAYS_QUERY ||
-                 queryreq == MPID_COLL_CHECK_FN_REQUIRED))
+    if(unlikely( queryreq == MPID_COLL_QUERY ||
+                 queryreq == MPID_COLL_DEFAULT_QUERY))
     {
       metadata_result_t result = {0};
       TRACE_ERR("Querying allgather protocol %s, type was: %d\n",
                 my_md->name,
-                selected_type);
+                optimized_algorithm_type);
       if(my_md->check_fn == NULL)
       {
         /* process metadata bits */
@@ -523,52 +530,60 @@ MPIDO_Allgather(const void *sendbuf,
     MPIDI_Update_last_algorithm(comm_ptr, my_md->name);
     MPID_PROGRESS_WAIT_WHILE(allgather_active);
     TRACE_ERR("Allgather done\n");
-    return PAMI_SUCCESS;
   }
-
-  if(use_tree_reduce)
+  else if(use_tree_reduce)
   {
     if(unlikely(verbose))
       fprintf(stderr,"Using protocol GLUE_ALLREDUCE for allgather\n");
     TRACE_ERR("Using allgather via allreduce\n");
     MPIDI_Update_last_algorithm(comm_ptr, "ALLGATHER_OPT_ALLREDUCE");
-    return MPIDO_Allgather_allreduce(sendbuf, sendcount, sendtype,
+    MPIDO_Allgather_allreduce(sendbuf, sendcount, sendtype,
                                      recvbuf, recvcount, recvtype,
                                      send_true_lb, recv_true_lb, send_bytes, recv_bytes*comm_size, comm_ptr, mpierrno);
   }
-  if(use_alltoall)
+  else if(use_alltoall)
   {
     if(unlikely(verbose))
       fprintf(stderr,"Using protocol GLUE_BCAST for allgather\n");
     TRACE_ERR("Using allgather via alltoall\n");
     MPIDI_Update_last_algorithm(comm_ptr, "ALLGATHER_OPT_ALLTOALL");
-    return MPIDO_Allgather_alltoall(sendbuf, sendcount, sendtype,
+    MPIDO_Allgather_alltoall(sendbuf, sendcount, sendtype,
                                     recvbuf, recvcount, recvtype,
                                     send_true_lb, recv_true_lb, send_bytes, recv_bytes*comm_size, comm_ptr, mpierrno);
   }
-
-  if(use_bcast)
+  else if(use_bcast)
   {
     if(unlikely(verbose))
       fprintf(stderr,"Using protocol GLUE_ALLTOALL for allgather\n");
     TRACE_ERR("Using allgather via bcast\n");
     MPIDI_Update_last_algorithm(comm_ptr, "ALLGATHER_OPT_BCAST");
-    return MPIDO_Allgather_bcast(sendbuf, sendcount, sendtype,
+    MPIDO_Allgather_bcast(sendbuf, sendcount, sendtype,
                                  recvbuf, recvcount, recvtype,
                                  send_true_lb, recv_true_lb, send_bytes, recv_bytes*comm_size, comm_ptr, mpierrno);
   }
-
   /* Nothing used yet; dump to MPICH */
-  if(unlikely(verbose))
+  else 
+  {  
+    if(unlikely(verbose))
     fprintf(stderr,"Using MPICH allgather algorithm\n");
-  TRACE_ERR("Using allgather via mpich\n");
-  MPIDI_Update_last_algorithm(comm_ptr, "ALLGATHER_MPICH");
-  return MPIR_Allgather(sendbuf, sendcount, sendtype,
-                        recvbuf, recvcount, recvtype,
-                        comm_ptr, mpierrno);
+    TRACE_ERR("Using allgather via mpich\n");
+    MPIDI_Update_last_algorithm(comm_ptr, "ALLGATHER_MPICH");
+    MPIR_Allgather(sendbuf, sendcount, sendtype,
+                   recvbuf, recvcount, recvtype,
+                   comm_ptr, mpierrno);
+  }
+  if(!rcontig)
+  {
+    MPIR_Localcopy(rcv_noncontig_buff, recv_bytes * size, MPI_CHAR,
+                   recvbuf,         recvcount,     recvtype);
+    MPIU_Free(rcv_noncontig_buff);   
+  }
+  if(!scontig)  MPIU_Free(snd_noncontig_buff);
+  return 0;
 }
 
 
+#ifndef __BGQ__
 int
 MPIDO_Allgather_simple(const void *sendbuf,
                        int sendcount,
@@ -680,8 +695,8 @@ MPIDO_Allgather_simple(const void *sendbuf,
   allgather.cmd.xfer_allgather.rtype = PAMI_TYPE_BYTE;
   allgather.cmd.xfer_allgather.stypecount = send_size;
   allgather.cmd.xfer_allgather.rtypecount = recv_size;
-  allgather.algorithm = mpid->coll_algorithm[PAMI_XFER_ALLGATHER][0][0];
-  my_md = &mpid->coll_metadata[PAMI_XFER_ALLGATHER][0][0];
+  allgather.algorithm = mpid->algorithm_list[PAMI_XFER_ALLGATHER][0][0];
+  my_md = &mpid->algorithm_metadata_list[PAMI_XFER_ALLGATHER][0][0];
 
   TRACE_ERR("Calling PAMI_Collective with allgather structure\n");
   MPIDI_Post_coll_t allgather_post;
@@ -733,4 +748,4 @@ MPIDO_CSWrapper_allgather(pami_xfer_t *allgather,
   return rc;
 
 }
-
+#endif
