@@ -245,7 +245,11 @@ MPIDI_PAMI_client_init(int* rank, int* size, int threading)
   
   pami_configuration_t config[2];
   config[0].name = PAMI_CLIENT_NONCONTIG;
-  config[0].value.intval = 0; // Disable non-contig, pamid doesn't use pami for non-contig data
+  if(MPIDI_Process.optimized.memory) 
+    config[0].value.intval = 0; // Disable non-contig, pamid doesn't use pami for non-contig data collectives so save memory
+  else
+    config[0].value.intval = 1; // Enable non-contig even though pamid doesn't use pami for non-contig data collectives, 
+                                // we still possibly want those collectives for other reasons.
   size_t numconfigs = 1;
   if(MPIDI_Process.optimized.memory) 
   {

@@ -179,7 +179,11 @@ void MPIDI_Coll_comm_create(MPID_Comm *comm)
 
       pami_configuration_t config[3];
       config[0].name = PAMI_GEOMETRY_NONCONTIG;
-      config[0].value.intval = 0; // Disable non-contig, pamid doesn't use pami for non-contig data collectives
+      if(MPIDI_Process.optimized.memory) 
+         config[0].value.intval = 0; // Disable non-contig, pamid doesn't use pami for non-contig data collectives
+      else
+         config[0].value.intval = 1; // Enable non-contig even though pamid doesn't use pami for non-contig data collectives, 
+                                     // we still possibly want those collectives for other reasons.
       size_t numconfigs = 1;
       if(MPIDI_Process.optimized.subcomms)
       {
