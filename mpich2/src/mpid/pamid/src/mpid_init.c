@@ -244,6 +244,14 @@ MPIDI_PAMI_client_init(int* rank, int* size, int threading)
   pami_result_t        rc = PAMI_ERROR;
   
   pami_configuration_t config[2];
+
+  /* Set the status for memory optimized collectives */
+  {
+    char* env = getenv("PAMID_COLLECTIVES_MEMORY_OPTIMIZED");
+    if (env != NULL)
+      MPIDI_atoi(env,&MPIDI_Process.optimized.memory);
+  }
+
   config[0].name = PAMI_CLIENT_NONCONTIG;
   if(MPIDI_Process.optimized.memory) 
     config[0].value.intval = 0; // Disable non-contig, pamid doesn't use pami for non-contig data collectives so save memory
