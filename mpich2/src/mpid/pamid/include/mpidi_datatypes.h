@@ -111,7 +111,7 @@ typedef struct
     unsigned collectives;  /**< Enable PAMI optimized collective functions. */
     unsigned subcomms;     /**< Enable hardware optimized subcomm's */
     unsigned select_colls; /**< Enable collective selection */
-    unsigned memory;       /**< Enable memory optimized subcomm's */
+    unsigned memory;       /**< Enable memory optimized subcomm's - See MPID_OPT_LVL_xxxx */
     unsigned num_requests; /**< Number of requests between flow control barriers */
   }
   optimized;

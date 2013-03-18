@@ -179,7 +179,7 @@ void MPIDI_Coll_comm_create(MPID_Comm *comm)
 
       pami_configuration_t config[3];
       config[0].name = PAMI_GEOMETRY_NONCONTIG;
-      if(MPIDI_Process.optimized.memory) 
+      if(MPIDI_Process.optimized.memory & MPID_OPT_LVL_NONCONTIG) 
          config[0].value.intval = 0; // Disable non-contig, pamid doesn't use pami for non-contig data collectives
       else
          config[0].value.intval = 1; // Enable non-contig even though pamid doesn't use pami for non-contig data collectives, 
@@ -198,7 +198,7 @@ void MPIDI_Coll_comm_create(MPID_Comm *comm)
          ++numconfigs;
       }
 
-      if(MPIDI_Process.optimized.memory && (comm->local_size & (comm->local_size-1)))
+      if((MPIDI_Process.optimized.memory  & MPID_OPT_LVL_IRREG) && (comm->local_size & (comm->local_size-1)))
       {
          /* Don't create irregular geometries.  Fallback to MPICH only collectives */
          geom_init = 0;

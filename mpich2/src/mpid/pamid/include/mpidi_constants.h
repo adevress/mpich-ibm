@@ -95,4 +95,10 @@ MPID_EPOTYPE_FENCE     = 4,       /**< MPI_Win_fence access/exposure epoch */
 MPID_EPOTYPE_REFENCE   = 5,       /**< MPI_Win_fence possible access/exposure epoch */
 };
 
+enum /* PAMID_COLLECTIVES_MEMORY_OPTIMIZED levels */
+ 
+{
+  MPID_OPT_LVL_IRREG     = 1,       /**< Do not optimize irregular communicators */
+  MPID_OPT_LVL_NONCONTIG = 2,       /**< Disable some non-contig collectives     */
+};
 #endif
