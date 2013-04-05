@@ -26,77 +26,77 @@
 
 static void cb_barrier(void *ctxt, void *clientdata, pami_result_t err)
 {
-   int *active = (int *) clientdata;
-   TRACE_ERR("callback. enter: %d\n", (*active));
-   MPIDI_Progress_signal();
-   (*active)--;
+  int *active = (int *) clientdata;
+  TRACE_ERR("callback. enter: %d\n", (*active));
+  MPIDI_Progress_signal();
+  (*active)--;
 }
 
 int MPIDO_Barrier(MPID_Comm *comm_ptr, int *mpierrno)
 {
-   TRACE_ERR("Entering MPIDO_Barrier\n");
-   volatile unsigned active=1;
-   MPIDI_Post_coll_t barrier_post;
-   pami_xfer_t barrier;
-   pami_algorithm_t my_barrier;
-   const pami_metadata_t *my_md = (pami_metadata_t *)NULL;
-   int queryreq = 0;
-   const struct MPIDI_Comm* const mpid = &(comm_ptr->mpid);
-   const int selected_type = mpid->user_selected_type[PAMI_XFER_BARRIER];
+  TRACE_ERR("Entering MPIDO_Barrier\n");
+  volatile unsigned active=1;
+  MPIDI_Post_coll_t barrier_post;
+  pami_xfer_t barrier;
+  pami_algorithm_t my_barrier;
+  const pami_metadata_t *my_md = (pami_metadata_t *)NULL;
+  int queryreq = 0;
+  const struct MPIDI_Comm* const mpid = &(comm_ptr->mpid);
+  const int selected_type = mpid->user_selected_type[PAMI_XFER_BARRIER];
 #if ASSERT_LEVEL==0
-   /* We can't afford the tracing in ndebug/performance libraries */
-    const unsigned verbose = 0;
+  /* We can't afford the tracing in ndebug/performance libraries */
+  const unsigned verbose = 0;
 #else
-    const unsigned verbose = (MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL) && (comm_ptr->rank == 0);
+  const unsigned verbose = (MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL) && (comm_ptr->rank == 0);
 #endif
 
-   if(unlikely(selected_type == MPID_COLL_USE_MPICH))
-   {
-     if(unlikely(verbose))
-       fprintf(stderr,"Using MPICH barrier\n");
-      TRACE_ERR("Using MPICH Barrier\n");
-      return MPIR_Barrier(comm_ptr, mpierrno);
-   }
+  if(unlikely(selected_type == MPID_COLL_USE_MPICH))
+  {
+    if(unlikely(verbose))
+      fprintf(stderr,"Using MPICH barrier\n");
+    TRACE_ERR("Using MPICH Barrier\n");
+    return MPIR_Barrier(comm_ptr, mpierrno);
+  }
 
-   barrier.cb_done = cb_barrier;
-   barrier.cookie = (void *)&active;
-   if(likely(selected_type == MPID_COLL_OPTIMIZED))
-   {
-      TRACE_ERR("Optimized barrier (%s) was pre-selected\n", mpid->opt_protocol_md[PAMI_XFER_BARRIER][0].name);
-      my_barrier = mpid->opt_protocol[PAMI_XFER_BARRIER][0];
-      my_md = &mpid->opt_protocol_md[PAMI_XFER_BARRIER][0];
-      queryreq = mpid->must_query[PAMI_XFER_BARRIER][0];
-   }
-   else
-   {
-      TRACE_ERR("Barrier (%s) was specified by user\n", mpid->user_metadata[PAMI_XFER_BARRIER].name);
-      my_barrier = mpid->user_selected[PAMI_XFER_BARRIER];
-      my_md = &mpid->user_metadata[PAMI_XFER_BARRIER];
-      queryreq = selected_type;
-   }
+  barrier.cb_done = cb_barrier;
+  barrier.cookie = (void *)&active;
+  if(likely(selected_type == MPID_COLL_OPTIMIZED))
+  {
+    TRACE_ERR("Optimized barrier (%s) was pre-selected\n", mpid->opt_protocol_md[PAMI_XFER_BARRIER][0].name);
+    my_barrier = mpid->opt_protocol[PAMI_XFER_BARRIER][0];
+    my_md = &mpid->opt_protocol_md[PAMI_XFER_BARRIER][0];
+    queryreq = mpid->must_query[PAMI_XFER_BARRIER][0];
+  }
+  else
+  {
+    TRACE_ERR("Barrier (%s) was specified by user\n", mpid->user_metadata[PAMI_XFER_BARRIER].name);
+    my_barrier = mpid->user_selected[PAMI_XFER_BARRIER];
+    my_md = &mpid->user_metadata[PAMI_XFER_BARRIER];
+    queryreq = selected_type;
+  }
 
-   barrier.algorithm = my_barrier;
-   /* There is no support for query-required barrier protocols here */
-   MPID_assert(queryreq != MPID_COLL_ALWAYS_QUERY);
-   MPID_assert(queryreq != MPID_COLL_CHECK_FN_REQUIRED);
+  barrier.algorithm = my_barrier;
+  /* There is no support for query-required barrier protocols here */
+  MPID_assert(queryreq != MPID_COLL_ALWAYS_QUERY);
+  MPID_assert(queryreq != MPID_COLL_CHECK_FN_REQUIRED);
 
-   if(unlikely(verbose))
-   {
-      unsigned long long int threadID;
-      MPIU_Thread_id_t tid;
-      MPIU_Thread_self(&tid);
-      threadID = (unsigned long long int)tid;
-     fprintf(stderr,"<%llx> Using protocol %s for barrier on %u\n", 
-             threadID,
-             my_md->name,
+  if(unlikely(verbose))
+  {
+    unsigned long long int threadID;
+    MPIU_Thread_id_t tid;
+    MPIU_Thread_self(&tid);
+    threadID = (unsigned long long int)tid;
+    fprintf(stderr,"<%llx> Using protocol %s for barrier on %u\n", 
+            threadID,
+            my_md->name,
             (unsigned) comm_ptr->context_id);
-   }
-   MPIDI_Context_post(MPIDI_Context[0], &barrier_post.state,
-                      MPIDI_Pami_post_wrapper, (void *)&barrier);
+  }
+  MPIDI_Context_post(MPIDI_Context[0], &barrier_post.state,
+                     MPIDI_Pami_post_wrapper, (void *)&barrier);
 
-   TRACE_ERR("advance spinning\n");
-   MPIDI_Update_last_algorithm(comm_ptr, my_md->name);
-   MPID_PROGRESS_WAIT_WHILE(active);
-   TRACE_ERR("exiting mpido_barrier\n");
-   return 0;
+  TRACE_ERR("advance spinning\n");
+  MPIDI_Update_last_algorithm(comm_ptr, my_md->name);
+  MPID_PROGRESS_WAIT_WHILE(active);
+  TRACE_ERR("exiting mpido_barrier\n");
+  return 0;
 }

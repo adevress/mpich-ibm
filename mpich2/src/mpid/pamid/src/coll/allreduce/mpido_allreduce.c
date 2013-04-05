@@ -89,7 +89,7 @@ int MPIDO_Allreduce(const void *sendbuf,
       pop = PAMI_DATA_MAX;
     else if(likely(op == MPI_MIN))
       pop = PAMI_DATA_MIN;
-    else 
+    else
     {
       alg_selected = 0;
       rc = MPIDI_Datatype_to_pami(dt, &pdt, op, &pop, &mu);
@@ -146,7 +146,7 @@ int MPIDO_Allreduce(const void *sendbuf,
         {
           metadata_result_t result = {0};
           TRACE_ERR("querying allreduce algorithm %s\n",
-                  my_md->name);
+                    my_md->name);
           result = my_md->check_fn(&allred);
           TRACE_ERR("bitmask: %#X\n", result.bitmask);
           /* \todo Ignore check_correct.values.nonlocal until we implement the
@@ -227,7 +227,7 @@ int MPIDO_Allreduce(const void *sendbuf,
         else if((queryreq1 == MPID_COLL_CHECK_FN_REQUIRED) ||
                 (queryreq1 == MPID_COLL_QUERY) ||
                 (queryreq1 ==  MPID_COLL_ALWAYS_QUERY))
-        {  
+        {
           TRACE_ERR("Optimzed selection line %d\n",__LINE__);
           my_allred = mpid->opt_protocol[PAMI_XFER_ALLREDUCE][1];
           my_md = &mpid->opt_protocol_md[PAMI_XFER_ALLREDUCE][1];
@@ -262,7 +262,7 @@ int MPIDO_Allreduce(const void *sendbuf,
                 if(unlikely(verbose))
                   fprintf(stderr,"check_fn failed for %s.\n", my_md->name);
               }
-            } 
+            }
             else /* no check_fn, manually look at the metadata fields */
             {
               TRACE_ERR("Optimzed selection line %d\n",__LINE__);
@@ -326,7 +326,7 @@ int MPIDO_Allreduce(const void *sendbuf,
             alg_selected = 1; /* query algorithm successfully selected */
           else
             if(unlikely(verbose))
-              fprintf(stderr,"check_fn failed for %s.\n", my_md->name);
+            fprintf(stderr,"check_fn failed for %s.\n", my_md->name);
         }
         else /* no check_fn, manually look at the metadata fields */
         {
@@ -343,7 +343,7 @@ int MPIDO_Allreduce(const void *sendbuf,
               alg_selected = 1; /* query algorithm successfully selected */
             else
               if(unlikely(verbose))
-                fprintf(stderr,"message size (%u) outside range (%zu<->%zu) for %s.\n",
+              fprintf(stderr,"message size (%u) outside range (%zu<->%zu) for %s.\n",
                       data_size,
                       my_md->range_lo,
                       my_md->range_hi,
@@ -353,7 +353,7 @@ int MPIDO_Allreduce(const void *sendbuf,
         }
       }
       else alg_selected = 1; /* non-query algorithm selected */
-  
+
     }
   }
 

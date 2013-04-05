@@ -280,19 +280,19 @@ void MPIDI_Comm_coll_select(MPID_Comm *comm_ptr)
     TRACE_ERR("No scatter env var, so setting optimized scatter\n");
     /* The best scatter seems to be I0:Binomial (at least better than I0:Flat) */
     /* Loop over the protocols until we find the one we want */
-      for(i = 0; i < comm_ptr->mpid.coll_count[PAMI_XFER_SCATTER][0]; i++)
+    for(i = 0; i < comm_ptr->mpid.coll_count[PAMI_XFER_SCATTER][0]; i++)
+    {
+      if(strcasecmp(comm_ptr->mpid.coll_metadata[PAMI_XFER_SCATTER][0][i].name, "I0:Binomial:-:MU") == 0)
       {
-        if(strcasecmp(comm_ptr->mpid.coll_metadata[PAMI_XFER_SCATTER][0][i].name, "I0:Binomial:-:MU") == 0)
-        {
-          opt_proto = i;
-          break;
-        }
-        if(strcasecmp(comm_ptr->mpid.coll_metadata[PAMI_XFER_SCATTER][0][i].name, "I0:Binomial:SHMEM:MU") == 0)
-        {
-          opt_proto = i;
-          break;
-        }
+        opt_proto = i;
+        break;
       }
+      if(strcasecmp(comm_ptr->mpid.coll_metadata[PAMI_XFER_SCATTER][0][i].name, "I0:Binomial:SHMEM:MU") == 0)
+      {
+        opt_proto = i;
+        break;
+      }
+    }
     if(opt_proto == -1) /* check other list */
       for(i = 0; i < comm_ptr->mpid.coll_count[PAMI_XFER_SCATTER][1]; i++)
       {
@@ -308,7 +308,7 @@ void MPIDI_Comm_coll_select(MPID_Comm *comm_ptr)
           mustquery = 1;
           break;
         }
-      }  
+      }
     /* Actually, MPICH looks better right now, so use MPICH 
     if(opt_proto != -1)
     {
@@ -341,19 +341,19 @@ void MPIDI_Comm_coll_select(MPID_Comm *comm_ptr)
     TRACE_ERR("No scatterv env var, so setting optimized scatterv\n");
     /* The best scatterv seems to be I0:SoftwareTree:  */
     /* Loop over the protocols until we find the one we want */
-      for(i = 0; i < comm_ptr->mpid.coll_count[PAMI_XFER_SCATTERV_INT][0]; i++)
+    for(i = 0; i < comm_ptr->mpid.coll_count[PAMI_XFER_SCATTERV_INT][0]; i++)
+    {
+      if(strcasecmp(comm_ptr->mpid.coll_metadata[PAMI_XFER_SCATTERV_INT][0][i].name, "I0:SoftwareTree:-:MU") == 0)
       {
-	  if(strcasecmp(comm_ptr->mpid.coll_metadata[PAMI_XFER_SCATTERV_INT][0][i].name, "I0:SoftwareTree:-:MU") == 0)
-        {
-          opt_proto = i;
-          break;
-        }
-	  if(strcasecmp(comm_ptr->mpid.coll_metadata[PAMI_XFER_SCATTERV_INT][0][i].name, "I0:SoftwareTree:SHMEM:MU") == 0)
-        {
-          opt_proto = i;
-          break;
-        }
+        opt_proto = i;
+        break;
       }
+      if(strcasecmp(comm_ptr->mpid.coll_metadata[PAMI_XFER_SCATTERV_INT][0][i].name, "I0:SoftwareTree:SHMEM:MU") == 0)
+      {
+        opt_proto = i;
+        break;
+      }
+    }
     if(opt_proto == -1) /* check other list */
       for(i = 0; i < comm_ptr->mpid.coll_count[PAMI_XFER_SCATTERV_INT][1]; i++)
       {
@@ -369,13 +369,13 @@ void MPIDI_Comm_coll_select(MPID_Comm *comm_ptr)
           mustquery = 1;
           break;
         }
-      }  
+      }
     if(opt_proto != -1)
     {
       TRACE_ERR("Memcpy protocol type %d, number %d (%s) to optimized protocol\n",
                 PAMI_XFER_SCATTERV_INT, opt_proto, 
                 comm_ptr->mpid.coll_metadata[PAMI_XFER_SCATTERV_INT][mustquery][opt_proto].name);
-       comm_ptr->mpid.opt_protocol[PAMI_XFER_SCATTERV_INT][0] =
+      comm_ptr->mpid.opt_protocol[PAMI_XFER_SCATTERV_INT][0] =
       comm_ptr->mpid.coll_algorithm[PAMI_XFER_SCATTERV_INT][mustquery][opt_proto];
       memcpy(&comm_ptr->mpid.opt_protocol_md[PAMI_XFER_SCATTERV_INT][0], 
              &comm_ptr->mpid.coll_metadata[PAMI_XFER_SCATTERV_INT][mustquery][opt_proto], 
@@ -420,7 +420,7 @@ void MPIDI_Comm_coll_select(MPID_Comm *comm_ptr)
           mustquery = 1;
           break;
         }
-      }    
+      }
     if(opt_proto != -1)
     {
       TRACE_ERR("Memcpy protocol type %d, number %d (%s) to optimized protocol\n",
@@ -682,16 +682,16 @@ void MPIDI_Comm_coll_select(MPID_Comm *comm_ptr)
         }
       }
       if(opt_proto == -1) for(i = 0; i < comm_ptr->mpid.coll_count[PAMI_XFER_BROADCAST][1]; i++)
-      {
-        /* This is a good choice for small messages only */
-        if(strcasecmp(comm_ptr->mpid.coll_metadata[PAMI_XFER_BROADCAST][1][i].name, "I0:SequenceBased_Binomial:SHMEM:MU") == 0)
         {
-          opt_proto = i;
-          mustquery = 1;
-          comm_ptr->mpid.cutoff_size[PAMI_XFER_BROADCAST][0] = 256;
-          break;
+          /* This is a good choice for small messages only */
+          if(strcasecmp(comm_ptr->mpid.coll_metadata[PAMI_XFER_BROADCAST][1][i].name, "I0:SequenceBased_Binomial:SHMEM:MU") == 0)
+          {
+            opt_proto = i;
+            mustquery = 1;
+            comm_ptr->mpid.cutoff_size[PAMI_XFER_BROADCAST][0] = 256;
+            break;
+          }
         }
-      }
     }
     /* Next best to check */
     if(opt_proto == -1)
@@ -703,11 +703,11 @@ void MPIDI_Comm_coll_select(MPID_Comm *comm_ptr)
           opt_proto = i;
       }
       if(opt_proto == -1) for(i = 0; i < comm_ptr->mpid.coll_count[PAMI_XFER_BROADCAST][1]; i++)
-      {
-        if(strcasecmp(comm_ptr->mpid.coll_metadata[PAMI_XFER_BROADCAST][1][i].name, "I0:2-nomial:SHMEM:MU") == 0)
-          opt_proto = i;
+        {
+          if(strcasecmp(comm_ptr->mpid.coll_metadata[PAMI_XFER_BROADCAST][1][i].name, "I0:2-nomial:SHMEM:MU") == 0)
+            opt_proto = i;
           mustquery = 1;
-      }
+        }
     }
 
     /* These protocols are good for most message sizes, but there are some
@@ -786,11 +786,11 @@ void MPIDI_Comm_coll_select(MPID_Comm *comm_ptr)
             opt_proto = i;
         }
         if(opt_proto == -1) for(i = 0; i < comm_ptr->mpid.coll_count[PAMI_XFER_BROADCAST][1]; i++)
-        {
-          if(strcasecmp(comm_ptr->mpid.coll_metadata[PAMI_XFER_BROADCAST][1][i].name, "I0:2-nomial:SHMEM:MU") == 0)
-            opt_proto = i;
+          {
+            if(strcasecmp(comm_ptr->mpid.coll_metadata[PAMI_XFER_BROADCAST][1][i].name, "I0:2-nomial:SHMEM:MU") == 0)
+              opt_proto = i;
             mustquery = 1;
-        }
+          }
       }
 
       if(opt_proto != -1)
@@ -985,14 +985,14 @@ void MPIDI_Comm_coll_select(MPID_Comm *comm_ptr)
       fprintf(stderr,"Selecting MPICH for scatter comm %p\n", comm_ptr);
     else if(comm_ptr->mpid.user_selected_type[PAMI_XFER_SCATTER] == MPID_COLL_OPTIMIZED)
       fprintf(stderr,"Selecting %s for scatter comm %p\n", 
-	      comm_ptr->mpid.opt_protocol_md[PAMI_XFER_SCATTER][0].name,
-	      comm_ptr);
+              comm_ptr->mpid.opt_protocol_md[PAMI_XFER_SCATTER][0].name,
+              comm_ptr);
     if(comm_ptr->mpid.user_selected_type[PAMI_XFER_SCATTERV_INT] == MPID_COLL_USE_MPICH)
       fprintf(stderr,"Selecting MPICH for scatterv comm %p\n", comm_ptr);
     else if(comm_ptr->mpid.user_selected_type[PAMI_XFER_SCATTERV_INT] == MPID_COLL_OPTIMIZED)
       fprintf(stderr,"Selecting %s for scatterv comm %p\n", 
-	      comm_ptr->mpid.opt_protocol_md[PAMI_XFER_SCATTERV_INT][0].name,
-	      comm_ptr);
+              comm_ptr->mpid.opt_protocol_md[PAMI_XFER_SCATTERV_INT][0].name,
+              comm_ptr);
     if(comm_ptr->mpid.user_selected_type[PAMI_XFER_BROADCAST] == MPID_COLL_OPTIMIZED)
       fprintf(stderr,"Selecting %s for opt bcast up to size %d comm %p\n", comm_ptr->mpid.opt_protocol_md[PAMI_XFER_BROADCAST][0].name,
               comm_ptr->mpid.cutoff_size[PAMI_XFER_BROADCAST][0], comm_ptr);
