@@ -235,3 +235,113 @@ int MPIDO_Reduce(const void *sendbuf,
   return 0;
 }
 
+
+int MPIDO_Reduce_simple(const void *sendbuf, 
+                        void *recvbuf, 
+                        int count, 
+                        MPI_Datatype datatype,
+                        MPI_Op op, 
+                        int root, 
+                        MPID_Comm *comm_ptr, 
+                        int *mpierrno)
+{
+  MPID_Datatype *dt_null = NULL;
+  MPI_Aint true_lb = 0;
+  int dt_contig, tsize;
+  int mu;
+  char *sbuf, *rbuf;
+  pami_data_function pop;
+  pami_type_t pdt;
+  int rc;
+  int alg_selected = 0;
+
+  const struct MPIDI_Comm* const mpid = &(comm_ptr->mpid);
+
+  MPIDI_Datatype_get_info(count, datatype, dt_contig, tsize, dt_null, true_lb);
+  if(MPIDI_Pamix_collsel_advise != NULL)
+  {
+    advisor_algorithm_t advisor_algorithms[1];
+    int num_algorithms = MPIDI_Pamix_collsel_advise(mpid->collsel_fast_query, PAMI_XFER_REDUCE, tsize, advisor_algorithms, 1);
+    if(num_algorithms)
+    {
+      if(advisor_algorithms[0].algorithm_type == COLLSEL_EXTERNAL_ALGO)
+      {
+        return MPIR_Reduce(sendbuf, recvbuf, count, datatype, op, root, comm_ptr, mpierrno);
+      }
+    }
+  }
+
+  rc = MPIDI_Datatype_to_pami(datatype, &pdt, op, &pop, &mu);
+
+  pami_xfer_t reduce;
+  const pami_metadata_t *my_reduce_md=NULL;
+  volatile unsigned reduce_active = 1;
+
+  if(rc != MPI_SUCCESS || !dt_contig)
+  {
+    return MPIR_Reduce(sendbuf, recvbuf, count, datatype, op, root, comm_ptr, mpierrno);
+  }
+
+
+  rbuf = (char *)recvbuf + true_lb;
+  sbuf = (char *)sendbuf + true_lb;
+  if(sendbuf == MPI_IN_PLACE)
+  {
+    sbuf = PAMI_IN_PLACE;
+  }
+
+  reduce.cb_done = reduce_cb_done;
+  reduce.cookie = (void *)&reduce_active;
+  reduce.algorithm = mpid->coll_algorithm[PAMI_XFER_REDUCE][0][0];
+  reduce.cmd.xfer_reduce.sndbuf = sbuf;
+  reduce.cmd.xfer_reduce.rcvbuf = rbuf;
+  reduce.cmd.xfer_reduce.stype = pdt;
+  reduce.cmd.xfer_reduce.rtype = pdt;
+  reduce.cmd.xfer_reduce.stypecount = count;
+  reduce.cmd.xfer_reduce.rtypecount = count;
+  reduce.cmd.xfer_reduce.op = pop;
+  reduce.cmd.xfer_reduce.root = MPID_VCR_GET_LPID(comm_ptr->vcr, root);
+  my_reduce_md = &mpid->coll_metadata[PAMI_XFER_REDUCE][0][0];
+
+  TRACE_ERR("%s reduce, context %d, algoname: %s, exflag: %d\n", MPIDI_Process.context_post.active>0?"Posting":"Invoking", 0,
+            my_reduce_md->name, exflag);
+  MPIDI_Post_coll_t reduce_post;
+  MPIDI_Context_post(MPIDI_Context[0], &reduce_post.state,
+                     MPIDI_Pami_post_wrapper, (void *)&reduce);
+  TRACE_ERR("Reduce %s\n", MPIDI_Process.context_post.active>0?"posted":"invoked");
+
+  MPIDI_Update_last_algorithm(comm_ptr,
+                              my_reduce_md->name);
+  MPID_PROGRESS_WAIT_WHILE(reduce_active);
+  TRACE_ERR("Reduce done\n");
+  return MPI_SUCCESS;
+}
+
+
+int
+MPIDO_CSWrapper_reduce(pami_xfer_t *reduce,
+                       void        *comm)
+{
+  int mpierrno = 0;
+  MPID_Comm   *comm_ptr = (MPID_Comm*)comm;
+  MPI_Datatype type;
+  MPI_Op op;
+  void *sbuf;
+  MPIDI_coll_check_in_place(reduce->cmd.xfer_reduce.sndbuf, &sbuf);
+  int rc = MPIDI_Dtpami_to_dtmpi(  reduce->cmd.xfer_reduce.stype,
+                                   &type,
+                                   reduce->cmd.xfer_reduce.op,
+                                   &op);
+  if(rc == -1) return rc;
+
+
+  rc  =  MPIR_Reduce(sbuf,
+                     reduce->cmd.xfer_reduce.rcvbuf,
+                     reduce->cmd.xfer_reduce.rtypecount, type, op,
+                     reduce->cmd.xfer_reduce.root, comm_ptr, &mpierrno);
+  if(reduce->cb_done && rc == 0)
+    reduce->cb_done(NULL, reduce->cookie, PAMI_SUCCESS);
+  return rc;
+
+}
+

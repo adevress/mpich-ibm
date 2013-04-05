@@ -313,6 +313,219 @@ int MPIDO_Scatter(const void *sendbuf,
 }
 
 
+int MPIDO_Scatter_simple(const void *sendbuf,
+                         int sendcount,
+                         MPI_Datatype sendtype,
+                         void *recvbuf,
+                         int recvcount,
+                         MPI_Datatype recvtype,
+                         int root,
+                         MPID_Comm *comm_ptr,
+                         int *mpierrno)
+{
+  MPID_Datatype * data_ptr;
+  const int rank = comm_ptr->rank;
+  int success = 1, snd_contig = 1, rcv_contig = 1;
+  void *snd_noncontig_buff = NULL, *rcv_noncontig_buff = NULL;
+  void *sbuf = NULL, *rbuf = NULL;
+  size_t send_size = 0;
+  size_t recv_size = 0;
+  MPI_Aint snd_true_lb = 0, rcv_true_lb = 0; 
+  int tmp;
+  int use_pami = 1;
+  MPID_Segment segment;
+  const struct MPIDI_Comm* const mpid = &(comm_ptr->mpid);
+  const int size = comm_ptr->local_size;
+
+  if(rank == root && sendtype != MPI_DATATYPE_NULL && sendcount >= 0)
+  {
+    MPIDI_Datatype_get_info(sendcount, sendtype, snd_contig,
+                            send_size, data_ptr, snd_true_lb);
+    if(MPIDI_Pamix_collsel_advise != NULL)
+    {
+      advisor_algorithm_t advisor_algorithms[1];
+      int num_algorithms = MPIDI_Pamix_collsel_advise(mpid->collsel_fast_query, PAMI_XFER_SCATTER, send_size, advisor_algorithms, 1);
+      if(num_algorithms)
+      {
+        if(advisor_algorithms[0].algorithm_type == COLLSEL_EXTERNAL_ALGO)
+        {
+          return MPIR_Scatter(sendbuf, sendcount, sendtype,
+                              recvbuf, recvcount, recvtype,
+                              root, comm_ptr, mpierrno);
+        }
+      }
+    }
+  }
+
+  if(recvtype != MPI_DATATYPE_NULL && recvcount >= 0)
+  {
+    MPIDI_Datatype_get_info(recvcount, recvtype, rcv_contig,
+                            recv_size, data_ptr, rcv_true_lb);
+    if(MPIDI_Pamix_collsel_advise != NULL)
+    {
+      advisor_algorithm_t advisor_algorithms[1];
+      int num_algorithms = MPIDI_Pamix_collsel_advise(mpid->collsel_fast_query, PAMI_XFER_SCATTER, recv_size, advisor_algorithms, 1);
+      if(num_algorithms)
+      {
+        if(advisor_algorithms[0].algorithm_type == COLLSEL_EXTERNAL_ALGO)
+        {
+          return MPIR_Scatter(sendbuf, sendcount, sendtype,
+                              recvbuf, recvcount, recvtype,
+                              root, comm_ptr, mpierrno);
+        }
+      }
+    }
+  }
+  sbuf = (char *)sendbuf + snd_true_lb;
+  rbuf = (char *)recvbuf + rcv_true_lb;
+  if(rank == root)
+  {
+    if(send_size)
+    {
+      sbuf = (char *)sendbuf + snd_true_lb;
+      if(!snd_contig)
+      {
+        snd_noncontig_buff = MPIU_Malloc(send_size * size);
+        sbuf = snd_noncontig_buff;
+        if(snd_noncontig_buff == NULL)
+        {
+          MPID_Abort(NULL, MPI_ERR_NO_SPACE, 1,
+                     "Fatal:  Cannot allocate pack buffer");
+        }
+        DLOOP_Offset last = send_size * size;
+        MPID_Segment_init(sendbuf, sendcount * size, sendtype, &segment, 0);
+        MPID_Segment_pack(&segment, 0, &last, snd_noncontig_buff);
+      }
+    }
+    else
+      success = 0;
+
+    if(success && recvbuf != MPI_IN_PLACE)
+    {
+      if(recv_size)
+      {
+        rbuf = (char *)recvbuf + rcv_true_lb;
+        if(!rcv_contig)
+        {
+          rcv_noncontig_buff = MPIU_Malloc(recv_size);
+          rbuf = rcv_noncontig_buff;
+          if(rcv_noncontig_buff == NULL)
+          {
+            MPID_Abort(NULL, MPI_ERR_NO_SPACE, 1,
+                       "Fatal:  Cannot allocate pack buffer");
+          }
+        }
+      }
+      else success = 0;
+    }
+  }
+
+  else
+  {
+    if(recv_size)/* Should this be send or recv? */
+    {
+      rbuf = (char *)recvbuf + rcv_true_lb;
+      if(!rcv_contig)
+      {
+        rcv_noncontig_buff = MPIU_Malloc(recv_size);
+        rbuf = rcv_noncontig_buff;
+        if(rcv_noncontig_buff == NULL)
+        {
+          MPID_Abort(NULL, MPI_ERR_NO_SPACE, 1,
+                     "Fatal:  Cannot allocate pack buffer");
+        }
+      }
+    }
+    else
+      success = 0;
+  }
+
+  if(!success)
+  {
+    MPIDI_Update_last_algorithm(comm_ptr, "SCATTER_MPICH");
+    return MPIR_Scatter(sendbuf, sendcount, sendtype,
+                        recvbuf, recvcount, recvtype,
+                        root, comm_ptr, mpierrno);
+  }
+
+  pami_xfer_t scatter;
+  MPIDI_Post_coll_t scatter_post;
+  const pami_metadata_t *my_scatter_md;
+  volatile unsigned scatter_active = 1;
+
+
+  scatter.algorithm = mpid->coll_algorithm[PAMI_XFER_SCATTER][0][0];
+  my_scatter_md = &mpid->coll_metadata[PAMI_XFER_SCATTER][0][0];
+
+  scatter.cb_done = cb_scatter;
+  scatter.cookie = (void *)&scatter_active;
+  scatter.cmd.xfer_scatter.root = MPID_VCR_GET_LPID(comm_ptr->vcr, root);
+  scatter.cmd.xfer_scatter.sndbuf = (void *)sbuf;
+  scatter.cmd.xfer_scatter.stype = PAMI_TYPE_BYTE;
+  scatter.cmd.xfer_scatter.stypecount = send_size;
+  scatter.cmd.xfer_scatter.rcvbuf = (void *)rbuf;
+  scatter.cmd.xfer_scatter.rtype = PAMI_TYPE_BYTE;/* rtype is ignored when rcvbuf == PAMI_IN_PLACE */
+  scatter.cmd.xfer_scatter.rtypecount = recv_size;
+
+  if(recvbuf == MPI_IN_PLACE)
+  {
+    scatter.cmd.xfer_scatter.rcvbuf = PAMI_IN_PLACE;
+  }
+
+
+  TRACE_ERR("%s scatter\n", MPIDI_Process.context_post.active>0?"Posting":"Invoking");
+  MPIDI_Context_post(MPIDI_Context[0], &scatter_post.state,
+                     MPIDI_Pami_post_wrapper, (void *)&scatter);
+  TRACE_ERR("Waiting on active %d\n", scatter_active);
+  MPID_PROGRESS_WAIT_WHILE(scatter_active);
+
+  if(!rcv_contig && rcv_noncontig_buff)
+  {
+    MPIR_Localcopy(rcv_noncontig_buff, recv_size, MPI_CHAR,
+                   recvbuf,         recvcount,     recvtype);
+    MPIU_Free(rcv_noncontig_buff);
+  }
+  if(!snd_contig)  MPIU_Free(snd_noncontig_buff);
+
+
+  TRACE_ERR("Leaving MPIDO_Scatter_optimized\n");
+
+  return MPI_SUCCESS;
+}
+
+
+int
+MPIDO_CSWrapper_scatter(pami_xfer_t *scatter,
+                        void        *comm)
+{
+  int mpierrno = 0;
+  MPID_Comm   *comm_ptr = (MPID_Comm*)comm;
+  MPI_Datatype sendtype, recvtype;
+  void *rbuf;
+  MPIDI_coll_check_in_place(scatter->cmd.xfer_scatter.rcvbuf, &rbuf);
+  int rc = MPIDI_Dtpami_to_dtmpi(  scatter->cmd.xfer_scatter.stype,
+                                   &sendtype,
+                                   NULL,
+                                   NULL);
+  if(rc == -1) return rc;
+
+  rc = MPIDI_Dtpami_to_dtmpi(  scatter->cmd.xfer_scatter.rtype,
+                               &recvtype,
+                               NULL,
+                               NULL);
+  if(rc == -1) return rc;
+
+  rc  =  MPIR_Scatter(scatter->cmd.xfer_scatter.sndbuf,
+                      scatter->cmd.xfer_scatter.stypecount, sendtype,
+                      rbuf,
+                      scatter->cmd.xfer_scatter.rtypecount, recvtype,
+                      scatter->cmd.xfer_scatter.root, comm_ptr, &mpierrno);
+  if(scatter->cb_done && rc == 0)
+    scatter->cb_done(NULL, scatter->cookie, PAMI_SUCCESS);
+  return rc;
+
+}
+
 #if 0 /* old glue-based scatter-via-bcast */
 
 /* Assume glue protocol sucks for now.... Needs work if not or to enable */

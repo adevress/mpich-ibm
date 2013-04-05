@@ -390,3 +390,144 @@ int MPIDO_Alltoallv(const void *sendbuf,
   return 0;
 }
 
+
+int MPIDO_Alltoallv_simple(const void *sendbuf,
+                           const int *sendcounts,
+                           const int *senddispls,
+                           MPI_Datatype sendtype,
+                           void *recvbuf,
+                           const int *recvcounts,
+                           const int *recvdispls,
+                           MPI_Datatype recvtype,
+                           MPID_Comm *comm_ptr,
+                           int *mpierrno)
+{
+  TRACE_ERR("Entering MPIDO_Alltoallv_optimized\n");
+  volatile unsigned active = 1;
+  int sndtypelen, rcvtypelen, snd_contig, rcv_contig;
+  MPID_Datatype *sdt, *rdt;
+  pami_type_t stype = NULL, rtype;
+  MPI_Aint sdt_true_lb = 0, rdt_true_lb;
+  MPIDI_Post_coll_t alltoallv_post;
+  int pamidt = 1;
+  int tmp;
+  const int rank = comm_ptr->rank;
+
+  const struct MPIDI_Comm* const mpid = &(comm_ptr->mpid);
+  /* We don't pack and unpack in alltoallv as we do in alltoall because alltoallv has
+     more overhead of book keeping for sendcounts/displs and recvcounts/displs. Since,
+     alltoallv is non-rooted and all tasks has type info, decision to punt to mpich
+     will be the same on all tasks */
+
+
+
+  MPIDI_Datatype_get_info(1, recvtype, rcv_contig, rcvtypelen, rdt, rdt_true_lb);
+  if(MPIDI_Pamix_collsel_advise != NULL)
+  {
+    advisor_algorithm_t advisor_algorithms[1];
+    int num_algorithms = MPIDI_Pamix_collsel_advise(mpid->collsel_fast_query, PAMI_XFER_ALLTOALLV_INT, rcvtypelen * recvcounts[0], advisor_algorithms, 1);
+    if(num_algorithms)
+    {
+      if(advisor_algorithms[0].algorithm_type == COLLSEL_EXTERNAL_ALGO)
+      {
+        return MPIR_Alltoallv(sendbuf, sendcounts, senddispls, sendtype,
+                              recvbuf, recvcounts, recvdispls, recvtype,
+                              comm_ptr, mpierrno);
+      }
+    }
+  }
+
+  if(sendbuf != MPI_IN_PLACE && (MPIDI_Datatype_to_pami(sendtype, &stype, -1, NULL, &tmp) != MPI_SUCCESS))
+    pamidt = 0;
+  if(MPIDI_Datatype_to_pami(recvtype, &rtype, -1, NULL, &tmp) != MPI_SUCCESS)
+    pamidt = 0;
+
+
+  if(sendbuf != MPI_IN_PLACE)
+  {
+    MPIDI_Datatype_get_info(1, sendtype, snd_contig, sndtypelen, sdt, sdt_true_lb);
+    if(!snd_contig) pamidt = 0;
+  }
+  if(!rcv_contig) pamidt = 0;
+
+
+  if(pamidt == 0)
+  {
+    return MPIR_Alltoallv(sendbuf, sendcounts, senddispls, sendtype,
+                          recvbuf, recvcounts, recvdispls, recvtype,
+                          comm_ptr, mpierrno);
+
+  }
+
+  pami_xfer_t alltoallv;
+  const pami_metadata_t *my_alltoallv_md;
+  my_alltoallv_md = &mpid->coll_metadata[PAMI_XFER_ALLTOALLV_INT][0][0];
+
+  alltoallv.algorithm = mpid->coll_algorithm[PAMI_XFER_ALLTOALLV_INT][0][0];
+  char *pname = my_alltoallv_md->name;
+
+  alltoallv.cb_done = cb_alltoallv;
+  alltoallv.cookie = (void *)&active;
+  alltoallv.cmd.xfer_alltoallv_int.stype = stype;/* stype is ignored when sndbuf == PAMI_IN_PLACE */
+  alltoallv.cmd.xfer_alltoallv_int.sdispls = (int *) senddispls;
+  alltoallv.cmd.xfer_alltoallv_int.stypecounts = (int *) sendcounts;
+  alltoallv.cmd.xfer_alltoallv_int.sndbuf = (char *)sendbuf+sdt_true_lb;
+
+  /* We won't bother with alltoallv since MPI is always going to be ints. */
+  if(sendbuf == MPI_IN_PLACE)
+  {
+    alltoallv.cmd.xfer_alltoallv_int.sndbuf = PAMI_IN_PLACE;
+  }
+  alltoallv.cmd.xfer_alltoallv_int.rcvbuf = (char *)recvbuf+rdt_true_lb;
+  alltoallv.cmd.xfer_alltoallv_int.rdispls = (int *) recvdispls;
+  alltoallv.cmd.xfer_alltoallv_int.rtypecounts = (int *) recvcounts;
+  alltoallv.cmd.xfer_alltoallv_int.rtype = rtype;
+
+
+  MPIDI_Context_post(MPIDI_Context[0], &alltoallv_post.state,
+                     MPIDI_Pami_post_wrapper, (void *)&alltoallv);
+
+  TRACE_ERR("%d waiting on active %d\n", rank, active);
+  MPID_PROGRESS_WAIT_WHILE(active);
+
+
+  TRACE_ERR("Leaving alltoallv\n");
+
+
+  return MPI_SUCCESS;
+}
+
+int
+MPIDO_CSWrapper_alltoallv(pami_xfer_t *alltoallv,
+                          void        *comm)
+{
+  int mpierrno = 0;
+  MPID_Comm   *comm_ptr = (MPID_Comm*)comm;
+  MPI_Datatype sendtype, recvtype;
+  void *sbuf;
+  MPIDI_coll_check_in_place(alltoallv->cmd.xfer_alltoallv_int.sndbuf, &sbuf);
+  int rc = MPIDI_Dtpami_to_dtmpi(  alltoallv->cmd.xfer_alltoallv_int.stype,
+                                   &sendtype,
+                                   NULL,
+                                   NULL);
+  if(rc == -1) return rc;
+
+  rc = MPIDI_Dtpami_to_dtmpi(  alltoallv->cmd.xfer_alltoallv_int.rtype,
+                               &recvtype,
+                               NULL,
+                               NULL);
+  if(rc == -1) return rc;
+
+  rc  =  MPIR_Alltoallv(sbuf,
+                        alltoallv->cmd.xfer_alltoallv_int.stypecounts, 
+                        alltoallv->cmd.xfer_alltoallv_int.sdispls, sendtype,
+                        alltoallv->cmd.xfer_alltoallv_int.rcvbuf,
+                        alltoallv->cmd.xfer_alltoallv_int.rtypecounts,
+                        alltoallv->cmd.xfer_alltoallv_int.rdispls, recvtype,
+                        comm_ptr, &mpierrno);
+  if(alltoallv->cb_done && rc == 0)
+    alltoallv->cb_done(NULL, alltoallv->cookie, PAMI_SUCCESS);
+  return rc;
+
+}
+

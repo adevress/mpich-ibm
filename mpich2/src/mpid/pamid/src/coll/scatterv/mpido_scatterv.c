@@ -434,6 +434,214 @@ int MPIDO_Scatterv(const void *sendbuf,
   return 0;
 }
 
+int MPIDO_Scatterv_simple(const void *sendbuf,
+                          const int *sendcounts,
+                          const int *displs,
+                          MPI_Datatype sendtype,
+                          void *recvbuf,
+                          int recvcount,
+                          MPI_Datatype recvtype,
+                          int root,
+                          MPID_Comm *comm_ptr,
+                          int *mpierrno)
+{
+  int snd_contig = 1;
+  int rcv_contig = 1;
+  int send_size = 0, recv_size = 0;
+  int ssize = 0;
+  MPID_Datatype *dt_ptr = NULL;
+  MPI_Aint send_true_lb=0, recv_true_lb=0;
+  void *snd_noncontig_buff = NULL, *rcv_noncontig_buff = NULL;
+  void *sbuf = NULL, *rbuf = NULL;
+  int *sdispls = NULL, *scounts = NULL;
+  int sndlen    = 0;
+  int sndcount  = 0;
+  MPID_Segment segment;
+  int tmp, i;
+  pami_type_t stype = PAMI_TYPE_NULL;
+  const int rank = comm_ptr->rank;
+  const int size = comm_ptr->local_size;
+  const struct MPIDI_Comm* const mpid = &(comm_ptr->mpid);
+
+  if(rank == root && sendtype != MPI_DATATYPE_NULL && sendcounts[0] >= 0)
+  {
+    MPIDI_Datatype_get_info(1, sendtype, snd_contig, ssize, dt_ptr, send_true_lb);
+    if(MPIDI_Pamix_collsel_advise != NULL)
+    {
+      advisor_algorithm_t advisor_algorithms[1];
+      int num_algorithms = MPIDI_Pamix_collsel_advise(mpid->collsel_fast_query, PAMI_XFER_SCATTERV_INT, 64, advisor_algorithms, 1);
+      if(num_algorithms)
+      {
+        if(advisor_algorithms[0].algorithm_type == COLLSEL_EXTERNAL_ALGO)
+        {
+          return MPIR_Scatterv(sendbuf, sendcounts, displs, sendtype,
+                               recvbuf, recvcount, recvtype,
+                               root, comm_ptr, mpierrno);
+        }
+      }
+    }
+  }
+
+  if(recvtype != MPI_DATATYPE_NULL && recvcount >= 0)
+  {
+    MPIDI_Datatype_get_info(recvcount, recvtype, rcv_contig,
+                            recv_size, dt_ptr, recv_true_lb);
+    if(MPIDI_Pamix_collsel_advise != NULL)
+    {
+      advisor_algorithm_t advisor_algorithms[1];
+      int num_algorithms = MPIDI_Pamix_collsel_advise(mpid->collsel_fast_query, PAMI_XFER_SCATTERV_INT, 64, advisor_algorithms, 1);
+      if(num_algorithms)
+      {
+        if(advisor_algorithms[0].algorithm_type == COLLSEL_EXTERNAL_ALGO)
+        {
+          return MPIR_Scatterv(sendbuf, sendcounts, displs, sendtype,
+                               recvbuf, recvcount, recvtype,
+                               root, comm_ptr, mpierrno);
+        }
+      }
+    }
+  }
+
+  pami_xfer_t scatterv;
+  const pami_metadata_t *my_scatterv_md;
+  volatile unsigned scatterv_active = 1;
+
+  sbuf = (char *)sendbuf + send_true_lb;
+  rbuf = (char *)recvbuf + recv_true_lb;
+  scounts = (int*)sendcounts;
+  sdispls = (int*)displs;
+  if(rank == root)
+  {
+    if(MPIDI_Datatype_to_pami(sendtype, &stype, -1, NULL, &tmp) != MPI_SUCCESS)
+    {
+      if(!snd_contig)
+      {
+        scounts = (int*)MPIU_Malloc(size);
+        sdispls = (int*)MPIU_Malloc(size);
+        for(i = 0; i < size; i++)
+        {
+          scounts[i] = ssize * sendcounts[i];
+          sdispls[i] = ssize * displs[i];
+          send_size += scounts[i];
+          sndcount  += sendcounts[i];
+        }
+        snd_noncontig_buff = MPIU_Malloc(send_size);
+        sbuf = snd_noncontig_buff;
+        stype = PAMI_TYPE_BYTE;
+        if(snd_noncontig_buff == NULL)
+        {
+          MPID_Abort(NULL, MPI_ERR_NO_SPACE, 1,
+                     "Fatal:  Cannot allocate pack buffer");
+        }
+        DLOOP_Offset last = send_size;
+        MPID_Segment_init(sendbuf, sndcount, sendtype, &segment, 0);
+        MPID_Segment_pack(&segment, 0, &last, snd_noncontig_buff);
+      }
+    }
+    if(recvbuf == MPI_IN_PLACE)
+    {
+      rbuf = PAMI_IN_PLACE;
+    }
+  }
+
+  if(recvbuf != MPI_IN_PLACE)
+  {
+    if(!rcv_contig)
+    {
+      rcv_noncontig_buff = MPIU_Malloc(recv_size);
+      rbuf = rcv_noncontig_buff;
+      if(rcv_noncontig_buff == NULL)
+      {
+        MPID_Abort(NULL, MPI_ERR_NO_SPACE, 1,
+                   "Fatal:  Cannot allocate pack buffer");
+      }
+    }
+  }
+
+  scatterv.cb_done = cb_scatterv;
+  scatterv.cookie = (void *)&scatterv_active;
+  scatterv.cmd.xfer_scatterv_int.root = MPID_VCR_GET_LPID(comm_ptr->vcr, root);
+
+  scatterv.algorithm = mpid->coll_algorithm[PAMI_XFER_SCATTERV_INT][0][0];
+  my_scatterv_md = &mpid->coll_metadata[PAMI_XFER_SCATTERV_INT][0][0];
+
+  scatterv.cmd.xfer_scatterv_int.rcvbuf = rbuf;
+  scatterv.cmd.xfer_scatterv_int.sndbuf = sbuf;
+  scatterv.cmd.xfer_scatterv_int.stype = stype;
+  scatterv.cmd.xfer_scatterv_int.rtype = PAMI_TYPE_BYTE;/* rtype is ignored when rcvbuf == PAMI_IN_PLACE */
+  scatterv.cmd.xfer_scatterv_int.stypecounts = (int *) scounts;
+  scatterv.cmd.xfer_scatterv_int.rtypecount = recv_size;
+  scatterv.cmd.xfer_scatterv_int.sdispls = (int *) sdispls;
+
+
+  MPIDI_Update_last_algorithm(comm_ptr, my_scatterv_md->name);
+
+
+  MPIDI_Post_coll_t scatterv_post;
+  TRACE_ERR("%s scatterv\n", MPIDI_Process.context_post.active>0?"Posting":"Invoking");
+  MPIDI_Context_post(MPIDI_Context[0], &scatterv_post.state,
+                     MPIDI_Pami_post_wrapper, (void *)&scatterv);
+
+  TRACE_ERR("Waiting on active %d\n", scatterv_active);
+  MPID_PROGRESS_WAIT_WHILE(scatterv_active);
+
+  if(!rcv_contig)
+  {
+    MPIR_Localcopy(rcv_noncontig_buff, recv_size, MPI_CHAR,
+                   recvbuf,         recvcount,     recvtype);
+    MPIU_Free(rcv_noncontig_buff);
+  }
+  if(!snd_contig)
+  {
+    MPIU_Free(snd_noncontig_buff);
+    MPIU_Free(scounts);
+    MPIU_Free(sdispls);
+  }
+
+  TRACE_ERR("Leaving MPIDO_Scatterv_optimized\n");
+  return MPI_SUCCESS;
+}
+
+
+int
+MPIDO_CSWrapper_scatterv(pami_xfer_t *scatterv,
+                         void        *comm)
+{
+  int mpierrno = 0, rc = 0;
+  MPID_Comm   *comm_ptr = (MPID_Comm*)comm;
+  MPI_Datatype sendtype, recvtype;
+  void *rbuf;
+  MPIDI_coll_check_in_place(scatterv->cmd.xfer_scatterv_int.rcvbuf, &rbuf);
+  /* Since collective selection in PAMI fixes message size when selecting the
+     algorithm, this wrapper function may be called back from PAMI */
+  if(PAMI_TYPE_NULL == scatterv->cmd.xfer_scatterv_int.stype)
+    sendtype = MPI_DATATYPE_NULL;
+  else
+    rc = MPIDI_Dtpami_to_dtmpi(  scatterv->cmd.xfer_scatterv_int.stype,
+                                 &sendtype,
+                                 NULL,
+                                 NULL);
+  if(rc == -1) return rc;
+
+  rc = MPIDI_Dtpami_to_dtmpi(  scatterv->cmd.xfer_scatterv_int.rtype,
+                               &recvtype,
+                               NULL,
+                               NULL);
+  if(rc == -1) return rc;
+
+  rc  =  MPIR_Scatterv(scatterv->cmd.xfer_scatterv_int.sndbuf,
+                       scatterv->cmd.xfer_scatterv_int.stypecounts, 
+                       scatterv->cmd.xfer_scatterv_int.sdispls, sendtype,
+                       rbuf,
+                       scatterv->cmd.xfer_scatterv_int.rtypecount, recvtype,
+                       scatterv->cmd.xfer_scatterv_int.root, comm_ptr, &mpierrno);
+  if(scatterv->cb_done && rc == 0)
+    scatterv->cb_done(NULL, scatterv->cookie, PAMI_SUCCESS);
+  return rc;
+
+}
+
+
 #if 0
 /* remove the glue-based optimized scattervs for now. */
 

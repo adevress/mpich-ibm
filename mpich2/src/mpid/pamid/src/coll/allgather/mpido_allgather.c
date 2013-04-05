@@ -568,3 +568,169 @@ MPIDO_Allgather(const void *sendbuf,
                         comm_ptr, mpierrno);
 }
 
+
+int
+MPIDO_Allgather_simple(const void *sendbuf,
+                       int sendcount,
+                       MPI_Datatype sendtype,
+                       void *recvbuf,
+                       int recvcount,
+                       MPI_Datatype recvtype,
+                       MPID_Comm * comm_ptr,
+                       int *mpierrno)
+{
+  /* *********************************
+* Check the nature of the buffers
+* *********************************
+*/
+  const struct MPIDI_Comm* const mpid = &(comm_ptr->mpid);
+  MPID_Datatype * dt_null = NULL;
+  void *snd_noncontig_buff = NULL, *rcv_noncontig_buff = NULL;
+  MPI_Aint send_true_lb = 0;
+  MPI_Aint recv_true_lb = 0;
+  int snd_data_contig = 1, rcv_data_contig = 1;
+  size_t send_size = 0;
+  size_t recv_size = 0;
+  MPID_Segment segment;
+  volatile unsigned allgather_active = 1;
+  const int rank = comm_ptr->rank;
+  const int size = comm_ptr->local_size;
+
+  const pami_metadata_t *my_md;
+
+  char *rbuf = NULL, *sbuf = NULL;
+
+
+  if((sendcount < 1 && sendbuf != MPI_IN_PLACE) || recvcount < 1)
+    return MPI_SUCCESS;
+
+  /* Gather datatype information */
+  MPIDI_Datatype_get_info(recvcount,
+                          recvtype,
+                          rcv_data_contig,
+                          recv_size,
+                          dt_null,
+                          recv_true_lb);
+
+  send_size = recv_size;
+
+  if(MPIDI_Pamix_collsel_advise != NULL)
+  {
+    advisor_algorithm_t advisor_algorithms[1];
+    int num_algorithms = MPIDI_Pamix_collsel_advise(mpid->collsel_fast_query, PAMI_XFER_ALLGATHER, send_size, advisor_algorithms, 1);
+    if(num_algorithms)
+    {
+      if(advisor_algorithms[0].algorithm_type == COLLSEL_EXTERNAL_ALGO)
+      {
+        return MPIR_Allgather(sendbuf, sendcount, sendtype,
+                              recvbuf, recvcount, recvtype,
+                              comm_ptr, mpierrno); 
+      }
+    }
+  }
+
+  rbuf = (char *)recvbuf+recv_true_lb;
+
+  if(!rcv_data_contig)
+  {
+    rcv_noncontig_buff = MPIU_Malloc(recv_size * size);
+    rbuf = rcv_noncontig_buff;
+    if(rcv_noncontig_buff == NULL)
+    {
+      MPID_Abort(NULL, MPI_ERR_NO_SPACE, 1,
+                 "Fatal:  Cannot allocate pack buffer");
+    }
+  }
+
+  if(sendbuf == MPI_IN_PLACE)
+    sbuf = PAMI_IN_PLACE;
+  else
+  {
+    MPIDI_Datatype_get_info(sendcount,
+                            sendtype,
+                            snd_data_contig,
+                            send_size,
+                            dt_null,
+                            send_true_lb);
+
+    sbuf = (char *)sendbuf+send_true_lb;
+
+    if(!snd_data_contig)
+    {
+      snd_noncontig_buff = MPIU_Malloc(send_size);
+      sbuf = snd_noncontig_buff;
+      if(snd_noncontig_buff == NULL)
+      {
+        MPID_Abort(NULL, MPI_ERR_NO_SPACE, 1,
+                   "Fatal:  Cannot allocate pack buffer");
+      }
+      DLOOP_Offset last = send_size;
+      MPID_Segment_init(sendbuf, sendcount, sendtype, &segment, 0);
+      MPID_Segment_pack(&segment, 0, &last, snd_noncontig_buff);
+    }
+  }
+
+  TRACE_ERR("Using PAMI-level allgather protocol\n");
+  pami_xfer_t allgather;
+  allgather.cb_done = allgather_cb_done;
+  allgather.cookie = (void *)&allgather_active;
+  allgather.cmd.xfer_allgather.rcvbuf = rbuf;
+  allgather.cmd.xfer_allgather.sndbuf = sbuf;
+  allgather.cmd.xfer_allgather.stype = PAMI_TYPE_BYTE;/* stype is ignored when sndbuf == PAMI_IN_PLACE */
+  allgather.cmd.xfer_allgather.rtype = PAMI_TYPE_BYTE;
+  allgather.cmd.xfer_allgather.stypecount = send_size;
+  allgather.cmd.xfer_allgather.rtypecount = recv_size;
+  allgather.algorithm = mpid->coll_algorithm[PAMI_XFER_ALLGATHER][0][0];
+  my_md = &mpid->coll_metadata[PAMI_XFER_ALLGATHER][0][0];
+
+  TRACE_ERR("Calling PAMI_Collective with allgather structure\n");
+  MPIDI_Post_coll_t allgather_post;
+  MPIDI_Context_post(MPIDI_Context[0], &allgather_post.state, MPIDI_Pami_post_wrapper, (void *)&allgather);
+  TRACE_ERR("Allgather %s\n", MPIDI_Process.context_post.active>0?"posted":"invoked");
+
+  MPIDI_Update_last_algorithm(comm_ptr, my_md->name);
+  MPID_PROGRESS_WAIT_WHILE(allgather_active);
+  if(!rcv_data_contig)
+  {
+    MPIR_Localcopy(rcv_noncontig_buff, recv_size * size, MPI_CHAR,
+                   recvbuf,         recvcount,     recvtype);
+    MPIU_Free(rcv_noncontig_buff);   
+  }
+  if(!snd_data_contig)  MPIU_Free(snd_noncontig_buff);
+  TRACE_ERR("Allgather done\n");
+  return MPI_SUCCESS;
+}
+
+
+int
+MPIDO_CSWrapper_allgather(pami_xfer_t *allgather,
+                          void        *comm)
+{
+  int mpierrno = 0;
+  MPID_Comm   *comm_ptr = (MPID_Comm*)comm;
+  MPI_Datatype sendtype, recvtype;
+  void *sbuf;
+  MPIDI_coll_check_in_place(allgather->cmd.xfer_allgather.sndbuf, &sbuf);
+  int rc = MPIDI_Dtpami_to_dtmpi(  allgather->cmd.xfer_allgather.stype,
+                                   &sendtype,
+                                   NULL,
+                                   NULL);
+  if(rc == -1) return rc;
+
+  rc = MPIDI_Dtpami_to_dtmpi(  allgather->cmd.xfer_allgather.rtype,
+                               &recvtype,
+                               NULL,
+                               NULL);
+  if(rc == -1) return rc;
+
+  rc  =  MPIR_Allgather(sbuf, 
+                        allgather->cmd.xfer_allgather.stypecount, sendtype,
+                        allgather->cmd.xfer_allgather.rcvbuf, 
+                        allgather->cmd.xfer_allgather.rtypecount, recvtype,
+                        comm_ptr, &mpierrno);
+  if(allgather->cb_done && rc == 0)
+    allgather->cb_done(NULL, allgather->cookie, PAMI_SUCCESS);
+  return rc;
+
+}
+
