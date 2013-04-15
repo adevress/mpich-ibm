@@ -424,14 +424,15 @@ int MPIDO_Scatterv_simple(const void *sendbuf,
   void *snd_noncontig_buff = NULL, *rcv_noncontig_buff = NULL;
   void *sbuf = NULL, *rbuf = NULL;
   int *sdispls = NULL, *scounts = NULL;
-  int sndlen    = 0;
-  int sndcount  = 0;
+  int totalsendcount  = 0;
   MPID_Segment segment;
   int tmp, i;
   pami_type_t stype = PAMI_TYPE_NULL;
   const int rank = comm_ptr->rank;
   const int size = comm_ptr->local_size;
   const struct MPIDI_Comm* const mpid = &(comm_ptr->mpid);
+  int sendok = PAMI_SUCCESS;
+  int sendcontinuous = 1;
 
   if(rank == root && sendtype != MPI_DATATYPE_NULL && sendcounts[0] >= 0)
   {
@@ -482,30 +483,49 @@ int MPIDO_Scatterv_simple(const void *sendbuf,
   sdispls = (int*)displs;
   if(rank == root)
   {
-    if(MPIDI_Datatype_to_pami(sendtype, &stype, -1, NULL, &tmp) != MPI_SUCCESS)
+    if((sendok = MPIDI_Datatype_to_pami(sendtype, &stype, -1, NULL, &tmp)) != MPI_SUCCESS)
     {
-      if(!snd_contig)
+      totalsendcount = sendcounts[0];
+      sendcontinuous = displs[0] == 0 ? 1 : 0;
+      scounts = (int*)MPIU_Malloc(size);
+      sdispls = (int*)MPIU_Malloc(size);
+      scounts[0] = ssize * sendcounts[0];
+      sdispls[0] = 0;
+      for(i = 1; i < size; i++)
       {
-        scounts = (int*)MPIU_Malloc(size);
-        sdispls = (int*)MPIU_Malloc(size);
-        for(i = 0; i < size; i++)
-        {
-          scounts[i] = ssize * sendcounts[i];
-          sdispls[i] = ssize * displs[i];
-          send_size += scounts[i];
-          sndcount  += sendcounts[i];
-        }
-        snd_noncontig_buff = MPIU_Malloc(send_size);
-        sbuf = snd_noncontig_buff;
-        stype = PAMI_TYPE_BYTE;
-        if(snd_noncontig_buff == NULL)
-        {
-          MPID_Abort(NULL, MPI_ERR_NO_SPACE, 1,
-                     "Fatal:  Cannot allocate pack buffer");
-        }
+        sdispls[i]= ssize * totalsendcount;
+        totalsendcount += sendcounts[i];
+        if(displs[i] != (displs[i-1] + sendcounts[i-1]))
+          sendcontinuous = 0;
+        scounts[i]= ssize * sendcounts[i];
+      }
+      send_size = ssize * totalsendcount;
+
+      snd_noncontig_buff = MPIU_Malloc(send_size);
+      sbuf = snd_noncontig_buff;
+      stype = PAMI_TYPE_BYTE;
+      if(snd_noncontig_buff == NULL)
+      {
+        MPID_Abort(NULL, MPI_ERR_NO_SPACE, 1,
+                   "Fatal:  Cannot allocate pack buffer");
+      }
+      if(sendcontinuous)
+      {
         DLOOP_Offset last = send_size;
-        MPID_Segment_init(sendbuf, sndcount, sendtype, &segment, 0);
+        MPID_Segment_init(sendbuf, totalsendcount, sendtype, &segment, 0);
         MPID_Segment_pack(&segment, 0, &last, snd_noncontig_buff);
+      }
+      else
+      {
+        size_t extent;
+        MPID_Datatype_get_extent_macro(sendtype,extent);
+        for(i=0; i<size; ++i)
+        {
+           char* dcbuf = (char*)snd_noncontig_buff + sdispls[i];
+           char* scbuf = (char*)sendbuf + displs[i]*extent;
+           MPIR_Localcopy(scbuf, sendcounts[i], sendtype,
+                       dcbuf, scounts[i], MPI_CHAR);
+        }
       }
     }
     if(recvbuf == MPI_IN_PLACE)

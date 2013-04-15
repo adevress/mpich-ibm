@@ -225,6 +225,7 @@ int MPIDO_Alltoall_simple(const void *sendbuf,
   MPIDI_Post_coll_t alltoall_post;
   int sndlen, rcvlen, snd_contig = 1, rcv_contig = 1, pamidt=1;
   int tmp;
+  const int rank = comm_ptr->rank;
 
   const struct MPIDI_Comm* const mpid = &(comm_ptr->mpid);
 
@@ -276,6 +277,13 @@ int MPIDO_Alltoall_simple(const void *sendbuf,
     {
       MPID_Abort(NULL, MPI_ERR_NO_SPACE, 1,
                  "Fatal:  Cannot allocate pack buffer");
+    }
+    if(sendbuf == MPI_IN_PLACE)
+    {
+      size_t extent;
+      MPID_Datatype_get_extent_macro(recvtype,extent);
+      MPIR_Localcopy(recvbuf + (rank*recvcount*extent), recvcount, recvtype,
+                     rcv_noncontig_buff + (rank*recv_size), recv_size,MPI_CHAR);
     }
   }
 

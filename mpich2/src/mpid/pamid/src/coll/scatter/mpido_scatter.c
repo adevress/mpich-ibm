@@ -515,7 +515,10 @@ int MPIDO_Scatter_simple(const void *sendbuf,
                    recvbuf,         recvcount,     recvtype);
     MPIU_Free(rcv_noncontig_buff);
   }
-  if(!snd_contig)  MPIU_Free(snd_noncontig_buff);
+  if(!snd_contig)
+  {
+    MPIU_Free(snd_noncontig_buff);
+  }
 
 
   TRACE_ERR("Leaving MPIDO_Scatter_optimized\n");
