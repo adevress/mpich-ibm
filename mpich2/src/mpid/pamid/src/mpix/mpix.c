@@ -858,6 +858,93 @@ MPIX_Cart_comm_create (MPI_Comm *cart_comm)
   return MPI_SUCCESS;
 };
 
+/**
+ * \brief FORTRAN interface to MPIX_Comm_rank2global
+ *
+ * \param [in] comm  Communicator
+ * \param [in] crank Pointer to the rank in the communicator variable
+ * \param [out] grank Pointer tot he global rank variable
+ *
+ * \return status
+ */
+int mpix_comm_rank2global (MPI_Comm *comm, int *crank, int *grank)
+{
+  return MPIX_Comm_rank2global (*comm, *crank, grank);
+}
+
+/**
+ * \brief FORTRAN interface to MPIX_Pset_same_comm_create
+ *
+ * \param [out] pset_comm  Communicator
+ *
+ * \return status
+ */
+int mpix_pset_same_comm_create (MPI_Comm *pset_comm)
+{
+  return MPIX_Pset_same_comm_create (pset_comm);
+}
+
+/**
+ * \brief FORTRAN interface to MPIX_Pset_diff_comm_create
+ *
+ * \param [out] pset_comm  Communicator
+ *
+ * \return status
+ */
+int mpix_pset_diff_comm_create (MPI_Comm *pset_comm)
+{
+  return MPIX_Pset_diff_comm_create (pset_comm);
+}
+
+/**
+ * \brief FORTRAN interface to MPIX_Pset_same_comm_create_from_parent
+ *
+ * \param [in]  parent_comm  Parent communicator
+ * \param [out] pset_comm    New pset communicator
+ *
+ * \return status
+ */
+int mpix_pset_same_comm_create_from_parent (MPI_Comm *parent_comm, MPI_Comm *pset_comm)
+{
+  return MPIX_Pset_same_comm_create_from_parent (*parent_comm, pset_comm);
+}
+
+/**
+ * \brief FORTRAN interface to MPIX_Pset_diff_comm_create_from_parent
+ *
+ * \param [in]  parent_comm  Parent communicator
+ * \param [out] pset_comm    New pset communicator
+ *
+ * \return status
+ */
+int mpix_pset_diff_comm_create_from_parent (MPI_Comm *parent_comm, MPI_Comm *pset_comm)
+{
+  return MPIX_Pset_diff_comm_create_from_parent (*parent_comm, pset_comm);
+}
+
+/**
+ * \brief FORTRAN interface to MPIX_Pset_io_node
+ *
+ * \param [out] io_node_route_id    This rank's io node route id
+ * \param [out] distance_to_io_node This rank's distance to the io node
+ */
+void mpix_pset_io_node (int *io_node_route_id, int *distance_to_io_node)
+{
+  MPIX_Pset_io_node (io_node_route_id, distance_to_io_node);
+}
+
+/**
+ * \brief FORTRAN interface to MPIX_Cart_comm_create
+ *
+ * \param [out] cart_comm  Communicator to create
+ *
+ * \return status
+ */
+int mpix_cart_comm_create (MPI_Comm *cart_comm)
+{
+  return MPIX_Cart_comm_create (cart_comm);
+}
+
 #endif
 
 #ifdef __PE__
