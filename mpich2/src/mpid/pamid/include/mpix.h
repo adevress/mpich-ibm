@@ -78,6 +78,10 @@ extern "C" {
 
   /**
    * \brief Determine the rank-in-COMM_WORLD of the process associated with rank-in-comm
+   *
+   * Fortran interface:
+   *   MPIX_COMM_RANK2GLOBAL (INTEGER comm, INTEGER crank, INTEGER grank, INTEGER ierr)
+   *
    * \param[in]  comm  The communicator associated with the input rank
    * \param[in]  crank The rank-in-comm
    * \param[out] grank The rank-in-COMM_WORLD (AKA Global rank)
@@ -139,6 +143,9 @@ extern "C" {
    * \brief Create a communicator such that all nodes in the same
    *        communicator are served by the same I/O node
    *
+   * Fortran interface:
+   *   MPIX_PSET_SAME_COMM_CREATE(INTEGER pset_comm, INTEGER ierr)
+   *
    * \note This is a collective operation on MPI_COMM_WORLD
    *
    * \param [out] pset_comm The new communicator
@@ -150,6 +157,9 @@ extern "C" {
   /**
    * \brief Create a communicator such that all nodes in the same
    *        communicator are served by a different I/O node
+   *
+   * Fortran interface:
+   *   MPIX_PSET_DIFF_COMM_CREATE(INTEGER pset_comm, INTEGER ierr)
    *
    * \note This is a collective operation on MPI_COMM_WORLD
    *
@@ -163,6 +173,9 @@ extern "C" {
    * \brief Create a communicator such that all nodes in the same
    *        communicator are served by the same I/O node
    *
+   * Fortran interface:
+   *   MPIX_PSET_SAME_COMM_CREATE (INTEGER parent_comm, INTEGER pset_comm, INTEGER ierr)
+   *
    * \note This is a collective operation on the parent communicator.
    *
    * \param [in]  parent_comm The parent communicator
@@ -175,6 +188,9 @@ extern "C" {
   /**
    * \brief Create a communicator such that all nodes in the same
    *        communicator are served by a different I/O node
+   *
+   * Fortran interface:
+   *   MPIX_PSET_DIFF_COMM_CREATE (INTEGER parent_comm, INTEGER pset_comm, INTEGER ierr)
    *
    * \note This is a collective operation on the parent communicator
    *
@@ -196,6 +212,9 @@ extern "C" {
    *
    * The distance to the I/O node is the number of hops on the torus from the
    * local compute node to the associated I/O node.
+   *
+   * Fortran interface:
+   *   MPIX_PSET_IO_NODE (INTEGER io_node_route_id, INTEGER distance_to_io_node)
    *
    * \note On BG/Q the 'bridge' compute nodes are those nodes that are closest
    *       to the I/O node and will have a distance of '1'.
@@ -219,6 +238,9 @@ extern "C" {
    * using the default ABCDET mapping, the rank in cart_comm will match the rank
    * in MPI_COMM_WORLD. However, when using a non-default mapping or a mapfile
    * the ranks will be different.
+   *
+   * Fortran interface:
+   *   MPIX_CART_COMM_CREATE (INTEGER cart_comm, INTEGER ierr)
    *
    * \param [out] cart_comm The new Cartesian communicator
    *
