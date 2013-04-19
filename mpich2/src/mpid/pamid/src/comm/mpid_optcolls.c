@@ -282,7 +282,7 @@ void MPIDI_Comm_coll_select(MPID_Comm *comm_ptr)
       TRACE_ERR("Couldn't find optimial allgatherv[int] protocol\n");
       comm_ptr->mpid.optimized_algorithm_type[PAMI_XFER_ALLGATHERV_INT][0] = MPID_COLL_USE_MPICH;
       comm_ptr->mpid.optimized_algorithm[PAMI_XFER_ALLGATHERV_INT][0] = 0;
-      /* comm_ptr->mpid.allgathervs[0] = 1;  Use GLUE_ALLREDUCE */
+      comm_ptr->mpid.allgathervs[0] = 1;  /* Use GLUE_ALLREDUCE */
     }
     TRACE_ERR("Done setting optimized allgatherv[int]\n");
   }
