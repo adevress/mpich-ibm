@@ -39,7 +39,6 @@ static void allgatherv_cb_done(void *ctxt, void *clientdata, pami_result_t err)
  *       - Tree allreduce is availible (for max performance)
  */
 /* ****************************************************************** */
-#define MAX_ALLGATHERV_ALLREDUCE_BUFFER_SIZE (1024*1024*2)
 int MPIDO_Allgatherv_allreduce(const void *sendbuf,
                                int sendcount,
                                MPI_Datatype sendtype,
@@ -61,6 +60,12 @@ int MPIDO_Allgatherv_allreduce(const void *sendbuf,
   char *destbuf = NULL;
   const int rank = comm_ptr->rank;
   TRACE_ERR("Entering MPIDO_Allgatherv_allreduce\n");
+#if ASSERT_LEVEL==0
+  /* We can't afford the tracing in ndebug/performance libraries */
+  const unsigned verbose = 0;
+#else
+  const unsigned verbose = (MPIDI_Process.verbose >= MPIDI_VERBOSE_DETAILS_ALL) && (rank == 0);
+#endif
 
   startbuf = (char *) recvbuf + recv_true_lb;
   destbuf = startbuf + displs[rank] * recv_size;
@@ -77,7 +82,7 @@ int MPIDO_Allgatherv_allreduce(const void *sendbuf,
   /* TODO: Change to PAMI */
   /*integer/long/double allgathers only*/
   /*Do a convert and then do the allreudce*/
-  if( buffer_sum <= MAX_ALLGATHERV_ALLREDUCE_BUFFER_SIZE &&
+  if( buffer_sum <= MPIDI_Process.optimized.max_alloc &&
       (send_size & 0x3)==0 && (recv_size & 0x3)==0)
   {
     double *tmprbuf = (double *)MPIU_Malloc(buffer_sum*2);
@@ -96,6 +101,8 @@ int MPIDO_Allgatherv_allreduce(const void *sendbuf,
     for(i = 0; i < (send_size/sizeof(int)); ++i)
       tmpsbuf[i] = (double)sibuf[i];
 
+    if(unlikely(verbose))
+      fprintf(stderr,"Using tree reduce (%zu,%zu) on doubles %zu/%zu.\n",send_size,recv_size,(size_t)buffer_sum/sizeof(int),(size_t)buffer_sum);
     /* Switch to comm->coll_fns->fn() */
     rc = MPIDO_Allreduce(MPI_IN_PLACE,
                          tmprbuf,
@@ -129,6 +136,8 @@ int MPIDO_Allgatherv_allreduce(const void *sendbuf,
   memset(startbuf + start, 0, length);
 
   TRACE_ERR("Calling MPIDO_Allreduce from MPIDO_Allgatherv_allreduce\n");
+  if(unlikely(verbose))
+    fprintf(stderr,"Using tree reduce (%zu,%zu) on unsigned %zu/%zu.\n",send_size,recv_size,(size_t)buffer_sum/sizeof(unsigned),(size_t)buffer_sum);
   /* Switch to comm->coll_fns->fn() */
   rc = MPIDO_Allreduce(MPI_IN_PLACE,
                        startbuf,

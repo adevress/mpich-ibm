@@ -42,8 +42,6 @@ static void allgather_cb_done(void *ctxt, void *clientdata, pami_result_t err)
  */
 /* ****************************************************************** */
 
-#define MAX_ALLGATHER_ALLREDUCE_BUFFER_SIZE  (1024*1024*2)
-
 int MPIDO_Allgather_allreduce(const void *sendbuf,
                               int sendcount,
                               MPI_Datatype sendtype,
@@ -52,8 +50,8 @@ int MPIDO_Allgather_allreduce(const void *sendbuf,
                               MPI_Datatype recvtype,
                               MPI_Aint send_true_lb,
                               MPI_Aint recv_true_lb,
-                              size_t send_size,
-                              size_t recv_size,
+                              size_t send_size, /* bytes */
+                              size_t recv_size, /* bytes */
                               MPID_Comm * comm_ptr,
                               int *mpierrno)
 {
@@ -71,13 +69,14 @@ int MPIDO_Allgather_allreduce(const void *sendbuf,
     memcpy(destbuf, outputbuf, send_size);
   }
 
-  /* TODO: Change to PAMI */
-  /*Do a convert and then do the allreudce*/
-  if( recv_size <= MAX_ALLGATHER_ALLREDUCE_BUFFER_SIZE &&
-      (send_size & 0x3)==0 &&  /*integer/long allgathers only*/
+  /* This next bit is dangerous -- what if only one rank does this? */
+  /*Do a convert to dbl and then do the allreduce*/
+  if( recv_size <= MPIDI_Process.optimized.max_alloc &&
+      (send_size & 0x3)==0 && 
       (sendtype != MPI_DOUBLE || recvtype != MPI_DOUBLE))
   {
     double *tmprbuf = (double *)MPIU_Malloc(recv_size*2);
+    /* This next bit is dangerous -- what if only one rank does this? another allreduce?! */
     if(tmprbuf == NULL)
       goto direct_algo; /*skip int to fp conversion and go to direct
         algo*/
@@ -312,19 +311,50 @@ MPIDO_Allgather(const void *sendbuf,
 
 
 
-  char use_tree_reduce, use_alltoall, use_bcast, use_pami, use_opt;
+  char use_allreduce, use_alltoall, use_bcast, use_pami, use_opt;
   char *rbuf = NULL, *sbuf = NULL;
   void *snd_noncontig_buff = NULL, *rcv_noncontig_buff = NULL;
 
+  /* Notes
+  allgathers[0]=1; // GLUE_ALLREDUCE 
+  allgathers[1]=1; // GLUE_BCAST 
+  mpid->optimized_algorithm_cutoff_size[PAMI_XFER_ALLGATHER][1] = nnn; // used for GLUE_BCAST 
+  mpid.allgathers[2]=1; // GLUE_ALLTOALL 
+  */
   const char * const allgathers = mpid->allgathers;
-  use_alltoall = allgathers[2];
-  use_tree_reduce = allgathers[0];
-  use_bcast = allgathers[1];
+
+  /* Gather datatype information */
+  int rcontig = 0, scontig = 0;
+  MPIDI_Datatype_get_info(recvcount,
+                          recvtype,
+                          rcontig,
+                          recv_bytes,
+                          dt_null,
+                          recv_true_lb);
+
+  /* Check for glue protocols/cutoffs */
+
+  /* alltoall doubles >= 2048, other dts >= 512 */
+  use_alltoall = allgathers[2] && 
+                (((recvtype == MPI_DOUBLE) && (recv_bytes >= 2048)) 
+                    || 
+                 (recv_bytes >= 512)
+                );
+
+  /* bcast has a cutoff in mpid->optimized_algorithm_cutoff_size[PAMI_XFER_ALLGATHER][1] */
+  use_bcast = allgathers[1] && (recv_bytes >= mpid->optimized_algorithm_cutoff_size[PAMI_XFER_ALLGATHER][1]);
+
+  /* allreduce only when below alltoall or bcast cutoffs */
+  use_allreduce = allgathers[0] && !use_alltoall && !use_bcast && (recv_bytes > 3);
+
+  /* Use pami if not specifically using MPICH or a GLUE */
   use_pami = (optimized_algorithm_type == MPID_COLL_USE_MPICH) ? 0 : 1;
-  use_opt = use_alltoall || use_tree_reduce || use_bcast || use_pami;
+  use_pami = use_pami && !use_allreduce && !use_alltoall && !use_bcast ;
+     
+  use_opt = use_alltoall || use_allreduce || use_bcast || use_pami;
 
 
-  TRACE_ERR("flags before: b: %d a: %d t: %d p: %d\n", use_bcast, use_alltoall, use_tree_reduce, use_pami);
+  TRACE_ERR("flags before: b: %d a: %d t: %d p: %d\n", use_bcast, use_alltoall, use_allreduce, use_pami);
   if(!use_opt)
   {
     if(unlikely(verbose))
@@ -338,14 +368,6 @@ MPIDO_Allgather(const void *sendbuf,
   if((sendcount < 1 && sendbuf != MPI_IN_PLACE) || recvcount < 1)
     return MPI_SUCCESS;
 
-  /* Gather datatype information */
-  int rcontig = 0, scontig = 0;
-  MPIDI_Datatype_get_info(recvcount,
-                          recvtype,
-                          rcontig,
-                          recv_bytes,
-                          dt_null,
-                          recv_true_lb);
 
   config[MPID_RECV_CONTIG] = rcontig? 1.0 : 0.0;
   config[MPID_RECV_CONTINUOUS] = config[MPID_RECV_CONTIG];
@@ -405,9 +427,8 @@ MPIDO_Allgather(const void *sendbuf,
             recvcount,recv_bytes,rcontig,sendcount,send_bytes,scontig);
 
   /* verify everyone's datatype contiguity */
-  if(use_alltoall || use_tree_reduce || use_bcast)
+  if(0) // (use_alltoall || use_allreduce || use_bcast)  // not really applicable anymore since we pack...?
   {
-    /* #warning need to determine best allreduce for short messages */
     if(mpid->preallreduces[MPID_ALLGATHER_PREALLREDUCE])
     {
       MPIDO_Allreduce(MPI_IN_PLACE, config, 6, MPI_DOUBLE, MPI_MIN, comm_ptr, mpierrno);
@@ -419,17 +440,17 @@ MPIDO_Allgather(const void *sendbuf,
     /* Note: some of the glue protocols use recv_bytes*comm_size rather than 
      * recv_bytes so we use that for comparison here, plus we pass that in
      * to those protocols. */
-    use_tree_reduce =  allgathers[0] &&
+    use_allreduce =  allgathers[0] &&
                        (config[MPID_RECV_CONTIG]==1.0) && (config[MPID_SEND_CONTIG]==1.0) &&
                        (config[MPID_RECV_CONTINUOUS]==1.0) && (recv_bytes*comm_size%sizeof(unsigned)) == 0;
 
     use_bcast = allgathers[1];
 
-    TRACE_ERR("flags after: b: %d a: %d t: %d p: %d\n", use_bcast, use_alltoall, use_tree_reduce, use_pami);
+    TRACE_ERR("flags after: b: %d a: %d t: %d p: %d\n", use_bcast, use_alltoall, use_allreduce, use_pami);
   }
   if(unlikely(verbose))
-    fprintf(stderr,"allgather config %f,%f,%f,%f,%f,%f use_alltoall %d, use_tree_reduce %d, use_bcast %d, use_pami %d \n",
-            config[0],config[1],config[2],config[3],config[4],config[5],use_alltoall, use_tree_reduce, use_bcast, use_pami);
+    fprintf(stderr,"allgather config %f,%f,%f,%f,%f,%f use_alltoall %d, use_allreduce %d, use_bcast %d, use_pami %d \n",
+            config[0],config[1],config[2],config[3],config[4],config[5],use_alltoall, use_allreduce, use_bcast, use_pami);
 
   if(use_pami)
   {
@@ -531,20 +552,20 @@ MPIDO_Allgather(const void *sendbuf,
     MPID_PROGRESS_WAIT_WHILE(allgather_active);
     TRACE_ERR("Allgather done\n");
   }
-  else if(use_tree_reduce)
+  else if(use_allreduce)
   {
     if(unlikely(verbose))
       fprintf(stderr,"Using protocol GLUE_ALLREDUCE for allgather\n");
     TRACE_ERR("Using allgather via allreduce\n");
     MPIDI_Update_last_algorithm(comm_ptr, "ALLGATHER_OPT_ALLREDUCE");
     MPIDO_Allgather_allreduce(sendbuf, sendcount, sendtype,
-                                     recvbuf, recvcount, recvtype,
-                                     send_true_lb, recv_true_lb, send_bytes, recv_bytes*comm_size, comm_ptr, mpierrno);
+                              recvbuf, recvcount, recvtype,
+                              send_true_lb, recv_true_lb, send_bytes, recv_bytes*comm_size, comm_ptr, mpierrno);
   }
   else if(use_alltoall)
   {
     if(unlikely(verbose))
-      fprintf(stderr,"Using protocol GLUE_BCAST for allgather\n");
+      fprintf(stderr,"Using protocol GLUE_ALLTOALL for allgather\n");
     TRACE_ERR("Using allgather via alltoall\n");
     MPIDI_Update_last_algorithm(comm_ptr, "ALLGATHER_OPT_ALLTOALL");
     MPIDO_Allgather_alltoall(sendbuf, sendcount, sendtype,
@@ -554,7 +575,7 @@ MPIDO_Allgather(const void *sendbuf,
   else if(use_bcast)
   {
     if(unlikely(verbose))
-      fprintf(stderr,"Using protocol GLUE_ALLTOALL for allgather\n");
+      fprintf(stderr,"Using protocol GLUE_BCAST for allgather\n");
     TRACE_ERR("Using allgather via bcast\n");
     MPIDI_Update_last_algorithm(comm_ptr, "ALLGATHER_OPT_BCAST");
     MPIDO_Allgather_bcast(sendbuf, sendcount, sendtype,

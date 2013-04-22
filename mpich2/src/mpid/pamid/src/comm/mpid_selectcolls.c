@@ -486,8 +486,8 @@ void MPIDI_Comm_coll_query(MPID_Comm *comm)
         }
         if(i == PAMI_XFER_SCATTERV_INT)
         {
-          fprintf(stderr,"comm[%p] coll type %d (%s), \"glue\" algorithm: GLUE_BCAST\n", comm, i, MPIDI_Coll_type_name(i));
-          fprintf(stderr,"comm[%p] coll type %d (%s), \"glue\" algorithm: GLUE_ALLTOALLV\n", comm, i, MPIDI_Coll_type_name(i));
+          fprintf(stderr,"comm[%p] coll type %d (%s), \"glue\" algorithm: GLUE_BCAST (unimplemented)\n", comm, i, MPIDI_Coll_type_name(i));
+          fprintf(stderr,"comm[%p] coll type %d (%s), \"glue\" algorithm: GLUE_ALLTOALLV (unimplemented)\n", comm, i, MPIDI_Coll_type_name(i));
         }
         if(i == PAMI_XFER_SCATTER)
         {
@@ -500,7 +500,9 @@ void MPIDI_Comm_coll_query(MPID_Comm *comm)
         if(i == PAMI_XFER_GATHER)
         {
           fprintf(stderr,"comm[%p] coll type %d (%s), \"glue\" algorithm: GLUE_ALLGATHER\n", comm, i, MPIDI_Coll_type_name(i));
+/*        Not exposing GLUE_REDUCE but still selectable if you know it's there...
           fprintf(stderr,"comm[%p] coll type %d (%s), \"glue\" algorithm: GLUE_REDUCE\n", comm, i, MPIDI_Coll_type_name(i));
+*/
           fprintf(stderr,"comm[%p] coll type %d (%s), \"glue\" algorithm: GLUE_ALLREDUCE\n", comm, i, MPIDI_Coll_type_name(i));
         }
       }

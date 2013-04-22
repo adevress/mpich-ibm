@@ -185,10 +185,11 @@ int MPIDO_Alltoall(const void *sendbuf,
     MPIU_Thread_id_t tid;
     MPIU_Thread_self(&tid);
     threadID = (unsigned long long int)tid;
-    fprintf(stderr,"<%llx> Using protocol %s for alltoall on %u\n", 
-            threadID,
+    fprintf(stderr,"<%llx>(%d) Using protocol %s for alltoall on %u size %u\n", 
+            threadID,comm_ptr->rank,
             my_md->name,
-            (unsigned) comm_ptr->context_id);
+            (unsigned) comm_ptr->context_id,
+            comm_ptr->local_size);
   }
 
   MPIDI_Context_post(MPIDI_Context[0], &alltoall_post.state,

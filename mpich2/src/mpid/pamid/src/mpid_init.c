@@ -112,6 +112,7 @@ MPIDI_Process_t  MPIDI_Process = {
     .select_colls        = 2,
     .memory              = 0,
     .num_requests        = 1,
+    .max_alloc           = 2*1024*1024,
   },
 
   .mpir_nbc              = 0,
@@ -628,6 +629,7 @@ MPIDI_PAMI_init(int* rank, int* size, int* threading)
              "  optimized.subcomms    : %u\n"
              "  optimized.memory      : %u\n"
              "  optimized.num_requests: %u\n"
+             "  optimized.max_alloc   : %u\n"
              "  mpir_nbc              : %u\n",
              MPIDI_Process.verbose,
              MPIDI_Process.statistics,
@@ -663,6 +665,7 @@ MPIDI_PAMI_init(int* rank, int* size, int* threading)
              MPIDI_Process.optimized.subcomms,
              MPIDI_Process.optimized.memory,
              MPIDI_Process.optimized.num_requests,
+             MPIDI_Process.optimized.max_alloc,
              MPIDI_Process.mpir_nbc);
       switch (*threading)
         {

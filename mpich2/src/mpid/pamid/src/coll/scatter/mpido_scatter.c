@@ -198,28 +198,39 @@ int MPIDO_Scatter(const void *sendbuf,
 
   if(mpid->optscatter)
   {
-    if(unlikely(verbose))
-      fprintf(stderr,"Using GLUE_BCAST scatter algorithm\n");
-//    if(use_glue)
-    {
-      char* sbuf = (char *)sendbuf+true_lb;
-      char* rbuf = (char *)recvbuf+true_lb;
+    const int size = comm_ptr->local_size;
+    MPIDI_Datatype_get_info(recvcount,
+                            recvtype,
+                            contig,
+                            nbytes,
+                            data_ptr,
+                            true_lb);
 
-      MPIDI_Update_last_algorithm(comm_ptr, "GLUE_BCAST");
-      return MPIDO_Scatter_bcast(sbuf, sendcount, sendtype,
-                                 rbuf, recvcount, recvtype,
-                                 root, comm_ptr, mpierrno);
-    }
-/*    else
+    if((nbytes * size)<= MPIDI_Process.optimized.max_alloc)
     {
-      MPIDI_Update_last_algorithm(comm_ptr, "SCATTER_MPICH");
       if(unlikely(verbose))
-        fprintf(stderr,"Using MPICH scatter algorithm (%x), selected type %d, use_glue %d\n",mpid->optscatter,optimized_algorithm_type, use_glue);
-      return MPIR_Scatter(sendbuf, sendcount, sendtype,
-                         recvbuf, recvcount, recvtype,
-                         root, comm_ptr, mpierrno);
+        fprintf(stderr,"Using GLUE_BCAST scatter algorithm\n");
+  //    if(use_glue)
+      {
+        char* sbuf = (char *)sendbuf+true_lb;
+        char* rbuf = (char *)recvbuf+true_lb;
+  
+        MPIDI_Update_last_algorithm(comm_ptr, "GLUE_BCAST");
+        return MPIDO_Scatter_bcast(sbuf, sendcount, sendtype,
+                                   rbuf, recvcount, recvtype,
+                                   root, comm_ptr, mpierrno);
+      }
+  /*    else
+      {
+        MPIDI_Update_last_algorithm(comm_ptr, "SCATTER_MPICH");
+        if(unlikely(verbose))
+          fprintf(stderr,"Using MPICH scatter algorithm (%x), selected type %d, use_glue %d\n",mpid->optscatter,optimized_algorithm_type, use_glue);
+        return MPIR_Scatter(sendbuf, sendcount, sendtype,
+                           recvbuf, recvcount, recvtype,
+                           root, comm_ptr, mpierrno);
+      }
+   */
     }
- */
   }
   
    pami_xfer_t scatter;

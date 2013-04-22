@@ -100,5 +100,6 @@ enum /* PAMID_COLLECTIVES_MEMORY_OPTIMIZED levels */
 {
   MPID_OPT_LVL_IRREG     = 1,       /**< Do not optimize irregular communicators */
   MPID_OPT_LVL_NONCONTIG = 2,       /**< Disable some non-contig collectives     */
+  MPID_OPT_LVL_GLUE      = 4,       /**< Disable memory-intensive glue collectives*/
 };
 #endif

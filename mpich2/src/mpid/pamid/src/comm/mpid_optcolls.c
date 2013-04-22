@@ -282,7 +282,8 @@ void MPIDI_Comm_coll_select(MPID_Comm *comm_ptr)
       TRACE_ERR("Couldn't find optimial allgatherv[int] protocol\n");
       comm_ptr->mpid.optimized_algorithm_type[PAMI_XFER_ALLGATHERV_INT][0] = MPID_COLL_USE_MPICH;
       comm_ptr->mpid.optimized_algorithm[PAMI_XFER_ALLGATHERV_INT][0] = 0;
-      comm_ptr->mpid.allgathervs[0] = 1;  /* Use GLUE_ALLREDUCE */
+      if((MPIDI_Process.optimized.memory & MPID_OPT_LVL_GLUE) == 0)
+        comm_ptr->mpid.allgathervs[0] = 1;  /* Use GLUE_ALLREDUCE */
     }
     TRACE_ERR("Done setting optimized allgatherv[int]\n");
   }
@@ -292,15 +293,11 @@ void MPIDI_Comm_coll_select(MPID_Comm *comm_ptr)
     TRACE_ERR("Default gather to  MPICH\n");
     comm_ptr->mpid.optimized_algorithm_type[PAMI_XFER_GATHER][0] = MPID_COLL_USE_MPICH;
     comm_ptr->mpid.optimized_algorithm[PAMI_XFER_GATHER][0] = 0;
-    /* comm_ptr->mpid.optgather[1] = 1;  Use GLUE_ALLGATHER */
-  }
-
-  if(comm_ptr->mpid.optimized_algorithm_type[PAMI_XFER_REDUCE][0] >= MPID_COLL_DEFAULT)
-  {
-    TRACE_ERR("Default reduce to  MPICH\n");
-    comm_ptr->mpid.optimized_algorithm_type[PAMI_XFER_REDUCE][0] = MPID_COLL_USE_MPICH;
-    comm_ptr->mpid.optimized_algorithm[PAMI_XFER_REDUCE][0] = 0;
-/*    comm_ptr->mpid.optreduce = 2;   Use GLUE_ALLREDUCE */
+    if((MPIDI_Process.optimized.memory & MPID_OPT_LVL_GLUE) == 0)
+    {
+        comm_ptr->mpid.optgather[1] = 1;  /* Use GLUE_ALLGATHER  */
+        comm_ptr->mpid.optimized_algorithm_cutoff_size[PAMI_XFER_GATHER][0] = 64*1024;
+    }
   }
 
   opt_proto = -1;
@@ -630,8 +627,6 @@ void MPIDI_Comm_coll_select(MPID_Comm *comm_ptr)
   /* 64ppn */
   /* all sizes: I0:MultiCastDput:SHMEM:MU */
   /* otherwise, I0:2-nomial:SHMEM:MU */
-
-
 
   /* First, set up small message bcasts */
   if(comm_ptr->mpid.optimized_algorithm_type[PAMI_XFER_BROADCAST][0] >= MPID_COLL_DEFAULT)
@@ -998,6 +993,109 @@ void MPIDI_Comm_coll_select(MPID_Comm *comm_ptr)
     TRACE_ERR("Done setting optimized allreduce protocols\n");
   }
 
+  if(comm_ptr->mpid.optimized_algorithm_type[PAMI_XFER_REDUCE][0] >= MPID_COLL_DEFAULT)
+  {
+    TRACE_ERR("Default reduce to  MPICH\n");
+    comm_ptr->mpid.optimized_algorithm_type[PAMI_XFER_REDUCE][0] = MPID_COLL_USE_MPICH;
+    comm_ptr->mpid.optimized_algorithm[PAMI_XFER_REDUCE][0] = 0;
+    if((MPIDI_Process.optimized.memory & MPID_OPT_LVL_GLUE) == 0) /* setup glue_allreduce */
+    {
+      /* Use allreduce to guess a cutoff for GLUE_ALLREDUCE on non-doubles (very primitive)*/
+      if((comm_ptr->mpid.cached_allreduce_type == MPID_COLL_QUERY) && 
+         (strcasecmp(comm_ptr->mpid.cached_allreduce_md.name, "I0:MultiCombineDput:SHMEM:MU") == 0))
+      {
+          MPID_assert(comm_ptr->mpid.cached_allreduce_md.check_fn != NULL);
+          pami_xfer_t allred;
+          int buf;
+          allred.cb_done = NULL;
+          allred.cookie = (void *)NULL;
+          allred.cmd.xfer_allreduce.sndbuf = PAMI_IN_PLACE;
+          allred.cmd.xfer_allreduce.stype = PAMI_TYPE_UNSIGNED_INT;
+          allred.cmd.xfer_allreduce.rcvbuf = (char*)&buf;
+          allred.cmd.xfer_allreduce.rtype = PAMI_TYPE_UNSIGNED_INT;
+          allred.cmd.xfer_allreduce.stypecount = 128;
+          allred.cmd.xfer_allreduce.rtypecount = 128;
+          allred.cmd.xfer_allreduce.op = PAMI_DATA_SUM;
+          metadata_result_t result = {0};
+          result = comm_ptr->mpid.cached_allreduce_md.check_fn(&allred);
+          if(result.check.range)
+            comm_ptr->mpid.optimized_algorithm_cutoff_size[PAMI_XFER_REDUCE][0] = 128;
+          else
+            comm_ptr->mpid.optimized_algorithm_cutoff_size[PAMI_XFER_REDUCE][0] = 1024;
+      }
+      comm_ptr->mpid.optreduce = 2;   /* Use GLUE_ALLREDUCE */
+    }
+  }
+
+  opt_proto = -1;
+  mustquery = 0;
+
+  if(comm_ptr->mpid.optimized_algorithm_type[PAMI_XFER_ALLGATHER][0] >= MPID_COLL_DEFAULT)
+  {
+    TRACE_ERR("No allgather env var, so setting optimized allgather\n");
+    /* Use I0:Binomial:-:MU */
+    for(i = 0; i < comm_ptr->mpid.num_algorithms[PAMI_XFER_ALLGATHER][0]; i++)
+    {
+      /* I1:Allgather:P2P:P2P is the basic default 
+      if(strcasecmp(comm_ptr->mpid.algorithm_metadata_list[PAMI_XFER_ALLGATHER][0][i].name, "I1:Allgather:P2P:P2P") == 0)
+      {
+        opt_proto = i;
+        mustquery = 0;
+      } 
+      */ 
+      if(strcasecmp(comm_ptr->mpid.algorithm_metadata_list[PAMI_XFER_ALLGATHER][0][i].name, "I0:Binomial:-:MU") == 0)
+      {
+        opt_proto = -1; /* In this situation, MPICH is actually best so force the MPICH backup */
+        mustquery = 0;
+        if((MPIDI_Process.optimized.memory & MPID_OPT_LVL_GLUE) == 0)
+        {
+          comm_ptr->mpid.allgathers[0]=1; /* GLUE_ALLREDUCE */
+          comm_ptr->mpid.allgathers[1]=0; /* GLUE_BCAST */
+          comm_ptr->mpid.allgathers[2]=1; /* GLUE_ALLTOALL */
+        }
+      }
+      if(strcasecmp(comm_ptr->mpid.algorithm_metadata_list[PAMI_XFER_ALLGATHER][0][i].name, "I0:Binomial:SHMEM:MU") == 0)
+      {
+        opt_proto = -1; /* In this situation, MPICH is actually best so force the MPICH backup */
+        mustquery = 0;
+        if((MPIDI_Process.optimized.memory & MPID_OPT_LVL_GLUE) == 0)
+        {
+          comm_ptr->mpid.allgathers[0]=1; /* GLUE_ALLREDUCE */
+          comm_ptr->mpid.allgathers[1]=1; /* GLUE_BCAST */
+          comm_ptr->mpid.optimized_algorithm_cutoff_size[PAMI_XFER_ALLGATHER][1] = 256; /* used for GLUE_BCAST */
+          comm_ptr->mpid.allgathers[2]=0; /* GLUE_ALLTOALL */
+        }
+      }
+    }
+    for(i = 0; i < comm_ptr->mpid.num_algorithms[PAMI_XFER_ALLGATHER][1]; i++)
+    {
+      if(strcasecmp(comm_ptr->mpid.algorithm_metadata_list[PAMI_XFER_ALLGATHER][1][i].name, "I0:RectangleDput:SHMEM:MU") == 0)
+      {
+        /* Not the best protocol but a helpful indicator of which glue/cutoff to use ... hack..hack... */
+        if((MPIDI_Process.optimized.memory & MPID_OPT_LVL_GLUE) == 0)
+          comm_ptr->mpid.optimized_algorithm_cutoff_size[PAMI_XFER_ALLGATHER][1] = 2048; /* used for GLUE_BCAST */
+      }
+    }
+    if(opt_proto != -1)
+    {
+      TRACE_ERR("Memcpy protocol type %d number %d (%s) to optimized protocol\n",
+                PAMI_XFER_ALLGATHER, opt_proto,
+                comm_ptr->mpid.algorithm_metadata_list[PAMI_XFER_ALLGATHER][mustquery][opt_proto].name);
+      comm_ptr->mpid.optimized_algorithm[PAMI_XFER_ALLGATHER][0] =
+      comm_ptr->mpid.algorithm_list[PAMI_XFER_ALLGATHER][mustquery][opt_proto];
+      memcpy(&comm_ptr->mpid.optimized_algorithm_metadata[PAMI_XFER_ALLGATHER][0], 
+             &comm_ptr->mpid.algorithm_metadata_list[PAMI_XFER_ALLGATHER][mustquery][opt_proto], 
+             sizeof(pami_metadata_t));
+      comm_ptr->mpid.optimized_algorithm_type[PAMI_XFER_ALLGATHER][0] = mustquery?MPID_COLL_QUERY:MPID_COLL_NOQUERY;
+    }
+    else /* no optimized allgather? */
+    {
+      TRACE_ERR("Couldn't find optimial allgather protocol\n");
+      comm_ptr->mpid.optimized_algorithm_type[PAMI_XFER_ALLGATHER][0] = MPID_COLL_USE_MPICH;
+      comm_ptr->mpid.optimized_algorithm[PAMI_XFER_ALLGATHER][0] = 0;
+    }
+    TRACE_ERR("Done setting optimized allgather\n");
+  }
 
   if(MPIDI_Process.optimized.select_colls != 2)
   {
@@ -1035,39 +1133,39 @@ void MPIDI_Comm_coll_select(MPID_Comm *comm_ptr)
         if(j==1 && cutoff==0)
           continue;
         if(comm_ptr->mpid.optimized_algorithm_type[i][j] >= MPID_COLL_DEFAULT)
-          fprintf(stderr,"Selected default algorithm %s for %s(%s) with cutoff %d\n", comm_ptr->mpid.optimized_algorithm_metadata[i][j].name, MPIDI_Coll_type_name(i),cutoff?(j==0?"small messages":"large  messages"):"",cutoff);
+          fprintf(stderr,"Comm %u, size %u, Selected default algorithm %s for %s(%s) with cutoff %d\n", (unsigned) comm_ptr->context_id, comm_ptr->local_size, comm_ptr->mpid.optimized_algorithm_metadata[i][j].name, MPIDI_Coll_type_name(i),cutoff?(j==0?"small messages":"large  messages"):"",cutoff);
         else if(comm_ptr->mpid.optimized_algorithm_type[i][j] == MPID_COLL_USE_MPICH)
-          fprintf(stderr,"Selected MPICH for %s(%s) with cutoff %d\n", MPIDI_Coll_type_name(i),cutoff?(j==0?"small messages":"large  messages"):"",cutoff);
+          fprintf(stderr,"Comm %u size %u, Selected MPICH for %s(%s) with cutoff %d\n", (unsigned) comm_ptr->context_id, comm_ptr->local_size, MPIDI_Coll_type_name(i),cutoff?(j==0?"small messages":"large  messages"):"",cutoff);
         else 
-          fprintf(stderr,"Selected optimized algorithm %s for %s(%s) with cutoff %d\n", comm_ptr->mpid.optimized_algorithm_metadata[i][j].name, MPIDI_Coll_type_name(i),cutoff?(j==0?"small messages":"large  messages"):"",cutoff);
+          fprintf(stderr,"Comm %u size %u, Selected optimized algorithm %s for %s(%s) with cutoff %d\n", (unsigned) comm_ptr->context_id,  comm_ptr->local_size, comm_ptr->mpid.optimized_algorithm_metadata[i][j].name, MPIDI_Coll_type_name(i),cutoff?(j==0?"small messages":"large  messages"):"",cutoff);
       }
     }
 
     if((comm_ptr->mpid.scattervs[0]!=0))
-      fprintf(stderr,"Selecting GLUE_BCAST for scatterv comm %p\n", comm_ptr);
+      fprintf(stderr,"Selecting GLUE_BCAST (unimplemented) for Scatterv comm %p\n", comm_ptr);
     if((comm_ptr->mpid.scattervs[1]!=0))
-      fprintf(stderr,"Selecting GLUE_ALLTOALLV for scatterv comm %p\n", comm_ptr);
+      fprintf(stderr,"Selecting GLUE_ALLTOALLV (unimplemented) for Scatterv comm %p\n", comm_ptr);
     if((comm_ptr->mpid.allgathervs[0]!=0))
-      fprintf(stderr,"Selecting GLUE_ALLREDUCE for allgatherv comm %p\n", comm_ptr);
+      fprintf(stderr,"Selecting GLUE_ALLREDUCE for Allgatherv comm %p\n", comm_ptr);
     if((comm_ptr->mpid.allgathervs[1]!=0))
-      fprintf(stderr,"Selecting GLUE_BCAST for allgatherv comm %p\n", comm_ptr);
+      fprintf(stderr,"Selecting GLUE_BCAST for Allgatherv comm %p\n", comm_ptr);
     if((comm_ptr->mpid.allgathervs[2]!=0))
-      fprintf(stderr,"Selecting GLUE_ALLTOALL for allgatherv comm %p\n", comm_ptr);
+      fprintf(stderr,"Selecting GLUE_ALLTOALL for Allgatherv comm %p\n", comm_ptr);
     if((comm_ptr->mpid.allgathers[0]!=0))
-      fprintf(stderr,"Selecting GLUE_ALLREDUCE for allgather comm %p\n", comm_ptr);
+      fprintf(stderr,"Selecting GLUE_ALLREDUCE for Allgather comm %p\n", comm_ptr);
     if((comm_ptr->mpid.allgathers[1]!=0))
-      fprintf(stderr,"Selecting GLUE_BCAST for allgather comm %p\n", comm_ptr);
+      fprintf(stderr,"Selecting GLUE_BCAST for Allgather comm %p with cutoff %d\n", comm_ptr, comm_ptr->mpid.optimized_algorithm_cutoff_size[PAMI_XFER_ALLGATHER][1]);
     if((comm_ptr->mpid.allgathers[2]!=0))
-      fprintf(stderr,"Selecting GLUE_ALLTOALL for allgather comm %p\n", comm_ptr);
+      fprintf(stderr,"Selecting GLUE_ALLTOALL for Allgather comm %p\n", comm_ptr);
     if((comm_ptr->mpid.optgather[0]!=0))
-      fprintf(stderr,"Selecting %s for gather comm %p\n", comm_ptr->mpid.optgather[0]==1?"GLUE_REDUCE":"GLUE_ALLREDUCE", comm_ptr);
+      fprintf(stderr,"Selecting %s for Gather comm %p\n", comm_ptr->mpid.optgather[0]==1?"GLUE_REDUCE":"GLUE_ALLREDUCE", comm_ptr);
     if((comm_ptr->mpid.optgather[1]!=0))
-      fprintf(stderr,"Selecting GLUE_ALLGATHER for gather comm %p\n", comm_ptr);
+      fprintf(stderr,"Selecting GLUE_ALLGATHER for Gather comm %p\n", comm_ptr);
     if((comm_ptr->mpid.optscatter!=0))
-      fprintf(stderr,"Selecting GLUE_BCAST for scatter comm %p\n", comm_ptr);
+      fprintf(stderr,"Selecting GLUE_BCAST for Scatter comm %p\n", comm_ptr);
     if(comm_ptr->mpid.cached_allreduce_type != MPID_COLL_USE_MPICH)
     {
-      fprintf(stderr,"Selecting %s for double sum/min/max ops allreduce, query: %d comm %p\n",
+      fprintf(stderr,"Selecting %s for double sum/min/max ops Allreduce, query: %d comm %p\n",
               comm_ptr->mpid.cached_allreduce_md.name, comm_ptr->mpid.cached_allreduce_type, comm_ptr);
     }
   }

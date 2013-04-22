@@ -113,6 +113,7 @@
  *   - n - Collectives are memory optimized. Levels are bitwise values :
  *        MPID_OPT_LVL_IRREG     = 1,   Do not optimize irregular communicators 
  *        MPID_OPT_LVL_NONCONTIG = 2,   Disable some non-contig collectives 
+ *        MPID_OPT_LVL_GLUE      = 4,   Disable memory-intensive glue collectives
  *
  *   PAMID_OPTIMIZED_SUBCOMMS - Use PAMI 'optimized' collectives. Defaullt is 1.
  *   - 0 - Some optimized protocols may be disabled.
@@ -164,7 +165,11 @@
  *   a barrier. 
  *   - Default is 1 (guaranteed functionality) 
  *   - N>1may used to tune performance
- *
+ * 
+ * 
+ * - PAMID_GLUE_ALLOCATION_MAX - Set the maximum bytes to temporarily allocate
+ *   for 'GLUE' level collective protocols. 
+ *   - Default is 2097152 bytes
  ***************************************************************************
  *                            "Safety" Options                             *
  ***************************************************************************
@@ -524,6 +529,12 @@ MPIDI_Env_setup(int rank, int requested)
     char* names[] = {"PAMID_NUMREQUESTS", NULL};
     ENV_Unsigned(names, &MPIDI_Process.optimized.num_requests, 1, &found_deprecated_env_var, rank);
     TRACE_ERR("MPIDI_Process.optimized.num_requests=%u\n", MPIDI_Process.optimized.num_requests);
+  }
+  /* Set max buffer allocation for glue protocols */
+  {
+    char* names[] = {"PAMID_GLUE_ALLOCATION_MAX", NULL};
+    ENV_Unsigned(names, &MPIDI_Process.optimized.max_alloc, 1, &found_deprecated_env_var, rank);
+    TRACE_ERR("MPIDI_Process.optimized.max_alloc=%u\n", MPIDI_Process.optimized.max_alloc);
   }
 
   /* "Globally" set the optimization flag for low-level collectives in geometry creation.

@@ -60,9 +60,8 @@ int MPIDO_Reduce(const void *sendbuf,
 
   rc = MPIDI_Datatype_to_pami(datatype, &pdt, op, &pop, &mu);
   if(unlikely(verbose))
-    fprintf(stderr,"reduce - rc %u, root %u, count %d, dt: %p, op: %p, mu: %u, selectedvar %u != %u (MPICH) sendbuf %p, recvbuf %p\n",
-            rc, root, count, pdt, pop, mu, 
-            (unsigned)optimized_algorithm_type, MPID_COLL_USE_MPICH,sendbuf, recvbuf);
+    fprintf(stderr,"reduce - rc %u, root %u, count %d, dt: %p, op: %p, mu: %u, cutoff %u, sendbuf %p, recvbuf %p\n",
+            rc, root, count, pdt, pop, mu, mpid->optimized_algorithm_cutoff_size[PAMI_XFER_REDUCE][0], sendbuf, recvbuf);
 
   pami_xfer_t reduce;
   pami_algorithm_t my_reduce=0;
@@ -85,29 +84,42 @@ int MPIDO_Reduce(const void *sendbuf,
   if(mpid->optreduce) /* GLUE_ALLREDUCE */
   {
     char* tbuf = NULL;
-    if(unlikely(verbose))
-      fprintf(stderr,"Using protocol GLUE_ALLREDUCE for reduce (%d,%d, %d)\n",count,tsize,dt_contig);
-    MPIDI_Update_last_algorithm(comm_ptr, "REDUCE_OPT_ALLREDUCE");
-    void *destbuf = recvbuf;
-    if(rank != root) /* temp buffer for non-root destbuf */
+    MPI_Aint extent;
+    int met_cutoff = 1;  /* combine various checks into one flag */
+    MPID_Datatype_get_extent_macro(datatype, extent);
+
+    if((mpid->optimized_algorithm_cutoff_size[PAMI_XFER_REDUCE][0] > 0) /* non-zero cutoff */
+       && (datatype != MPI_DOUBLE) 
+       && ((extent*count) > mpid->optimized_algorithm_cutoff_size[PAMI_XFER_REDUCE][0])) /* over cutoff */
+      met_cutoff = 0;
+
+    if((extent*count) > MPIDI_Process.optimized.max_alloc)
+      met_cutoff = 0;
+
+    if(met_cutoff)
     {
-      MPI_Aint extent;
-      MPID_Datatype_get_extent_macro(datatype, extent);
-      tbuf = destbuf = MPIU_Malloc(extent*count);
       if(unlikely(verbose))
-        fprintf(stderr,"Using protocol GLUE_ALLREDUCE for reduce (!root) (%d,%d/%zd, %d)\n",count,tsize,extent*count,dt_contig);
+        fprintf(stderr,"Using protocol GLUE_ALLREDUCE for reduce (%d,%d, %d)\n",count,tsize,dt_contig);
+      MPIDI_Update_last_algorithm(comm_ptr, "REDUCE_OPT_ALLREDUCE");
+      void *destbuf = recvbuf;
+      if(rank != root) /* temp buffer for non-root destbuf */
+      {
+        tbuf = destbuf = MPIU_Malloc(extent*count);
+        if(unlikely(verbose))
+          fprintf(stderr,"Using protocol GLUE_ALLREDUCE for reduce (!root) (%d,%d/%zd, %d)\n",count,tsize,extent*count,dt_contig);
+      }
+      /* Switch to comm->coll_fns->fn() */
+      MPIDO_Allreduce(sendbuf,
+                      destbuf,
+                      count,
+                      datatype,
+                      op,
+                      comm_ptr,
+                      mpierrno);
+      if(tbuf)
+        MPIU_Free(tbuf);
+      return 0;
     }
-    /* Switch to comm->coll_fns->fn() */
-    MPIDO_Allreduce(sendbuf,
-                    destbuf,
-                    count,
-                    datatype,
-                    op,
-                    comm_ptr,
-                    mpierrno);
-    if(tbuf)
-      MPIU_Free(tbuf);
-    return 0;
   }
   if(optimized_algorithm_type == MPID_COLL_USE_MPICH || rc != MPI_SUCCESS)
   {

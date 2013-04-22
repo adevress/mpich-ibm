@@ -22,8 +22,6 @@
 
 #include <mpidimpl.h>
 
-#define MAX_ALLGATHER_BUFFER_SIZE  (1024*1024*2) /* arbitrary - TODO tune it? */
-
 static void cb_gather(void *ctxt, void *clientdata, pami_result_t err)
 {
   unsigned *active = (unsigned *)clientdata;
@@ -32,13 +30,6 @@ static void cb_gather(void *ctxt, void *clientdata, pami_result_t err)
   (*active)--;
 }
 
-static void cb_allred(void *ctxt, void *clientdata, pami_result_t err)
-{
-  unsigned *active = (unsigned *)clientdata;
-  TRACE_ERR("cb_allred preallred enter, active: %u\n", (*active));
-  MPIDI_Progress_signal();
-  (*active)--;
-}
 int MPIDO_Gather_reduce(const void *sendbuf,
                         int sendcount,
                         MPI_Datatype sendtype,
@@ -157,7 +148,6 @@ int MPIDO_Gather(const void *sendbuf,
   MPI_Aint true_lb = 0;
   pami_xfer_t gather;
   MPIDI_Post_coll_t gather_post;
-  double use_glue = 1.0;
   int why = 0,rcontig=0,scontig=0, send_bytes=-1, recv_bytes = 0;
   const int rank = comm_ptr->rank;
   const int size = comm_ptr->local_size;
@@ -169,48 +159,100 @@ int MPIDO_Gather(const void *sendbuf,
 #endif
   const struct MPIDI_Comm* const mpid = &(comm_ptr->mpid);
   const int optimized_algorithm_type = mpid->optimized_algorithm_type[PAMI_XFER_GATHER][0];
-  const char glue_reduce = mpid->optgather[0];
+  double glue_reduce = (double) (unsigned) mpid->optgather[0];
   const char glue_allgather = mpid->optgather[1];
   double rcvvals[3] = {0.0,0.0,0.0}; /* for coordinating the root recv parms with senders for glue protocols */
+  /*   Make life easier for the common (?) case by resetting null parms: 
+  if(root) 
+    MPI_Gather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, results, NTIMES, MPI_INT, 
+               0, MPI_COMM_WORLD);
+  else
+    MPI_Gather(counter_vals, NTIMES, MPI_INT, NULL, 0, MPI_DATATYPE_NULL, 
+               0, MPI_COMM_WORLD);
+  */
+  if(sendbuf == MPI_IN_PLACE)
+  {
+    sendtype = recvtype;
+    sendcount = recvcount; 
+  }
+  else if(sendtype == MPI_DATATYPE_NULL) /* valid? */
+  {
+    sendtype = recvtype;
+    sendcount = recvcount;
+  }
+  if((recvtype == MPI_DATATYPE_NULL) || 
+     (rank != root))                    /* non-roots don't trust recvtype */
+  {
+    recvtype = sendtype;
+    recvcount = sendcount;
+  }
+
   if(glue_allgather)
   {
+    MPIDI_Datatype_get_info(recvcount, recvtype, rcontig,
+                            recv_bytes, data_ptr, true_lb);
+    MPIDI_Datatype_get_info(sendcount, sendtype, scontig,
+                            send_bytes, data_ptr, true_lb);
+    rcvvals[1] = (scontig && rcontig)? 0.0 : 1.0;            /* Don't support (1.0) noncontig, mainly because nonroots don't have the 
+                                                                same recv type as the root */
     if(rank == root)
     {
-      MPIDI_Datatype_get_info(1, recvtype, rcontig,
-                              recv_bytes, data_ptr, true_lb);
-      rcvvals[0] = recv_bytes * 1.0;            /* recv data size */
-      rcvvals[1] = rcontig    * 1.0;            /* recv extent to check if non-contig */
-      rcvvals[2] = recvcount * recv_bytes * 1.0;/* bytes per participant */
+      rcvvals[0] = (recv_bytes & 0x3) ? 1.0 : 0.0;        /* recv data size multiple of int's */
+      rcvvals[2] = recv_bytes * size * 1.0;               /* total bytes recv  */
     }
-    MPIDO_Allreduce(MPI_IN_PLACE,
+    else
+      rcvvals[2] = send_bytes * size * 1.0;               /* total bytes recv  */
+
+    int met_cutoff = 1;  /* combine various checks into one flag */
+
+    if((comm_ptr->mpid.optimized_algorithm_cutoff_size[PAMI_XFER_GATHER][0] > 0) /* non-zero cutoff */
+       && (rcvvals[2] >= comm_ptr->mpid.optimized_algorithm_cutoff_size[PAMI_XFER_GATHER][0])) /* over cutoff */
+      met_cutoff = 0;
+
+    if (rcvvals[2] > MPIDI_Process.optimized.max_alloc)    /* too big to allocate ? don't do it */
+      met_cutoff = 0;
+
+    if(met_cutoff)
+      MPIDO_Allreduce(MPI_IN_PLACE,
                     rcvvals,
-                    3,
+                    2,
                     MPI_DOUBLE,
                     MPI_MAX,
                     comm_ptr,
                     mpierrno);
     if(unlikely(verbose))
     {
-      fprintf(stderr,"Checking protocol GLUE_ALLGATHER for gather recv bytes %f, contig %f, recv buffer size %f\n",rcvvals[0],rcvvals[1],rcvvals[2]);
+      fprintf(stderr,"Checking protocol GLUE_ALLGATHER for gather recv bytes %u/%u (%f), contig %f, recv buffer size %f\n",recv_bytes/recvcount,recv_bytes,rcvvals[0],rcvvals[1],rcvvals[2]);
     }
-    if((rcvvals[1] == 0.0) || ((rcvvals[2]*size) > MAX_ALLGATHER_BUFFER_SIZE)) /* Not going to handle noncontig recvs with GLUE_ALLGATHER */
+    if((rcvvals[0] == 0.0) &&                               /* Integers or better */
+       (rcvvals[1] == 0.0) &&                               /* Not going to handle noncontig with GLUE_ALLGATHER */
+       (met_cutoff))                                        /* met cut offs */
     {
       MPIDI_Update_last_algorithm(comm_ptr, "GLUE_ALLGATHER");
+      /* Allgather (over allreduce) is too tricky with doubles, we can get nan's or mismatched dt's and sizes */
+      if(sendtype == MPI_DOUBLE)
+      {
+        sendtype = MPI_INT;
+        sendcount *= 2;
+      }
+      if(recvtype == MPI_DOUBLE)
+      {
+        recvtype = MPI_INT;
+        recvcount *= 2;
+      }
       if(rank != root)
       {
         if(unlikely(verbose))
         {
-          MPIDI_Datatype_get_info(sendcount, sendtype, scontig,
-                                  send_bytes, data_ptr, true_lb);
-          fprintf(stderr,"Using protocol GLUE_ALLGATHER for gather (non-root),size %d, root %d, recv count %d, recv_bytes %d, sendcount %d, send_bytes %d, contig %d\n",size, root, recvcount, recv_bytes, sendcount, send_bytes/sendcount,scontig);
+          fprintf(stderr,"Using protocol GLUE_ALLGATHER for gather (non-root),size %d, root %d, recv count %d, recv_bytes %d, sendcount %d, send_bytes %d, contig %d on %u\n",size, root, recvcount, recv_bytes, sendcount, send_bytes/sendcount,scontig,(unsigned) comm_ptr->context_id);
         }
-        void* tmp = MPIU_Malloc((size_t)rcvvals[2]*size);
+        void* tmp = MPIU_Malloc((size_t)rcvvals[2]);
         MPIDO_Allgather(sendbuf,
                         sendcount,
                         sendtype,
                         tmp,
-                        (int)rcvvals[2],
-                        MPI_CHAR,
+                        sendcount,
+                        sendtype,
                         comm_ptr,
                         mpierrno);
         MPIU_Free(tmp);
@@ -220,12 +262,7 @@ int MPIDO_Gather(const void *sendbuf,
       {
         if(unlikely(verbose))
         {
-          if((sendbuf != MPI_IN_PLACE) && sendtype != MPI_DATATYPE_NULL && sendcount >= 0)
-          {
-            MPIDI_Datatype_get_info(1, sendtype, scontig,
-                                    send_bytes, data_ptr, true_lb);
-          }
-          fprintf(stderr,"Using protocol GLUE_ALLGATHER for gather,size %d, root %d, recv count %d, recv_bytes %d, sendcount %d, send_bytes %d, contig %d\n",size, root, recvcount, recv_bytes, sendcount, send_bytes, scontig);
+          fprintf(stderr,"Using protocol GLUE_ALLGATHER for gather,size %d, root %d, recv count %d, recv_bytes %d, sendcount %d, send_bytes %d, contig %d on %u\n",size, root, recvcount, recv_bytes, sendcount, send_bytes, scontig, (unsigned) comm_ptr->context_id);
         }
         return MPIDO_Allgather(sendbuf,
                                sendcount,
@@ -236,85 +273,43 @@ int MPIDO_Gather(const void *sendbuf,
                                comm_ptr,
                                mpierrno);
       }
-
     }
   }
-  if(rank == root)
+  if(glue_reduce!=0.0)
   {
-    if(recvtype != MPI_DATATYPE_NULL && recvcount >= 0)
-    {
-      MPIDI_Datatype_get_info(recvcount, recvtype, rcontig,
-                              recv_bytes, data_ptr, true_lb);
-      if(!rcontig || ((recv_bytes * size) % sizeof(int))) /* ? */
-      {
-        why = __LINE__;  
-        use_glue = 0.0;
-      }
-    }
-    else
+    int contig;
+    MPIDI_Datatype_get_info(recvcount, recvtype, contig,
+                            recv_bytes, data_ptr, true_lb);
+    MPIDI_Datatype_get_info(sendcount, sendtype, contig,
+                            send_bytes, data_ptr, true_lb);
+    if((send_bytes * size) > MPIDI_Process.optimized.max_alloc) 
     {
       why = __LINE__;  
-      use_glue = 0.0;
+      glue_reduce = 0.0;
     }
-    if(unlikely(verbose))
-      fprintf(stderr,"Root of gather glue_reduce %x, selected type %d, use_glue %f, recv count %d, recv bytes %du, size %d, contig %d\n",glue_reduce,optimized_algorithm_type, use_glue, recvcount, recv_bytes, size, rcontig);
-  }
-
-
-  if((sendbuf != MPI_IN_PLACE) && sendtype != MPI_DATATYPE_NULL && sendcount >= 0)
-  {
-    MPIDI_Datatype_get_info(sendcount, sendtype, scontig,
-                            send_bytes, data_ptr, true_lb);
+    if(!rcontig || ((recv_bytes * size) % sizeof(int))) /* ? */
+    {
+      why = __LINE__;  
+      glue_reduce = 0.0;
+    }
     if(!scontig || ((send_bytes * size) % sizeof(int)))
     {
       why = __LINE__;  
-      use_glue = 0.0;
+      glue_reduce = 0.0;
     }
-    if(unlikely(verbose))
-      fprintf(stderr,"gather(%u) glue_reduce %x, selected type %d, use_glue %f(%u), send count %d, send bytes %d, size %d, contig %d\n",__LINE__, glue_reduce,optimized_algorithm_type, use_glue, why, sendcount, send_bytes, size, scontig);
-  }
-  else
-  {
-    if(sendbuf == MPI_IN_PLACE)
-      send_bytes = recv_bytes;
-    else if(sendtype == MPI_DATATYPE_NULL || sendcount == 0)
-    {
-      send_bytes = 0;
-      why = __LINE__;  
-      use_glue = 0.0;
-    }
-    if(unlikely(verbose))
-      fprintf(stderr,"gather(%u) glue_reduce %x, selected type %d, use_glue %f(%u), send count %d, send bytes %d, size %d, contig %d\n",__LINE__, glue_reduce,optimized_algorithm_type, use_glue, why, sendcount, send_bytes, size, scontig);
   }
 
-  if(!glue_reduce &&
-     optimized_algorithm_type == MPID_COLL_USE_MPICH)
-  {
-    MPIDI_Update_last_algorithm(comm_ptr, "GATHER_MPICH");
-    if(unlikely(verbose))
-      fprintf(stderr,"Using MPICH gather algorithm (glue_reduce=%x), selected type %d\n",glue_reduce,optimized_algorithm_type);
-    return MPIR_Gather(sendbuf, sendcount, sendtype,
-                       recvbuf, recvcount, recvtype,
-                       root, comm_ptr, mpierrno);
-  }
-  if(glue_reduce)
-  {
-//if(mpid->preallreduces[MPID_GATHER_PREALLREDUCE])
+  if(glue_reduce!=0.0)
   {
     /* Switch to comm->coll_fns->fn() */
-    MPIDO_Allreduce(MPI_IN_PLACE, &use_glue, 1, MPI_DOUBLE, MPI_MIN, comm_ptr, mpierrno);
-    if(!use_glue) why = __LINE__;
+    MPIDO_Allreduce(MPI_IN_PLACE, &glue_reduce, 1, MPI_DOUBLE, MPI_MIN, comm_ptr, mpierrno);
     if(unlikely(verbose))
-      fprintf(stderr,"MPID_GATHER_PREALLREDUCE glue_reduce %x, selected type %d, use_glue %f, why %d\n",glue_reduce,optimized_algorithm_type, use_glue,why);
-  }
-
-//    if(unlikely(verbose))
-//      fprintf(stderr,"GLUE gather glue_reduce %x, selected type %d, use_glue %f, why %d\n",glue_reduce,optimized_algorithm_type, use_glue, why);
-    if(use_glue)
+      fprintf(stderr,"MPID_GATHER_PREALLREDUCE glue_reduce %f, selected type %d, why %d\n",glue_reduce,optimized_algorithm_type, why);
+    if(glue_reduce!=0.0)
     {
       if(unlikely(verbose))
-        fprintf(stderr,"Using protocol %s for gather, root %d\n",glue_reduce==1?"GLUE_REDUCE":"GLUE_ALLREDUCE", root);
-      MPIDI_Update_last_algorithm(comm_ptr, glue_reduce==1?"GLUE_REDUCE":"GLUE_ALLREDUCE");
+        fprintf(stderr,"Using protocol %s for gather, root %d on %u\n",glue_reduce==1.0?"GLUE_REDUCE":"GLUE_ALLREDUCE", root, (unsigned) comm_ptr->context_id);
+      MPIDI_Update_last_algorithm(comm_ptr, glue_reduce==1.0?"GLUE_REDUCE":"GLUE_ALLREDUCE");
       return MPIDO_Gather_reduce(sendbuf,
                                  sendcount,
                                  sendtype,
@@ -324,19 +319,29 @@ int MPIDO_Gather(const void *sendbuf,
                                  root,
                                  comm_ptr,
                                  mpierrno,
-                                 glue_reduce);
-    }
-    else
-    {
-      MPIDI_Update_last_algorithm(comm_ptr, "GATHER_MPICH");
-      if(unlikely(verbose))
-        fprintf(stderr,"Using MPICH gather algorithm (glue_reduce=%x), selected type %d, use_glue %f\n",glue_reduce,optimized_algorithm_type, use_glue);
-      return MPIR_Gather(sendbuf, sendcount, sendtype,
-                         recvbuf, recvcount, recvtype,
-                         root, comm_ptr, mpierrno);
+                                 glue_reduce==1.0?'1':'2');
     }
   }
+  if(optimized_algorithm_type == MPID_COLL_USE_MPICH)
+  {
+    MPIDI_Update_last_algorithm(comm_ptr, "GATHER_MPICH");
+    if(unlikely(verbose))
+      fprintf(stderr,"Using MPICH gather algorithm (glue_reduce=%f), selected type %d on %u\n",glue_reduce,optimized_algorithm_type, (unsigned) comm_ptr->context_id);
+    return MPIR_Gather(sendbuf, sendcount, sendtype,
+                       recvbuf, recvcount, recvtype,
+                       root, comm_ptr, mpierrno);
+  }
 
+
+  MPIDI_Datatype_get_info(recvcount, recvtype, rcontig,
+                          recv_bytes, data_ptr, true_lb);
+  if(rank == root)
+    if(unlikely(verbose))
+      fprintf(stderr,"Root of gather glue_reduce %f, selected type %d, recv count %d, recv bytes %du, size %d, contig %d\n",glue_reduce,optimized_algorithm_type, recvcount, recv_bytes, size, rcontig);
+  MPIDI_Datatype_get_info(sendcount, sendtype, scontig,
+                          send_bytes, data_ptr, true_lb);
+  if(unlikely(verbose))
+    fprintf(stderr,"gather(%u) glue_reduce %f, selected type %d, send count %d, send bytes %d, size %d, contig %d\n",__LINE__, glue_reduce,optimized_algorithm_type, sendcount, send_bytes, size, scontig);
 
   pami_algorithm_t my_gather;
   const pami_metadata_t *my_md = (pami_metadata_t *)NULL;

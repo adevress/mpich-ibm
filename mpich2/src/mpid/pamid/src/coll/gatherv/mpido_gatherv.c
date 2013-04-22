@@ -43,7 +43,7 @@ int MPIDO_Gatherv(const void *sendbuf,
 {
   TRACE_ERR("Entering MPIDO_Gatherv\n");
   int rc;
-  int contig, rsize=0, ssize=0;
+  int rcontig=-1,scontig=-1, rsize=0, ssize=0;
   int pamidt = 1;
   MPID_Datatype *dt_ptr = NULL;
   MPI_Aint send_true_lb, recv_true_lb;
@@ -72,7 +72,7 @@ int MPIDO_Gatherv(const void *sendbuf,
   if(pamidt == 0 || optimized_algorithm_type == MPID_COLL_USE_MPICH)
   {
     if(unlikely(verbose))
-      fprintf(stderr,"Using MPICH gatherv algorithm\n");
+      fprintf(stderr,"Using MPICH gatherv algorithm on %u\n",(unsigned) comm_ptr->context_id);
     TRACE_ERR("GATHERV using MPICH\n");
     MPIDI_Update_last_algorithm(comm_ptr, "GATHERV_MPICH");
     return MPIR_Gatherv(sendbuf, sendcount, sendtype,
@@ -80,7 +80,7 @@ int MPIDO_Gatherv(const void *sendbuf,
                         root, comm_ptr, mpierrno);
   }
 
-  MPIDI_Datatype_get_info(1, recvtype, contig, rsize, dt_ptr, recv_true_lb);
+  MPIDI_Datatype_get_info(1, recvtype, rcontig, rsize, dt_ptr, recv_true_lb);
   rbuf = (char *)recvbuf + recv_true_lb;
   sbuf = (void *) sendbuf;
 
@@ -110,10 +110,15 @@ int MPIDO_Gatherv(const void *sendbuf,
     }
     else
     {
-      MPIDI_Datatype_get_info(1, sendtype, contig, ssize, dt_ptr, send_true_lb);
+      MPIDI_Datatype_get_info(1, sendtype, scontig, ssize, dt_ptr, send_true_lb);
       sbuf = (char *)sbuf + send_true_lb;
     }
   }
+  else
+    if(sendbuf != MPI_IN_PLACE)
+      MPIDI_Datatype_get_info(1, sendtype, scontig, ssize, dt_ptr, send_true_lb);
+
+
   gatherv.cmd.xfer_gatherv_int.sndbuf = sbuf;
 
   pami_algorithm_t my_gatherv;
@@ -172,7 +177,7 @@ int MPIDO_Gatherv(const void *sendbuf,
     if(result.bitmask)
     {
       if(unlikely(verbose))
-        fprintf(stderr,"Query failed for %s. Using MPICH gatherv.\n", my_md->name);
+        fprintf(stderr,"Query failed for %s. Using MPICH gatherv on %u.\n", my_md->name,(unsigned) comm_ptr->context_id);
       MPIDI_Update_last_algorithm(comm_ptr, "GATHERV_MPICH");
       return MPIR_Gatherv(sendbuf, sendcount, sendtype,
                           recvbuf, recvcounts, displs, recvtype,
@@ -192,14 +197,24 @@ int MPIDO_Gatherv(const void *sendbuf,
 
   if(unlikely(verbose))
   {
+    static int counter = 0;
     unsigned long long int threadID;
     MPIU_Thread_id_t tid;
     MPIU_Thread_self(&tid);
     threadID = (unsigned long long int)tid;
-    fprintf(stderr,"<%llx> Using protocol %s for gatherv on %u\n", 
+    fprintf(stderr,"<%llx> Using protocol %s for gatherv on %u, sendbuf %p, sendcount %d/%d(%d), recvbuf %p, recvcount %p/%d(%d), root %d\n",
             threadID,
             my_md->name,
-            (unsigned) comm_ptr->context_id);
+            (unsigned) comm_ptr->context_id,
+            sendbuf, 
+            sendcount, 
+            ssize,
+            scontig,
+            recvbuf, 
+            recvcounts, 
+            rsize,
+            rcontig,
+            root);
   }
 
   MPIDI_Post_coll_t gatherv_post;
