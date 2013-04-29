@@ -1014,17 +1014,6 @@ void mpix_io_link_id (int *io_link_id) { *io_link_id = MPIX_IO_link_id(); }
 void mpix_io_distance (int *io_distance) { *io_distance = MPIX_IO_distance(); }
 
 /**
- * \brief FORTRAN interface to MPIX_Pset_io_node
- *
- * \param [out] io_node_route_id    This rank's io node route id
- * \param [out] distance_to_io_node This rank's distance to the io node
- */
-void mpix_pset_io_node (int *io_node_route_id, int *distance_to_io_node)
-{
-  MPIX_Pset_io_node (io_node_route_id, distance_to_io_node);
-}
-
-/**
  * \brief FORTRAN interface to MPIX_Cart_comm_create
  *
  * \param [out] cart_comm  Communicator to create
