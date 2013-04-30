@@ -689,7 +689,8 @@ int _MPIX_Pset_same_comm_create (MPID_Comm *parent_comm_ptr, MPID_Comm **pset_co
   int color, key;
   int mpi_errno;
 
-  MPIX_Pset_io_node (&color, &key);
+  color = MPIX_IO_link_id ();
+  key   = MPIX_IO_distance ();
 
   /*
    * Use MPIR_Comm_split_impl to make a communicator of all ranks in the parent
