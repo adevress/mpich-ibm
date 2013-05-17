@@ -97,6 +97,7 @@ int MPI_Buffer_detach(void *buffer, int *size)
 
     MPIR_ERRTEST_INITIALIZED_ORDIE();
     
+    MPIU_THREAD_CS_ENTER(BSENDDATA,);
     MPIU_THREAD_CS_ENTER(ALLFUNC,);
     MPID_MPI_FUNC_ENTER(MPID_STATE_MPI_BUFFER_DETACH);
     
@@ -120,6 +121,7 @@ int MPI_Buffer_detach(void *buffer, int *size)
   fn_exit:
     MPID_MPI_FUNC_EXIT(MPID_STATE_MPI_BUFFER_DETACH);
     MPIU_THREAD_CS_EXIT(ALLFUNC,);
+    MPIU_THREAD_CS_EXIT(BSENDDATA,);
     return mpi_errno;
 
   fn_fail:
