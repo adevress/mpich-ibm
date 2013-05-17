@@ -67,6 +67,7 @@ int MPI_Bsend_init(MPICH2_CONST void *buf, int count, MPI_Datatype datatype,
 
     MPIR_ERRTEST_INITIALIZED_ORDIE();
     
+    MPIU_THREAD_CS_ENTER(BSENDDATA,);
     MPIU_THREAD_CS_ENTER(ALLFUNC,);
     MPID_MPI_PT2PT_FUNC_ENTER(MPID_STATE_MPI_BSEND_INIT);
     
@@ -128,6 +129,7 @@ int MPI_Bsend_init(MPICH2_CONST void *buf, int count, MPI_Datatype datatype,
   fn_exit:
     MPID_MPI_PT2PT_FUNC_EXIT(MPID_STATE_MPI_BSEND_INIT);
     MPIU_THREAD_CS_EXIT(ALLFUNC,);
+    MPIU_THREAD_CS_EXIT(BSENDDATA,);
     return mpi_errno;
 
   fn_fail:

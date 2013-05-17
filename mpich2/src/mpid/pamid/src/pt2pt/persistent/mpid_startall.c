@@ -68,6 +68,9 @@ int MPID_Startall(int count, MPID_Request * requests[])
           }
         case MPIDI_REQUEST_PTYPE_BSEND:
           {
+            MPIU_THREAD_CS_EXIT(ALLFUNC,);
+            MPIU_THREAD_CS_ENTER(BSENDDATA,);
+            MPIU_THREAD_CS_ENTER(ALLFUNC,);
             rc = MPIR_Bsend_isend(preq->mpid.userbuf,
                                   preq->mpid.userbufcount,
                                   preq->mpid.datatype,
@@ -76,6 +79,7 @@ int MPID_Startall(int count, MPID_Request * requests[])
                                   preq->comm,
                                   BSEND_INIT,
                                   &preq->partner_request);
+            MPIU_THREAD_CS_EXIT(BSENDDATA,);
             /*
              * MPICH2 maintains an independant reference to the child,
              * but doesn't refcount it.  Since they actually call
