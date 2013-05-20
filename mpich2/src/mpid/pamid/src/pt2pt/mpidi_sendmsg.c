@@ -443,7 +443,7 @@ if (!TOKEN_FLOW_CONTROL_ON) {
   /*
    * Always use the short protocol when data_sz is small.
    */
-  if (likely(data_sz_limit < MPIDI_PT2PT_SHORT_LIMIT(isInternal,isLocal)))
+  if (likely(data_sz < MPIDI_PT2PT_SHORT_LIMIT(isInternal,isLocal)))
     {
       TRACE_ERR("Sending(short%s%s) bytes=%u (short_limit=%u)\n", isInternal==1?",internal":"", isLocal==1?",intranode":"", data_sz, MPIDI_PT2PT_SHORT_LIMIT(isInternal,isLocal));
       MPIDI_SendMsg_short(context,
