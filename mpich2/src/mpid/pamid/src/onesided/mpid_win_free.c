@@ -71,6 +71,22 @@ MPID_Win_free(MPID_Win **win_ptr)
         
     }
 #endif
+  struct MPIDI_Win_sync* sync = &win->mpid.sync;
+  /* Free left over early arrivals */
+  struct MPIDI_Win_sync_early * next =  sync->pw.early;
+  while (next != NULL)
+  {
+    struct MPIDI_Win_sync_early * tmp =  next->next;
+    MPIU_Free(next);
+    next = tmp;
+  }
+  next =  sync->sc.early;
+  while (next != NULL)
+  {
+    struct MPIDI_Win_sync_early * tmp =  next->next;
+    MPIU_Free(next);
+    next = tmp;
+  }
 
   MPIU_Free(win->mpid.info);
 

@@ -78,6 +78,11 @@ MPID_Win_create(void       * base,
   size_t size = comm_ptr->local_size;
   size_t rank = comm_ptr->rank;
 
+  struct MPIDI_Win_sync* sync = &win->mpid.sync;
+  /* init early arrivals */
+  sync->pw.early = NULL;
+  sync->sc.early = NULL;
+
   win->mpid.info = MPIU_Calloc0(size, struct MPIDI_Win_info);
 
   struct MPIDI_Win_info *winfo = &win->mpid.info[rank];

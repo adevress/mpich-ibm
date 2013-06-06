@@ -394,10 +394,57 @@ struct MPIDI_Win
     volatile uint32_t started;  /**< The number of PAMI requests made (updated only in the context_post callback) */
     volatile uint32_t complete; /**< The number of completed PAMI requests (only updated by the done callbacks) */
 
+    /**
+       \brief Sync structure for PAMI EPOCHs
+      
+       'sc' is for the local MPI_Win_start/MPI_Win_complete processing.
+     
+       What's counter-intuitive (to me) is an incoming MPI_Win_post is
+       part of our 'sc' processing because it completes the local 
+       blocking MPI_Win_start.
+     
+       Only peers in the current group are counted.  Other peers are
+       added to an early arrival linked list and counted when a matching
+       group is started.
+     
+       So the 'sc' fields are:
+     
+          struct MPID_Group * group; is the group used on MPI_Win_start.
+     
+          volatile unsigned   count; is used to count incoming post's against
+                                     our start/complete.
+     
+          struct MPIDI_Win_sync_early * early; are the early post arrivals
+                                               not yet counted.
+     
+       'pw' is for the local MPI_Win_post/MPI_Win_wait processing.
+     
+       And now an incoming MPI_Win_complete is part of our 'pw' processing
+       because it completes the local blocking MPI_Win_wait.
+     
+       Only peers in the current group are counted.  Other peers are
+       added to an early arrival linked list and counted when a matching
+       group is posted.
+     
+       So the 'pw' fields are:
+     
+          struct MPID_Group * group; is the group used on MPI_Win_post.
+     
+          volatile unsigned   count; is used to count incoming complete's
+                                    against our post/wait.
+     
+          struct MPIDI_Win_sync_early * early; are the early complete arrivals
+                                               not yet counted.
+     
+    */
     struct MPIDI_Win_sync_pscw
     {
-      struct MPID_Group * group;
-      volatile unsigned   count;
+      struct MPID_Group * group; 
+      volatile unsigned   count; 
+      struct MPIDI_Win_sync_early {
+        struct MPIDI_Win_sync_early * next; /* next in linked list */
+        unsigned peer;                      /* uncounted peer */
+      } * early; 
     } sc, pw;
     struct MPIDI_Win_sync_lock
     {
