@@ -174,7 +174,7 @@ extern "C" {
    *        communicator are served by the same I/O node
    *
    * Fortran interface:
-   *   MPIX_PSET_SAME_COMM_CREATE (INTEGER parent_comm, INTEGER pset_comm, INTEGER ierr)
+   *   MPIX_PSET_SAME_COMM_CREATE_FROM_PARENT (INTEGER parent_comm, INTEGER pset_comm, INTEGER ierr)
    *
    * \note This is a collective operation on the parent communicator.
    *
@@ -190,7 +190,7 @@ extern "C" {
    *        communicator are served by a different I/O node
    *
    * Fortran interface:
-   *   MPIX_PSET_DIFF_COMM_CREATE (INTEGER parent_comm, INTEGER pset_comm, INTEGER ierr)
+   *   MPIX_PSET_DIFF_COMM_CREATE_FROM_PARENT (INTEGER parent_comm, INTEGER pset_comm, INTEGER ierr)
    *
    * \note This is a collective operation on the parent communicator
    *
