@@ -426,6 +426,7 @@ void MPIDI_Comm_coll_select(MPID_Comm *comm_ptr)
   /* If the user has forced a selection, don't bother setting it here */
   if(comm_ptr->mpid.optimized_algorithm_type[PAMI_XFER_ALLTOALL][0] >= MPID_COLL_DEFAULT)
   {
+    int secondary_opt_proto = -1;
     TRACE_ERR("No alltoall env var, so setting optimized alltoall\n");
     /* The best alltoall is always I0:M2MComposite:MU:MU */
     /* Loop over the protocols until we find the one we want */
@@ -435,7 +436,12 @@ void MPIDI_Comm_coll_select(MPID_Comm *comm_ptr)
         if(strcasecmp(comm_ptr->mpid.algorithm_metadata_list[PAMI_XFER_ALLTOALL][0][i].name, "I0:M2MComposite:MU:MU") == 0)
         {
           opt_proto = i;
-          break;
+          break; /* If we found it, use it.  Don't keep looking. */
+        }
+        if(strcasecmp(comm_ptr->mpid.algorithm_metadata_list[PAMI_XFER_ALLTOALL][0][i].name, "I0:M2MComposite:SHMEM:MU") == 0)
+        {
+          secondary_opt_proto = i;
+          /* Don't break - let MU:MU win if it's available so keep searching */
         }
       }
     if(use_threaded_collectives && (opt_proto == -1)) /* check other list */
@@ -445,9 +451,19 @@ void MPIDI_Comm_coll_select(MPID_Comm *comm_ptr)
         {
           opt_proto = i;
           mustquery = 1;
-          break;
+          break; /* If we found it, use it.  Don't keep looking. */
+        }
+        if(strcasecmp(comm_ptr->mpid.algorithm_metadata_list[PAMI_XFER_ALLTOALL][1][i].name, "I0:M2MComposite:SHMEM:MU") == 0)
+        {
+          if(secondary_opt_proto == -1)
+          {
+            secondary_opt_proto = i;
+            mustquery = 1;
+          }
+          /* Don't break - let MU:MU win if it's available so keep searching */
         }
       }
+    if(opt_proto == -1) opt_proto = secondary_opt_proto;
     if(opt_proto != -1)
     {
       TRACE_ERR("Memcpy protocol type %d, number %d (%s) to optimized protocol\n",
