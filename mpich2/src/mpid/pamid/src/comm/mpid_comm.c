@@ -198,9 +198,11 @@ void MPIDI_Coll_comm_create(MPID_Comm *comm)
          ++numconfigs;
       }
 
-      if((MPIDI_Process.optimized.memory  & MPID_OPT_LVL_IRREG) && (comm->local_size & (comm->local_size-1)))
+      if((comm->local_size == 1) || /* Why bother on size 1? */
+         ((MPIDI_Process.optimized.memory  & MPID_OPT_LVL_IRREG) && (comm->local_size & (comm->local_size-1)))
+        )
       {
-         /* Don't create irregular geometries.  Fallback to MPICH only collectives */
+         /* Don't create irregular (or size 1) geometries.  Fallback to MPICH only collectives */
          geom_init = 0;
          comm->mpid.geometry = PAMI_GEOMETRY_NULL;
       }
