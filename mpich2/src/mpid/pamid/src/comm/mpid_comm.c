@@ -26,27 +26,26 @@
 extern void MPIDI_Comm_coll_query(MPID_Comm *);
 extern void MPIDI_Comm_coll_envvars(MPID_Comm *);
 
+void MPIDI_Coll_comm_create (MPID_Comm *comm);
+void MPIDI_Coll_comm_destroy (MPID_Comm *comm, unsigned *free_context_id);
+
 void geom_create_cb_done(void *ctxt, void *data, pami_result_t err)
 {
    int *active = (int *)data;
    (*active)--;
 }
 
-void geom_destroy_cb_done(void *ctxt, void *data, pami_result_t err)
-{
-   int *active = (int *)data;
-   (*active)--;
-}
+void geom_destroy_cb_done(void *ctxt, void *data, pami_result_t err);
 
 int MPIDI_Comm_create (MPID_Comm *comm)
 {
-  MPIDI_Coll_comm_create(comm);
+  MPIDI_Coll_comm_create(comm);  
   return MPI_SUCCESS;
 }
 
-int MPIDI_Comm_destroy (MPID_Comm *comm)
+int MPIDI_Comm_destroy (MPID_Comm *comm, unsigned *free_context_id)
 {
-  MPIDI_Coll_comm_destroy(comm);
+  MPIDI_Coll_comm_destroy(comm,free_context_id);
   return MPI_SUCCESS;
 }
 
@@ -73,7 +72,10 @@ typedef struct MPIDI_Post_geom_destroy
    pami_client_t client;
    pami_geometry_t *geom;
    pami_event_function fn;
-   void *cookie;
+   void *cookie;       /* this storage */
+   pami_task_t *tasks; /* to be freed */
+   MPID_VCRT    vcrt;  /* to be released/freed */
+   int          recvcontext_id; /* to be released/freed */
 } MPIDI_Post_geom_destroy_t;
 
 static pami_result_t geom_rangelist_create_wrapper(pami_context_t context, void *cookie)
@@ -296,12 +298,13 @@ void MPIDI_Coll_comm_create(MPID_Comm *comm)
   TRACE_ERR("MPIDI_Coll_comm_create exit\n");
 }
 
-void MPIDI_Coll_comm_destroy(MPID_Comm *comm)
+void MPIDI_Coll_comm_destroy(MPID_Comm *comm, unsigned *free_context_id)
 {
   TRACE_ERR("MPIDI_Coll_comm_destroy enter\n");
   int i;
-  volatile int geom_destroy = 1;
-  MPIDI_Post_geom_destroy_t geom_destroy_post;
+  MPIDI_Post_geom_destroy_t *geom_destroy_post;
+  geom_destroy_post = MPIU_Calloc0(1, MPIDI_Post_geom_destroy_t);
+
   if (!MPIDI_Process.optimized.collectives)
     return;
 
@@ -338,18 +341,42 @@ void MPIDI_Coll_comm_destroy(MPID_Comm *comm)
 
    TRACE_ERR("Destroying geometry\n");
 
-   geom_destroy_post.client = MPIDI_Client;
-   geom_destroy_post.geom = &comm->mpid.geometry;
-   geom_destroy_post.fn = geom_destroy_cb_done;
-   geom_destroy_post.cookie = (void *)&geom_destroy;
-   TRACE_ERR("%s geom_destroy\n", MPIDI_Process.context_post>0?"Posting":"Invoking");
-   MPIDI_Context_post(MPIDI_Context[0], &geom_destroy_post.state,
-                      geom_destroy_wrapper, (void *)&geom_destroy_post);
+   /* Don't free the vcrt until the callback, so add a ref count */
+   MPID_VCRT_Add_ref(comm->vcrt);
 
-   TRACE_ERR("Waiting for geom destroy to finish\n");
-   MPID_PROGRESS_WAIT_WHILE(geom_destroy);
-/*   TRACE_ERR("Freeing geometry ranges\n");
-   MPIU_TestFree(&comm->mpid.tasks_descriptor.ranges);
-*/ 
+   geom_destroy_post->client = MPIDI_Client;
+   geom_destroy_post->geom = &comm->mpid.geometry;
+   geom_destroy_post->fn = geom_destroy_cb_done;
+   geom_destroy_post->tasks = comm->mpid.tasks;
+   geom_destroy_post->vcrt = comm->vcrt;
+   geom_destroy_post->recvcontext_id = comm->recvcontext_id; 
+   geom_destroy_post->cookie = (void *)geom_destroy_post;
+   TRACE_ERR("%s geom_destroy\n", MPIDI_Process.context_post>0?"Posting":"Invoking");
+   MPIDI_Context_post(MPIDI_Context[0], &geom_destroy_post->state,
+                      geom_destroy_wrapper, (void *)geom_destroy_post);
+
+   *free_context_id = 0; /* tell caller: don't free the context id */
+
    TRACE_ERR("MPIDI_Coll_comm_destroy exit\n");
 }
+
+void geom_destroy_cb_done(void *ctxt, void *data, pami_result_t err)
+{
+   int mpi_errno = MPI_SUCCESS;
+   MPIDI_Post_geom_destroy_t *geom_destroy_post = (MPIDI_Post_geom_destroy_t *) data;
+/* 
+   When this patch moves to master... free PE's copy of the task list.
+   pami_task_t *tasks = geom_destroy_post->tasks;
+   MPID_VCR_FREE_LPIDS(tasks);
+*/
+   /* BGQ (and maybe other platforms) shares the vcrt with MPICH so release it now.*/
+   mpi_errno = MPID_VCRT_Release(geom_destroy_post->vcrt, 0 /* isDisconnect */);
+   if (mpi_errno != MPI_SUCCESS) 
+   {
+      MPID_Abort( 0, mpi_errno, 1, "PAMID failed to release VCRT" );
+   // MPIU_ERR_POP(mpi_errno);
+   }
+   MPIR_Free_contextid( geom_destroy_post->recvcontext_id ); 
+   MPIU_TestFree(&data);
+}
+

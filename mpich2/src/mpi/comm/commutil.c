@@ -1649,6 +1649,8 @@ fn_exit:
 int MPIR_Comm_delete_internal(MPID_Comm * comm_ptr, int isDisconnect)
 {
     int in_use;
+    /* free_context_id = 1 : free the context id unless the device hook turns this off */
+    unsigned free_context_id = 1; 
     int mpi_errno = MPI_SUCCESS;
     MPID_MPI_STATE_DECL(MPID_STATE_COMM_DELETE_INTERNAL);
 
@@ -1682,7 +1684,7 @@ int MPIR_Comm_delete_internal(MPID_Comm * comm_ptr, int isDisconnect)
 
         /* Notify the device that the communicator is about to be
            destroyed */
-        mpi_errno = MPID_Dev_comm_destroy_hook(comm_ptr);
+        mpi_errno = MPID_Dev_comm_destroy_hook(comm_ptr, &free_context_id);
         if (mpi_errno) MPIU_ERR_POP(mpi_errno);
         
         /* release our reference to the collops structure, comes after the
@@ -1731,7 +1733,8 @@ int MPIR_Comm_delete_internal(MPID_Comm * comm_ptr, int isDisconnect)
         /* This must be the recvcontext_id (i.e. not the (send)context_id)
          * because in the case of intercommunicators the send context ID is
          * allocated out of the remote group's bit vector, not ours. */
-        MPIR_Free_contextid( comm_ptr->recvcontext_id );
+        if(free_context_id)
+            MPIR_Free_contextid( comm_ptr->recvcontext_id ); 
 
         /* We need to release the error handler */
         /* no MPI_OBJ CS needed */

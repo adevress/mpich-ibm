@@ -2244,7 +2244,7 @@ void MPIR_Err_print_stack(FILE *, int);
    objects have such hooks */
 #ifndef HAVE_DEV_COMM_HOOK
 #define MPID_Dev_comm_create_hook( a ) MPI_SUCCESS
-#define MPID_Dev_comm_destroy_hook( a ) MPI_SUCCESS
+#define MPID_Dev_comm_destroy_hook( a, b ) MPI_SUCCESS
 #endif
 
 /* ------------------------------------------------------------------------- */

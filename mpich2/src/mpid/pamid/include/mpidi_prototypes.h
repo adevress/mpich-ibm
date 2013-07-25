@@ -194,18 +194,12 @@ pami_result_t MPIDI_RendezvousTransfer_zerobyte(pami_context_t context, void* rr
 
 
 int  MPIDI_Comm_create      (MPID_Comm *comm);
-int  MPIDI_Comm_destroy     (MPID_Comm *comm);
-void MPIDI_Coll_comm_create (MPID_Comm *comm);
-void MPIDI_Coll_comm_destroy (MPID_Comm *comm);
+int  MPIDI_Comm_destroy     (MPID_Comm *comm,unsigned *);
 void MPIDI_Env_setup        ();
-void MPIDI_Comm_world_setup ();
 
-void MPIDI_Coll_Comm_create (MPID_Comm *comm);
-void MPIDI_Coll_Comm_destroy(MPID_Comm *comm);
 void MPIDI_Comm_coll_query  (MPID_Comm *comm);
 void MPIDI_Comm_coll_envvars(MPID_Comm *comm);
 void MPIDI_Comm_coll_select(MPID_Comm *comm);
-void MPIDI_Coll_register    (void);
 
 int MPIDO_Bcast(void *buffer, int count, MPI_Datatype dt, int root, MPID_Comm *comm_ptr, int *mpierrno);
 int MPIDO_Ibcast(void *buffer, int count, MPI_Datatype datatype, int root, MPID_Comm *comm_ptr, MPID_Request **request);

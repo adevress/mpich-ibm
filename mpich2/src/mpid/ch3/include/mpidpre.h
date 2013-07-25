@@ -151,7 +151,7 @@ typedef union {
 
 #define HAVE_DEV_COMM_HOOK
 #define MPID_Dev_comm_create_hook(comm_) MPIDI_CH3I_Comm_create_hook(comm_)
-#define MPID_Dev_comm_destroy_hook(comm_) MPIDI_CH3I_Comm_destroy_hook(comm_)
+#define MPID_Dev_comm_destroy_hook(comm_, b) MPIDI_CH3I_Comm_destroy_hook(comm_)
 
 #define MPIDI_CH3I_Comm_AS_enabled(comm) ((comm)->ch.anysource_enabled)
 
