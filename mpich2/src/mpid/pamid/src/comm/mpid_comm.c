@@ -357,6 +357,8 @@ void MPIDI_Coll_comm_destroy(MPID_Comm *comm, unsigned *free_context_id)
 
    *free_context_id = 0; /* tell caller: don't free the context id */
 
+   volatile int vi = 100;
+   MPID_PROGRESS_WAIT_WHILE(--vi);
    TRACE_ERR("MPIDI_Coll_comm_destroy exit\n");
 }
 
