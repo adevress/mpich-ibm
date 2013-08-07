@@ -104,7 +104,7 @@
 #undef ASYNC_PROGRESS_MODE_DEFAULT
 #define ASYNC_PROGRESS_MODE_DEFAULT 1
 
-static const char _ibm_release_version_[] = "V1R2M0";
+static const char _ibm_release_version_[] = "V1R2M1";
 #endif
 
 #ifdef __PE__
