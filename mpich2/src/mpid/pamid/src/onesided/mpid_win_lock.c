@@ -182,8 +182,11 @@ MPID_Win_lock(int       lock_type,
   .lock_type = lock_type
   };
 
-  MPIDI_Context_post(MPIDI_Context[0], &info.work, MPIDI_WinLockReq_post, &info);
-  MPID_PROGRESS_WAIT_WHILE(!slock->remote.locked);
+  if(rank != MPI_PROC_NULL)
+  {
+    MPIDI_Context_post(MPIDI_Context[0], &info.work, MPIDI_WinLockReq_post, &info);
+    MPID_PROGRESS_WAIT_WHILE(!slock->remote.locked);
+  }
 
   win->mpid.sync.origin_epoch_type = MPID_EPOTYPE_LOCK;
 
@@ -214,8 +217,11 @@ MPID_Win_unlock(int       rank,
   .peer = rank,
   .win  = win,
   };
-  MPIDI_Context_post(MPIDI_Context[0], &info.work, MPIDI_WinUnlock_post, &info);
-  MPID_PROGRESS_WAIT_WHILE(!info.done);
+  if(rank != MPI_PROC_NULL)
+  {
+    MPIDI_Context_post(MPIDI_Context[0], &info.work, MPIDI_WinUnlock_post, &info);
+    MPID_PROGRESS_WAIT_WHILE(!info.done);
+  }
   sync->lock.remote.locked = 0;
 
   if(win->mpid.sync.target_epoch_type == MPID_EPOTYPE_REFENCE)
