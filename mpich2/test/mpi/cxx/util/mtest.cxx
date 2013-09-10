@@ -76,6 +76,11 @@ void MTest_Init( void )
 	provided = MPI::Init_thread( threadLevel );
     }
 
+    envval = getenv( "MPITEST_FILE_ERRORS_THROW_EXCEPTIONS" );
+    if (envval && *envval) {
+	MPI::FILE_NULL.Set_errhandler(MPI::ERRORS_THROW_EXCEPTIONS);
+    }
+
     /* Check for debugging control */
     if (getenv( "MPITEST_DEBUG" )) {
 	dbgflag = 1;
